@@ -976,6 +976,22 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
+            AttrString::from("acp_receiver_group"),
+            SchemaAttribute {
+                name: AttrString::from("acp_receiver_group"),
+                uuid: UUID_SCHEMA_ATTR_ACP_RECEIVER_GROUP,
+                description: String::from(
+                    "The group that recieves this access control to allow access",
+                ),
+                multivalue: false,
+                unique: false,
+                phantom: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::ReferenceUuid,
+            },
+        );
+
+        self.attributes.insert(
             AttrString::from("acp_targetscope"),
             SchemaAttribute {
                 name: AttrString::from("acp_targetscope"),
@@ -1454,9 +1470,10 @@ impl<'a> SchemaWriteTransaction<'a> {
                 systemmay: vec![
                     AttrString::from("acp_enable"),
                     AttrString::from("description"),
+                    AttrString::from("acp_receiver"),
                 ],
                 systemmust: vec![
-                    AttrString::from("acp_receiver"),
+                    AttrString::from("acp_receiver_group"),
                     AttrString::from("acp_targetscope"),
                     AttrString::from("name"),
                 ],

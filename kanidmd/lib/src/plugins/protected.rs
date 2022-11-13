@@ -168,49 +168,116 @@ impl Plugin for Protected {
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
+    use std::sync::Arc;
 
-    const JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
-        "attrs": {
-            "class": [
-                "object",
-                "access_control_profile",
-                "access_control_modify",
-                "access_control_create",
-                "access_control_delete",
-                "access_control_search"
-            ],
-            "name": ["idm_admins_acp_allow_all_test"],
-            "uuid": ["bb18f746-a409-497d-928c-5455d4aef4f7"],
-            "description": ["Builtin IDM Administrators Access Controls for TESTING."],
-            "acp_enable": ["true"],
-            "acp_receiver": [
-                "{\"eq\":[\"uuid\",\"00000000-0000-0000-0000-000000000000\"]}"
-            ],
-            "acp_targetscope": [
-                "{\"pres\":\"class\"}"
-            ],
-            "acp_search_attr": ["name", "class", "uuid", "classname", "attributename"],
-            "acp_modify_class": ["system", "domain_info"],
-            "acp_modify_removedattr": [
-                "class", "displayname", "may", "must", "domain_name", "domain_display_name", "domain_uuid", "domain_ssid", "fernet_private_key_str", "es256_private_key_der"
-                ],
-            "acp_modify_presentattr": [
-                "class", "displayname", "may", "must", "domain_name", "domain_display_name", "domain_uuid", "domain_ssid", "fernet_private_key_str", "es256_private_key_der"
-                ],
-            "acp_create_class": ["object", "person", "system", "domain_info"],
-            "acp_create_attr": [
-                "name", "class", "description", "displayname", "domain_name", "domain_display_name", "domain_uuid", "domain_ssid", "uuid", "fernet_private_key_str", "es256_private_key_der", "version"
-                ]
-        }
-    }"#;
+    const UUID_TEST_ACCOUNT: Uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+    const UUID_TEST_GROUP: Uuid = uuid::uuid!("81ec1640-3637-4a2f-8a52-874fa3c3c92f");
+    const UUID_TEST_ACP: Uuid = uuid::uuid!("acae81d6-5ea7-4bd8-8f7f-fcec4c0dd647");
+
+    lazy_static! {
+        pub static ref TEST_ACCOUNT: EntryInitNew = entry_init!(
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("service_account")),
+            ("class", Value::new_class("memberof")),
+            ("name", Value::new_iname("test_account_1")),
+            ("displayname", Value::new_utf8s("test_account_1")),
+            ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT)),
+            ("memberof", Value::new_refer(UUID_TEST_GROUP))
+        );
+        pub static ref TEST_GROUP: EntryInitNew = entry_init!(
+            ("class", Value::new_class("group")),
+            ("name", Value::new_iname("test_group_a")),
+            ("uuid", Value::new_uuid(UUID_TEST_GROUP)),
+            ("member", Value::new_refer(UUID_TEST_ACCOUNT))
+        );
+        pub static ref ALLOW_ALL: EntryInitNew = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("access_control_profile")),
+            ("class", Value::new_class("access_control_modify")),
+            ("class", Value::new_class("access_control_create")),
+            ("class", Value::new_class("access_control_delete")),
+            ("class", Value::new_class("access_control_search")),
+            ("name", Value::new_iname("idm_admins_acp_allow_all_test")),
+            ("uuid", Value::new_uuid(UUID_TEST_ACP)),
+            ("acp_receiver_group", Value::Refer(UUID_TEST_GROUP)),
+            (
+                "acp_targetscope",
+                Value::new_json_filter_s("{\"pres\":\"class\"}").expect("filter")
+            ),
+            ("acp_search_attr", Value::new_iutf8("name")),
+            ("acp_search_attr", Value::new_iutf8("class")),
+            ("acp_search_attr", Value::new_iutf8("uuid")),
+            ("acp_search_attr", Value::new_iutf8("classname")),
+            ("acp_search_attr", Value::new_iutf8("attributename")),
+            ("acp_modify_class", Value::new_iutf8("system")),
+            ("acp_modify_class", Value::new_iutf8("domain_info")),
+            ("acp_modify_removedattr", Value::new_iutf8("class")),
+            ("acp_modify_removedattr", Value::new_iutf8("displayname")),
+            ("acp_modify_removedattr", Value::new_iutf8("may")),
+            ("acp_modify_removedattr", Value::new_iutf8("must")),
+            ("acp_modify_removedattr", Value::new_iutf8("domain_name")),
+            (
+                "acp_modify_removedattr",
+                Value::new_iutf8("domain_display_name")
+            ),
+            ("acp_modify_removedattr", Value::new_iutf8("domain_uuid")),
+            ("acp_modify_removedattr", Value::new_iutf8("domain_ssid")),
+            (
+                "acp_modify_removedattr",
+                Value::new_iutf8("fernet_private_key_str")
+            ),
+            (
+                "acp_modify_removedattr",
+                Value::new_iutf8("es256_private_key_der")
+            ),
+            ("acp_modify_presentattr", Value::new_iutf8("class")),
+            ("acp_modify_presentattr", Value::new_iutf8("displayname")),
+            ("acp_modify_presentattr", Value::new_iutf8("may")),
+            ("acp_modify_presentattr", Value::new_iutf8("must")),
+            ("acp_modify_presentattr", Value::new_iutf8("domain_name")),
+            (
+                "acp_modify_presentattr",
+                Value::new_iutf8("domain_display_name")
+            ),
+            ("acp_modify_presentattr", Value::new_iutf8("domain_uuid")),
+            ("acp_modify_presentattr", Value::new_iutf8("domain_ssid")),
+            (
+                "acp_modify_presentattr",
+                Value::new_iutf8("fernet_private_key_str")
+            ),
+            (
+                "acp_modify_presentattr",
+                Value::new_iutf8("es256_private_key_der")
+            ),
+            ("acp_create_class", Value::new_iutf8("object")),
+            ("acp_create_class", Value::new_iutf8("person")),
+            ("acp_create_class", Value::new_iutf8("system")),
+            ("acp_create_class", Value::new_iutf8("domain_info")),
+            ("acp_create_attr", Value::new_iutf8("name")),
+            ("acp_create_attr", Value::new_iutf8("class")),
+            ("acp_create_attr", Value::new_iutf8("description")),
+            ("acp_create_attr", Value::new_iutf8("displayname")),
+            ("acp_create_attr", Value::new_iutf8("domain_name")),
+            ("acp_create_attr", Value::new_iutf8("domain_display_name")),
+            ("acp_create_attr", Value::new_iutf8("domain_uuid")),
+            ("acp_create_attr", Value::new_iutf8("domain_ssid")),
+            ("acp_create_attr", Value::new_iutf8("uuid")),
+            (
+                "acp_create_attr",
+                Value::new_iutf8("fernet_private_key_str")
+            ),
+            ("acp_create_attr", Value::new_iutf8("es256_private_key_der")),
+            ("acp_create_attr", Value::new_iutf8("version"))
+        );
+        pub static ref PRELOAD: Vec<EntryInitNew> =
+            vec![TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()];
+        pub static ref E_TEST_ACCOUNT: Arc<EntrySealedCommitted> =
+            Arc::new(unsafe { TEST_ACCOUNT.clone().into_sealed_committed() });
+    }
 
     #[test]
     fn test_pre_create_deny() {
         // Test creating with class: system is rejected.
-        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
-
-        let preload = vec![acp];
-
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
@@ -223,19 +290,19 @@ mod tests {
         );
 
         let create = vec![e.clone()];
+        let preload = PRELOAD.clone();
 
         run_create_test!(
             Err(OperationError::SystemProtectedObject),
             preload,
             create,
-            Some(JSON_ADMIN_V1),
+            Some(E_TEST_ACCOUNT.clone()),
             |_| {}
         );
     }
 
     #[test]
     fn test_pre_modify_system_deny() {
-        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Test modify of class to a system is denied
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -248,7 +315,8 @@ mod tests {
         }"#,
         );
 
-        let preload = vec![acp, e.clone()];
+        let mut preload = PRELOAD.clone();
+        preload.push(e.clone());
 
         run_modify_test!(
             Err(OperationError::SystemProtectedObject),
@@ -258,7 +326,7 @@ mod tests {
                 m_purge("displayname"),
                 m_pres("displayname", &Value::new_utf8s("system test")),
             ]),
-            Some(JSON_ADMIN_V1),
+            Some(E_TEST_ACCOUNT.clone()),
             |_| {},
             |_| {}
         );
@@ -266,7 +334,6 @@ mod tests {
 
     #[test]
     fn test_pre_modify_class_add_deny() {
-        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Show that adding a system class is denied
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -279,7 +346,8 @@ mod tests {
         }"#,
         );
 
-        let preload = vec![acp, e.clone()];
+        let mut preload = PRELOAD.clone();
+        preload.push(e.clone());
 
         run_modify_test!(
             Ok(()),
@@ -289,7 +357,7 @@ mod tests {
                 m_pres("may", &Value::new_iutf8("name")),
                 m_pres("must", &Value::new_iutf8("name")),
             ]),
-            Some(JSON_ADMIN_V1),
+            Some(E_TEST_ACCOUNT.clone()),
             |_| {},
             |_| {}
         );
@@ -297,7 +365,6 @@ mod tests {
 
     #[test]
     fn test_pre_delete_deny() {
-        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Test deleting with class: system is rejected.
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -310,13 +377,14 @@ mod tests {
         }"#,
         );
 
-        let preload = vec![acp, e.clone()];
+        let mut preload = PRELOAD.clone();
+        preload.push(e.clone());
 
         run_delete_test!(
             Err(OperationError::SystemProtectedObject),
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testperson"))),
-            Some(JSON_ADMIN_V1),
+            Some(E_TEST_ACCOUNT.clone()),
             |_| {}
         );
     }
@@ -324,7 +392,6 @@ mod tests {
     #[test]
     fn test_modify_domain() {
         // Can edit *my* domain_ssid and domain_name
-        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Show that adding a system class is denied
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -344,7 +411,8 @@ mod tests {
         }"#,
         );
 
-        let preload = vec![acp, e.clone()];
+        let mut preload = PRELOAD.clone();
+        preload.push(e.clone());
 
         run_modify_test!(
             Ok(()),
@@ -357,7 +425,7 @@ mod tests {
                 m_purge("domain_ssid"),
                 m_pres("domain_ssid", &Value::new_utf8s("NewExampleWifi")),
             ]),
-            Some(JSON_ADMIN_V1),
+            Some(E_TEST_ACCOUNT.clone()),
             |_| {},
             |_| {}
         );
@@ -366,8 +434,7 @@ mod tests {
     #[test]
     fn test_ext_create_domain() {
         // can not add a domain_info type - note the lack of class: system
-        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
-        let preload = vec![acp];
+
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
@@ -386,19 +453,19 @@ mod tests {
         }"#,
         );
         let create = vec![e];
+        let preload = PRELOAD.clone();
 
         run_create_test!(
             Err(OperationError::SystemProtectedObject),
             preload,
             create,
-            Some(JSON_ADMIN_V1),
+            Some(E_TEST_ACCOUNT.clone()),
             |_| {}
         );
     }
 
     #[test]
     fn test_delete_domain() {
-        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // On the real thing we have a class: system, but to prove the point ...
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -418,7 +485,8 @@ mod tests {
         }"#,
         );
 
-        let preload = vec![acp, e.clone()];
+        let mut preload = PRELOAD.clone();
+        preload.push(e.clone());
 
         run_delete_test!(
             Err(OperationError::SystemProtectedObject),
@@ -427,7 +495,7 @@ mod tests {
                 "name",
                 PartialValue::new_iname("domain_example.net.au")
             )),
-            Some(JSON_ADMIN_V1),
+            Some(E_TEST_ACCOUNT.clone()),
             |_| {}
         );
     }

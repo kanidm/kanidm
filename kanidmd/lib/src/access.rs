@@ -75,15 +75,15 @@ impl AccessControlSearch {
     #[cfg(test)]
     unsafe fn from_raw(
         name: &str,
-        uuid: &str,
-        receiver: Filter<FilterValid>,
+        uuid: Uuid,
+        receiver: Uuid,
         targetscope: Filter<FilterValid>,
         attrs: &str,
     ) -> Self {
         AccessControlSearch {
             acp: AccessControlProfile {
                 name: name.to_string(),
-                uuid: Uuid::parse_str(uuid).unwrap(),
+                uuid,
                 receiver,
                 targetscope,
             },
@@ -120,14 +120,14 @@ impl AccessControlDelete {
     #[cfg(test)]
     unsafe fn from_raw(
         name: &str,
-        uuid: &str,
-        receiver: Filter<FilterValid>,
+        uuid: Uuid,
+        receiver: Uuid,
         targetscope: Filter<FilterValid>,
     ) -> Self {
         AccessControlDelete {
             acp: AccessControlProfile {
                 name: name.to_string(),
-                uuid: Uuid::parse_str(uuid).unwrap(),
+                uuid,
                 receiver,
                 targetscope,
             },
@@ -174,8 +174,8 @@ impl AccessControlCreate {
     #[cfg(test)]
     unsafe fn from_raw(
         name: &str,
-        uuid: &str,
-        receiver: Filter<FilterValid>,
+        uuid: Uuid,
+        receiver: Uuid,
         targetscope: Filter<FilterValid>,
         classes: &str,
         attrs: &str,
@@ -183,7 +183,7 @@ impl AccessControlCreate {
         AccessControlCreate {
             acp: AccessControlProfile {
                 name: name.to_string(),
-                uuid: Uuid::parse_str(uuid).unwrap(),
+                uuid,
                 receiver,
                 targetscope,
             },
@@ -239,8 +239,8 @@ impl AccessControlModify {
     #[cfg(test)]
     unsafe fn from_raw(
         name: &str,
-        uuid: &str,
-        receiver: Filter<FilterValid>,
+        uuid: Uuid,
+        receiver: Uuid,
         targetscope: Filter<FilterValid>,
         presattrs: &str,
         remattrs: &str,
@@ -249,7 +249,7 @@ impl AccessControlModify {
         AccessControlModify {
             acp: AccessControlProfile {
                 name: name.to_string(),
-                uuid: Uuid::parse_str(uuid).unwrap(),
+                uuid,
                 receiver,
                 targetscope,
             },
@@ -278,7 +278,7 @@ struct AccessControlProfile {
     uuid: Uuid,
     // Must be
     //   Group
-    receiver: Filter<FilterValid>,
+    receiver: Uuid,
     // or
     //  Filter
     //  Group
@@ -313,13 +313,12 @@ impl AccessControlProfile {
         // copy uuid
         let uuid = value.get_uuid();
         // receiver, and turn to real filter
-        let receiver_f: ProtoFilter = value
-            .get_ava_single_protofilter("acp_receiver")
-            // .map(|pf| pf.clone())
-            .cloned()
+
+        let receiver = value
+            .get_ava_single_refer("acp_receiver_group")
             .ok_or_else(|| {
-                admin_error!("Missing acp_receiver");
-                OperationError::InvalidAcpState("Missing acp_receiver".to_string())
+                admin_error!("Missing acp_receiver_group");
+                OperationError::InvalidAcpState("Missing acp_receiver_group".to_string())
             })?;
         // targetscope, and turn to real filter
         let targetscope_f: ProtoFilter = value
@@ -332,15 +331,6 @@ impl AccessControlProfile {
             })?;
 
         let ident = Identity::from_internal();
-
-        let receiver_i = Filter::from_rw(&ident, &receiver_f, qs).map_err(|e| {
-            admin_error!("Receiver validation failed {:?}", e);
-            e
-        })?;
-        let receiver = receiver_i.validate(qs.get_schema()).map_err(|e| {
-            admin_error!("acp_receiver Schema Violation {:?}", e);
-            OperationError::SchemaViolation(e)
-        })?;
 
         let targetscope_i = Filter::from_rw(&ident, &targetscope_f, qs).map_err(|e| {
             admin_error!("Targetscope validation failed {:?}", e);
@@ -405,7 +395,6 @@ pub trait AccessControlsTransaction<'a> {
     #[instrument(level = "debug", name = "access::search_related_acp", skip_all)]
     fn search_related_acp<'b>(
         &'b self,
-        rec_entry: &Entry<EntrySealed, EntryCommitted>,
         ident: &Identity,
     ) -> Vec<(&'b AccessControlSearch, Filter<FilterValidResolved>)> {
         let search_state = self.get_search();
@@ -456,35 +445,23 @@ pub trait AccessControlsTransaction<'a> {
                 // A possible solution is to change the filter resolve function
                 // such that it takes an entry, rather than an event, but that
                 // would create issues in search.
-                match acs
-                    .acp
-                    .receiver
-                    .resolve(ident, None, Some(acp_resolve_filter_cache))
-                {
-                    Ok(f_res) => {
-                        if rec_entry.entry_match_no_index(&f_res) {
-                            // Now, for each of the acp's that apply to our receiver, resolve their
-                            // related target filters.
-                            acs.acp
-                                .targetscope
-                                .resolve(ident, None, Some(acp_resolve_filter_cache))
-                                .map_err(|e| {
-                                    admin_error!(
-                                        ?e,
-                                        "A internal filter/event was passed for resolution!?!?"
-                                    );
-                                    e
-                                })
-                                .ok()
-                                .map(|f_res| (acs, f_res))
-                        } else {
-                            None
-                        }
-                    }
-                    Err(e) => {
-                        admin_error!(?e, "A internal filter/event was passed for resolution!?!?");
-                        None
-                    }
+                if ident.is_memberof(acs.acp.receiver) {
+                    // Now, for each of the acp's that apply to our receiver, resolve their
+                    // related target filters.
+                    acs.acp
+                        .targetscope
+                        .resolve(ident, None, Some(acp_resolve_filter_cache))
+                        .map_err(|e| {
+                            admin_error!(
+                                ?e,
+                                "A internal filter/event was passed for resolution!?!?"
+                            );
+                            e
+                        })
+                        .ok()
+                        .map(|f_res| (acs, f_res))
+                } else {
+                    None
                 }
             })
             .collect();
@@ -508,7 +485,7 @@ pub trait AccessControlsTransaction<'a> {
         entries: Vec<Arc<EntrySealedCommitted>>,
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         // If this is an internal search, return our working set.
-        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.ident.origin {
+        match &se.ident.origin {
             IdentType::Internal => {
                 trace!("Internal operation, bypassing access check");
                 // No need to check ACS
@@ -518,7 +495,7 @@ pub trait AccessControlsTransaction<'a> {
                 security_critical!("Blocking sync check");
                 return Err(OperationError::InvalidState);
             }
-            IdentType::User(u) => &u.entry,
+            IdentType::User(_) => {}
         };
         info!(event = %se.ident, "Access check for search (filter) event");
 
@@ -533,8 +510,7 @@ pub trait AccessControlsTransaction<'a> {
         };
 
         // First get the set of acps that apply to this receiver
-        let related_acp: Vec<(&AccessControlSearch, _)> =
-            self.search_related_acp(rec_entry, &se.ident);
+        let related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(&se.ident);
 
         /*
         related_acp.iter().for_each(|racp| {
@@ -604,7 +580,7 @@ pub trait AccessControlsTransaction<'a> {
         entries: Vec<Arc<EntrySealedCommitted>>,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         // If this is an internal search, do nothing. This can occur in some test cases ONLY
-        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.ident.origin {
+        match &se.ident.origin {
             IdentType::Internal => {
                 if cfg!(test) {
                     trace!("TEST: Internal search in external interface - allowing due to cfg test ...");
@@ -625,7 +601,7 @@ pub trait AccessControlsTransaction<'a> {
                 security_critical!("Blocking sync check");
                 return Err(OperationError::InvalidState);
             }
-            IdentType::User(u) => &u.entry,
+            IdentType::User(_) => {}
         };
 
         /*
@@ -639,8 +615,7 @@ pub trait AccessControlsTransaction<'a> {
         info!(event = %se.ident, "Access check for search (reduce) event");
 
         // Get the relevant acps for this receiver.
-        let related_acp: Vec<(&AccessControlSearch, _)> =
-            self.search_related_acp(rec_entry, &se.ident);
+        let related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(&se.ident);
         let related_acp: Vec<(&AccessControlSearch, _)> = if let Some(r_attrs) = se.attrs.as_ref() {
             related_acp
                 .into_iter()
@@ -724,7 +699,6 @@ pub trait AccessControlsTransaction<'a> {
     #[instrument(level = "debug", name = "access::modify_related_acp", skip_all)]
     fn modify_related_acp<'b>(
         &'b self,
-        rec_entry: &Entry<EntrySealed, EntryCommitted>,
         ident: &Identity,
     ) -> Vec<(&'b AccessControlModify, Filter<FilterValidResolved>)> {
         // Some useful references we'll use for the remainder of the operation
@@ -733,38 +707,27 @@ pub trait AccessControlsTransaction<'a> {
 
         // Find the acps that relate to the caller, and compile their related
         // target filters.
-        let related_acp: Vec<(&AccessControlModify, _)> =
-                modify_state
-                .iter()
-                .filter_map(|acs| {
-                    match acs.acp.receiver.resolve(ident, None, Some(acp_resolve_filter_cache)) {
-                        Ok(f_res) => {
-                            if rec_entry.entry_match_no_index(&f_res) {
-                                acs.acp.targetscope
-                                    .resolve(ident, None, Some(acp_resolve_filter_cache))
-                                    .map_err(|e| {
-                                        admin_error!(
-                                            "A internal filter/event was passed for resolution!?!? {:?}",
-                                            e
-                                        );
-                                        e
-                                    })
-                                    .ok()
-                                    .map(|f_res| (acs, f_res))
-                            } else {
-                                None
-                            }
-                        }
-                        Err(e) => {
+        let related_acp: Vec<(&AccessControlModify, _)> = modify_state
+            .iter()
+            .filter_map(|acs| {
+                if ident.is_memberof(acs.acp.receiver) {
+                    acs.acp
+                        .targetscope
+                        .resolve(ident, None, Some(acp_resolve_filter_cache))
+                        .map_err(|e| {
                             admin_error!(
                                 "A internal filter/event was passed for resolution!?!? {:?}",
                                 e
                             );
-                            None
-                        }
-                    }
-                })
-                .collect();
+                            e
+                        })
+                        .ok()
+                        .map(|f_res| (acs, f_res))
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         related_acp
     }
@@ -776,7 +739,7 @@ pub trait AccessControlsTransaction<'a> {
         me: &ModifyEvent,
         entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<bool, OperationError> {
-        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &me.ident.origin {
+        match &me.ident.origin {
             IdentType::Internal => {
                 trace!("Internal operation, bypassing access check");
                 // No need to check ACS
@@ -786,7 +749,7 @@ pub trait AccessControlsTransaction<'a> {
                 security_critical!("Blocking sync check");
                 return Err(OperationError::InvalidState);
             }
-            IdentType::User(u) => &u.entry,
+            IdentType::User(_) => {}
         };
         info!(event = %me.ident, "Access check for modify event");
 
@@ -813,8 +776,7 @@ pub trait AccessControlsTransaction<'a> {
 
         // Find the acps that relate to the caller, and compile their related
         // target filters.
-        let related_acp: Vec<(&AccessControlModify, _)> =
-            self.modify_related_acp(rec_entry, &me.ident);
+        let related_acp: Vec<(&AccessControlModify, _)> = self.modify_related_acp(&me.ident);
 
         related_acp.iter().for_each(|racp| {
             trace!("Related acs -> {:?}", racp.0.acp.name);
@@ -951,7 +913,7 @@ pub trait AccessControlsTransaction<'a> {
         ce: &CreateEvent,
         entries: &[Entry<EntryInit, EntryNew>],
     ) -> Result<bool, OperationError> {
-        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &ce.ident.origin {
+        match &ce.ident.origin {
             IdentType::Internal => {
                 trace!("Internal operation, bypassing access check");
                 // No need to check ACS
@@ -961,7 +923,7 @@ pub trait AccessControlsTransaction<'a> {
                 security_critical!("Blocking sync check");
                 return Err(OperationError::InvalidState);
             }
-            IdentType::User(u) => &u.entry,
+            IdentType::User(_) => {}
         };
         info!(event = %ce.ident, "Access check for create event");
 
@@ -983,13 +945,8 @@ pub trait AccessControlsTransaction<'a> {
         let related_acp: Vec<(&AccessControlCreate, _)> = create_state
             .iter()
             .filter_map(|acs| {
-                match acs
-                    .acp
-                    .receiver
-                    .resolve(&ce.ident, None, Some(acp_resolve_filter_cache))
-                {
-                    Ok(f_res) if rec_entry.entry_match_no_index(&f_res) => acs
-                        .acp
+                if ce.ident.is_memberof(acs.acp.receiver) {
+                    acs.acp
                         .targetscope
                         .resolve(&ce.ident, None, Some(acp_resolve_filter_cache))
                         .map_err(|e| {
@@ -1000,15 +957,9 @@ pub trait AccessControlsTransaction<'a> {
                             e
                         })
                         .ok()
-                        .map(|f_res| (acs, f_res)),
-                    Ok(_) => None,
-                    Err(e) => {
-                        admin_error!(
-                            "A internal filter/event was passed for resolution!?!? {:?}",
-                            e
-                        );
-                        None
-                    }
+                        .map(|f_res| (acs, f_res))
+                } else {
+                    None
                 }
             })
             .collect();
@@ -1096,7 +1047,7 @@ pub trait AccessControlsTransaction<'a> {
         de: &DeleteEvent,
         entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<bool, OperationError> {
-        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &de.ident.origin {
+        match &de.ident.origin {
             IdentType::Internal => {
                 trace!("Internal operation, bypassing access check");
                 // No need to check ACS
@@ -1106,7 +1057,7 @@ pub trait AccessControlsTransaction<'a> {
                 security_critical!("Blocking sync check");
                 return Err(OperationError::InvalidState);
             }
-            IdentType::User(u) => &u.entry,
+            IdentType::User(_) => {}
         };
         info!(event = %de.ident, "Access check for delete event");
 
@@ -1126,38 +1077,26 @@ pub trait AccessControlsTransaction<'a> {
 
         // Find the acps that relate to the caller.
         let related_acp: Vec<(&AccessControlDelete, _)> = delete_state
-                .iter()
-                .filter_map(|acs| {
-                    match acs.acp.receiver.resolve(&de.ident, None, Some(acp_resolve_filter_cache)) {
-                        Ok(f_res) => {
-                            if rec_entry.entry_match_no_index(&f_res) {
-                                acs.acp.targetscope
-                                    .resolve(&de.ident, None, Some(acp_resolve_filter_cache))
-                                    .map_err(|e| {
-                                        admin_error!(
-                                            "A internal filter/event was passed for resolution!?!? {:?}",
-                                            e
-                                        );
-                                        e
-                                    })
-                                    .ok()
-                                    .map(|f_res|
-                                        (acs, f_res)
-                                    )
-                            } else {
-                                None
-                            }
-                        }
-                        Err(e) => {
+            .iter()
+            .filter_map(|acs| {
+                if de.ident.is_memberof(acs.acp.receiver) {
+                    acs.acp
+                        .targetscope
+                        .resolve(&de.ident, None, Some(acp_resolve_filter_cache))
+                        .map_err(|e| {
                             admin_error!(
                                 "A internal filter/event was passed for resolution!?!? {:?}",
                                 e
                             );
-                            None
-                        }
-                    }
-                })
-                .collect();
+                            e
+                        })
+                        .ok()
+                        .map(|f_res| (acs, f_res))
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         /*
         related_acp.iter().for_each(|racp| {
@@ -1211,7 +1150,7 @@ pub trait AccessControlsTransaction<'a> {
         // have an entry template. I think james was right about the create being
         // a template copy op ...
 
-        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &ident.origin {
+        match &ident.origin {
             IdentType::Internal => {
                 // In production we can't risk leaking data here, so we return
                 // empty sets.
@@ -1223,7 +1162,7 @@ pub trait AccessControlsTransaction<'a> {
                 security_critical!("Blocking sync check");
                 return Err(OperationError::InvalidState);
             }
-            IdentType::User(u) => &u.entry,
+            IdentType::User(_) => {}
         };
 
         trace!(ident = %ident, "Effective permission check");
@@ -1231,8 +1170,7 @@ pub trait AccessControlsTransaction<'a> {
 
         // == search ==
         // Get the relevant acps for this receiver.
-        let search_related_acp: Vec<(&AccessControlSearch, _)> =
-            self.search_related_acp(rec_entry, ident);
+        let search_related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(ident);
         let search_related_acp: Vec<(&AccessControlSearch, _)> =
             if let Some(r_attrs) = attrs.as_ref() {
                 search_related_acp
@@ -1251,8 +1189,7 @@ pub trait AccessControlsTransaction<'a> {
 
         // == modify ==
 
-        let modify_related_acp: Vec<(&AccessControlModify, _)> =
-            self.modify_related_acp(rec_entry, ident);
+        let modify_related_acp: Vec<(&AccessControlModify, _)> = self.modify_related_acp(ident);
 
         /*
         modify_related_acp.iter().for_each(|(racp, _)| {
@@ -1572,6 +1509,32 @@ mod tests {
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
     use crate::prelude::*;
 
+    const UUID_TEST_ACCOUNT_1: Uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+    const UUID_TEST_ACCOUNT_2: Uuid = uuid::uuid!("cec0852a-abdf-4ea6-9dae-d3157cb33d3a");
+    const UUID_TEST_GROUP_1: Uuid = uuid::uuid!("81ec1640-3637-4a2f-8a52-874fa3c3c92f");
+    const UUID_TEST_GROUP_2: Uuid = uuid::uuid!("acae81d6-5ea7-4bd8-8f7f-fcec4c0dd647");
+
+    lazy_static! {
+        pub static ref E_TEST_ACCOUNT_1: Arc<EntrySealedCommitted> = Arc::new(unsafe {
+            entry_init!(
+                ("class", Value::new_class("object")),
+                ("name", Value::new_iname("test_account_1")),
+                ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT_1)),
+                ("memberof", Value::new_refer(UUID_TEST_GROUP_1))
+            )
+            .into_sealed_committed()
+        });
+        pub static ref E_TEST_ACCOUNT_2: Arc<EntrySealedCommitted> = Arc::new(unsafe {
+            entry_init!(
+                ("class", Value::new_class("object")),
+                ("name", Value::new_iname("test_account_1")),
+                ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT_2)),
+                ("memberof", Value::new_refer(UUID_TEST_GROUP_2))
+            )
+            .into_sealed_committed()
+        });
+    }
+
     macro_rules! acp_from_entry_err {
         (
             $qs:expr,
@@ -1643,7 +1606,7 @@ mod tests {
                         "class": ["object", "access_control_profile"],
                         "name": ["acp_invalid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_receiver": [""],
+                        "acp_receiver_group": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_targetscope": [""]
                     }
                 }"#,
@@ -1659,11 +1622,11 @@ mod tests {
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
-                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                    Value::new_uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver",
-                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    "acp_receiver_group",
+                    Value::new_refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     "acp_targetscope",
@@ -1685,9 +1648,7 @@ mod tests {
                         "class": ["object", "access_control_profile"],
                         "name": ["acp_valid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_receiver": [
-                            "{\"eq\":[\"name\",\"a\"]}"
-                        ],
+                        "acp_receiver_group": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_targetscope": [
                             "{\"eq\":[\"name\",\"a\"]}"
                         ]
@@ -1705,11 +1666,11 @@ mod tests {
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
-                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                    Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver",
-                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    "acp_receiver_group",
+                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     "acp_targetscope",
@@ -1733,9 +1694,7 @@ mod tests {
                         "class": ["object", "access_control_search"],
                         "name": ["acp_invalid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_receiver": [
-                            "{\"eq\":[\"name\",\"a\"]}"
-                        ],
+                        "acp_receiver_group": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_targetscope": [
                             "{\"eq\":[\"name\",\"a\"]}"
                         ],
@@ -1753,9 +1712,7 @@ mod tests {
                         "class": ["object", "access_control_profile"],
                         "name": ["acp_invalid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_receiver": [
-                            "{\"eq\":[\"name\",\"a\"]}"
-                        ],
+                        "acp_receiver_group": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_targetscope": [
                             "{\"eq\":[\"name\",\"a\"]}"
                         ],
@@ -1773,9 +1730,7 @@ mod tests {
                         "class": ["object", "access_control_profile", "access_control_search"],
                         "name": ["acp_invalid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_receiver": [
-                            "{\"eq\":[\"name\",\"a\"]}"
-                        ],
+                        "acp_receiver_group": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_targetscope": [
                             "{\"eq\":[\"name\",\"a\"]}"
                         ]
@@ -1794,11 +1749,11 @@ mod tests {
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
-                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                    Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver",
-                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    "acp_receiver_group",
+                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     "acp_targetscope",
@@ -1823,9 +1778,7 @@ mod tests {
                         "class": ["object", "access_control_profile"],
                         "name": ["acp_valid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_receiver": [
-                            "{\"eq\":[\"name\",\"a\"]}"
-                        ],
+                        "acp_receiver_group": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_targetscope": [
                             "{\"eq\":[\"name\",\"a\"]}"
                         ],
@@ -1849,8 +1802,8 @@ mod tests {
                     Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
                 ),
                 (
-                    "acp_receiver",
-                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    "acp_receiver_group",
+                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     "acp_targetscope",
@@ -1869,11 +1822,11 @@ mod tests {
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
-                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                    Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver",
-                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    "acp_receiver_group",
+                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     "acp_targetscope",
@@ -1899,9 +1852,7 @@ mod tests {
                         "class": ["object", "access_control_profile"],
                         "name": ["acp_valid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_receiver": [
-                            "{\"eq\":[\"name\",\"a\"]}"
-                        ],
+                        "acp_receiver_group": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_targetscope": [
                             "{\"eq\":[\"name\",\"a\"]}"
                         ],
@@ -1921,11 +1872,11 @@ mod tests {
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
-                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                    Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver",
-                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    "acp_receiver_group",
+                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     "acp_targetscope",
@@ -1944,11 +1895,11 @@ mod tests {
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
-                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                    Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
-                    "acp_receiver",
-                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                    "acp_receiver_group",
+                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     "acp_targetscope",
@@ -1979,11 +1930,11 @@ mod tests {
             ("name", Value::new_iname("acp_valid")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
-                "acp_receiver",
-                Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                "acp_receiver_group",
+                Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             (
                 "acp_targetscope",
@@ -2064,19 +2015,8 @@ mod tests {
         // Test that an internal search bypasses ACS
         let se = unsafe { SearchEvent::new_internal_invalid(filter!(f_pres("class"))) };
 
-        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-                "attrs": {
-                    "class": ["object"],
-                    "name": ["testperson1"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
-                }
-                }"#,
-        );
-        let ev1 = unsafe { e1.into_sealed_committed() };
-
-        let expect = vec![Arc::new(ev1.clone())];
-        let entries = vec![Arc::new(ev1)];
+        let expect = vec![E_TEST_ACCOUNT_1.clone()];
+        let entries = vec![E_TEST_ACCOUNT_1.clone()];
 
         // This acp basically is "allow access to stuff, but not this".
         test_acp_search!(
@@ -2084,10 +2024,10 @@ mod tests {
             vec![unsafe {
                 AccessControlSearch::from_raw(
                     "test_acp",
-                    "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
-                    filter_valid!(f_pres("class")), // apply to all people
+                    Uuid::new_v4(),
+                    UUID_TEST_GROUP_1,
                     filter_valid!(f_pres("nomatchy")), // apply to none - ie no allowed results
-                    "name",                         // allow to this attr, but we don't eval this.
+                    "name", // allow to this attr, but we don't eval this.
                 )
             }],
             entries,
@@ -2103,22 +2043,28 @@ mod tests {
 
         let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2.clone())];
 
-        let se_admin = unsafe {
-            SearchEvent::new_impersonate_entry_ser(JSON_ADMIN_V1, filter_all!(f_pres("name")))
+        let se_a = unsafe {
+            SearchEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
+                filter_all!(f_pres("name")),
+            )
         };
-        let ex_admin = vec![Arc::new(ev1.clone())];
+        let ex_a = vec![Arc::new(ev1.clone())];
 
-        let se_anon = unsafe {
-            SearchEvent::new_impersonate_entry_ser(JSON_ANONYMOUS_V1, filter_all!(f_pres("name")))
+        let se_b = unsafe {
+            SearchEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_2.clone(),
+                filter_all!(f_pres("name")),
+            )
         };
-        let ex_anon = vec![];
+        let ex_b = vec![];
 
         let acp = unsafe {
             AccessControlSearch::from_raw(
                 "test_acp",
-                "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
+                Uuid::new_v4(),
                 // apply to admin only
-                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                UUID_TEST_GROUP_1,
                 // Allow admin to read only testperson1
                 filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // In that read, admin may only view the "name" attribute, or query on
@@ -2128,10 +2074,10 @@ mod tests {
         };
 
         // Check the admin search event
-        test_acp_search!(&se_admin, vec![acp.clone()], r_set.clone(), ex_admin);
+        test_acp_search!(&se_a, vec![acp.clone()], r_set.clone(), ex_a);
 
         // Check the anonymous
-        test_acp_search!(&se_anon, vec![acp], r_set, ex_anon);
+        test_acp_search!(&se_b, vec![acp], r_set, ex_b);
     }
 
     #[test]
@@ -2140,34 +2086,28 @@ mod tests {
         // Test that identities are bound by their access scope.
         let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
 
-        let ex_admin_some = vec![Arc::new(ev1.clone())];
-        let ex_admin_none = vec![];
+        let ex_some = vec![Arc::new(ev1.clone())];
+        let ex_none = vec![];
 
         let r_set = vec![Arc::new(ev1)];
 
-        let se_admin_io = unsafe {
+        let se_io = unsafe {
             SearchEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_identityonly(Arc::new(
-                    E_ADMIN_V1.clone().into_sealed_committed(),
-                )),
+                Identity::from_impersonate_entry_identityonly(E_TEST_ACCOUNT_1.clone()),
                 filter_all!(f_pres("name")),
             )
         };
 
-        let se_admin_ro = unsafe {
+        let se_ro = unsafe {
             SearchEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_readonly(Arc::new(
-                    E_ADMIN_V1.clone().into_sealed_committed(),
-                )),
+                Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
                 filter_all!(f_pres("name")),
             )
         };
 
-        let se_admin_rw = unsafe {
+        let se_rw = unsafe {
             SearchEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_readwrite(Arc::new(
-                    E_ADMIN_V1.clone().into_sealed_committed(),
-                )),
+                Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
                 filter_all!(f_pres("name")),
             )
         };
@@ -2175,9 +2115,9 @@ mod tests {
         let acp = unsafe {
             AccessControlSearch::from_raw(
                 "test_acp",
-                "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
+                Uuid::new_v4(),
                 // apply to admin only
-                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                UUID_TEST_GROUP_1,
                 // Allow admin to read only testperson1
                 filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // In that read, admin may only view the "name" attribute, or query on
@@ -2187,26 +2127,11 @@ mod tests {
         };
 
         // Check the admin search event
-        test_acp_search!(
-            &se_admin_io,
-            vec![acp.clone()],
-            r_set.clone(),
-            ex_admin_none
-        );
+        test_acp_search!(&se_io, vec![acp.clone()], r_set.clone(), ex_none);
 
-        test_acp_search!(
-            &se_admin_ro,
-            vec![acp.clone()],
-            r_set.clone(),
-            ex_admin_some
-        );
+        test_acp_search!(&se_ro, vec![acp.clone()], r_set.clone(), ex_some);
 
-        test_acp_search!(
-            &se_admin_rw,
-            vec![acp.clone()],
-            r_set.clone(),
-            ex_admin_some
-        );
+        test_acp_search!(&se_rw, vec![acp.clone()], r_set.clone(), ex_some);
     }
 
     #[test]
@@ -2224,18 +2149,14 @@ mod tests {
 
         let se_anon_io = unsafe {
             SearchEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_identityonly(Arc::new(
-                    E_ANONYMOUS_V1.clone().into_sealed_committed(),
-                )),
+                Identity::from_impersonate_entry_identityonly(E_TEST_ACCOUNT_1.clone()),
                 filter_all!(f_pres("name")),
             )
         };
 
         let se_anon_ro = unsafe {
             SearchEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_readonly(Arc::new(
-                    E_ANONYMOUS_V1.clone().into_sealed_committed(),
-                )),
+                Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
                 filter_all!(f_pres("name")),
             )
         };
@@ -2243,9 +2164,9 @@ mod tests {
         let acp = unsafe {
             AccessControlSearch::from_raw(
                 "test_acp",
-                "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
-                // apply to anonymous only
-                filter_valid!(f_eq("name", PartialValue::new_iname("anonymous"))),
+                Uuid::new_v4(),
+                // apply to all accounts.
+                UUID_TEST_GROUP_1,
                 // Allow anonymous to read only testperson1
                 filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // In that read, admin may only view the "name" attribute, or query on
@@ -2277,8 +2198,8 @@ mod tests {
         let ex_anon = vec![exv1.clone()];
 
         let se_anon = unsafe {
-            SearchEvent::new_impersonate_entry_ser(
-                JSON_ANONYMOUS_V1,
+            SearchEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
                 filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
             )
         };
@@ -2286,9 +2207,9 @@ mod tests {
         let acp = unsafe {
             AccessControlSearch::from_raw(
                 "test_acp",
-                "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
+                Uuid::new_v4(),
                 // apply to anonymous only
-                filter_valid!(f_eq("name", PartialValue::new_iname("anonymous"))),
+                UUID_TEST_GROUP_1,
                 // Allow anonymous to read only testperson1
                 filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // In that read, admin may only view the "name" attribute, or query on
@@ -2314,8 +2235,8 @@ mod tests {
         let ex_anon = vec![exv1.clone()];
 
         let mut se_anon = unsafe {
-            SearchEvent::new_impersonate_entry_ser(
-                JSON_ANONYMOUS_V1,
+            SearchEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
                 filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
             )
         };
@@ -2325,9 +2246,9 @@ mod tests {
         let acp = unsafe {
             AccessControlSearch::from_raw(
                 "test_acp",
-                "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
+                Uuid::new_v4(),
                 // apply to anonymous only
-                filter_valid!(f_eq("name", PartialValue::new_iname("anonymous"))),
+                UUID_TEST_GROUP_1,
                 // Allow anonymous to read only testperson1
                 filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // In that read, admin may only view the "name" attribute, or query on
@@ -2370,24 +2291,24 @@ mod tests {
 
         // Name present
         let me_pres = unsafe {
-            ModifyEvent::new_impersonate_entry_ser(
-                JSON_ADMIN_V1,
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
                 filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 modlist!([m_pres("name", &Value::new_iname("value"))]),
             )
         };
         // Name rem
         let me_rem = unsafe {
-            ModifyEvent::new_impersonate_entry_ser(
-                JSON_ADMIN_V1,
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
                 filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 modlist!([m_remove("name", &PartialValue::new_iname("value"))]),
             )
         };
         // Name purge
         let me_purge = unsafe {
-            ModifyEvent::new_impersonate_entry_ser(
-                JSON_ADMIN_V1,
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
                 filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 modlist!([m_purge("name")]),
             )
@@ -2395,24 +2316,24 @@ mod tests {
 
         // Class account pres
         let me_pres_class = unsafe {
-            ModifyEvent::new_impersonate_entry_ser(
-                JSON_ADMIN_V1,
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
                 filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 modlist!([m_pres("class", &Value::new_class("account"))]),
             )
         };
         // Class account rem
         let me_rem_class = unsafe {
-            ModifyEvent::new_impersonate_entry_ser(
-                JSON_ADMIN_V1,
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
                 filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 modlist!([m_remove("class", &PartialValue::new_class("account"))]),
             )
         };
         // Class purge
         let me_purge_class = unsafe {
-            ModifyEvent::new_impersonate_entry_ser(
-                JSON_ADMIN_V1,
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
                 filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 modlist!([m_purge("class")]),
             )
@@ -2422,9 +2343,9 @@ mod tests {
         let acp_allow = unsafe {
             AccessControlModify::from_raw(
                 "test_modify_allow",
-                "87bfe9b8-7600-431e-a492-1dde64bbc455",
+                Uuid::new_v4(),
                 // Apply to admin
-                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                UUID_TEST_GROUP_1,
                 // To modify testperson
                 filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // Allow pres name and class
@@ -2439,9 +2360,9 @@ mod tests {
         let acp_deny = unsafe {
             AccessControlModify::from_raw(
                 "test_modify_deny",
-                "87bfe9b8-7600-431e-a492-1dde64bbc456",
+                Uuid::new_v4(),
                 // Apply to admin
-                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                UUID_TEST_GROUP_1,
                 // To modify testperson
                 filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // Allow pres name and class
@@ -2456,9 +2377,9 @@ mod tests {
         let acp_no_class = unsafe {
             AccessControlModify::from_raw(
                 "test_modify_no_class",
-                "87bfe9b8-7600-431e-a492-1dde64bbc457",
+                Uuid::new_v4(),
                 // Apply to admin
-                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                UUID_TEST_GROUP_1,
                 // To modify testperson
                 filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // Allow pres name and class
@@ -2506,12 +2427,10 @@ mod tests {
         let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
         let r_set = vec![Arc::new(ev1.clone())];
 
-        let admin = Arc::new(unsafe { E_ADMIN_V1.clone().into_sealed_committed() });
-
         // Name present
         let me_pres_io = unsafe {
             ModifyEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_identityonly(admin.clone()),
+                Identity::from_impersonate_entry_identityonly(E_TEST_ACCOUNT_1.clone()),
                 filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 modlist!([m_pres("name", &Value::new_iname("value"))]),
             )
@@ -2520,7 +2439,7 @@ mod tests {
         // Name present
         let me_pres_ro = unsafe {
             ModifyEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_readonly(admin.clone()),
+                Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
                 filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 modlist!([m_pres("name", &Value::new_iname("value"))]),
             )
@@ -2529,7 +2448,7 @@ mod tests {
         // Name present
         let me_pres_rw = unsafe {
             ModifyEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_readwrite(admin.clone()),
+                Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
                 filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 modlist!([m_pres("name", &Value::new_iname("value"))]),
             )
@@ -2538,9 +2457,9 @@ mod tests {
         let acp_allow = unsafe {
             AccessControlModify::from_raw(
                 "test_modify_allow",
-                "87bfe9b8-7600-431e-a492-1dde64bbc455",
-                // Apply to admin
-                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                Uuid::new_v4(),
+                // apply to admin only
+                UUID_TEST_GROUP_1,
                 // To modify testperson
                 filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // Allow pres name and class
@@ -2582,51 +2501,38 @@ mod tests {
         }};
     }
 
-    const JSON_TEST_CREATE_AC1: &'static str = r#"{
-        "attrs": {
-            "class": ["account"],
-            "name": ["testperson1"],
-            "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
-        }
-    }"#;
-
-    const JSON_TEST_CREATE_AC2: &'static str = r#"{
-        "attrs": {
-            "class": ["account"],
-            "name": ["testperson1"],
-            "notallowed": ["not allowed!"],
-            "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
-        }
-    }"#;
-
-    const JSON_TEST_CREATE_AC3: &'static str = r#"{
-        "attrs": {
-            "class": ["account", "notallowed"],
-            "name": ["testperson1"],
-            "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
-        }
-    }"#;
-
-    const JSON_TEST_CREATE_AC4: &'static str = r#"{
-        "attrs": {
-            "class": ["account", "group"],
-            "name": ["testperson1"],
-            "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
-        }
-    }"#;
-
     #[test]
     fn test_access_enforce_create() {
-        let ev1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC1);
+        let ev1 = entry_init!(
+            ("class", Value::new_class("account")),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT_1))
+        );
         let r1_set = vec![ev1.clone()];
 
-        let ev2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC2);
+        let ev2 = entry_init!(
+            ("class", Value::new_class("account")),
+            ("notallowed", Value::new_class("notallowed")),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT_1))
+        );
+
         let r2_set = vec![ev2.clone()];
 
-        let ev3: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC3);
+        let ev3 = entry_init!(
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("notallowed")),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT_1))
+        );
         let r3_set = vec![ev3.clone()];
 
-        let ev4: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC4);
+        let ev4 = entry_init!(
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("group")),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT_1))
+        );
         let r4_set = vec![ev4.clone()];
 
         // In this case, we can make the create event with an empty entry
@@ -2634,14 +2540,18 @@ mod tests {
         //
         // In the realy server code, the entry set is derived from and checked
         // against the create event, so we have some level of trust in it.
-        let ce_admin = unsafe { CreateEvent::new_impersonate_entry_ser(JSON_ADMIN_V1, vec![]) };
+
+        let ce_admin = CreateEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
+            vec![],
+        );
 
         let acp = unsafe {
             AccessControlCreate::from_raw(
                 "test_create",
-                "87bfe9b8-7600-431e-a492-1dde64bbc453",
+                Uuid::new_v4(),
                 // Apply to admin
-                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                UUID_TEST_GROUP_1,
                 // To create matching filter testperson
                 // Can this be empty?
                 filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
@@ -2655,9 +2565,9 @@ mod tests {
         let acp2 = unsafe {
             AccessControlCreate::from_raw(
                 "test_create_2",
-                "87bfe9b8-7600-431e-a492-1dde64bbc454",
+                Uuid::new_v4(),
                 // Apply to admin
-                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                UUID_TEST_GROUP_1,
                 // To create matching filter testperson
                 filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // classes
@@ -2679,10 +2589,14 @@ mod tests {
 
     #[test]
     fn test_access_enforce_scope_create() {
-        let ev1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC1);
+        let ev1 = entry_init!(
+            ("class", Value::new_class("account")),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT_1))
+        );
         let r1_set = vec![ev1.clone()];
 
-        let admin = Arc::new(unsafe { E_ADMIN_V1.clone().into_sealed_committed() });
+        let admin = E_TEST_ACCOUNT_1.clone();
 
         let ce_admin_io = CreateEvent::new_impersonate_identity(
             Identity::from_impersonate_entry_identityonly(admin.clone()),
@@ -2702,9 +2616,9 @@ mod tests {
         let acp = unsafe {
             AccessControlCreate::from_raw(
                 "test_create",
-                "87bfe9b8-7600-431e-a492-1dde64bbc453",
+                Uuid::new_v4(),
                 // Apply to admin
-                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                UUID_TEST_GROUP_1,
                 // To create matching filter testperson
                 // Can this be empty?
                 filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
@@ -2751,15 +2665,15 @@ mod tests {
         let r_set = vec![Arc::new(ev1.clone())];
 
         let de_admin = unsafe {
-            DeleteEvent::new_impersonate_entry_ser(
-                JSON_ADMIN_V1,
+            DeleteEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
                 filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
             )
         };
 
         let de_anon = unsafe {
-            DeleteEvent::new_impersonate_entry_ser(
-                JSON_ANONYMOUS_V1,
+            DeleteEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_2.clone(),
                 filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
             )
         };
@@ -2767,9 +2681,9 @@ mod tests {
         let acp = unsafe {
             AccessControlDelete::from_raw(
                 "test_delete",
-                "87bfe9b8-7600-431e-a492-1dde64bbc453",
+                Uuid::new_v4(),
                 // Apply to admin
-                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                UUID_TEST_GROUP_1,
                 // To delete testperson
                 filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
             )
@@ -2786,7 +2700,7 @@ mod tests {
         let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
         let r_set = vec![Arc::new(ev1.clone())];
 
-        let admin = Arc::new(unsafe { E_ADMIN_V1.clone().into_sealed_committed() });
+        let admin = E_TEST_ACCOUNT_1.clone();
 
         let de_admin_io = DeleteEvent::new_impersonate_identity(
             Identity::from_impersonate_entry_identityonly(admin.clone()),
@@ -2806,9 +2720,9 @@ mod tests {
         let acp = unsafe {
             AccessControlDelete::from_raw(
                 "test_delete",
-                "87bfe9b8-7600-431e-a492-1dde64bbc453",
+                Uuid::new_v4(),
                 // Apply to admin
-                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                UUID_TEST_GROUP_1,
                 // To delete testperson
                 filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
             )
@@ -2853,11 +2767,7 @@ mod tests {
     fn test_access_effective_permission_check_1() {
         let _ = sketching::test_init();
 
-        let admin = unsafe {
-            Identity::from_impersonate_entry_readwrite(Arc::new(
-                E_ADMIN_V1.clone().into_sealed_committed(),
-            ))
-        };
+        let admin = Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone());
 
         let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.into_sealed_committed() };
@@ -2870,9 +2780,9 @@ mod tests {
             vec![unsafe {
                 AccessControlSearch::from_raw(
                     "test_acp",
-                    "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
+                    Uuid::new_v4(),
                     // apply to admin only
-                    filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                    UUID_TEST_GROUP_1,
                     // Allow admin to read only testperson1
                     filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                     // They can read "name".
@@ -2895,11 +2805,7 @@ mod tests {
     fn test_access_effective_permission_check_2() {
         let _ = sketching::test_init();
 
-        let admin = unsafe {
-            Identity::from_impersonate_entry_readwrite(Arc::new(
-                E_ADMIN_V1.clone().into_sealed_committed(),
-            ))
-        };
+        let admin = Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone());
 
         let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.into_sealed_committed() };
@@ -2913,9 +2819,9 @@ mod tests {
             vec![unsafe {
                 AccessControlModify::from_raw(
                     "test_acp",
-                    "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
+                    Uuid::new_v4(),
                     // apply to admin only
-                    filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                    UUID_TEST_GROUP_1,
                     // Allow admin to read only testperson1
                     filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                     // They can read "name".

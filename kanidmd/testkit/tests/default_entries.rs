@@ -115,7 +115,7 @@ async fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> Opti
         ),
         entry => {
             let new_value = match entry {
-                "acp_receiver" => r#"{"eq":["memberof","00000000-0000-0000-0000-000000000011"]}"#.to_string(),
+                "acp_receiver_group" => "00000000-0000-0000-0000-000000000011".to_string(),
                 "acp_targetscope" => "{\"and\": [{\"eq\": [\"class\",\"access_control_profile\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}".to_string(),
                  _ => id.to_string(),
             };
@@ -418,7 +418,12 @@ async fn test_default_entries_rbac_admins_access_control_entries(rsclient: Kanid
         .await
         .unwrap();
 
-    static ACP_COMMON_ATTRS: [&str; 4] = ["name", "description", "acp_receiver", "acp_targetscope"];
+    static ACP_COMMON_ATTRS: [&str; 4] = [
+        "name",
+        "description",
+        "acp_receiver_group",
+        "acp_targetscope",
+    ];
     static ACP_ENTRIES: [&str; 28] = [
         "idm_admins_acp_recycle_search",
         "idm_admins_acp_revive",
@@ -513,7 +518,7 @@ async fn test_default_entries_rbac_admins_schema_entries(rsclient: KanidmClient)
         "acp_modify_class",
         "acp_modify_presentattr",
         "acp_modify_removedattr",
-        "acp_receiver",
+        "acp_receiver_group",
         "acp_search_attr",
         "acp_targetscope",
         "attributename",
