@@ -11,6 +11,9 @@ name: Container - Kanidm
     branches:
       - master
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   kanidm_build:
     runs-on: ubuntu-latest

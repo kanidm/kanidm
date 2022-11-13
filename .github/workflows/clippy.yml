@@ -9,15 +9,26 @@ name: Clippy
   pull_request:
 
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   clippy:
     runs-on: ubuntu-latest
     steps:
+      - name: Restore our cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - uses: actions/checkout@v3
-
       - name: Update package manager
         run: sudo apt-get update
-
       - name: Install dependencies
         run: |
           sudo apt-get install -y \
@@ -27,12 +38,12 @@ jobs:
             libsqlite3-dev \
             pkg-config
 
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          default: true
+      # - name: Install Rust
+      #   uses: actions-rs/toolchain@v1
+      #   with:
+      #     toolchain: stable
+      #     override: true
+      #     default: true
 
       - name: "Run clippy (ignores errors, this is just a check)"
         uses: actions-rs/cargo@v1

@@ -4,6 +4,9 @@ name: pykanidm - pylint
 "on":
   push:
   pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   pykanidm_pylint:
     runs-on: ubuntu-latest
@@ -11,10 +14,13 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
+      - name: Install poetry
+        run: pipx install poetry
       - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
+          cache: 'poetry'
       - name: Running tests
         run: |
           cd pykanidm

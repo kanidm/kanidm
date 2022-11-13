@@ -6,6 +6,9 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build-deb-package:
     runs-on: ubuntu-20.04
