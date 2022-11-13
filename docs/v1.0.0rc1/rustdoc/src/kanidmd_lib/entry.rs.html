@@ -2937,6 +2937,18 @@
 <span id="2937">2937</span>
 <span id="2938">2938</span>
 <span id="2939">2939</span>
+<span id="2940">2940</span>
+<span id="2941">2941</span>
+<span id="2942">2942</span>
+<span id="2943">2943</span>
+<span id="2944">2944</span>
+<span id="2945">2945</span>
+<span id="2946">2946</span>
+<span id="2947">2947</span>
+<span id="2948">2948</span>
+<span id="2949">2949</span>
+<span id="2950">2950</span>
+<span id="2951">2951</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Entries are the base unit of object storage in the server. This is one of the three foundational
 //! concepts along with [`filter`]s and [`schema`] that everything else builds upon.
 //!
@@ -2991,7 +3003,9 @@
 <span class="kw">use </span><span class="kw">crate</span>::repl::cid::Cid;
 <span class="kw">use </span><span class="kw">crate</span>::repl::entry::EntryChangelog;
 <span class="kw">use </span><span class="kw">crate</span>::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
-<span class="kw">use </span><span class="kw">crate</span>::value::{IndexType, IntentTokenState, PartialValue, Session, SyntaxType, Value};
+<span class="kw">use </span><span class="kw">crate</span>::value::{
+    IndexType, IntentTokenState, Oauth2Session, PartialValue, Session, SyntaxType, Value,
+};
 <span class="kw">use </span><span class="kw">crate</span>::valueset::{<span class="self">self</span>, ValueSet};
 
 <span class="comment">// use std::convert::TryFrom;
@@ -4800,6 +4814,16 @@
         attr: <span class="kw-2">&amp;</span>str,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>std::collections::BTreeMap&lt;Uuid, Session&gt;&gt; {
         <span class="self">self</span>.attrs.get(attr).and_then(|vs| vs.as_session_map())
+    }
+
+    <span class="attribute">#[inline(always)]
+    </span><span class="kw">pub fn </span>get_ava_as_oauth2session_map(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        attr: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>std::collections::BTreeMap&lt;Uuid, Oauth2Session&gt;&gt; {
+        <span class="self">self</span>.attrs
+            .get(attr)
+            .and_then(|vs| vs.as_oauth2session_map())
     }
 
     <span class="attribute">#[inline(always)]

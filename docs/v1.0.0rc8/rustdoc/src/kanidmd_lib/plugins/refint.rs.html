@@ -776,6 +776,127 @@
 <span id="776">776</span>
 <span id="777">777</span>
 <span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
+<span id="790">790</span>
+<span id="791">791</span>
+<span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
+<span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
+<span id="800">800</span>
+<span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
+<span id="806">806</span>
+<span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
+<span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
+<span id="826">826</span>
+<span id="827">827</span>
+<span id="828">828</span>
+<span id="829">829</span>
+<span id="830">830</span>
+<span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
+<span id="839">839</span>
+<span id="840">840</span>
+<span id="841">841</span>
+<span id="842">842</span>
+<span id="843">843</span>
+<span id="844">844</span>
+<span id="845">845</span>
+<span id="846">846</span>
+<span id="847">847</span>
+<span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
 </pre><pre class="rust"><code><span class="comment">// Referential Integrity
 //
 // Given an entry, modification or change, ensure that all referential links
@@ -924,7 +1045,7 @@
         })
         .map(|v| {
             v.to_ref_uuid()
-                .map(|uuid| PartialValue::new_uuid(<span class="kw-2">*</span>uuid))
+                .map(|uuid| PartialValue::new_uuid(uuid))
                 .ok_or_else(|| {
                     <span class="macro">admin_error!</span>(<span class="question-mark">?</span>v, <span class="string">&quot;reference value could not convert to reference uuid.&quot;</span>);
                     <span class="macro">admin_error!</span>(<span class="string">&quot;If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.&quot;</span>);
@@ -1045,7 +1166,11 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span>kanidm_proto::v1::PluginError;
 
+    <span class="kw">use </span><span class="kw">crate</span>::event::CreateEvent;
     <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+    <span class="kw">use </span><span class="kw">crate</span>::value::{Oauth2Session, Session};
+    <span class="kw">use </span>time::OffsetDateTime;
+    <span class="kw">use </span>uuid::uuid;
 
     <span class="comment">// The create references a uuid that doesn&#39;t exist - reject
     </span><span class="attribute">#[test]
@@ -1552,6 +1677,123 @@
                     .is_none())
             }
         );
+    }
+
+    <span class="attribute">#[qs_test]
+    </span><span class="kw">async fn </span>test_delete_oauth2_rs_remove_sessions(server: <span class="kw-2">&amp;</span>QueryServer) {
+        <span class="kw">let </span>curtime = duration_from_epoch_now();
+        <span class="kw">let </span>curtime_odt = OffsetDateTime::unix_epoch() + curtime;
+
+        <span class="comment">// Create a user
+        </span><span class="kw">let </span><span class="kw-2">mut </span>server_txn = server.write(curtime).<span class="kw">await</span>;
+
+        <span class="kw">let </span>tuuid = <span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>);
+        <span class="kw">let </span>rs_uuid = Uuid::new_v4();
+
+        <span class="kw">let </span>e1 = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(tuuid)),
+            (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
+        );
+
+        <span class="kw">let </span>e2 = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server_basic&quot;</span>)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(rs_uuid)),
+            (<span class="string">&quot;oauth2_rs_name&quot;</span>, Value::new_iname(<span class="string">&quot;test_resource_server&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;test_resource_server&quot;</span>)),
+            (
+                <span class="string">&quot;oauth2_rs_origin&quot;</span>,
+                Value::new_url_s(<span class="string">&quot;https://demo.example.com&quot;</span>).unwrap()
+            ),
+            <span class="comment">// System admins
+            </span>(
+                <span class="string">&quot;oauth2_rs_scope_map&quot;</span>,
+                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, <span class="macro">btreeset!</span>[<span class="string">&quot;openid&quot;</span>.to_string()])
+                    .expect(<span class="string">&quot;invalid oauthscope&quot;</span>)
+            )
+        );
+
+        <span class="kw">let </span>ce = CreateEvent::new_internal(<span class="macro">vec!</span>[e1, e2]);
+        <span class="macro">assert!</span>(server_txn.create(<span class="kw-2">&amp;</span>ce).is_ok());
+
+        <span class="comment">// Create a fake session and oauth2 session.
+
+        </span><span class="kw">let </span>session_id = Uuid::new_v4();
+        <span class="kw">let </span>pv_session_id = PartialValue::new_refer(session_id);
+
+        <span class="kw">let </span>parent = Uuid::new_v4();
+        <span class="kw">let </span>pv_parent_id = PartialValue::new_refer(parent);
+        <span class="kw">let </span>issued_at = curtime_odt;
+        <span class="kw">let </span>issued_by = IdentityId::User(tuuid);
+        <span class="kw">let </span>scope = AccessScope::IdentityOnly;
+
+        <span class="comment">// Mod the user
+        </span><span class="kw">let </span>modlist = <span class="macro">modlist!</span>([
+            Modify::Present(
+                <span class="string">&quot;oauth2_session&quot;</span>.into(),
+                Value::Oauth2Session(
+                    session_id,
+                    Oauth2Session {
+                        parent,
+                        <span class="comment">// Note we set the exp to None so we are not removing based on exp
+                        </span>expiry: <span class="prelude-val">None</span>,
+                        issued_at,
+                        rs_uuid,
+                    },
+                )
+            ),
+            Modify::Present(
+                <span class="string">&quot;user_auth_token_session&quot;</span>.into(),
+                Value::Session(
+                    parent,
+                    Session {
+                        label: <span class="string">&quot;label&quot;</span>.to_string(),
+                        <span class="comment">// Note we set the exp to None so we are not removing based on removal of the parent.
+                        </span>expiry: <span class="prelude-val">None</span>,
+                        <span class="comment">// Need the other inner bits?
+                        // for the gracewindow.
+                        </span>issued_at,
+                        <span class="comment">// Who actually created this?
+                        </span>issued_by,
+                        <span class="comment">// What is the access scope of this session? This is
+                        // for auditing purposes.
+                        </span>scope,
+                    },
+                )
+            ),
+        ]);
+
+        server_txn
+            .internal_modify(
+                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(tuuid))),
+                <span class="kw-2">&amp;</span>modlist,
+            )
+            .expect(<span class="string">&quot;Failed to modify user&quot;</span>);
+
+        <span class="comment">// Still there
+
+        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(<span class="kw-2">&amp;</span>tuuid).expect(<span class="string">&quot;failed&quot;</span>);
+        <span class="macro">assert!</span>(entry.attribute_equality(<span class="string">&quot;user_auth_token_session&quot;</span>, <span class="kw-2">&amp;</span>pv_parent_id));
+        <span class="macro">assert!</span>(entry.attribute_equality(<span class="string">&quot;oauth2_session&quot;</span>, <span class="kw-2">&amp;</span>pv_session_id));
+
+        <span class="comment">// Delete the oauth2 resource server.
+        </span><span class="macro">assert!</span>(server_txn.internal_delete_uuid(rs_uuid).is_ok());
+
+        <span class="comment">// Oauth2 Session gone.
+        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(<span class="kw-2">&amp;</span>tuuid).expect(<span class="string">&quot;failed&quot;</span>);
+
+        <span class="comment">// Note the uat is present still.
+        </span><span class="macro">assert!</span>(entry.attribute_equality(<span class="string">&quot;user_auth_token_session&quot;</span>, <span class="kw-2">&amp;</span>pv_parent_id));
+        <span class="comment">// The oauth2 session is removed.
+        </span><span class="macro">assert!</span>(!entry.attribute_equality(<span class="string">&quot;oauth2_session&quot;</span>, <span class="kw-2">&amp;</span>pv_session_id));
+
+        <span class="macro">assert!</span>(server_txn.commit().is_ok());
     }
 }
 </code></pre></div>

@@ -355,6 +355,11 @@
 <span id="355">355</span>
 <span id="356">356</span>
 <span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use </span>base64urlsafedata::Base64UrlSafeData;
@@ -451,11 +456,16 @@
     <span class="kw">pub </span>code_verifier: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
-<span class="comment">// We now check code_verifier is the same via the formula.
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>TokenRevokeRequest {
+    <span class="kw">pub </span>token: String,
+    <span class="doccomment">/// Generally not needed. See:
+    /// &lt;https://datatracker.ietf.org/doc/html/rfc7009#section-4.1.2&gt;
+    </span><span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span><span class="kw">pub </span>token_type_hint: <span class="prelude-ty">Option</span>&lt;String&gt;,
+}
 
-// If and only if it checks out, we proceed.
-
-// Returned as a json body
+<span class="comment">// The corresponding Response to a revoke request is empty body with 200.
 
 </span><span class="attribute">#[derive(Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>AccessTokenResponse {

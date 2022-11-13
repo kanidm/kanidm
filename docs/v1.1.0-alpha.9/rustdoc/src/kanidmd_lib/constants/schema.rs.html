@@ -1633,6 +1633,38 @@
 <span id="1633">1633</span>
 <span id="1634">1634</span>
 <span id="1635">1635</span>
+<span id="1636">1636</span>
+<span id="1637">1637</span>
+<span id="1638">1638</span>
+<span id="1639">1639</span>
+<span id="1640">1640</span>
+<span id="1641">1641</span>
+<span id="1642">1642</span>
+<span id="1643">1643</span>
+<span id="1644">1644</span>
+<span id="1645">1645</span>
+<span id="1646">1646</span>
+<span id="1647">1647</span>
+<span id="1648">1648</span>
+<span id="1649">1649</span>
+<span id="1650">1650</span>
+<span id="1651">1651</span>
+<span id="1652">1652</span>
+<span id="1653">1653</span>
+<span id="1654">1654</span>
+<span id="1655">1655</span>
+<span id="1656">1656</span>
+<span id="1657">1657</span>
+<span id="1658">1658</span>
+<span id="1659">1659</span>
+<span id="1660">1660</span>
+<span id="1661">1661</span>
+<span id="1662">1662</span>
+<span id="1663">1663</span>
+<span id="1664">1664</span>
+<span id="1665">1665</span>
+<span id="1666">1666</span>
+<span id="1667">1667</span>
 </pre><pre class="rust"><code><span class="comment">// Core
 // Schema uuids start at 00000000-0000-0000-0000-ffff00000000
 
@@ -2806,6 +2838,37 @@
     }
 }&quot;#</span>;
 
+<span class="kw">pub const </span>JSON_SCHEMA_ATTR_OAUTH2_SESSION: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
+    &quot;attrs&quot;: {
+      &quot;class&quot;: [
+        &quot;object&quot;,
+        &quot;system&quot;,
+        &quot;attributetype&quot;
+      ],
+      &quot;description&quot;: [
+        &quot;A session entry to an active oauth2 session, bound to a parent user auth token&quot;
+      ],
+      &quot;index&quot;: [
+        &quot;EQUALITY&quot;
+      ],
+      &quot;unique&quot;: [
+        &quot;false&quot;
+      ],
+      &quot;multivalue&quot;: [
+        &quot;true&quot;
+      ],
+      &quot;attributename&quot;: [
+        &quot;oauth2_session&quot;
+      ],
+      &quot;syntax&quot;: [
+        &quot;OAUTH2SESSION&quot;
+      ],
+      &quot;uuid&quot;: [
+        &quot;00000000-0000-0000-0000-ffff00000117&quot;
+      ]
+    }
+}&quot;#</span>;
+
 <span class="kw">pub const </span>JSON_SCHEMA_ATTR_SYNC_TOKEN_SESSION: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
       &quot;class&quot;: [
@@ -3006,7 +3069,8 @@
         &quot;account_valid_from&quot;,
         &quot;mail&quot;,
         &quot;oauth2_consent_scope_map&quot;,
-        &quot;user_auth_token_session&quot;
+        &quot;user_auth_token_session&quot;,
+        &quot;oauth2_session&quot;
       ],
       &quot;systemmust&quot;: [
         &quot;displayname&quot;,

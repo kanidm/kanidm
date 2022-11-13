@@ -4578,6 +4578,28 @@
 <span id="4578">4578</span>
 <span id="4579">4579</span>
 <span id="4580">4580</span>
+<span id="4581">4581</span>
+<span id="4582">4582</span>
+<span id="4583">4583</span>
+<span id="4584">4584</span>
+<span id="4585">4585</span>
+<span id="4586">4586</span>
+<span id="4587">4587</span>
+<span id="4588">4588</span>
+<span id="4589">4589</span>
+<span id="4590">4590</span>
+<span id="4591">4591</span>
+<span id="4592">4592</span>
+<span id="4593">4593</span>
+<span id="4594">4594</span>
+<span id="4595">4595</span>
+<span id="4596">4596</span>
+<span id="4597">4597</span>
+<span id="4598">4598</span>
+<span id="4599">4599</span>
+<span id="4600">4600</span>
+<span id="4601">4601</span>
+<span id="4602">4602</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
@@ -4670,6 +4692,7 @@
     committed: bool,
     phase: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, ServerPhase&gt;,
     d_info: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, DomainInfo&gt;,
+    curtime: Duration,
     cid: Cid,
     be_txn: BackendWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
     schema: SchemaWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
@@ -5095,6 +5118,7 @@
                     SyntaxType::Session =&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="string">&quot;Session Values can not be supplied through modification&quot;</span>.to_string())),
                     SyntaxType::JwsKeyEs256 =&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="string">&quot;JwsKeyEs256 Values can not be supplied through modification&quot;</span>.to_string())),
                     SyntaxType::JwsKeyRs256 =&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="string">&quot;JwsKeyRs256 Values can not be supplied through modification&quot;</span>.to_string())),
+                    SyntaxType::Oauth2Session =&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="string">&quot;Oauth2Session Values can not be supplied through modification&quot;</span>.to_string())),
                 }
             }
             <span class="prelude-val">None </span>=&gt; {
@@ -5156,7 +5180,10 @@
                     <span class="comment">// ⚠️   Any types here need to also be added to update_attributes in
                     // schema.rs for reference type / cache awareness during referential
                     // integrity processing. Exceptions are self-contained value types!
-                    </span>SyntaxType::ReferenceUuid | SyntaxType::OauthScopeMap | SyntaxType::Session =&gt; {
+                    </span>SyntaxType::ReferenceUuid
+                    | SyntaxType::OauthScopeMap
+                    | SyntaxType::Session
+                    | SyntaxType::Oauth2Session =&gt; {
                         <span class="comment">// See comments above.
                         </span>PartialValue::new_refer_s(value)
                             .or_else(|| {
@@ -5584,7 +5611,7 @@
         }
     }
 
-    <span class="kw">pub async fn </span>write(<span class="kw-2">&amp;</span><span class="self">self</span>, ts: Duration) -&gt; QueryServerWriteTransaction&lt;<span class="lifetime">&#39;_</span>&gt; {
+    <span class="kw">pub async fn </span>write(<span class="kw-2">&amp;</span><span class="self">self</span>, curtime: Duration) -&gt; QueryServerWriteTransaction&lt;<span class="lifetime">&#39;_</span>&gt; {
         <span class="comment">// Guarantee we are the only writer on the thread pool
         </span><span class="attribute">#[allow(clippy::expect_used)]
         </span><span class="kw">let </span>write_ticket = <span class="self">self
@@ -5606,8 +5633,10 @@
         <span class="kw">let </span>phase = <span class="self">self</span>.phase.write();
 
         <span class="attribute">#[allow(clippy::expect_used)]
-        </span><span class="kw">let </span>ts_max = be_txn.get_db_ts_max(ts).expect(<span class="string">&quot;Unable to get db_ts_max&quot;</span>);
-        <span class="kw">let </span>cid = Cid::new_lamport(<span class="self">self</span>.s_uuid, d_info.d_uuid, ts, <span class="kw-2">&amp;</span>ts_max);
+        </span><span class="kw">let </span>ts_max = be_txn
+            .get_db_ts_max(curtime)
+            .expect(<span class="string">&quot;Unable to get db_ts_max&quot;</span>);
+        <span class="kw">let </span>cid = Cid::new_lamport(<span class="self">self</span>.s_uuid, d_info.d_uuid, curtime, <span class="kw-2">&amp;</span>ts_max);
 
         QueryServerWriteTransaction {
             <span class="comment">// I think this is *not* needed, because commit is mut self which should
@@ -5619,6 +5648,7 @@
             </span>committed: <span class="bool-val">false</span>,
             phase,
             d_info,
+            curtime,
             cid,
             be_txn,
             schema: schema_write,
@@ -5754,6 +5784,10 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; QueryServerWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_curtime(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Duration {
+        <span class="self">self</span>.curtime
+    }
+
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip_all)]
     </span><span class="kw">pub fn </span>create(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ce: <span class="kw-2">&amp;</span>CreateEvent) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="comment">// The create event is a raw, read only representation of the request
@@ -6951,6 +6985,15 @@
         <span class="self">self</span>.delete(<span class="kw-2">&amp;</span>de)
     }
 
+    <span class="kw">pub fn </span>internal_delete_uuid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target_uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">let </span>filter = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(target_uuid)));
+        <span class="kw">let </span>f_valid = filter
+            .validate(<span class="self">self</span>.get_schema())
+            .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
+        <span class="kw">let </span>de = DeleteEvent::new_internal(f_valid);
+        <span class="self">self</span>.delete(<span class="kw-2">&amp;</span>de)
+    }
+
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip_all)]
     </span><span class="kw">pub fn </span>internal_modify(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
@@ -7233,6 +7276,7 @@
             JSON_SCHEMA_ATTR_API_TOKEN_SESSION,
             JSON_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP,
             JSON_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION,
+            JSON_SCHEMA_ATTR_OAUTH2_SESSION,
             JSON_SCHEMA_ATTR_NSUNIQUEID,
             JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME,
             JSON_SCHEMA_ATTR_SYNC_TOKEN_SESSION,

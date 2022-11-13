@@ -2493,6 +2493,11 @@
 <span id="2493">2493</span>
 <span id="2494">2494</span>
 <span id="2495">2495</span>
+<span id="2496">2496</span>
+<span id="2497">2497</span>
+<span id="2498">2498</span>
+<span id="2499">2499</span>
+<span id="2500">2500</span>
 </pre><pre class="rust"><code><span class="doccomment">//! [`Schema`] is one of the foundational concepts of the server. It provides a
 //! set of rules to enforce that [`Entries`] ava&#39;s must be compliant to, to be
 //! considered valid for commit to the database. This allows us to provide
@@ -2688,6 +2693,7 @@
             SyntaxType::DeviceKey =&gt; <span class="macro">matches!</span>(v, PartialValue::DeviceKey(<span class="kw">_</span>)),
             <span class="comment">// Allow refer types.
             </span>SyntaxType::Session =&gt; <span class="macro">matches!</span>(v, PartialValue::Refer(<span class="kw">_</span>)),
+            SyntaxType::Oauth2Session =&gt; <span class="macro">matches!</span>(v, PartialValue::Refer(<span class="kw">_</span>)),
             <span class="comment">// These are just insensitive string lookups on the hex-ified kid.
             </span>SyntaxType::JwsKeyEs256 =&gt; <span class="macro">matches!</span>(v, PartialValue::Iutf8(<span class="kw">_</span>)),
             SyntaxType::JwsKeyRs256 =&gt; <span class="macro">matches!</span>(v, PartialValue::Iutf8(<span class="kw">_</span>)),
@@ -2734,6 +2740,7 @@
                 SyntaxType::Passkey =&gt; <span class="macro">matches!</span>(v, Value::Passkey(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)),
                 SyntaxType::DeviceKey =&gt; <span class="macro">matches!</span>(v, Value::DeviceKey(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)),
                 SyntaxType::Session =&gt; <span class="macro">matches!</span>(v, Value::Session(<span class="kw">_</span>, <span class="kw">_</span>)),
+                SyntaxType::Oauth2Session =&gt; <span class="macro">matches!</span>(v, Value::Oauth2Session(<span class="kw">_</span>, <span class="kw">_</span>)),
                 SyntaxType::JwsKeyEs256 =&gt; <span class="macro">matches!</span>(v, Value::JwsKeyEs256(<span class="kw">_</span>)),
                 SyntaxType::JwsKeyRs256 =&gt; <span class="macro">matches!</span>(v, Value::JwsKeyRs256(<span class="kw">_</span>)),
             };
@@ -3077,7 +3084,10 @@
         // No, they&#39;ll over-write each other ... but we do need name uniqueness.
         </span>attributetypes.into_iter().for_each(|a| {
             <span class="comment">// Update the unique and ref caches.
-            </span><span class="kw">if </span>a.syntax == SyntaxType::ReferenceUuid || a.syntax == SyntaxType::OauthScopeMap
+            </span><span class="kw">if </span>a.syntax == SyntaxType::ReferenceUuid ||
+                a.syntax == SyntaxType::OauthScopeMap ||
+                <span class="comment">// So that when an rs is removed we trigger removal of the sessions.
+                </span>a.syntax == SyntaxType::Oauth2Session
             <span class="comment">// May not need to be a ref type since it doesn&#39;t have external links/impact?
             // || a.syntax == SyntaxType::Session
             </span>{

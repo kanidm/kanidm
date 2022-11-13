@@ -70,6 +70,18 @@
 <span id="70">70</span>
 <span id="71">71</span>
 <span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::identity::{AccessScope, IdentityId};
 <span class="kw">use </span>time::OffsetDateTime;
 <span class="kw">use </span>uuid::Uuid;
@@ -85,6 +97,7 @@
     BackupCodeRemoval(BackupCodeRemoval),
     Oauth2ConsentGrant(Oauth2ConsentGrant),
     AuthSessionRecord(AuthSessionRecord),
+    Oauth2SessionRecord(Oauth2SessionRecord),
 }
 
 <span class="kw">pub struct </span>PasswordUpgrade {
@@ -141,6 +154,17 @@
     <span class="kw">pub </span>issued_at: OffsetDateTime,
     <span class="kw">pub </span>issued_by: IdentityId,
     <span class="kw">pub </span>scope: AccessScope,
+}
+
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>Oauth2SessionRecord {
+    <span class="kw">pub </span>target_uuid: Uuid,
+    <span class="kw">pub </span>parent_session_id: Uuid,
+    <span class="kw">pub </span>session_id: Uuid,
+    <span class="kw">pub </span>expiry: <span class="prelude-ty">Option</span>&lt;OffsetDateTime&gt;,
+    <span class="kw">pub </span>issued_at: OffsetDateTime,
+    <span class="comment">// Which rs is this related to?
+    </span><span class="kw">pub </span>rs_uuid: Uuid,
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

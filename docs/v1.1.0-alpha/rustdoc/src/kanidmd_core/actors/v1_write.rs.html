@@ -1444,6 +1444,25 @@
 <span id="1444">1444</span>
 <span id="1445">1445</span>
 <span id="1446">1446</span>
+<span id="1447">1447</span>
+<span id="1448">1448</span>
+<span id="1449">1449</span>
+<span id="1450">1450</span>
+<span id="1451">1451</span>
+<span id="1452">1452</span>
+<span id="1453">1453</span>
+<span id="1454">1454</span>
+<span id="1455">1455</span>
+<span id="1456">1456</span>
+<span id="1457">1457</span>
+<span id="1458">1458</span>
+<span id="1459">1459</span>
+<span id="1460">1460</span>
+<span id="1461">1461</span>
+<span id="1462">1462</span>
+<span id="1463">1463</span>
+<span id="1464">1464</span>
+<span id="1465">1465</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::iter;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::time::Duration;
@@ -1470,6 +1489,7 @@
     },
     idm::delayed::DelayedAction,
     idm::event::{GeneratePasswordEvent, RegenerateRadiusSecretEvent, UnixPasswordChangeEvent},
+    idm::oauth2::{Oauth2Error, TokenRevokeRequest},
     idm::server::{IdmServer, IdmServerTransaction},
     idm::serviceaccount::{DestroyApiTokenEvent, GenerateApiTokenEvent},
     modify::{Modify, ModifyInvalid, ModifyList},
@@ -2797,8 +2817,8 @@
         filter: Filter&lt;FilterInvalid&gt;,
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = <span class="self">self</span>.idms.proxy_write(duration_from_epoch_now()).<span class="kw">await</span>;
         <span class="kw">let </span>ct = duration_from_epoch_now();
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = <span class="self">self</span>.idms.proxy_write(ct).<span class="kw">await</span>;
 
         <span class="kw">let </span>ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
@@ -2836,6 +2856,24 @@
             .qs_write
             .modify(<span class="kw-2">&amp;</span>mdf)
             .and_then(|<span class="kw">_</span>| idms_prox_write.commit().map(|<span class="kw">_</span>| ()))
+    }
+
+    <span class="attribute">#[instrument(
+        level = <span class="string">&quot;info&quot;</span>,
+        skip_all,
+        fields(uuid = <span class="question-mark">?</span>eventid)
+    )]
+    </span><span class="kw">pub async fn </span>handle_oauth2_token_revoke(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        client_authz: String,
+        intr_req: TokenRevokeRequest,
+        eventid: Uuid,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Oauth2Error&gt; {
+        <span class="kw">let </span>ct = duration_from_epoch_now();
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = <span class="self">self</span>.idms.proxy_write(ct).<span class="kw">await</span>;
+        idms_prox_write
+            .oauth2_token_revoke(<span class="kw-2">&amp;</span>client_authz, <span class="kw-2">&amp;</span>intr_req, ct)
+            .and_then(|()| idms_prox_write.commit().map_err(Oauth2Error::ServerError))
     }
 
     <span class="comment">// ===== These below are internal only event types. =====

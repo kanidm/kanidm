@@ -644,6 +644,25 @@
 <span id="644">644</span>
 <span id="645">645</span>
 <span id="646">646</span>
+<span id="647">647</span>
+<span id="648">648</span>
+<span id="649">649</span>
+<span id="650">650</span>
+<span id="651">651</span>
+<span id="652">652</span>
+<span id="653">653</span>
+<span id="654">654</span>
+<span id="655">655</span>
+<span id="656">656</span>
+<span id="657">657</span>
+<span id="658">658</span>
+<span id="659">659</span>
+<span id="660">660</span>
+<span id="661">661</span>
+<span id="662">662</span>
+<span id="663">663</span>
+<span id="664">664</span>
+<span id="665">665</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt;
 <span class="kw">use </span>std::time::Duration;
 
@@ -1046,6 +1065,22 @@
 }
 
 <span class="attribute">#[derive(Serialize, Deserialize, Debug)]
+</span><span class="kw">pub enum </span>DbValueOauth2Session {
+    V1 {
+        <span class="attribute">#[serde(rename = <span class="string">&quot;u&quot;</span>)]
+        </span>refer: Uuid,
+        <span class="attribute">#[serde(rename = <span class="string">&quot;p&quot;</span>)]
+        </span>parent: Uuid,
+        <span class="attribute">#[serde(rename = <span class="string">&quot;e&quot;</span>)]
+        </span>expiry: <span class="prelude-ty">Option</span>&lt;String&gt;,
+        <span class="attribute">#[serde(rename = <span class="string">&quot;i&quot;</span>)]
+        </span>issued_at: String,
+        <span class="attribute">#[serde(rename = <span class="string">&quot;r&quot;</span>)]
+        </span>rs_uuid: Uuid,
+    },
+}
+
+<span class="attribute">#[derive(Serialize, Deserialize, Debug)]
 </span><span class="kw">pub enum </span>DbValueV1 {
     <span class="attribute">#[serde(rename = <span class="string">&quot;U8&quot;</span>)]
     </span>Utf8(String),
@@ -1178,6 +1213,8 @@
     </span>JwsKeyEs256(Vec&lt;Vec&lt;u8&gt;&gt;),
     <span class="attribute">#[serde(rename = <span class="string">&quot;JR&quot;</span>)]
     </span>JwsKeyRs256(Vec&lt;Vec&lt;u8&gt;&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;AS&quot;</span>)]
+    </span>Oauth2Session(Vec&lt;DbValueOauth2Session&gt;),
 }
 
 <span class="kw">impl </span>DbValueSetV2 {
@@ -1214,6 +1251,7 @@
             DbValueSetV2::DeviceKey(set) =&gt; set.len(),
             DbValueSetV2::TrustedDeviceEnrollment(set) =&gt; set.len(),
             DbValueSetV2::Session(set) =&gt; set.len(),
+            DbValueSetV2::Oauth2Session(set) =&gt; set.len(),
             DbValueSetV2::JwsKeyEs256(set) =&gt; set.len(),
             DbValueSetV2::JwsKeyRs256(set) =&gt; set.len(),
         }

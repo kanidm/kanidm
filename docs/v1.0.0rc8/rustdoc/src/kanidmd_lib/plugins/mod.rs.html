@@ -213,6 +213,8 @@
 <span id="213">213</span>
 <span id="214">214</span>
 <span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Plugins allow an `Event` to be inspected and transformed during the write
 //! paths of the server. This allows richer expression of some concepts and
 //! helps to ensure that data is always in specific known states within the
@@ -236,6 +238,7 @@
 <span class="kw">mod </span>password_import;
 <span class="kw">mod </span>protected;
 <span class="kw">mod </span>refint;
+<span class="kw">mod </span>session;
 <span class="kw">mod </span>spn;
 
 <span class="kw">trait </span>Plugin {
@@ -380,6 +383,7 @@
             .and_then(|<span class="kw">_</span>| gidnumber::GidNumber::pre_modify(qs, cand, me))
             .and_then(|<span class="kw">_</span>| domain::Domain::pre_modify(qs, cand, me))
             .and_then(|<span class="kw">_</span>| spn::Spn::pre_modify(qs, cand, me))
+            .and_then(|<span class="kw">_</span>| session::SessionConsistency::pre_modify(qs, cand, me))
             <span class="comment">// attr unique should always be last
             </span>.and_then(|<span class="kw">_</span>| attrunique::AttrUnique::pre_modify(qs, cand, me))
     }

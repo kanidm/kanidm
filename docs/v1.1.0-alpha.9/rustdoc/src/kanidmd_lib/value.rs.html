@@ -1868,6 +1868,21 @@
 <span id="1868">1868</span>
 <span id="1869">1869</span>
 <span id="1870">1870</span>
+<span id="1871">1871</span>
+<span id="1872">1872</span>
+<span id="1873">1873</span>
+<span id="1874">1874</span>
+<span id="1875">1875</span>
+<span id="1876">1876</span>
+<span id="1877">1877</span>
+<span id="1878">1878</span>
+<span id="1879">1879</span>
+<span id="1880">1880</span>
+<span id="1881">1881</span>
+<span id="1882">1882</span>
+<span id="1883">1883</span>
+<span id="1884">1884</span>
+<span id="1885">1885</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of
 //! the [`Value`] module allow storage and transformation of various types of input into strongly
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
@@ -2058,6 +2073,7 @@
     Session = <span class="number">25</span>,
     JwsKeyEs256 = <span class="number">26</span>,
     JwsKeyRs256 = <span class="number">27</span>,
+    Oauth2Session = <span class="number">28</span>,
 }
 
 <span class="kw">impl </span>TryFrom&lt;<span class="kw-2">&amp;</span>str&gt; <span class="kw">for </span>SyntaxType {
@@ -2095,6 +2111,7 @@
             <span class="string">&quot;SESSION&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Session),
             <span class="string">&quot;JWS_KEY_ES256&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::JwsKeyEs256),
             <span class="string">&quot;JWS_KEY_RS256&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::JwsKeyRs256),
+            <span class="string">&quot;OAUTH2SESSION&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Oauth2Session),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(()),
         }
     }
@@ -2133,6 +2150,7 @@
             <span class="number">25 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Session),
             <span class="number">26 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::JwsKeyEs256),
             <span class="number">27 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::JwsKeyRs256),
+            <span class="number">28 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Oauth2Session),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(()),
         }
     }
@@ -2169,6 +2187,7 @@
             SyntaxType::Session =&gt; <span class="string">&quot;SESSION&quot;</span>,
             SyntaxType::JwsKeyEs256 =&gt; <span class="string">&quot;JWS_KEY_ES256&quot;</span>,
             SyntaxType::JwsKeyRs256 =&gt; <span class="string">&quot;JWS_KEY_RS256&quot;</span>,
+            SyntaxType::Oauth2Session =&gt; <span class="string">&quot;OAUTH2SESSION&quot;</span>,
         })
     }
 }
@@ -2620,6 +2639,14 @@
     <span class="kw">pub </span>scope: AccessScope,
 }
 
+<span class="attribute">#[derive(Clone, Debug, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>Oauth2Session {
+    <span class="kw">pub </span>parent: Uuid,
+    <span class="kw">pub </span>expiry: <span class="prelude-ty">Option</span>&lt;OffsetDateTime&gt;,
+    <span class="kw">pub </span>issued_at: OffsetDateTime,
+    <span class="kw">pub </span>rs_uuid: Uuid,
+}
+
 <span class="doccomment">/// A value is a complete unit of data for an attribute. It is made up of a PartialValue, which is
 /// used for selection, filtering, searching, matching etc. It also contains supplemental data
 /// which may be stored inside of the Value, such as credential secrets, blobs etc.
@@ -2664,6 +2691,7 @@
 
     TrustedDeviceEnrollment(Uuid),
     Session(Uuid, Session),
+    Oauth2Session(Uuid, Oauth2Session),
 
     JwsKeyEs256(JwsSigner),
     JwsKeyRs256(JwsSigner),
@@ -3199,10 +3227,12 @@
 
     <span class="comment">// We need a seperate to-ref_uuid to distinguish from normal uuids
     // in refint plugin.
-    </span><span class="kw">pub fn </span>to_ref_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Uuid&gt; {
+    </span><span class="kw">pub fn </span>to_ref_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Uuid&gt; {
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self </span>{
-            Value::Refer(u) =&gt; <span class="prelude-val">Some</span>(u),
-            Value::OauthScopeMap(u, <span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(u),
+            Value::Refer(u) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">*</span>u),
+            Value::OauthScopeMap(u, <span class="kw">_</span>) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">*</span>u),
+            <span class="comment">// We need to assert that our reference to our rs exists.
+            </span>Value::Oauth2Session(<span class="kw">_</span>, m) =&gt; <span class="prelude-val">Some</span>(m.rs_uuid),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }

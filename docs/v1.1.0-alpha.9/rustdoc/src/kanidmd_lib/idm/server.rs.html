@@ -4087,6 +4087,10 @@
 <span id="4087">4087</span>
 <span id="4088">4088</span>
 <span id="4089">4089</span>
+<span id="4090">4090</span>
+<span id="4091">4091</span>
+<span id="4092">4092</span>
+<span id="4093">4093</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::TryFrom;
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::sync::Arc;
@@ -4105,7 +4109,6 @@
     UnixGroupToken, UnixUserToken, UserAuthToken,
 };
 <span class="kw">use </span>rand::prelude::<span class="kw-2">*</span>;
-<span class="kw">use </span>time::OffsetDateTime;
 <span class="kw">use </span>tokio::sync::mpsc::{
     unbounded_channel <span class="kw">as </span>unbounded, UnboundedReceiver <span class="kw">as </span>Receiver, UnboundedSender <span class="kw">as </span>Sender,
 };
@@ -4122,8 +4125,8 @@
 <span class="kw">use </span><span class="kw">crate</span>::idm::authsession::AuthSession;
 <span class="kw">use </span><span class="kw">crate</span>::idm::credupdatesession::CredentialUpdateSessionMutex;
 <span class="kw">use </span><span class="kw">crate</span>::idm::delayed::{
-    AuthSessionRecord, BackupCodeRemoval, DelayedAction, Oauth2ConsentGrant, PasswordUpgrade,
-    UnixPasswordUpgrade, WebauthnCounterIncrement,
+    AuthSessionRecord, BackupCodeRemoval, DelayedAction, Oauth2ConsentGrant, Oauth2SessionRecord,
+    PasswordUpgrade, UnixPasswordUpgrade, WebauthnCounterIncrement,
 };
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">use </span><span class="kw">crate</span>::idm::event::PasswordChangeEvent;
@@ -4147,7 +4150,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::ldap::{LdapBoundToken, LdapSession};
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
-<span class="kw">use </span><span class="kw">crate</span>::value::Session;
+<span class="kw">use </span><span class="kw">crate</span>::value::{Oauth2Session, Session};
 
 <span class="kw">type </span>AuthSessionMutex = Arc&lt;Mutex&lt;AuthSession&gt;&gt;;
 <span class="kw">type </span>CredSoftLockMutex = Arc&lt;Mutex&lt;CredSoftLock&gt;&gt;;
@@ -4224,7 +4227,7 @@
     uat_jwt_signer: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, JwsSigner&gt;,
     uat_jwt_validator: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, JwsValidator&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) token_enc_key: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, Fernet&gt;,
-    oauth2rs: Oauth2ResourceServersWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) oauth2rs: Oauth2ResourceServersWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
 }
 
 <span class="kw">pub struct </span>IdmServerDelayed {
@@ -4663,25 +4666,54 @@
         }
     }
 
-    <span class="kw">fn </span>check_account_uuid_valid(
+    <span class="kw">fn </span>check_oauth2_account_uuid_valid(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        uuid: <span class="kw-2">&amp;</span>Uuid,
+        uuid: Uuid,
+        session_id: Uuid,
+        parent_session_id: Uuid,
+        iat: i64,
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Account&gt;, OperationError&gt; {
-        <span class="kw">let </span>entry = <span class="self">self</span>.get_qs_txn().internal_search_uuid(uuid).map_err(|e| {
-            <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;check_account_uuid_valid failed&quot;</span>);
+        <span class="kw">let </span>entry = <span class="self">self</span>.get_qs_txn().internal_search_uuid(<span class="kw-2">&amp;</span>uuid).map_err(|e| {
+            <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;check_oauth2_account_uuid_valid failed&quot;</span>);
             e
         })<span class="question-mark">?</span>;
 
-        <span class="kw">if </span>Account::check_within_valid_time(
+        <span class="kw">let </span>within_valid_window = Account::check_within_valid_time(
             ct,
             entry.get_ava_single_datetime(<span class="string">&quot;account_valid_from&quot;</span>).as_ref(),
             entry.get_ava_single_datetime(<span class="string">&quot;account_expire&quot;</span>).as_ref(),
-        ) {
-            Account::try_from_entry_no_groups(entry.as_ref()).map(<span class="prelude-val">Some</span>)
-        } <span class="kw">else </span>{
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
+        );
+
+        <span class="kw">if </span>!within_valid_window {
+            <span class="macro">security_info!</span>(<span class="string">&quot;Account has expired or is not yet valid, not allowing to proceed&quot;</span>);
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
         }
+
+        <span class="kw">if </span>ct &gt;= Duration::from_secs(iat <span class="kw">as </span>u64) + GRACE_WINDOW {
+            <span class="comment">// We are past the grace window. Enforce session presence.
+            // We enforce both sessions are present in case of inconsistency
+            // that may occur with replication.
+            </span><span class="kw">let </span>oauth2_session_valid = entry
+                .get_ava_as_oauth2session_map(<span class="string">&quot;oauth2_session&quot;</span>)
+                .map(|map| map.get(<span class="kw-2">&amp;</span>session_id).is_some())
+                .unwrap_or(<span class="bool-val">false</span>);
+            <span class="kw">let </span>uat_session_valid = entry
+                .get_ava_as_session_map(<span class="string">&quot;user_auth_token_session&quot;</span>)
+                .map(|map| map.get(<span class="kw-2">&amp;</span>parent_session_id).is_some())
+                .unwrap_or(<span class="bool-val">false</span>);
+
+            <span class="kw">if </span>oauth2_session_valid &amp;&amp; uat_session_valid {
+                <span class="macro">security_info!</span>(<span class="string">&quot;A valid session value exists for this token&quot;</span>);
+            } <span class="kw">else </span>{
+                <span class="macro">security_info!</span>(%uat_session_valid, %oauth2_session_valid, <span class="string">&quot;The token grace window has passed and no sessions exist. Assuming invalid.&quot;</span>);
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
+            }
+        } <span class="kw">else </span>{
+            <span class="macro">security_info!</span>(<span class="string">&quot;The token grace window is in effect. Assuming valid.&quot;</span>);
+        };
+
+        Account::try_from_entry_no_groups(entry.as_ref()).map(<span class="prelude-val">Some</span>)
     }
 
     <span class="doccomment">/// For any event/operation to proceed, we need to attach an identity to the
@@ -5617,7 +5649,7 @@
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AccessTokenResponse, Oauth2Error&gt; {
         <span class="self">self</span>.oauth2rs
-            .check_oauth2_token_exchange(client_authz, token_req, ct)
+            .check_oauth2_token_exchange(client_authz, token_req, ct, <span class="kw-2">&amp;</span><span class="self">self</span>.async_tx)
     }
 
     <span class="kw">pub fn </span>check_oauth2_token_introspect(
@@ -6192,14 +6224,10 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>process_authsessionrecord(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         asr: <span class="kw-2">&amp;</span>AuthSessionRecord,
-        ct: Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="comment">// We have to get the entry so we can work out if we need to expire any of it&#39;s sessions.
 
-        </span><span class="kw">let </span>entry = <span class="self">self</span>.qs_write.internal_search_uuid(<span class="kw-2">&amp;</span>asr.target_uuid)<span class="question-mark">?</span>;
-        <span class="kw">let </span>sessions = entry.get_ava_as_session_map(<span class="string">&quot;user_auth_token_session&quot;</span>);
-
-        <span class="kw">let </span>session = Value::Session(
+        </span><span class="kw">let </span>session = Value::Session(
             asr.session_id,
             Session {
                 label: asr.label.clone(),
@@ -6217,33 +6245,8 @@
 
         <span class="macro">info!</span>(session_id = %asr.session_id, <span class="string">&quot;Persisting auth session&quot;</span>);
 
-        <span class="kw">let </span>offset_ct = OffsetDateTime::unix_epoch() + ct;
-
-        <span class="kw">let </span>mlist: Vec&lt;<span class="kw">_</span>&gt; = sessions
-            .iter()
-            .flat_map(|item| item.iter())
-            .filter_map(|(k, v)| {
-                <span class="comment">// We only check if an expiry is present
-                </span>v.expiry.and_then(|exp| {
-                    <span class="kw">if </span>exp &lt;= offset_ct {
-                        <span class="macro">info!</span>(session_id = %k, <span class="string">&quot;Removing expired auth session&quot;</span>);
-                        <span class="prelude-val">Some</span>(Modify::Removed(
-                            AttrString::from(<span class="string">&quot;user_auth_token_session&quot;</span>),
-                            PartialValue::Refer(<span class="kw-2">*</span>k),
-                        ))
-                    } <span class="kw">else </span>{
-                        <span class="prelude-val">None
-                    </span>}
-                })
-            })
-            .chain(std::iter::once(Modify::Present(
-                AttrString::from(<span class="string">&quot;user_auth_token_session&quot;</span>),
-                session,
-            )))
-            .collect();
-
         <span class="comment">// modify the account to put the session onto it.
-        </span><span class="kw">let </span>modlist = ModifyList::new_list(mlist);
+        </span><span class="kw">let </span>modlist = ModifyList::new_append(<span class="string">&quot;user_auth_token_session&quot;</span>, session);
 
         <span class="self">self</span>.qs_write
             .internal_modify(
@@ -6278,10 +6281,44 @@
         )
     }
 
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>process_oauth2sessionrecord(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        osr: <span class="kw-2">&amp;</span>Oauth2SessionRecord,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">let </span>session = Value::Oauth2Session(
+            osr.session_id,
+            Oauth2Session {
+                parent: osr.parent_session_id,
+                expiry: osr.expiry,
+                issued_at: osr.issued_at,
+                rs_uuid: osr.rs_uuid,
+            },
+        );
+
+        <span class="macro">info!</span>(session_id = %osr.session_id, <span class="string">&quot;Persisting auth session&quot;</span>);
+
+        <span class="comment">// modify the account to put the session onto it.
+        </span><span class="kw">let </span>modlist = ModifyList::new_append(
+            <span class="string">&quot;oauth2_session&quot;</span>,
+            session,
+        );
+
+        <span class="self">self</span>.qs_write
+            .internal_modify(
+                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(osr.target_uuid))),
+                <span class="kw-2">&amp;</span>modlist,
+            )
+            .map_err(|e| {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to persist user auth token {:?}&quot;</span>, e);
+                e
+            })
+        <span class="comment">// Done!
+    </span>}
+
     <span class="kw">pub fn </span>process_delayedaction(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         da: DelayedAction,
-        ct: Duration,
+        _ct: Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="kw">match </span>da {
             DelayedAction::PwUpgrade(pwu) =&gt; <span class="self">self</span>.process_pwupgrade(<span class="kw-2">&amp;</span>pwu),
@@ -6289,7 +6326,8 @@
             DelayedAction::WebauthnCounterIncrement(wci) =&gt; <span class="self">self</span>.process_webauthncounterinc(<span class="kw-2">&amp;</span>wci),
             DelayedAction::BackupCodeRemoval(bcr) =&gt; <span class="self">self</span>.process_backupcoderemoval(<span class="kw-2">&amp;</span>bcr),
             DelayedAction::Oauth2ConsentGrant(o2cg) =&gt; <span class="self">self</span>.process_oauth2consentgrant(<span class="kw-2">&amp;</span>o2cg),
-            DelayedAction::AuthSessionRecord(asr) =&gt; <span class="self">self</span>.process_authsessionrecord(<span class="kw-2">&amp;</span>asr, ct),
+            DelayedAction::AuthSessionRecord(asr) =&gt; <span class="self">self</span>.process_authsessionrecord(<span class="kw-2">&amp;</span>asr),
+            DelayedAction::Oauth2SessionRecord(osr) =&gt; <span class="self">self</span>.process_oauth2sessionrecord(<span class="kw-2">&amp;</span>osr),
         }
     }
 
@@ -6396,7 +6434,6 @@
     <span class="kw">const </span>TEST_PASSWORD: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">&quot;ntaoeuntnaoeuhraohuercahu😍&quot;</span>;
     <span class="kw">const </span>TEST_PASSWORD_INC: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">&quot;ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx &quot;</span>;
     <span class="kw">const </span>TEST_CURRENT_TIME: u64 = <span class="number">6000</span>;
-    <span class="kw">const </span>TEST_CURRENT_EXPIRE: u64 = TEST_CURRENT_TIME + AUTH_SESSION_TIMEOUT + <span class="number">1</span>;
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_idm_anonymous_auth() {
@@ -6827,36 +6864,6 @@
                     task::block_on(idms.proxy_write(duration_from_epoch_now()));
                 <span class="macro">assert!</span>(idms_prox_write.set_account_password(<span class="kw-2">&amp;</span>pce).is_err());
                 <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-            }
-        )
-    }
-
-    <span class="attribute">#[test]
-    </span><span class="kw">fn </span>test_idm_session_expire() {
-        <span class="macro">run_idm_test!</span>(
-            |qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, _idms_delayed: <span class="kw-2">&amp;</span>IdmServerDelayed| {
-                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
-                    .expect(<span class="string">&quot;Failed to setup admin account&quot;</span>);
-                <span class="kw">let </span>sid = init_admin_authsession_sid(
-                    idms,
-                    Duration::from_secs(TEST_CURRENT_TIME),
-                    <span class="string">&quot;admin&quot;</span>,
-                );
-                <span class="kw">let </span><span class="kw-2">mut </span>idms_auth = idms.auth();
-                <span class="macro">assert!</span>(idms_auth.is_sessionid_present(<span class="kw-2">&amp;</span>sid));
-                <span class="comment">// Expire like we are currently &quot;now&quot;. Should not affect our session.
-                </span>task::block_on(
-                    idms_auth.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_TIME)),
-                );
-                <span class="macro">assert!</span>(idms_auth.is_sessionid_present(<span class="kw-2">&amp;</span>sid));
-                <span class="comment">// Expire as though we are in the future.
-                </span>task::block_on(
-                    idms_auth.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_EXPIRE)),
-                );
-                <span class="macro">assert!</span>(!idms_auth.is_sessionid_present(<span class="kw-2">&amp;</span>sid));
-                <span class="macro">assert!</span>(idms_auth.commit().is_ok());
-                <span class="kw">let </span>idms_auth = idms.auth();
-                <span class="macro">assert!</span>(!idms_auth.is_sessionid_present(<span class="kw-2">&amp;</span>sid));
             }
         )
     }
@@ -7817,7 +7824,8 @@
                        idms: <span class="kw-2">&amp;</span>IdmServer,
                        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
             <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span>expiry = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + <span class="number">1</span>);
+            <span class="kw">let </span>expiry_a = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + <span class="number">1</span>);
+            <span class="kw">let </span>expiry_b = ct + Duration::from_secs((AUTH_SESSION_EXPIRY + <span class="number">1</span>) * <span class="number">2</span>);
 
             <span class="kw">let </span>session_a = Uuid::new_v4();
             <span class="kw">let </span>session_b = Uuid::new_v4();
@@ -7836,7 +7844,7 @@
                 target_uuid: UUID_ADMIN,
                 session_id: session_a,
                 label: <span class="string">&quot;Test Session A&quot;</span>.to_string(),
-                expiry: <span class="prelude-val">Some</span>(OffsetDateTime::unix_epoch() + expiry),
+                expiry: <span class="prelude-val">Some</span>(OffsetDateTime::unix_epoch() + expiry_a),
                 issued_at: OffsetDateTime::unix_epoch() + ct,
                 issued_by: IdentityId::User(UUID_ADMIN),
                 scope: AccessScope::IdentityOnly,
@@ -7870,13 +7878,13 @@
                 target_uuid: UUID_ADMIN,
                 session_id: session_b,
                 label: <span class="string">&quot;Test Session B&quot;</span>.to_string(),
-                expiry: <span class="prelude-val">Some</span>(OffsetDateTime::unix_epoch() + expiry),
+                expiry: <span class="prelude-val">Some</span>(OffsetDateTime::unix_epoch() + expiry_b),
                 issued_at: OffsetDateTime::unix_epoch() + ct,
                 issued_by: IdentityId::User(UUID_ADMIN),
                 scope: AccessScope::IdentityOnly,
             });
             <span class="comment">// Persist it.
-            </span><span class="kw">let </span>r = task::block_on(idms.delayed_action(expiry, da));
+            </span><span class="kw">let </span>r = task::block_on(idms.delayed_action(expiry_a, da));
             <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) == r);
 
             <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
@@ -7925,7 +7933,7 @@
                 <span class="comment">// Process the session info.
                 </span><span class="kw">let </span>da = idms_delayed.try_recv().expect(<span class="string">&quot;invalid&quot;</span>);
                 <span class="macro">assert!</span>(<span class="macro">matches!</span>(da, DelayedAction::AuthSessionRecord(<span class="kw">_</span>)));
-                <span class="kw">let </span>r = task::block_on(idms.delayed_action(duration_from_epoch_now(), da));
+                <span class="kw">let </span>r = task::block_on(idms.delayed_action(ct, da));
                 <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) == r);
 
                 <span class="kw">let </span>uat_unverified =
