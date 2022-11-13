@@ -4397,7 +4397,7 @@
                                 idlayer.write_idl(attr, itype, <span class="kw-2">&amp;</span>idx_key, <span class="kw-2">&amp;</span>idl)
                             }
                             <span class="prelude-val">None </span>=&gt; {
-                                <span class="macro">admin_error!</span>(
+                                <span class="macro">warn!</span>(
                                     <span class="string">&quot;WARNING: index {:?} {:?} was not found. YOU MUST REINDEX YOUR DATABASE&quot;</span>,
                                     attr, itype
                                 );
@@ -4413,7 +4413,7 @@
                                 idlayer.write_idl(attr, itype, <span class="kw-2">&amp;</span>idx_key, <span class="kw-2">&amp;</span>idl)
                             }
                             <span class="prelude-val">None </span>=&gt; {
-                                <span class="macro">admin_error!</span>(
+                                <span class="macro">warn!</span>(
                                     <span class="string">&quot;WARNING: index {:?} {:?} was not found. YOU MUST REINDEX YOUR DATABASE&quot;</span>,
                                     attr, itype
                                 );

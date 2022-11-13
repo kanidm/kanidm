@@ -285,6 +285,10 @@
 <span id="285">285</span>
 <span id="286">286</span>
 <span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
 </pre><pre class="rust"><code><span class="attribute">#![allow(clippy::unwrap_used)]
 
 </span><span class="kw">use </span>uuid::{uuid, Uuid};
@@ -310,6 +314,8 @@
 <span class="kw">pub const </span>_UUID_IDM_HP_ACCOUNT_MANAGE_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000016&quot;</span>);
 <span class="kw">pub const </span>_UUID_IDM_HP_GROUP_MANAGE_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000017&quot;</span>);
 <span class="kw">pub const </span>UUID_IDM_ADMIN: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000018&quot;</span>);
+
+<span class="kw">pub const </span>STR_UUID_SYSTEM_ADMINS: <span class="kw-2">&amp;</span>str = <span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>;
 <span class="kw">pub const </span>UUID_SYSTEM_ADMINS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000019&quot;</span>);
 <span class="kw">pub const </span>UUID_DOMAIN_ADMINS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000020&quot;</span>);
 <span class="kw">pub const </span>_UUID_IDM_ACCOUNT_UNIX_EXTEND_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000021&quot;</span>);
@@ -335,6 +341,7 @@
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000034&quot;</span>);
 
 <span class="kw">pub const </span>UUID_IDM_ALL_PERSONS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000035&quot;</span>);
+<span class="kw">pub const </span>STR_UUID_IDM_ALL_ACCOUNTS: <span class="kw-2">&amp;</span>str = <span class="string">&quot;00000000-0000-0000-0000-000000000036&quot;</span>;
 <span class="kw">pub const </span>UUID_IDM_ALL_ACCOUNTS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000036&quot;</span>);
 <span class="kw">pub const </span>_UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000037&quot;</span>);
@@ -489,6 +496,7 @@
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000115&quot;</span>);
 <span class="kw">pub const </span>_UUID_SCHEMA_ATTR_SYNC_COOKIE: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000116&quot;</span>);
 <span class="kw">pub const </span>_UUID_SCHEMA_ATTR_OAUTH2_SESSION: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000117&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_ACP_RECEIVER_GROUP: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000118&quot;</span>);
 
 <span class="comment">// System and domain infos
 // I&#39;d like to strongly criticise william of the past for making poor choices about these allocations.

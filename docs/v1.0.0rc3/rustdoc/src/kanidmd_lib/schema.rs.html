@@ -2498,6 +2498,23 @@
 <span id="2498">2498</span>
 <span id="2499">2499</span>
 <span id="2500">2500</span>
+<span id="2501">2501</span>
+<span id="2502">2502</span>
+<span id="2503">2503</span>
+<span id="2504">2504</span>
+<span id="2505">2505</span>
+<span id="2506">2506</span>
+<span id="2507">2507</span>
+<span id="2508">2508</span>
+<span id="2509">2509</span>
+<span id="2510">2510</span>
+<span id="2511">2511</span>
+<span id="2512">2512</span>
+<span id="2513">2513</span>
+<span id="2514">2514</span>
+<span id="2515">2515</span>
+<span id="2516">2516</span>
+<span id="2517">2517</span>
 </pre><pre class="rust"><code><span class="doccomment">//! [`Schema`] is one of the foundational concepts of the server. It provides a
 //! set of rules to enforce that [`Entries`] ava&#39;s must be compliant to, to be
 //! considered valid for commit to the database. This allows us to provide
@@ -3476,6 +3493,22 @@
             },
         );
         <span class="self">self</span>.attributes.insert(
+            AttrString::from(<span class="string">&quot;acp_receiver_group&quot;</span>),
+            SchemaAttribute {
+                name: AttrString::from(<span class="string">&quot;acp_receiver_group&quot;</span>),
+                uuid: UUID_SCHEMA_ATTR_ACP_RECEIVER_GROUP,
+                description: String::from(
+                    <span class="string">&quot;The group that recieves this access control to allow access&quot;</span>,
+                ),
+                multivalue: <span class="bool-val">false</span>,
+                unique: <span class="bool-val">false</span>,
+                phantom: <span class="bool-val">false</span>,
+                index: <span class="macro">vec!</span>[IndexType::Equality],
+                syntax: SyntaxType::ReferenceUuid,
+            },
+        );
+
+        <span class="self">self</span>.attributes.insert(
             AttrString::from(<span class="string">&quot;acp_targetscope&quot;</span>),
             SchemaAttribute {
                 name: AttrString::from(<span class="string">&quot;acp_targetscope&quot;</span>),
@@ -3954,9 +3987,10 @@
                 systemmay: <span class="macro">vec!</span>[
                     AttrString::from(<span class="string">&quot;acp_enable&quot;</span>),
                     AttrString::from(<span class="string">&quot;description&quot;</span>),
+                    AttrString::from(<span class="string">&quot;acp_receiver&quot;</span>),
                 ],
                 systemmust: <span class="macro">vec!</span>[
-                    AttrString::from(<span class="string">&quot;acp_receiver&quot;</span>),
+                    AttrString::from(<span class="string">&quot;acp_receiver_group&quot;</span>),
                     AttrString::from(<span class="string">&quot;acp_targetscope&quot;</span>),
                     AttrString::from(<span class="string">&quot;name&quot;</span>),
                 ],

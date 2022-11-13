@@ -1299,46 +1299,6 @@
 <span id="1299">1299</span>
 <span id="1300">1300</span>
 <span id="1301">1301</span>
-<span id="1302">1302</span>
-<span id="1303">1303</span>
-<span id="1304">1304</span>
-<span id="1305">1305</span>
-<span id="1306">1306</span>
-<span id="1307">1307</span>
-<span id="1308">1308</span>
-<span id="1309">1309</span>
-<span id="1310">1310</span>
-<span id="1311">1311</span>
-<span id="1312">1312</span>
-<span id="1313">1313</span>
-<span id="1314">1314</span>
-<span id="1315">1315</span>
-<span id="1316">1316</span>
-<span id="1317">1317</span>
-<span id="1318">1318</span>
-<span id="1319">1319</span>
-<span id="1320">1320</span>
-<span id="1321">1321</span>
-<span id="1322">1322</span>
-<span id="1323">1323</span>
-<span id="1324">1324</span>
-<span id="1325">1325</span>
-<span id="1326">1326</span>
-<span id="1327">1327</span>
-<span id="1328">1328</span>
-<span id="1329">1329</span>
-<span id="1330">1330</span>
-<span id="1331">1331</span>
-<span id="1332">1332</span>
-<span id="1333">1333</span>
-<span id="1334">1334</span>
-<span id="1335">1335</span>
-<span id="1336">1336</span>
-<span id="1337">1337</span>
-<span id="1338">1338</span>
-<span id="1339">1339</span>
-<span id="1340">1340</span>
-<span id="1341">1341</span>
 </pre><pre class="rust"><code><span class="comment">/*
 // Template acp
 pub const _UUID_IDM_ACP_XX_V1: &amp;str = &quot;00000000-0000-0000-0000-ffffff0000XX&quot;;
@@ -1389,9 +1349,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_admins_acp_recycle_search&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000002&quot;],
         &quot;description&quot;: [&quot;Builtin IDM admin recycle bin search permission.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000019\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000019&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}&quot;
         ],
@@ -1405,9 +1364,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_admins_acp_revive&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000003&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Administrators Access Controls.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000019\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000019&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;eq\&quot;:[\&quot;class\&quot;,\&quot;recycled\&quot;]}&quot;
         ],
@@ -1422,9 +1380,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_self_acp_read&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000004&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for self read - required for whoami and many other functions.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000036\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000036&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;\&quot;self\&quot;&quot;
         ],
@@ -1455,9 +1412,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_self_acp_write&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000021&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for self write - required for people to update their own identities and credentials in line with best practices.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000035\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000035&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;person\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, \&quot;self\&quot;]}&quot;
         ],
@@ -1476,9 +1432,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_people_self_acp_write_mail&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000041&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for self write of mail for people accounts.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000033\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000033&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;person\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, \&quot;self\&quot;]}&quot;
         ],
@@ -1497,9 +1452,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_all_acp_read&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000006&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for all read - IE anonymous and all authenticated accounts.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000036\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000036&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;pres\&quot;: \&quot;class\&quot;}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1529,9 +1483,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_people_read_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000007&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for reading personal sensitive data.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000002\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000002&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;person\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1551,9 +1504,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_people_write_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000008&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for managing personal and sensitive data.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000003\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000003&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;person\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1577,9 +1529,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_people_manage&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000013&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for creating person (user) accounts&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000013\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000013&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;person\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1614,9 +1565,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_people_account_password_import_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000031&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for allowing imports of passwords to people+account types.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000023\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000023&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;person\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1640,9 +1590,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_people_extend_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000032&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for allowing person class extension&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000024\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000024&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1667,9 +1616,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_hp_people_read_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000036&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for reading high privilege personal sensitive data.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000028\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000028&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;person\&quot;]}, {\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1689,9 +1637,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_hp_people_write_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000037&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for managing privilege personal and sensitive data.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000029\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000029&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;person\&quot;]}, {\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1714,9 +1661,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_hp_people_extend_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000038&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for allowing privilege person class extension&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000030\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000030&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1744,9 +1690,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_group_write_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000009&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for managing groups&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000004\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000004&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;group\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1772,9 +1717,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_account_read_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000010&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for accounts.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000005\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000005&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1794,9 +1738,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_account_write_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000011&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for managing all accounts (both person and service).&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000006\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000006&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1820,9 +1763,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_account_manage&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000012&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for creating and deleting (service) accounts&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000014\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000014&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1859,9 +1801,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_radius_secret_read_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000039&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for reading radius secrets of accounts.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000032\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000032&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1881,9 +1822,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_radius_secret_write_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000040&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control allowing writes to user radius secrets.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000031\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000031&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1906,9 +1846,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_radius_servers&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000014&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for RADIUS servers to read credentials and other needed details.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000007\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000007&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;pres\&quot;: \&quot;class\&quot;}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1929,9 +1868,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_hp_account_read_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000015&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for reading high privilege accounts.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000009\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000009&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1951,9 +1889,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_hp_account_write_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000016&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for managing high privilege accounts (both person and service).&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000009\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000009&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -1978,9 +1915,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_hp_group_write_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000017&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for managing high privilege groups&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000012\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000012&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;group\&quot;]}, {\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -2009,9 +1945,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_schema_write_attrs_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000018&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for management of schema attributes.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000010\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000010&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;attributetype\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -2070,9 +2005,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_acp_manage_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000019&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for access profiles management.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000011\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000011&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;access_control_profile\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -2081,7 +2015,7 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;class&quot;,
             &quot;description&quot;,
             &quot;acp_enable&quot;,
-            &quot;acp_receiver&quot;,
+            &quot;acp_receiver_group&quot;,
             &quot;acp_targetscope&quot;,
             &quot;acp_search_attr&quot;,
             &quot;acp_modify_removedattr&quot;,
@@ -2095,7 +2029,7 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;class&quot;,
             &quot;description&quot;,
             &quot;acp_enable&quot;,
-            &quot;acp_receiver&quot;,
+            &quot;acp_receiver_group&quot;,
             &quot;acp_targetscope&quot;,
             &quot;acp_search_attr&quot;,
             &quot;acp_modify_removedattr&quot;,
@@ -2109,7 +2043,7 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;class&quot;,
             &quot;description&quot;,
             &quot;acp_enable&quot;,
-            &quot;acp_receiver&quot;,
+            &quot;acp_receiver_group&quot;,
             &quot;acp_targetscope&quot;,
             &quot;acp_search_attr&quot;,
             &quot;acp_modify_removedattr&quot;,
@@ -2130,7 +2064,7 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;class&quot;,
             &quot;description&quot;,
             &quot;acp_enable&quot;,
-            &quot;acp_receiver&quot;,
+            &quot;acp_receiver_group&quot;,
             &quot;acp_targetscope&quot;,
             &quot;acp_search_attr&quot;,
             &quot;acp_modify_removedattr&quot;,
@@ -2161,9 +2095,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_schema_write_classes_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000020&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for management of schema classes.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000010\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000010&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;classtype\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -2218,9 +2151,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_group_manage&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000022&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for creating and deleting groups in the directory&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000015\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000015&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;group\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -2248,9 +2180,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_hp_account_manage&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000023&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for creating and deleting hp and regular (service) accounts&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000016\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000016&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -2284,9 +2215,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_hp_group_manage&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000024&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for creating and deleting hp and regular groups in the directory&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000017\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000017&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;group\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -2314,9 +2244,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_domain_admin_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000026&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for granting domain info administration locally&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000020\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000020&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;uuid\&quot;,\&quot;00000000-0000-0000-0000-ffffff000025\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -2355,9 +2284,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_system_config_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000028&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for granting system configuration rights&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000019\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000019&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;uuid\&quot;,\&quot;00000000-0000-0000-0000-ffffff000027\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -2388,9 +2316,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_account_unix_extend_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000029&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for managing accounts.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000021\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000021&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -2418,9 +2345,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_group_unix_extend_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000030&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for managing and extending unix groups&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000022\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000022&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;group\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -2449,9 +2375,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_hp_account_unix_extend_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000033&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for managing and extending unix high privilege accounts.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000025\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000025&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -2479,9 +2404,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_hp_group_unix_extend_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000034&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for managing and extending unix high privilege groups&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000026\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000026&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;group\&quot;]}, {\&quot;eq\&quot;: [\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000001000\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -2512,9 +2436,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_hp_oauth2_manage_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000035&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for managing oauth2 resource server integrations.&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000027\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000027&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;oauth2_resource_server\&quot;]},{\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -2588,9 +2511,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_hp_acp_service_account_into_person_migrate&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000042&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control allowing service accounts to be migrated into persons&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000034\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000034&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -2617,9 +2539,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_oauth2_read_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000043&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control allowing persons to view oauth2 applications they can access&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000035\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000035&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;oauth2_resource_server\&quot;]},{\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],
@@ -2645,9 +2566,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         &quot;name&quot;: [&quot;idm_acp_hp_sync_account_manage_priv&quot;],
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000044&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for managing IDM synchronisation accounts / connections&quot;],
-        &quot;acp_receiver&quot;: [
-            &quot;{\&quot;eq\&quot;:[\&quot;memberof\&quot;,\&quot;00000000-0000-0000-0000-000000000037\&quot;]}&quot;
-        ],
+        &quot;acp_receiver&quot;: [],
+        &quot;acp_receiver_group&quot;: [&quot;00000000-0000-0000-0000-000000000037&quot;],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;sync_account\&quot;]},{\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;
         ],

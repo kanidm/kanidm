@@ -665,6 +665,34 @@
 <span id="665">665</span>
 <span id="666">666</span>
 <span id="667">667</span>
+<span id="668">668</span>
+<span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
+<span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
+<span id="675">675</span>
+<span id="676">676</span>
+<span id="677">677</span>
+<span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
+<span id="683">683</span>
+<span id="684">684</span>
+<span id="685">685</span>
+<span id="686">686</span>
+<span id="687">687</span>
+<span id="688">688</span>
+<span id="689">689</span>
+<span id="690">690</span>
+<span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
+<span id="695">695</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
 <span class="kw">use </span>std::iter::once;
 
@@ -875,38 +903,70 @@
 
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
-    <span class="kw">use </span>kanidm_proto::v1::PluginError;
-
     <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+    <span class="kw">use </span>kanidm_proto::v1::PluginError;
+    <span class="kw">use </span>std::sync::Arc;
 
-    <span class="kw">const </span>JSON_ADMIN_ALLOW_ALL: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">r#&quot;{
-        &quot;attrs&quot;: {
-            &quot;class&quot;: [
-                &quot;object&quot;,
-                &quot;access_control_profile&quot;,
-                &quot;access_control_modify&quot;,
-                &quot;access_control_create&quot;,
-                &quot;access_control_delete&quot;,
-                &quot;access_control_search&quot;
-            ],
-            &quot;name&quot;: [&quot;idm_admins_acp_allow_all_test&quot;],
-            &quot;uuid&quot;: [&quot;bb18f746-a409-497d-928c-5455d4aef4f7&quot;],
-            &quot;description&quot;: [&quot;Builtin IDM Administrators Access Controls.&quot;],
-            &quot;acp_enable&quot;: [&quot;true&quot;],
-            &quot;acp_receiver&quot;: [
-                &quot;{\&quot;eq\&quot;:[\&quot;uuid\&quot;,\&quot;00000000-0000-0000-0000-000000000000\&quot;]}&quot;
-            ],
-            &quot;acp_targetscope&quot;: [
-                &quot;{\&quot;pres\&quot;:\&quot;class\&quot;}&quot;
-            ],
-            &quot;acp_search_attr&quot;: [&quot;name&quot;, &quot;class&quot;, &quot;uuid&quot;],
-            &quot;acp_modify_class&quot;: [&quot;system&quot;],
-            &quot;acp_modify_removedattr&quot;: [&quot;class&quot;, &quot;displayname&quot;, &quot;may&quot;, &quot;must&quot;],
-            &quot;acp_modify_presentattr&quot;: [&quot;class&quot;, &quot;displayname&quot;, &quot;may&quot;, &quot;must&quot;],
-            &quot;acp_create_class&quot;: [&quot;object&quot;, &quot;person&quot;, &quot;system&quot;],
-            &quot;acp_create_attr&quot;: [&quot;name&quot;, &quot;class&quot;, &quot;description&quot;, &quot;displayname&quot;, &quot;uuid&quot;]
-        }
-    }&quot;#</span>;
+    <span class="kw">const </span>UUID_TEST_ACCOUNT: Uuid = <span class="macro">uuid::uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>);
+    <span class="kw">const </span>UUID_TEST_GROUP: Uuid = <span class="macro">uuid::uuid!</span>(<span class="string">&quot;81ec1640-3637-4a2f-8a52-874fa3c3c92f&quot;</span>);
+    <span class="kw">const </span>UUID_TEST_ACP: Uuid = <span class="macro">uuid::uuid!</span>(<span class="string">&quot;acae81d6-5ea7-4bd8-8f7f-fcec4c0dd647&quot;</span>);
+
+    <span class="macro">lazy_static! </span>{
+        <span class="kw">pub static </span><span class="kw-2">ref </span>TEST_ACCOUNT: EntryInitNew = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;service_account&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;memberof&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_account_1&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;test_account_1&quot;</span>)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_ACCOUNT)),
+            (<span class="string">&quot;memberof&quot;</span>, Value::new_refer(UUID_TEST_GROUP))
+        );
+        <span class="kw">pub static </span><span class="kw-2">ref </span>TEST_GROUP: EntryInitNew = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_group_a&quot;</span>)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_GROUP)),
+            (<span class="string">&quot;member&quot;</span>, Value::new_refer(UUID_TEST_ACCOUNT))
+        );
+        <span class="kw">pub static </span><span class="kw-2">ref </span>ALLOW_ALL: EntryInitNew = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;access_control_profile&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;access_control_modify&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;access_control_create&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;access_control_delete&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;access_control_search&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;idm_admins_acp_allow_all_test&quot;</span>)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_ACP)),
+            (<span class="string">&quot;acp_receiver_group&quot;</span>, Value::Refer(UUID_TEST_GROUP)),
+            (
+                <span class="string">&quot;acp_targetscope&quot;</span>,
+                Value::new_json_filter_s(<span class="string">&quot;{\&quot;pres\&quot;:\&quot;class\&quot;}&quot;</span>).expect(<span class="string">&quot;filter&quot;</span>)
+            ),
+            (<span class="string">&quot;acp_search_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;name&quot;</span>)),
+            (<span class="string">&quot;acp_search_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;class&quot;</span>)),
+            (<span class="string">&quot;acp_search_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;uuid&quot;</span>)),
+            (<span class="string">&quot;acp_modify_class&quot;</span>, Value::new_iutf8(<span class="string">&quot;system&quot;</span>)),
+            (<span class="string">&quot;acp_modify_removedattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;class&quot;</span>)),
+            (<span class="string">&quot;acp_modify_removedattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;displayname&quot;</span>)),
+            (<span class="string">&quot;acp_modify_removedattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;may&quot;</span>)),
+            (<span class="string">&quot;acp_modify_removedattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;must&quot;</span>)),
+            (<span class="string">&quot;acp_modify_presentattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;class&quot;</span>)),
+            (<span class="string">&quot;acp_modify_presentattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;displayname&quot;</span>)),
+            (<span class="string">&quot;acp_modify_presentattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;may&quot;</span>)),
+            (<span class="string">&quot;acp_modify_presentattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;must&quot;</span>)),
+            (<span class="string">&quot;acp_create_class&quot;</span>, Value::new_iutf8(<span class="string">&quot;object&quot;</span>)),
+            (<span class="string">&quot;acp_create_class&quot;</span>, Value::new_iutf8(<span class="string">&quot;person&quot;</span>)),
+            (<span class="string">&quot;acp_create_class&quot;</span>, Value::new_iutf8(<span class="string">&quot;system&quot;</span>)),
+            (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;name&quot;</span>)),
+            (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;class&quot;</span>)),
+            (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;description&quot;</span>)),
+            (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;displayname&quot;</span>)),
+            (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;uuid&quot;</span>))
+        );
+        <span class="kw">pub static </span><span class="kw-2">ref </span>PRELOAD: Vec&lt;EntryInitNew&gt; =
+            <span class="macro">vec!</span>[TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()];
+        <span class="kw">pub static </span><span class="kw-2">ref </span>E_TEST_ACCOUNT: Arc&lt;EntrySealedCommitted&gt; =
+            Arc::new(<span class="kw">unsafe </span>{ TEST_ACCOUNT.clone().into_sealed_committed() });
+    }
 
     <span class="comment">// check create where no uuid
     </span><span class="attribute">#[test]
@@ -1239,9 +1299,7 @@
         <span class="comment">// Test an external create, it should fail.
         // Testing internal create is not super needed, due to migrations at start
         // up testing this every time we run :P
-        </span><span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
-
-        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp];
+        </span><span class="kw">let </span>preload = PRELOAD.clone();
 
         <span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
@@ -1263,7 +1321,7 @@
             ))),
             preload,
             create,
-            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            <span class="prelude-val">Some</span>(E_TEST_ACCOUNT.clone()),
             |<span class="kw">_</span>| {}
         );
     }
@@ -1273,9 +1331,7 @@
         <span class="comment">// Test an external create, it should fail.
         // Testing internal create is not super needed, due to migrations at start
         // up testing this every time we run :P
-        </span><span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
-
-        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp];
+        </span><span class="kw">let </span>preload = PRELOAD.clone();
 
         <span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
@@ -1297,7 +1353,7 @@
             ))),
             preload,
             create,
-            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            <span class="prelude-val">Some</span>(E_TEST_ACCOUNT.clone()),
             |<span class="kw">_</span>| {}
         );
     }

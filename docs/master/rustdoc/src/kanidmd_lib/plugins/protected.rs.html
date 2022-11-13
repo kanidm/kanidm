@@ -432,6 +432,74 @@
 <span id="432">432</span>
 <span id="433">433</span>
 <span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
 </pre><pre class="rust"><code><span class="comment">// System protected objects. Items matching specific requirements
 // may only have certain modifications performed.
 
@@ -602,50 +670,117 @@
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+    <span class="kw">use </span>std::sync::Arc;
 
-    <span class="kw">const </span>JSON_ADMIN_ALLOW_ALL: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">r#&quot;{
-        &quot;attrs&quot;: {
-            &quot;class&quot;: [
-                &quot;object&quot;,
-                &quot;access_control_profile&quot;,
-                &quot;access_control_modify&quot;,
-                &quot;access_control_create&quot;,
-                &quot;access_control_delete&quot;,
-                &quot;access_control_search&quot;
-            ],
-            &quot;name&quot;: [&quot;idm_admins_acp_allow_all_test&quot;],
-            &quot;uuid&quot;: [&quot;bb18f746-a409-497d-928c-5455d4aef4f7&quot;],
-            &quot;description&quot;: [&quot;Builtin IDM Administrators Access Controls for TESTING.&quot;],
-            &quot;acp_enable&quot;: [&quot;true&quot;],
-            &quot;acp_receiver&quot;: [
-                &quot;{\&quot;eq\&quot;:[\&quot;uuid\&quot;,\&quot;00000000-0000-0000-0000-000000000000\&quot;]}&quot;
-            ],
-            &quot;acp_targetscope&quot;: [
-                &quot;{\&quot;pres\&quot;:\&quot;class\&quot;}&quot;
-            ],
-            &quot;acp_search_attr&quot;: [&quot;name&quot;, &quot;class&quot;, &quot;uuid&quot;, &quot;classname&quot;, &quot;attributename&quot;],
-            &quot;acp_modify_class&quot;: [&quot;system&quot;, &quot;domain_info&quot;],
-            &quot;acp_modify_removedattr&quot;: [
-                &quot;class&quot;, &quot;displayname&quot;, &quot;may&quot;, &quot;must&quot;, &quot;domain_name&quot;, &quot;domain_display_name&quot;, &quot;domain_uuid&quot;, &quot;domain_ssid&quot;, &quot;fernet_private_key_str&quot;, &quot;es256_private_key_der&quot;
-                ],
-            &quot;acp_modify_presentattr&quot;: [
-                &quot;class&quot;, &quot;displayname&quot;, &quot;may&quot;, &quot;must&quot;, &quot;domain_name&quot;, &quot;domain_display_name&quot;, &quot;domain_uuid&quot;, &quot;domain_ssid&quot;, &quot;fernet_private_key_str&quot;, &quot;es256_private_key_der&quot;
-                ],
-            &quot;acp_create_class&quot;: [&quot;object&quot;, &quot;person&quot;, &quot;system&quot;, &quot;domain_info&quot;],
-            &quot;acp_create_attr&quot;: [
-                &quot;name&quot;, &quot;class&quot;, &quot;description&quot;, &quot;displayname&quot;, &quot;domain_name&quot;, &quot;domain_display_name&quot;, &quot;domain_uuid&quot;, &quot;domain_ssid&quot;, &quot;uuid&quot;, &quot;fernet_private_key_str&quot;, &quot;es256_private_key_der&quot;, &quot;version&quot;
-                ]
-        }
-    }&quot;#</span>;
+    <span class="kw">const </span>UUID_TEST_ACCOUNT: Uuid = <span class="macro">uuid::uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>);
+    <span class="kw">const </span>UUID_TEST_GROUP: Uuid = <span class="macro">uuid::uuid!</span>(<span class="string">&quot;81ec1640-3637-4a2f-8a52-874fa3c3c92f&quot;</span>);
+    <span class="kw">const </span>UUID_TEST_ACP: Uuid = <span class="macro">uuid::uuid!</span>(<span class="string">&quot;acae81d6-5ea7-4bd8-8f7f-fcec4c0dd647&quot;</span>);
+
+    <span class="macro">lazy_static! </span>{
+        <span class="kw">pub static </span><span class="kw-2">ref </span>TEST_ACCOUNT: EntryInitNew = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;service_account&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;memberof&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_account_1&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;test_account_1&quot;</span>)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_ACCOUNT)),
+            (<span class="string">&quot;memberof&quot;</span>, Value::new_refer(UUID_TEST_GROUP))
+        );
+        <span class="kw">pub static </span><span class="kw-2">ref </span>TEST_GROUP: EntryInitNew = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_group_a&quot;</span>)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_GROUP)),
+            (<span class="string">&quot;member&quot;</span>, Value::new_refer(UUID_TEST_ACCOUNT))
+        );
+        <span class="kw">pub static </span><span class="kw-2">ref </span>ALLOW_ALL: EntryInitNew = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;access_control_profile&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;access_control_modify&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;access_control_create&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;access_control_delete&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;access_control_search&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;idm_admins_acp_allow_all_test&quot;</span>)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_ACP)),
+            (<span class="string">&quot;acp_receiver_group&quot;</span>, Value::Refer(UUID_TEST_GROUP)),
+            (
+                <span class="string">&quot;acp_targetscope&quot;</span>,
+                Value::new_json_filter_s(<span class="string">&quot;{\&quot;pres\&quot;:\&quot;class\&quot;}&quot;</span>).expect(<span class="string">&quot;filter&quot;</span>)
+            ),
+            (<span class="string">&quot;acp_search_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;name&quot;</span>)),
+            (<span class="string">&quot;acp_search_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;class&quot;</span>)),
+            (<span class="string">&quot;acp_search_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;uuid&quot;</span>)),
+            (<span class="string">&quot;acp_search_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;classname&quot;</span>)),
+            (<span class="string">&quot;acp_search_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;attributename&quot;</span>)),
+            (<span class="string">&quot;acp_modify_class&quot;</span>, Value::new_iutf8(<span class="string">&quot;system&quot;</span>)),
+            (<span class="string">&quot;acp_modify_class&quot;</span>, Value::new_iutf8(<span class="string">&quot;domain_info&quot;</span>)),
+            (<span class="string">&quot;acp_modify_removedattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;class&quot;</span>)),
+            (<span class="string">&quot;acp_modify_removedattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;displayname&quot;</span>)),
+            (<span class="string">&quot;acp_modify_removedattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;may&quot;</span>)),
+            (<span class="string">&quot;acp_modify_removedattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;must&quot;</span>)),
+            (<span class="string">&quot;acp_modify_removedattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;domain_name&quot;</span>)),
+            (
+                <span class="string">&quot;acp_modify_removedattr&quot;</span>,
+                Value::new_iutf8(<span class="string">&quot;domain_display_name&quot;</span>)
+            ),
+            (<span class="string">&quot;acp_modify_removedattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;domain_uuid&quot;</span>)),
+            (<span class="string">&quot;acp_modify_removedattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;domain_ssid&quot;</span>)),
+            (
+                <span class="string">&quot;acp_modify_removedattr&quot;</span>,
+                Value::new_iutf8(<span class="string">&quot;fernet_private_key_str&quot;</span>)
+            ),
+            (
+                <span class="string">&quot;acp_modify_removedattr&quot;</span>,
+                Value::new_iutf8(<span class="string">&quot;es256_private_key_der&quot;</span>)
+            ),
+            (<span class="string">&quot;acp_modify_presentattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;class&quot;</span>)),
+            (<span class="string">&quot;acp_modify_presentattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;displayname&quot;</span>)),
+            (<span class="string">&quot;acp_modify_presentattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;may&quot;</span>)),
+            (<span class="string">&quot;acp_modify_presentattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;must&quot;</span>)),
+            (<span class="string">&quot;acp_modify_presentattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;domain_name&quot;</span>)),
+            (
+                <span class="string">&quot;acp_modify_presentattr&quot;</span>,
+                Value::new_iutf8(<span class="string">&quot;domain_display_name&quot;</span>)
+            ),
+            (<span class="string">&quot;acp_modify_presentattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;domain_uuid&quot;</span>)),
+            (<span class="string">&quot;acp_modify_presentattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;domain_ssid&quot;</span>)),
+            (
+                <span class="string">&quot;acp_modify_presentattr&quot;</span>,
+                Value::new_iutf8(<span class="string">&quot;fernet_private_key_str&quot;</span>)
+            ),
+            (
+                <span class="string">&quot;acp_modify_presentattr&quot;</span>,
+                Value::new_iutf8(<span class="string">&quot;es256_private_key_der&quot;</span>)
+            ),
+            (<span class="string">&quot;acp_create_class&quot;</span>, Value::new_iutf8(<span class="string">&quot;object&quot;</span>)),
+            (<span class="string">&quot;acp_create_class&quot;</span>, Value::new_iutf8(<span class="string">&quot;person&quot;</span>)),
+            (<span class="string">&quot;acp_create_class&quot;</span>, Value::new_iutf8(<span class="string">&quot;system&quot;</span>)),
+            (<span class="string">&quot;acp_create_class&quot;</span>, Value::new_iutf8(<span class="string">&quot;domain_info&quot;</span>)),
+            (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;name&quot;</span>)),
+            (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;class&quot;</span>)),
+            (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;description&quot;</span>)),
+            (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;displayname&quot;</span>)),
+            (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;domain_name&quot;</span>)),
+            (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;domain_display_name&quot;</span>)),
+            (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;domain_uuid&quot;</span>)),
+            (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;domain_ssid&quot;</span>)),
+            (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;uuid&quot;</span>)),
+            (
+                <span class="string">&quot;acp_create_attr&quot;</span>,
+                Value::new_iutf8(<span class="string">&quot;fernet_private_key_str&quot;</span>)
+            ),
+            (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;es256_private_key_der&quot;</span>)),
+            (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;version&quot;</span>))
+        );
+        <span class="kw">pub static </span><span class="kw-2">ref </span>PRELOAD: Vec&lt;EntryInitNew&gt; =
+            <span class="macro">vec!</span>[TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()];
+        <span class="kw">pub static </span><span class="kw-2">ref </span>E_TEST_ACCOUNT: Arc&lt;EntrySealedCommitted&gt; =
+            Arc::new(<span class="kw">unsafe </span>{ TEST_ACCOUNT.clone().into_sealed_committed() });
+    }
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_pre_create_deny() {
         <span class="comment">// Test creating with class: system is rejected.
-        </span><span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
-
-        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp];
-
-        <span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
+        </span><span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;person&quot;, &quot;system&quot;],
@@ -657,19 +792,19 @@
         );
 
         <span class="kw">let </span>create = <span class="macro">vec!</span>[e.clone()];
+        <span class="kw">let </span>preload = PRELOAD.clone();
 
         <span class="macro">run_create_test!</span>(
             <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject),
             preload,
             create,
-            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            <span class="prelude-val">Some</span>(E_TEST_ACCOUNT.clone()),
             |<span class="kw">_</span>| {}
         );
     }
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_pre_modify_system_deny() {
-        <span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         <span class="comment">// Test modify of class to a system is denied
         </span><span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
@@ -682,7 +817,8 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp, e.clone()];
+        <span class="kw">let </span><span class="kw-2">mut </span>preload = PRELOAD.clone();
+        preload.push(e.clone());
 
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject),
@@ -692,7 +828,7 @@
                 m_purge(<span class="string">&quot;displayname&quot;</span>),
                 m_pres(<span class="string">&quot;displayname&quot;</span>, <span class="kw-2">&amp;</span>Value::new_utf8s(<span class="string">&quot;system test&quot;</span>)),
             ]),
-            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            <span class="prelude-val">Some</span>(E_TEST_ACCOUNT.clone()),
             |<span class="kw">_</span>| {},
             |<span class="kw">_</span>| {}
         );
@@ -700,7 +836,6 @@
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_pre_modify_class_add_deny() {
-        <span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         <span class="comment">// Show that adding a system class is denied
         </span><span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
@@ -713,7 +848,8 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp, e.clone()];
+        <span class="kw">let </span><span class="kw-2">mut </span>preload = PRELOAD.clone();
+        preload.push(e.clone());
 
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
@@ -723,7 +859,7 @@
                 m_pres(<span class="string">&quot;may&quot;</span>, <span class="kw-2">&amp;</span>Value::new_iutf8(<span class="string">&quot;name&quot;</span>)),
                 m_pres(<span class="string">&quot;must&quot;</span>, <span class="kw-2">&amp;</span>Value::new_iutf8(<span class="string">&quot;name&quot;</span>)),
             ]),
-            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            <span class="prelude-val">Some</span>(E_TEST_ACCOUNT.clone()),
             |<span class="kw">_</span>| {},
             |<span class="kw">_</span>| {}
         );
@@ -731,7 +867,6 @@
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_pre_delete_deny() {
-        <span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         <span class="comment">// Test deleting with class: system is rejected.
         </span><span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
@@ -744,13 +879,14 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp, e.clone()];
+        <span class="kw">let </span><span class="kw-2">mut </span>preload = PRELOAD.clone();
+        preload.push(e.clone());
 
         <span class="macro">run_delete_test!</span>(
             <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject),
             preload,
             <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testperson&quot;</span>))),
-            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            <span class="prelude-val">Some</span>(E_TEST_ACCOUNT.clone()),
             |<span class="kw">_</span>| {}
         );
     }
@@ -758,8 +894,7 @@
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_modify_domain() {
         <span class="comment">// Can edit *my* domain_ssid and domain_name
-        </span><span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
-        <span class="comment">// Show that adding a system class is denied
+        // Show that adding a system class is denied
         </span><span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
@@ -778,7 +913,8 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp, e.clone()];
+        <span class="kw">let </span><span class="kw-2">mut </span>preload = PRELOAD.clone();
+        preload.push(e.clone());
 
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
@@ -791,7 +927,7 @@
                 m_purge(<span class="string">&quot;domain_ssid&quot;</span>),
                 m_pres(<span class="string">&quot;domain_ssid&quot;</span>, <span class="kw-2">&amp;</span>Value::new_utf8s(<span class="string">&quot;NewExampleWifi&quot;</span>)),
             ]),
-            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            <span class="prelude-val">Some</span>(E_TEST_ACCOUNT.clone()),
             |<span class="kw">_</span>| {},
             |<span class="kw">_</span>| {}
         );
@@ -800,9 +936,8 @@
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_ext_create_domain() {
         <span class="comment">// can not add a domain_info type - note the lack of class: system
-        </span><span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
-        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp];
-        <span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
+
+        </span><span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
             &quot;attrs&quot;: {
                 &quot;class&quot;: [&quot;domain_info&quot;],
@@ -820,19 +955,19 @@
         }&quot;#</span>,
         );
         <span class="kw">let </span>create = <span class="macro">vec!</span>[e];
+        <span class="kw">let </span>preload = PRELOAD.clone();
 
         <span class="macro">run_create_test!</span>(
             <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject),
             preload,
             create,
-            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            <span class="prelude-val">Some</span>(E_TEST_ACCOUNT.clone()),
             |<span class="kw">_</span>| {}
         );
     }
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_delete_domain() {
-        <span class="kw">let </span>acp: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         <span class="comment">// On the real thing we have a class: system, but to prove the point ...
         </span><span class="kw">let </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
             <span class="string">r#&quot;{
@@ -852,7 +987,8 @@
         }&quot;#</span>,
         );
 
-        <span class="kw">let </span>preload = <span class="macro">vec!</span>[acp, e.clone()];
+        <span class="kw">let </span><span class="kw-2">mut </span>preload = PRELOAD.clone();
+        preload.push(e.clone());
 
         <span class="macro">run_delete_test!</span>(
             <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject),
@@ -861,7 +997,7 @@
                 <span class="string">&quot;name&quot;</span>,
                 PartialValue::new_iname(<span class="string">&quot;domain_example.net.au&quot;</span>)
             )),
-            <span class="prelude-val">Some</span>(JSON_ADMIN_V1),
+            <span class="prelude-val">Some</span>(E_TEST_ACCOUNT.clone()),
             |<span class="kw">_</span>| {}
         );
     }

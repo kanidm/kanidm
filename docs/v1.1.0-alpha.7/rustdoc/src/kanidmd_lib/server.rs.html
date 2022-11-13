@@ -4600,6 +4600,12 @@
 <span id="4600">4600</span>
 <span id="4601">4601</span>
 <span id="4602">4602</span>
+<span id="4603">4603</span>
+<span id="4604">4604</span>
+<span id="4605">4605</span>
+<span id="4606">4606</span>
+<span id="4607">4607</span>
+<span id="4608">4608</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
@@ -5665,7 +5671,8 @@
         }
     }
 
-    <span class="kw">pub async fn </span>initialise_helper(<span class="kw-2">&amp;</span><span class="self">self</span>, ts: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+    <span class="attribute">#[instrument(level = <span class="string">&quot;info&quot;</span>, name = <span class="string">&quot;system_initialisation&quot;</span>, skip_all)]
+    </span><span class="kw">pub async fn </span>initialise_helper(<span class="kw-2">&amp;</span><span class="self">self</span>, ts: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="comment">// Check our database version - attempt to do an initial indexing
         // based on the in memory configuration
         //
@@ -7213,6 +7220,7 @@
     }
     */
 
+    </span><span class="attribute">#[instrument(level = <span class="string">&quot;info&quot;</span>, skip_all)]
     </span><span class="kw">pub fn </span>initialise_schema_core(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="macro">admin_debug!</span>(<span class="string">&quot;initialise_schema_core -&gt; start ...&quot;</span>);
         <span class="comment">// Load in all the &quot;core&quot; schema, that we already have in &quot;memory&quot;.
@@ -7235,7 +7243,8 @@
         r
     }
 
-    <span class="kw">pub fn </span>initialise_schema_idm(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+    <span class="attribute">#[instrument(level = <span class="string">&quot;info&quot;</span>, skip_all)]
+    </span><span class="kw">pub fn </span>initialise_schema_idm(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="macro">admin_debug!</span>(<span class="string">&quot;initialise_schema_idm -&gt; start ...&quot;</span>);
         <span class="comment">// List of IDM schemas to init.
         </span><span class="kw">let </span>idm_schema: Vec&lt;<span class="kw-2">&amp;</span>str&gt; = <span class="macro">vec!</span>[
@@ -7312,6 +7321,7 @@
     }
 
     <span class="comment">// This function is idempotent
+    </span><span class="attribute">#[instrument(level = <span class="string">&quot;info&quot;</span>, skip_all)]
     </span><span class="kw">pub fn </span>initialise_idm(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="comment">// First, check the system_info object. This stores some server information
         // and details. It&#39;s a pretty const thing. Also check anonymous, important to many
@@ -7731,7 +7741,8 @@
         <span class="self">self</span>.changed_schema.set(<span class="bool-val">true</span>);
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>upgrade_reindex(<span class="kw-2">&amp;mut </span><span class="self">self</span>, v: i64) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+    <span class="attribute">#[instrument(level = <span class="string">&quot;info&quot;</span>, skip_all)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>upgrade_reindex(<span class="kw-2">&amp;mut </span><span class="self">self</span>, v: i64) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="self">self</span>.be_txn.upgrade_reindex(v)
     }
 
@@ -7751,7 +7762,8 @@
         <span class="kw-2">*</span><span class="self">self</span>.phase = phase
     }
 
-    <span class="kw">pub fn </span>commit(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+    <span class="attribute">#[instrument(level = <span class="string">&quot;info&quot;</span>, skip_all)]
+    </span><span class="kw">pub fn </span>commit(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="comment">// This could be faster if we cache the set of classes changed
         // in an operation so we can check if we need to do the reload or not
         //

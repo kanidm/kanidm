@@ -4088,9 +4088,6 @@
 <span id="4088">4088</span>
 <span id="4089">4089</span>
 <span id="4090">4090</span>
-<span id="4091">4091</span>
-<span id="4092">4092</span>
-<span id="4093">4093</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::TryFrom;
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::sync::Arc;
@@ -6298,10 +6295,7 @@
         <span class="macro">info!</span>(session_id = %osr.session_id, <span class="string">&quot;Persisting auth session&quot;</span>);
 
         <span class="comment">// modify the account to put the session onto it.
-        </span><span class="kw">let </span>modlist = ModifyList::new_append(
-            <span class="string">&quot;oauth2_session&quot;</span>,
-            session,
-        );
+        </span><span class="kw">let </span>modlist = ModifyList::new_append(<span class="string">&quot;oauth2_session&quot;</span>, session);
 
         <span class="self">self</span>.qs_write
             .internal_modify(

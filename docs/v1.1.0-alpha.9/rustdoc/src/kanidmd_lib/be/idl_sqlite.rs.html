@@ -1490,7 +1490,6 @@
 <span id="1490">1490</span>
 <span id="1491">1491</span>
 <span id="1492">1492</span>
-<span id="1493">1493</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::{TryFrom, TryInto};
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::time::Duration;
@@ -1722,10 +1721,9 @@
         idx_key: <span class="kw-2">&amp;</span>str,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;IDLBitRange&gt;, OperationError&gt; {
         <span class="kw">if </span>!(<span class="self">self</span>.exists_idx(attr, itype)<span class="question-mark">?</span>) {
-            <span class="macro">filter_error!</span>(
+            <span class="macro">debug!</span>(
                 <span class="string">&quot;IdlSqliteTransaction: Index {:?} {:?} not found&quot;</span>,
-                itype,
-                attr
+                itype, attr
             );
             <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
         }

@@ -675,7 +675,6 @@
 <span id="675">675</span>
 <span id="676">676</span>
 <span id="677">677</span>
-<span id="678">678</span>
 </pre><pre class="rust"><code><span class="attribute">#[cfg(test)]
 </span><span class="macro">macro_rules! </span>setup_test {
     () =&gt; {{
@@ -813,9 +812,10 @@
 
         <span class="kw">let </span>ce = <span class="kw">match </span><span class="macro-nonterminal">$internal </span>{
             <span class="prelude-val">None </span>=&gt; CreateEvent::new_internal(<span class="macro-nonterminal">$create_entries</span>.clone()),
-            <span class="prelude-val">Some</span>(e_str) =&gt; <span class="kw">unsafe </span>{
-                CreateEvent::new_impersonate_entry_ser(e_str, <span class="macro-nonterminal">$create_entries</span>.clone())
-            },
+            <span class="prelude-val">Some</span>(ent) =&gt; CreateEvent::new_impersonate_identity(
+                Identity::from_impersonate_entry_readwrite(ent),
+                <span class="macro-nonterminal">$create_entries</span>.clone(),
+            ),
         };
 
         {
@@ -868,8 +868,8 @@
 
         <span class="kw">let </span>me = <span class="kw">match </span><span class="macro-nonterminal">$internal </span>{
             <span class="prelude-val">None </span>=&gt; <span class="kw">unsafe </span>{ ModifyEvent::new_internal_invalid(<span class="macro-nonterminal">$modify_filter</span>, <span class="macro-nonterminal">$modify_list</span>) },
-            <span class="prelude-val">Some</span>(e_str) =&gt; <span class="kw">unsafe </span>{
-                ModifyEvent::new_impersonate_entry_ser(e_str, <span class="macro-nonterminal">$modify_filter</span>, <span class="macro-nonterminal">$modify_list</span>)
+            <span class="prelude-val">Some</span>(ent) =&gt; <span class="kw">unsafe </span>{
+                ModifyEvent::new_impersonate_entry(ent, <span class="macro-nonterminal">$modify_filter</span>, <span class="macro-nonterminal">$modify_list</span>)
             },
         };
 
@@ -915,9 +915,7 @@
         <span class="kw">let </span>qs = <span class="macro">setup_test!</span>(<span class="macro-nonterminal">$preload_entries</span>);
 
         <span class="kw">let </span>de = <span class="kw">match </span><span class="macro-nonterminal">$internal </span>{
-            <span class="prelude-val">Some</span>(e_str) =&gt; <span class="kw">unsafe </span>{
-                DeleteEvent::new_impersonate_entry_ser(e_str, <span class="macro-nonterminal">$delete_filter</span>.clone())
-            },
+            <span class="prelude-val">Some</span>(ent) =&gt; <span class="kw">unsafe </span>{ DeleteEvent::new_impersonate_entry(ent, <span class="macro-nonterminal">$delete_filter</span>.clone()) },
             <span class="prelude-val">None </span>=&gt; <span class="kw">unsafe </span>{ DeleteEvent::new_internal_invalid(<span class="macro-nonterminal">$delete_filter</span>.clone()) },
         };
 

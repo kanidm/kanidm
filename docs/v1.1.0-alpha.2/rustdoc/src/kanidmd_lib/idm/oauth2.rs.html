@@ -3558,10 +3558,6 @@
 <span id="3558">3558</span>
 <span id="3559">3559</span>
 <span id="3560">3560</span>
-<span id="3561">3561</span>
-<span id="3562">3562</span>
-<span id="3563">3563</span>
-<span id="3564">3564</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations
 //!
 //! This contains the in memory and loaded set of active oauth2 resource server
@@ -5949,9 +5945,7 @@
                         <span class="comment">// Process it to ensure the record exists.
                         </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
 
-                        <span class="macro">assert!</span>(idms_prox_write
-                            .process_oauth2sessionrecord(<span class="kw-2">&amp;</span>osr)
-                            .is_ok());
+                        <span class="macro">assert!</span>(idms_prox_write.process_oauth2sessionrecord(<span class="kw-2">&amp;</span>osr).is_ok());
 
                         <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
                     }
@@ -6125,9 +6119,7 @@
                 <span class="comment">// Assert that the session creation was submitted
                 </span><span class="kw">let </span>session_id = <span class="kw">match </span>idms_delayed.async_rx.blocking_recv() {
                     <span class="prelude-val">Some</span>(DelayedAction::Oauth2SessionRecord(osr)) =&gt; {
-                        <span class="macro">assert!</span>(idms_prox_write
-                            .process_oauth2sessionrecord(<span class="kw-2">&amp;</span>osr)
-                            .is_ok());
+                        <span class="macro">assert!</span>(idms_prox_write.process_oauth2sessionrecord(<span class="kw-2">&amp;</span>osr).is_ok());
                         osr.session_id
                     }
                     <span class="kw">_ </span>=&gt; {
