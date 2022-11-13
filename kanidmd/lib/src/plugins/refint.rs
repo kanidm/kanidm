@@ -146,7 +146,7 @@ impl Plugin for ReferentialIntegrity {
         })
         .map(|v| {
             v.to_ref_uuid()
-                .map(|uuid| PartialValue::new_uuid(*uuid))
+                .map(|uuid| PartialValue::new_uuid(uuid))
                 .ok_or_else(|| {
                     admin_error!(?v, "reference value could not convert to reference uuid.");
                     admin_error!("If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
@@ -267,7 +267,11 @@ impl Plugin for ReferentialIntegrity {
 mod tests {
     use kanidm_proto::v1::PluginError;
 
+    use crate::event::CreateEvent;
     use crate::prelude::*;
+    use crate::value::{Oauth2Session, Session};
+    use time::OffsetDateTime;
+    use uuid::uuid;
 
     // The create references a uuid that doesn't exist - reject
     #[test]
@@ -774,5 +778,122 @@ mod tests {
                     .is_none())
             }
         );
+    }
+
+    #[qs_test]
+    async fn test_delete_oauth2_rs_remove_sessions(server: &QueryServer) {
+        let curtime = duration_from_epoch_now();
+        let curtime_odt = OffsetDateTime::unix_epoch() + curtime;
+
+        // Create a user
+        let mut server_txn = server.write(curtime).await;
+
+        let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+        let rs_uuid = Uuid::new_v4();
+
+        let e1 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("class", Value::new_class("account")),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::new_uuid(tuuid)),
+            ("description", Value::new_utf8s("testperson1")),
+            ("displayname", Value::new_utf8s("testperson1"))
+        );
+
+        let e2 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("oauth2_resource_server")),
+            ("class", Value::new_class("oauth2_resource_server_basic")),
+            ("uuid", Value::new_uuid(rs_uuid)),
+            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
+            ("displayname", Value::new_utf8s("test_resource_server")),
+            (
+                "oauth2_rs_origin",
+                Value::new_url_s("https://demo.example.com").unwrap()
+            ),
+            // System admins
+            (
+                "oauth2_rs_scope_map",
+                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["openid".to_string()])
+                    .expect("invalid oauthscope")
+            )
+        );
+
+        let ce = CreateEvent::new_internal(vec![e1, e2]);
+        assert!(server_txn.create(&ce).is_ok());
+
+        // Create a fake session and oauth2 session.
+
+        let session_id = Uuid::new_v4();
+        let pv_session_id = PartialValue::new_refer(session_id);
+
+        let parent = Uuid::new_v4();
+        let pv_parent_id = PartialValue::new_refer(parent);
+        let issued_at = curtime_odt;
+        let issued_by = IdentityId::User(tuuid);
+        let scope = AccessScope::IdentityOnly;
+
+        // Mod the user
+        let modlist = modlist!([
+            Modify::Present(
+                "oauth2_session".into(),
+                Value::Oauth2Session(
+                    session_id,
+                    Oauth2Session {
+                        parent,
+                        // Note we set the exp to None so we are not removing based on exp
+                        expiry: None,
+                        issued_at,
+                        rs_uuid,
+                    },
+                )
+            ),
+            Modify::Present(
+                "user_auth_token_session".into(),
+                Value::Session(
+                    parent,
+                    Session {
+                        label: "label".to_string(),
+                        // Note we set the exp to None so we are not removing based on removal of the parent.
+                        expiry: None,
+                        // Need the other inner bits?
+                        // for the gracewindow.
+                        issued_at,
+                        // Who actually created this?
+                        issued_by,
+                        // What is the access scope of this session? This is
+                        // for auditing purposes.
+                        scope,
+                    },
+                )
+            ),
+        ]);
+
+        server_txn
+            .internal_modify(
+                &filter!(f_eq("uuid", PartialValue::new_uuid(tuuid))),
+                &modlist,
+            )
+            .expect("Failed to modify user");
+
+        // Still there
+
+        let entry = server_txn.internal_search_uuid(&tuuid).expect("failed");
+        assert!(entry.attribute_equality("user_auth_token_session", &pv_parent_id));
+        assert!(entry.attribute_equality("oauth2_session", &pv_session_id));
+
+        // Delete the oauth2 resource server.
+        assert!(server_txn.internal_delete_uuid(rs_uuid).is_ok());
+
+        // Oauth2 Session gone.
+        let entry = server_txn.internal_search_uuid(&tuuid).expect("failed");
+
+        // Note the uat is present still.
+        assert!(entry.attribute_equality("user_auth_token_session", &pv_parent_id));
+        // The oauth2 session is removed.
+        assert!(!entry.attribute_equality("oauth2_session", &pv_session_id));
+
+        assert!(server_txn.commit().is_ok());
     }
 }

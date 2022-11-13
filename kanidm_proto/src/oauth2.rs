@@ -94,11 +94,16 @@ pub struct AccessTokenRequest {
     pub code_verifier: Option<String>,
 }
 
-// We now check code_verifier is the same via the formula.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TokenRevokeRequest {
+    pub token: String,
+    /// Generally not needed. See:
+    /// <https://datatracker.ietf.org/doc/html/rfc7009#section-4.1.2>
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token_type_hint: Option<String>,
+}
 
-// If and only if it checks out, we proceed.
-
-// Returned as a json body
+// The corresponding Response to a revoke request is empty body with 200.
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccessTokenResponse {

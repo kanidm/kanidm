@@ -1,9 +1,9 @@
 # OAuth2
 
 OAuth is a web authorisation protocol that allows "single sign on". It's key to note
-OAuth is authorisation, not authentication, as the protocol in its default forms
-do not provide identity or authentication information, only information that
-an entity is authorised for the requested resources.
+OAuth only provides authorisation, as the protocol in its default forms
+do not provide identity or authentication information. All that Oauth2 provides is
+information that an entity is authorised for the requested resources.
 
 OAuth can tie into extensions allowing an identity provider to reveal information
 about authorised sessions. This extends OAuth from an authorisation only system
@@ -60,7 +60,8 @@ Kanidm will expose its OAuth2 APIs at the following URLs:
 * user auth url: https://idm.example.com/ui/oauth2
 * api auth url: https://idm.example.com/oauth2/authorise
 * token url: https://idm.example.com/oauth2/token
-* token inspect url: https://idm.example.com/oauth2/inspect
+* rfc7662 token introspection url: https://idm.example.com/oauth2/token/introspect
+* rfc7009 token revoke url: https://idm.example.com/oauth2/token/revoke
 
 OpenID Connect discovery - you need to substitute your OAuth2 client id in the following
 urls:
@@ -87,11 +88,11 @@ The first is scope mappings. These provide a set of scopes if a user is a member
 group within Kanidm. This allows you to create a relationship between the scopes of a resource
 server, and the groups/roles in Kanidm which can be specific to that resource server.
 
-For an authorisation to proceed, all scopes requested must be available in the final scope set
-that is granted to the account.
+For an authorisation to proceed, all scopes requested by the resource server must be available in the
+final scope set that is granted to the account.
 
 The second is supplemental scope mappings. These function the same as scope maps where membership
-of a group provides a set of scopes to the account, however these scopes are NOT consulted during
+of a group provides a set of scopes to the account. However these scopes are NOT consulted during
 authorisation decisions made by Kanidm. These scopes exists to allow optional properties to be
 provided (such as personal information about a subset of accounts to be revealed) or so that the resource server
 may make it's own authorisation decisions based on the provided scopes.
@@ -183,6 +184,13 @@ resource server.
 Not all resource servers support modern standards like PKCE or ECDSA. In these situations
 it may be necessary to disable these on a per-resource server basis. Disabling these on
 one resource server will not affect others.
+
+{{#template
+    templates/kani-warning.md
+    imagepath=images
+    title=WARNING
+    text=Changing these settings MAY have serious consequences on the security of your resource server. You should avoid changing these if at all possible!
+}}
 
 To disable PKCE for a resource server:
 

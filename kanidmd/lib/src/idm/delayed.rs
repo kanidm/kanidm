@@ -13,6 +13,7 @@ pub enum DelayedAction {
     BackupCodeRemoval(BackupCodeRemoval),
     Oauth2ConsentGrant(Oauth2ConsentGrant),
     AuthSessionRecord(AuthSessionRecord),
+    Oauth2SessionRecord(Oauth2SessionRecord),
 }
 
 pub struct PasswordUpgrade {
@@ -69,4 +70,15 @@ pub struct AuthSessionRecord {
     pub issued_at: OffsetDateTime,
     pub issued_by: IdentityId,
     pub scope: AccessScope,
+}
+
+#[derive(Debug)]
+pub struct Oauth2SessionRecord {
+    pub target_uuid: Uuid,
+    pub parent_session_id: Uuid,
+    pub session_id: Uuid,
+    pub expiry: Option<OffsetDateTime>,
+    pub issued_at: OffsetDateTime,
+    // Which rs is this related to?
+    pub rs_uuid: Uuid,
 }

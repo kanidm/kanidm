@@ -90,6 +90,7 @@ pub struct QueryServerWriteTransaction<'a> {
     committed: bool,
     phase: CowCellWriteTxn<'a, ServerPhase>,
     d_info: CowCellWriteTxn<'a, DomainInfo>,
+    curtime: Duration,
     cid: Cid,
     be_txn: BackendWriteTransaction<'a>,
     schema: SchemaWriteTransaction<'a>,
@@ -515,6 +516,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::Session => Err(OperationError::InvalidAttribute("Session Values can not be supplied through modification".to_string())),
                     SyntaxType::JwsKeyEs256 => Err(OperationError::InvalidAttribute("JwsKeyEs256 Values can not be supplied through modification".to_string())),
                     SyntaxType::JwsKeyRs256 => Err(OperationError::InvalidAttribute("JwsKeyRs256 Values can not be supplied through modification".to_string())),
+                    SyntaxType::Oauth2Session => Err(OperationError::InvalidAttribute("Oauth2Session Values can not be supplied through modification".to_string())),
                 }
             }
             None => {
@@ -576,7 +578,10 @@ pub trait QueryServerTransaction<'a> {
                     // ⚠️   Any types here need to also be added to update_attributes in
                     // schema.rs for reference type / cache awareness during referential
                     // integrity processing. Exceptions are self-contained value types!
-                    SyntaxType::ReferenceUuid | SyntaxType::OauthScopeMap | SyntaxType::Session => {
+                    SyntaxType::ReferenceUuid
+                    | SyntaxType::OauthScopeMap
+                    | SyntaxType::Session
+                    | SyntaxType::Oauth2Session => {
                         // See comments above.
                         PartialValue::new_refer_s(value)
                             .or_else(|| {
@@ -1004,7 +1009,7 @@ impl QueryServer {
         }
     }
 
-    pub async fn write(&self, ts: Duration) -> QueryServerWriteTransaction<'_> {
+    pub async fn write(&self, curtime: Duration) -> QueryServerWriteTransaction<'_> {
         // Guarantee we are the only writer on the thread pool
         #[allow(clippy::expect_used)]
         let write_ticket = self
@@ -1026,8 +1031,10 @@ impl QueryServer {
         let phase = self.phase.write();
 
         #[allow(clippy::expect_used)]
-        let ts_max = be_txn.get_db_ts_max(ts).expect("Unable to get db_ts_max");
-        let cid = Cid::new_lamport(self.s_uuid, d_info.d_uuid, ts, &ts_max);
+        let ts_max = be_txn
+            .get_db_ts_max(curtime)
+            .expect("Unable to get db_ts_max");
+        let cid = Cid::new_lamport(self.s_uuid, d_info.d_uuid, curtime, &ts_max);
 
         QueryServerWriteTransaction {
             // I think this is *not* needed, because commit is mut self which should
@@ -1039,6 +1046,7 @@ impl QueryServer {
             committed: false,
             phase,
             d_info,
+            curtime,
             cid,
             be_txn,
             schema: schema_write,
@@ -1174,6 +1182,10 @@ impl QueryServer {
 }
 
 impl<'a> QueryServerWriteTransaction<'a> {
+    pub(crate) fn get_curtime(&self) -> Duration {
+        self.curtime
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub fn create(&mut self, ce: &CreateEvent) -> Result<(), OperationError> {
         // The create event is a raw, read only representation of the request
@@ -2371,6 +2383,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.delete(&de)
     }
 
+    pub fn internal_delete_uuid(&mut self, target_uuid: Uuid) -> Result<(), OperationError> {
+        let filter = filter!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
+        let f_valid = filter
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+        let de = DeleteEvent::new_internal(f_valid);
+        self.delete(&de)
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub fn internal_modify(
         &mut self,
@@ -2653,6 +2674,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_API_TOKEN_SESSION,
             JSON_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP,
             JSON_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION,
+            JSON_SCHEMA_ATTR_OAUTH2_SESSION,
             JSON_SCHEMA_ATTR_NSUNIQUEID,
             JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME,
             JSON_SCHEMA_ATTR_SYNC_TOKEN_SESSION,

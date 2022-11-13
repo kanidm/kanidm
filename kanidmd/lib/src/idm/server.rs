@@ -16,7 +16,6 @@ use kanidm_proto::v1::{
     UnixGroupToken, UnixUserToken, UserAuthToken,
 };
 use rand::prelude::*;
-use time::OffsetDateTime;
 use tokio::sync::mpsc::{
     unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
 };
@@ -33,8 +32,8 @@ use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
 use crate::idm::delayed::{
-    AuthSessionRecord, BackupCodeRemoval, DelayedAction, Oauth2ConsentGrant, PasswordUpgrade,
-    UnixPasswordUpgrade, WebauthnCounterIncrement,
+    AuthSessionRecord, BackupCodeRemoval, DelayedAction, Oauth2ConsentGrant, Oauth2SessionRecord,
+    PasswordUpgrade, UnixPasswordUpgrade, WebauthnCounterIncrement,
 };
 #[cfg(test)]
 use crate::idm::event::PasswordChangeEvent;
@@ -58,7 +57,7 @@ use crate::idm::AuthState;
 use crate::ldap::{LdapBoundToken, LdapSession};
 use crate::prelude::*;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
-use crate::value::Session;
+use crate::value::{Oauth2Session, Session};
 
 type AuthSessionMutex = Arc<Mutex<AuthSession>>;
 type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
@@ -135,7 +134,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     uat_jwt_signer: CowCellWriteTxn<'a, JwsSigner>,
     uat_jwt_validator: CowCellWriteTxn<'a, JwsValidator>,
     pub(crate) token_enc_key: CowCellWriteTxn<'a, Fernet>,
-    oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
+    pub(crate) oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
 }
 
 pub struct IdmServerDelayed {
@@ -574,25 +573,54 @@ pub trait IdmServerTransaction<'a> {
         }
     }
 
-    fn check_account_uuid_valid(
+    fn check_oauth2_account_uuid_valid(
         &self,
-        uuid: &Uuid,
+        uuid: Uuid,
+        session_id: Uuid,
+        parent_session_id: Uuid,
+        iat: i64,
         ct: Duration,
     ) -> Result<Option<Account>, OperationError> {
-        let entry = self.get_qs_txn().internal_search_uuid(uuid).map_err(|e| {
-            admin_error!(?e, "check_account_uuid_valid failed");
+        let entry = self.get_qs_txn().internal_search_uuid(&uuid).map_err(|e| {
+            admin_error!(?e, "check_oauth2_account_uuid_valid failed");
             e
         })?;
 
-        if Account::check_within_valid_time(
+        let within_valid_window = Account::check_within_valid_time(
             ct,
             entry.get_ava_single_datetime("account_valid_from").as_ref(),
             entry.get_ava_single_datetime("account_expire").as_ref(),
-        ) {
-            Account::try_from_entry_no_groups(entry.as_ref()).map(Some)
-        } else {
-            Ok(None)
+        );
+
+        if !within_valid_window {
+            security_info!("Account has expired or is not yet valid, not allowing to proceed");
+            return Ok(None);
         }
+
+        if ct >= Duration::from_secs(iat as u64) + GRACE_WINDOW {
+            // We are past the grace window. Enforce session presence.
+            // We enforce both sessions are present in case of inconsistency
+            // that may occur with replication.
+            let oauth2_session_valid = entry
+                .get_ava_as_oauth2session_map("oauth2_session")
+                .map(|map| map.get(&session_id).is_some())
+                .unwrap_or(false);
+            let uat_session_valid = entry
+                .get_ava_as_session_map("user_auth_token_session")
+                .map(|map| map.get(&parent_session_id).is_some())
+                .unwrap_or(false);
+
+            if oauth2_session_valid && uat_session_valid {
+                security_info!("A valid session value exists for this token");
+            } else {
+                security_info!(%uat_session_valid, %oauth2_session_valid, "The token grace window has passed and no sessions exist. Assuming invalid.");
+                return Ok(None);
+            }
+        } else {
+            security_info!("The token grace window is in effect. Assuming valid.");
+        };
+
+        Account::try_from_entry_no_groups(entry.as_ref()).map(Some)
     }
 
     /// For any event/operation to proceed, we need to attach an identity to the
@@ -1528,7 +1556,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         self.oauth2rs
-            .check_oauth2_token_exchange(client_authz, token_req, ct)
+            .check_oauth2_token_exchange(client_authz, token_req, ct, &self.async_tx)
     }
 
     pub fn check_oauth2_token_introspect(
@@ -2103,12 +2131,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub(crate) fn process_authsessionrecord(
         &mut self,
         asr: &AuthSessionRecord,
-        ct: Duration,
     ) -> Result<(), OperationError> {
         // We have to get the entry so we can work out if we need to expire any of it's sessions.
-
-        let entry = self.qs_write.internal_search_uuid(&asr.target_uuid)?;
-        let sessions = entry.get_ava_as_session_map("user_auth_token_session");
 
         let session = Value::Session(
             asr.session_id,
@@ -2128,33 +2152,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         info!(session_id = %asr.session_id, "Persisting auth session");
 
-        let offset_ct = OffsetDateTime::unix_epoch() + ct;
-
-        let mlist: Vec<_> = sessions
-            .iter()
-            .flat_map(|item| item.iter())
-            .filter_map(|(k, v)| {
-                // We only check if an expiry is present
-                v.expiry.and_then(|exp| {
-                    if exp <= offset_ct {
-                        info!(session_id = %k, "Removing expired auth session");
-                        Some(Modify::Removed(
-                            AttrString::from("user_auth_token_session"),
-                            PartialValue::Refer(*k),
-                        ))
-                    } else {
-                        None
-                    }
-                })
-            })
-            .chain(std::iter::once(Modify::Present(
-                AttrString::from("user_auth_token_session"),
-                session,
-            )))
-            .collect();
-
         // modify the account to put the session onto it.
-        let modlist = ModifyList::new_list(mlist);
+        let modlist = ModifyList::new_append("user_auth_token_session", session);
 
         self.qs_write
             .internal_modify(
@@ -2189,10 +2188,44 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         )
     }
 
+    pub(crate) fn process_oauth2sessionrecord(
+        &mut self,
+        osr: &Oauth2SessionRecord,
+    ) -> Result<(), OperationError> {
+        let session = Value::Oauth2Session(
+            osr.session_id,
+            Oauth2Session {
+                parent: osr.parent_session_id,
+                expiry: osr.expiry,
+                issued_at: osr.issued_at,
+                rs_uuid: osr.rs_uuid,
+            },
+        );
+
+        info!(session_id = %osr.session_id, "Persisting auth session");
+
+        // modify the account to put the session onto it.
+        let modlist = ModifyList::new_append(
+            "oauth2_session",
+            session,
+        );
+
+        self.qs_write
+            .internal_modify(
+                &filter!(f_eq("uuid", PartialValue::new_uuid(osr.target_uuid))),
+                &modlist,
+            )
+            .map_err(|e| {
+                admin_error!("Failed to persist user auth token {:?}", e);
+                e
+            })
+        // Done!
+    }
+
     pub fn process_delayedaction(
         &mut self,
         da: DelayedAction,
-        ct: Duration,
+        _ct: Duration,
     ) -> Result<(), OperationError> {
         match da {
             DelayedAction::PwUpgrade(pwu) => self.process_pwupgrade(&pwu),
@@ -2200,7 +2233,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             DelayedAction::WebauthnCounterIncrement(wci) => self.process_webauthncounterinc(&wci),
             DelayedAction::BackupCodeRemoval(bcr) => self.process_backupcoderemoval(&bcr),
             DelayedAction::Oauth2ConsentGrant(o2cg) => self.process_oauth2consentgrant(&o2cg),
-            DelayedAction::AuthSessionRecord(asr) => self.process_authsessionrecord(&asr, ct),
+            DelayedAction::AuthSessionRecord(asr) => self.process_authsessionrecord(&asr),
+            DelayedAction::Oauth2SessionRecord(osr) => self.process_oauth2sessionrecord(&osr),
         }
     }
 
@@ -2307,7 +2341,6 @@ mod tests {
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
     const TEST_PASSWORD_INC: &'static str = "ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx ";
     const TEST_CURRENT_TIME: u64 = 6000;
-    const TEST_CURRENT_EXPIRE: u64 = TEST_CURRENT_TIME + AUTH_SESSION_TIMEOUT + 1;
 
     #[test]
     fn test_idm_anonymous_auth() {
@@ -2738,36 +2771,6 @@ mod tests {
                     task::block_on(idms.proxy_write(duration_from_epoch_now()));
                 assert!(idms_prox_write.set_account_password(&pce).is_err());
                 assert!(idms_prox_write.commit().is_ok());
-            }
-        )
-    }
-
-    #[test]
-    fn test_idm_session_expire() {
-        run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
-                    .expect("Failed to setup admin account");
-                let sid = init_admin_authsession_sid(
-                    idms,
-                    Duration::from_secs(TEST_CURRENT_TIME),
-                    "admin",
-                );
-                let mut idms_auth = idms.auth();
-                assert!(idms_auth.is_sessionid_present(&sid));
-                // Expire like we are currently "now". Should not affect our session.
-                task::block_on(
-                    idms_auth.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_TIME)),
-                );
-                assert!(idms_auth.is_sessionid_present(&sid));
-                // Expire as though we are in the future.
-                task::block_on(
-                    idms_auth.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_EXPIRE)),
-                );
-                assert!(!idms_auth.is_sessionid_present(&sid));
-                assert!(idms_auth.commit().is_ok());
-                let idms_auth = idms.auth();
-                assert!(!idms_auth.is_sessionid_present(&sid));
             }
         )
     }
@@ -3728,7 +3731,8 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let expiry = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
+            let expiry_a = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
+            let expiry_b = ct + Duration::from_secs((AUTH_SESSION_EXPIRY + 1) * 2);
 
             let session_a = Uuid::new_v4();
             let session_b = Uuid::new_v4();
@@ -3747,7 +3751,7 @@ mod tests {
                 target_uuid: UUID_ADMIN,
                 session_id: session_a,
                 label: "Test Session A".to_string(),
-                expiry: Some(OffsetDateTime::unix_epoch() + expiry),
+                expiry: Some(OffsetDateTime::unix_epoch() + expiry_a),
                 issued_at: OffsetDateTime::unix_epoch() + ct,
                 issued_by: IdentityId::User(UUID_ADMIN),
                 scope: AccessScope::IdentityOnly,
@@ -3781,13 +3785,13 @@ mod tests {
                 target_uuid: UUID_ADMIN,
                 session_id: session_b,
                 label: "Test Session B".to_string(),
-                expiry: Some(OffsetDateTime::unix_epoch() + expiry),
+                expiry: Some(OffsetDateTime::unix_epoch() + expiry_b),
                 issued_at: OffsetDateTime::unix_epoch() + ct,
                 issued_by: IdentityId::User(UUID_ADMIN),
                 scope: AccessScope::IdentityOnly,
             });
             // Persist it.
-            let r = task::block_on(idms.delayed_action(expiry, da));
+            let r = task::block_on(idms.delayed_action(expiry_a, da));
             assert!(Ok(true) == r);
 
             let idms_prox_read = task::block_on(idms.proxy_read());
@@ -3836,7 +3840,7 @@ mod tests {
                 // Process the session info.
                 let da = idms_delayed.try_recv().expect("invalid");
                 assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
-                let r = task::block_on(idms.delayed_action(duration_from_epoch_now(), da));
+                let r = task::block_on(idms.delayed_action(ct, da));
                 assert!(Ok(true) == r);
 
                 let uat_unverified =

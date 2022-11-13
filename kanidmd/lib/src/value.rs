@@ -188,6 +188,7 @@ pub enum SyntaxType {
     Session = 25,
     JwsKeyEs256 = 26,
     JwsKeyRs256 = 27,
+    Oauth2Session = 28,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -225,6 +226,7 @@ impl TryFrom<&str> for SyntaxType {
             "SESSION" => Ok(SyntaxType::Session),
             "JWS_KEY_ES256" => Ok(SyntaxType::JwsKeyEs256),
             "JWS_KEY_RS256" => Ok(SyntaxType::JwsKeyRs256),
+            "OAUTH2SESSION" => Ok(SyntaxType::Oauth2Session),
             _ => Err(()),
         }
     }
@@ -263,6 +265,7 @@ impl TryFrom<u16> for SyntaxType {
             25 => Ok(SyntaxType::Session),
             26 => Ok(SyntaxType::JwsKeyEs256),
             27 => Ok(SyntaxType::JwsKeyRs256),
+            28 => Ok(SyntaxType::Oauth2Session),
             _ => Err(()),
         }
     }
@@ -299,6 +302,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::Session => "SESSION",
             SyntaxType::JwsKeyEs256 => "JWS_KEY_ES256",
             SyntaxType::JwsKeyRs256 => "JWS_KEY_RS256",
+            SyntaxType::Oauth2Session => "OAUTH2SESSION",
         })
     }
 }
@@ -750,6 +754,14 @@ pub struct Session {
     pub scope: AccessScope,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Oauth2Session {
+    pub parent: Uuid,
+    pub expiry: Option<OffsetDateTime>,
+    pub issued_at: OffsetDateTime,
+    pub rs_uuid: Uuid,
+}
+
 /// A value is a complete unit of data for an attribute. It is made up of a PartialValue, which is
 /// used for selection, filtering, searching, matching etc. It also contains supplemental data
 /// which may be stored inside of the Value, such as credential secrets, blobs etc.
@@ -794,6 +806,7 @@ pub enum Value {
 
     TrustedDeviceEnrollment(Uuid),
     Session(Uuid, Session),
+    Oauth2Session(Uuid, Oauth2Session),
 
     JwsKeyEs256(JwsSigner),
     JwsKeyRs256(JwsSigner),
@@ -1329,10 +1342,12 @@ impl Value {
 
     // We need a seperate to-ref_uuid to distinguish from normal uuids
     // in refint plugin.
-    pub fn to_ref_uuid(&self) -> Option<&Uuid> {
+    pub fn to_ref_uuid(&self) -> Option<Uuid> {
         match &self {
-            Value::Refer(u) => Some(u),
-            Value::OauthScopeMap(u, _) => Some(u),
+            Value::Refer(u) => Some(*u),
+            Value::OauthScopeMap(u, _) => Some(*u),
+            // We need to assert that our reference to our rs exists.
+            Value::Oauth2Session(_, m) => Some(m.rs_uuid),
             _ => None,
         }
     }

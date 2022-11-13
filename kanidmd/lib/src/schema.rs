@@ -193,6 +193,7 @@ impl SchemaAttribute {
             SyntaxType::DeviceKey => matches!(v, PartialValue::DeviceKey(_)),
             // Allow refer types.
             SyntaxType::Session => matches!(v, PartialValue::Refer(_)),
+            SyntaxType::Oauth2Session => matches!(v, PartialValue::Refer(_)),
             // These are just insensitive string lookups on the hex-ified kid.
             SyntaxType::JwsKeyEs256 => matches!(v, PartialValue::Iutf8(_)),
             SyntaxType::JwsKeyRs256 => matches!(v, PartialValue::Iutf8(_)),
@@ -239,6 +240,7 @@ impl SchemaAttribute {
                 SyntaxType::Passkey => matches!(v, Value::Passkey(_, _, _)),
                 SyntaxType::DeviceKey => matches!(v, Value::DeviceKey(_, _, _)),
                 SyntaxType::Session => matches!(v, Value::Session(_, _)),
+                SyntaxType::Oauth2Session => matches!(v, Value::Oauth2Session(_, _)),
                 SyntaxType::JwsKeyEs256 => matches!(v, Value::JwsKeyEs256(_)),
                 SyntaxType::JwsKeyRs256 => matches!(v, Value::JwsKeyRs256(_)),
             };
@@ -582,7 +584,10 @@ impl<'a> SchemaWriteTransaction<'a> {
         // No, they'll over-write each other ... but we do need name uniqueness.
         attributetypes.into_iter().for_each(|a| {
             // Update the unique and ref caches.
-            if a.syntax == SyntaxType::ReferenceUuid || a.syntax == SyntaxType::OauthScopeMap
+            if a.syntax == SyntaxType::ReferenceUuid ||
+                a.syntax == SyntaxType::OauthScopeMap ||
+                // So that when an rs is removed we trigger removal of the sessions.
+                a.syntax == SyntaxType::Oauth2Session
             // May not need to be a ref type since it doesn't have external links/impact?
             // || a.syntax == SyntaxType::Session
             {

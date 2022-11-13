@@ -1171,6 +1171,37 @@ pub const JSON_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_OAUTH2_SESSION: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "A session entry to an active oauth2 session, bound to a parent user auth token"
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "true"
+      ],
+      "attributename": [
+        "oauth2_session"
+      ],
+      "syntax": [
+        "OAUTH2SESSION"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000117"
+      ]
+    }
+}"#;
+
 pub const JSON_SCHEMA_ATTR_SYNC_TOKEN_SESSION: &str = r#"{
     "attrs": {
       "class": [
@@ -1371,7 +1402,8 @@ pub const JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
         "account_valid_from",
         "mail",
         "oauth2_consent_scope_map",
-        "user_auth_token_session"
+        "user_auth_token_session",
+        "oauth2_session"
       ],
       "systemmust": [
         "displayname",

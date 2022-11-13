@@ -24,6 +24,7 @@ use kanidmd_lib::{
     },
     idm::delayed::DelayedAction,
     idm::event::{GeneratePasswordEvent, RegenerateRadiusSecretEvent, UnixPasswordChangeEvent},
+    idm::oauth2::{Oauth2Error, TokenRevokeRequest},
     idm::server::{IdmServer, IdmServerTransaction},
     idm::serviceaccount::{DestroyApiTokenEvent, GenerateApiTokenEvent},
     modify::{Modify, ModifyInvalid, ModifyList},
@@ -1351,8 +1352,8 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         let ident = idms_prox_write
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
@@ -1390,6 +1391,24 @@ impl QueryServerWriteV1 {
             .qs_write
             .modify(&mdf)
             .and_then(|_| idms_prox_write.commit().map(|_| ()))
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_oauth2_token_revoke(
+        &self,
+        client_authz: String,
+        intr_req: TokenRevokeRequest,
+        eventid: Uuid,
+    ) -> Result<(), Oauth2Error> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
+        idms_prox_write
+            .oauth2_token_revoke(&client_authz, &intr_req, ct)
+            .and_then(|()| idms_prox_write.commit().map_err(Oauth2Error::ServerError))
     }
 
     // ===== These below are internal only event types. =====
