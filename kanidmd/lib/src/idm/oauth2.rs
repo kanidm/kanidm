@@ -2386,7 +2386,7 @@ mod tests {
                         let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
                         assert!(idms_prox_write
-                            .process_oauth2sessionrecord(&osr, ct)
+                            .process_oauth2sessionrecord(&osr)
                             .is_ok());
 
                         assert!(idms_prox_write.commit().is_ok());
@@ -2562,7 +2562,7 @@ mod tests {
                 let session_id = match idms_delayed.async_rx.blocking_recv() {
                     Some(DelayedAction::Oauth2SessionRecord(osr)) => {
                         assert!(idms_prox_write
-                            .process_oauth2sessionrecord(&osr, ct)
+                            .process_oauth2sessionrecord(&osr)
                             .is_ok());
                         osr.session_id
                     }

@@ -10,6 +10,8 @@
 use crate::event::ModifyEvent;
 use crate::plugins::Plugin;
 use crate::prelude::*;
+use std::collections::BTreeSet;
+use time::OffsetDateTime;
 
 pub struct SessionConsistency {}
 
@@ -21,16 +23,73 @@ impl Plugin for SessionConsistency {
     #[instrument(level = "debug", name = "session_consistency", skip_all)]
     fn pre_modify(
         qs: &mut QueryServerWriteTransaction,
-        _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        let _curtime = qs.get_curtime();
-        /*
-        cand.iter_mut().try_for_each(|_e| {
-        });
-        */
+        let curtime = qs.get_curtime();
+        let curtime_odt = OffsetDateTime::unix_epoch() + curtime;
 
-        Ok(())
+        // We need to assert a number of properties. We must do these *in order*.
+        cand.iter_mut().try_for_each(|entry| {
+            // * If a UAT is past it's expiry, remove it.
+            let expired: Option<BTreeSet<_>> = entry.get_ava_as_session_map("user_auth_token_session")
+                .map(|sessions| {
+                    sessions.iter().filter_map(|(session_id, session)| {
+                        match &session.expiry {
+                            Some(exp) if exp <= &curtime_odt => {
+                                info!(%session_id, "Removing expired auth session");
+                                Some(PartialValue::Refer(*session_id))
+                            }
+                            _ => None,
+                        }
+                    })
+                    .collect()
+                });
+
+            if let Some(expired) = expired.as_ref() {
+                entry.remove_avas("user_auth_token_session", expired);
+            }
+
+            // * If an oauth2 session is past it's expiry, remove it.
+            // * If an oauth2 session is past the grace window, and no parent session exists, remove it.
+            let oauth2_remove: Option<BTreeSet<_>> = entry.get_ava_as_oauth2session_map("oauth2_session").map(|oauth2_sessions| {
+                // If we have oauth2 sessions, we need to be able to lookup if sessions exist in the uat.
+                let sessions = entry.get_ava_as_session_map("user_auth_token_session");
+
+                oauth2_sessions.iter().filter_map(|(o2_session_id, session)| {
+                    match &session.expiry {
+                        Some(exp) if exp <= &curtime_odt => {
+                            info!(%o2_session_id, "Removing expired oauth2 session");
+                            Some(PartialValue::Refer(*o2_session_id))
+                        }
+                        _ => {
+                            // Okay, now check the issued / grace time for parent enforcement.
+                            if session.issued_at + GRACE_WINDOW <= curtime_odt {
+                                if sessions.map(|s| s.contains_key(&session.parent)).unwrap_or(false) {
+                                    // The parent exists, go ahead
+                                    None
+                                } else {
+                                    info!(%o2_session_id, "Removing unbound oauth2 session");
+                                    Some(PartialValue::Refer(*o2_session_id))
+                                }
+                            } else {
+                                // Grace window is still in effect
+                                None
+                            }
+
+                        }
+                    }
+
+                })
+                .collect()
+            });
+
+            if let Some(oauth2_remove) = oauth2_remove.as_ref() {
+                entry.remove_avas("oauth2_session", oauth2_remove);
+            }
+
+            Ok(())
+        })
     }
 }
 
@@ -279,6 +338,7 @@ mod tests {
     async fn test_session_consistency_oauth2_removed_by_parent(server: &QueryServer) {
         let curtime = duration_from_epoch_now();
         let curtime_odt = OffsetDateTime::unix_epoch() + curtime;
+        let exp_curtime = curtime + GRACE_WINDOW;
 
         // Create a user
         let mut server_txn = server.write(curtime).await;
@@ -378,6 +438,10 @@ mod tests {
 
         assert!(entry.attribute_equality("user_auth_token_session", &pv_parent_id));
         assert!(entry.attribute_equality("oauth2_session", &pv_session_id));
+
+        // We need the time to be past grace_window.
+        assert!(server_txn.commit().is_ok());
+        let mut server_txn = server.write(exp_curtime).await;
 
         // Mod again - remove the parent session.
         let modlist = ModifyList::new_remove("user_auth_token_session", pv_parent_id.clone());

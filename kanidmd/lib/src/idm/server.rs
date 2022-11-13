@@ -16,7 +16,6 @@ use kanidm_proto::v1::{
     UnixGroupToken, UnixUserToken, UserAuthToken,
 };
 use rand::prelude::*;
-use time::OffsetDateTime;
 use tokio::sync::mpsc::{
     unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
 };
@@ -2132,14 +2131,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub(crate) fn process_authsessionrecord(
         &mut self,
         asr: &AuthSessionRecord,
-        ct: Duration,
     ) -> Result<(), OperationError> {
         // We have to get the entry so we can work out if we need to expire any of it's sessions.
-
-        let entry = self.qs_write.internal_search_uuid(&asr.target_uuid)?;
-        let sessions = entry.get_ava_as_session_map("user_auth_token_session");
-
-        // Also get the child session maps from oauth2.
 
         let session = Value::Session(
             asr.session_id,
@@ -2159,33 +2152,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         info!(session_id = %asr.session_id, "Persisting auth session");
 
-        let offset_ct = OffsetDateTime::unix_epoch() + ct;
-
-        let mlist: Vec<_> = sessions
-            .iter()
-            .flat_map(|item| item.iter())
-            .filter_map(|(k, v)| {
-                // We only check if an expiry is present
-                v.expiry.and_then(|exp| {
-                    if exp <= offset_ct {
-                        info!(session_id = %k, "Removing expired auth session");
-                        Some(Modify::Removed(
-                            AttrString::from("user_auth_token_session"),
-                            PartialValue::Refer(*k),
-                        ))
-                    } else {
-                        None
-                    }
-                })
-            })
-            .chain(std::iter::once(Modify::Present(
-                AttrString::from("user_auth_token_session"),
-                session,
-            )))
-            .collect();
-
         // modify the account to put the session onto it.
-        let modlist = ModifyList::new_list(mlist);
+        let modlist = ModifyList::new_append("user_auth_token_session", session);
 
         self.qs_write
             .internal_modify(
@@ -2223,11 +2191,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub(crate) fn process_oauth2sessionrecord(
         &mut self,
         osr: &Oauth2SessionRecord,
-        ct: Duration,
     ) -> Result<(), OperationError> {
-        let entry = self.qs_write.internal_search_uuid(&osr.target_uuid)?;
-        let sessions = entry.get_ava_as_oauth2session_map("oauth2_session");
-
         let session = Value::Oauth2Session(
             osr.session_id,
             Oauth2Session {
@@ -2240,34 +2204,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         info!(session_id = %osr.session_id, "Persisting auth session");
 
-        let offset_ct = OffsetDateTime::unix_epoch() + ct;
-
-        let mlist: Vec<_> = sessions
-            .iter()
-            .map(|item| item.iter())
-            .flatten()
-            .filter_map(|(k, v)| {
-                // We only check if an expiry is present
-                v.expiry.and_then(|exp| {
-                    if exp <= offset_ct {
-                        info!(session_id = %k, "Removing expired oauth2 session");
-                        Some(Modify::Removed(
-                            AttrString::from("oauth2_session"),
-                            PartialValue::Refer(*k),
-                        ))
-                    } else {
-                        None
-                    }
-                })
-            })
-            .chain(std::iter::once(Modify::Present(
-                AttrString::from("oauth2_session"),
-                session,
-            )))
-            .collect();
-
         // modify the account to put the session onto it.
-        let modlist = ModifyList::new_list(mlist);
+        let modlist = ModifyList::new_append(
+            "oauth2_session",
+            session,
+        );
 
         self.qs_write
             .internal_modify(
@@ -2284,7 +2225,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn process_delayedaction(
         &mut self,
         da: DelayedAction,
-        ct: Duration,
+        _ct: Duration,
     ) -> Result<(), OperationError> {
         match da {
             DelayedAction::PwUpgrade(pwu) => self.process_pwupgrade(&pwu),
@@ -2292,8 +2233,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             DelayedAction::WebauthnCounterIncrement(wci) => self.process_webauthncounterinc(&wci),
             DelayedAction::BackupCodeRemoval(bcr) => self.process_backupcoderemoval(&bcr),
             DelayedAction::Oauth2ConsentGrant(o2cg) => self.process_oauth2consentgrant(&o2cg),
-            DelayedAction::AuthSessionRecord(asr) => self.process_authsessionrecord(&asr, ct),
-            DelayedAction::Oauth2SessionRecord(osr) => self.process_oauth2sessionrecord(&osr, ct),
+            DelayedAction::AuthSessionRecord(asr) => self.process_authsessionrecord(&asr),
+            DelayedAction::Oauth2SessionRecord(osr) => self.process_oauth2sessionrecord(&osr),
         }
     }
 
@@ -3790,7 +3731,8 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let expiry = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
+            let expiry_a = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
+            let expiry_b = ct + Duration::from_secs((AUTH_SESSION_EXPIRY + 1) * 2);
 
             let session_a = Uuid::new_v4();
             let session_b = Uuid::new_v4();
@@ -3809,7 +3751,7 @@ mod tests {
                 target_uuid: UUID_ADMIN,
                 session_id: session_a,
                 label: "Test Session A".to_string(),
-                expiry: Some(OffsetDateTime::unix_epoch() + expiry),
+                expiry: Some(OffsetDateTime::unix_epoch() + expiry_a),
                 issued_at: OffsetDateTime::unix_epoch() + ct,
                 issued_by: IdentityId::User(UUID_ADMIN),
                 scope: AccessScope::IdentityOnly,
@@ -3843,13 +3785,13 @@ mod tests {
                 target_uuid: UUID_ADMIN,
                 session_id: session_b,
                 label: "Test Session B".to_string(),
-                expiry: Some(OffsetDateTime::unix_epoch() + expiry),
+                expiry: Some(OffsetDateTime::unix_epoch() + expiry_b),
                 issued_at: OffsetDateTime::unix_epoch() + ct,
                 issued_by: IdentityId::User(UUID_ADMIN),
                 scope: AccessScope::IdentityOnly,
             });
             // Persist it.
-            let r = task::block_on(idms.delayed_action(expiry, da));
+            let r = task::block_on(idms.delayed_action(expiry_a, da));
             assert!(Ok(true) == r);
 
             let idms_prox_read = task::block_on(idms.proxy_read());
@@ -3898,7 +3840,7 @@ mod tests {
                 // Process the session info.
                 let da = idms_delayed.try_recv().expect("invalid");
                 assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
-                let r = task::block_on(idms.delayed_action(duration_from_epoch_now(), da));
+                let r = task::block_on(idms.delayed_action(ct, da));
                 assert!(Ok(true) == r);
 
                 let uat_unverified =
