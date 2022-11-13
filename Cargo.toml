@@ -165,7 +165,7 @@ wasm-bindgen-test = "0.3.33"
 webauthn-authenticator-rs = "0.4.7"
 webauthn-rs = "0.4.7"
 webauthn-rs-core = "0.4.7"
-webauthn-rs-proto = "0.4.7"
+webauthn-rs-proto = "0.4.8"
 # webauthn-authenticator-rs = { path = "../webauthn-rs/webauthn-authenticator-rs" }
 # webauthn-rs = { path = "../webauthn-rs/webauthn-rs" }
 # webauthn-rs-core = { path = "../webauthn-rs/webauthn-rs-core" }
