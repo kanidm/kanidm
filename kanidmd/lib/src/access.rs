@@ -84,7 +84,7 @@ impl AccessControlSearch {
             acp: AccessControlProfile {
                 name: name.to_string(),
                 uuid,
-                receiver,
+                receiver: Some(receiver),
                 targetscope,
             },
             attrs: attrs
@@ -128,7 +128,7 @@ impl AccessControlDelete {
             acp: AccessControlProfile {
                 name: name.to_string(),
                 uuid,
-                receiver,
+                receiver: Some(receiver),
                 targetscope,
             },
         }
@@ -184,7 +184,7 @@ impl AccessControlCreate {
             acp: AccessControlProfile {
                 name: name.to_string(),
                 uuid,
-                receiver,
+                receiver: Some(receiver),
                 targetscope,
             },
             classes: classes.split_whitespace().map(AttrString::from).collect(),
@@ -250,7 +250,7 @@ impl AccessControlModify {
             acp: AccessControlProfile {
                 name: name.to_string(),
                 uuid,
-                receiver,
+                receiver: Some(receiver),
                 targetscope,
             },
             classes: classes
@@ -278,7 +278,13 @@ struct AccessControlProfile {
     uuid: Uuid,
     // Must be
     //   Group
-    receiver: Uuid,
+    // === ⚠️   WARNING!!! ⚠️  ===
+    // This is OPTION to allow migration from 10 -> 11. We have to do this because ACP is reloaded
+    // so early in the boot phase that we can't have migrated the content of the receiver yet! As a
+    // result we MUST be able to withstand some failure in the parse process. The INTENT is that
+    // during early boot this will be None, and will NEVER match. Once started, the migration
+    // will occur, and this will flip to Some. In a future version we can remove this!
+    receiver: Option<Uuid>,
     // or
     //  Filter
     //  Group
@@ -314,12 +320,16 @@ impl AccessControlProfile {
         let uuid = value.get_uuid();
         // receiver, and turn to real filter
 
-        let receiver = value
-            .get_ava_single_refer("acp_receiver_group")
-            .ok_or_else(|| {
-                admin_error!("Missing acp_receiver_group");
-                OperationError::InvalidAcpState("Missing acp_receiver_group".to_string())
-            })?;
+        // === ⚠️   WARNING!!! ⚠️  ===
+        // See struct ACP for details.
+        let receiver = value.get_ava_single_refer("acp_receiver_group");
+        /*
+        .ok_or_else(|| {
+            admin_error!("Missing acp_receiver_group");
+            OperationError::InvalidAcpState("Missing acp_receiver_group".to_string())
+        })?;
+        */
+
         // targetscope, and turn to real filter
         let targetscope_f: ProtoFilter = value
             .get_ava_single_protofilter("acp_targetscope")
@@ -445,21 +455,25 @@ pub trait AccessControlsTransaction<'a> {
                 // A possible solution is to change the filter resolve function
                 // such that it takes an entry, rather than an event, but that
                 // would create issues in search.
-                if ident.is_memberof(acs.acp.receiver) {
-                    // Now, for each of the acp's that apply to our receiver, resolve their
-                    // related target filters.
-                    acs.acp
-                        .targetscope
-                        .resolve(ident, None, Some(acp_resolve_filter_cache))
-                        .map_err(|e| {
-                            admin_error!(
-                                ?e,
-                                "A internal filter/event was passed for resolution!?!?"
-                            );
-                            e
-                        })
-                        .ok()
-                        .map(|f_res| (acs, f_res))
+                if let Some(receiver) = acs.acp.receiver {
+                    if ident.is_memberof(receiver) {
+                        // Now, for each of the acp's that apply to our receiver, resolve their
+                        // related target filters.
+                        acs.acp
+                            .targetscope
+                            .resolve(ident, None, Some(acp_resolve_filter_cache))
+                            .map_err(|e| {
+                                admin_error!(
+                                    ?e,
+                                    "A internal filter/event was passed for resolution!?!?"
+                                );
+                                e
+                            })
+                            .ok()
+                            .map(|f_res| (acs, f_res))
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
@@ -710,19 +724,23 @@ pub trait AccessControlsTransaction<'a> {
         let related_acp: Vec<(&AccessControlModify, _)> = modify_state
             .iter()
             .filter_map(|acs| {
-                if ident.is_memberof(acs.acp.receiver) {
-                    acs.acp
-                        .targetscope
-                        .resolve(ident, None, Some(acp_resolve_filter_cache))
-                        .map_err(|e| {
-                            admin_error!(
-                                "A internal filter/event was passed for resolution!?!? {:?}",
+                if let Some(receiver) = acs.acp.receiver {
+                    if ident.is_memberof(receiver) {
+                        acs.acp
+                            .targetscope
+                            .resolve(ident, None, Some(acp_resolve_filter_cache))
+                            .map_err(|e| {
+                                admin_error!(
+                                    "A internal filter/event was passed for resolution!?!? {:?}",
+                                    e
+                                );
                                 e
-                            );
-                            e
-                        })
-                        .ok()
-                        .map(|f_res| (acs, f_res))
+                            })
+                            .ok()
+                            .map(|f_res| (acs, f_res))
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
@@ -945,19 +963,23 @@ pub trait AccessControlsTransaction<'a> {
         let related_acp: Vec<(&AccessControlCreate, _)> = create_state
             .iter()
             .filter_map(|acs| {
-                if ce.ident.is_memberof(acs.acp.receiver) {
-                    acs.acp
-                        .targetscope
-                        .resolve(&ce.ident, None, Some(acp_resolve_filter_cache))
-                        .map_err(|e| {
-                            admin_error!(
-                                "A internal filter/event was passed for resolution!?!? {:?}",
+                if let Some(receiver) = acs.acp.receiver {
+                    if ce.ident.is_memberof(receiver) {
+                        acs.acp
+                            .targetscope
+                            .resolve(&ce.ident, None, Some(acp_resolve_filter_cache))
+                            .map_err(|e| {
+                                admin_error!(
+                                    "A internal filter/event was passed for resolution!?!? {:?}",
+                                    e
+                                );
                                 e
-                            );
-                            e
-                        })
-                        .ok()
-                        .map(|f_res| (acs, f_res))
+                            })
+                            .ok()
+                            .map(|f_res| (acs, f_res))
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
@@ -1079,19 +1101,23 @@ pub trait AccessControlsTransaction<'a> {
         let related_acp: Vec<(&AccessControlDelete, _)> = delete_state
             .iter()
             .filter_map(|acs| {
-                if de.ident.is_memberof(acs.acp.receiver) {
-                    acs.acp
-                        .targetscope
-                        .resolve(&de.ident, None, Some(acp_resolve_filter_cache))
-                        .map_err(|e| {
-                            admin_error!(
-                                "A internal filter/event was passed for resolution!?!? {:?}",
+                if let Some(receiver) = acs.acp.receiver {
+                    if de.ident.is_memberof(receiver) {
+                        acs.acp
+                            .targetscope
+                            .resolve(&de.ident, None, Some(acp_resolve_filter_cache))
+                            .map_err(|e| {
+                                admin_error!(
+                                    "A internal filter/event was passed for resolution!?!? {:?}",
+                                    e
+                                );
                                 e
-                            );
-                            e
-                        })
-                        .ok()
-                        .map(|f_res| (acs, f_res))
+                            })
+                            .ok()
+                            .map(|f_res| (acs, f_res))
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }

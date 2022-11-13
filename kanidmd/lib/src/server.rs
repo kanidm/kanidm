@@ -1063,6 +1063,7 @@ impl QueryServer {
         }
     }
 
+    #[instrument(level = "info", name = "system_initialisation", skip_all)]
     pub async fn initialise_helper(&self, ts: Duration) -> Result<(), OperationError> {
         // Check our database version - attempt to do an initial indexing
         // based on the in memory configuration
@@ -2611,6 +2612,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
     */
 
+    #[instrument(level = "info", skip_all)]
     pub fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_core -> start ...");
         // Load in all the "core" schema, that we already have in "memory".
@@ -2633,6 +2635,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         r
     }
 
+    #[instrument(level = "info", skip_all)]
     pub fn initialise_schema_idm(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_idm -> start ...");
         // List of IDM schemas to init.
@@ -2710,6 +2713,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     // This function is idempotent
+    #[instrument(level = "info", skip_all)]
     pub fn initialise_idm(&mut self) -> Result<(), OperationError> {
         // First, check the system_info object. This stores some server information
         // and details. It's a pretty const thing. Also check anonymous, important to many
@@ -3129,6 +3133,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.changed_schema.set(true);
     }
 
+    #[instrument(level = "info", skip_all)]
     pub(crate) fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
         self.be_txn.upgrade_reindex(v)
     }
@@ -3149,6 +3154,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         *self.phase = phase
     }
 
+    #[instrument(level = "info", skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
         // This could be faster if we cache the set of classes changed
         // in an operation so we can check if we need to do the reload or not

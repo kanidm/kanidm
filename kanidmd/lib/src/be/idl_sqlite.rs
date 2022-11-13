@@ -229,10 +229,9 @@ pub trait IdlSqliteTransaction {
         idx_key: &str,
     ) -> Result<Option<IDLBitRange>, OperationError> {
         if !(self.exists_idx(attr, itype)?) {
-            filter_error!(
+            debug!(
                 "IdlSqliteTransaction: Index {:?} {:?} not found",
-                itype,
-                attr
+                itype, attr
             );
             return Ok(None);
         }
