@@ -6,7 +6,9 @@ name: GitHub Pages
     branches:
       - master
 
-
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   deploy_book:
     runs-on: ubuntu-latest
@@ -49,6 +51,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
+          cache: 'poetry'
       - name: pykanidm docs
         run: |
           python -m pip install poetry

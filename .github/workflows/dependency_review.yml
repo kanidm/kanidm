@@ -8,6 +8,9 @@ name: 'Dependency Review'
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   dependency-review:
     runs-on: ubuntu-latest

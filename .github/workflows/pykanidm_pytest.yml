@@ -4,6 +4,10 @@ name: pykanidm - pytest
 "on":
   push:
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   pykanidm_pytest:
     strategy:
@@ -20,6 +24,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{matrix.python_version}}
+          cache: 'poetry'
       - name: Running pytest
         run: |
           cd pykanidm

@@ -11,6 +11,9 @@ name: Container - Radiusd
     branches:
       - master
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   radius_build:
     runs-on: ubuntu-latest
