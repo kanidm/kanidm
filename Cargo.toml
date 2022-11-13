@@ -50,7 +50,7 @@ bytes = "^1.1.0"
 clap = { version = "^3.2", features = ["derive"] }
 clap_complete = "^3.2.5"
 # Forced by saffron
-chrono = "^0.4.20"
+chrono = "^0.4.23"
 compact_jwt = "^0.2.3"
 # compact_jwt = { path = "../compact_jwt" }
 concread = "^0.4.0"
