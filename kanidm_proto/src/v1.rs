@@ -655,13 +655,16 @@ impl fmt::Display for CredentialDetail {
                 } else {
                     writeln!(f, "backup_code: disabled")?;
                 }
-                if labels.is_empty() {
-                    writeln!(f, "webauthn: no authenticators")
-                } else {
-                    writeln!(f, "webauthn:")?;
+                if !labels.is_empty() {
+                    // We no longer show the deprecated security key case by default.
+                    writeln!(f, " ⚠️  warning - security keys are deprecated.")?;
+                    writeln!(f, " ⚠️  you should re-enroll these to passkeys.")?;
+                    writeln!(f, "security keys:")?;
                     for label in labels {
                         writeln!(f, " * {}", label)?;
                     }
+                    write!(f, "")
+                } else {
                     write!(f, "")
                 }
             }
