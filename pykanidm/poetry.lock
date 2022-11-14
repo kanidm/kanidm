@@ -410,7 +410,7 @@ mkdocs = ">=1.1"
 
 [[package]]
 name = "mkdocs-material"
-version = "8.5.8"
+version = "8.5.10"
 description = "Documentation that simply works"
 category = "dev"
 optional = false
@@ -906,7 +906,7 @@ testing = ["func-timeout", "jaraco.itertools", "pytest (>=6)", "pytest-black (>=
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "51682d3df50d1bbe65061819452cf94e97bdab79df773a5f53a72928286b77a9"
+content-hash = "896cf72036bc5e4e883cae10b7791e79bff4c98ddfd2ad0e13731f71455e6d9b"
 
 [metadata.files]
 aiohttp = [
@@ -1410,8 +1410,8 @@ mkdocs-autorefs = [
     {file = "mkdocs_autorefs-0.4.1-py3-none-any.whl", hash = "sha256:a2248a9501b29dc0cc8ba4c09f4f47ff121945f6ce33d760f145d6f89d313f5b"},
 ]
 mkdocs-material = [
-    {file = "mkdocs_material-8.5.8-py3-none-any.whl", hash = "sha256:7ff092299e3a63cef99cd87e4a6cc7e7d9ec31fd190d766fd147c35572e6d593"},
-    {file = "mkdocs_material-8.5.8.tar.gz", hash = "sha256:61396251819cf7f547f70a09ce6a7edb2ff5d32e47b9199769020b2d20a83d44"},
+    {file = "mkdocs_material-8.5.10-py3-none-any.whl", hash = "sha256:51760fa4c9ee3ca0b3a661ec9f9817ec312961bb84ff19e5b523fdc5256e1d6c"},
+    {file = "mkdocs_material-8.5.10.tar.gz", hash = "sha256:7623608f746c6d9ff68a8ef01f13eddf32fa2cae5e15badb251f26d1196bc8f1"},
 ]
 mkdocs-material-extensions = [
     {file = "mkdocs_material_extensions-1.1-py3-none-any.whl", hash = "sha256:bcc2e5fc70c0ec50e59703ee6e639d87c7e664c0c441c014ea84461a90f1e902"},
