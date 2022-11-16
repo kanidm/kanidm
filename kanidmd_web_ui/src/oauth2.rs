@@ -244,9 +244,7 @@ impl Component for Oauth2App {
                 };
             }
         };
-
-        let e_msg = format!("{:?}", query);
-        console::error!(e_msg.as_str());
+        console::debug!(format!("{query:?}", ));
 
         // In the query, if this is openid there MAY be a hint
         // as to the users name.
