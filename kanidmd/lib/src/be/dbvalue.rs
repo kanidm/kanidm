@@ -550,7 +550,7 @@ pub enum DbValueSetV2 {
     JwsKeyRs256(Vec<Vec<u8>>),
     #[serde(rename = "AS")]
     Oauth2Session(Vec<DbValueOauth2Session>),
-    #[serde(rename = "UI")]
+    #[serde(rename = "UH")]
     UiHint(Vec<u16>),
 }
 

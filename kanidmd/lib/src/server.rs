@@ -2877,7 +2877,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         Ok(())
     }
 
-    #[instrument(level = "info", name = "reload_schema", skip(self))]
+    #[instrument(level = "debug", name = "reload_schema", skip(self))]
     fn reload_schema(&mut self) -> Result<(), OperationError> {
         // supply entries to the writable schema to reload from.
         // find all attributes.

@@ -158,10 +158,10 @@ wasm-bindgen = "^0.2.81"
 wasm-bindgen-futures = "^0.4.30"
 wasm-bindgen-test = "0.3.33"
 
-webauthn-authenticator-rs = "0.4.7"
-webauthn-rs = "0.4.7"
-webauthn-rs-core = "0.4.7"
-webauthn-rs-proto = "0.4.7"
+webauthn-authenticator-rs = "0.4.8"
+webauthn-rs = "0.4.8"
+webauthn-rs-core = "0.4.8"
+webauthn-rs-proto = "0.4.8"
 # webauthn-authenticator-rs = { path = "../webauthn-rs/webauthn-authenticator-rs" }
 # webauthn-rs = { path = "../webauthn-rs/webauthn-rs" }
 # webauthn-rs-core = { path = "../webauthn-rs/webauthn-rs-core" }
