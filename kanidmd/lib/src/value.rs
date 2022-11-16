@@ -12,6 +12,8 @@ use std::time::Duration;
 use compact_jwt::JwsSigner;
 use hashbrown::HashSet;
 use kanidm_proto::v1::Filter as ProtoFilter;
+use kanidm_proto::v1::UiHint;
+use num_enum::TryFromPrimitive;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sshkeys::PublicKey as SshPublicKey;
@@ -72,14 +74,6 @@ pub struct Address {
     pub country: String,
 }
 
-#[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Hash)]
-pub enum IndexType {
-    Equality,
-    Presence,
-    SubString,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IntentTokenState {
     Valid {
@@ -93,6 +87,27 @@ pub enum IntentTokenState {
     Consumed {
         max_ttl: Duration,
     },
+}
+
+#[allow(non_camel_case_types)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    Hash,
+    TryFromPrimitive,
+)]
+#[repr(u16)]
+pub enum IndexType {
+    Equality,
+    Presence,
+    SubString,
 }
 
 impl TryFrom<&str> for IndexType {
@@ -111,33 +126,12 @@ impl TryFrom<&str> for IndexType {
     }
 }
 
-impl TryFrom<usize> for IndexType {
-    type Error = ();
-
-    fn try_from(value: usize) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(IndexType::Equality),
-            1 => Ok(IndexType::Presence),
-            2 => Ok(IndexType::SubString),
-            _ => Err(()),
-        }
-    }
-}
-
 impl IndexType {
     pub fn as_idx_str(&self) -> &str {
         match self {
             IndexType::Equality => "eq",
             IndexType::Presence => "pres",
             IndexType::SubString => "sub",
-        }
-    }
-
-    pub fn to_usize(&self) -> usize {
-        match self {
-            IndexType::Equality => 0,
-            IndexType::Presence => 1,
-            IndexType::SubString => 2,
         }
     }
 }
@@ -157,7 +151,19 @@ impl fmt::Display for IndexType {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Hash, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[derive(
+    Hash,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    TryFromPrimitive,
+)]
 #[repr(u16)]
 pub enum SyntaxType {
     Utf8String = 0,
@@ -189,6 +195,7 @@ pub enum SyntaxType {
     JwsKeyEs256 = 26,
     JwsKeyRs256 = 27,
     Oauth2Session = 28,
+    UiHint = 29,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -227,45 +234,7 @@ impl TryFrom<&str> for SyntaxType {
             "JWS_KEY_ES256" => Ok(SyntaxType::JwsKeyEs256),
             "JWS_KEY_RS256" => Ok(SyntaxType::JwsKeyRs256),
             "OAUTH2SESSION" => Ok(SyntaxType::Oauth2Session),
-            _ => Err(()),
-        }
-    }
-}
-
-impl TryFrom<u16> for SyntaxType {
-    type Error = ();
-
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(SyntaxType::Utf8String),
-            1 => Ok(SyntaxType::Utf8StringInsensitive),
-            2 => Ok(SyntaxType::Uuid),
-            3 => Ok(SyntaxType::Boolean),
-            4 => Ok(SyntaxType::SyntaxId),
-            5 => Ok(SyntaxType::IndexId),
-            6 => Ok(SyntaxType::ReferenceUuid),
-            7 => Ok(SyntaxType::JsonFilter),
-            8 => Ok(SyntaxType::Credential),
-            9 => Ok(SyntaxType::SecretUtf8String),
-            10 => Ok(SyntaxType::SshKey),
-            11 => Ok(SyntaxType::SecurityPrincipalName),
-            12 => Ok(SyntaxType::Uint32),
-            13 => Ok(SyntaxType::Cid),
-            14 => Ok(SyntaxType::Utf8StringIname),
-            15 => Ok(SyntaxType::NsUniqueId),
-            16 => Ok(SyntaxType::DateTime),
-            17 => Ok(SyntaxType::EmailAddress),
-            18 => Ok(SyntaxType::Url),
-            19 => Ok(SyntaxType::OauthScope),
-            20 => Ok(SyntaxType::OauthScopeMap),
-            21 => Ok(SyntaxType::PrivateBinary),
-            22 => Ok(SyntaxType::IntentToken),
-            23 => Ok(SyntaxType::Passkey),
-            24 => Ok(SyntaxType::DeviceKey),
-            25 => Ok(SyntaxType::Session),
-            26 => Ok(SyntaxType::JwsKeyEs256),
-            27 => Ok(SyntaxType::JwsKeyRs256),
-            28 => Ok(SyntaxType::Oauth2Session),
+            "UIHINT" => Ok(SyntaxType::UiHint),
             _ => Err(()),
         }
     }
@@ -303,6 +272,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::JwsKeyEs256 => "JWS_KEY_ES256",
             SyntaxType::JwsKeyRs256 => "JWS_KEY_RS256",
             SyntaxType::Oauth2Session => "OAUTH2SESSION",
+            SyntaxType::UiHint => "UIHINT",
         })
     }
 }
@@ -348,6 +318,7 @@ pub enum PartialValue {
     // Float64(f64),
     RestrictedString(String),
     IntentToken(String),
+    UiHint(UiHint),
 
     Passkey(Uuid),
     DeviceKey(Uuid),
@@ -697,7 +668,7 @@ impl PartialValue {
     }
 
     pub fn get_idx_eq_key(&self) -> String {
-        match &self {
+        match self {
             PartialValue::Utf8(s)
             | PartialValue::Iutf8(s)
             | PartialValue::Iname(s)
@@ -736,6 +707,7 @@ impl PartialValue {
             PartialValue::IntentToken(u) => u.clone(),
             PartialValue::TrustedDeviceEnrollment(u) => u.as_hyphenated().to_string(),
             PartialValue::Session(u) => u.as_hyphenated().to_string(),
+            PartialValue::UiHint(u) => (*u as u16).to_string(),
         }
     }
 
@@ -810,6 +782,7 @@ pub enum Value {
 
     JwsKeyEs256(JwsSigner),
     JwsKeyRs256(JwsSigner),
+    UiHint(UiHint),
 }
 
 impl PartialEq for Value {

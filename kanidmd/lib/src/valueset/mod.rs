@@ -4,6 +4,7 @@ use compact_jwt::JwsSigner;
 use dyn_clone::DynClone;
 use hashbrown::HashSet;
 use kanidm_proto::v1::Filter as ProtoFilter;
+use kanidm_proto::v1::UiHint;
 use smolset::SmolSet;
 use time::OffsetDateTime;
 // use std::fmt::Debug;
@@ -36,6 +37,7 @@ mod session;
 mod spn;
 mod ssh;
 mod syntax;
+mod uihint;
 mod uint32;
 mod url;
 mod utf8;
@@ -60,6 +62,7 @@ pub use self::session::{ValueSetOauth2Session, ValueSetSession};
 pub use self::spn::ValueSetSpn;
 pub use self::ssh::ValueSetSshKey;
 pub use self::syntax::ValueSetSyntax;
+pub use self::uihint::ValueSetUiHint;
 pub use self::uint32::ValueSetUint32;
 pub use self::url::ValueSetUrl;
 pub use self::utf8::ValueSetUtf8;
@@ -495,6 +498,16 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         debug_assert!(false);
         None
     }
+
+    fn as_uihint_set(&self) -> Option<&BTreeSet<UiHint>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_uihint_iter(&self) -> Option<Box<dyn Iterator<Item = UiHint> + '_>> {
+        debug_assert!(false);
+        None
+    }
 }
 
 impl PartialEq for ValueSet {
@@ -546,6 +559,7 @@ pub fn from_result_value_iter(
         Value::PublicBinary(t, b) => ValueSetPublicBinary::new(t, b),
         Value::IntentToken(u, s) => ValueSetIntentToken::new(u, s),
         Value::EmailAddress(a, _) => ValueSetEmailAddress::new(a),
+        Value::UiHint(u) => ValueSetUiHint::new(u),
         Value::PhoneNumber(_, _)
         | Value::Passkey(_, _, _)
         | Value::DeviceKey(_, _, _)
@@ -608,6 +622,7 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::JwsKeyRs256(k) => ValueSetJwsKeyRs256::new(k),
         Value::Session(u, m) => ValueSetSession::new(u, m),
         Value::Oauth2Session(u, m) => ValueSetOauth2Session::new(u, m),
+        Value::UiHint(u) => ValueSetUiHint::new(u),
         Value::PhoneNumber(_, _) | Value::TrustedDeviceEnrollment(_) => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -654,6 +669,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::Oauth2Session(set) => ValueSetOauth2Session::from_dbvs2(set),
         DbValueSetV2::JwsKeyEs256(set) => ValueSetJwsKeyEs256::from_dbvs2(&set),
         DbValueSetV2::JwsKeyRs256(set) => ValueSetJwsKeyEs256::from_dbvs2(&set),
+        DbValueSetV2::UiHint(set) => ValueSetUiHint::from_dbvs2(set),
         DbValueSetV2::PhoneNumber(_, _) | DbValueSetV2::TrustedDeviceEnrollment(_) => {
             todo!()
         }

@@ -197,6 +197,7 @@ impl SchemaAttribute {
             // These are just insensitive string lookups on the hex-ified kid.
             SyntaxType::JwsKeyEs256 => matches!(v, PartialValue::Iutf8(_)),
             SyntaxType::JwsKeyRs256 => matches!(v, PartialValue::Iutf8(_)),
+            SyntaxType::UiHint => matches!(v, PartialValue::UiHint(_)),
         };
         if r {
             Ok(())
@@ -243,6 +244,7 @@ impl SchemaAttribute {
                 SyntaxType::Oauth2Session => matches!(v, Value::Oauth2Session(_, _)),
                 SyntaxType::JwsKeyEs256 => matches!(v, Value::JwsKeyEs256(_)),
                 SyntaxType::JwsKeyRs256 => matches!(v, Value::JwsKeyRs256(_)),
+                SyntaxType::UiHint => matches!(v, Value::UiHint(_)),
             };
         if r {
             Ok(())

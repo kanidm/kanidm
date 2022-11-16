@@ -2290,6 +2290,7 @@ dependencies = [
  "base32",
  "base64urlsafedata",
  "last-git-commit",
+ "num_enum",
  "scim_proto",
  "serde",
  "serde_json",

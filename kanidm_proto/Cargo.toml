@@ -18,6 +18,7 @@ wasm = ["webauthn-rs-proto/wasm"]
 [dependencies]
 base32.workspace = true
 base64urlsafedata.workspace = true
+num_enum.workspace = true
 scim_proto.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true

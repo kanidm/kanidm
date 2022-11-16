@@ -22,7 +22,7 @@ impl ValueSetSyntax {
 
     pub fn from_dbvs2(data: Vec<u16>) -> Result<ValueSet, OperationError> {
         let set: Result<_, _> = data.into_iter().map(SyntaxType::try_from).collect();
-        let set = set.map_err(|()| OperationError::InvalidValueState)?;
+        let set = set.map_err(|_| OperationError::InvalidValueState)?;
         Ok(Box::new(ValueSetSyntax { set }))
     }
 }

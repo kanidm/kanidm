@@ -139,7 +139,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
             let vs: Result<Vec<_>, _> = viter
                 .map(|dbv| {
                     if let DbValueV1::IndexType(s) = dbv {
-                        Ok(s)
+                        u16::try_from(s).map_err(|_| OperationError::InvalidValueState)
                     } else {
                         Err(OperationError::InvalidValueState)
                     }

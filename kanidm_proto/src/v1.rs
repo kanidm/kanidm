@@ -1,7 +1,9 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
+use std::str::FromStr;
 
+use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use webauthn_rs_proto::{
@@ -315,10 +317,31 @@ impl fmt::Display for AuthType {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[serde(rename_all = "lowercase")]
+#[derive(TryFromPrimitive)]
+#[repr(u16)]
 pub enum UiHint {
-    PosixAccount,
+    PosixAccount = 0,
+}
+
+impl fmt::Display for UiHint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            UiHint::PosixAccount => write!(f, "PosixAccount"),
+        }
+    }
+}
+
+impl FromStr for UiHint {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "PosixAccount" => Ok(UiHint::PosixAccount),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
