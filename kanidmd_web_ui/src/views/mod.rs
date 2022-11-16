@@ -1,5 +1,5 @@
 use gloo::console;
-use kanidm_proto::v1::{UserAuthToken, UiHint};
+use kanidm_proto::v1::{UiHint, UserAuthToken};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
