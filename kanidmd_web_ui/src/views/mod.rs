@@ -7,7 +7,7 @@ use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use crate::components::{admin_accounts, admin_groups, admin_oauth2, adminmenu};
+use crate::components::{admin_accounts, admin_groups, admin_oauth2, admin_menu};
 use crate::error::*;
 use crate::manager::Route;
 use crate::{models, utils};
@@ -444,7 +444,7 @@ impl ViewsApp {
 fn admin_routes(route: &AdminRoute) -> Html {
     match route {
         AdminRoute::AdminMenu => html! {
-          <adminmenu::AdminMenu />
+          <admin_menu::AdminMenu />
         },
         AdminRoute::AdminListAccounts => html!(
           <admin_accounts::AdminListAccounts />

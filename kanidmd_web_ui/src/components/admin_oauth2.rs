@@ -4,7 +4,7 @@ use gloo::console;
 use yew::{html, Component, Context, Html, Properties};
 use yew_router::prelude::Link;
 
-use crate::components::adminmenu::{Entity, EntityType, GetError};
+use crate::components::admin_menu::{Entity, EntityType, GetError};
 use crate::components::alpha_warning_banner;
 use crate::constants::{CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_TABLE};
 use crate::utils::{do_alert_error, do_page_header, init_request};
