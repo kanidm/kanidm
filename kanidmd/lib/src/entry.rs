@@ -33,6 +33,7 @@ use compact_jwt::JwsSigner;
 use hashbrown::HashMap;
 use kanidm_proto::v1::{
     ConsistencyError, Entry as ProtoEntry, Filter as ProtoFilter, OperationError, SchemaError,
+    UiHint,
 };
 use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use smartstring::alias::String as AttrString;
@@ -1971,6 +1972,12 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// Get the set of devicekeys on this account, if any are present.
     pub fn get_ava_devicekeys(&self, attr: &str) -> Option<&BTreeMap<Uuid, (String, DeviceKeyV4)>> {
         self.attrs.get(attr).and_then(|vs| vs.as_devicekey_map())
+    }
+
+    #[inline(always)]
+    /// Get the set of passkeys on this account, if any are present.
+    pub fn get_ava_uihint(&self, attr: &str) -> Option<&BTreeSet<UiHint>> {
+        self.attrs.get(attr).and_then(|vs| vs.as_uihint_set())
     }
 
     #[inline(always)]

@@ -91,7 +91,13 @@ macro_rules! try_from_entry {
             .cloned()
             .unwrap_or_default();
 
-        let mut ui_hints = BTreeSet::default();
+        // Provide hints from groups.
+        let mut ui_hints: BTreeSet<_> = groups
+            .iter()
+            .map(|group: &Group| group.ui_hints.iter())
+            .flatten()
+            .copied()
+            .collect();
 
         if $value.attribute_equality("class", &PVCLASS_POSIXACCOUNT) {
             ui_hints.insert(UiHint::PosixAccount);
@@ -670,9 +676,10 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::constants::JSON_ANONYMOUS_V1;
-    // use crate::entry::{Entry, EntryNew, EntrySealed};
-    // use crate::idm::account::Account;
+    use crate::event::{CreateEvent, ModifyEvent};
+    use crate::prelude::*;
+    use async_std::task;
+    use kanidm_proto::v1::{AuthType, UiHint};
 
     #[test]
     fn test_idm_account_from_anonymous() {
@@ -682,14 +689,94 @@ mod tests {
     }
 
     #[test]
-    fn test_idm_account_from_real() {
-        // For now, nothing, but later, we'll test different types of cred
-        // passing.
-    }
+    fn test_idm_account_ui_hints() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = duration_from_epoch_now();
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
 
-    #[test]
-    fn test_idm_account_set_credential() {
-        // Using a real entry, set a credential back to it's entry.
-        // In the end, this boils down to a modify operation on the Value
+            let target_uuid = Uuid::new_v4();
+
+            // Create a user. So far no ui hints.
+            // Create a service account
+            let e = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("account")),
+                ("class", Value::new_class("person")),
+                ("name", Value::new_iname("testaccount")),
+                ("uuid", Value::new_uuid(target_uuid)),
+                ("description", Value::new_utf8s("testaccount")),
+                ("displayname", Value::new_utf8s("Test Account"))
+            );
+
+            let ce = CreateEvent::new_internal(vec![e]);
+            assert!(idms_prox_write.qs_write.create(&ce).is_ok());
+
+            let account = idms_prox_write
+                .target_to_account(&target_uuid)
+                .expect("account must exist");
+            let session_id = uuid::Uuid::new_v4();
+            let uat = account
+                .to_userauthtoken(session_id, ct, AuthType::Passkey, None)
+                .expect("Unable to create uat");
+
+            // Check the ui hints are as expected.
+            assert!(uat.ui_hints.is_empty());
+
+            // Modify the user to be a posix account, ensure they get the hint.
+            let me_posix = unsafe {
+                ModifyEvent::new_internal_invalid(
+                    filter!(f_eq("name", PartialValue::new_iname("testaccount"))),
+                    ModifyList::new_list(vec![
+                        Modify::Present(
+                            AttrString::from("class"),
+                            Value::new_class("posixaccount"),
+                        ),
+                        Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+                    ]),
+                )
+            };
+            assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
+
+            // Check the ui hints are as expected.
+            let account = idms_prox_write
+                .target_to_account(&target_uuid)
+                .expect("account must exist");
+            let session_id = uuid::Uuid::new_v4();
+            let uat = account
+                .to_userauthtoken(session_id, ct, AuthType::Passkey, None)
+                .expect("Unable to create uat");
+
+            assert!(uat.ui_hints.len() == 1);
+            assert!(uat.ui_hints.contains(&UiHint::PosixAccount));
+
+            // Add a group with a ui hint, and then check they get the hint.
+            let e = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("group")),
+                ("name", Value::new_iname("test_uihint_group")),
+                ("member", Value::Refer(target_uuid)),
+                ("grant_ui_hint", Value::UiHint(UiHint::ExperimentalFeatures))
+            );
+
+            let ce = CreateEvent::new_internal(vec![e]);
+            assert!(idms_prox_write.qs_write.create(&ce).is_ok());
+
+            // Check the ui hints are as expected.
+            let account = idms_prox_write
+                .target_to_account(&target_uuid)
+                .expect("account must exist");
+            let session_id = uuid::Uuid::new_v4();
+            let uat = account
+                .to_userauthtoken(session_id, ct, AuthType::Passkey, None)
+                .expect("Unable to create uat");
+
+            assert!(uat.ui_hints.len() == 2);
+            assert!(uat.ui_hints.contains(&UiHint::PosixAccount));
+            assert!(uat.ui_hints.contains(&UiHint::ExperimentalFeatures));
+
+            assert!(idms_prox_write.commit().is_ok());
+        })
     }
 }

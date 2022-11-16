@@ -55,6 +55,9 @@ pub const UUID_IDM_ALL_ACCOUNTS: Uuid = uuid!("00000000-0000-0000-0000-000000000
 pub const _UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV: Uuid =
     uuid!("00000000-0000-0000-0000-000000000037");
 
+pub const UUID_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES: Uuid =
+    uuid!("00000000-0000-0000-0000-000000000038");
+
 //
 pub const _UUID_IDM_HIGH_PRIVILEGE: Uuid = uuid!("00000000-0000-0000-0000-000000001000");
 
@@ -206,6 +209,7 @@ pub const _UUID_SCHEMA_ATTR_SYNC_TOKEN_SESSION: Uuid =
 pub const _UUID_SCHEMA_ATTR_SYNC_COOKIE: Uuid = uuid!("00000000-0000-0000-0000-ffff00000116");
 pub const _UUID_SCHEMA_ATTR_OAUTH2_SESSION: Uuid = uuid!("00000000-0000-0000-0000-ffff00000117");
 pub const UUID_SCHEMA_ATTR_ACP_RECEIVER_GROUP: Uuid = uuid!("00000000-0000-0000-0000-ffff00000118");
+pub const _UUID_SCHEMA_ATTR_GRANT_UI_HINT: Uuid = uuid!("00000000-0000-0000-0000-ffff00000119");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

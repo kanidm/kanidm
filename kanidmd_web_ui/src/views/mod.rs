@@ -1,5 +1,5 @@
 use gloo::console;
-use kanidm_proto::v1::UserAuthToken;
+use kanidm_proto::v1::{UserAuthToken, UiHint};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
@@ -236,6 +236,8 @@ impl ViewsApp {
     fn view_authenticated(&self, ctx: &Context<Self>, uat: &UserAuthToken) -> Html {
         let current_user_uat = uat.clone();
 
+        let ui_hint_experimental = uat.ui_hints.contains(&UiHint::ExperimentalFeatures);
+
         // WARN set dash-body against body here?
         html! {
           <>
@@ -247,41 +249,48 @@ impl ViewsApp {
                 <button class="navbar-toggler bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
                   <img src="/pkg/img/favicon.png" />
                 </button>
+
                 <div class="collapse navbar-collapse" id="navbarCollapse">
                   <ul class="navbar-nav me-auto mb-2 mb-md-0">
-                  <li class="mb-1">
-                  <Link<ViewRoute> classes="nav-link" to={ViewRoute::Apps}>
-                    <span data-feather="file"></span>
-                    { "Apps" }
-                  </Link<ViewRoute>>
-                </li>
 
-                <li class="mb-1">
-                  <Link<ViewRoute> classes="nav-link" to={ViewRoute::Profile}>
-                    <span data-feather="file"></span>
-                    { "Profile" }
-                  </Link<ViewRoute>>
-                </li>
+                    <li class="mb-1">
+                      <Link<ViewRoute> classes="nav-link" to={ViewRoute::Apps}>
+                        <span data-feather="file"></span>
+                        { "Apps" }
+                      </Link<ViewRoute>>
+                    </li>
 
-                <li class="mb-1">
-                  <Link<ViewRoute> classes="nav-link" to={ViewRoute::Security}>
-                    <span data-feather="file"></span>
-                    { "Security" }
-                  </Link<ViewRoute>>
-                </li>
-                // TODO: the admin link should only show up if you're an admin
-                <li class="mb-1">
-                  <Link<AdminRoute> classes="nav-link" to={AdminRoute::AdminMenu}>
-                    <span data-feather="file"></span>
-                    { "Admin" }
-                  </Link<AdminRoute>>
-                </li>
-                <li class="mb-1">
-                  <a class="nav-link" href="#"
-                    data-bs-toggle="modal"
-                    data-bs-target={format!("#{}", crate::constants::ID_SIGNOUTMODAL)}
-                    >{"Sign out"}</a>
-                </li>
+                    if ui_hint_experimental {
+                      <li class="mb-1">
+                        <Link<ViewRoute> classes="nav-link" to={ViewRoute::Profile}>
+                          <span data-feather="file"></span>
+                          { "Profile" }
+                        </Link<ViewRoute>>
+                      </li>
+                    }
+
+                    <li class="mb-1">
+                      <Link<ViewRoute> classes="nav-link" to={ViewRoute::Security}>
+                        <span data-feather="file"></span>
+                        { "Security" }
+                      </Link<ViewRoute>>
+                    </li>
+
+                    if ui_hint_experimental {
+                      <li class="mb-1">
+                        <Link<AdminRoute> classes="nav-link" to={AdminRoute::AdminMenu}>
+                          <span data-feather="file"></span>
+                          { "Admin" }
+                        </Link<AdminRoute>>
+                      </li>
+                    }
+
+                    <li class="mb-1">
+                      <a class="nav-link" href="#"
+                        data-bs-toggle="modal"
+                        data-bs-target={format!("#{}", crate::constants::ID_SIGNOUTMODAL)}
+                        >{"Sign out"}</a>
+                    </li>
                   </ul>
                   <form class="d-flex">
                     <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search" />

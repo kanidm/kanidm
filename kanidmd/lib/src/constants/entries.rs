@@ -3,6 +3,7 @@ use crate::constants::uuids::*;
 use crate::constants::values::*;
 use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
 use crate::value::Value;
+use kanidm_proto::v1::UiHint;
 
 #[cfg(test)]
 use uuid::{uuid, Uuid};
@@ -476,6 +477,28 @@ pub const JSON_IDM_ALL_ACCOUNTS: &str = r#"{
         ]
     }
 }"#;
+
+lazy_static! {
+    pub static ref E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_GROUP.clone()),
+        (
+            "name",
+            Value::new_iname("idm_ui_enable_experimental_features")
+        ),
+        (
+            "uuid",
+            Value::new_uuid(UUID_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES)
+        ),
+        (
+            "description",
+            Value::new_utf8s(
+                "Members of this group will have access to experimental web UI features."
+            )
+        ),
+        ("grant_ui_hint", Value::UiHint(UiHint::ExperimentalFeatures))
+    );
+}
 
 /// This must be the last group to init to include the UUID of the other high priv groups.
 pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{

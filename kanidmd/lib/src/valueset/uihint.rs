@@ -1,50 +1,39 @@
-use smolset::SmolSet;
+use std::collections::BTreeSet;
 
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
+use kanidm_proto::v1::UiHint;
+
 #[derive(Debug, Clone)]
-pub struct ValueSetIndex {
-    set: SmolSet<[IndexType; 3]>,
+pub struct ValueSetUiHint {
+    set: BTreeSet<UiHint>,
 }
 
-impl ValueSetIndex {
-    pub fn new(s: IndexType) -> Box<Self> {
-        let mut set = SmolSet::new();
+impl ValueSetUiHint {
+    pub fn new(s: UiHint) -> Box<Self> {
+        let mut set = BTreeSet::new();
         set.insert(s);
-        Box::new(ValueSetIndex { set })
+        Box::new(ValueSetUiHint { set })
     }
 
-    pub fn push(&mut self, s: IndexType) -> bool {
+    pub fn push(&mut self, s: UiHint) -> bool {
         self.set.insert(s)
     }
 
     pub fn from_dbvs2(data: Vec<u16>) -> Result<ValueSet, OperationError> {
-        let set: Result<_, _> = data.into_iter().map(IndexType::try_from).collect();
+        let set: Result<_, _> = data.into_iter().map(UiHint::try_from).collect();
         let set = set.map_err(|_| OperationError::InvalidValueState)?;
-        Ok(Box::new(ValueSetIndex { set }))
-    }
-
-    // We need to allow this, because there seems to be a bug using it fromiterator in entry.rs
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_iter<T>(iter: T) -> Option<Box<ValueSetIndex>>
-    where
-        T: IntoIterator<Item = IndexType>,
-    {
-        let set = iter.into_iter().collect();
-        Some(Box::new(ValueSetIndex { set }))
+        Ok(Box::new(ValueSetUiHint { set }))
     }
 }
 
-impl ValueSetT for ValueSetIndex {
+impl ValueSetT for ValueSetUiHint {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
-            Value::Index(u) => Ok(self.set.insert(u)),
-            _ => {
-                debug_assert!(false);
-                Err(OperationError::InvalidValueState)
-            }
+            Value::UiHint(s) => Ok(self.set.insert(s)),
+            _ => Err(OperationError::InvalidValueState),
         }
     }
 
@@ -54,7 +43,7 @@ impl ValueSetT for ValueSetIndex {
 
     fn remove(&mut self, pv: &PartialValue) -> bool {
         match pv {
-            PartialValue::Index(u) => self.set.remove(u),
+            PartialValue::UiHint(s) => self.set.remove(s),
             _ => {
                 debug_assert!(false);
                 true
@@ -64,7 +53,7 @@ impl ValueSetT for ValueSetIndex {
 
     fn contains(&self, pv: &PartialValue) -> bool {
         match pv {
-            PartialValue::Index(u) => self.set.contains(u),
+            PartialValue::UiHint(s) => self.set.contains(&s),
             _ => false,
         }
     }
@@ -82,11 +71,11 @@ impl ValueSetT for ValueSetIndex {
     }
 
     fn generate_idx_eq_keys(&self) -> Vec<String> {
-        self.set.iter().map(|b| b.to_string()).collect()
+        self.set.iter().map(|u| (*u as u16).to_string()).collect()
     }
 
     fn syntax(&self) -> SyntaxType {
-        SyntaxType::IndexId
+        SyntaxType::UiHint
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
@@ -94,23 +83,23 @@ impl ValueSetT for ValueSetIndex {
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(self.set.iter().map(|b| b.to_string()))
+        Box::new(self.set.iter().map(|u| u.to_string()))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
-        DbValueSetV2::IndexType(self.set.iter().map(|s| *s as u16).collect())
+        DbValueSetV2::UiHint(self.set.iter().map(|u| *u as u16).collect())
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
-        Box::new(self.set.iter().copied().map(PartialValue::Index))
+        Box::new(self.set.iter().copied().map(|i| PartialValue::UiHint(i)))
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
-        Box::new(self.set.iter().copied().map(Value::Index))
+        Box::new(self.set.iter().copied().map(|i| Value::UiHint(i)))
     }
 
     fn equal(&self, other: &ValueSet) -> bool {
-        if let Some(other) = other.as_index_set() {
+        if let Some(other) = other.as_uihint_set() {
             &self.set == other
         } else {
             debug_assert!(false);
@@ -119,7 +108,7 @@ impl ValueSetT for ValueSetIndex {
     }
 
     fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError> {
-        if let Some(b) = other.as_index_set() {
+        if let Some(b) = other.as_uihint_set() {
             mergesets!(self.set, b)
         } else {
             debug_assert!(false);
@@ -127,11 +116,11 @@ impl ValueSetT for ValueSetIndex {
         }
     }
 
-    fn as_indextype_iter(&self) -> Option<Box<dyn Iterator<Item = IndexType> + '_>> {
-        Some(Box::new(self.set.iter().copied()))
+    fn as_uihint_set(&self) -> Option<&BTreeSet<UiHint>> {
+        Some(&self.set)
     }
 
-    fn as_index_set(&self) -> Option<&SmolSet<[IndexType; 3]>> {
-        Some(&self.set)
+    fn as_uihint_iter(&self) -> Option<Box<dyn Iterator<Item = UiHint> + '_>> {
+        Some(Box::new(self.set.iter().copied()))
     }
 }

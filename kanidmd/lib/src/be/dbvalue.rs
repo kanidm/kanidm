@@ -495,7 +495,7 @@ pub enum DbValueSetV2 {
     #[serde(rename = "SY")]
     SyntaxType(Vec<u16>),
     #[serde(rename = "IN")]
-    IndexType(Vec<usize>),
+    IndexType(Vec<u16>),
     #[serde(rename = "RF")]
     Reference(Vec<Uuid>),
     #[serde(rename = "JF")]
@@ -550,11 +550,13 @@ pub enum DbValueSetV2 {
     JwsKeyRs256(Vec<Vec<u8>>),
     #[serde(rename = "AS")]
     Oauth2Session(Vec<DbValueOauth2Session>),
+    #[serde(rename = "UH")]
+    UiHint(Vec<u16>),
 }
 
 impl DbValueSetV2 {
     pub fn len(&self) -> usize {
-        match &self {
+        match self {
             DbValueSetV2::Utf8(set) => set.len(),
             DbValueSetV2::Iutf8(set) => set.len(),
             DbValueSetV2::Iname(set) => set.len(),
@@ -589,6 +591,7 @@ impl DbValueSetV2 {
             DbValueSetV2::Oauth2Session(set) => set.len(),
             DbValueSetV2::JwsKeyEs256(set) => set.len(),
             DbValueSetV2::JwsKeyRs256(set) => set.len(),
+            DbValueSetV2::UiHint(set) => set.len(),
         }
     }
 

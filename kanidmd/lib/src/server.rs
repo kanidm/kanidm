@@ -4,13 +4,14 @@
 // This is really only used for long lived, high level types that need clone
 // that otherwise can't be cloned. Think Mutex.
 use std::cell::Cell;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
 use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
 use concread::cowcell::*;
 use hashbrown::{HashMap, HashSet};
-use kanidm_proto::v1::{ConsistencyError, SchemaError};
+use kanidm_proto::v1::{ConsistencyError, SchemaError, UiHint};
 use tokio::sync::{Semaphore, SemaphorePermit};
 use tracing::trace;
 
@@ -517,6 +518,9 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::JwsKeyEs256 => Err(OperationError::InvalidAttribute("JwsKeyEs256 Values can not be supplied through modification".to_string())),
                     SyntaxType::JwsKeyRs256 => Err(OperationError::InvalidAttribute("JwsKeyRs256 Values can not be supplied through modification".to_string())),
                     SyntaxType::Oauth2Session => Err(OperationError::InvalidAttribute("Oauth2Session Values can not be supplied through modification".to_string())),
+                    SyntaxType::UiHint => UiHint::from_str(value)
+                        .map(Value::UiHint)
+                        .map_err(|()| OperationError::InvalidAttribute("Invalid uihint syntax".to_string())),
                 }
             }
             None => {
@@ -645,6 +649,11 @@ pub trait QueryServerTransaction<'a> {
                             )
                         })
                     }
+                    SyntaxType::UiHint => UiHint::from_str(value)
+                        .map(PartialValue::UiHint)
+                        .map_err(|()| {
+                            OperationError::InvalidAttribute("Invalid uihint syntax".to_string())
+                        }),
                 }
             }
             None => {
@@ -2682,6 +2691,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME,
             JSON_SCHEMA_ATTR_SYNC_TOKEN_SESSION,
             JSON_SCHEMA_ATTR_SYNC_COOKIE,
+            JSON_SCHEMA_ATTR_GRANT_UI_HINT,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_ORGPERSON,
             JSON_SCHEMA_CLASS_GROUP,
@@ -2848,13 +2858,26 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug_assert!(res.is_ok());
         res?;
 
+        let idm_entries = [E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES.clone()];
+
+        let res: Result<(), _> = idm_entries
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry));
+        if res.is_ok() {
+            admin_debug!("initialise_idm -> result Ok!");
+        } else {
+            admin_error!(?res, "initialise_idm p3 -> result");
+        }
+        debug_assert!(res.is_ok());
+        res?;
+
         self.changed_schema.set(true);
         self.changed_acp.set(true);
 
         Ok(())
     }
 
-    #[instrument(level = "info", name = "reload_schema", skip(self))]
+    #[instrument(level = "debug", name = "reload_schema", skip(self))]
     fn reload_schema(&mut self) -> Result<(), OperationError> {
         // supply entries to the writable schema to reload from.
         // find all attributes.
