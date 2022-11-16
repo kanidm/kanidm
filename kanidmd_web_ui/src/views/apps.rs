@@ -3,14 +3,16 @@ use gloo::console;
 use yew::prelude::*;
 
 use crate::error::FetchError;
-use crate::utils;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
+// use crate::utils;
+// use wasm_bindgen::JsCast;
+// use wasm_bindgen_futures::JsFuture;
+// use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
+
+use kanidm_proto::internal::AppLink;
 
 pub enum Msg {
-    Ready { apps: Vec<()> },
+    Ready { apps: Vec<AppLink> },
     Error { emsg: String, kopid: Option<String> },
 }
 
@@ -25,7 +27,7 @@ impl From<FetchError> for Msg {
 
 pub enum State {
     Waiting,
-    Ready { apps: Vec<()> },
+    Ready { apps: Vec<AppLink> },
     Error { emsg: String, kopid: Option<String> },
 }
 
@@ -97,10 +99,31 @@ impl AppsApp {
         }
     }
 
-    fn view_ready(&self, _ctx: &Context<Self>, _apps: &[()]) -> Html {
+    fn view_ready(&self, _ctx: &Context<Self>, apps: &[AppLink]) -> Html {
+        // Please help me, I don't know how to make a grid look nice 🥺
         html! {
             <>
-            <p>{ "Weady" }</p>
+            {
+                apps.iter().map(|applink| {
+                // Should be a seperate component?
+                match &applink {
+                    AppLink::Oauth2 {
+                        display_name, redirect_url
+                    } => {
+                        let redirect_url = redirect_url.to_string();
+                        html!{
+                            <div>
+                              <h3>{ display_name }</h3>
+                              <a href={ redirect_url.clone() }><button href={ redirect_url } class="btn btn-secondary" aria-label="Go to App">
+                                {"Go to App"}
+                              </button></a>
+
+                            </div>
+                        }
+                    }
+                }
+                }).collect::<Html>()
+            }
             </>
         }
     }
@@ -132,6 +155,10 @@ impl AppsApp {
     }
 
     async fn fetch_user_apps() -> Result<Msg, FetchError> {
+        // WILLIAM TODO - Add an api end point to get these applinks from
+        // kanidm based on what you can access.
+
+        /*
         let mut opts = RequestInit::new();
         opts.method("GET");
         opts.mode(RequestMode::SameOrigin);
@@ -161,5 +188,14 @@ impl AppsApp {
             let emsg = text.as_string().unwrap_or_default();
             Ok(Msg::Error { emsg, kopid })
         }
+        */
+
+        Ok(Msg::Ready {
+            apps: vec![AppLink::Oauth2 {
+                display_name: "Test Application".to_string(),
+                redirect_url: url::Url::parse("http://localhost:8080")
+                    .expect_throw("Failed to setup url"),
+            }],
+        })
     }
 }
