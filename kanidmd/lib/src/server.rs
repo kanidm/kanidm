@@ -2858,6 +2858,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug_assert!(res.is_ok());
         res?;
 
+        let idm_entries = [E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES.clone()];
+
+        let res: Result<(), _> = idm_entries
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry));
+        if res.is_ok() {
+            admin_debug!("initialise_idm -> result Ok!");
+        } else {
+            admin_error!(?res, "initialise_idm p3 -> result");
+        }
+        debug_assert!(res.is_ok());
+        res?;
+
         self.changed_schema.set(true);
         self.changed_acp.set(true);
 
