@@ -1,3 +1,6 @@
+use std::collections::BTreeSet;
+
+use kanidm_proto::v1::UiHint;
 use kanidm_proto::v1::{Group as ProtoGroup, OperationError};
 use uuid::Uuid;
 
@@ -10,6 +13,7 @@ pub struct Group {
     spn: String,
     uuid: Uuid,
     // We'll probably add policy and claims later to this
+    pub ui_hints: BTreeSet<UiHint>,
 }
 
 macro_rules! try_from_account_e {
@@ -23,13 +27,21 @@ macro_rules! try_from_account_e {
             })?;
         */
 
+        // Setup the user private group
         let spn = $value.get_ava_single_proto_string("spn").ok_or(
             OperationError::InvalidAccountState("Missing attribute: spn".to_string()),
         )?;
 
         let uuid = $value.get_uuid();
 
-        let upg = Group { spn, uuid };
+        // We could allow ui hints on the user direct in the future?
+        let ui_hints = BTreeSet::default();
+
+        let upg = Group {
+            spn,
+            uuid,
+            ui_hints,
+        };
 
         let mut groups: Vec<Group> = match $value.get_ava_as_refuuid("memberof") {
             Some(riter) => {
@@ -111,7 +123,16 @@ impl Group {
 
         let uuid = value.get_uuid();
 
-        Ok(Group { spn, uuid })
+        let ui_hints = value
+            .get_ava_uihint("grant_ui_hint")
+            .cloned()
+            .unwrap_or_default();
+
+        Ok(Group {
+            spn,
+            uuid,
+            ui_hints,
+        })
     }
 
     pub fn to_proto(&self) -> ProtoGroup {

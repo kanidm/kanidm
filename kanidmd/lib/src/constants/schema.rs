@@ -1262,6 +1262,37 @@ pub const JSON_SCHEMA_ATTR_SYNC_COOKIE: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_GRANT_UI_HINT: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "A ui hint that is granted via membership to a group"
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "true"
+      ],
+      "attributename": [
+        "grant_ui_hint"
+      ],
+      "syntax": [
+        "UIHINT"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000119"
+      ]
+    }
+}"#;
+
 // === classes ===
 
 pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
@@ -1337,7 +1368,8 @@ pub const JSON_SCHEMA_CLASS_GROUP: &str = r#"
         "group"
       ],
       "systemmay": [
-        "member"
+        "member",
+        "grant_ui_hint"
       ],
       "systemmust": [
         "name",
