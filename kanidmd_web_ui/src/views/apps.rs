@@ -2,6 +2,8 @@
 use gloo::console;
 use yew::prelude::*;
 
+use crate::components::alpha_warning_banner;
+use crate::constants::{CSS_CARD, CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER, CSS_CARD_BODY};
 use crate::error::FetchError;
 use wasm_bindgen::prelude::*;
 // use crate::utils;
@@ -103,26 +105,39 @@ impl AppsApp {
         // Please help me, I don't know how to make a grid look nice 🥺
         html! {
             <>
-            {
-                apps.iter().map(|applink| {
-                // Should be a seperate component?
-                match &applink {
-                    AppLink::Oauth2 {
-                        display_name, redirect_url
-                    } => {
-                        let redirect_url = redirect_url.to_string();
-                        html!{
-                            <div>
-                              <h3>{ display_name }</h3>
-                              <a href={ redirect_url.clone() }><button href={ redirect_url } class="btn btn-secondary" aria-label="Go to App">
-                                {"Go to App"}
-                              </button></a>
+        <div class={CSS_PAGE_HEADER}>
+        <h2>{ "Applications list" }</h2>
+        </div>
+        { alpha_warning_banner() }
+        if !apps.is_empty() {
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
+                {
+                    apps.iter().map(|applink| {
+                    match &applink {
+                        AppLink::Oauth2 {
+                            display_name, redirect_url
+                        } => {
+                            let redirect_url = redirect_url.to_string();
+                            html!{
+                            <div class="col">
+                                <div class={CSS_CARD}>
+                                <h3>
+                                    <a href={ redirect_url.clone() } class={CSS_LINK_DARK_STRETCHED}>{ display_name }</a>
+                                    </h3>
+                                    <div class={CSS_CARD_BODY}>{ "We could put some text here but that's only if there was an app description!"}
+                                    </div>
+                                //   <a href={ redirect_url.clone() }><button href={ redirect_url } class="btn btn-secondary" aria-label="Go to App">
+                                //     {"Go to App"}
+                                //   </button></a>
 
-                            </div>
+                                    </div>
+                                </div>
+                            }
                         }
                     }
+                    }).collect::<Html>()
                 }
-                }).collect::<Html>()
+                </div>
             }
             </>
         }

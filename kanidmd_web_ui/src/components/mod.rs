@@ -3,8 +3,8 @@ use yew::Html;
 
 pub mod admin_accounts;
 pub mod admin_groups;
-pub mod admin_oauth2;
 pub mod admin_menu;
+pub mod admin_oauth2;
 pub mod change_unix_password;
 
 /// creates the "Kanidm is alpha" banner

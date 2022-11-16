@@ -3,12 +3,9 @@ use yew::{html, Component, Context, Html, Properties};
 use yew_router::prelude::Link;
 
 use crate::components::alpha_warning_banner;
-use crate::constants::{CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER};
+use crate::constants::{CSS_CARD, CSS_CARD_BODY, CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER};
 // use crate::error::FetchError;
 use crate::views::AdminRoute;
-
-const CSS_CARD: &str = "card text-center";
-const CSS_CARD_BODY: &str = "card-body text-center";
 
 #[derive(Eq, PartialEq, Properties)]
 pub struct Props;

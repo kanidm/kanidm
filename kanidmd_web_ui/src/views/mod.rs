@@ -7,7 +7,7 @@ use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use crate::components::{admin_accounts, admin_groups, admin_oauth2, admin_menu};
+use crate::components::{admin_accounts, admin_groups, admin_menu, admin_oauth2};
 use crate::error::*;
 use crate::manager::Route;
 use crate::{models, utils};

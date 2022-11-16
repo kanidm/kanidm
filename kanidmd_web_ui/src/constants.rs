@@ -30,3 +30,7 @@ pub const CSS_DT: &str = "col-6";
 
 pub const CSS_BREADCRUMB_ITEM: &str = "breadcrumb-item";
 pub const CSS_BREADCRUMB_ITEM_ACTIVE: &str = "breadcrumb-item active";
+
+// used in the UI for ... cards
+pub const CSS_CARD: &str = "card text-center";
+pub const CSS_CARD_BODY: &str = "card-body text-center";
