@@ -1,5 +1,5 @@
 use gloo::console;
-use kanidm_proto::v1::{UserAuthToken, UiHint};
+use kanidm_proto::v1::{UiHint, UserAuthToken};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
@@ -7,7 +7,7 @@ use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use crate::components::{admin_accounts, admin_groups, admin_oauth2, adminmenu};
+use crate::components::{admin_accounts, admin_groups, admin_menu, admin_oauth2};
 use crate::error::*;
 use crate::manager::Route;
 use crate::{models, utils};
@@ -444,7 +444,7 @@ impl ViewsApp {
 fn admin_routes(route: &AdminRoute) -> Html {
     match route {
         AdminRoute::AdminMenu => html! {
-          <adminmenu::AdminMenu />
+          <admin_menu::AdminMenu />
         },
         AdminRoute::AdminListAccounts => html!(
           <admin_accounts::AdminListAccounts />

@@ -2505,6 +2505,7 @@ dependencies = [
  "serde",
  "serde-wasm-bindgen 0.4.5",
  "serde_json",
+ "url",
  "uuid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -5041,9 +5042,9 @@ dependencies = [
 
 [[package]]
 name = "webauthn-authenticator-rs"
-version = "0.4.8"
+version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbc33594bd26aabc90ce6d081d98617f5d16803660187f88912dead3ac2a9784"
+checksum = "603b8602cae2d6c3706b6195765ff582389494d10c442d84a1de2ed5a25679ef"
 dependencies = [
  "authenticator-ctap2-2021",
  "base64urlsafedata",
@@ -5075,9 +5076,9 @@ dependencies = [
 
 [[package]]
 name = "webauthn-rs-core"
-version = "0.4.8"
+version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ef9a989b5cd2c39c52850c4bc36ebc88907a06ceacf7f80e45d78a308944b9d"
+checksum = "294c78c83f12153a51e1cf1e6970b5da1397645dada39033a9c3173a8fc4fc2b"
 dependencies = [
  "base64 0.13.1",
  "base64urlsafedata",
@@ -5099,9 +5100,9 @@ dependencies = [
 
 [[package]]
 name = "webauthn-rs-proto"
-version = "0.4.8"
+version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "585c7662de492733e6ea11e2726270bf34f5d7f8dbd08cd089830fbb3639a229"
+checksum = "d24e638361a63ba5c0a0be6a60229490fcdf33740ed63df5bb6bdb627b52a138"
 dependencies = [
  "base64urlsafedata",
  "js-sys",

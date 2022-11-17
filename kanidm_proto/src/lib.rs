@@ -14,5 +14,6 @@ pub mod oauth2;
 pub mod scim_v1;
 pub mod utils;
 pub mod v1;
+pub mod internal;
 
 pub use webauthn_rs_proto as webauthn;

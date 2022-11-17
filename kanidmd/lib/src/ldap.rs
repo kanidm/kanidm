@@ -170,15 +170,23 @@ impl LdapServer {
             // Map the Some(a,v) to ...?
 
             let ext_filter = match (&sr.scope, req_dn) {
-                (LdapSearchScope::OneLevel, Some(_r)) => return Ok(vec![sr.gen_success()]),
-                (LdapSearchScope::OneLevel, None) => {
+                // OneLevel and Child searches are veerrrryyy similar for us because child
+                // is a "subtree search excluding base". Because we don't have a tree structure at
+                // all, this is the same as a onelevel (ald children of base excludeing base).
+                (LdapSearchScope::Children, Some(_r)) | (LdapSearchScope::OneLevel, Some(_r)) => {
+                    return Ok(vec![sr.gen_success()])
+                }
+                (LdapSearchScope::Children, None) | (LdapSearchScope::OneLevel, None) => {
                     // exclude domain_info
                     Some(LdapFilter::Not(Box::new(LdapFilter::Equality(
                         "uuid".to_string(),
                         STR_UUID_DOMAIN_INFO.to_string(),
                     ))))
                 }
-                (LdapSearchScope::Base, Some((a, v))) => Some(LdapFilter::Equality(a, v)),
+                // because we request a specific DN, these are the same since we want the same
+                // entry.
+                (LdapSearchScope::Base, Some((a, v)))
+                | (LdapSearchScope::Subtree, Some((a, v))) => Some(LdapFilter::Equality(a, v)),
                 (LdapSearchScope::Base, None) => {
                     // domain_info
                     Some(LdapFilter::Equality(
@@ -186,7 +194,6 @@ impl LdapServer {
                         STR_UUID_DOMAIN_INFO.to_string(),
                     ))
                 }
-                (LdapSearchScope::Subtree, Some((a, v))) => Some(LdapFilter::Equality(a, v)),
                 (LdapSearchScope::Subtree, None) => {
                     // No filter changes needed.
                     None
