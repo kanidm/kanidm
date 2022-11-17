@@ -1832,6 +1832,10 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attrs.get(attr)
     }
 
+    pub fn get_ava_refer(&self, attr: &str) -> Option<&BTreeSet<Uuid>> {
+        self.attrs.get(attr).and_then(|vs| vs.as_refer_set())
+    }
+
     #[inline(always)]
     pub fn get_ava_as_iutf8_iter(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
         self.attrs.get(attr).and_then(|vs| vs.as_iutf8_iter())
@@ -1975,7 +1979,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     #[inline(always)]
-    /// Get the set of passkeys on this account, if any are present.
+    /// Get the set of uihints on this account, if any are present.
     pub fn get_ava_uihint(&self, attr: &str) -> Option<&BTreeSet<UiHint>> {
         self.attrs.get(attr).and_then(|vs| vs.as_uihint_set())
     }

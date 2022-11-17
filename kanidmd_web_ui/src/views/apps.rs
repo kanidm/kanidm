@@ -2,14 +2,13 @@
 use gloo::console;
 use yew::prelude::*;
 
-use crate::components::alpha_warning_banner;
-use crate::constants::{CSS_CARD, CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER, CSS_CARD_BODY};
+use crate::constants::{CSS_CARD, CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER};
 use crate::error::FetchError;
+use crate::utils;
 use wasm_bindgen::prelude::*;
-// use crate::utils;
-// use wasm_bindgen::JsCast;
-// use wasm_bindgen_futures::JsFuture;
-// use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
+use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::JsFuture;
+use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
 
 use kanidm_proto::internal::AppLink;
 
@@ -108,28 +107,25 @@ impl AppsApp {
         <div class={CSS_PAGE_HEADER}>
         <h2>{ "Applications list" }</h2>
         </div>
-        { alpha_warning_banner() }
-        if !apps.is_empty() {
+          if !apps.is_empty() {
             <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
                 {
                     apps.iter().map(|applink| {
                     match &applink {
                         AppLink::Oauth2 {
-                            display_name, redirect_url
+                            name: _,
+                            display_name,
+                            redirect_url,
+                            icon: _,
                         } => {
                             let redirect_url = redirect_url.to_string();
                             html!{
-                            <div class="col">
-                                <div class={CSS_CARD}>
-                                <h3>
-                                    <a href={ redirect_url.clone() } class={CSS_LINK_DARK_STRETCHED}>{ display_name }</a>
-                                    </h3>
-                                    <div class={CSS_CARD_BODY}>{ "We could put some text here but that's only if there was an app description!"}
-                                    </div>
-                                //   <a href={ redirect_url.clone() }><button href={ redirect_url } class="btn btn-secondary" aria-label="Go to App">
-                                //     {"Go to App"}
-                                //   </button></a>
-
+                                <div class="col">
+                                    <div class={CSS_CARD}>
+                                        <h3>
+                                            <a href={ redirect_url.clone() } class={CSS_LINK_DARK_STRETCHED}>{ display_name }</a>
+                                            <img src={"/pkg/img/icon-oauth2.svg"} />
+                                        </h3>
                                     </div>
                                 </div>
                             }
@@ -139,7 +135,7 @@ impl AppsApp {
                 }
                 </div>
             }
-            </>
+        </>
         }
     }
 
@@ -170,16 +166,12 @@ impl AppsApp {
     }
 
     async fn fetch_user_apps() -> Result<Msg, FetchError> {
-        // WILLIAM TODO - Add an api end point to get these applinks from
-        // kanidm based on what you can access.
-
-        /*
         let mut opts = RequestInit::new();
         opts.method("GET");
         opts.mode(RequestMode::SameOrigin);
         opts.credentials(RequestCredentials::SameOrigin);
 
-        let request = Request::new_with_str_and_init("/no/such/route", &opts)?;
+        let request = Request::new_with_str_and_init("/v1/self/_applinks", &opts)?;
 
         request
             .headers()
@@ -193,7 +185,7 @@ impl AppsApp {
 
         if status == 200 {
             let jsval = JsFuture::from(resp.json()?).await?;
-            let apps: Vec<()> = serde_wasm_bindgen::from_value(jsval)
+            let apps: Vec<AppLink> = serde_wasm_bindgen::from_value(jsval)
                 .expect_throw("Invalid response type - auth_init::AuthResponse");
             Ok(Msg::Ready { apps })
         } else {
@@ -203,14 +195,5 @@ impl AppsApp {
             let emsg = text.as_string().unwrap_or_default();
             Ok(Msg::Error { emsg, kopid })
         }
-        */
-
-        Ok(Msg::Ready {
-            apps: vec![AppLink::Oauth2 {
-                display_name: "Test Application".to_string(),
-                redirect_url: url::Url::parse("http://localhost:8080")
-                    .expect_throw("Failed to setup url"),
-            }],
-        })
     }
 }

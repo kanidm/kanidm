@@ -244,7 +244,7 @@ impl Component for Oauth2App {
                 };
             }
         };
-        console::debug!(format!("{query:?}", ));
+        console::debug!(format!("{query:?}",));
 
         // In the query, if this is openid there MAY be a hint
         // as to the users name.

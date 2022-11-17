@@ -1,4 +1,3 @@
-
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -7,10 +6,10 @@ use url::Url;
 /// used in the UI to render applications on the dashboard for a user to access.
 pub enum AppLink {
     Oauth2 {
+        name: String,
         display_name: String,
         redirect_url: Url,
-        // Future problem.
-        // icon: Icon,
-
-    }
+        // Where the icon can be retrieved from.
+        icon: Option<Url>,
+    },
 }

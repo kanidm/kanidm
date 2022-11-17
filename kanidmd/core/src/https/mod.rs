@@ -489,6 +489,12 @@ pub fn create_https_server(
         .at("/:id/_unix/_token")
         .mapped_get(&mut routemap, group_get_id_unix_token);
 
+    // We allow caching oauth2 RP icons.
+    let mut oauth2_route_cacheable = tserver_cacheable.at("/v1/oauth2");
+    oauth2_route_cacheable
+        .at("/:rs_name/_icon")
+        .mapped_get(&mut routemap, do_nothing);
+
     // ==== These routes can not be cached
     let mut appserver = tserver.at("");
     // Add our version injector, we only add this to apis.
@@ -601,6 +607,11 @@ pub fn create_https_server(
     self_route
         .at("/_radius/_config/:token/apple")
         .mapped_get(&mut routemap, do_nothing);
+
+    // Applinks are the list of apps this account can access.
+    self_route
+        .at("/_applinks")
+        .mapped_get(&mut routemap, applinks_get);
 
     let mut person_route = appserver.at("/v1/person");
     person_route

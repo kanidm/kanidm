@@ -4,6 +4,7 @@
 //! is implemented.
 
 pub mod account;
+pub mod applinks;
 pub mod authsession;
 pub mod credupdatesession;
 pub mod delayed;
