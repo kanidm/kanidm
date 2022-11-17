@@ -210,6 +210,8 @@ pub const _UUID_SCHEMA_ATTR_SYNC_COOKIE: Uuid = uuid!("00000000-0000-0000-0000-f
 pub const _UUID_SCHEMA_ATTR_OAUTH2_SESSION: Uuid = uuid!("00000000-0000-0000-0000-ffff00000117");
 pub const UUID_SCHEMA_ATTR_ACP_RECEIVER_GROUP: Uuid = uuid!("00000000-0000-0000-0000-ffff00000118");
 pub const _UUID_SCHEMA_ATTR_GRANT_UI_HINT: Uuid = uuid!("00000000-0000-0000-0000-ffff00000119");
+pub const _UUID_SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000120");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

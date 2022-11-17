@@ -148,7 +148,9 @@ impl IdRawEntry {
 
     fn into_entry(self) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
         let db_e = serde_json::from_slice(self.data.as_slice()).map_err(|e| {
-            admin_error!(?e, "Serde JSON Error");
+            admin_error!(?e, id = %self.id, "Serde JSON Error");
+            let raw_str = String::from_utf8_lossy(self.data.as_slice());
+            debug!(raw = %raw_str);
             OperationError::SerdeJsonError
         })?;
         // let id = u64::try_from(self.id).map_err(|_| OperationError::InvalidEntryId)?;

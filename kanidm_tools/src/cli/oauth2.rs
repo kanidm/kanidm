@@ -15,6 +15,7 @@ impl Oauth2Opt {
             Oauth2Opt::Delete(nopt) => nopt.copt.debug,
             Oauth2Opt::SetDisplayname(cbopt) => cbopt.nopt.copt.debug,
             Oauth2Opt::SetName { nopt, .. } => nopt.copt.debug,
+            Oauth2Opt::SetLandingUrl { nopt, .. } => nopt.copt.debug,
             Oauth2Opt::EnablePkce(nopt) => nopt.copt.debug,
             Oauth2Opt::DisablePkce(nopt) => nopt.copt.debug,
             Oauth2Opt::EnableLegacyCrypto(nopt) => nopt.copt.debug,
@@ -109,7 +110,16 @@ impl Oauth2Opt {
             Oauth2Opt::ResetSecrets(cbopt) => {
                 let client = cbopt.copt.to_client().await;
                 match client
-                    .idm_oauth2_rs_update(cbopt.name.as_str(), None, None, None, true, true, true)
+                    .idm_oauth2_rs_update(
+                        cbopt.name.as_str(),
+                        None,
+                        None,
+                        None,
+                        None,
+                        true,
+                        true,
+                        true,
+                    )
                     .await
                 {
                     Ok(_) => println!("Success"),
@@ -147,6 +157,7 @@ impl Oauth2Opt {
                         None,
                         Some(cbopt.displayname.as_str()),
                         None,
+                        None,
                         false,
                         false,
                         false,
@@ -165,6 +176,26 @@ impl Oauth2Opt {
                         Some(name.as_str()),
                         None,
                         None,
+                        None,
+                        false,
+                        false,
+                        false,
+                    )
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
+            Oauth2Opt::SetLandingUrl { nopt, url } => {
+                let client = nopt.copt.to_client().await;
+                match client
+                    .idm_oauth2_rs_update(
+                        nopt.name.as_str(),
+                        None,
+                        None,
+                        None,
+                        Some(url),
                         false,
                         false,
                         false,

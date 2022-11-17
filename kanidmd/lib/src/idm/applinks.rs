@@ -47,7 +47,10 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     .get_ava_single_utf8("displayname")
                     .map(str::to_string)?;
 
-                let origin = entry.get_ava_single_url("oauth2_rs_origin").cloned()?;
+                let redirect_url = entry
+                    .get_ava_single_url("oauth2_rs_origin_landing")
+                    .or_else(|| entry.get_ava_single_url("oauth2_rs_origin"))
+                    .cloned()?;
 
                 let name = entry
                     .get_ava_single_iname("oauth2_rs_name")
@@ -56,7 +59,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 Some(AppLink::Oauth2 {
                     name,
                     display_name,
-                    redirect_url: origin,
+                    redirect_url,
                     icon: None,
                 })
             })
@@ -97,6 +100,10 @@ mod tests {
                 (
                     "oauth2_rs_origin",
                     Value::new_url_s("https://demo.example.com").unwrap()
+                ),
+                (
+                    "oauth2_rs_origin_landing",
+                    Value::new_url_s("https://demo.example.com/landing").unwrap()
                 ),
                 // System admins
                 (
@@ -177,7 +184,7 @@ mod tests {
                 } => {
                     name == "test_resource_server"
                         && display_name == "test_resource_server"
-                        && redirect_url == &Url::parse("https://demo.example.com").unwrap()
+                        && redirect_url == &Url::parse("https://demo.example.com/landing").unwrap()
                         && icon.is_none()
                 } // _ => false,
             })
