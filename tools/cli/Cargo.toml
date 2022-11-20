@@ -29,6 +29,9 @@ doc = false
 name = "kanidm_ssh_authorizedkeys_direct"
 path = "src/ssh_authorizedkeys.rs"
 
+[features]
+webauthn-transport = ["webauthn-authenticator-rs/usb", "webauthn-authenticator-rs/nfc"]
+
 [dependencies]
 async-recursion = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }

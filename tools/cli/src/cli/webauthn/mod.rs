@@ -1,11 +1,16 @@
-#[cfg(not(any(target_os = "windows")))]
+#[cfg(not(any(target_os = "windows", feature = "webauthn-transport")))]
 mod mozilla;
-#[cfg(not(any(target_os = "windows")))]
+#[cfg(not(any(target_os = "windows", feature = "webauthn-transport")))]
 use mozilla::get_authenticator_backend;
 
-#[cfg(target_os = "windows")]
+#[cfg(feature = "webauthn-transport")]
+mod transport;
+#[cfg(feature = "webauthn-transport")]
+use transport::get_authenticator_backend;
+
+#[cfg(all(not(feature = "webauthn-transport"), target_os = "windows"))]
 mod win10;
-#[cfg(target_os = "windows")]
+#[cfg(all(not(feature = "webauthn-transport"), target_os = "windows"))]
 use win10::get_authenticator_backend;
 
 use webauthn_authenticator_rs::{AuthenticatorBackend, WebauthnAuthenticator};
