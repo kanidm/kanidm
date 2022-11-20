@@ -120,12 +120,12 @@ impl AppsApp {
                         } => {
                             let redirect_url = redirect_url.to_string();
                             html!{
-                                <div class="col">
+                                <div class="col-md-3">
                                     <div class={CSS_CARD}>
-                                        <h3>
-                                            <a href={ redirect_url.clone() } class={CSS_LINK_DARK_STRETCHED}>{ display_name }</a>
-                                            <img src={"/pkg/img/icon-oauth2.svg"} />
-                                        </h3>
+                                    <a href={ redirect_url.clone() } class={CSS_LINK_DARK_STRETCHED}>
+                                    <img src={"/pkg/img/icon-oauth2.svg"} />
+                                    </a>
+                                        <h5>{ display_name }</h5>
                                     </div>
                                 </div>
                             }

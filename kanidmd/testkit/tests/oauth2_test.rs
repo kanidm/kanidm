@@ -365,8 +365,8 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .await
         .expect("Unable to decode OidcToken from userinfo");
 
-    eprintln!(?userinfo);
-    eprintln!(?oidc);
+    eprintln!("{userinfo:?}");
+    eprintln!("{oidc:?}");
 
     assert!(userinfo == oidc);
 }
