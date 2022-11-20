@@ -31,6 +31,7 @@ pub mod recycle;
 pub mod serviceaccount;
 pub mod session;
 pub mod synch;
+mod webauthn;
 
 impl SelfOpt {
     pub fn debug(&self) -> bool {

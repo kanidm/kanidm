@@ -44,10 +44,17 @@ tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 tokio = { workspace = true, features = ["rt", "macros"] }
 url = { workspace = true, features = ["serde"] }
 uuid.workspace = true
-webauthn-authenticator-rs = { workspace = true, features = ["u2fhid"] }
 zxcvbn.workspace = true
 
 [build-dependencies]
 clap = { workspace = true, features = ["derive"] }
 clap_complete.workspace = true
 uuid.workspace = true
+
+[target."cfg(target_os = \"windows\")".dependencies.webauthn-authenticator-rs]
+workspace = true
+features = ["win10"]
+
+[target."cfg(not(any(target_os = \"windows\")))".dependencies.webauthn-authenticator-rs]
+workspace = true
+features = ["u2fhid"]
