@@ -881,6 +881,22 @@ impl FilterComp {
                 admin_error!("Unable to convert ldapsubstringfilter to sub filter");
                 return Err(OperationError::FilterGeneration);
             }
+            LdapFilter::GreaterOrEqual(_, _) => {
+                admin_error!("Unsupported filter operation - greater or equal");
+                return Err(OperationError::FilterGeneration);
+            }
+            LdapFilter::LessOrEqual(_, _) => {
+                admin_error!("Unsupported filter operation - less or equal");
+                return Err(OperationError::FilterGeneration);
+            }
+            LdapFilter::Approx(_, _) => {
+                admin_error!("Unsupported filter operation - approximate");
+                return Err(OperationError::FilterGeneration);
+            }
+            LdapFilter::Extensible(_) => {
+                admin_error!("Unsupported filter operation - extensible");
+                return Err(OperationError::FilterGeneration);
+            }
         })
     }
 }

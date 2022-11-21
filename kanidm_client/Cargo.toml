@@ -13,7 +13,7 @@ repository.workspace = true
 
 [dependencies]
 tracing.workspace = true
-reqwest = { workspace = true, features=["cookies", "json", "native-tls"] }
+reqwest.workspace = true
 kanidm_proto.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
