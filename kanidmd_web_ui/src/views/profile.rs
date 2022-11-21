@@ -97,7 +97,7 @@ impl Component for ProfileApp {
     type Properties = ViewProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("views::profile::create");
 
         ctx.link().send_future(async {
@@ -117,7 +117,7 @@ impl Component for ProfileApp {
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("profile::update");
         match msg {
             Msg::Profile { entry } => {
@@ -135,7 +135,7 @@ impl Component for ProfileApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("views::profile::rendered");
     }
 

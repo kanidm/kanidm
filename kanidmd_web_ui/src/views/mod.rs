@@ -105,7 +105,7 @@ impl Component for ViewsApp {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("views::create");
 
         // Ensure the token is valid before we proceed. Could be
@@ -126,13 +126,13 @@ impl Component for ViewsApp {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("views::changed");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("views::update");
         match msg {
             ViewsMsg::Verified => {
@@ -171,7 +171,7 @@ impl Component for ViewsApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("views::rendered");
     }
 
@@ -357,7 +357,11 @@ impl ViewsApp {
             .expect_throw("failed to set header");
 
         let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
+        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await
+            .map_err(|e| {
+                console::error!(&format!("fetch request failed {:?}", e));
+                e
+            })?;
         let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
         let status = resp.status();
 

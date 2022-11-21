@@ -223,7 +223,7 @@ impl Component for AdminListOAuth2 {
         match msg {
             AdminListOAuth2Msg::Responded { response } => {
                 // TODO: do we paginate here?
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 for key in response.keys() {
                     console::log!(
                         "response: {:?}",
@@ -377,13 +377,16 @@ impl Component for AdminViewOAuth2 {
         match msg {
             AdminViewOAuth2Msg::Responded { response } => {
                 // TODO: do we paginate here?
-                #[cfg(debug)]
+                /*
+                // Seems broken
+                #[cfg(debug_assertions)]
                 for key in response.keys() {
                     console::log!(
                         "response: {:?}",
                         serde_json::to_string(response.get(key).unwrap()).unwrap()
                     );
                 }
+                */
                 self.state = ViewState::Responded { response };
             }
             AdminViewOAuth2Msg::Failed { emsg, kopid } => {

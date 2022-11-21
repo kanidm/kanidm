@@ -211,7 +211,7 @@ impl Component for Oauth2App {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("oauth2::create");
 
         // Do we have a query here?
@@ -271,13 +271,13 @@ impl Component for Oauth2App {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("oauth2::change");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("oauth2::update");
 
         match msg {
@@ -372,7 +372,7 @@ impl Component for Oauth2App {
                 true
             }
             Oauth2Msg::Redirect(loc) => {
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 console::debug!(format!("Redirecting to {}", loc).as_str());
                 // Send the location here, and then update will trigger the redir via
                 // https://docs.rs/web-sys/0.3.51/web_sys/struct.Location.html#method.replace
@@ -395,12 +395,12 @@ impl Component for Oauth2App {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("oauth2::rendered");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("oauth2::view");
 
         let body_content = match &self.state {
