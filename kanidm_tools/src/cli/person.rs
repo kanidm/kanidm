@@ -13,9 +13,8 @@ use qrcode::QrCode;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
-use webauthn_authenticator_rs::u2fhid::U2FHid;
-use webauthn_authenticator_rs::WebauthnAuthenticator;
 
+use crate::webauthn::get_authenticator;
 use crate::{
     password_prompt, AccountCredential, AccountRadius, AccountSsh, AccountUserAuthToken,
     AccountValidity, PersonOpt, PersonPosix,
@@ -836,7 +835,7 @@ async fn passkey_enroll_prompt(session_token: &CUSessionToken, client: &KanidmCl
     };
 
     // Setup and connect to the webauthn handler ...
-    let mut wa = WebauthnAuthenticator::new(U2FHid::new());
+    let mut wa = get_authenticator();
 
     eprintln!("Your authenticator will now flash for you to interact with.");
     eprintln!("You may be asked to enter the PIN for your device.");

@@ -12,10 +12,9 @@ use kanidm_proto::v1::{AuthAllowed, AuthResponse, AuthState, UserAuthToken};
 #[cfg(target_family = "unix")]
 use libc::umask;
 use webauthn_authenticator_rs::prelude::RequestChallengeResponse;
-use webauthn_authenticator_rs::u2fhid::U2FHid;
-use webauthn_authenticator_rs::WebauthnAuthenticator;
 
 use crate::common::prompt_for_username_get_username;
+use crate::webauthn::get_authenticator;
 use crate::{LoginOpt, LogoutOpt, SessionOpt};
 
 static TOKEN_DIR: &str = "~/.cache";
@@ -196,7 +195,7 @@ impl LoginOpt {
         client: &mut KanidmClient,
         pkr: RequestChallengeResponse,
     ) -> Result<AuthResponse, ClientError> {
-        let mut wa = WebauthnAuthenticator::new(U2FHid::new());
+        let mut wa = get_authenticator();
         println!("Your authenticator will now flash for you to interact with it.");
         let auth = wa
             .do_authentication(client.get_origin().clone(), pkr)
@@ -213,7 +212,7 @@ impl LoginOpt {
         client: &mut KanidmClient,
         pkr: RequestChallengeResponse,
     ) -> Result<AuthResponse, ClientError> {
-        let mut wa = WebauthnAuthenticator::new(U2FHid::new());
+        let mut wa = get_authenticator();
         println!("Your authenticator will now flash for you to interact with it.");
         let auth = wa
             .do_authentication(client.get_origin().clone(), pkr)
