@@ -262,6 +262,8 @@ impl Component for AdminListAccounts {
         match msg {
             AdminListAccountsMsg::Responded { response } => {
                 // TODO: do we paginate here?
+                /*
+                // Seems broken
                 #[cfg(debug)]
                 for key in response.keys() {
                     #[allow(clippy::unwrap_used)]
@@ -270,6 +272,7 @@ impl Component for AdminListAccounts {
                         serde_json::to_string(response.get(key).unwrap()).unwrap()
                     );
                 }
+                */
                 self.state = ViewState::Responded { response };
                 return true;
             }

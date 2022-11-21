@@ -1,4 +1,4 @@
-#[cfg(debug)]
+#[cfg(debug_assertions)]
 use gloo::console;
 use yew::prelude::*;
 
@@ -41,7 +41,7 @@ impl Component for AppsApp {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("views::apps::create");
 
         ctx.link().send_future(async {
@@ -57,13 +57,13 @@ impl Component for AppsApp {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("views::apps::changed");
         false
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("views::apps::update");
         match msg {
             Msg::Ready { apps } => self.state = State::Ready { apps },
@@ -74,7 +74,7 @@ impl Component for AppsApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("views::apps::rendered");
     }
 

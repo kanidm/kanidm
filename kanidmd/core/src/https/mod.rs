@@ -384,6 +384,7 @@ pub fn create_https_server(
     tserver.with(
         // We do not force a session ttl, because we validate this elsewhere in usage.
         tide::sessions::SessionMiddleware::new(tide::sessions::CookieStore::new(), cookie_key)
+            .with_session_ttl(None)
             .with_cookie_name("kanidm-session")
             .with_same_site_policy(tide::http::cookies::SameSite::Strict),
     );
