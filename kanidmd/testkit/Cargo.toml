@@ -26,7 +26,7 @@ webauthn-authenticator-rs.workspace = true
 oauth2_ext = { workspace = true, default-features = false }
 
 url = { workspace = true, features = ["serde"] }
-reqwest = { workspace = true, features=["cookies", "json", "native-tls"] }
+reqwest.workspace = true
 sketching.workspace = true
 testkit-macros.workspace = true
 tracing = { workspace = true, features = ["attributes"] }
