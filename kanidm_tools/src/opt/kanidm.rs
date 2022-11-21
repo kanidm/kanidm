@@ -624,61 +624,70 @@ pub enum Oauth2Opt {
     #[clap(name = "create")]
     /// Create a new oauth2 resource server
     CreateBasic(Oauth2BasicCreateOpt),
-    #[clap(name = "update_scope_map", visible_aliases=&["create_scope_map"])]
+    #[clap(name = "update-scope-map", visible_aliases=&["create-scope-map"])]
     /// Update or add a new mapping from a group to scopes that it provides to members
     UpdateScopeMap(Oauth2CreateScopeMapOpt),
     #[clap(name = "delete_scope_map")]
     /// Remove a mapping from groups to scopes
     DeleteScopeMap(Oauth2DeleteScopeMapOpt),
 
-    #[clap(name = "update_sup_scope_map", visible_aliases=&["create_sup_scope_map"])]
+    #[clap(name = "update-sup-scope-map", visible_aliases=&["create-sup-scope-map"])]
     /// Update or add a new mapping from a group to scopes that it provides to members
     UpdateSupScopeMap(Oauth2CreateScopeMapOpt),
-    #[clap(name = "delete_sup_scope_map")]
+    #[clap(name = "delete-sup-scope-map")]
     /// Remove a mapping from groups to scopes
     DeleteSupScopeMap(Oauth2DeleteScopeMapOpt),
 
-    #[clap(name = "reset_secrets")]
+    #[clap(name = "reset-secrets")]
     /// Reset the secrets associated to this resource server
     ResetSecrets(Named),
-    #[clap(name = "show_basic_secret")]
+    #[clap(name = "show-basic-secret")]
     /// Show the associated basic secret for this resource server
     ShowBasicSecret(Named),
     #[clap(name = "delete")]
     /// Delete a oauth2 resource server
     Delete(Named),
     /// Set a new displayname for a resource server
-    #[clap(name = "set_displayname")]
+    #[clap(name = "set-displayname")]
     SetDisplayname(Oauth2SetDisplayname),
     /// Set a new name for this resource server. You may need to update
     /// your integrated applications after this so that they continue to
     /// function correctly.
-    #[clap(name = "set_name")]
+    #[clap(name = "set-name")]
     SetName {
         #[clap(flatten)]
         nopt: Named,
         #[clap(name = "newname")]
         name: String,
     },
-    #[clap(name = "enable_pkce")]
+    /// When redirecting from the Kanidm Apps Listing page, some linked applications may need to
+    /// land on a specific page to trigger oauth2/oidc interactions.
+    #[clap(name = "set-landing-url")]
+    SetLandingUrl {
+        #[clap(flatten)]
+        nopt: Named,
+        #[clap(name = "landing_url")]
+        url: String,
+    },
+    #[clap(name = "enable-pkce")]
     /// Enable PKCE on this oauth2 resource server. This defaults to being enabled.
     EnablePkce(Named),
     /// Disable PKCE on this oauth2 resource server to work around insecure clients that
     /// may not support it. You should request the client to enable PKCE!
-    #[clap(name = "warning_insecure_client_disable_pkce")]
+    #[clap(name = "warning-insecure-client-disable-pkce")]
     DisablePkce(Named),
-    #[clap(name = "warning_enable_legacy_crypto")]
+    #[clap(name = "warning-enable-legacy-crypto")]
     /// Enable legacy signing crypto on this oauth2 resource server. This defaults to being disabled.
     /// You only need to enable this for openid clients that do not support modern crytopgraphic
     /// operations.
     EnableLegacyCrypto(Named),
     /// Disable legacy signing crypto on this oauth2 resource server. This is the default.
-    #[clap(name = "disable_legacy_crypto")]
+    #[clap(name = "disable-legacy-crypto")]
     DisableLegacyCrypto(Named),
-    #[clap(name = "prefer_short_username")]
+    #[clap(name = "prefer-short-username")]
     /// Use the 'name' attribute instead of 'spn' for the preferred_username
     PreferShortUsername(Named),
-    #[clap(name = "prefer_spn_username")]
+    #[clap(name = "prefer-spn-username")]
     /// Use the 'spn' attribute instead of 'name' for the preferred_username
     PreferSPNUsername(Named),
 }

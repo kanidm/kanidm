@@ -1146,6 +1146,7 @@ pub const JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
             "displayname",
             "oauth2_rs_name",
             "oauth2_rs_origin",
+            "oauth2_rs_origin_landing",
             "oauth2_rs_scope_map",
             "oauth2_rs_sup_scope_map",
             "oauth2_rs_basic_secret",
@@ -1161,6 +1162,7 @@ pub const JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
             "displayname",
             "oauth2_rs_name",
             "oauth2_rs_origin",
+            "oauth2_rs_origin_landing",
             "oauth2_rs_scope_map",
             "oauth2_rs_sup_scope_map",
             "oauth2_rs_basic_secret",
@@ -1176,6 +1178,7 @@ pub const JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
             "displayname",
             "oauth2_rs_name",
             "oauth2_rs_origin",
+            "oauth2_rs_origin_landing",
             "oauth2_rs_sup_scope_map",
             "oauth2_rs_scope_map",
             "oauth2_allow_insecure_client_disable_pkce",
@@ -1189,6 +1192,7 @@ pub const JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
             "displayname",
             "oauth2_rs_name",
             "oauth2_rs_origin",
+            "oauth2_rs_origin_landing",
             "oauth2_rs_sup_scope_map",
             "oauth2_rs_scope_map",
             "oauth2_allow_insecure_client_disable_pkce",
@@ -1247,7 +1251,8 @@ pub const JSON_IDM_ACP_OAUTH2_READ_PRIV_V1: &str = r#"{
             "class",
             "displayname",
             "oauth2_rs_name",
-            "oauth2_rs_origin"
+            "oauth2_rs_origin",
+            "oauth2_rs_origin_landing"
         ]
     }
 }"#;

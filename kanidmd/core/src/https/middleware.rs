@@ -47,7 +47,7 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for Cacheable
         next: tide::Next<'_, State>,
     ) -> tide::Result {
         let mut response = next.run(request).await;
-        response.insert_header("Cache-Control", "max-age=60,must-revalidate,private");
+        response.insert_header("Cache-Control", "max-age=300,must-revalidate,private");
         Ok(response)
     }
 }

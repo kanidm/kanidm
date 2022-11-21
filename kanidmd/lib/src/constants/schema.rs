@@ -632,6 +632,35 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The landing page of an RS, that will automatically trigger the auth process."
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "oauth2_rs_origin_landing"
+      ],
+      "syntax": [
+        "URL"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000120"
+      ]
+    }
+}"#;
+
 pub const JSON_SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP: &str = r#"{
     "attrs": {
       "class": [
@@ -1657,7 +1686,8 @@ pub const JSON_SCHEMA_CLASS_OAUTH2_RS: &str = r#"
         "oauth2_allow_insecure_client_disable_pkce",
         "rs256_private_key_der",
         "oauth2_jwt_legacy_crypto_enable",
-        "oauth2_prefer_short_username"
+        "oauth2_prefer_short_username",
+        "oauth2_rs_origin_landing"
       ],
       "systemmust": [
         "oauth2_rs_name",

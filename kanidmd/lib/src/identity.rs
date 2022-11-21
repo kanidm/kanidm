@@ -276,6 +276,13 @@ impl Identity {
         }
     }
 
+    pub fn get_memberof(&self) -> Option<&BTreeSet<Uuid>> {
+        match &self.origin {
+            IdentType::Internal | IdentType::Synch(_) => None,
+            IdentType::User(u) => u.entry.get_ava_refer("memberof"),
+        }
+    }
+
     pub fn get_oauth2_consent_scopes(&self, oauth2_rs: Uuid) -> Option<&BTreeSet<String>> {
         match &self.origin {
             IdentType::Internal | IdentType::Synch(_) => None,

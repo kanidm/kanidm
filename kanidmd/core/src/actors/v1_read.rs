@@ -3,6 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use kanidm_proto::internal::AppLink;
 use kanidm_proto::v1::{
     ApiToken, AuthRequest, BackupCodesView, CURequest, CUSessionToken, CUStatus, CredentialStatus,
     Entry as ProtoEntry, OperationError, RadiusAuthToken, SearchRequest, SearchResponse, UatStatus,
@@ -1339,6 +1340,29 @@ impl QueryServerReadV1 {
     ) -> Result<JwkKeySet, OperationError> {
         let idms_prox_read = self.idms.proxy_read().await;
         idms_prox_read.oauth2_openid_publickey(&client_id)
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_list_applinks(
+        &self,
+        uat: Option<String>,
+        eventid: Uuid,
+    ) -> Result<Vec<AppLink>, OperationError> {
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read().await;
+        let ident = idms_prox_read
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!("Invalid identity: {:?}", e);
+                e
+            })?;
+
+        // Nice and easy!
+        idms_prox_read.list_applinks(&ident)
     }
 
     #[instrument(

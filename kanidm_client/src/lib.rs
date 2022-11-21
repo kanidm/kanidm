@@ -1693,6 +1693,7 @@ impl KanidmClient {
         name: Option<&str>,
         displayname: Option<&str>,
         origin: Option<&str>,
+        landing: Option<&str>,
         reset_secret: bool,
         reset_token_key: bool,
         reset_sign_key: bool,
@@ -1715,6 +1716,12 @@ impl KanidmClient {
             update_oauth2_rs
                 .attrs
                 .insert("oauth2_rs_origin".to_string(), vec![neworigin.to_string()]);
+        }
+        if let Some(newlanding) = landing {
+            update_oauth2_rs.attrs.insert(
+                "oauth2_rs_origin_landing".to_string(),
+                vec![newlanding.to_string()],
+            );
         }
         if reset_secret {
             update_oauth2_rs

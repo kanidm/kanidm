@@ -1040,6 +1040,17 @@ pub async fn recycle_bin_revive_id_post(req: tide::Request<AppState>) -> tide::R
     to_tide_response(res, hvalue)
 }
 
+pub async fn applinks_get(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let (eventid, hvalue) = req.new_eventid();
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_list_applinks(uat, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
 pub async fn do_routemap(req: tide::Request<RouteMap>) -> tide::Result {
     let mut res = tide::Response::new(200);
 

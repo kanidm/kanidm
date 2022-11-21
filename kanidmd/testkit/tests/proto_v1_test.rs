@@ -823,6 +823,7 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
             None,
             Some("Test Integration"),
             Some("https://new_demo.example.com"),
+            None,
             true,
             true,
             true,

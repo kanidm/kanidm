@@ -307,6 +307,16 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         .get_ava_single_url("oauth2_rs_origin")
                         .map(|url| (url.origin(), url.scheme() == "https"))
                         .ok_or(OperationError::InvalidValueState)?;
+
+                    let landing_valid = ent
+                        .get_ava_single_url("oauth2_rs_origin_landing")
+                        .map(|url| url.origin() == origin).
+                        unwrap_or(true);
+
+                    if !landing_valid {
+                        warn!("{} has a landing page that is not part of origin. May be invalid.", name);
+                    }
+
                     trace!("authz_secret");
                     let authz_secret = ent
                         .get_ava_single_secret("oauth2_rs_basic_secret")
