@@ -1,4 +1,4 @@
-#[cfg(debug)]
+#[cfg(debug_assertions)]
 use gloo::console;
 use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus, TotpSecret};
 use qrcode::render::svg;
@@ -124,7 +124,7 @@ impl Component for TotpModalApp {
     type Properties = ModalProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("totp modal create");
 
         TotpModalApp {
@@ -135,13 +135,13 @@ impl Component for TotpModalApp {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("totp modal::change");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("totp modal::update");
         let token_c = ctx.props().token.clone();
         match msg {
@@ -237,17 +237,17 @@ impl Component for TotpModalApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("totp modal::rendered");
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("totp modal::destroy");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("totp modal::view");
 
         let totp_class = match &self.check {

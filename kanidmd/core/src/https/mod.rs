@@ -386,6 +386,8 @@ pub fn create_https_server(
         tide::sessions::SessionMiddleware::new(tide::sessions::CookieStore::new(), cookie_key)
             .with_session_ttl(None)
             .with_cookie_name("kanidm-session")
+            // Im not sure if we need Lax here, I don't think we do because on the first get
+            // we don't need the cookie since wasm drives the fetches.
             .with_same_site_policy(tide::http::cookies::SameSite::Strict),
     );
 

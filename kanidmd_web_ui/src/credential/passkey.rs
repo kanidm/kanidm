@@ -308,7 +308,7 @@ impl Component for PasskeyModalApp {
                     <>
                     <form class="row needs-validation" novalidate=true
                         onsubmit={ ctx.link().callback(move |e: FocusEvent| {
-                            #[cfg(debug)]
+                            #[cfg(debug_assertions)]
                             console::debug!("passkey modal::on form submit prevent default");
                             e.prevent_default();
                             if submit_enabled {

@@ -264,7 +264,7 @@ impl Component for AdminListAccounts {
                 // TODO: do we paginate here?
                 /*
                 // Seems broken
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 for key in response.keys() {
                     #[allow(clippy::unwrap_used)]
                     console::log!(

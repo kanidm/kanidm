@@ -253,7 +253,7 @@ impl LoginApp {
                         <label for="username" class="form-label">{ "Username" }</label>
                         <form
                         onsubmit={ ctx.link().callback(|e: FocusEvent| {
-                            #[cfg(debug)]
+                            #[cfg(debug_assertions)]
                             console::debug!("login::view_state -> Init - prevent_default()".to_string());
                             e.prevent_default();
                             LoginAppMsg::Begin
@@ -507,7 +507,7 @@ impl LoginApp {
             LoginState::Authenticated => {
                 let loc = models::pop_return_location();
                 // redirect
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 console::debug!(format!("authenticated, try going to -> {:?}", loc));
                 loc.goto(&ctx.link().history().expect_throw("failed to read history"));
                 html! {
@@ -547,7 +547,7 @@ impl Component for LoginApp {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("create".to_string());
         // Assume we are here for a good reason.
         // -- clear the bearer to prevent conflict
@@ -555,7 +555,7 @@ impl Component for LoginApp {
         // Do we have a login hint?
         let inputvalue = models::pop_login_hint().unwrap_or_else(|| "".to_string());
 
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         {
             let document = utils::document();
             let html_document = document
@@ -599,7 +599,7 @@ impl Component for LoginApp {
                 true
             }
             LoginAppMsg::Begin => {
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 console::debug!(format!("begin -> {:?}", self.inputvalue));
                 // Disable the button?
                 let username = self.inputvalue.clone();
@@ -613,7 +613,7 @@ impl Component for LoginApp {
                 true
             }
             LoginAppMsg::PasswordSubmit => {
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 console::debug!("At password step".to_string());
                 // Disable the button?
                 self.state = LoginState::Password(false);
@@ -632,7 +632,7 @@ impl Component for LoginApp {
                 true
             }
             LoginAppMsg::BackupCodeSubmit => {
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 console::debug!("backupcode".to_string());
                 // Disable the button?
                 self.state = LoginState::BackupCode(false);
@@ -651,7 +651,7 @@ impl Component for LoginApp {
                 true
             }
             LoginAppMsg::TotpSubmit => {
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 console::debug!("totp".to_string());
                 // Disable the button?
                 match self.inputvalue.parse::<u32>() {
@@ -679,7 +679,7 @@ impl Component for LoginApp {
                 true
             }
             LoginAppMsg::SecurityKeySubmit(resp) => {
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 console::debug!("At securitykey step".to_string());
                 let authreq = AuthRequest {
                     step: AuthStep::Cred(AuthCredential::SecurityKey(resp)),
@@ -695,7 +695,7 @@ impl Component for LoginApp {
                 false
             }
             LoginAppMsg::PasskeySubmit(resp) => {
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 console::debug!("At passkey step".to_string());
                 let authreq = AuthRequest {
                     step: AuthStep::Cred(AuthCredential::Passkey(resp)),
@@ -713,7 +713,7 @@ impl Component for LoginApp {
             LoginAppMsg::Start(session_id, resp) => {
                 // Clear any leftover input
                 self.inputvalue = "".to_string();
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 console::debug!(format!("start -> {:?} : {:?}", resp, session_id));
                 match resp.state {
                     AuthState::Choose(mut mechs) => {
@@ -734,14 +734,14 @@ impl Component for LoginApp {
                             // We do NOT need to change state or redraw
                             false
                         } else {
-                            #[cfg(debug)]
+                            #[cfg(debug_assertions)]
                             console::debug!("multiple mechs exist".to_string());
                             self.state = LoginState::Select(mechs);
                             true
                         }
                     }
                     AuthState::Denied(reason) => {
-                        #[cfg(debug)]
+                        #[cfg(debug_assertions)]
                         console::debug!(format!("denied -> {:?}", reason));
                         self.state = LoginState::Denied(reason);
                         true
@@ -757,7 +757,7 @@ impl Component for LoginApp {
                 }
             }
             LoginAppMsg::Select(idx) => {
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 console::debug!(format!("chose -> {:?}", idx));
                 match &self.state {
                     LoginState::Select(allowed) => match allowed.get(idx) {
@@ -794,7 +794,7 @@ impl Component for LoginApp {
             LoginAppMsg::Next(resp) => {
                 // Clear any leftover input
                 self.inputvalue = "".to_string();
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 console::debug!(format!("next -> {:?}", resp));
 
                 // Based on the state we have, we need to chose our steps.
@@ -833,7 +833,7 @@ impl Component for LoginApp {
                             }
                         } else {
                             // Else, present the options in a choice.
-                            #[cfg(debug)]
+                            #[cfg(debug_assertions)]
                             console::debug!("multiple choices exist".to_string());
                             self.state = LoginState::Continue(allowed);
                         }
@@ -865,7 +865,7 @@ impl Component for LoginApp {
             }
             LoginAppMsg::Continue(idx) => {
                 // Are we in the correct internal state?
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 console::debug!(format!("chose -> {:?}", idx));
                 match &self.state {
                     LoginState::Continue(allowed) => {
@@ -926,7 +926,7 @@ impl Component for LoginApp {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("login::view".to_string());
         // How do we add a top level theme?
         /*
@@ -965,13 +965,13 @@ impl Component for LoginApp {
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("login::destroy".to_string());
         remove_body_form_classes!();
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("login::rendered".to_string());
     }
 }

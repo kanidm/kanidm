@@ -49,7 +49,7 @@ fn landing() -> Html {
 }
 
 fn switch(route: &Route) -> Html {
-    #[cfg(debug)]
+    #[cfg(debug_assertions)]
     console::debug!("manager::switch");
     match route {
         #[allow(clippy::let_unit_value)]
@@ -92,25 +92,25 @@ impl Component for ManagerApp {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("manager::create");
         ManagerApp {}
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("manager::change");
         false
     }
 
     fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("manager::update");
         true
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("manager::rendered");
         // Can only access the current_route AFTER it renders.
         // console::debug!(format!("{:?}", yew_router::current_route::<Route>()).as_str())

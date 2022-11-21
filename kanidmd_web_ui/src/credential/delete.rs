@@ -1,4 +1,4 @@
-#[cfg(debug)]
+#[cfg(debug_assertions)]
 use gloo::console;
 use kanidm_proto::v1::{CURequest, CUSessionToken, CUStatus};
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
@@ -89,20 +89,20 @@ impl Component for DeleteApp {
     type Properties = ModalProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("delete modal create");
 
         DeleteApp { state: State::Init }
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("delete modal::change");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("delete modal::update");
         let token_c = ctx.props().token.clone();
         match msg {
@@ -132,17 +132,17 @@ impl Component for DeleteApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("delete modal::rendered");
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("delete modal::destroy");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("delete modal::view");
 
         let submit_enabled = matches!(&self.state, State::Init);

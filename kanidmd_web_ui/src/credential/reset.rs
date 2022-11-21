@@ -90,7 +90,7 @@ impl Component for CredentialResetApp {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("credential::reset::create");
 
         // On a page refresh/reload, should we restart a session that *may* have existed?
@@ -150,13 +150,13 @@ impl Component for CredentialResetApp {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("credential::reset::change");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("credential::reset::update");
         let next_state = match (msg, &self.state) {
             (Msg::Ignore, _) => None,
@@ -175,12 +175,12 @@ impl Component for CredentialResetApp {
                 Some(State::WaitingForStatus)
             }
             (Msg::BeginSession { token, status }, State::WaitingForStatus) => {
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 console::debug!(format!("begin session {:?}", status).as_str());
                 Some(State::Main { token, status })
             }
             (Msg::UpdateSession { status }, State::Main { token, status: _ }) => {
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 console::debug!(format!("{:?}", status).as_str());
                 Some(State::Main {
                     token: token.clone(),
@@ -201,7 +201,7 @@ impl Component for CredentialResetApp {
                 Some(State::WaitingForCommit)
             }
             (Msg::Cancel, State::Main { token, status: _ }) => {
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 console::debug!("msg::cancel");
                 let token_c = token.clone();
 
@@ -216,7 +216,7 @@ impl Component for CredentialResetApp {
             }
             (Msg::Success, State::WaitingForCommit) => {
                 let loc = models::pop_return_location();
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 console::debug!(format!("Going to -> {:?}", loc));
                 loc.goto(&ctx.link().history().expect_throw("failed to read history"));
 
@@ -238,14 +238,14 @@ impl Component for CredentialResetApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("credential::reset::rendered");
         // because sometimes bootstrap doesn't catch it, which is annoying.
         crate::utils::autofocus("token");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("credential::reset::view");
         match &self.state {
             State::TokenInput => self.view_token_input(ctx),
@@ -256,7 +256,7 @@ impl Component for CredentialResetApp {
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("credential::reset::destroy");
         remove_body_form_classes!();
     }

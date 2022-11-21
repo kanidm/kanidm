@@ -1,4 +1,4 @@
-#[cfg(debug)]
+#[cfg(debug_assertions)]
 use gloo::console;
 use kanidm_proto::v1::{CUSessionToken, CUStatus, UiHint};
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
@@ -53,19 +53,19 @@ impl Component for SecurityApp {
     type Properties = ViewProps;
 
     fn create(_ctx: &Context<Self>) -> Self {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("views::security::create");
         SecurityApp { state: State::Init }
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("views::security::changed");
         true
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("views::security::update");
         match msg {
             Msg::RequestCredentialUpdate => {
@@ -106,7 +106,7 @@ impl Component for SecurityApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("views::security::rendered");
     }
 

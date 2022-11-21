@@ -1,4 +1,4 @@
-#[cfg(debug)]
+#[cfg(debug_assertions)]
 use gloo::console;
 use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus};
 use uuid::Uuid;
@@ -124,7 +124,7 @@ impl Component for PasskeyRemoveModalApp {
     type Properties = PasskeyRemoveModalProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("passkey remove modal create");
 
         let tag = ctx.props().tag.clone();
@@ -140,13 +140,13 @@ impl Component for PasskeyRemoveModalApp {
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("passkey remove modal::change");
         false
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("passkey remove modal::update");
         match msg {
             Msg::Submit => {
@@ -179,17 +179,17 @@ impl Component for PasskeyRemoveModalApp {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("passkey remove modal::rendered");
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("passkey remove modal::destroy");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         console::debug!("passkey remove modal::view");
 
         let remove_tgt = self.target.clone();

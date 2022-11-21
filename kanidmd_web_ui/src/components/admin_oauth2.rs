@@ -223,7 +223,7 @@ impl Component for AdminListOAuth2 {
         match msg {
             AdminListOAuth2Msg::Responded { response } => {
                 // TODO: do we paginate here?
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 for key in response.keys() {
                     console::log!(
                         "response: {:?}",
@@ -379,7 +379,7 @@ impl Component for AdminViewOAuth2 {
                 // TODO: do we paginate here?
                 /*
                 // Seems broken
-                #[cfg(debug)]
+                #[cfg(debug_assertions)]
                 for key in response.keys() {
                     console::log!(
                         "response: {:?}",
