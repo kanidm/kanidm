@@ -68,7 +68,7 @@ toml.workspace = true
 tokio = { workspace = true, features = ["rt", "macros", "sync", "time", "net", "io-util"] }
 tokio-util = { workspace = true, features = ["codec"] }
 tracing.workspace = true
-reqwest.workspace = true
+reqwest = { workspace = true, default-features = false }
 users.workspace = true
 walkdir.workspace = true
 
