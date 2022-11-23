@@ -36,6 +36,8 @@ lazy_static! {
     pub static ref PVCLASS_SYSTEM_CONFIG: PartialValue = PartialValue::new_class("system_config");
     pub static ref PVCLASS_TOMBSTONE: PartialValue = PartialValue::new_class("tombstone");
     pub static ref PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuid(UUID_DOMAIN_INFO);
+    pub static ref CLASS_ACCESS_CONTROL_PROFILE: Value = Value::new_class("access_control_profile");
+    pub static ref CLASS_ACCESS_CONTROL_SEARCH: Value = Value::new_class("access_control_search");
     pub static ref CLASS_ACCOUNT: Value = Value::new_class("account");
     pub static ref CLASS_DOMAIN_INFO: Value = Value::new_class("domain_info");
     pub static ref CLASS_DYNGROUP: Value = Value::new_class("dyngroup");

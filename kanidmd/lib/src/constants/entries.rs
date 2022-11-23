@@ -498,6 +498,25 @@ lazy_static! {
         ),
         ("grant_ui_hint", Value::UiHint(UiHint::ExperimentalFeatures))
     );
+
+    pub static ref E_IDM_ACCOUNT_MAIL_READ_PRIV: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_GROUP.clone()),
+        (
+            "name",
+            Value::new_iname("idm_account_mail_read_priv")
+        ),
+        (
+            "uuid",
+            Value::new_uuid(UUID_IDM_ACCOUNT_MAIL_READ_PRIV)
+        ),
+        (
+            "description",
+            Value::new_utf8s(
+                "Members of this group will have access to read the mail attribute of all persons and service accounts."
+            )
+        )
+    );
 }
 
 /// This must be the last group to init to include the UUID of the other high priv groups.
