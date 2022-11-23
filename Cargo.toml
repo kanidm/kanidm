@@ -85,11 +85,11 @@ lazy_static = "^1.4.0"
 
 # ldap3_client = { path = "../ldap3/client", version = "0.3.0" }
 # ldap3_proto = { path = "../ldap3/proto", version = "0.3.0" }
-# scim_proto = { path = "../scim/proto", version = "0.1.0" }
+scim_proto = { path = "../scim/proto", version = "0.1.0" }
 
 ldap3_client = { git = "https://github.com/kanidm/ldap3.git", version = "0.3.0" }
 ldap3_proto = { git = "https://github.com/kanidm/ldap3.git", version = "0.3.0" }
-scim_proto = { git = "https://github.com/kanidm/scim.git", version = "0.1.0" }
+# scim_proto = { git = "https://github.com/kanidm/scim.git", version = "0.1.0" }
 
 libc = "^0.2.135"
 libnss = "^0.4.0"

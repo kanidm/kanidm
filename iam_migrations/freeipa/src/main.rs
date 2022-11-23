@@ -333,7 +333,8 @@ fn ipa_to_scim_entry(sync_entry: LdapSyncReplEntry) -> Result<Option<ScimEntry>,
             .transpose()?;
 
         let homedirectory = entry.remove_ava_single("homedirectory");
-        let password_import = entry.remove_ava_single("ipanthash");
+        let password_import = entry.remove_ava_single("ipanthash")
+            .map(|s| format!("ipaNTHash: {}", s));
         let login_shell = entry.remove_ava_single("loginshell");
         let external_id = Some(entry.dn);
 

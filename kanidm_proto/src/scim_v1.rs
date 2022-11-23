@@ -6,13 +6,13 @@ use uuid::Uuid;
 pub use scim_proto::prelude::{ScimEntry, ScimError};
 use scim_proto::*;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum ScimSyncState {
     Refresh,
     Active { cookie: Base64UrlSafeData },
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ScimSyncRequest {
     pub from_state: ScimSyncState,
     pub to_state: ScimSyncState,

@@ -3761,7 +3761,6 @@ dependencies = [
 [[package]]
 name = "scim_proto"
 version = "0.1.0"
-source = "git+https://github.com/kanidm/scim.git#f7a9241bf413ac2e40cb974876d2b0433a866c74"
 dependencies = [
  "base64urlsafedata",
  "serde",

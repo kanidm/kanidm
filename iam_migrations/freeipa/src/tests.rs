@@ -1,5 +1,5 @@
 use crate::process_ipa_sync_result;
-use kanidm_proto::scim_v1::ScimSyncState;
+use kanidm_proto::scim_v1::{ScimSyncState, ScimSyncRequest};
 
 use ldap3_client::LdapSyncRepl;
 
@@ -10,18 +10,34 @@ async fn test_ldap_to_scim() {
     let sync_request: LdapSyncRepl =
         serde_json::from_str(TEST_LDAP_SYNC_REPL_1).expect("failed to parse ldap sync");
 
+    let expect_scim_request: ScimSyncRequest =
+        serde_json::from_str(TEST_SCIM_SYNC_REPL_1).expect("failed to parse scim sync");
+
     let scim_sync_request = process_ipa_sync_result(ScimSyncState::Refresh, sync_request)
         .await
-        .expect("failed to process ldap sync repl");
+        .expect("failed to process ldap sync repl to scim");
 
-    assert!(matches!(
-        scim_sync_request.from_state,
-        ScimSyncState::Refresh
-    ));
+    println!("{}", serde_json::to_string_pretty(&scim_sync_request).unwrap());
 
-    // need to setup a fake ldap sync result.
+    assert!(
+        scim_sync_request.from_state ==
+        expect_scim_request.from_state
+    );
 
-    // What do we expect?
+    assert!(
+        scim_sync_request.to_state ==
+        expect_scim_request.to_state
+    );
+
+    assert!(
+        scim_sync_request.entries ==
+        expect_scim_request.entries
+    );
+
+    assert!(
+        scim_sync_request.delete_uuids ==
+        expect_scim_request.delete_uuids
+    );
 }
 
 const TEST_LDAP_SYNC_REPL_1: &str = r#"
@@ -421,3 +437,95 @@ const TEST_LDAP_SYNC_REPL_1: &str = r#"
   }
 }
 "#;
+
+const TEST_SCIM_SYNC_REPL_1: &str = r#"
+{
+  "from_state": "Refresh",
+  "to_state": {
+    "Active": {
+      "cookie": "aXBhLXN5bmNyZXBsLWthbmkuZGV2LmJsYWNraGF0cy5uZXQuYXU6Mzg5I2NuPWRpcmVjdG9yeSBtYW5hZ2VyOmRjPWRldixkYz1ibGFja2hhdHMsZGM9bmV0LGRjPWF1Oih8KCYob2JqZWN0Q2xhc3M9cGVyc29uKShvYmplY3RDbGFzcz1pcGFudHVzZXJhdHRycykob2JqZWN0Q2xhc3M9cG9zaXhhY2NvdW50KSkoJihvYmplY3RDbGFzcz1ncm91cG9mbmFtZXMpKG9iamVjdENsYXNzPWlwYXVzZXJncm91cCkoIShvYmplY3RDbGFzcz1tZXBtYW5hZ2VkZW50cnkpKSkoJihvYmplY3RDbGFzcz1pcGF0b2tlbikob2JqZWN0Q2xhc3M9aXBhdG9rZW50b3RwKSkpIzEwOQ"
+    }
+  },
+  "entries": [
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:person"
+      ],
+      "id": "ac60034b-3498-11ed-a50d-919b4b1a5ec0",
+      "externalId": "uid=admin,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "displayName": "Administrator",
+      "gidNumber": 8200000,
+      "homeDirectory": "/home/admin",
+      "loginShell": "/bin/bash",
+      "passwordImport": "ipaNTHash: CVBguEizG80swI8sftaknw",
+      "userName": "admin"
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
+      ],
+      "id": "ac60034e-3498-11ed-a50d-919b4b1a5ec0",
+      "externalId": "cn=editors,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "description": "Limited admins who can edit other users",
+      "gidNumber": 8200002,
+      "name": "editors"
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
+      ],
+      "id": "0c56a965-3499-11ed-a50d-919b4b1a5ec0",
+      "externalId": "cn=trust admins,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "description": "Trusts administrators group",
+      "members": [
+        {
+          "external_id": "uid=admin,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
+        }
+      ],
+      "name": "trust admins"
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:person"
+      ],
+      "id": "babb8302-43a1-11ed-a50d-919b4b1a5ec0",
+      "externalId": "uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "displayName": "Test User",
+      "gidNumber": 12345,
+      "homeDirectory": "/home/testuser",
+      "loginShell": "/bin/sh",
+      "passwordImport": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA",
+      "userName": "testuser"
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
+      ],
+      "id": "d547c581-5f26-11ed-a50d-919b4b1a5ec0",
+      "externalId": "cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "description": "Test group",
+      "name": "testgroup"
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
+      ],
+      "id": "d547c583-5f26-11ed-a50d-919b4b1a5ec0",
+      "externalId": "cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "name": "testexternal"
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
+      ],
+      "id": "f90b0b81-5f26-11ed-a50d-919b4b1a5ec0",
+      "externalId": "cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "gidNumber": 1234567,
+      "name": "testposix"
+    }
+  ],
+  "delete_uuids": []
+}
+"#;
+
+
