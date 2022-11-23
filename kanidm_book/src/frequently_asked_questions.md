@@ -2,6 +2,13 @@
 
 ... or ones we think people *might* ask.
 
+## Why disallow HTTP (without TLS) between my load balancer and Kanidm?
+
+Because Kanidm is one of the keys to a secure network, and insecure connections
+to them are not best practice.
+
+Please refer to [Why TLS?](why_tls.md) for a longer explanation.
+
 ## Why so many crabs?
 
 It's [a rust thing](https://rustacean.net).

@@ -57,22 +57,22 @@ In general Kanidm requires that your resource server supports:
 
 Kanidm will expose its OAuth2 APIs at the following URLs:
 
-* user auth url: https://idm.example.com/ui/oauth2
-* api auth url: https://idm.example.com/oauth2/authorise
-* token url: https://idm.example.com/oauth2/token
-* rfc7662 token introspection url: https://idm.example.com/oauth2/token/introspect
-* rfc7009 token revoke url: https://idm.example.com/oauth2/token/revoke
+* user auth url: `https://idm.example.com/ui/oauth2`
+* api auth url: `https://idm.example.com/oauth2/authorise`
+* token url: `https://idm.example.com/oauth2/token`
+* rfc7662 token introspection url: `https://idm.example.com/oauth2/token/introspect`
+* rfc7009 token revoke url: `https://idm.example.com/oauth2/token/revoke`
 
 OpenID Connect discovery - you need to substitute your OAuth2 client id in the following
 urls:
 
-* OpenID connect issuer uri: https://idm.example.com/oauth2/openid/:client\_id:/
-* OpenID connect discovery:  https://idm.example.com/oauth2/openid/:client\_id:/.well-known/openid-configuration
+* OpenID connect issuer uri: `https://idm.example.com/oauth2/openid/:client\_id:/`
+* OpenID connect discovery:  `https://idm.example.com/oauth2/openid/:client\_id:/.well-known/openid-configuration`
 
 For manual OpenID configuration:
 
-* OpenID connect userinfo:   https://idm.example.com/oauth2/openid/:client\_id:/userinfo
-* token signing public key:  https://idm.example.com/oauth2/openid/:client\_id:/public\_key.jwk
+* OpenID connect userinfo:   `https://idm.example.com/oauth2/openid/:client\_id:/userinfo`
+* token signing public key:  `https://idm.example.com/oauth2/openid/:client\_id:/public\_key.jwk`
 
 ### Scope Relationships
 
@@ -126,9 +126,12 @@ You can create a scope map with:
     kanidm system oauth2 update_scope_map <name> <kanidm_group_name> [scopes]...
     kanidm system oauth2 update_scope_map nextcloud nextcloud_admins admin
 
-> **WARNING**
-> If you are creating an OpenID Connect (OIDC) resource server you *MUST* provide a
-> scope map named 'openid'. Without this, OpenID clients *WILL NOT WORK*
+{{#template
+    ../templates/kani-warning.md
+    imagepath=../images
+    title=WARNING
+    text=If you are creating an OpenID Connect (OIDC) resource server you <b>MUST</b> provide a scope map named <code>openid</code>. Without this, OpenID clients <b>WILL NOT WORK</b>
+}}
 
 > **HINT**
 > OpenID connect allows a number of scopes that affect the content of the resulting
@@ -186,8 +189,8 @@ it may be necessary to disable these on a per-resource server basis. Disabling t
 one resource server will not affect others.
 
 {{#template
-    templates/kani-warning.md
-    imagepath=images
+    ../templates/kani-warning.md
+    imagepath=../images
     title=WARNING
     text=Changing these settings MAY have serious consequences on the security of your resource server. You should avoid changing these if at all possible!
 }}
@@ -296,10 +299,11 @@ these to a group with a scope map due to Velociraptors high impact.
 > Vouch proxy requires a unique identifier but does not use the proper scope, "sub". It uses the fields
 > "username" or "email" as primary identifiers instead. As a result, this can cause user or deployment issues, at
 > worst security bypasses. You should avoid Vouch Proxy if possible due to these issues.
-> * https://github.com/vouch/vouch-proxy/issues/309
-> * https://github.com/vouch/vouch-proxy/issues/310
+>
+> * <https://github.com/vouch/vouch-proxy/issues/309>
+> * <https://github.com/vouch/vouch-proxy/issues/310>
 
-_You need to run at least the version 0.37.0_.
+Note: **You need to run at least the version 0.37.0**
 
 Vouch Proxy supports multiple OAuth and OIDC login providers.
 To configure it you need to pass:
@@ -321,4 +325,3 @@ oauth:
 The `email` scope needs to be passed and thus the mail attribute needs to exist on the account:
 
     kanidm person update <ID> --mail "YYYY@somedomain.com" --name idm_admin
-
