@@ -28,6 +28,9 @@ use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::{ServerRole, TlsConfiguration};
 
+use crate::CoreAction;
+use tokio::sync::broadcast;
+
 #[derive(Clone)]
 pub struct JavaScriptFile {
     // Relative to the pkg/ dir
@@ -326,7 +329,8 @@ pub fn create_https_server(
     status_ref: &'static StatusActor,
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
-) -> Result<(), ()> {
+    mut rx: broadcast::Receiver<CoreAction>,
+) -> Result<tokio::task::JoinHandle<()>, ()> {
     let jws_validator = jws_signer.get_validator().map_err(|e| {
         error!(?e, "Failed to get jws validator");
     })?;
@@ -847,7 +851,7 @@ pub fn create_https_server(
     // ===  End routes
 
     // Create listener?
-    match opt_tls_params {
+    let handle = match opt_tls_params {
         Some(tls_param) => {
             let tlsl = TlsListener::build()
                 .addrs(&address)
@@ -864,25 +868,45 @@ pub fn create_https_server(
             */
 
             tokio::spawn(async move {
-                if let Err(e) = tserver.listen(tlsl).await {
-                    error!(
-                        "Failed to start server listener on address {:?} -> {:?}",
-                        &address, e
-                    );
-                }
-            });
+                tokio::select! {
+                    Ok(action) = rx.recv() => {
+                        match action {
+                            CoreAction::Shutdown => {},
+                        }
+                    }
+                    server_result = tserver.listen(tlsl) => {
+                        if let Err(e) = server_result {
+                            error!(
+                                "Failed to start server listener on address {:?} -> {:?}",
+                                &address, e
+                            );
+                        }
+                    }
+                };
+                info!("Stopped HTTPSAcceptorActor");
+            })
         }
         None => {
             // Create without https
             tokio::spawn(async move {
-                if let Err(e) = tserver.listen(&address).await {
-                    error!(
-                        "Failed to start server listener on address {:?} -> {:?}",
-                        &address, e,
-                    );
+                tokio::select! {
+                    Ok(action) = rx.recv() => {
+                        match action {
+                            CoreAction::Shutdown => {},
+                        }
+                    }
+                    server_result = tserver.listen(&address) => {
+                        if let Err(e) = server_result {
+                            error!(
+                                "Failed to start server listener on address {:?} -> {:?}",
+                                &address, e
+                            );
+                        }
+                    }
                 }
-            });
+                info!("Stopped HTTPAcceptorActor");
+            })
         }
     };
-    Ok(())
+    Ok(handle)
 }

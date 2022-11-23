@@ -43,8 +43,9 @@ fn parse_knobs(input: &syn::ItemFn) -> TokenStream {
         #header
         fn #test_driver() {
             let body = async {
-                let rsclient = kanidmd_testkit::setup_async_test().await;
-                #fn_name(rsclient).await
+                let (rsclient, mut core_handle) = kanidmd_testkit::setup_async_test().await;
+                #fn_name(rsclient).await;
+                core_handle.shutdown().await;
             };
             #[allow(clippy::expect_used, clippy::diverging_sub_expression)]
             {

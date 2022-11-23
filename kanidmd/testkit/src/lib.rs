@@ -15,7 +15,7 @@ use std::sync::atomic::{AtomicU16, Ordering};
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidmd_core::config::{Configuration, IntegrationTestConfig, ServerRole};
-use kanidmd_core::create_server_core;
+use kanidmd_core::{create_server_core, CoreHandle};
 use tokio::task;
 
 pub const ADMIN_TEST_USER: &str = "admin";
@@ -36,7 +36,7 @@ pub fn is_free_port(port: u16) -> bool {
 
 // allowed because the use of this function is behind a test gate
 #[allow(dead_code)]
-pub async fn setup_async_test() -> KanidmClient {
+pub async fn setup_async_test() -> (KanidmClient, CoreHandle) {
     let _ = sketching::test_init();
 
     let mut counter = 0;
@@ -71,7 +71,7 @@ pub async fn setup_async_test() -> KanidmClient {
     // config.log_level = Some(LogLevel::FullTrace as u32);
     config.threads = 1;
 
-    create_server_core(config, false)
+    let core_handle = create_server_core(config, false)
         .await
         .expect("failed to start server core");
     // We have to yield now to guarantee that the tide elements are setup.
@@ -85,5 +85,5 @@ pub async fn setup_async_test() -> KanidmClient {
 
     tracing::info!("Testkit server setup complete - {}", addr);
 
-    rsclient
+    (rsclient, core_handle)
 }

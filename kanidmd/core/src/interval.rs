@@ -7,9 +7,11 @@ use std::path::Path;
 use chrono::Utc;
 use saffron::parse::{CronExpr, English};
 use saffron::Cron;
+use tokio::sync::broadcast;
 use tokio::time::{interval, sleep, Duration};
 
 use crate::config::OnlineBackup;
+use crate::CoreAction;
 
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
@@ -19,19 +21,33 @@ use kanidmd_lib::event::{OnlineBackupEvent, PurgeRecycledEvent, PurgeTombstoneEv
 pub struct IntervalActor;
 
 impl IntervalActor {
-    pub fn start(server: &'static QueryServerWriteV1) {
+    pub fn start(
+        server: &'static QueryServerWriteV1,
+        mut rx: broadcast::Receiver<CoreAction>,
+    ) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move {
             let mut inter = interval(Duration::from_secs(PURGE_FREQUENCY));
+
             loop {
-                inter.tick().await;
-                server
-                    .handle_purgetombstoneevent(PurgeTombstoneEvent::new())
-                    .await;
-                server
-                    .handle_purgerecycledevent(PurgeRecycledEvent::new())
-                    .await;
+                tokio::select! {
+                    Ok(action) = rx.recv() => {
+                        match action {
+                            CoreAction::Shutdown => break,
+                        }
+                    }
+                    _ = inter.tick() => {
+                        server
+                            .handle_purgetombstoneevent(PurgeTombstoneEvent::new())
+                            .await;
+                        server
+                            .handle_purgerecycledevent(PurgeRecycledEvent::new())
+                            .await;
+                    }
+                }
             }
-        });
+
+            info!("Stopped IntervalActor");
+        })
     }
 
     // Allow this because result is the only way to map and ? to bubble up, but we aren't
@@ -40,7 +56,8 @@ impl IntervalActor {
     pub fn start_online_backup(
         server: &'static QueryServerReadV1,
         cfg: &OnlineBackup,
-    ) -> Result<(), ()> {
+        mut rx: broadcast::Receiver<CoreAction>,
+    ) -> Result<tokio::task::JoinHandle<()>, ()> {
         let outpath = cfg.path.to_owned();
         let schedule = cfg.schedule.to_owned();
         let versions = cfg.versions;
@@ -86,7 +103,7 @@ impl IntervalActor {
             return Err(());
         }
 
-        tokio::spawn(async move {
+        let handle = tokio::spawn(async move {
             let ct = Utc::now();
             let cron = Cron::new(cron_expr.clone());
 
@@ -100,20 +117,29 @@ impl IntervalActor {
                     next_time, wait_seconds
                 );
 
-                sleep(Duration::from_secs(wait_seconds)).await;
-                if let Err(e) = server
-                    .handle_online_backup(
-                        OnlineBackupEvent::new(),
-                        outpath.clone().as_str(),
-                        versions,
-                    )
-                    .await
-                {
-                    error!(?e, "An online backup error occured.");
+                tokio::select! {
+                    Ok(action) = rx.recv() => {
+                        match action {
+                            CoreAction::Shutdown => break,
+                        }
+                    }
+                    _ = sleep(Duration::from_secs(wait_seconds)) => {
+                        if let Err(e) = server
+                            .handle_online_backup(
+                                OnlineBackupEvent::new(),
+                                outpath.clone().as_str(),
+                                versions,
+                            )
+                            .await
+                        {
+                            error!(?e, "An online backup error occured.");
+                        }
+                    }
                 }
             }
+            info!("Stopped OnlineBackupActor");
         });
 
-        Ok(())
+        Ok(handle)
     }
 }
