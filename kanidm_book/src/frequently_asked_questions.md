@@ -4,8 +4,8 @@
 
 ## Why disallow HTTP (without TLS) between my load balancer and Kanidm?
 
-Because IDMs are one of the key elements of securing a network, and insecure connections
-to them are not aligned with best practice.
+Because Kanidm is one of the keys to a secure network, and insecure connections
+to them are not best practice.
 
 Please refer to [Why TLS?](why_tls.md) for a longer explanation.
 
