@@ -278,7 +278,7 @@
         next: tide::Next&lt;<span class="lifetime">&#39;_</span>, State&gt;,
     ) -&gt; tide::Result {
         <span class="kw">let </span><span class="kw-2">mut </span>response = next.run(request).<span class="kw">await</span>;
-        response.insert_header(<span class="string">&quot;Cache-Control&quot;</span>, <span class="string">&quot;max-age=60,must-revalidate,private&quot;</span>);
+        response.insert_header(<span class="string">&quot;Cache-Control&quot;</span>, <span class="string">&quot;max-age=300,must-revalidate,private&quot;</span>);
         <span class="prelude-val">Ok</span>(response)
     }
 }

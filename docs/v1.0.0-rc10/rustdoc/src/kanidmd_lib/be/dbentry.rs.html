@@ -651,7 +651,7 @@
             <span class="kw">let </span>vs: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = viter
                 .map(|dbv| {
                     <span class="kw">if let </span>DbValueV1::IndexType(s) = dbv {
-                        <span class="prelude-val">Ok</span>(s)
+                        u16::try_from(s).map_err(|<span class="kw">_</span>| OperationError::InvalidValueState)
                     } <span class="kw">else </span>{
                         <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
                     }

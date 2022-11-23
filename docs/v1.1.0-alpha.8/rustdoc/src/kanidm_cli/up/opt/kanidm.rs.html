@@ -856,6 +856,15 @@
 <span id="856">856</span>
 <span id="857">857</span>
 <span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
 </pre><pre class="rust"><code><span class="kw">use </span>clap::{Args, Subcommand};
 
 <span class="attribute">#[derive(Debug, Args)]
@@ -1482,61 +1491,70 @@
     </span><span class="attribute">#[clap(name = <span class="string">&quot;create&quot;</span>)]
     </span><span class="doccomment">/// Create a new oauth2 resource server
     </span>CreateBasic(Oauth2BasicCreateOpt),
-    <span class="attribute">#[clap(name = <span class="string">&quot;update_scope_map&quot;</span>, visible_aliases=<span class="kw-2">&amp;</span>[<span class="string">&quot;create_scope_map&quot;</span>]</span>)]
+    <span class="attribute">#[clap(name = <span class="string">&quot;update-scope-map&quot;</span>, visible_aliases=<span class="kw-2">&amp;</span>[<span class="string">&quot;create-scope-map&quot;</span>]</span>)]
     <span class="doccomment">/// Update or add a new mapping from a group to scopes that it provides to members
     </span>UpdateScopeMap(Oauth2CreateScopeMapOpt),
     <span class="attribute">#[clap(name = <span class="string">&quot;delete_scope_map&quot;</span>)]
     </span><span class="doccomment">/// Remove a mapping from groups to scopes
     </span>DeleteScopeMap(Oauth2DeleteScopeMapOpt),
 
-    <span class="attribute">#[clap(name = <span class="string">&quot;update_sup_scope_map&quot;</span>, visible_aliases=<span class="kw-2">&amp;</span>[<span class="string">&quot;create_sup_scope_map&quot;</span>]</span>)]
+    <span class="attribute">#[clap(name = <span class="string">&quot;update-sup-scope-map&quot;</span>, visible_aliases=<span class="kw-2">&amp;</span>[<span class="string">&quot;create-sup-scope-map&quot;</span>]</span>)]
     <span class="doccomment">/// Update or add a new mapping from a group to scopes that it provides to members
     </span>UpdateSupScopeMap(Oauth2CreateScopeMapOpt),
-    <span class="attribute">#[clap(name = <span class="string">&quot;delete_sup_scope_map&quot;</span>)]
+    <span class="attribute">#[clap(name = <span class="string">&quot;delete-sup-scope-map&quot;</span>)]
     </span><span class="doccomment">/// Remove a mapping from groups to scopes
     </span>DeleteSupScopeMap(Oauth2DeleteScopeMapOpt),
 
-    <span class="attribute">#[clap(name = <span class="string">&quot;reset_secrets&quot;</span>)]
+    <span class="attribute">#[clap(name = <span class="string">&quot;reset-secrets&quot;</span>)]
     </span><span class="doccomment">/// Reset the secrets associated to this resource server
     </span>ResetSecrets(Named),
-    <span class="attribute">#[clap(name = <span class="string">&quot;show_basic_secret&quot;</span>)]
+    <span class="attribute">#[clap(name = <span class="string">&quot;show-basic-secret&quot;</span>)]
     </span><span class="doccomment">/// Show the associated basic secret for this resource server
     </span>ShowBasicSecret(Named),
     <span class="attribute">#[clap(name = <span class="string">&quot;delete&quot;</span>)]
     </span><span class="doccomment">/// Delete a oauth2 resource server
     </span>Delete(Named),
     <span class="doccomment">/// Set a new displayname for a resource server
-    </span><span class="attribute">#[clap(name = <span class="string">&quot;set_displayname&quot;</span>)]
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;set-displayname&quot;</span>)]
     </span>SetDisplayname(Oauth2SetDisplayname),
     <span class="doccomment">/// Set a new name for this resource server. You may need to update
     /// your integrated applications after this so that they continue to
     /// function correctly.
-    </span><span class="attribute">#[clap(name = <span class="string">&quot;set_name&quot;</span>)]
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;set-name&quot;</span>)]
     </span>SetName {
         <span class="attribute">#[clap(flatten)]
         </span>nopt: Named,
         <span class="attribute">#[clap(name = <span class="string">&quot;newname&quot;</span>)]
         </span>name: String,
     },
-    <span class="attribute">#[clap(name = <span class="string">&quot;enable_pkce&quot;</span>)]
+    <span class="doccomment">/// When redirecting from the Kanidm Apps Listing page, some linked applications may need to
+    /// land on a specific page to trigger oauth2/oidc interactions.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;set-landing-url&quot;</span>)]
+    </span>SetLandingUrl {
+        <span class="attribute">#[clap(flatten)]
+        </span>nopt: Named,
+        <span class="attribute">#[clap(name = <span class="string">&quot;landing_url&quot;</span>)]
+        </span>url: String,
+    },
+    <span class="attribute">#[clap(name = <span class="string">&quot;enable-pkce&quot;</span>)]
     </span><span class="doccomment">/// Enable PKCE on this oauth2 resource server. This defaults to being enabled.
     </span>EnablePkce(Named),
     <span class="doccomment">/// Disable PKCE on this oauth2 resource server to work around insecure clients that
     /// may not support it. You should request the client to enable PKCE!
-    </span><span class="attribute">#[clap(name = <span class="string">&quot;warning_insecure_client_disable_pkce&quot;</span>)]
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;warning-insecure-client-disable-pkce&quot;</span>)]
     </span>DisablePkce(Named),
-    <span class="attribute">#[clap(name = <span class="string">&quot;warning_enable_legacy_crypto&quot;</span>)]
+    <span class="attribute">#[clap(name = <span class="string">&quot;warning-enable-legacy-crypto&quot;</span>)]
     </span><span class="doccomment">/// Enable legacy signing crypto on this oauth2 resource server. This defaults to being disabled.
     /// You only need to enable this for openid clients that do not support modern crytopgraphic
     /// operations.
     </span>EnableLegacyCrypto(Named),
     <span class="doccomment">/// Disable legacy signing crypto on this oauth2 resource server. This is the default.
-    </span><span class="attribute">#[clap(name = <span class="string">&quot;disable_legacy_crypto&quot;</span>)]
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;disable-legacy-crypto&quot;</span>)]
     </span>DisableLegacyCrypto(Named),
-    <span class="attribute">#[clap(name = <span class="string">&quot;prefer_short_username&quot;</span>)]
+    <span class="attribute">#[clap(name = <span class="string">&quot;prefer-short-username&quot;</span>)]
     </span><span class="doccomment">/// Use the &#39;name&#39; attribute instead of &#39;spn&#39; for the preferred_username
     </span>PreferShortUsername(Named),
-    <span class="attribute">#[clap(name = <span class="string">&quot;prefer_spn_username&quot;</span>)]
+    <span class="attribute">#[clap(name = <span class="string">&quot;prefer-spn-username&quot;</span>)]
     </span><span class="doccomment">/// Use the &#39;spn&#39; attribute instead of &#39;name&#39; for the preferred_username
     </span>PreferSPNUsername(Named),
 }

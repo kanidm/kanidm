@@ -1404,11 +1404,36 @@
 <span id="1404">1404</span>
 <span id="1405">1405</span>
 <span id="1406">1406</span>
+<span id="1407">1407</span>
+<span id="1408">1408</span>
+<span id="1409">1409</span>
+<span id="1410">1410</span>
+<span id="1411">1411</span>
+<span id="1412">1412</span>
+<span id="1413">1413</span>
+<span id="1414">1414</span>
+<span id="1415">1415</span>
+<span id="1416">1416</span>
+<span id="1417">1417</span>
+<span id="1418">1418</span>
+<span id="1419">1419</span>
+<span id="1420">1420</span>
+<span id="1421">1421</span>
+<span id="1422">1422</span>
+<span id="1423">1423</span>
+<span id="1424">1424</span>
+<span id="1425">1425</span>
+<span id="1426">1426</span>
+<span id="1427">1427</span>
+<span id="1428">1428</span>
+<span id="1429">1429</span>
+<span id="1430">1430</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::TryFrom;
 <span class="kw">use </span>std::fs;
 <span class="kw">use </span>std::path::{Path, PathBuf};
 <span class="kw">use </span>std::sync::Arc;
 
+<span class="kw">use </span>kanidm_proto::internal::AppLink;
 <span class="kw">use </span>kanidm_proto::v1::{
     ApiToken, AuthRequest, BackupCodesView, CURequest, CUSessionToken, CUStatus, CredentialStatus,
     Entry <span class="kw">as </span>ProtoEntry, OperationError, RadiusAuthToken, SearchRequest, SearchResponse, UatStatus,
@@ -2745,6 +2770,29 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;JwkKeySet, OperationError&gt; {
         <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         idms_prox_read.oauth2_openid_publickey(<span class="kw-2">&amp;</span>client_id)
+    }
+
+    <span class="attribute">#[instrument(
+        level = <span class="string">&quot;info&quot;</span>,
+        skip_all,
+        fields(uuid = <span class="question-mark">?</span>eventid)
+    )]
+    </span><span class="kw">pub async fn </span>handle_list_applinks(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        uat: <span class="prelude-ty">Option</span>&lt;String&gt;,
+        eventid: Uuid,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;AppLink&gt;, OperationError&gt; {
+        <span class="kw">let </span>ct = duration_from_epoch_now();
+        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span>ident = idms_prox_read
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid identity: {:?}&quot;</span>, e);
+                e
+            })<span class="question-mark">?</span>;
+
+        <span class="comment">// Nice and easy!
+        </span>idms_prox_read.list_applinks(<span class="kw-2">&amp;</span>ident)
     }
 
     <span class="attribute">#[instrument(

@@ -4606,19 +4606,48 @@
 <span id="4606">4606</span>
 <span id="4607">4607</span>
 <span id="4608">4608</span>
+<span id="4609">4609</span>
+<span id="4610">4610</span>
+<span id="4611">4611</span>
+<span id="4612">4612</span>
+<span id="4613">4613</span>
+<span id="4614">4614</span>
+<span id="4615">4615</span>
+<span id="4616">4616</span>
+<span id="4617">4617</span>
+<span id="4618">4618</span>
+<span id="4619">4619</span>
+<span id="4620">4620</span>
+<span id="4621">4621</span>
+<span id="4622">4622</span>
+<span id="4623">4623</span>
+<span id="4624">4624</span>
+<span id="4625">4625</span>
+<span id="4626">4626</span>
+<span id="4627">4627</span>
+<span id="4628">4628</span>
+<span id="4629">4629</span>
+<span id="4630">4630</span>
+<span id="4631">4631</span>
+<span id="4632">4632</span>
+<span id="4633">4633</span>
+<span id="4634">4634</span>
+<span id="4635">4635</span>
+<span id="4636">4636</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
 </span><span class="comment">// This is really only used for long lived, high level types that need clone
 // that otherwise can&#39;t be cloned. Think Mutex.
 </span><span class="kw">use </span>std::cell::Cell;
+<span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
 <span class="kw">use </span>concread::cowcell::<span class="kw-2">*</span>;
 <span class="kw">use </span>hashbrown::{HashMap, HashSet};
-<span class="kw">use </span>kanidm_proto::v1::{ConsistencyError, SchemaError};
+<span class="kw">use </span>kanidm_proto::v1::{ConsistencyError, SchemaError, UiHint};
 <span class="kw">use </span>tokio::sync::{Semaphore, SemaphorePermit};
 <span class="kw">use </span>tracing::trace;
 
@@ -5125,6 +5154,9 @@
                     SyntaxType::JwsKeyEs256 =&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="string">&quot;JwsKeyEs256 Values can not be supplied through modification&quot;</span>.to_string())),
                     SyntaxType::JwsKeyRs256 =&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="string">&quot;JwsKeyRs256 Values can not be supplied through modification&quot;</span>.to_string())),
                     SyntaxType::Oauth2Session =&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="string">&quot;Oauth2Session Values can not be supplied through modification&quot;</span>.to_string())),
+                    SyntaxType::UiHint =&gt; UiHint::from_str(value)
+                        .map(Value::UiHint)
+                        .map_err(|()| OperationError::InvalidAttribute(<span class="string">&quot;Invalid uihint syntax&quot;</span>.to_string())),
                 }
             }
             <span class="prelude-val">None </span>=&gt; {
@@ -5253,6 +5285,11 @@
                             )
                         })
                     }
+                    SyntaxType::UiHint =&gt; UiHint::from_str(value)
+                        .map(PartialValue::UiHint)
+                        .map_err(|()| {
+                            OperationError::InvalidAttribute(<span class="string">&quot;Invalid uihint syntax&quot;</span>.to_string())
+                        }),
                 }
             }
             <span class="prelude-val">None </span>=&gt; {
@@ -7290,6 +7327,8 @@
             JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME,
             JSON_SCHEMA_ATTR_SYNC_TOKEN_SESSION,
             JSON_SCHEMA_ATTR_SYNC_COOKIE,
+            JSON_SCHEMA_ATTR_GRANT_UI_HINT,
+            JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_ORGPERSON,
             JSON_SCHEMA_CLASS_GROUP,
@@ -7456,13 +7495,30 @@
         <span class="macro">debug_assert!</span>(res.is_ok());
         res<span class="question-mark">?</span>;
 
+        <span class="kw">let </span>idm_entries = [
+            E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES.clone(),
+            E_IDM_ACCOUNT_MAIL_READ_PRIV.clone(),
+            E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
+        ];
+
+        <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(), <span class="kw">_</span>&gt; = idm_entries
+            .into_iter()
+            .try_for_each(|entry| <span class="self">self</span>.internal_migrate_or_create(entry));
+        <span class="kw">if </span>res.is_ok() {
+            <span class="macro">admin_debug!</span>(<span class="string">&quot;initialise_idm -&gt; result Ok!&quot;</span>);
+        } <span class="kw">else </span>{
+            <span class="macro">admin_error!</span>(<span class="question-mark">?</span>res, <span class="string">&quot;initialise_idm p3 -&gt; result&quot;</span>);
+        }
+        <span class="macro">debug_assert!</span>(res.is_ok());
+        res<span class="question-mark">?</span>;
+
         <span class="self">self</span>.changed_schema.set(<span class="bool-val">true</span>);
         <span class="self">self</span>.changed_acp.set(<span class="bool-val">true</span>);
 
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="attribute">#[instrument(level = <span class="string">&quot;info&quot;</span>, name = <span class="string">&quot;reload_schema&quot;</span>, skip(<span class="self">self</span>))]
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;reload_schema&quot;</span>, skip(<span class="self">self</span>))]
     </span><span class="kw">fn </span>reload_schema(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="comment">// supply entries to the writable schema to reload from.
         // find all attributes.

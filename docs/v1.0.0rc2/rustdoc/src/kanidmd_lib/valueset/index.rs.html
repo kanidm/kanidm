@@ -157,9 +157,9 @@
         <span class="self">self</span>.set.insert(s)
     }
 
-    <span class="kw">pub fn </span>from_dbvs2(data: Vec&lt;usize&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+    <span class="kw">pub fn </span>from_dbvs2(data: Vec&lt;u16&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
         <span class="kw">let </span>set: <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = data.into_iter().map(IndexType::try_from).collect();
-        <span class="kw">let </span>set = set.map_err(|()| OperationError::InvalidValueState)<span class="question-mark">?</span>;
+        <span class="kw">let </span>set = set.map_err(|<span class="kw">_</span>| OperationError::InvalidValueState)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(Box::new(ValueSetIndex { set }))
     }
 
@@ -235,7 +235,7 @@
     }
 
     <span class="kw">fn </span>to_db_valueset_v2(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DbValueSetV2 {
-        DbValueSetV2::IndexType(<span class="self">self</span>.set.iter().map(|s| s.to_usize()).collect())
+        DbValueSetV2::IndexType(<span class="self">self</span>.set.iter().map(|s| <span class="kw-2">*</span>s <span class="kw">as </span>u16).collect())
     }
 
     <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {

@@ -190,14 +190,8 @@
 <span id="190">190</span>
 <span id="191">191</span>
 <span id="192">192</span>
-<span id="193">193</span>
-<span id="194">194</span>
-<span id="195">195</span>
-<span id="196">196</span>
-<span id="197">197</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::marker::Unpin;
 <span class="kw">use </span>std::net;
-<span class="kw">use </span>std::pin::Pin;
 <span class="kw">use </span>std::str::FromStr;
 
 <span class="kw">use </span><span class="kw">crate</span>::actors::v1_read::QueryServerReadV1;
@@ -212,6 +206,9 @@
 <span class="kw">use </span>tokio::net::TcpListener;
 <span class="kw">use </span>tokio_openssl::SslStream;
 <span class="kw">use </span>tokio_util::codec::{FramedRead, FramedWrite};
+
+<span class="kw">use </span><span class="kw">crate</span>::CoreAction;
+<span class="kw">use </span>tokio::sync::broadcast;
 
 <span class="kw">struct </span>LdapSession {
     uat: <span class="prelude-ty">Option</span>&lt;LdapBoundToken&gt;,
@@ -305,61 +302,54 @@
     listener: TcpListener,
     tls_parms: SslAcceptor,
     qe_r_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>QueryServerReadV1,
+    <span class="kw-2">mut </span>rx: broadcast::Receiver&lt;CoreAction&gt;,
 ) {
     <span class="kw">loop </span>{
-        <span class="kw">match </span>listener.accept().<span class="kw">await </span>{
-            <span class="prelude-val">Ok</span>((tcpstream, client_socket_addr)) =&gt; {
-                <span class="comment">// Start the event
-                // From the parms we need to create an SslContext.
-                </span><span class="kw">let </span><span class="kw-2">mut </span>tlsstream = <span class="kw">match </span>Ssl::new(tls_parms.context())
-                    .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
-                {
-                    <span class="prelude-val">Ok</span>(ta) =&gt; ta,
-                    <span class="prelude-val">Err</span>(e) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;LDAP TLS setup error, continuing -&gt; {:?}&quot;</span>, e);
-                        <span class="kw">continue</span>;
-                    }
-                };
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = SslStream::accept(Pin::new(<span class="kw-2">&amp;mut </span>tlsstream)).<span class="kw">await </span>{
-                    <span class="macro">error!</span>(<span class="string">&quot;LDAP TLS accept error, continuing -&gt; {:?}&quot;</span>, e);
-                    <span class="kw">continue</span>;
-                };
-                <span class="kw">let </span>(r, w) = tokio::io::split(tlsstream);
-                <span class="kw">let </span>r = FramedRead::new(r, LdapCodec);
-                <span class="kw">let </span>w = FramedWrite::new(w, LdapCodec);
-                tokio::spawn(client_process(r, w, client_socket_addr, qe_r_ref));
+        <span class="macro">tokio::select! </span>{
+            <span class="prelude-val">Ok</span>(action) = rx.recv() =&gt; {
+                <span class="kw">match </span>action {
+                    CoreAction::Shutdown =&gt; <span class="kw">break</span>,
+                }
             }
-            <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">error!</span>(<span class="string">&quot;LDAP acceptor error, continuing -&gt; {:?}&quot;</span>, e);
+            accept_result = listener.accept() =&gt; {
+                <span class="kw">match </span>accept_result {
+                    <span class="prelude-val">Ok</span>((tcpstream, client_socket_addr)) =&gt; {
+                        <span class="comment">// Start the event
+                        // From the parms we need to create an SslContext.
+                        </span><span class="kw">let </span><span class="kw-2">mut </span>tlsstream = <span class="kw">match </span>Ssl::new(tls_parms.context())
+                            .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
+                        {
+                            <span class="prelude-val">Ok</span>(ta) =&gt; ta,
+                            <span class="prelude-val">Err</span>(e) =&gt; {
+                                <span class="macro">error!</span>(<span class="string">&quot;LDAP TLS setup error, continuing -&gt; {:?}&quot;</span>, e);
+                                <span class="kw">continue</span>;
+                            }
+                        };
+                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = SslStream::accept(Pin::new(<span class="kw-2">&amp;mut </span>tlsstream)).<span class="kw">await </span>{
+                            <span class="macro">error!</span>(<span class="string">&quot;LDAP TLS accept error, continuing -&gt; {:?}&quot;</span>, e);
+                            <span class="kw">continue</span>;
+                        };
+                        <span class="kw">let </span>(r, w) = tokio::io::split(tlsstream);
+                        <span class="kw">let </span>r = FramedRead::new(r, LdapCodec);
+                        <span class="kw">let </span>w = FramedWrite::new(w, LdapCodec);
+                        tokio::spawn(client_process(r, w, client_socket_addr, qe_r_ref));
+                    }
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;LDAP acceptor error, continuing -&gt; {:?}&quot;</span>, e);
+                    }
+                }
             }
         }
     }
+    <span class="macro">info!</span>(<span class="string">&quot;Stopped LdapAcceptorActor&quot;</span>);
 }
 
-<span class="doccomment">/// Plain TCP LDAP Listener, hands off to [client_process]
-</span><span class="comment">// async fn acceptor(listener: TcpListener, qe_r_ref: &amp;&#39;static QueryServerReadV1) {
-//     loop {
-//         match listener.accept().await {
-//             Ok((tcpstream, client_socket_addr)) =&gt; {
-//                 // Start the event
-//                 let (r, w) = tokio::io::split(tcpstream);
-//                 let r = FramedRead::new(r, LdapCodec);
-//                 let w = FramedWrite::new(w, LdapCodec);
-//                 // Let it rip.
-//                 tokio::spawn(client_process(r, w, client_socket_addr, qe_r_ref));
-//             }
-//             Err(e) =&gt; {
-//                 error!(&quot;LDAP acceptor error, continuing -&gt; {:?}&quot;, e);
-//             }
-//         }
-//     }
-// }
-
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>create_ldap_server(
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>create_ldap_server(
     address: <span class="kw-2">&amp;</span>str,
     opt_tls_params: <span class="prelude-ty">Option</span>&lt;SslAcceptorBuilder&gt;,
     qe_r_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>QueryServerReadV1,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+    rx: broadcast::Receiver&lt;CoreAction&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;tokio::task::JoinHandle&lt;()&gt;, ()&gt; {
     <span class="kw">if </span>address.starts_with(<span class="string">&quot;:::&quot;</span>) {
         <span class="comment">// takes :::xxxx to xxxx
         </span><span class="kw">let </span>port = address.replacen(<span class="string">&quot;:::&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="number">1</span>);
@@ -377,20 +367,20 @@
         );
     })<span class="question-mark">?</span>;
 
-    <span class="kw">match </span>opt_tls_params {
+    <span class="kw">let </span>ldap_acceptor_handle = <span class="kw">match </span>opt_tls_params {
         <span class="prelude-val">Some</span>(tls_params) =&gt; {
             <span class="macro">info!</span>(<span class="string">&quot;Starting LDAPS interface ldaps://{} ...&quot;</span>, address);
             <span class="kw">let </span>tls_parms = tls_params.build();
-            tokio::spawn(tls_acceptor(listener, tls_parms, qe_r_ref));
+            tokio::spawn(tls_acceptor(listener, tls_parms, qe_r_ref, rx))
         }
         <span class="prelude-val">None </span>=&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;The server won&#39;t run without TLS!&quot;</span>);
             <span class="kw">return </span><span class="prelude-val">Err</span>(());
         }
-    }
+    };
 
     <span class="macro">info!</span>(<span class="string">&quot;Created LDAP interface&quot;</span>);
-    <span class="prelude-val">Ok</span>(())
+    <span class="prelude-val">Ok</span>(ldap_acceptor_handle)
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_core" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

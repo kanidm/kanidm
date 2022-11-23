@@ -86,6 +86,7 @@
 <span id="86">86</span>
 <span id="87">87</span>
 <span id="88">88</span>
+<span id="89">89</span>
 </pre><pre class="rust"><code><span class="kw">use </span>proc_macro::TokenStream;
 <span class="kw">use </span>proc_macro2::{Ident, Span};
 <span class="kw">use </span>syn::spanned::Spanned;
@@ -131,9 +132,10 @@
         #header
         <span class="kw">fn </span>#test_driver() {
             <span class="kw">let </span>body = <span class="kw">async </span>{
-                <span class="kw">let </span>rsclient = kanidmd_testkit::setup_async_test().<span class="kw">await</span>;
-                #fn_name(rsclient).<span class="kw">await
-            </span>};
+                <span class="kw">let </span>(rsclient, <span class="kw-2">mut </span>core_handle) = kanidmd_testkit::setup_async_test().<span class="kw">await</span>;
+                #fn_name(rsclient).<span class="kw">await</span>;
+                core_handle.shutdown().<span class="kw">await</span>;
+            };
             <span class="attribute">#[allow(clippy::expect_used, clippy::diverging_sub_expression)]
             </span>{
                 <span class="kw">return </span>#rt

@@ -1876,6 +1876,13 @@
 <span id="1876">1876</span>
 <span id="1877">1877</span>
 <span id="1878">1878</span>
+<span id="1879">1879</span>
+<span id="1880">1880</span>
+<span id="1881">1881</span>
+<span id="1882">1882</span>
+<span id="1883">1883</span>
+<span id="1884">1884</span>
+<span id="1885">1885</span>
 </pre><pre class="rust"><code><span class="attribute">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -3571,6 +3578,7 @@
         name: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
         displayname: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
         origin: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
+        landing: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
         reset_secret: bool,
         reset_token_key: bool,
         reset_sign_key: bool,
@@ -3593,6 +3601,12 @@
             update_oauth2_rs
                 .attrs
                 .insert(<span class="string">&quot;oauth2_rs_origin&quot;</span>.to_string(), <span class="macro">vec!</span>[neworigin.to_string()]);
+        }
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(newlanding) = landing {
+            update_oauth2_rs.attrs.insert(
+                <span class="string">&quot;oauth2_rs_origin_landing&quot;</span>.to_string(),
+                <span class="macro">vec!</span>[newlanding.to_string()],
+            );
         }
         <span class="kw">if </span>reset_secret {
             update_oauth2_rs

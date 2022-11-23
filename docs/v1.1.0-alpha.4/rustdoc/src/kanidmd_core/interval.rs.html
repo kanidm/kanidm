@@ -117,6 +117,32 @@
 <span id="117">117</span>
 <span id="118">118</span>
 <span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This contains scheduled tasks/interval tasks that are run inside of the server on a schedule
 //! as background operations.
 
@@ -126,9 +152,11 @@
 <span class="kw">use </span>chrono::Utc;
 <span class="kw">use </span>saffron::parse::{CronExpr, English};
 <span class="kw">use </span>saffron::Cron;
+<span class="kw">use </span>tokio::sync::broadcast;
 <span class="kw">use </span>tokio::time::{interval, sleep, Duration};
 
 <span class="kw">use </span><span class="kw">crate</span>::config::OnlineBackup;
+<span class="kw">use </span><span class="kw">crate</span>::CoreAction;
 
 <span class="kw">use </span><span class="kw">crate</span>::actors::v1_read::QueryServerReadV1;
 <span class="kw">use </span><span class="kw">crate</span>::actors::v1_write::QueryServerWriteV1;
@@ -138,19 +166,33 @@
 <span class="kw">pub struct </span>IntervalActor;
 
 <span class="kw">impl </span>IntervalActor {
-    <span class="kw">pub fn </span>start(server: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>QueryServerWriteV1) {
+    <span class="kw">pub fn </span>start(
+        server: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>QueryServerWriteV1,
+        <span class="kw-2">mut </span>rx: broadcast::Receiver&lt;CoreAction&gt;,
+    ) -&gt; tokio::task::JoinHandle&lt;()&gt; {
         tokio::spawn(<span class="kw">async move </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>inter = interval(Duration::from_secs(PURGE_FREQUENCY));
+
             <span class="kw">loop </span>{
-                inter.tick().<span class="kw">await</span>;
-                server
-                    .handle_purgetombstoneevent(PurgeTombstoneEvent::new())
-                    .<span class="kw">await</span>;
-                server
-                    .handle_purgerecycledevent(PurgeRecycledEvent::new())
-                    .<span class="kw">await</span>;
+                <span class="macro">tokio::select! </span>{
+                    <span class="prelude-val">Ok</span>(action) = rx.recv() =&gt; {
+                        <span class="kw">match </span>action {
+                            CoreAction::Shutdown =&gt; <span class="kw">break</span>,
+                        }
+                    }
+                    <span class="kw">_ </span>= inter.tick() =&gt; {
+                        server
+                            .handle_purgetombstoneevent(PurgeTombstoneEvent::new())
+                            .<span class="kw">await</span>;
+                        server
+                            .handle_purgerecycledevent(PurgeRecycledEvent::new())
+                            .<span class="kw">await</span>;
+                    }
+                }
             }
-        });
+
+            <span class="macro">info!</span>(<span class="string">&quot;Stopped IntervalActor&quot;</span>);
+        })
     }
 
     <span class="comment">// Allow this because result is the only way to map and ? to bubble up, but we aren&#39;t
@@ -159,7 +201,8 @@
     </span><span class="kw">pub fn </span>start_online_backup(
         server: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>QueryServerReadV1,
         cfg: <span class="kw-2">&amp;</span>OnlineBackup,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="kw-2">mut </span>rx: broadcast::Receiver&lt;CoreAction&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;tokio::task::JoinHandle&lt;()&gt;, ()&gt; {
         <span class="kw">let </span>outpath = cfg.path.to_owned();
         <span class="kw">let </span>schedule = cfg.schedule.to_owned();
         <span class="kw">let </span>versions = cfg.versions;
@@ -205,7 +248,7 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(());
         }
 
-        tokio::spawn(<span class="kw">async move </span>{
+        <span class="kw">let </span>handle = tokio::spawn(<span class="kw">async move </span>{
             <span class="kw">let </span>ct = Utc::now();
             <span class="kw">let </span>cron = Cron::new(cron_expr.clone());
 
@@ -219,21 +262,30 @@
                     next_time, wait_seconds
                 );
 
-                sleep(Duration::from_secs(wait_seconds)).<span class="kw">await</span>;
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = server
-                    .handle_online_backup(
-                        OnlineBackupEvent::new(),
-                        outpath.clone().as_str(),
-                        versions,
-                    )
-                    .<span class="kw">await
-                </span>{
-                    <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;An online backup error occured.&quot;</span>);
+                <span class="macro">tokio::select! </span>{
+                    <span class="prelude-val">Ok</span>(action) = rx.recv() =&gt; {
+                        <span class="kw">match </span>action {
+                            CoreAction::Shutdown =&gt; <span class="kw">break</span>,
+                        }
+                    }
+                    <span class="kw">_ </span>= sleep(Duration::from_secs(wait_seconds)) =&gt; {
+                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = server
+                            .handle_online_backup(
+                                OnlineBackupEvent::new(),
+                                outpath.clone().as_str(),
+                                versions,
+                            )
+                            .<span class="kw">await
+                        </span>{
+                            <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;An online backup error occured.&quot;</span>);
+                        }
+                    }
                 }
             }
+            <span class="macro">info!</span>(<span class="string">&quot;Stopped OnlineBackupActor&quot;</span>);
         });
 
-        <span class="prelude-val">Ok</span>(())
+        <span class="prelude-val">Ok</span>(handle)
     }
 }
 </code></pre></div>

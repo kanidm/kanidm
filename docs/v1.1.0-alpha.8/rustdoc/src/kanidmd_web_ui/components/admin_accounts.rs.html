@@ -579,13 +579,16 @@
 <span id="579">579</span>
 <span id="580">580</span>
 <span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use </span>gloo::console;
 <span class="kw">use </span>yew::{html, Component, Context, Html, Properties};
 <span class="kw">use </span>yew_router::prelude::Link;
 
-<span class="kw">use </span><span class="kw">crate</span>::components::adminmenu::{Entity, EntityType, GetError};
+<span class="kw">use </span><span class="kw">crate</span>::components::admin_menu::{Entity, EntityType, GetError};
 <span class="kw">use </span><span class="kw">crate</span>::components::alpha_warning_banner;
 <span class="kw">use </span><span class="kw">crate</span>::constants::{
     CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_DT, CSS_TABLE,
@@ -843,15 +846,18 @@
         <span class="kw">match </span>msg {
             AdminListAccountsMsg::Responded { response } =&gt; {
                 <span class="comment">// TODO: do we paginate here?
-                </span><span class="attribute">#[cfg(debug)]
-                </span><span class="kw">for </span>key <span class="kw">in </span>response.keys() {
-                    <span class="attribute">#[allow(clippy::unwrap_used)]
-                    </span><span class="macro">console::log!</span>(
-                        <span class="string">&quot;response: {:?}&quot;</span>,
+                /*
+                // Seems broken
+                #[cfg(debug_assertions)]
+                for key in response.keys() {
+                    #[allow(clippy::unwrap_used)]
+                    console::log!(
+                        &quot;response: {:?}&quot;,
                         serde_json::to_string(response.get(key).unwrap()).unwrap()
                     );
                 }
-                <span class="self">self</span>.state = ViewState::Responded { response };
+                */
+                </span><span class="self">self</span>.state = ViewState::Responded { response };
                 <span class="kw">return </span><span class="bool-val">true</span>;
             }
             AdminListAccountsMsg::Failed { emsg, kopid } =&gt; {

@@ -463,8 +463,22 @@
 <span id="463">463</span>
 <span id="464">464</span>
 <span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
 </pre><pre class="rust"><code><span class="kw">use </span>gloo::console;
-<span class="kw">use </span>kanidm_proto::v1::UserAuthToken;
+<span class="kw">use </span>kanidm_proto::v1::{UiHint, UserAuthToken};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>wasm_bindgen::{JsCast, UnwrapThrowExt};
 <span class="kw">use </span>wasm_bindgen_futures::JsFuture;
@@ -472,7 +486,7 @@
 <span class="kw">use </span>yew::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>yew_router::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">use </span><span class="kw">crate</span>::components::{admin_accounts, admin_groups, admin_oauth2, adminmenu};
+<span class="kw">use </span><span class="kw">crate</span>::components::{admin_accounts, admin_groups, admin_menu, admin_oauth2};
 <span class="kw">use </span><span class="kw">crate</span>::error::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::manager::Route;
 <span class="kw">use crate</span>::{models, utils};
@@ -570,7 +584,7 @@
     <span class="kw">type </span>Properties = ();
 
     <span class="kw">fn </span>create(ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
-        <span class="attribute">#[cfg(debug)]
+        <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;views::create&quot;</span>);
 
         <span class="comment">// Ensure the token is valid before we proceed. Could be
@@ -591,13 +605,13 @@
     }
 
     <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; bool {
-        <span class="attribute">#[cfg(debug)]
+        <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;views::changed&quot;</span>);
         <span class="bool-val">false
     </span>}
 
     <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, msg: <span class="self">Self</span>::Message) -&gt; bool {
-        <span class="attribute">#[cfg(debug)]
+        <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;views::update&quot;</span>);
         <span class="kw">match </span>msg {
             ViewsMsg::Verified =&gt; {
@@ -636,7 +650,7 @@
     }
 
     <span class="kw">fn </span>rendered(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, _first_render: bool) {
-        <span class="attribute">#[cfg(debug)]
+        <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;views::rendered&quot;</span>);
     }
 
@@ -701,6 +715,8 @@
     </span><span class="kw">fn </span>view_authenticated(<span class="kw-2">&amp;</span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, uat: <span class="kw-2">&amp;</span>UserAuthToken) -&gt; Html {
         <span class="kw">let </span>current_user_uat = uat.clone();
 
+        <span class="kw">let </span>ui_hint_experimental = uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::ExperimentalFeatures);
+
         <span class="comment">// WARN set dash-body against body here?
         </span><span class="macro">html! </span>{
           &lt;&gt;
@@ -712,41 +728,48 @@
                 &lt;button class=<span class="string">&quot;navbar-toggler bg-light&quot; </span><span class="kw">type</span>=<span class="string">&quot;button&quot; </span>data-bs-toggle=<span class="string">&quot;collapse&quot; </span>data-bs-target=<span class="string">&quot;#navbarCollapse&quot; </span>aria-controls=<span class="string">&quot;navbarCollapse&quot; </span>aria-expanded=<span class="string">&quot;false&quot; </span>aria-label=<span class="string">&quot;Toggle navigation&quot;</span>&gt;
                   &lt;img src=<span class="string">&quot;/pkg/img/favicon.png&quot; </span>/&gt;
                 &lt;/button&gt;
+
                 &lt;div class=<span class="string">&quot;collapse navbar-collapse&quot; </span>id=<span class="string">&quot;navbarCollapse&quot;</span>&gt;
                   &lt;ul class=<span class="string">&quot;navbar-nav me-auto mb-2 mb-md-0&quot;</span>&gt;
-                  &lt;li class=<span class="string">&quot;mb-1&quot;</span>&gt;
-                  &lt;Link&lt;ViewRoute&gt; classes=<span class="string">&quot;nav-link&quot; </span>to={ViewRoute::Apps}&gt;
-                    &lt;span data-feather=<span class="string">&quot;file&quot;</span>&gt;&lt;/span&gt;
-                    { <span class="string">&quot;Apps&quot; </span>}
-                  &lt;/Link&lt;ViewRoute&gt;&gt;
-                &lt;/li&gt;
 
-                &lt;li class=<span class="string">&quot;mb-1&quot;</span>&gt;
-                  &lt;Link&lt;ViewRoute&gt; classes=<span class="string">&quot;nav-link&quot; </span>to={ViewRoute::Profile}&gt;
-                    &lt;span data-feather=<span class="string">&quot;file&quot;</span>&gt;&lt;/span&gt;
-                    { <span class="string">&quot;Profile&quot; </span>}
-                  &lt;/Link&lt;ViewRoute&gt;&gt;
-                &lt;/li&gt;
+                    &lt;li class=<span class="string">&quot;mb-1&quot;</span>&gt;
+                      &lt;Link&lt;ViewRoute&gt; classes=<span class="string">&quot;nav-link&quot; </span>to={ViewRoute::Apps}&gt;
+                        &lt;span data-feather=<span class="string">&quot;file&quot;</span>&gt;&lt;/span&gt;
+                        { <span class="string">&quot;Apps&quot; </span>}
+                      &lt;/Link&lt;ViewRoute&gt;&gt;
+                    &lt;/li&gt;
 
-                &lt;li class=<span class="string">&quot;mb-1&quot;</span>&gt;
-                  &lt;Link&lt;ViewRoute&gt; classes=<span class="string">&quot;nav-link&quot; </span>to={ViewRoute::Security}&gt;
-                    &lt;span data-feather=<span class="string">&quot;file&quot;</span>&gt;&lt;/span&gt;
-                    { <span class="string">&quot;Security&quot; </span>}
-                  &lt;/Link&lt;ViewRoute&gt;&gt;
-                &lt;/li&gt;
-                <span class="comment">// TODO: the admin link should only show up if you&#39;re an admin
-                </span>&lt;li class=<span class="string">&quot;mb-1&quot;</span>&gt;
-                  &lt;Link&lt;AdminRoute&gt; classes=<span class="string">&quot;nav-link&quot; </span>to={AdminRoute::AdminMenu}&gt;
-                    &lt;span data-feather=<span class="string">&quot;file&quot;</span>&gt;&lt;/span&gt;
-                    { <span class="string">&quot;Admin&quot; </span>}
-                  &lt;/Link&lt;AdminRoute&gt;&gt;
-                &lt;/li&gt;
-                &lt;li class=<span class="string">&quot;mb-1&quot;</span>&gt;
-                  &lt;a class=<span class="string">&quot;nav-link&quot; </span>href=<span class="string">&quot;#&quot;
-                    </span>data-bs-toggle=<span class="string">&quot;modal&quot;
-                    </span>data-bs-target={<span class="macro">format!</span>(<span class="string">&quot;#{}&quot;</span>, <span class="kw">crate</span>::constants::ID_SIGNOUTMODAL)}
-                    &gt;{<span class="string">&quot;Sign out&quot;</span>}&lt;/a&gt;
-                &lt;/li&gt;
+                    <span class="kw">if </span>ui_hint_experimental {
+                      &lt;li class=<span class="string">&quot;mb-1&quot;</span>&gt;
+                        &lt;Link&lt;ViewRoute&gt; classes=<span class="string">&quot;nav-link&quot; </span>to={ViewRoute::Profile}&gt;
+                          &lt;span data-feather=<span class="string">&quot;file&quot;</span>&gt;&lt;/span&gt;
+                          { <span class="string">&quot;Profile&quot; </span>}
+                        &lt;/Link&lt;ViewRoute&gt;&gt;
+                      &lt;/li&gt;
+                    }
+
+                    &lt;li class=<span class="string">&quot;mb-1&quot;</span>&gt;
+                      &lt;Link&lt;ViewRoute&gt; classes=<span class="string">&quot;nav-link&quot; </span>to={ViewRoute::Security}&gt;
+                        &lt;span data-feather=<span class="string">&quot;file&quot;</span>&gt;&lt;/span&gt;
+                        { <span class="string">&quot;Security&quot; </span>}
+                      &lt;/Link&lt;ViewRoute&gt;&gt;
+                    &lt;/li&gt;
+
+                    <span class="kw">if </span>ui_hint_experimental {
+                      &lt;li class=<span class="string">&quot;mb-1&quot;</span>&gt;
+                        &lt;Link&lt;AdminRoute&gt; classes=<span class="string">&quot;nav-link&quot; </span>to={AdminRoute::AdminMenu}&gt;
+                          &lt;span data-feather=<span class="string">&quot;file&quot;</span>&gt;&lt;/span&gt;
+                          { <span class="string">&quot;Admin&quot; </span>}
+                        &lt;/Link&lt;AdminRoute&gt;&gt;
+                      &lt;/li&gt;
+                    }
+
+                    &lt;li class=<span class="string">&quot;mb-1&quot;</span>&gt;
+                      &lt;a class=<span class="string">&quot;nav-link&quot; </span>href=<span class="string">&quot;#&quot;
+                        </span>data-bs-toggle=<span class="string">&quot;modal&quot;
+                        </span>data-bs-target={<span class="macro">format!</span>(<span class="string">&quot;#{}&quot;</span>, <span class="kw">crate</span>::constants::ID_SIGNOUTMODAL)}
+                        &gt;{<span class="string">&quot;Sign out&quot;</span>}&lt;/a&gt;
+                    &lt;/li&gt;
                   &lt;/ul&gt;
                   &lt;form class=<span class="string">&quot;d-flex&quot;</span>&gt;
                     &lt;input class=<span class="string">&quot;form-control me-2&quot; </span><span class="kw">type</span>=<span class="string">&quot;search&quot; </span>placeholder=<span class="string">&quot;Search&quot; </span>aria-label=<span class="string">&quot;Search&quot; </span>/&gt;
@@ -813,7 +836,12 @@
             .expect_throw(<span class="string">&quot;failed to set header&quot;</span>);
 
         <span class="kw">let </span>window = utils::window();
-        <span class="kw">let </span>resp_value = JsFuture::from(window.fetch_with_request(<span class="kw-2">&amp;</span>request)).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>resp_value = JsFuture::from(window.fetch_with_request(<span class="kw-2">&amp;</span>request))
+            .<span class="kw">await
+            </span>.map_err(|e| {
+                <span class="macro">console::error!</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;fetch request failed {:?}&quot;</span>, e));
+                e
+            })<span class="question-mark">?</span>;
         <span class="kw">let </span>resp: Response = resp_value.dyn_into().expect_throw(<span class="string">&quot;Invalid response type&quot;</span>);
         <span class="kw">let </span>status = resp.status();
 
@@ -900,7 +928,7 @@
 <span class="kw">fn </span>admin_routes(route: <span class="kw-2">&amp;</span>AdminRoute) -&gt; Html {
     <span class="kw">match </span>route {
         AdminRoute::AdminMenu =&gt; <span class="macro">html! </span>{
-          &lt;adminmenu::AdminMenu /&gt;
+          &lt;admin_menu::AdminMenu /&gt;
         },
         AdminRoute::AdminListAccounts =&gt; <span class="macro">html!</span>(
           &lt;admin_accounts::AdminListAccounts /&gt;

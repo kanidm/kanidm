@@ -48,6 +48,9 @@
 <span id="48">48</span>
 <span id="49">49</span>
 <span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::uuids::UUID_DOMAIN_INFO;
 <span class="kw">use </span><span class="kw">crate</span>::value::{PartialValue, Value};
 <span class="kw">use </span>url::Url;
@@ -86,9 +89,12 @@
     <span class="kw">pub static </span><span class="kw-2">ref </span>PVCLASS_SYSTEM_CONFIG: PartialValue = PartialValue::new_class(<span class="string">&quot;system_config&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>PVCLASS_TOMBSTONE: PartialValue = PartialValue::new_class(<span class="string">&quot;tombstone&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuid(UUID_DOMAIN_INFO);
+    <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_ACCESS_CONTROL_PROFILE: Value = Value::new_class(<span class="string">&quot;access_control_profile&quot;</span>);
+    <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_ACCESS_CONTROL_SEARCH: Value = Value::new_class(<span class="string">&quot;access_control_search&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_ACCOUNT: Value = Value::new_class(<span class="string">&quot;account&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_DOMAIN_INFO: Value = Value::new_class(<span class="string">&quot;domain_info&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_DYNGROUP: Value = Value::new_class(<span class="string">&quot;dyngroup&quot;</span>);
+    <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_GROUP: Value = Value::new_class(<span class="string">&quot;group&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_MEMBEROF: Value = Value::new_class(<span class="string">&quot;memberof&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_OBJECT: Value = Value::new_class(<span class="string">&quot;object&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_RECYCLED: Value = Value::new_class(<span class="string">&quot;recycled&quot;</span>);

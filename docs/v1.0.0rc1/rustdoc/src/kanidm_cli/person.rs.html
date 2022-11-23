@@ -1112,7 +1112,6 @@
 <span id="1112">1112</span>
 <span id="1113">1113</span>
 <span id="1114">1114</span>
-<span id="1115">1115</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt::{<span class="self">self</span>, Debug};
 <span class="kw">use </span>std::str::FromStr;
 
@@ -1128,9 +1127,8 @@
 <span class="kw">use </span>time::OffsetDateTime;
 <span class="kw">use </span>url::Url;
 <span class="kw">use </span>uuid::Uuid;
-<span class="kw">use </span>webauthn_authenticator_rs::u2fhid::U2FHid;
-<span class="kw">use </span>webauthn_authenticator_rs::WebauthnAuthenticator;
 
+<span class="kw">use </span><span class="kw">crate</span>::webauthn::get_authenticator;
 <span class="kw">use crate</span>::{
     password_prompt, AccountCredential, AccountRadius, AccountSsh, AccountUserAuthToken,
     AccountValidity, PersonOpt, PersonPosix,
@@ -1951,7 +1949,7 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
     };
 
     <span class="comment">// Setup and connect to the webauthn handler ...
-    </span><span class="kw">let </span><span class="kw-2">mut </span>wa = WebauthnAuthenticator::new(U2FHid::new());
+    </span><span class="kw">let </span><span class="kw-2">mut </span>wa = get_authenticator();
 
     <span class="macro">eprintln!</span>(<span class="string">&quot;Your authenticator will now flash for you to interact with.&quot;</span>);
     <span class="macro">eprintln!</span>(<span class="string">&quot;You may be asked to enter the PIN for your device.&quot;</span>);

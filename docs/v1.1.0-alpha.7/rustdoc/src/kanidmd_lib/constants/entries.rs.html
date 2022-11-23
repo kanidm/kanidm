@@ -598,11 +598,54 @@
 <span id="598">598</span>
 <span id="599">599</span>
 <span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::constants::uuids::<span class="kw-2">*</span>;
 <span class="doccomment">///! Constant Entries for the IDM
 </span><span class="kw">use </span><span class="kw">crate</span>::constants::values::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
 <span class="kw">use </span><span class="kw">crate</span>::value::Value;
+<span class="kw">use </span>kanidm_proto::v1::UiHint;
 
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">use </span>uuid::{uuid, Uuid};
@@ -1076,6 +1119,47 @@
         ]
     }
 }&quot;#</span>;
+
+<span class="macro">lazy_static! </span>{
+    <span class="kw">pub static </span><span class="kw-2">ref </span>E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES: EntryInitNew = <span class="macro">entry_init!</span>(
+        (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_GROUP.clone()),
+        (
+            <span class="string">&quot;name&quot;</span>,
+            Value::new_iname(<span class="string">&quot;idm_ui_enable_experimental_features&quot;</span>)
+        ),
+        (
+            <span class="string">&quot;uuid&quot;</span>,
+            Value::new_uuid(UUID_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES)
+        ),
+        (
+            <span class="string">&quot;description&quot;</span>,
+            Value::new_utf8s(
+                <span class="string">&quot;Members of this group will have access to experimental web UI features.&quot;
+            </span>)
+        ),
+        (<span class="string">&quot;grant_ui_hint&quot;</span>, Value::UiHint(UiHint::ExperimentalFeatures))
+    );
+
+    <span class="kw">pub static </span><span class="kw-2">ref </span>E_IDM_ACCOUNT_MAIL_READ_PRIV: EntryInitNew = <span class="macro">entry_init!</span>(
+        (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_GROUP.clone()),
+        (
+            <span class="string">&quot;name&quot;</span>,
+            Value::new_iname(<span class="string">&quot;idm_account_mail_read_priv&quot;</span>)
+        ),
+        (
+            <span class="string">&quot;uuid&quot;</span>,
+            Value::new_uuid(UUID_IDM_ACCOUNT_MAIL_READ_PRIV)
+        ),
+        (
+            <span class="string">&quot;description&quot;</span>,
+            Value::new_utf8s(
+                <span class="string">&quot;Members of this group will have access to read the mail attribute of all persons and service accounts.&quot;
+            </span>)
+        )
+    );
+}
 
 <span class="doccomment">/// This must be the last group to init to include the UUID of the other high priv groups.
 </span><span class="kw">pub const </span>JSON_IDM_HIGH_PRIVILEGE_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{

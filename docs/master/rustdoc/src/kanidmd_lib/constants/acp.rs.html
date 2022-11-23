@@ -1299,7 +1299,55 @@
 <span id="1299">1299</span>
 <span id="1300">1300</span>
 <span id="1301">1301</span>
-</pre><pre class="rust"><code><span class="comment">/*
+<span id="1302">1302</span>
+<span id="1303">1303</span>
+<span id="1304">1304</span>
+<span id="1305">1305</span>
+<span id="1306">1306</span>
+<span id="1307">1307</span>
+<span id="1308">1308</span>
+<span id="1309">1309</span>
+<span id="1310">1310</span>
+<span id="1311">1311</span>
+<span id="1312">1312</span>
+<span id="1313">1313</span>
+<span id="1314">1314</span>
+<span id="1315">1315</span>
+<span id="1316">1316</span>
+<span id="1317">1317</span>
+<span id="1318">1318</span>
+<span id="1319">1319</span>
+<span id="1320">1320</span>
+<span id="1321">1321</span>
+<span id="1322">1322</span>
+<span id="1323">1323</span>
+<span id="1324">1324</span>
+<span id="1325">1325</span>
+<span id="1326">1326</span>
+<span id="1327">1327</span>
+<span id="1328">1328</span>
+<span id="1329">1329</span>
+<span id="1330">1330</span>
+<span id="1331">1331</span>
+<span id="1332">1332</span>
+<span id="1333">1333</span>
+<span id="1334">1334</span>
+<span id="1335">1335</span>
+<span id="1336">1336</span>
+<span id="1337">1337</span>
+<span id="1338">1338</span>
+<span id="1339">1339</span>
+<span id="1340">1340</span>
+<span id="1341">1341</span>
+<span id="1342">1342</span>
+<span id="1343">1343</span>
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::constants::uuids::<span class="kw-2">*</span>;
+<span class="doccomment">///! Constant Entries for the IDM
+</span><span class="kw">use </span><span class="kw">crate</span>::constants::values::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
+<span class="kw">use </span><span class="kw">crate</span>::value::Value;
+
+<span class="comment">/*
 // Template acp
 pub const _UUID_IDM_ACP_XX_V1: &amp;str = &quot;00000000-0000-0000-0000-ffffff0000XX&quot;;
 pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
@@ -1626,6 +1674,37 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         ]
     }
 }&quot;#</span>;
+
+<span class="macro">lazy_static! </span>{
+    <span class="kw">pub static </span><span class="kw-2">ref </span>E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1: EntryInitNew = <span class="macro">entry_init!</span>(
+        (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        (
+            <span class="string">&quot;name&quot;</span>,
+            Value::new_iname(<span class="string">&quot;idm_acp_account_mail_read_priv&quot;</span>)
+        ),
+        (
+            <span class="string">&quot;uuid&quot;</span>,
+            Value::new_uuid(UUID_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1)
+        ),
+        (
+            <span class="string">&quot;description&quot;</span>,
+            Value::new_utf8s(
+                <span class="string">&quot;Builtin IDM Control for reading account mail attributes.&quot;
+            </span>)
+        ),
+        (
+            <span class="string">&quot;acp_receiver_group&quot;</span>,
+            Value::Refer(UUID_IDM_ACCOUNT_MAIL_READ_PRIV)
+        ),
+        (
+            <span class="string">&quot;acp_targetscope&quot;</span>,
+            Value::new_json_filter_s(<span class="string">&quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;</span>).expect(<span class="string">&quot;filter&quot;</span>)
+        ),
+        (<span class="string">&quot;acp_search_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;mail&quot;</span>))
+    );
+}
 
 <span class="kw">pub const </span>JSON_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
@@ -2447,6 +2526,7 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;displayname&quot;,
             &quot;oauth2_rs_name&quot;,
             &quot;oauth2_rs_origin&quot;,
+            &quot;oauth2_rs_origin_landing&quot;,
             &quot;oauth2_rs_scope_map&quot;,
             &quot;oauth2_rs_sup_scope_map&quot;,
             &quot;oauth2_rs_basic_secret&quot;,
@@ -2462,6 +2542,7 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;displayname&quot;,
             &quot;oauth2_rs_name&quot;,
             &quot;oauth2_rs_origin&quot;,
+            &quot;oauth2_rs_origin_landing&quot;,
             &quot;oauth2_rs_scope_map&quot;,
             &quot;oauth2_rs_sup_scope_map&quot;,
             &quot;oauth2_rs_basic_secret&quot;,
@@ -2477,6 +2558,7 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;displayname&quot;,
             &quot;oauth2_rs_name&quot;,
             &quot;oauth2_rs_origin&quot;,
+            &quot;oauth2_rs_origin_landing&quot;,
             &quot;oauth2_rs_sup_scope_map&quot;,
             &quot;oauth2_rs_scope_map&quot;,
             &quot;oauth2_allow_insecure_client_disable_pkce&quot;,
@@ -2490,6 +2572,7 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;displayname&quot;,
             &quot;oauth2_rs_name&quot;,
             &quot;oauth2_rs_origin&quot;,
+            &quot;oauth2_rs_origin_landing&quot;,
             &quot;oauth2_rs_sup_scope_map&quot;,
             &quot;oauth2_rs_scope_map&quot;,
             &quot;oauth2_allow_insecure_client_disable_pkce&quot;,
@@ -2548,7 +2631,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;class&quot;,
             &quot;displayname&quot;,
             &quot;oauth2_rs_name&quot;,
-            &quot;oauth2_rs_origin&quot;
+            &quot;oauth2_rs_origin&quot;,
+            &quot;oauth2_rs_origin_landing&quot;
         ]
     }
 }&quot;#</span>;

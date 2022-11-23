@@ -104,7 +104,7 @@
 
 <span class="kw">use </span>kanidm_client::{KanidmClient, KanidmClientBuilder};
 <span class="kw">use </span>kanidmd_core::config::{Configuration, IntegrationTestConfig, ServerRole};
-<span class="kw">use </span>kanidmd_core::create_server_core;
+<span class="kw">use </span>kanidmd_core::{create_server_core, CoreHandle};
 <span class="kw">use </span>tokio::task;
 
 <span class="kw">pub const </span>ADMIN_TEST_USER: <span class="kw-2">&amp;</span>str = <span class="string">&quot;admin&quot;</span>;
@@ -125,7 +125,7 @@
 
 // allowed because the use of this function is behind a test gate
 </span><span class="attribute">#[allow(dead_code)]
-</span><span class="kw">pub async fn </span>setup_async_test() -&gt; KanidmClient {
+</span><span class="kw">pub async fn </span>setup_async_test() -&gt; (KanidmClient, CoreHandle) {
     <span class="kw">let _ </span>= sketching::test_init();
 
     <span class="kw">let </span><span class="kw-2">mut </span>counter = <span class="number">0</span>;
@@ -160,7 +160,7 @@
     // config.log_level = Some(LogLevel::FullTrace as u32);
     </span>config.threads = <span class="number">1</span>;
 
-    create_server_core(config, <span class="bool-val">false</span>)
+    <span class="kw">let </span>core_handle = create_server_core(config, <span class="bool-val">false</span>)
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;failed to start server core&quot;</span>);
     <span class="comment">// We have to yield now to guarantee that the tide elements are setup.
@@ -174,7 +174,7 @@
 
     <span class="macro">tracing::info!</span>(<span class="string">&quot;Testkit server setup complete - {}&quot;</span>, addr);
 
-    rsclient
+    (rsclient, core_handle)
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_testkit" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

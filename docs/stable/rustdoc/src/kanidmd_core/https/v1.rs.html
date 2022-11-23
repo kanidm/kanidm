@@ -1202,6 +1202,17 @@
 <span id="1202">1202</span>
 <span id="1203">1203</span>
 <span id="1204">1204</span>
+<span id="1205">1205</span>
+<span id="1206">1206</span>
+<span id="1207">1207</span>
+<span id="1208">1208</span>
+<span id="1209">1209</span>
+<span id="1210">1210</span>
+<span id="1211">1211</span>
+<span id="1212">1212</span>
+<span id="1213">1213</span>
+<span id="1214">1214</span>
+<span id="1215">1215</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::time::Duration;
 
@@ -2240,6 +2251,17 @@
         .state()
         .qe_w_ref
         .handle_reviverecycled(uat, filter, eventid)
+        .<span class="kw">await</span>;
+    to_tide_response(res, hvalue)
+}
+
+<span class="kw">pub async fn </span>applinks_get(req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
+    <span class="kw">let </span>uat = req.get_current_uat();
+    <span class="kw">let </span>(eventid, hvalue) = req.new_eventid();
+    <span class="kw">let </span>res = req
+        .state()
+        .qe_r_ref
+        .handle_list_applinks(uat, eventid)
         .<span class="kw">await</span>;
     to_tide_response(res, hvalue)
 }

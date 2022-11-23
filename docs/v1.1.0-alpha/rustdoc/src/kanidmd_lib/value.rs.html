@@ -1856,33 +1856,6 @@
 <span id="1856">1856</span>
 <span id="1857">1857</span>
 <span id="1858">1858</span>
-<span id="1859">1859</span>
-<span id="1860">1860</span>
-<span id="1861">1861</span>
-<span id="1862">1862</span>
-<span id="1863">1863</span>
-<span id="1864">1864</span>
-<span id="1865">1865</span>
-<span id="1866">1866</span>
-<span id="1867">1867</span>
-<span id="1868">1868</span>
-<span id="1869">1869</span>
-<span id="1870">1870</span>
-<span id="1871">1871</span>
-<span id="1872">1872</span>
-<span id="1873">1873</span>
-<span id="1874">1874</span>
-<span id="1875">1875</span>
-<span id="1876">1876</span>
-<span id="1877">1877</span>
-<span id="1878">1878</span>
-<span id="1879">1879</span>
-<span id="1880">1880</span>
-<span id="1881">1881</span>
-<span id="1882">1882</span>
-<span id="1883">1883</span>
-<span id="1884">1884</span>
-<span id="1885">1885</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of
 //! the [`Value`] module allow storage and transformation of various types of input into strongly
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
@@ -1897,6 +1870,8 @@
 <span class="kw">use </span>compact_jwt::JwsSigner;
 <span class="kw">use </span>hashbrown::HashSet;
 <span class="kw">use </span>kanidm_proto::v1::Filter <span class="kw">as </span>ProtoFilter;
+<span class="kw">use </span>kanidm_proto::v1::UiHint;
+<span class="kw">use </span>num_enum::TryFromPrimitive;
 <span class="kw">use </span>regex::Regex;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>sshkeys::PublicKey <span class="kw">as </span>SshPublicKey;
@@ -1957,14 +1932,6 @@
     </span><span class="kw">pub </span>country: String,
 }
 
-<span class="attribute">#[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Hash)]
-</span><span class="kw">pub enum </span>IndexType {
-    Equality,
-    Presence,
-    SubString,
-}
-
 <span class="attribute">#[derive(Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>IntentTokenState {
     Valid {
@@ -1978,6 +1945,27 @@
     Consumed {
         max_ttl: Duration,
     },
+}
+
+<span class="attribute">#[allow(non_camel_case_types)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    Hash,
+    TryFromPrimitive,
+)]
+#[repr(u16)]
+</span><span class="kw">pub enum </span>IndexType {
+    Equality,
+    Presence,
+    SubString,
 }
 
 <span class="kw">impl </span>TryFrom&lt;<span class="kw-2">&amp;</span>str&gt; <span class="kw">for </span>IndexType {
@@ -1996,33 +1984,12 @@
     }
 }
 
-<span class="kw">impl </span>TryFrom&lt;usize&gt; <span class="kw">for </span>IndexType {
-    <span class="kw">type </span>Error = ();
-
-    <span class="kw">fn </span>try_from(value: usize) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
-        <span class="kw">match </span>value {
-            <span class="number">0 </span>=&gt; <span class="prelude-val">Ok</span>(IndexType::Equality),
-            <span class="number">1 </span>=&gt; <span class="prelude-val">Ok</span>(IndexType::Presence),
-            <span class="number">2 </span>=&gt; <span class="prelude-val">Ok</span>(IndexType::SubString),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(()),
-        }
-    }
-}
-
 <span class="kw">impl </span>IndexType {
     <span class="kw">pub fn </span>as_idx_str(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
         <span class="kw">match </span><span class="self">self </span>{
             IndexType::Equality =&gt; <span class="string">&quot;eq&quot;</span>,
             IndexType::Presence =&gt; <span class="string">&quot;pres&quot;</span>,
             IndexType::SubString =&gt; <span class="string">&quot;sub&quot;</span>,
-        }
-    }
-
-    <span class="kw">pub fn </span>to_usize(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="kw">match </span><span class="self">self </span>{
-            IndexType::Equality =&gt; <span class="number">0</span>,
-            IndexType::Presence =&gt; <span class="number">1</span>,
-            IndexType::SubString =&gt; <span class="number">2</span>,
         }
     }
 }
@@ -2042,7 +2009,19 @@
 }
 
 <span class="attribute">#[allow(non_camel_case_types)]
-#[derive(Hash, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[derive(
+    Hash,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Deserialize,
+    Serialize,
+    TryFromPrimitive,
+)]
 #[repr(u16)]
 </span><span class="kw">pub enum </span>SyntaxType {
     Utf8String = <span class="number">0</span>,
@@ -2074,6 +2053,7 @@
     JwsKeyEs256 = <span class="number">26</span>,
     JwsKeyRs256 = <span class="number">27</span>,
     Oauth2Session = <span class="number">28</span>,
+    UiHint = <span class="number">29</span>,
 }
 
 <span class="kw">impl </span>TryFrom&lt;<span class="kw-2">&amp;</span>str&gt; <span class="kw">for </span>SyntaxType {
@@ -2112,45 +2092,7 @@
             <span class="string">&quot;JWS_KEY_ES256&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::JwsKeyEs256),
             <span class="string">&quot;JWS_KEY_RS256&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::JwsKeyRs256),
             <span class="string">&quot;OAUTH2SESSION&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Oauth2Session),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(()),
-        }
-    }
-}
-
-<span class="kw">impl </span>TryFrom&lt;u16&gt; <span class="kw">for </span>SyntaxType {
-    <span class="kw">type </span>Error = ();
-
-    <span class="kw">fn </span>try_from(value: u16) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
-        <span class="kw">match </span>value {
-            <span class="number">0 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Utf8String),
-            <span class="number">1 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Utf8StringInsensitive),
-            <span class="number">2 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Uuid),
-            <span class="number">3 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Boolean),
-            <span class="number">4 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::SyntaxId),
-            <span class="number">5 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::IndexId),
-            <span class="number">6 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::ReferenceUuid),
-            <span class="number">7 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::JsonFilter),
-            <span class="number">8 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Credential),
-            <span class="number">9 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::SecretUtf8String),
-            <span class="number">10 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::SshKey),
-            <span class="number">11 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::SecurityPrincipalName),
-            <span class="number">12 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Uint32),
-            <span class="number">13 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Cid),
-            <span class="number">14 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Utf8StringIname),
-            <span class="number">15 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::NsUniqueId),
-            <span class="number">16 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::DateTime),
-            <span class="number">17 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::EmailAddress),
-            <span class="number">18 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Url),
-            <span class="number">19 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::OauthScope),
-            <span class="number">20 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::OauthScopeMap),
-            <span class="number">21 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::PrivateBinary),
-            <span class="number">22 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::IntentToken),
-            <span class="number">23 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Passkey),
-            <span class="number">24 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::DeviceKey),
-            <span class="number">25 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Session),
-            <span class="number">26 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::JwsKeyEs256),
-            <span class="number">27 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::JwsKeyRs256),
-            <span class="number">28 </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Oauth2Session),
+            <span class="string">&quot;UIHINT&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::UiHint),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(()),
         }
     }
@@ -2188,6 +2130,7 @@
             SyntaxType::JwsKeyEs256 =&gt; <span class="string">&quot;JWS_KEY_ES256&quot;</span>,
             SyntaxType::JwsKeyRs256 =&gt; <span class="string">&quot;JWS_KEY_RS256&quot;</span>,
             SyntaxType::Oauth2Session =&gt; <span class="string">&quot;OAUTH2SESSION&quot;</span>,
+            SyntaxType::UiHint =&gt; <span class="string">&quot;UIHINT&quot;</span>,
         })
     }
 }
@@ -2233,6 +2176,7 @@
     // Float64(f64),
     </span>RestrictedString(String),
     IntentToken(String),
+    UiHint(UiHint),
 
     Passkey(Uuid),
     DeviceKey(Uuid),
@@ -2582,7 +2526,7 @@
     }
 
     <span class="kw">pub fn </span>get_idx_eq_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-        <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self </span>{
+        <span class="kw">match </span><span class="self">self </span>{
             PartialValue::Utf8(s)
             | PartialValue::Iutf8(s)
             | PartialValue::Iname(s)
@@ -2621,6 +2565,7 @@
             PartialValue::IntentToken(u) =&gt; u.clone(),
             PartialValue::TrustedDeviceEnrollment(u) =&gt; u.as_hyphenated().to_string(),
             PartialValue::Session(u) =&gt; u.as_hyphenated().to_string(),
+            PartialValue::UiHint(u) =&gt; (<span class="kw-2">*</span>u <span class="kw">as </span>u16).to_string(),
         }
     }
 
@@ -2695,6 +2640,7 @@
 
     JwsKeyEs256(JwsSigner),
     JwsKeyRs256(JwsSigner),
+    UiHint(UiHint),
 }
 
 <span class="kw">impl </span>PartialEq <span class="kw">for </span>Value {

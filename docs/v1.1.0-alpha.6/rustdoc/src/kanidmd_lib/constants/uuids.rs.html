@@ -289,6 +289,15 @@
 <span id="289">289</span>
 <span id="290">290</span>
 <span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
 </pre><pre class="rust"><code><span class="attribute">#![allow(clippy::unwrap_used)]
 
 </span><span class="kw">use </span>uuid::{uuid, Uuid};
@@ -345,6 +354,10 @@
 <span class="kw">pub const </span>UUID_IDM_ALL_ACCOUNTS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000036&quot;</span>);
 <span class="kw">pub const </span>_UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000037&quot;</span>);
+
+<span class="kw">pub const </span>UUID_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES: Uuid =
+    <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000038&quot;</span>);
+<span class="kw">pub const </span>UUID_IDM_ACCOUNT_MAIL_READ_PRIV: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000039&quot;</span>);
 
 <span class="comment">//
 </span><span class="kw">pub const </span>_UUID_IDM_HIGH_PRIVILEGE: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000001000&quot;</span>);
@@ -497,6 +510,9 @@
 <span class="kw">pub const </span>_UUID_SCHEMA_ATTR_SYNC_COOKIE: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000116&quot;</span>);
 <span class="kw">pub const </span>_UUID_SCHEMA_ATTR_OAUTH2_SESSION: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000117&quot;</span>);
 <span class="kw">pub const </span>UUID_SCHEMA_ATTR_ACP_RECEIVER_GROUP: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000118&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_GRANT_UI_HINT: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000119&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING: Uuid =
+    <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000120&quot;</span>);
 
 <span class="comment">// System and domain infos
 // I&#39;d like to strongly criticise william of the past for making poor choices about these allocations.
@@ -576,6 +592,8 @@
 <span class="kw">pub const </span>_UUID_IDM_ACP_OAUTH2_READ_PRIV_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000043&quot;</span>);
 <span class="kw">pub const </span>_UUID_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000044&quot;</span>);
+<span class="kw">pub const </span>UUID_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1: Uuid =
+    <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000045&quot;</span>);
 
 <span class="comment">// End of system ranges
 </span><span class="kw">pub const </span>UUID_DOES_NOT_EXIST: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-fffffffffffe&quot;</span>);

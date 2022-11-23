@@ -426,13 +426,16 @@
 <span id="426">426</span>
 <span id="427">427</span>
 <span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use </span>gloo::console;
 <span class="kw">use </span>yew::{html, Component, Context, Html, Properties};
 <span class="kw">use </span>yew_router::prelude::Link;
 
-<span class="kw">use </span><span class="kw">crate</span>::components::adminmenu::{Entity, EntityType, GetError};
+<span class="kw">use </span><span class="kw">crate</span>::components::admin_menu::{Entity, EntityType, GetError};
 <span class="kw">use </span><span class="kw">crate</span>::components::alpha_warning_banner;
 <span class="kw">use </span><span class="kw">crate</span>::constants::{CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_TABLE};
 <span class="kw">use </span><span class="kw">crate</span>::utils::{do_alert_error, do_page_header, init_request};
@@ -651,7 +654,7 @@
         <span class="kw">match </span>msg {
             AdminListOAuth2Msg::Responded { response } =&gt; {
                 <span class="comment">// TODO: do we paginate here?
-                </span><span class="attribute">#[cfg(debug)]
+                </span><span class="attribute">#[cfg(debug_assertions)]
                 </span><span class="kw">for </span>key <span class="kw">in </span>response.keys() {
                     <span class="macro">console::log!</span>(
                         <span class="string">&quot;response: {:?}&quot;</span>,
@@ -805,14 +808,17 @@
         <span class="kw">match </span>msg {
             AdminViewOAuth2Msg::Responded { response } =&gt; {
                 <span class="comment">// TODO: do we paginate here?
-                </span><span class="attribute">#[cfg(debug)]
-                </span><span class="kw">for </span>key <span class="kw">in </span>response.keys() {
-                    <span class="macro">console::log!</span>(
-                        <span class="string">&quot;response: {:?}&quot;</span>,
+                /*
+                // Seems broken
+                #[cfg(debug_assertions)]
+                for key in response.keys() {
+                    console::log!(
+                        &quot;response: {:?}&quot;,
                         serde_json::to_string(response.get(key).unwrap()).unwrap()
                     );
                 }
-                <span class="self">self</span>.state = ViewState::Responded { response };
+                */
+                </span><span class="self">self</span>.state = ViewState::Responded { response };
             }
             AdminViewOAuth2Msg::Failed { emsg, kopid } =&gt; {
                 <span class="macro">console::log!</span>(<span class="string">&quot;emsg: {:?}&quot;</span>, <span class="kw-2">&amp;</span>emsg);

@@ -520,7 +520,6 @@
 <span id="520">520</span>
 <span id="521">521</span>
 <span id="522">522</span>
-<span id="523">523</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::fs::{create_dir, File};
 <span class="kw">use </span>std::io::{<span class="self">self</span>, BufReader, BufWriter, ErrorKind, Write};
@@ -535,10 +534,9 @@
 <span class="attribute">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
 </span><span class="kw">use </span>libc::umask;
 <span class="kw">use </span>webauthn_authenticator_rs::prelude::RequestChallengeResponse;
-<span class="kw">use </span>webauthn_authenticator_rs::u2fhid::U2FHid;
-<span class="kw">use </span>webauthn_authenticator_rs::WebauthnAuthenticator;
 
 <span class="kw">use </span><span class="kw">crate</span>::common::prompt_for_username_get_username;
+<span class="kw">use </span><span class="kw">crate</span>::webauthn::get_authenticator;
 <span class="kw">use crate</span>::{LoginOpt, LogoutOpt, SessionOpt};
 
 <span class="kw">static </span>TOKEN_DIR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;~/.cache&quot;</span>;
@@ -719,7 +717,7 @@
         client: <span class="kw-2">&amp;mut </span>KanidmClient,
         pkr: RequestChallengeResponse,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthResponse, ClientError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>wa = WebauthnAuthenticator::new(U2FHid::new());
+        <span class="kw">let </span><span class="kw-2">mut </span>wa = get_authenticator();
         <span class="macro">println!</span>(<span class="string">&quot;Your authenticator will now flash for you to interact with it.&quot;</span>);
         <span class="kw">let </span>auth = wa
             .do_authentication(client.get_origin().clone(), pkr)
@@ -736,7 +734,7 @@
         client: <span class="kw-2">&amp;mut </span>KanidmClient,
         pkr: RequestChallengeResponse,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthResponse, ClientError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>wa = WebauthnAuthenticator::new(U2FHid::new());
+        <span class="kw">let </span><span class="kw-2">mut </span>wa = get_authenticator();
         <span class="macro">println!</span>(<span class="string">&quot;Your authenticator will now flash for you to interact with it.&quot;</span>);
         <span class="kw">let </span>auth = wa
             .do_authentication(client.get_origin().clone(), pkr)

@@ -3558,6 +3558,16 @@
 <span id="3558">3558</span>
 <span id="3559">3559</span>
 <span id="3560">3560</span>
+<span id="3561">3561</span>
+<span id="3562">3562</span>
+<span id="3563">3563</span>
+<span id="3564">3564</span>
+<span id="3565">3565</span>
+<span id="3566">3566</span>
+<span id="3567">3567</span>
+<span id="3568">3568</span>
+<span id="3569">3569</span>
+<span id="3570">3570</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations
 //!
 //! This contains the in memory and loaded set of active oauth2 resource server
@@ -3867,6 +3877,16 @@
                         .get_ava_single_url(<span class="string">&quot;oauth2_rs_origin&quot;</span>)
                         .map(|url| (url.origin(), url.scheme() == <span class="string">&quot;https&quot;</span>))
                         .ok_or(OperationError::InvalidValueState)<span class="question-mark">?</span>;
+
+                    <span class="kw">let </span>landing_valid = ent
+                        .get_ava_single_url(<span class="string">&quot;oauth2_rs_origin_landing&quot;</span>)
+                        .map(|url| url.origin() == origin).
+                        unwrap_or(<span class="bool-val">true</span>);
+
+                    <span class="kw">if </span>!landing_valid {
+                        <span class="macro">warn!</span>(<span class="string">&quot;{} has a landing page that is not part of origin. May be invalid.&quot;</span>, name);
+                    }
+
                     <span class="macro">trace!</span>(<span class="string">&quot;authz_secret&quot;</span>);
                     <span class="kw">let </span>authz_secret = ent
                         .get_ava_single_secret(<span class="string">&quot;oauth2_rs_basic_secret&quot;</span>)

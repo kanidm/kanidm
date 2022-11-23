@@ -1016,6 +1016,37 @@
 <span id="1016">1016</span>
 <span id="1017">1017</span>
 <span id="1018">1018</span>
+<span id="1019">1019</span>
+<span id="1020">1020</span>
+<span id="1021">1021</span>
+<span id="1022">1022</span>
+<span id="1023">1023</span>
+<span id="1024">1024</span>
+<span id="1025">1025</span>
+<span id="1026">1026</span>
+<span id="1027">1027</span>
+<span id="1028">1028</span>
+<span id="1029">1029</span>
+<span id="1030">1030</span>
+<span id="1031">1031</span>
+<span id="1032">1032</span>
+<span id="1033">1033</span>
+<span id="1034">1034</span>
+<span id="1035">1035</span>
+<span id="1036">1036</span>
+<span id="1037">1037</span>
+<span id="1038">1038</span>
+<span id="1039">1039</span>
+<span id="1040">1040</span>
+<span id="1041">1041</span>
+<span id="1042">1042</span>
+<span id="1043">1043</span>
+<span id="1044">1044</span>
+<span id="1045">1045</span>
+<span id="1046">1046</span>
+<span id="1047">1047</span>
+<span id="1048">1048</span>
+<span id="1049">1049</span>
 </pre><pre class="rust"><code><span class="doccomment">//! LDAP specific operations handling components. This is where LDAP operations
 //! are sent to for processing.
 
@@ -1188,15 +1219,23 @@
             <span class="comment">// Map the Some(a,v) to ...?
 
             </span><span class="kw">let </span>ext_filter = <span class="kw">match </span>(<span class="kw-2">&amp;</span>sr.scope, req_dn) {
-                (LdapSearchScope::OneLevel, <span class="prelude-val">Some</span>(_r)) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[sr.gen_success()]),
-                (LdapSearchScope::OneLevel, <span class="prelude-val">None</span>) =&gt; {
+                <span class="comment">// OneLevel and Child searches are veerrrryyy similar for us because child
+                // is a &quot;subtree search excluding base&quot;. Because we don&#39;t have a tree structure at
+                // all, this is the same as a onelevel (ald children of base excludeing base).
+                </span>(LdapSearchScope::Children, <span class="prelude-val">Some</span>(_r)) | (LdapSearchScope::OneLevel, <span class="prelude-val">Some</span>(_r)) =&gt; {
+                    <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[sr.gen_success()])
+                }
+                (LdapSearchScope::Children, <span class="prelude-val">None</span>) | (LdapSearchScope::OneLevel, <span class="prelude-val">None</span>) =&gt; {
                     <span class="comment">// exclude domain_info
                     </span><span class="prelude-val">Some</span>(LdapFilter::Not(Box::new(LdapFilter::Equality(
                         <span class="string">&quot;uuid&quot;</span>.to_string(),
                         STR_UUID_DOMAIN_INFO.to_string(),
                     ))))
                 }
-                (LdapSearchScope::Base, <span class="prelude-val">Some</span>((a, v))) =&gt; <span class="prelude-val">Some</span>(LdapFilter::Equality(a, v)),
+                <span class="comment">// because we request a specific DN, these are the same since we want the same
+                // entry.
+                </span>(LdapSearchScope::Base, <span class="prelude-val">Some</span>((a, v)))
+                | (LdapSearchScope::Subtree, <span class="prelude-val">Some</span>((a, v))) =&gt; <span class="prelude-val">Some</span>(LdapFilter::Equality(a, v)),
                 (LdapSearchScope::Base, <span class="prelude-val">None</span>) =&gt; {
                     <span class="comment">// domain_info
                     </span><span class="prelude-val">Some</span>(LdapFilter::Equality(
@@ -1204,7 +1243,6 @@
                         STR_UUID_DOMAIN_INFO.to_string(),
                     ))
                 }
-                (LdapSearchScope::Subtree, <span class="prelude-val">Some</span>((a, v))) =&gt; <span class="prelude-val">Some</span>(LdapFilter::Equality(a, v)),
                 (LdapSearchScope::Subtree, <span class="prelude-val">None</span>) =&gt; {
                     <span class="comment">// No filter changes needed.
                     </span><span class="prelude-val">None
@@ -1385,6 +1423,24 @@
                 });
             }
         } <span class="kw">else </span>{
+            <span class="comment">// Is the passed dn requesting token auth?
+            // We use dn= here since these are attr=value, and dn is a phantom so it will
+            // never be present or match a real value. We also make it an ava so that clients
+            // that over-zealously validate dn syntax are happy.
+            </span><span class="kw">if </span>dn == <span class="string">&quot;dn=token&quot; </span>{
+                <span class="kw">let </span>lae = LdapTokenAuthEvent::from_parts(pw.to_string())<span class="question-mark">?</span>;
+                <span class="kw">return </span>idm_auth.token_auth_ldap(<span class="kw-2">&amp;</span>lae, ct).<span class="kw">await</span>.and_then(|r| {
+                    idm_auth.commit().map(|<span class="kw">_</span>| {
+                        <span class="kw">if </span>r.is_some() {
+                            <span class="macro">security_info!</span>(%dn, <span class="string">&quot;✅ LDAP Bind success&quot;</span>);
+                        } <span class="kw">else </span>{
+                            <span class="macro">security_info!</span>(%dn, <span class="string">&quot;❌ LDAP Bind failure&quot;</span>);
+                        };
+                        r
+                    })
+                });
+            };
+
             <span class="kw">let </span>rdn = <span class="kw">match </span><span class="self">self
                 </span>.binddnre
                 .captures(dn)
@@ -2010,7 +2066,13 @@
 
                 <span class="kw">let </span>apitoken_inner = apitoken_inner.into_inner();
 
-                <span class="comment">// Bind using the token
+                <span class="comment">// Bind using the token as a DN
+                </span><span class="kw">let </span>sa_lbt = task::block_on(ldaps.do_bind(idms, <span class="string">&quot;dn=token&quot;</span>, <span class="kw-2">&amp;</span>apitoken))
+                    .unwrap()
+                    .unwrap();
+                <span class="macro">assert!</span>(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner.clone()));
+
+                <span class="comment">// Bind using the token as a pw
                 </span><span class="kw">let </span>sa_lbt = task::block_on(ldaps.do_bind(idms, <span class="string">&quot;&quot;</span>, <span class="kw-2">&amp;</span>apitoken))
                     .unwrap()
                     .unwrap();

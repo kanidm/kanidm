@@ -872,6 +872,44 @@
 <span id="872">872</span>
 <span id="873">873</span>
 <span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
+<span id="911">911</span>
+<span id="912">912</span>
 </pre><pre class="rust"><code><span class="kw">mod </span>manifest;
 <span class="kw">pub mod </span>middleware;
 <span class="kw">mod </span>oauth2;
@@ -901,6 +939,9 @@
 <span class="kw">use </span><span class="kw">crate</span>::actors::v1_read::QueryServerReadV1;
 <span class="kw">use </span><span class="kw">crate</span>::actors::v1_write::QueryServerWriteV1;
 <span class="kw">use </span><span class="kw">crate</span>::config::{ServerRole, TlsConfiguration};
+
+<span class="kw">use </span><span class="kw">crate</span>::CoreAction;
+<span class="kw">use </span>tokio::sync::broadcast;
 
 <span class="attribute">#[derive(Clone)]
 </span><span class="kw">pub struct </span>JavaScriptFile {
@@ -1200,7 +1241,8 @@ Disallow: /
     status_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>StatusActor,
     qe_w_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>QueryServerWriteV1,
     qe_r_ref: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>QueryServerReadV1,
-) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+    <span class="kw-2">mut </span>rx: broadcast::Receiver&lt;CoreAction&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;tokio::task::JoinHandle&lt;()&gt;, ()&gt; {
     <span class="kw">let </span>jws_validator = jws_signer.get_validator().map_err(|e| {
         <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Failed to get jws validator&quot;</span>);
     })<span class="question-mark">?</span>;
@@ -1258,8 +1300,11 @@ Disallow: /
     </span>tserver.with(
         <span class="comment">// We do not force a session ttl, because we validate this elsewhere in usage.
         </span>tide::sessions::SessionMiddleware::new(tide::sessions::CookieStore::new(), cookie_key)
+            .with_session_ttl(<span class="prelude-val">None</span>)
             .with_cookie_name(<span class="string">&quot;kanidm-session&quot;</span>)
-            .with_same_site_policy(tide::http::cookies::SameSite::Strict),
+            <span class="comment">// Im not sure if we need Lax here, I don&#39;t think we do because on the first get
+            // we don&#39;t need the cookie since wasm drives the fetches.
+            </span>.with_same_site_policy(tide::http::cookies::SameSite::Strict),
     );
 
     <span class="comment">// Strict responses.
@@ -1362,6 +1407,12 @@ Disallow: /
     group_route_cacheable
         .at(<span class="string">&quot;/:id/_unix/_token&quot;</span>)
         .mapped_get(<span class="kw-2">&amp;mut </span>routemap, group_get_id_unix_token);
+
+    <span class="comment">// We allow caching oauth2 RP icons.
+    </span><span class="kw">let </span><span class="kw-2">mut </span>oauth2_route_cacheable = tserver_cacheable.at(<span class="string">&quot;/v1/oauth2&quot;</span>);
+    oauth2_route_cacheable
+        .at(<span class="string">&quot;/:rs_name/_icon&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
 
     <span class="comment">// ==== These routes can not be cached
     </span><span class="kw">let </span><span class="kw-2">mut </span>appserver = tserver.at(<span class="string">&quot;&quot;</span>);
@@ -1475,6 +1526,11 @@ Disallow: /
     self_route
         .at(<span class="string">&quot;/_radius/_config/:token/apple&quot;</span>)
         .mapped_get(<span class="kw-2">&amp;mut </span>routemap, do_nothing);
+
+    <span class="comment">// Applinks are the list of apps this account can access.
+    </span>self_route
+        .at(<span class="string">&quot;/_applinks&quot;</span>)
+        .mapped_get(<span class="kw-2">&amp;mut </span>routemap, applinks_get);
 
     <span class="kw">let </span><span class="kw-2">mut </span>person_route = appserver.at(<span class="string">&quot;/v1/person&quot;</span>);
     person_route
@@ -1707,7 +1763,7 @@ Disallow: /
     // ===  End routes
 
     // Create listener?
-    </span><span class="kw">match </span>opt_tls_params {
+    </span><span class="kw">let </span>handle = <span class="kw">match </span>opt_tls_params {
         <span class="prelude-val">Some</span>(tls_param) =&gt; {
             <span class="kw">let </span>tlsl = TlsListener::build()
                 .addrs(<span class="kw-2">&amp;</span>address)
@@ -1724,27 +1780,47 @@ Disallow: /
             */
 
             </span>tokio::spawn(<span class="kw">async move </span>{
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tserver.listen(tlsl).<span class="kw">await </span>{
-                    <span class="macro">error!</span>(
-                        <span class="string">&quot;Failed to start server listener on address {:?} -&gt; {:?}&quot;</span>,
-                        <span class="kw-2">&amp;</span>address, e
-                    );
-                }
-            });
+                <span class="macro">tokio::select! </span>{
+                    <span class="prelude-val">Ok</span>(action) = rx.recv() =&gt; {
+                        <span class="kw">match </span>action {
+                            CoreAction::Shutdown =&gt; {},
+                        }
+                    }
+                    server_result = tserver.listen(tlsl) =&gt; {
+                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = server_result {
+                            <span class="macro">error!</span>(
+                                <span class="string">&quot;Failed to start server listener on address {:?} -&gt; {:?}&quot;</span>,
+                                <span class="kw-2">&amp;</span>address, e
+                            );
+                        }
+                    }
+                };
+                <span class="macro">info!</span>(<span class="string">&quot;Stopped HTTPSAcceptorActor&quot;</span>);
+            })
         }
         <span class="prelude-val">None </span>=&gt; {
             <span class="comment">// Create without https
             </span>tokio::spawn(<span class="kw">async move </span>{
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tserver.listen(<span class="kw-2">&amp;</span>address).<span class="kw">await </span>{
-                    <span class="macro">error!</span>(
-                        <span class="string">&quot;Failed to start server listener on address {:?} -&gt; {:?}&quot;</span>,
-                        <span class="kw-2">&amp;</span>address, e,
-                    );
+                <span class="macro">tokio::select! </span>{
+                    <span class="prelude-val">Ok</span>(action) = rx.recv() =&gt; {
+                        <span class="kw">match </span>action {
+                            CoreAction::Shutdown =&gt; {},
+                        }
+                    }
+                    server_result = tserver.listen(<span class="kw-2">&amp;</span>address) =&gt; {
+                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = server_result {
+                            <span class="macro">error!</span>(
+                                <span class="string">&quot;Failed to start server listener on address {:?} -&gt; {:?}&quot;</span>,
+                                <span class="kw-2">&amp;</span>address, e
+                            );
+                        }
+                    }
                 }
-            });
+                <span class="macro">info!</span>(<span class="string">&quot;Stopped HTTPAcceptorActor&quot;</span>);
+            })
         }
     };
-    <span class="prelude-val">Ok</span>(())
+    <span class="prelude-val">Ok</span>(handle)
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidmd_core" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

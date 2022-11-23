@@ -1958,6 +1958,22 @@
 <span id="1958">1958</span>
 <span id="1959">1959</span>
 <span id="1960">1960</span>
+<span id="1961">1961</span>
+<span id="1962">1962</span>
+<span id="1963">1963</span>
+<span id="1964">1964</span>
+<span id="1965">1965</span>
+<span id="1966">1966</span>
+<span id="1967">1967</span>
+<span id="1968">1968</span>
+<span id="1969">1969</span>
+<span id="1970">1970</span>
+<span id="1971">1971</span>
+<span id="1972">1972</span>
+<span id="1973">1973</span>
+<span id="1974">1974</span>
+<span id="1975">1975</span>
+<span id="1976">1976</span>
 </pre><pre class="rust"><code><span class="doccomment">//! [`Filter`]s are one of the three foundational concepts of the design in kanidm.
 //! They are used in nearly every aspect of the server to provide searching of
 //! datasets and assertion of entry properties.
@@ -2839,6 +2855,22 @@
             ) =&gt; {
                 <span class="comment">// let a = ldap_attr_filter_map(a);
                 </span><span class="macro">admin_error!</span>(<span class="string">&quot;Unable to convert ldapsubstringfilter to sub filter&quot;</span>);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::FilterGeneration);
+            }
+            LdapFilter::GreaterOrEqual(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Unsupported filter operation - greater or equal&quot;</span>);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::FilterGeneration);
+            }
+            LdapFilter::LessOrEqual(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Unsupported filter operation - less or equal&quot;</span>);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::FilterGeneration);
+            }
+            LdapFilter::Approx(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Unsupported filter operation - approximate&quot;</span>);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::FilterGeneration);
+            }
+            LdapFilter::Extensible(<span class="kw">_</span>) =&gt; {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Unsupported filter operation - extensible&quot;</span>);
                 <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::FilterGeneration);
             }
         })

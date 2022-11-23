@@ -1230,7 +1230,7 @@
                         &lt;label <span class="kw">for</span>=<span class="string">&quot;username&quot; </span>class=<span class="string">&quot;form-label&quot;</span>&gt;{ <span class="string">&quot;Username&quot; </span>}&lt;/label&gt;
                         &lt;form
                         onsubmit={ ctx.link().callback(|e: FocusEvent| {
-                            <span class="attribute">#[cfg(debug)]
+                            <span class="attribute">#[cfg(debug_assertions)]
                             </span><span class="macro">console::debug!</span>(<span class="string">&quot;login::view_state -&gt; Init - prevent_default()&quot;</span>.to_string());
                             e.prevent_default();
                             LoginAppMsg::Begin
@@ -1484,7 +1484,7 @@
             LoginState::Authenticated =&gt; {
                 <span class="kw">let </span>loc = models::pop_return_location();
                 <span class="comment">// redirect
-                </span><span class="attribute">#[cfg(debug)]
+                </span><span class="attribute">#[cfg(debug_assertions)]
                 </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;authenticated, try going to -&gt; {:?}&quot;</span>, loc));
                 loc.goto(<span class="kw-2">&amp;</span>ctx.link().history().expect_throw(<span class="string">&quot;failed to read history&quot;</span>));
                 <span class="macro">html! </span>{
@@ -1524,7 +1524,7 @@
     <span class="kw">type </span>Properties = ();
 
     <span class="kw">fn </span>create(_ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
-        <span class="attribute">#[cfg(debug)]
+        <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;create&quot;</span>.to_string());
         <span class="comment">// Assume we are here for a good reason.
         // -- clear the bearer to prevent conflict
@@ -1532,7 +1532,7 @@
         <span class="comment">// Do we have a login hint?
         </span><span class="kw">let </span>inputvalue = models::pop_login_hint().unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_string());
 
-        <span class="attribute">#[cfg(debug)]
+        <span class="attribute">#[cfg(debug_assertions)]
         </span>{
             <span class="kw">let </span>document = utils::document();
             <span class="kw">let </span>html_document = document
@@ -1576,7 +1576,7 @@
                 <span class="bool-val">true
             </span>}
             LoginAppMsg::Begin =&gt; {
-                <span class="attribute">#[cfg(debug)]
+                <span class="attribute">#[cfg(debug_assertions)]
                 </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;begin -&gt; {:?}&quot;</span>, <span class="self">self</span>.inputvalue));
                 <span class="comment">// Disable the button?
                 </span><span class="kw">let </span>username = <span class="self">self</span>.inputvalue.clone();
@@ -1590,7 +1590,7 @@
                 <span class="bool-val">true
             </span>}
             LoginAppMsg::PasswordSubmit =&gt; {
-                <span class="attribute">#[cfg(debug)]
+                <span class="attribute">#[cfg(debug_assertions)]
                 </span><span class="macro">console::debug!</span>(<span class="string">&quot;At password step&quot;</span>.to_string());
                 <span class="comment">// Disable the button?
                 </span><span class="self">self</span>.state = LoginState::Password(<span class="bool-val">false</span>);
@@ -1609,7 +1609,7 @@
                 <span class="bool-val">true
             </span>}
             LoginAppMsg::BackupCodeSubmit =&gt; {
-                <span class="attribute">#[cfg(debug)]
+                <span class="attribute">#[cfg(debug_assertions)]
                 </span><span class="macro">console::debug!</span>(<span class="string">&quot;backupcode&quot;</span>.to_string());
                 <span class="comment">// Disable the button?
                 </span><span class="self">self</span>.state = LoginState::BackupCode(<span class="bool-val">false</span>);
@@ -1628,7 +1628,7 @@
                 <span class="bool-val">true
             </span>}
             LoginAppMsg::TotpSubmit =&gt; {
-                <span class="attribute">#[cfg(debug)]
+                <span class="attribute">#[cfg(debug_assertions)]
                 </span><span class="macro">console::debug!</span>(<span class="string">&quot;totp&quot;</span>.to_string());
                 <span class="comment">// Disable the button?
                 </span><span class="kw">match </span><span class="self">self</span>.inputvalue.parse::&lt;u32&gt;() {
@@ -1656,7 +1656,7 @@
                 <span class="bool-val">true
             </span>}
             LoginAppMsg::SecurityKeySubmit(resp) =&gt; {
-                <span class="attribute">#[cfg(debug)]
+                <span class="attribute">#[cfg(debug_assertions)]
                 </span><span class="macro">console::debug!</span>(<span class="string">&quot;At securitykey step&quot;</span>.to_string());
                 <span class="kw">let </span>authreq = AuthRequest {
                     step: AuthStep::Cred(AuthCredential::SecurityKey(resp)),
@@ -1672,7 +1672,7 @@
                 </span><span class="bool-val">false
             </span>}
             LoginAppMsg::PasskeySubmit(resp) =&gt; {
-                <span class="attribute">#[cfg(debug)]
+                <span class="attribute">#[cfg(debug_assertions)]
                 </span><span class="macro">console::debug!</span>(<span class="string">&quot;At passkey step&quot;</span>.to_string());
                 <span class="kw">let </span>authreq = AuthRequest {
                     step: AuthStep::Cred(AuthCredential::Passkey(resp)),
@@ -1690,7 +1690,7 @@
             LoginAppMsg::Start(session_id, resp) =&gt; {
                 <span class="comment">// Clear any leftover input
                 </span><span class="self">self</span>.inputvalue = <span class="string">&quot;&quot;</span>.to_string();
-                <span class="attribute">#[cfg(debug)]
+                <span class="attribute">#[cfg(debug_assertions)]
                 </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;start -&gt; {:?} : {:?}&quot;</span>, resp, session_id));
                 <span class="kw">match </span>resp.state {
                     AuthState::Choose(<span class="kw-2">mut </span>mechs) =&gt; {
@@ -1711,14 +1711,14 @@
                             <span class="comment">// We do NOT need to change state or redraw
                             </span><span class="bool-val">false
                         </span>} <span class="kw">else </span>{
-                            <span class="attribute">#[cfg(debug)]
+                            <span class="attribute">#[cfg(debug_assertions)]
                             </span><span class="macro">console::debug!</span>(<span class="string">&quot;multiple mechs exist&quot;</span>.to_string());
                             <span class="self">self</span>.state = LoginState::Select(mechs);
                             <span class="bool-val">true
                         </span>}
                     }
                     AuthState::Denied(reason) =&gt; {
-                        <span class="attribute">#[cfg(debug)]
+                        <span class="attribute">#[cfg(debug_assertions)]
                         </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;denied -&gt; {:?}&quot;</span>, reason));
                         <span class="self">self</span>.state = LoginState::Denied(reason);
                         <span class="bool-val">true
@@ -1734,7 +1734,7 @@
                 }
             }
             LoginAppMsg::Select(idx) =&gt; {
-                <span class="attribute">#[cfg(debug)]
+                <span class="attribute">#[cfg(debug_assertions)]
                 </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;chose -&gt; {:?}&quot;</span>, idx));
                 <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.state {
                     LoginState::Select(allowed) =&gt; <span class="kw">match </span>allowed.get(idx) {
@@ -1771,7 +1771,7 @@
             LoginAppMsg::Next(resp) =&gt; {
                 <span class="comment">// Clear any leftover input
                 </span><span class="self">self</span>.inputvalue = <span class="string">&quot;&quot;</span>.to_string();
-                <span class="attribute">#[cfg(debug)]
+                <span class="attribute">#[cfg(debug_assertions)]
                 </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;next -&gt; {:?}&quot;</span>, resp));
 
                 <span class="comment">// Based on the state we have, we need to chose our steps.
@@ -1810,7 +1810,7 @@
                             }
                         } <span class="kw">else </span>{
                             <span class="comment">// Else, present the options in a choice.
-                            </span><span class="attribute">#[cfg(debug)]
+                            </span><span class="attribute">#[cfg(debug_assertions)]
                             </span><span class="macro">console::debug!</span>(<span class="string">&quot;multiple choices exist&quot;</span>.to_string());
                             <span class="self">self</span>.state = LoginState::Continue(allowed);
                         }
@@ -1842,7 +1842,7 @@
             }
             LoginAppMsg::Continue(idx) =&gt; {
                 <span class="comment">// Are we in the correct internal state?
-                </span><span class="attribute">#[cfg(debug)]
+                </span><span class="attribute">#[cfg(debug_assertions)]
                 </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;chose -&gt; {:?}&quot;</span>, idx));
                 <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.state {
                     LoginState::Continue(allowed) =&gt; {
@@ -1903,7 +1903,7 @@
     }
 
     <span class="kw">fn </span>view(<span class="kw-2">&amp;</span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; Html {
-        <span class="attribute">#[cfg(debug)]
+        <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;login::view&quot;</span>.to_string());
         <span class="comment">// How do we add a top level theme?
         /*
@@ -1942,13 +1942,13 @@
     }
 
     <span class="kw">fn </span>destroy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) {
-        <span class="attribute">#[cfg(debug)]
+        <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;login::destroy&quot;</span>.to_string());
         <span class="macro">remove_body_form_classes!</span>();
     }
 
     <span class="kw">fn </span>rendered(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, _first_render: bool) {
-        <span class="attribute">#[cfg(debug)]
+        <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;login::rendered&quot;</span>.to_string());
     }
 }

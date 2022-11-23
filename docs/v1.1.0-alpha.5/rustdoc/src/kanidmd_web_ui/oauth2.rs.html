@@ -538,8 +538,6 @@
 <span id="538">538</span>
 <span id="539">539</span>
 <span id="540">540</span>
-<span id="541">541</span>
-<span id="542">542</span>
 </pre><pre class="rust"><code><span class="comment">// use anyhow::Error;
 </span><span class="kw">use </span>gloo::console;
 <span class="kw">pub use </span>kanidm_proto::oauth2::{
@@ -753,7 +751,7 @@
     <span class="kw">type </span>Properties = ();
 
     <span class="kw">fn </span>create(ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
-        <span class="attribute">#[cfg(debug)]
+        <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;oauth2::create&quot;</span>);
 
         <span class="comment">// Do we have a query here?
@@ -786,9 +784,7 @@
                 };
             }
         };
-
-        <span class="kw">let </span>e_msg = <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, query);
-        <span class="macro">console::error!</span>(e_msg.as_str());
+        <span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;{query:?}&quot;</span>,));
 
         <span class="comment">// In the query, if this is openid there MAY be a hint
         // as to the users name.
@@ -815,13 +811,13 @@
     }
 
     <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; bool {
-        <span class="attribute">#[cfg(debug)]
+        <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;oauth2::change&quot;</span>);
         <span class="bool-val">false
     </span>}
 
     <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, msg: <span class="self">Self</span>::Message) -&gt; bool {
-        <span class="attribute">#[cfg(debug)]
+        <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;oauth2::update&quot;</span>);
 
         <span class="kw">match </span>msg {
@@ -916,7 +912,7 @@
                 <span class="bool-val">true
             </span>}
             Oauth2Msg::Redirect(loc) =&gt; {
-                <span class="attribute">#[cfg(debug)]
+                <span class="attribute">#[cfg(debug_assertions)]
                 </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;Redirecting to {}&quot;</span>, loc).as_str());
                 <span class="comment">// Send the location here, and then update will trigger the redir via
                 // https://docs.rs/web-sys/0.3.51/web_sys/struct.Location.html#method.replace
@@ -939,12 +935,12 @@
     }
 
     <span class="kw">fn </span>rendered(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, _first_render: bool) {
-        <span class="attribute">#[cfg(debug)]
+        <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;oauth2::rendered&quot;</span>);
     }
 
     <span class="kw">fn </span>view(<span class="kw-2">&amp;</span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; Html {
-        <span class="attribute">#[cfg(debug)]
+        <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;oauth2::view&quot;</span>);
 
         <span class="kw">let </span>body_content = <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.state {

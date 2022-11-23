@@ -737,6 +737,96 @@
 <span id="737">737</span>
 <span id="738">738</span>
 <span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
+<span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
+<span id="790">790</span>
+<span id="791">791</span>
+<span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
+<span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
+<span id="800">800</span>
+<span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
+<span id="806">806</span>
+<span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
+<span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
+<span id="826">826</span>
+<span id="827">827</span>
+<span id="828">828</span>
+<span id="829">829</span>
 </pre><pre class="rust"><code><span class="doccomment">//! These contain the server &quot;cores&quot;. These are able to startup the server
 //! (bootstrap) to a running state and then execute tasks. This is where modules
 //! are logically ordered based on their depenedncies for execution. Some of these
@@ -785,6 +875,8 @@
 <span class="kw">use </span>kanidmd_lib::utils::{duration_from_epoch_now, touch_file_or_quit};
 <span class="attribute">#[cfg(not(target_family = <span class="string">&quot;windows&quot;</span>))]
 </span><span class="kw">use </span>libc::umask;
+
+<span class="kw">use </span>tokio::sync::broadcast;
 
 <span class="kw">use </span><span class="kw">crate</span>::actors::v1_read::QueryServerReadV1;
 <span class="kw">use </span><span class="kw">crate</span>::actors::v1_write::QueryServerWriteV1;
@@ -1290,10 +1382,55 @@
     );
 }
 
-<span class="kw">pub async fn </span>create_server_core(config: Configuration, config_test: bool) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
-    <span class="comment">// Until this point, we probably want to write to the log macro fns.
+<span class="attribute">#[derive(Clone, Debug)]
+</span><span class="kw">pub enum </span>CoreAction {
+    Shutdown,
+}
 
-    </span><span class="kw">if </span>config.integration_test_config.is_some() {
+<span class="kw">pub struct </span>CoreHandle {
+    clean_shutdown: bool,
+    tx: broadcast::Sender&lt;CoreAction&gt;,
+
+    handles: Vec&lt;tokio::task::JoinHandle&lt;()&gt;&gt;,
+    <span class="comment">// interval_handle: tokio::task::JoinHandle&lt;()&gt;,
+</span>}
+
+<span class="kw">impl </span>CoreHandle {
+    <span class="kw">pub async fn </span>shutdown(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(<span class="kw">_</span>) = <span class="self">self</span>.tx.send(CoreAction::Shutdown) {
+            <span class="macro">eprintln!</span>(<span class="string">&quot;No receivers acked shutdown request. Treating as unclean.&quot;</span>);
+            <span class="kw">return</span>;
+        }
+
+        <span class="comment">// Wait on the handles.
+        </span><span class="kw">while let </span><span class="prelude-val">Some</span>(handle) = <span class="self">self</span>.handles.pop() {
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(<span class="kw">_</span>) = handle.<span class="kw">await </span>{
+                <span class="macro">eprintln!</span>(<span class="string">&quot;A task failed to join&quot;</span>);
+            }
+        }
+
+        <span class="self">self</span>.clean_shutdown = <span class="bool-val">true</span>;
+    }
+}
+
+<span class="kw">impl </span>Drop <span class="kw">for </span>CoreHandle {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">if </span>!<span class="self">self</span>.clean_shutdown {
+            <span class="macro">eprintln!</span>(<span class="string">&quot;⚠️  UNCLEAN SHUTDOWN OCCURED ⚠️ &quot;</span>);
+        }
+        <span class="comment">// Can&#39;t enable yet until we clean up unix_int cache layer test
+        // debug_assert!(self.clean_shutdown);
+    </span>}
+}
+
+<span class="kw">pub async fn </span>create_server_core(
+    config: Configuration,
+    config_test: bool,
+) -&gt; <span class="prelude-ty">Result</span>&lt;CoreHandle, ()&gt; {
+    <span class="comment">// Until this point, we probably want to write to the log macro fns.
+    </span><span class="kw">let </span>(broadcast_tx, <span class="kw-2">mut </span>broadcast_rx) = broadcast::channel(<span class="number">4</span>);
+
+    <span class="kw">if </span>config.integration_test_config.is_some() {
         <span class="macro">warn!</span>(<span class="string">&quot;RUNNING IN INTEGRATION TEST MODE.&quot;</span>);
         <span class="macro">warn!</span>(<span class="string">&quot;IF YOU SEE THIS IN PRODUCTION YOU MUST CONTACT SUPPORT IMMEDIATELY.&quot;</span>);
     } <span class="kw">else if </span>config.tls_config.is_none() {
@@ -1405,30 +1542,43 @@
     <span class="comment">// Create the server async write entry point.
     </span><span class="kw">let </span>server_write_ref = QueryServerWriteV1::start_static(idms_arc.clone());
 
-    tokio::spawn(<span class="kw">async move </span>{
+    <span class="kw">let </span>delayed_handle = tokio::spawn(<span class="kw">async move </span>{
         <span class="kw">loop </span>{
-            <span class="kw">match </span>idms_delayed.next().<span class="kw">await </span>{
-                <span class="prelude-val">Some</span>(da) =&gt; server_write_ref.handle_delayedaction(da).<span class="kw">await</span>,
-                <span class="comment">// Channel has closed, stop the task.
-                </span><span class="prelude-val">None </span>=&gt; <span class="kw">return</span>,
+            <span class="macro">tokio::select! </span>{
+                <span class="prelude-val">Ok</span>(action) = broadcast_rx.recv() =&gt; {
+                    <span class="kw">match </span>action {
+                        CoreAction::Shutdown =&gt; <span class="kw">break</span>,
+                    }
+                }
+                delayed = idms_delayed.next() =&gt; {
+                    <span class="kw">match </span>delayed {
+                        <span class="prelude-val">Some</span>(da) =&gt; server_write_ref.handle_delayedaction(da).<span class="kw">await</span>,
+                        <span class="comment">// Channel has closed, stop the task.
+                        </span><span class="prelude-val">None </span>=&gt; <span class="kw">break</span>,
+                    }
+                }
             }
         }
+        <span class="macro">info!</span>(<span class="string">&quot;Stopped DelayedActionActor&quot;</span>);
     });
 
     <span class="comment">// Setup timed events associated to the write thread
-    </span>IntervalActor::start(server_write_ref);
+    </span><span class="kw">let </span>interval_handle = IntervalActor::start(server_write_ref, broadcast_tx.subscribe());
     <span class="comment">// Setup timed events associated to the read thread
-    </span><span class="kw">match </span><span class="kw-2">&amp;</span>config.online_backup {
+    </span><span class="kw">let </span>maybe_backup_handle = <span class="kw">match </span><span class="kw-2">&amp;</span>config.online_backup {
         <span class="prelude-val">Some</span>(cfg) =&gt; {
-            IntervalActor::start_online_backup(server_read_ref, cfg)<span class="question-mark">?</span>;
+            <span class="kw">let </span>handle =
+                IntervalActor::start_online_backup(server_read_ref, cfg, broadcast_tx.subscribe())<span class="question-mark">?</span>;
+            <span class="prelude-val">Some</span>(handle)
         }
         <span class="prelude-val">None </span>=&gt; {
             <span class="macro">debug!</span>(<span class="string">&quot;Online backup not requested, skipping&quot;</span>);
-        }
+            <span class="prelude-val">None
+        </span>}
     };
 
     <span class="comment">// If we have been requested to init LDAP, configure it now.
-    </span><span class="kw">match </span><span class="kw-2">&amp;</span>config.ldapaddress {
+    </span><span class="kw">let </span>maybe_ldap_acceptor_handle = <span class="kw">match </span><span class="kw-2">&amp;</span>config.ldapaddress {
         <span class="prelude-val">Some</span>(la) =&gt; {
             <span class="kw">let </span>opt_ldap_tls_params = <span class="kw">match </span>setup_tls(<span class="kw-2">&amp;</span>config) {
                 <span class="prelude-val">Ok</span>(t) =&gt; t,
@@ -1439,14 +1589,23 @@
             };
             <span class="kw">if </span>!config_test {
                 <span class="comment">// ⚠️  only start the sockets and listeners in non-config-test modes.
-                </span>ldaps::create_ldap_server(la.as_str(), opt_ldap_tls_params, server_read_ref)
-                    .<span class="kw">await</span><span class="question-mark">?</span>;
-            }
+                </span><span class="kw">let </span>h = ldaps::create_ldap_server(
+                    la.as_str(),
+                    opt_ldap_tls_params,
+                    server_read_ref,
+                    broadcast_tx.subscribe(),
+                )
+                .<span class="kw">await</span><span class="question-mark">?</span>;
+                <span class="prelude-val">Some</span>(h)
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>}
         }
         <span class="prelude-val">None </span>=&gt; {
             <span class="macro">debug!</span>(<span class="string">&quot;LDAP not requested, skipping&quot;</span>);
-        }
-    }
+            <span class="prelude-val">None
+        </span>}
+    };
 
     <span class="comment">// TODO: Remove these when we go to auth bearer!
     // Copy the max size
@@ -1454,11 +1613,12 @@
     <span class="comment">// domain will come from the qs now!
     </span><span class="kw">let </span>cookie_key: [u8; <span class="number">32</span>] = config.cookie_key;
 
-    <span class="kw">if </span>config_test {
+    <span class="kw">let </span>maybe_http_acceptor_handle = <span class="kw">if </span>config_test {
         <span class="macro">admin_info!</span>(<span class="string">&quot;this config rocks! 🪨 &quot;</span>);
-    } <span class="kw">else </span>{
+        <span class="prelude-val">None
+    </span>} <span class="kw">else </span>{
         <span class="comment">// ⚠️  only start the sockets and listeners in non-config-test modes.
-        </span><span class="self">self</span>::https::create_https_server(
+        </span><span class="kw">let </span>h = <span class="self">self</span>::https::create_https_server(
             config.address,
             <span class="comment">// opt_tls_params,
             </span>config.tls_config.as_ref(),
@@ -1469,12 +1629,32 @@
             status_ref,
             server_write_ref,
             server_read_ref,
+            broadcast_tx.subscribe(),
         )<span class="question-mark">?</span>;
 
         <span class="macro">admin_info!</span>(<span class="string">&quot;ready to rock! 🪨 &quot;</span>);
+        <span class="prelude-val">Some</span>(h)
+    };
+
+    <span class="kw">let </span><span class="kw-2">mut </span>handles = <span class="macro">vec!</span>[interval_handle, delayed_handle];
+
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(backup_handle) = maybe_backup_handle {
+        handles.push(backup_handle)
     }
 
-    <span class="prelude-val">Ok</span>(())
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(ldap_handle) = maybe_ldap_acceptor_handle {
+        handles.push(ldap_handle)
+    }
+
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(http_handle) = maybe_http_acceptor_handle {
+        handles.push(http_handle)
+    }
+
+    <span class="prelude-val">Ok</span>(CoreHandle {
+        clean_shutdown: <span class="bool-val">false</span>,
+        tx: broadcast_tx,
+        handles,
+    })
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_core" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

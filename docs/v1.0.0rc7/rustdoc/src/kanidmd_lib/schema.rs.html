@@ -2515,6 +2515,8 @@
 <span id="2515">2515</span>
 <span id="2516">2516</span>
 <span id="2517">2517</span>
+<span id="2518">2518</span>
+<span id="2519">2519</span>
 </pre><pre class="rust"><code><span class="doccomment">//! [`Schema`] is one of the foundational concepts of the server. It provides a
 //! set of rules to enforce that [`Entries`] ava&#39;s must be compliant to, to be
 //! considered valid for commit to the database. This allows us to provide
@@ -2714,6 +2716,7 @@
             <span class="comment">// These are just insensitive string lookups on the hex-ified kid.
             </span>SyntaxType::JwsKeyEs256 =&gt; <span class="macro">matches!</span>(v, PartialValue::Iutf8(<span class="kw">_</span>)),
             SyntaxType::JwsKeyRs256 =&gt; <span class="macro">matches!</span>(v, PartialValue::Iutf8(<span class="kw">_</span>)),
+            SyntaxType::UiHint =&gt; <span class="macro">matches!</span>(v, PartialValue::UiHint(<span class="kw">_</span>)),
         };
         <span class="kw">if </span>r {
             <span class="prelude-val">Ok</span>(())
@@ -2760,6 +2763,7 @@
                 SyntaxType::Oauth2Session =&gt; <span class="macro">matches!</span>(v, Value::Oauth2Session(<span class="kw">_</span>, <span class="kw">_</span>)),
                 SyntaxType::JwsKeyEs256 =&gt; <span class="macro">matches!</span>(v, Value::JwsKeyEs256(<span class="kw">_</span>)),
                 SyntaxType::JwsKeyRs256 =&gt; <span class="macro">matches!</span>(v, Value::JwsKeyRs256(<span class="kw">_</span>)),
+                SyntaxType::UiHint =&gt; <span class="macro">matches!</span>(v, Value::UiHint(<span class="kw">_</span>)),
             };
         <span class="kw">if </span>r {
             <span class="prelude-val">Ok</span>(())

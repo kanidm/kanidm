@@ -2949,6 +2949,17 @@
 <span id="2949">2949</span>
 <span id="2950">2950</span>
 <span id="2951">2951</span>
+<span id="2952">2952</span>
+<span id="2953">2953</span>
+<span id="2954">2954</span>
+<span id="2955">2955</span>
+<span id="2956">2956</span>
+<span id="2957">2957</span>
+<span id="2958">2958</span>
+<span id="2959">2959</span>
+<span id="2960">2960</span>
+<span id="2961">2961</span>
+<span id="2962">2962</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Entries are the base unit of object storage in the server. This is one of the three foundational
 //! concepts along with [`filter`]s and [`schema`] that everything else builds upon.
 //!
@@ -2984,6 +2995,7 @@
 <span class="kw">use </span>hashbrown::HashMap;
 <span class="kw">use </span>kanidm_proto::v1::{
     ConsistencyError, Entry <span class="kw">as </span>ProtoEntry, Filter <span class="kw">as </span>ProtoFilter, OperationError, SchemaError,
+    UiHint,
 };
 <span class="kw">use </span>ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 <span class="kw">use </span>smartstring::alias::String <span class="kw">as </span>AttrString;
@@ -4782,6 +4794,10 @@
         <span class="self">self</span>.attrs.get(attr)
     }
 
+    <span class="kw">pub fn </span>get_ava_refer(<span class="kw-2">&amp;</span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeSet&lt;Uuid&gt;&gt; {
+        <span class="self">self</span>.attrs.get(attr).and_then(|vs| vs.as_refer_set())
+    }
+
     <span class="attribute">#[inline(always)]
     </span><span class="kw">pub fn </span>get_ava_as_iutf8_iter(<span class="kw-2">&amp;</span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>str&gt;&gt; {
         <span class="self">self</span>.attrs.get(attr).and_then(|vs| vs.as_iutf8_iter())
@@ -4922,6 +4938,12 @@
     </span><span class="doccomment">/// Get the set of devicekeys on this account, if any are present.
     </span><span class="kw">pub fn </span>get_ava_devicekeys(<span class="kw-2">&amp;</span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeMap&lt;Uuid, (String, DeviceKeyV4)&gt;&gt; {
         <span class="self">self</span>.attrs.get(attr).and_then(|vs| vs.as_devicekey_map())
+    }
+
+    <span class="attribute">#[inline(always)]
+    </span><span class="doccomment">/// Get the set of uihints on this account, if any are present.
+    </span><span class="kw">pub fn </span>get_ava_uihint(<span class="kw-2">&amp;</span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeSet&lt;UiHint&gt;&gt; {
+        <span class="self">self</span>.attrs.get(attr).and_then(|vs| vs.as_uihint_set())
     }
 
     <span class="attribute">#[inline(always)]
