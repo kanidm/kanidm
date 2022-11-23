@@ -56,7 +56,6 @@ pub struct LdapServer {
     basedn: String,
     dnre: Regex,
     binddnre: Regex,
-    tokenre: Regex,
 }
 
 impl LdapServer {
@@ -81,9 +80,6 @@ impl LdapServer {
 
         let binddnre = Regex::new(format!("^(([^=,]+)=)?(?P<val>[^=,]+)(,{})?$", basedn).as_str())
             .map_err(|_| OperationError::InvalidEntryState)?;
-
-        let tokenre =
-            Regex::new("^token=(?P<token>.*)$").map_err(|_| OperationError::InvalidEntryState)?;
 
         let rootdse = LdapSearchResultEntry {
             dn: "".to_string(),
@@ -124,7 +120,6 @@ impl LdapServer {
             basedn,
             dnre,
             binddnre,
-            tokenre,
         })
     }
 
@@ -379,28 +374,22 @@ impl LdapServer {
                 });
             }
         } else {
-            // Is the passed DN a token?
-            match self
-                .tokenre
-                .captures(dn)
-                .and_then(|caps| caps.name("token").map(|v| v.as_str().to_string()))
-            {
-                Some(token) => {
-                    let lae = LdapTokenAuthEvent::from_parts(token)?;
-                    return idm_auth.token_auth_ldap(&lae, ct).await.and_then(|r| {
-                        idm_auth.commit().map(|_| {
-                            if r.is_some() {
-                                security_info!(%dn, "✅ LDAP Bind success");
-                            } else {
-                                security_info!(%dn, "❌ LDAP Bind failure");
-                            };
-                            r
-                        })
-                    });
-                }
-                None => {
-                    // Not a token
-                }
+            // Is the passed dn requesting token auth?
+            // We use dn= here since these are attr=value, and dn is a phantom so it will
+            // never be present or match a real value. We also make it an ava so that clients
+            // that over-zealously validate dn syntax are happy.
+            if dn == "dn=token" {
+                let lae = LdapTokenAuthEvent::from_parts(pw.to_string())?;
+                return idm_auth.token_auth_ldap(&lae, ct).await.and_then(|r| {
+                    idm_auth.commit().map(|_| {
+                        if r.is_some() {
+                            security_info!(%dn, "✅ LDAP Bind success");
+                        } else {
+                            security_info!(%dn, "❌ LDAP Bind failure");
+                        };
+                        r
+                    })
+                });
             };
 
             let rdn = match self
@@ -1029,8 +1018,7 @@ mod tests {
                 let apitoken_inner = apitoken_inner.into_inner();
 
                 // Bind using the token as a DN
-                let dn_token = format!("token={}", apitoken);
-                let sa_lbt = task::block_on(ldaps.do_bind(idms, &dn_token, ""))
+                let sa_lbt = task::block_on(ldaps.do_bind(idms, "dn=token", &apitoken))
                     .unwrap()
                     .unwrap();
                 assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner.clone()));
