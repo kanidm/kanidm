@@ -357,7 +357,8 @@ impl ViewsApp {
             .expect_throw("failed to set header");
 
         let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await
+        let resp_value = JsFuture::from(window.fetch_with_request(&request))
+            .await
             .map_err(|e| {
                 console::error!(&format!("fetch request failed {:?}", e));
                 e

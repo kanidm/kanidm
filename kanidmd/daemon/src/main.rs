@@ -332,14 +332,48 @@ async fn main() {
                     let sctx = create_server_core(config, config_test).await;
                     if !config_test {
                         match sctx {
-                            Ok(_sctx) => match tokio::signal::ctrl_c().await {
-                                Ok(_) => {
-                                    eprintln!("Ctrl-C received, shutting down");
+                            Ok(mut sctx) => {
+                                loop {
+                                    tokio::select! {
+                                        Ok(()) = tokio::signal::ctrl_c() => {
+                                            break
+                                        }
+                                        Some(()) = async move {
+                                            let sigterm = tokio::signal::unix::SignalKind::terminate();
+                                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                        } => {
+                                            break
+                                        }
+                                        Some(()) = async move {
+                                            let sigterm = tokio::signal::unix::SignalKind::alarm();
+                                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                        } => {
+                                            // Ignore
+                                        }
+                                        Some(()) = async move {
+                                            let sigterm = tokio::signal::unix::SignalKind::hangup();
+                                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                        } => {
+                                            // Ignore
+                                        }
+                                        Some(()) = async move {
+                                            let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                        } => {
+                                            // Ignore
+                                        }
+                                        Some(()) = async move {
+                                            let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                        } => {
+                                            // Ignore
+                                        }
+                                    }
                                 }
-                                Err(_) => {
-                                    eprintln!("Invalid signal received, shutting down as a precaution ...");
-                                }
-                            },
+                                eprintln!("Signal received, shutting down");
+                                // Send a broadcast that we are done.
+                                sctx.shutdown().await;
+                            }
                             Err(_) => {
                                 eprintln!("Failed to start server core!");
                                 // We may need to return an exit code here, but that may take some re-architecting
@@ -347,8 +381,10 @@ async fn main() {
                                 return;
                             }
                         }
-                        eprintln!("stopped 🛑 ");
+                        eprintln!("Stopped 🛑 ");
                     }
+
+
                 }
                 KanidmdOpt::Database {
                     commands: DbCommands::Backup(bopt),

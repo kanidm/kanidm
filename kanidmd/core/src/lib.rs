@@ -47,6 +47,8 @@ use kanidmd_lib::utils::{duration_from_epoch_now, touch_file_or_quit};
 #[cfg(not(target_family = "windows"))]
 use libc::umask;
 
+use tokio::sync::broadcast;
+
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::Configuration;
@@ -551,8 +553,53 @@ pub async fn recover_account_core(config: &Configuration, name: &str) {
     );
 }
 
-pub async fn create_server_core(config: Configuration, config_test: bool) -> Result<(), ()> {
+#[derive(Clone, Debug)]
+pub enum CoreAction {
+    Shutdown,
+}
+
+pub struct CoreHandle {
+    clean_shutdown: bool,
+    tx: broadcast::Sender<CoreAction>,
+
+    handles: Vec<tokio::task::JoinHandle<()>>,
+    // interval_handle: tokio::task::JoinHandle<()>,
+}
+
+impl CoreHandle {
+    pub async fn shutdown(&mut self) {
+        if let Err(_) = self.tx.send(CoreAction::Shutdown) {
+            eprintln!("No receivers acked shutdown request. Treating as unclean.");
+            return;
+        }
+
+        // Wait on the handles.
+        while let Some(handle) = self.handles.pop() {
+            if let Err(_) = handle.await {
+                eprintln!("A task failed to join");
+            }
+        }
+
+        self.clean_shutdown = true;
+    }
+}
+
+impl Drop for CoreHandle {
+    fn drop(&mut self) {
+        if !self.clean_shutdown {
+            eprintln!("⚠️  UNCLEAN SHUTDOWN OCCURED ⚠️ ");
+        }
+        // Can't enable yet until we clean up unix_int cache layer test
+        // debug_assert!(self.clean_shutdown);
+    }
+}
+
+pub async fn create_server_core(
+    config: Configuration,
+    config_test: bool,
+) -> Result<CoreHandle, ()> {
     // Until this point, we probably want to write to the log macro fns.
+    let (broadcast_tx, mut broadcast_rx) = broadcast::channel(4);
 
     if config.integration_test_config.is_some() {
         warn!("RUNNING IN INTEGRATION TEST MODE.");
@@ -666,30 +713,43 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
     // Create the server async write entry point.
     let server_write_ref = QueryServerWriteV1::start_static(idms_arc.clone());
 
-    tokio::spawn(async move {
+    let delayed_handle = tokio::spawn(async move {
         loop {
-            match idms_delayed.next().await {
-                Some(da) => server_write_ref.handle_delayedaction(da).await,
-                // Channel has closed, stop the task.
-                None => return,
+            tokio::select! {
+                Ok(action) = broadcast_rx.recv() => {
+                    match action {
+                        CoreAction::Shutdown => break,
+                    }
+                }
+                delayed = idms_delayed.next() => {
+                    match delayed {
+                        Some(da) => server_write_ref.handle_delayedaction(da).await,
+                        // Channel has closed, stop the task.
+                        None => break,
+                    }
+                }
             }
         }
+        info!("Stopped DelayedActionActor");
     });
 
     // Setup timed events associated to the write thread
-    IntervalActor::start(server_write_ref);
+    let interval_handle = IntervalActor::start(server_write_ref, broadcast_tx.subscribe());
     // Setup timed events associated to the read thread
-    match &config.online_backup {
+    let maybe_backup_handle = match &config.online_backup {
         Some(cfg) => {
-            IntervalActor::start_online_backup(server_read_ref, cfg)?;
+            let handle =
+                IntervalActor::start_online_backup(server_read_ref, cfg, broadcast_tx.subscribe())?;
+            Some(handle)
         }
         None => {
             debug!("Online backup not requested, skipping");
+            None
         }
     };
 
     // If we have been requested to init LDAP, configure it now.
-    match &config.ldapaddress {
+    let maybe_ldap_acceptor_handle = match &config.ldapaddress {
         Some(la) => {
             let opt_ldap_tls_params = match setup_tls(&config) {
                 Ok(t) => t,
@@ -700,14 +760,23 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
             };
             if !config_test {
                 // ⚠️  only start the sockets and listeners in non-config-test modes.
-                ldaps::create_ldap_server(la.as_str(), opt_ldap_tls_params, server_read_ref)
-                    .await?;
+                let h = ldaps::create_ldap_server(
+                    la.as_str(),
+                    opt_ldap_tls_params,
+                    server_read_ref,
+                    broadcast_tx.subscribe(),
+                )
+                .await?;
+                Some(h)
+            } else {
+                None
             }
         }
         None => {
             debug!("LDAP not requested, skipping");
+            None
         }
-    }
+    };
 
     // TODO: Remove these when we go to auth bearer!
     // Copy the max size
@@ -715,11 +784,12 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
     // domain will come from the qs now!
     let cookie_key: [u8; 32] = config.cookie_key;
 
-    if config_test {
+    let maybe_http_acceptor_handle = if config_test {
         admin_info!("this config rocks! 🪨 ");
+        None
     } else {
         // ⚠️  only start the sockets and listeners in non-config-test modes.
-        self::https::create_https_server(
+        let h = self::https::create_https_server(
             config.address,
             // opt_tls_params,
             config.tls_config.as_ref(),
@@ -730,10 +800,30 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
             status_ref,
             server_write_ref,
             server_read_ref,
+            broadcast_tx.subscribe(),
         )?;
 
         admin_info!("ready to rock! 🪨 ");
+        Some(h)
+    };
+
+    let mut handles = vec![interval_handle, delayed_handle];
+
+    if let Some(backup_handle) = maybe_backup_handle {
+        handles.push(backup_handle)
     }
 
-    Ok(())
+    if let Some(ldap_handle) = maybe_ldap_acceptor_handle {
+        handles.push(ldap_handle)
+    }
+
+    if let Some(http_handle) = maybe_http_acceptor_handle {
+        handles.push(http_handle)
+    }
+
+    Ok(CoreHandle {
+        clean_shutdown: false,
+        tx: broadcast_tx,
+        handles,
+    })
 }
