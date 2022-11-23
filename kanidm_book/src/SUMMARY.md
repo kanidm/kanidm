@@ -1,7 +1,7 @@
 # Kanidm
 
 - [Introduction to Kanidm](intro.md)
-- [Glossary of Technical Terms](glossary.md)
+- [Frequently Asked Questions](frequently_asked_questions.md)
 - [Installing the Server](installing_the_server.md)
   - [Choosing a Domain Name](choosing_a_domain_name.md)
   - [Preparing for your Deployment](prepare_the_server.md)
@@ -10,8 +10,8 @@
   - [Platform Security Hardening](security_hardening.md)
 - [Client Tools](client_tools.md)
   - [Installing client tools](installing_client_tools.md)
-- [Accounts and Groups](accounts_and_groups.md)
 - [Administration](administrivia.md)
+  - [Accounts and Groups](accounts_and_groups.md)
   - [Backup and Restore](backup_restore.md)
   - [Database Maintenance](database_maint.md)
   - [Domain Rename](domain_rename.md)
@@ -21,20 +21,20 @@
   - [SSH Key Distribution](ssh_key_dist.md)
   - [The Recycle Bin](recycle_bin.md)
   - [Why TLS?](why_tls.md)
-- [Frequently Asked Questions](frequently_asked_questions.md)
 - [Troubleshooting](troubleshooting.md)
+- [Glossary of Technical Terms](glossary.md)
 
-# Integrations
+# Services
 
 - [Oauth2](integrations/oauth2.md)
 - [PAM and nsswitch](integrations/pam_and_nsswitch.md)
 - [RADIUS](integrations/radius.md)
 - [LDAP](integrations/ldap.md)
-- [Traefik](integrations/traefik.md)
 
 # Integration Examples
 
 - [Kubernetes Ingress](examples/k8s_ingress_example.md)
+- [Traefik](integrations/traefik.md)
 
 # For Developers
 
@@ -49,4 +49,4 @@
 ## Packaging
 
 - [Packaging](packaging.md)
-- [Debian/Ubuntu](packaging_debs.md)
+  - [Debian/Ubuntu](packaging_debs.md)
