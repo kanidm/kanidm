@@ -2859,7 +2859,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug_assert!(res.is_ok());
         res?;
 
-        let idm_entries = [E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES.clone()];
+        let idm_entries = [
+            E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES.clone(),
+            E_IDM_ACCOUNT_MAIL_READ_PRIV.clone(),
+            E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
+        ];
 
         let res: Result<(), _> = idm_entries
             .into_iter()

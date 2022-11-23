@@ -1,3 +1,9 @@
+use crate::constants::uuids::*;
+///! Constant Entries for the IDM
+use crate::constants::values::*;
+use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
+use crate::value::Value;
+
 /*
 // Template acp
 pub const _UUID_IDM_ACP_XX_V1: &str = "00000000-0000-0000-0000-ffffff0000XX";
@@ -325,6 +331,37 @@ pub const JSON_IDM_ACP_HP_PEOPLE_READ_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
+
+lazy_static! {
+    pub static ref E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        (
+            "name",
+            Value::new_iname("idm_acp_account_mail_read_priv")
+        ),
+        (
+            "uuid",
+            Value::new_uuid(UUID_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1)
+        ),
+        (
+            "description",
+            Value::new_utf8s(
+                "Builtin IDM Control for reading account mail attributes."
+            )
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_ACCOUNT_MAIL_READ_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s("{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}").expect("filter")
+        ),
+        ("acp_search_attr", Value::new_iutf8("mail"))
+    );
+}
 
 pub const JSON_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
