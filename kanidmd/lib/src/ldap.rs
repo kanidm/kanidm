@@ -374,6 +374,24 @@ impl LdapServer {
                 });
             }
         } else {
+            // Is the passed dn requesting token auth?
+            // We use dn= here since these are attr=value, and dn is a phantom so it will
+            // never be present or match a real value. We also make it an ava so that clients
+            // that over-zealously validate dn syntax are happy.
+            if dn == "dn=token" {
+                let lae = LdapTokenAuthEvent::from_parts(pw.to_string())?;
+                return idm_auth.token_auth_ldap(&lae, ct).await.and_then(|r| {
+                    idm_auth.commit().map(|_| {
+                        if r.is_some() {
+                            security_info!(%dn, "✅ LDAP Bind success");
+                        } else {
+                            security_info!(%dn, "❌ LDAP Bind failure");
+                        };
+                        r
+                    })
+                });
+            };
+
             let rdn = match self
                 .binddnre
                 .captures(dn)
@@ -999,7 +1017,13 @@ mod tests {
 
                 let apitoken_inner = apitoken_inner.into_inner();
 
-                // Bind using the token
+                // Bind using the token as a DN
+                let sa_lbt = task::block_on(ldaps.do_bind(idms, "dn=token", &apitoken))
+                    .unwrap()
+                    .unwrap();
+                assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner.clone()));
+
+                // Bind using the token as a pw
                 let sa_lbt = task::block_on(ldaps.do_bind(idms, "", &apitoken))
                     .unwrap()
                     .unwrap();
