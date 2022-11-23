@@ -56,6 +56,7 @@ pub struct LdapServer {
     basedn: String,
     dnre: Regex,
     binddnre: Regex,
+    tokenre: Regex,
 }
 
 impl LdapServer {
@@ -80,6 +81,9 @@ impl LdapServer {
 
         let binddnre = Regex::new(format!("^(([^=,]+)=)?(?P<val>[^=,]+)(,{})?$", basedn).as_str())
             .map_err(|_| OperationError::InvalidEntryState)?;
+
+        let tokenre =
+            Regex::new("^token=(?P<token>.*)$").map_err(|_| OperationError::InvalidEntryState)?;
 
         let rootdse = LdapSearchResultEntry {
             dn: "".to_string(),
@@ -120,6 +124,7 @@ impl LdapServer {
             basedn,
             dnre,
             binddnre,
+            tokenre,
         })
     }
 
@@ -374,6 +379,30 @@ impl LdapServer {
                 });
             }
         } else {
+            // Is the passed DN a token?
+            match self
+                .tokenre
+                .captures(dn)
+                .and_then(|caps| caps.name("token").map(|v| v.as_str().to_string()))
+            {
+                Some(token) => {
+                    let lae = LdapTokenAuthEvent::from_parts(token)?;
+                    return idm_auth.token_auth_ldap(&lae, ct).await.and_then(|r| {
+                        idm_auth.commit().map(|_| {
+                            if r.is_some() {
+                                security_info!(%dn, "✅ LDAP Bind success");
+                            } else {
+                                security_info!(%dn, "❌ LDAP Bind failure");
+                            };
+                            r
+                        })
+                    });
+                }
+                None => {
+                    // Not a token
+                }
+            };
+
             let rdn = match self
                 .binddnre
                 .captures(dn)
@@ -999,7 +1028,14 @@ mod tests {
 
                 let apitoken_inner = apitoken_inner.into_inner();
 
-                // Bind using the token
+                // Bind using the token as a DN
+                let dn_token = format!("token={}", apitoken);
+                let sa_lbt = task::block_on(ldaps.do_bind(idms, &dn_token, ""))
+                    .unwrap()
+                    .unwrap();
+                assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner.clone()));
+
+                // Bind using the token as a pw
                 let sa_lbt = task::block_on(ldaps.do_bind(idms, "", &apitoken))
                     .unwrap()
                     .unwrap();
