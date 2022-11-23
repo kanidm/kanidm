@@ -11,7 +11,7 @@ can host a read-only LDAP interface for these legacy applications.
     ../templates/kani-warning.md
     imagepath=../images
     title=Warning!
-    text=The LDAP server in Kanidm is not a full RFC compliant LDAP server. This is intentional, as Kanidm wants to cover the common use cases - simple bind and search.
+    text=The LDAP server in Kanidm is not a fully RFC-compliant LDAP server. This is intentional, as Kanidm wants to cover the common use cases - simple bind and search.
 }}
 
 
