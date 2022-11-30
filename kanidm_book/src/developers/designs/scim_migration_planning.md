@@ -151,3 +151,77 @@ entries that Kanidm now has authority over will NOT be synced and will be highli
 The administrator then needs to decide how to proceed with these conflicts determining which data
 source is the authority on the information.
 
+## Internal Batch Update Operation Phases
+
+We have to consider in our batch updates that there are multiple stages of the update. This is because
+we need to consider that at any point the lifecycle of a presented entry may change within a single
+batch. Because of this, we have to treat the operation differently within kanidm to ensure a consistent outcome.
+
+### Phase 1 - Validation of Update State
+
+In this phase we need to assert that the batch operation can proceed and is consistent with the expectations
+we have of the server's state.
+
+Assert the token provided is valid, and contains the correct access requirements.
+
+From this token, retrieve the related synchronisation entry.
+
+Assert that the batch updates from and to state identifiers are consistent with the synchronisation
+entry.
+
+Retrieve the sync\_parent\_uuid from the sync entry.
+
+Retrieve the sync\_authority value from the sync entry.
+
+### Phase 2 - Entry Location, Creation and Authority
+
+In this phase we are ensuring that all the entries within the operation are within the control of
+this sync domain. We also ensure that entries we intend to act upon exist with our authority
+markers such that the subsequent operations are all "modifications" rather than mixed create/modify
+
+For each entry in the sync request, if an entry with that uuid exists retrieve it.
+
+* If an entry exists in the database, assert that it's sync\_parent\_uuid is the same as our agreements.
+    * If there is no sync\_parent\_uuid or the sync\_parent\_uuid does not match, reject this entry from the operation.
+
+* If no entry exists in the database, create a "stub" entry with our sync\_parent\_uuid
+    * Create the entry immediately, and then retrieve it.
+
+### Phase 3 - Entry Assertion
+
+TODO: Referential Integrity needs enforcement!
+TODO: Attr Uniq!
+
+// Make a sync authority plugin? This can also handle access control?
+
+Remove all attributes in the sync that are overlapped with our sync\_authority value.
+
+For all uuids in the entry present set
+    Assert their attributes match what was synced in.
+    Resolve types that need resolving (name2uuid, externalid2uuid)
+
+Write all
+
+### Phase 4 - Entry Removal
+
+For all uuids in the delete\_uuids set:
+    if their sync\_parent\_uuid matches ours, assert they are deleted (recycled).
+
+### Phase 5 - Commit
+
+Write the updated "state" from the request to\_state to our current state of the sync
+
+Write an updated "authority" value to the agreement of what attributes we can change.
+
+Commit the txn.
+
+
+
+
+
+
+
+
+
+
+

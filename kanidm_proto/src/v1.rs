@@ -217,6 +217,7 @@ pub enum OperationError {
     InvalidValueState,
     InvalidEntryId,
     InvalidRequestState,
+    InvalidSyncState,
     InvalidState,
     InvalidEntryState,
     InvalidUuid,

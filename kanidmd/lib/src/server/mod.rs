@@ -38,6 +38,9 @@ use crate::schema::{
 };
 use crate::valueset::uuid_to_proto_string;
 
+// TODO: Is this actually used?
+// mod synch;
+
 const RESOLVE_FILTER_CACHE_MAX: usize = 4096;
 const RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
 

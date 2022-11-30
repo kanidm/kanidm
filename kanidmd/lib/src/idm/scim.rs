@@ -8,6 +8,7 @@ use kanidm_proto::scim_v1::ScimSyncRequest;
 use kanidm_proto::scim_v1::*;
 use kanidm_proto::v1::ApiTokenPurpose;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
 use crate::prelude::*;
@@ -234,17 +235,28 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn scim_sync_apply(
         &mut self,
         sse: &ScimSyncUpdateEvent,
-        _changes: &ScimSyncRequest,
+        changes: &ScimSyncRequest,
         _ct: Duration,
     ) -> Result<(), OperationError> {
-        let _sync_uuid = match &sse.ident.origin {
+        self.scim_sync_apply_phase_1(sse, changes)?;
+
+        Err(OperationError::AccessDenied)
+    }
+
+    fn scim_sync_apply_phase_1(
+        &mut self,
+        sse: &ScimSyncUpdateEvent,
+        changes: &ScimSyncRequest,
+    ) -> Result<(Uuid, BTreeSet<String>), OperationError> {
+        // Assert the token is valid.
+        let sync_uuid = match &sse.ident.origin {
             IdentType::User(_) | IdentType::Internal => {
                 warn!("Ident type is not synchronise");
                 return Err(OperationError::AccessDenied);
             }
             IdentType::Synch(u) => {
                 // Ok!
-                u
+                *u
             }
         };
 
@@ -258,18 +270,55 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             }
         };
 
-        // Only update entries related to this uuid
-        // Make a sync_authority uuid to relate back to on creates.
+        // Retrieve the related sync entry.
+        let sync_entry = self
+            .qs_write
+            .internal_search_uuid(&sync_uuid)
+            .map_err(|e| {
+                error!("Failed to located sync entry related to {}", sync_uuid);
+                e
+            })?;
 
-        // How to check for re-use of a cookie?
+        // Assert that the requested "from" state is consistent to this entry.
+        // OperationError::InvalidSyncState
 
-        // How to handle delete then re-add of same syncuuid?
-        // Syncuuid could be a seperate attr so that we avoid this?
+        match (
+            &changes.from_state,
+            sync_entry.get_ava_single_private_binary("sync_cookie"),
+        ) {
+            (ScimSyncState::Refresh, None) => {
+                // valid
+                info!("Refresh Sync");
+            }
+            (ScimSyncState::Active { cookie }, Some(sync_cookie)) => {
+                // Check cookies.
+                if cookie.0 != sync_cookie {
+                    // Invalid
+                    error!(
+                        "Invalid Sync State - Active, but agreement has divegent external cookie."
+                    );
+                    return Err(OperationError::InvalidSyncState);
+                } else {
+                    // Valid
+                    info!("Active Sync with valid cookie");
+                }
+            }
+            (ScimSyncState::Refresh, Some(_)) => {
+                error!("Invalid Sync State - Refresh, but agreement has Active sync.");
+                return Err(OperationError::InvalidSyncState);
+            }
+            (ScimSyncState::Active { cookie: _ }, None) => {
+                error!("Invalid Sync State - Active, but agreement has Refresh Required.");
+                return Err(OperationError::InvalidSyncState);
+            }
+        };
 
-        // Should deleted by synced item be exempt on recycle purge? Should
-        // it just go direct to tombstone?
+        // Retrieve the sync_authority_set
+        let sync_authority_set = BTreeSet::default();
 
-        Err(OperationError::AccessDenied)
+        // Return these.
+
+        Ok((sync_uuid, sync_authority_set))
     }
 }
 
@@ -320,6 +369,7 @@ mod tests {
     use crate::event::ModifyEvent;
     use crate::idm::server::{IdmServerProxyWriteTransaction, IdmServerTransaction};
     use crate::prelude::*;
+    use base64urlsafedata::Base64UrlSafeData;
     use compact_jwt::Jws;
     use kanidm_proto::scim_v1::*;
     use kanidm_proto::v1::ApiTokenPurpose;
@@ -521,7 +571,63 @@ mod tests {
         })
     }
 
-    // Need to delete different phases such as conflictn and end of the agreement.
+    fn test_scim_sync_apply_setup_ident(
+        idms_prox_write: &mut IdmServerProxyWriteTransaction,
+        ct: Duration,
+    ) -> (Uuid, Identity) {
+        let sync_uuid = Uuid::new_v4();
+
+        let e1 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("sync_account")),
+            ("name", Value::new_iname("test_scim_sync")),
+            ("uuid", Value::new_uuid(sync_uuid)),
+            ("description", Value::new_utf8s("A test sync agreement"))
+        );
+
+        let ce = CreateEvent::new_internal(vec![e1]);
+        let cr = idms_prox_write.qs_write.create(&ce);
+        assert!(cr.is_ok());
+
+        let gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, "Sync Connector");
+
+        let sync_token = idms_prox_write
+            .scim_sync_generate_token(&gte, ct)
+            .expect("failed to generate new scim sync token");
+
+        let ident = idms_prox_write
+            .validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct)
+            .expect("Failed to process sync token to ident");
+
+        (sync_uuid, ident)
+    }
+
+    #[test]
+    fn test_idm_scim_sync_apply_phase_1_inconsistent() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+            let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+            let sse = ScimSyncUpdateEvent { ident };
+
+            let changes = ScimSyncRequest {
+                from_state: ScimSyncState::Active {
+                    cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                },
+                to_state: ScimSyncState::Refresh,
+                entries: Vec::default(),
+                delete_uuids: Vec::default(),
+            };
+
+            let res = idms_prox_write.scim_sync_apply_phase_1(&sse, &changes);
+
+            assert!(matches!(res, Err(OperationError::InvalidSyncState)));
+
+            assert!(idms_prox_write.commit().is_ok());
+        })
+    }
 
     #[test]
     fn test_idm_scim_sync_refresh_1() {
@@ -529,33 +635,8 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-
             let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-
-            let sync_uuid = Uuid::new_v4();
-
-            let e1 = entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("sync_account")),
-                ("name", Value::new_iname("test_scim_sync")),
-                ("uuid", Value::new_uuid(sync_uuid)),
-                ("description", Value::new_utf8s("A test sync agreement"))
-            );
-
-            let ce = CreateEvent::new_internal(vec![e1]);
-            let cr = idms_prox_write.qs_write.create(&ce);
-            assert!(cr.is_ok());
-
-            let gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, "Sync Connector");
-
-            let sync_token = idms_prox_write
-                .scim_sync_generate_token(&gte, ct)
-                .expect("failed to generate new scim sync token");
-
-            let ident = idms_prox_write
-                .validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct)
-                .expect("Failed to process sync token to ident");
-
+            let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
             let sse = ScimSyncUpdateEvent { ident };
 
             let changes =
