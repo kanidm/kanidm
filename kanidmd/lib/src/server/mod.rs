@@ -38,8 +38,11 @@ use crate::schema::{
 };
 use crate::valueset::uuid_to_proto_string;
 
-// TODO: Is this actually used?
-// mod synch;
+pub mod batch_modify;
+pub mod create;
+pub mod modify;
+pub mod search;
+pub mod synch;
 
 const RESOLVE_FILTER_CACHE_MAX: usize = 4096;
 const RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
@@ -2004,9 +2007,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
     }
 
-    /// Used in conjunction with internal_batch_modify, to get a pre/post
+    /// Used in conjunction with internal_apply_writable, to get a pre/post
     /// pair, where post is pre-configured with metadata to allow
-    /// modificiation before submit back to internal_batch_modify
+    /// modificiation before submit back to internal_apply_writable
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn internal_search_writeable(
         &self,
@@ -2033,7 +2036,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// probably want modify instead.
     #[allow(clippy::needless_pass_by_value)]
     #[instrument(level = "debug", skip_all)]
-    pub(crate) fn internal_batch_modify(
+    pub(crate) fn internal_apply_writable(
         &self,
         pre_candidates: Vec<Arc<EntrySealedCommitted>>,
         candidates: Vec<Entry<EntryInvalid, EntryCommitted>>,
@@ -2044,7 +2047,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
 
         if pre_candidates.len() != candidates.len() {
-            admin_error!("internal_batch_modify - cand lengths differ");
+            admin_error!("internal_apply_writable - cand lengths differ");
             return Err(OperationError::InvalidRequestState);
         }
 
@@ -2054,7 +2057,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 e.validate(&self.schema)
                     .map_err(|e| {
                         admin_error!(
-                            "Schema Violation in internal_batch_modify validate: {:?}",
+                            "Schema Violation in internal_apply_writable validate: {:?}",
                             e
                         );
                         OperationError::SchemaViolation(e)
@@ -2379,8 +2382,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &mut self,
         entries: Vec<Entry<EntryInit, EntryNew>>,
     ) -> Result<(), OperationError> {
-        // Start the audit scope
-        // Create the CreateEvent
         let ce = CreateEvent::new_internal(entries);
         self.create(&ce)
     }
@@ -3247,8 +3248,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Audit done
     }
 }
-
-// Auth requests? How do we structure these ...
 
 #[cfg(test)]
 mod tests {

@@ -68,8 +68,7 @@ impl Plugin for Protected {
     #[instrument(level = "debug", name = "protected_pre_modify", skip(_qs, cand, me))]
     fn pre_modify(
         _qs: &mut QueryServerWriteTransaction,
-        // Should these be EntrySealed?
-        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        cand: &mut Vec<EntryInvalidCommitted>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         if me.ident.is_internal() {

@@ -238,16 +238,30 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         changes: &ScimSyncRequest,
         _ct: Duration,
     ) -> Result<(), OperationError> {
-        self.scim_sync_apply_phase_1(sse, changes)?;
+        let (sync_uuid, _sync_authority_set, change_entries) =
+            self.scim_sync_apply_phase_1(sse, changes)?;
+
+        // TODO: If the from_state is refresh and the to_state is active, then we need to
+        // do delete all entries NOT present in the refresh set.
+        // This accounts for the state of:
+        //      active -> refresh -> active
+        // which can occur when ldap asks us to do a refresh. Because of this entries may have
+        // been removed, and will NOT be present in a delete_uuids phase. We can't just blanket
+        // delete here as some entries may have been modified by users with authority over the
+        // attributes.
+
+        let _sync_entries =
+            self.qs_write
+                .scim_sync_apply_phase_2(sse, &change_entries, sync_uuid)?;
 
         Err(OperationError::AccessDenied)
     }
 
-    fn scim_sync_apply_phase_1(
+    fn scim_sync_apply_phase_1<'b>(
         &mut self,
-        sse: &ScimSyncUpdateEvent,
-        changes: &ScimSyncRequest,
-    ) -> Result<(Uuid, BTreeSet<String>), OperationError> {
+        sse: &'b ScimSyncUpdateEvent,
+        changes: &'b ScimSyncRequest,
+    ) -> Result<(Uuid, BTreeSet<String>, BTreeMap<Uuid, &'b ScimEntry>), OperationError> {
         // Assert the token is valid.
         let sync_uuid = match &sse.ident.origin {
             IdentType::User(_) | IdentType::Internal => {
@@ -318,7 +332,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Return these.
 
-        Ok((sync_uuid, sync_authority_set))
+        // Transform the changes into something that supports lookups.
+        let change_entries: BTreeMap<Uuid, &ScimEntry> = changes
+            .entries
+            .iter()
+            .map(|scim_entry| (scim_entry.id, scim_entry))
+            .collect();
+
+        Ok((sync_uuid, sync_authority_set, change_entries))
     }
 }
 
@@ -624,6 +645,47 @@ mod tests {
             let res = idms_prox_write.scim_sync_apply_phase_1(&sse, &changes);
 
             assert!(matches!(res, Err(OperationError::InvalidSyncState)));
+
+            assert!(idms_prox_write.commit().is_ok());
+        })
+    }
+
+    #[test]
+    fn test_idm_scim_sync_apply_phase_2_basic() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+            let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+            let sse = ScimSyncUpdateEvent { ident };
+
+            let changes = ScimSyncRequest {
+                from_state: ScimSyncState::Refresh,
+                to_state: ScimSyncState::Active {
+                    cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                },
+                entries: vec![ScimEntry {
+                    schemas: vec![SCIM_SCHEMA_SYNC_PERSON.to_string()],
+                    id: uuid::uuid!("91b7aaf2-2445-46ce-8998-96d9f186cc69"),
+                    external_id: Some("dn=william,ou=people,dc=test".to_string()),
+                    meta: None,
+                    attrs: btreemap!((
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("william".to_string()))
+                    ),),
+                }],
+                delete_uuids: Vec::default(),
+            };
+
+            let (sync_uuid, _sync_authority_set, change_entries) = idms_prox_write
+                .scim_sync_apply_phase_1(&sse, &changes)
+                .expect("Failed to run phase 1");
+
+            let _ = idms_prox_write
+                .qs_write
+                .scim_sync_apply_phase_2(&sse, &change_entries, sync_uuid)
+                .expect("Failed to run phase 2");
 
             assert!(idms_prox_write.commit().is_ok());
         })

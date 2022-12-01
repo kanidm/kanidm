@@ -157,6 +157,9 @@ We have to consider in our batch updates that there are multiple stages of the u
 we need to consider that at any point the lifecycle of a presented entry may change within a single
 batch. Because of this, we have to treat the operation differently within kanidm to ensure a consistent outcome.
 
+Additionally we have to "fail fast". This means that on any conflict the sync will abort and the administrator
+must intervene. REASON HERE account - group memership loss.
+
 ### Phase 1 - Validation of Update State
 
 In this phase we need to assert that the batch operation can proceed and is consistent with the expectations
@@ -182,7 +185,7 @@ markers such that the subsequent operations are all "modifications" rather than 
 For each entry in the sync request, if an entry with that uuid exists retrieve it.
 
 * If an entry exists in the database, assert that it's sync\_parent\_uuid is the same as our agreements.
-    * If there is no sync\_parent\_uuid or the sync\_parent\_uuid does not match, reject this entry from the operation.
+    * If there is no sync\_parent\_uuid or the sync\_parent\_uuid does not match, reject the operation.
 
 * If no entry exists in the database, create a "stub" entry with our sync\_parent\_uuid
     * Create the entry immediately, and then retrieve it.

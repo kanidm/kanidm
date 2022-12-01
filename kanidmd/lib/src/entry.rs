@@ -89,6 +89,8 @@ use crate::valueset::{self, ValueSet};
 //
 
 pub type EntryInitNew = Entry<EntryInit, EntryNew>;
+pub type EntryInvalidNew = Entry<EntryInvalid, EntryNew>;
+pub type EntrySealedNew = Entry<EntrySealed, EntryNew>;
 pub type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
 pub type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
 pub type EntryReducedCommitted = Entry<EntryReduced, EntryCommitted>;

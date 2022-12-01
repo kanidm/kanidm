@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
-pub use scim_proto::prelude::{ScimEntry, ScimError};
+pub use scim_proto::prelude::{ScimEntry, ScimError, ScimAttr, ScimSimpleAttr};
 use scim_proto::*;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]

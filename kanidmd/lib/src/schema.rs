@@ -1196,6 +1196,38 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
 
+        // External Scim Sync
+        self.attributes.insert(
+            AttrString::from("sync_external_id"),
+            SchemaAttribute {
+                name: AttrString::from("sync_external_id"),
+                uuid: UUID_SCHEMA_ATTR_SYNC_EXTERNAL_ID,
+                description: String::from(
+                    "An external string ID of an entry imported from a sync agreement",
+                ),
+                multivalue: false,
+                unique: true,
+                phantom: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("sync_parent_uuid"),
+            SchemaAttribute {
+                name: AttrString::from("sync_parent_uuid"),
+                uuid: UUID_SCHEMA_ATTR_SYNC_PARENT_UUID,
+                description: String::from(
+                    "The UUID of the parent sync agreement that created this entry.",
+                ),
+                multivalue: false,
+                unique: false,
+                phantom: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::ReferenceUuid,
+            },
+        );
+
         self.attributes.insert(
             AttrString::from("password_import"),
             SchemaAttribute {
@@ -1535,14 +1567,28 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.classes.insert(
-                AttrString::from("system"),
-                SchemaClass {
-                    name: AttrString::from("system"),
-                    uuid: UUID_SCHEMA_CLASS_SYSTEM,
-                    description: String::from("A class denoting that a type is system generated and protected. It has special internal behaviour."),
-                    .. Default::default()
-                },
-            );
+            AttrString::from("system"),
+            SchemaClass {
+                name: AttrString::from("system"),
+                uuid: UUID_SCHEMA_CLASS_SYSTEM,
+                description: String::from("A class denoting that a type is system generated and protected. It has special internal behaviour."),
+                .. Default::default()
+            },
+        );
+        self.classes.insert(
+            AttrString::from("sync_object"),
+            SchemaClass {
+                name: AttrString::from("sync_object"),
+                uuid: UUID_SCHEMA_CLASS_SYNC_OBJECT,
+                description: String::from("A class denoting that an entry is synchronised from an external source. This entry may not be modifiable."),
+                systemmust: vec![
+                    AttrString::from("uuid"),
+                    AttrString::from("sync_parent_uuid")
+                ],
+                // systemmay: vec![],
+                .. Default::default()
+            },
+        );
 
         let r = self.validate();
         if r.is_empty() {

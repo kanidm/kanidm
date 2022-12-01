@@ -219,7 +219,7 @@ impl DynGroup {
         debug_assert!(pre_candidates.len() == candidates.len());
         // Write this stripe if populated.
         if !pre_candidates.is_empty() {
-            qs.internal_batch_modify(pre_candidates, candidates)
+            qs.internal_apply_writable(pre_candidates, candidates)
                 .map_err(|e| {
                     admin_error!("Failed to commit dyngroup set {:?}", e);
                     e
@@ -333,7 +333,7 @@ impl DynGroup {
         debug_assert!(pre_candidates.len() == candidates.len());
         // Write this stripe if populated.
         if !pre_candidates.is_empty() {
-            qs.internal_batch_modify(pre_candidates, candidates)
+            qs.internal_apply_writable(pre_candidates, candidates)
                 .map_err(|e| {
                     admin_error!("Failed to commit dyngroup set {:?}", e);
                     e

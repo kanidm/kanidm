@@ -170,7 +170,7 @@ fn apply_memberof(
         debug_assert!(pre_candidates.len() == candidates.len());
         // Write this stripe if populated.
         if !pre_candidates.is_empty() {
-            qs.internal_batch_modify(pre_candidates, candidates)
+            qs.internal_apply_writable(pre_candidates, candidates)
                 .map_err(|e| {
                     admin_error!("Failed to commit memberof group set {:?}", e);
                     e
@@ -201,7 +201,7 @@ fn apply_memberof(
 
     // Turn the other_cache into a write set.
     // Write the batch out in a single stripe.
-    qs.internal_batch_modify(pre_candidates, candidates)
+    qs.internal_apply_writable(pre_candidates, candidates)
     // Done! 🎉
 }
 

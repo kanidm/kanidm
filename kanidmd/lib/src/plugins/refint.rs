@@ -213,7 +213,7 @@ impl Plugin for ReferentialIntegrity {
             })
             .unzip();
 
-        qs.internal_batch_modify(pre_candidates, candidates)
+        qs.internal_apply_writable(pre_candidates, candidates)
     }
 
     #[instrument(level = "debug", name = "verify", skip(qs))]

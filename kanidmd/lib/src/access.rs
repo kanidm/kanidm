@@ -925,6 +925,41 @@ pub trait AccessControlsTransaction<'a> {
     }
 
     #[allow(clippy::cognitive_complexity)]
+    #[instrument(level = "debug", name = "access::batch_modify_allow_operation", skip_all)]
+    fn batch_modify_allow_operation(
+        &self,
+        me: &BatchModifyEvent,
+        _entries: &[Arc<EntrySealedCommitted>],
+    ) -> Result<bool, OperationError> {
+        match &me.ident.origin {
+            IdentType::Internal => {
+                trace!("Internal operation, bypassing access check");
+                // No need to check ACS
+                return Ok(true);
+            }
+            IdentType::Synch(_) => {
+                security_critical!("Blocking sync check");
+                return Err(OperationError::InvalidState);
+            }
+            IdentType::User(_) => {}
+        };
+        info!(event = %me.ident, "Access check for batch modify event");
+
+        match me.ident.access_scope() {
+            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise => {
+                security_access!("denied ❌ - identity access scope is not permitted to modify");
+                return Ok(false);
+            }
+            AccessScope::ReadWrite => {
+                // As you were
+            }
+        };
+
+
+        todo!();
+    }
+
+    #[allow(clippy::cognitive_complexity)]
     #[instrument(level = "debug", name = "access::create_allow_operation", skip_all)]
     fn create_allow_operation(
         &self,
