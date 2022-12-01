@@ -192,11 +192,6 @@ For each entry in the sync request, if an entry with that uuid exists retrieve i
 
 ### Phase 3 - Entry Assertion
 
-TODO: Referential Integrity needs enforcement!
-TODO: Attr Uniq!
-
-// Make a sync authority plugin? This can also handle access control?
-
 Remove all attributes in the sync that are overlapped with our sync\_authority value.
 
 For all uuids in the entry present set

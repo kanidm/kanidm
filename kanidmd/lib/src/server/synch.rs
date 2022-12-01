@@ -32,6 +32,25 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 e
             })?;
 
+        // Refuse to proceed if any entries are in the recycled or tombstone state, since subsequent
+        // operations WOULD fail.
+        //
+        // I'm still a bit not sure what to do here though, because if we have uuid re-use from the
+        // external system, that would be a pain, but I think we have to do this. This would be an
+        // exceedingly rare situation though since 389-ds doesn't allow external uuid to be set, nor
+        // does openldap. It would break both of their replication models for it to occur.
+        //
+        // Still we cover the possibility
+        let mut fail = false;
+        existing_entries.iter().for_each(|e| {
+            if e.mask_recycled_ts().is_none() {
+                error!("Unable to proceed: entry uuid {} is masked. You must re-map this entries uuid in the sync connector to proceed.", e.get_uuid());
+                fail = true;
+            }
+        });
+        if fail {
+            return Err(OperationError::InvalidEntryState);
+        }
         // From that set of entries, parition to entries that exist and are
         // present, and entries that do not yet exist.
         //

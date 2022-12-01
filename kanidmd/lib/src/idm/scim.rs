@@ -250,9 +250,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // delete here as some entries may have been modified by users with authority over the
         // attributes.
 
-        let _sync_entries =
-            self.qs_write
-                .scim_sync_apply_phase_2(sse, &change_entries, sync_uuid)?;
+        self.qs_write
+            .scim_sync_apply_phase_2(sse, &change_entries, sync_uuid)?;
+
+        // All stubs are now set-up.
 
         Err(OperationError::AccessDenied)
     }
@@ -699,6 +700,67 @@ mod tests {
                     == Some("dn=william,ou=people,dc=test")
             );
             assert!(synced_entry.get_uuid() == user_sync_uuid);
+
+            assert!(idms_prox_write.commit().is_ok());
+        })
+    }
+
+    #[test]
+    fn test_idm_scim_sync_apply_phase_2_deny_on_tombstone() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+            let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+
+            let user_sync_uuid = Uuid::new_v4();
+            // Create a recycled entry
+            assert!(idms_prox_write
+                .qs_write
+                .internal_create(vec![entry_init!(
+                    ("class", Value::new_class("object")),
+                    ("uuid", Value::Uuid(user_sync_uuid))
+                )])
+                .is_ok());
+
+            assert!(idms_prox_write
+                .qs_write
+                .internal_delete_uuid(user_sync_uuid)
+                .is_ok());
+
+            // Now create a sync that conflicts with the tombstone uuid. This will be REJECTED.
+
+            let sse = ScimSyncUpdateEvent { ident };
+
+            let changes = ScimSyncRequest {
+                from_state: ScimSyncState::Refresh,
+                to_state: ScimSyncState::Active {
+                    cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                },
+                entries: vec![ScimEntry {
+                    schemas: vec![SCIM_SCHEMA_SYNC_PERSON.to_string()],
+                    id: user_sync_uuid,
+                    external_id: Some("dn=william,ou=people,dc=test".to_string()),
+                    meta: None,
+                    attrs: btreemap!((
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("william".to_string()))
+                    ),),
+                }],
+                delete_uuids: Vec::default(),
+            };
+
+            let (sync_uuid, _sync_authority_set, change_entries) = idms_prox_write
+                .scim_sync_apply_phase_1(&sse, &changes)
+                .expect("Failed to run phase 1");
+
+            let res =
+                idms_prox_write
+                    .qs_write
+                    .scim_sync_apply_phase_2(&sse, &change_entries, sync_uuid);
+
+            assert!(matches!(res, Err(OperationError::InvalidEntryState)));
 
             assert!(idms_prox_write.commit().is_ok());
         })
