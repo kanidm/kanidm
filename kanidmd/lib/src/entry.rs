@@ -1192,6 +1192,19 @@ impl Entry<EntrySealed, EntryCommitted> {
         }
     }
 
+    /// Generate the required values for externalid2uuid.
+    pub(crate) fn idx_externalid2uuid_diff(
+        _pre: Option<&Self>,
+        _post: Option<&Self>,
+    ) -> (
+        // Add
+        Option<Set<String>>,
+        // Remove
+        Option<Set<String>>,
+    ) {
+        todo!();
+    }
+
     /// Generate a differential between a previous and current entry state, and what changes this
     /// means for the current set of spn's for this uuid.
     pub(crate) fn idx_uuid2spn_diff(

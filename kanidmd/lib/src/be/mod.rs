@@ -1193,14 +1193,22 @@ impl<'a> BackendWriteTransaction<'a> {
             // There will never be content to add.
             assert!(n2u_add.is_none());
 
+            let (eid2u_add, eid2u_rem) = Entry::idx_externalid2uuid_diff(mask_pre, None);
+            // There will never be content to add.
+            assert!(eid2u_add.is_none());
+
             let u2s_act = Entry::idx_uuid2spn_diff(mask_pre, None);
             let u2r_act = Entry::idx_uuid2rdn_diff(mask_pre, None);
 
-            trace!(?n2u_rem, ?u2s_act, ?u2r_act,);
+            trace!(?n2u_rem, ?eid2u_rem, ?u2s_act, ?u2r_act,);
 
             // Write the changes out to the backend
             if let Some(rem) = n2u_rem {
                 idlayer.write_name2uuid_rem(rem)?
+            }
+
+            if let Some(rem) = eid2u_rem {
+                idlayer.write_externalid2uuid_rem(rem)?
             }
 
             match u2s_act {
@@ -1223,11 +1231,12 @@ impl<'a> BackendWriteTransaction<'a> {
 
         let mask_post = post.and_then(|e| e.mask_recycled_ts());
         let (n2u_add, n2u_rem) = Entry::idx_name2uuid_diff(mask_pre, mask_post);
+        let (eid2u_add, eid2u_rem) = Entry::idx_externalid2uuid_diff(mask_pre, mask_post);
 
         let u2s_act = Entry::idx_uuid2spn_diff(mask_pre, mask_post);
         let u2r_act = Entry::idx_uuid2rdn_diff(mask_pre, mask_post);
 
-        trace!(?n2u_add, ?n2u_rem, ?u2s_act, ?u2r_act);
+        trace!(?n2u_add, ?n2u_rem, ?eid2u_add, ?eid2u_rem, ?u2s_act, ?u2r_act);
 
         // Write the changes out to the backend
         if let Some(add) = n2u_add {
@@ -1235,6 +1244,13 @@ impl<'a> BackendWriteTransaction<'a> {
         }
         if let Some(rem) = n2u_rem {
             idlayer.write_name2uuid_rem(rem)?
+        }
+
+        if let Some(add) = eid2u_add {
+            idlayer.write_externalid2uuid_add(e_uuid, add)?
+        }
+        if let Some(rem) = eid2u_rem {
+            idlayer.write_externalid2uuid_rem(rem)?
         }
 
         match u2s_act {
