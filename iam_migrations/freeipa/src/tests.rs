@@ -1,5 +1,5 @@
 use crate::process_ipa_sync_result;
-use kanidm_proto::scim_v1::{ScimSyncState, ScimSyncRequest};
+use kanidm_proto::scim_v1::{ScimSyncRequest, ScimSyncState};
 
 use ldap3_client::LdapSyncRepl;
 
@@ -17,27 +17,18 @@ async fn test_ldap_to_scim() {
         .await
         .expect("failed to process ldap sync repl to scim");
 
-    println!("{}", serde_json::to_string_pretty(&scim_sync_request).unwrap());
-
-    assert!(
-        scim_sync_request.from_state ==
-        expect_scim_request.from_state
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&scim_sync_request).unwrap()
     );
 
-    assert!(
-        scim_sync_request.to_state ==
-        expect_scim_request.to_state
-    );
+    assert!(scim_sync_request.from_state == expect_scim_request.from_state);
 
-    assert!(
-        scim_sync_request.entries ==
-        expect_scim_request.entries
-    );
+    assert!(scim_sync_request.to_state == expect_scim_request.to_state);
 
-    assert!(
-        scim_sync_request.delete_uuids ==
-        expect_scim_request.delete_uuids
-    );
+    assert!(scim_sync_request.entries == expect_scim_request.entries);
+
+    assert!(scim_sync_request.delete_uuids == expect_scim_request.delete_uuids);
 }
 
 const TEST_LDAP_SYNC_REPL_1: &str = r#"
@@ -527,5 +518,3 @@ const TEST_SCIM_SYNC_REPL_1: &str = r#"
   "delete_uuids": []
 }
 "#;
-
-

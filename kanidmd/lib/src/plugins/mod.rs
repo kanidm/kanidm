@@ -84,7 +84,10 @@ trait Plugin {
         _cand: &mut Vec<EntryInvalidCommitted>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        admin_error!("plugin {} has an unimplemented pre_batch_modify!", Self::id());
+        admin_error!(
+            "plugin {} has an unimplemented pre_batch_modify!",
+            Self::id()
+        );
         Err(OperationError::InvalidState)
     }
 
@@ -95,7 +98,10 @@ trait Plugin {
         _cand: &[EntrySealedCommitted],
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        admin_error!("plugin {} has an unimplemented post_batch_modify!", Self::id());
+        admin_error!(
+            "plugin {} has an unimplemented post_batch_modify!",
+            Self::id()
+        );
         Err(OperationError::InvalidState)
     }
 

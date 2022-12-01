@@ -925,7 +925,11 @@ pub trait AccessControlsTransaction<'a> {
     }
 
     #[allow(clippy::cognitive_complexity)]
-    #[instrument(level = "debug", name = "access::batch_modify_allow_operation", skip_all)]
+    #[instrument(
+        level = "debug",
+        name = "access::batch_modify_allow_operation",
+        skip_all
+    )]
     fn batch_modify_allow_operation(
         &self,
         me: &BatchModifyEvent,
@@ -954,7 +958,6 @@ pub trait AccessControlsTransaction<'a> {
                 // As you were
             }
         };
-
 
         todo!();
     }

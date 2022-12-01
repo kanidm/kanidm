@@ -73,8 +73,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //
         // Basicly we just set this up as a batch modify and submit it.
 
-
-
         // Ready to go.
 
         Ok(())

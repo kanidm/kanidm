@@ -1,9 +1,9 @@
 use super::QueryServerWriteTransaction;
 use crate::prelude::*;
 // use std::collections::BTreeMap;
-use hashbrown::HashMap;
-use crate::server::Plugins;
 use crate::access::AccessControlsTransaction;
+use crate::server::Plugins;
+use hashbrown::HashMap;
 
 pub type ModSetValid = HashMap<Uuid, ModifyList<ModifyValid>>;
 
@@ -29,7 +29,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// the same modlists are used.
     #[instrument(level = "debug", skip_all)]
     pub fn batch_modify(&mut self, me: &BatchModifyEvent) -> Result<(), OperationError> {
-
         // ⚠️  =========
         // Effectively this is the same as modify but instead of apply modlist
         // we do it by uuid.
@@ -49,7 +48,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return Err(OperationError::EmptyRequest);
         }
 
-        let filter_or = me.modset
+        let filter_or = me
+            .modset
             .keys()
             .copied()
             .map(|u| f_eq("uuid", PartialValue::new_uuid(u)))
@@ -69,16 +69,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         if pre_candidates.is_empty() {
             if me.ident.is_internal() {
-                trace!(
-                    "no candidates match filter ... continuing {:?}",
-                    filter
-                );
+                trace!("no candidates match filter ... continuing {:?}", filter);
                 return Ok(());
             } else {
-                request_error!(
-                    "no candidates match modset request, failure {:?}",
-                    filter
-                );
+                request_error!("no candidates match modset request, failure {:?}", filter);
                 return Err(OperationError::NoMatchingEntries);
             }
         };
@@ -116,7 +110,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 let u = er.get_uuid();
                 let mut ent_mut = er.as_ref().clone().invalidate(self.cid.clone());
 
-                me.modset.get(&u)
+                me.modset
+                    .get(&u)
                     .map(|modlist| {
                         ent_mut.apply_modlist(modlist);
                         // Now return the mutated entry.
@@ -239,24 +234,22 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     pub fn internal_batch_modify(
         &mut self,
-        mods_iter: impl Iterator<Item = (Uuid, ModifyList<ModifyInvalid>)>
+        mods_iter: impl Iterator<Item = (Uuid, ModifyList<ModifyInvalid>)>,
     ) -> Result<(), OperationError> {
-
-        let modset = mods_iter.map(|(u, ml)| {
-            ml
-                .validate(self.get_schema())
-                .map(|modlist| (u, modlist))
-                .map_err(OperationError::SchemaViolation)
-        })
+        let modset = mods_iter
+            .map(|(u, ml)| {
+                ml.validate(self.get_schema())
+                    .map(|modlist| (u, modlist))
+                    .map_err(OperationError::SchemaViolation)
+            })
             .collect::<Result<ModSetValid, _>>()?;
         let bme = BatchModifyEvent {
             ident: Identity::from_internal(),
-            modset
+            modset,
         };
         self.batch_modify(&bme)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -268,33 +261,45 @@ mod tests {
         // Setup entries.
         let uuid_a = Uuid::new_v4();
         let uuid_b = Uuid::new_v4();
-        assert!(server_txn.internal_create(vec![
-            entry_init!(
-                ("class", Value::new_class("object")),
-                ("uuid", Value::Uuid(uuid_a))
-            ),
-            entry_init!(
-                ("class", Value::new_class("object")),
-                ("uuid", Value::Uuid(uuid_b))
-            ),
-        ]).is_ok());
+        assert!(server_txn
+            .internal_create(vec![
+                entry_init!(
+                    ("class", Value::new_class("object")),
+                    ("uuid", Value::Uuid(uuid_a))
+                ),
+                entry_init!(
+                    ("class", Value::new_class("object")),
+                    ("uuid", Value::Uuid(uuid_b))
+                ),
+            ])
+            .is_ok());
 
         // Do a batch mod.
-        assert!(server_txn.internal_batch_modify([
-            (uuid_a, ModifyList::new_append("description", Value::Utf8("a".into()))),
-            (uuid_b, ModifyList::new_append("description", Value::Utf8("b".into()))),
-        ].into_iter()).is_ok());
+        assert!(server_txn
+            .internal_batch_modify(
+                [
+                    (
+                        uuid_a,
+                        ModifyList::new_append("description", Value::Utf8("a".into()))
+                    ),
+                    (
+                        uuid_b,
+                        ModifyList::new_append("description", Value::Utf8("b".into()))
+                    ),
+                ]
+                .into_iter()
+            )
+            .is_ok());
 
         // Now check them
-        let ent_a = server_txn.internal_search_uuid(&uuid_a)
+        let ent_a = server_txn
+            .internal_search_uuid(&uuid_a)
             .expect("Failed to get entry.");
-        let ent_b = server_txn.internal_search_uuid(&uuid_b)
+        let ent_b = server_txn
+            .internal_search_uuid(&uuid_b)
             .expect("Failed to get entry.");
 
         assert!(ent_a.get_ava_single_utf8("description") == Some("a"));
         assert!(ent_b.get_ava_single_utf8("description") == Some("b"));
     }
 }
-
-
-
