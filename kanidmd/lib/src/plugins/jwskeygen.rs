@@ -7,23 +7,57 @@ use crate::utils::password_from_random;
 
 pub struct JwsKeygen {}
 
-macro_rules! keygen_transform {
-    (
-        $e:expr
-    ) => {{
-        if $e.attribute_equality("class", &PVCLASS_OAUTH2_BASIC) {
-            if !$e.attribute_pres("oauth2_rs_basic_secret") {
+impl Plugin for JwsKeygen {
+    fn id() -> &'static str {
+        "plugin_jws_keygen"
+    }
+
+    #[instrument(level = "debug", name = "jwskeygen_pre_create_transform", skip_all)]
+    fn pre_create_transform(
+        _qs: &mut QueryServerWriteTransaction,
+        cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
+        _ce: &CreateEvent,
+    ) -> Result<(), OperationError> {
+        Self::modify_inner(cand)
+    }
+
+    #[instrument(level = "debug", name = "jwskeygen_pre_modify", skip_all)]
+    fn pre_modify(
+        _qs: &mut QueryServerWriteTransaction,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        _me: &ModifyEvent,
+    ) -> Result<(), OperationError> {
+        Self::modify_inner(cand)
+    }
+
+    #[instrument(level = "debug", name = "jwskeygen_pre_batch_modify", skip_all)]
+    fn pre_batch_modify(
+        _qs: &mut QueryServerWriteTransaction,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        _me: &BatchModifyEvent,
+    ) -> Result<(), OperationError> {
+        Self::modify_inner(cand)
+    }
+}
+
+impl JwsKeygen {
+    fn modify_inner<T: Clone>(
+        cand: &mut Vec<Entry<EntryInvalid, T>>,
+    ) -> Result<(), OperationError> {
+        cand.iter_mut().try_for_each(|e| {
+        if e.attribute_equality("class", &PVCLASS_OAUTH2_BASIC) {
+            if !e.attribute_pres("oauth2_rs_basic_secret") {
                 security_info!("regenerating oauth2 basic secret");
                 let v = Value::SecretValue(password_from_random());
-                $e.add_ava("oauth2_rs_basic_secret", v);
+                e.add_ava("oauth2_rs_basic_secret", v);
             }
-            if !$e.attribute_pres("oauth2_rs_token_key") {
+            if !e.attribute_pres("oauth2_rs_token_key") {
                 security_info!("regenerating oauth2 token key");
                 let k = fernet::Fernet::generate_key();
                 let v = Value::new_secret_str(&k);
-                $e.add_ava("oauth2_rs_token_key", v);
+                e.add_ava("oauth2_rs_token_key", v);
             }
-            if !$e.attribute_pres("es256_private_key_der") {
+            if !e.attribute_pres("es256_private_key_der") {
                 security_info!("regenerating oauth2 es256 private key");
                 let der = JwsSigner::generate_es256()
                     .and_then(|jws| jws.private_key_to_der())
@@ -32,10 +66,10 @@ macro_rules! keygen_transform {
                         OperationError::CryptographyError
                     })?;
                 let v = Value::new_privatebinary(&der);
-                $e.add_ava("es256_private_key_der", v);
+                e.add_ava("es256_private_key_der", v);
             }
-            if $e.get_ava_single_bool("oauth2_jwt_legacy_crypto_enable").unwrap_or(false) {
-                if !$e.attribute_pres("rs256_private_key_der") {
+            if e.get_ava_single_bool("oauth2_jwt_legacy_crypto_enable").unwrap_or(false) {
+                if !e.attribute_pres("rs256_private_key_der") {
                     security_info!("regenerating oauth2 legacy rs256 private key");
                     let der = JwsSigner::generate_legacy_rs256()
                         .and_then(|jws| jws.private_key_to_der())
@@ -44,15 +78,15 @@ macro_rules! keygen_transform {
                             OperationError::CryptographyError
                         })?;
                     let v = Value::new_privatebinary(&der);
-                    $e.add_ava("rs256_private_key_der", v);
+                    e.add_ava("rs256_private_key_der", v);
                 }
             }
         }
 
-        if $e.attribute_equality("class", &PVCLASS_SERVICE_ACCOUNT) ||
-           $e.attribute_equality("class", &PVCLASS_SYNC_ACCOUNT)
+        if e.attribute_equality("class", &PVCLASS_SERVICE_ACCOUNT) ||
+           e.attribute_equality("class", &PVCLASS_SYNC_ACCOUNT)
         {
-            if !$e.attribute_pres("jws_es256_private_key") {
+            if !e.attribute_pres("jws_es256_private_key") {
                 security_info!("regenerating jws es256 private key");
                 let jwssigner = JwsSigner::generate_es256()
                     .map_err(|e| {
@@ -60,39 +94,12 @@ macro_rules! keygen_transform {
                         OperationError::CryptographyError
                     })?;
                 let v = Value::JwsKeyEs256(jwssigner);
-                $e.add_ava("jws_es256_private_key", v);
+                e.add_ava("jws_es256_private_key", v);
             }
         }
 
         Ok(())
-    }};
-}
-
-impl Plugin for JwsKeygen {
-    fn id() -> &'static str {
-        "plugin_jws_keygen"
-    }
-
-    #[instrument(
-        level = "debug",
-        name = "jwskeygen_pre_create_transform",
-        skip(_qs, cand, _ce)
-    )]
-    fn pre_create_transform(
-        _qs: &mut QueryServerWriteTransaction,
-        cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
-        _ce: &CreateEvent,
-    ) -> Result<(), OperationError> {
-        cand.iter_mut().try_for_each(|e| keygen_transform!(e))
-    }
-
-    #[instrument(level = "debug", name = "jwskeygen_pre_modify", skip(_qs, cand, _me))]
-    fn pre_modify(
-        _qs: &mut QueryServerWriteTransaction,
-        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
-        _me: &ModifyEvent,
-    ) -> Result<(), OperationError> {
-        cand.iter_mut().try_for_each(|e| keygen_transform!(e))
+        })
     }
 }
 

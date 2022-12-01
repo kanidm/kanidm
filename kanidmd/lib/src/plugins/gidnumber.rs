@@ -64,34 +64,31 @@ impl Plugin for GidNumber {
         "plugin_gidnumber"
     }
 
-    #[instrument(
-        level = "debug",
-        name = "gidnumber_pre_create_transform",
-        skip(_qs, cand, _ce)
-    )]
+    #[instrument(level = "debug", name = "gidnumber_pre_create_transform", skip_all)]
     fn pre_create_transform(
         _qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        for e in cand.iter_mut() {
-            apply_gidnumber(e)?;
-        }
-
-        Ok(())
+        cand.iter_mut().try_for_each(|e| apply_gidnumber(e))
     }
 
-    #[instrument(level = "debug", name = "gidnumber_pre_modify", skip(_qs, cand, _me))]
+    #[instrument(level = "debug", name = "gidnumber_pre_modify", skip_all)]
     fn pre_modify(
         _qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        for e in cand.iter_mut() {
-            apply_gidnumber(e)?;
-        }
+        cand.iter_mut().try_for_each(|e| apply_gidnumber(e))
+    }
 
-        Ok(())
+    #[instrument(level = "debug", name = "gidnumber_pre_batch_modify", skip_all)]
+    fn pre_batch_modify(
+        _qs: &mut QueryServerWriteTransaction,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        _me: &BatchModifyEvent,
+    ) -> Result<(), OperationError> {
+        cand.iter_mut().try_for_each(|e| apply_gidnumber(e))
     }
 }
 
