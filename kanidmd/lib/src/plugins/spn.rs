@@ -22,7 +22,7 @@ impl Plugin for Spn {
     #[instrument(
         level = "debug",
         name = "spn_pre_create_transform",
-        skip(qs, cand, _ce)
+        skip_all
     )]
     fn pre_create_transform(
         qs: &mut QueryServerWriteTransaction,
@@ -32,61 +32,25 @@ impl Plugin for Spn {
         // Always generate the spn and set it. Why? Because the effort
         // needed to validate is the same as generation, so we may as well
         // just generate and set blindly when required.
-
-        // Should we work out what classes dynamically from schema into a filter?
-        // No - types that are trust replicated are fixed.
-        let domain_name = qs.get_domain_name();
-
-        for e in cand.iter_mut() {
-            if e.attribute_equality("class", &PVCLASS_GROUP)
-                || e.attribute_equality("class", &PVCLASS_ACCOUNT)
-            {
-                let spn = e
-                    .generate_spn(domain_name)
-                    .ok_or(OperationError::InvalidEntryState)
-                    .map_err(|e| {
-                        admin_error!(
-                            "Account or group missing name, unable to generate spn!? {:?}",
-                            e
-                        );
-                        e
-                    })?;
-                trace!("plugin_spn: set spn to {:?}", spn);
-                e.set_ava("spn", once(spn));
-            }
-        }
-        Ok(())
+        Self::modify_inner(qs, cand)
     }
 
-    #[instrument(level = "debug", name = "spn_pre_modify", skip(qs, cand, _me))]
+    #[instrument(level = "debug", name = "spn_pre_modify", skip_all)]
     fn pre_modify(
         qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        // Always generate and set *if* spn was an attribute on any of the mod
-        // list events.
-        let domain_name = qs.get_domain_name();
+        Self::modify_inner(qs, cand)
+    }
 
-        for e in cand.iter_mut() {
-            if e.attribute_equality("class", &PVCLASS_GROUP)
-                || e.attribute_equality("class", &PVCLASS_ACCOUNT)
-            {
-                let spn = e
-                    .generate_spn(domain_name)
-                    .ok_or(OperationError::InvalidEntryState)
-                    .map_err(|e| {
-                        admin_error!(
-                            "Account or group missing name, unable to generate spn!? {:?}",
-                            e
-                        );
-                        e
-                    })?;
-                trace!("plugin_spn: set spn to {:?}", spn);
-                e.set_ava("spn", once(spn));
-            }
-        }
-        Ok(())
+    #[instrument(level = "debug", name = "spn_pre_batch_modify", skip_all)]
+    fn pre_batch_modify(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        _me: &ModifyEvent,
+    ) -> Result<(), OperationError> {
+        Self::modify_inner(qs, cand)
     }
 
     #[instrument(
@@ -195,6 +159,35 @@ impl Plugin for Spn {
             }
         }
         r
+    }
+}
+
+impl Spn {
+    fn modify_inner<T: Clone + std::fmt::Debug>(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &mut Vec<Entry<EntryInvalid, T>>,
+    ) -> Result<(), OperationError> {
+        let domain_name = qs.get_domain_name();
+
+        for e in cand.iter_mut() {
+            if e.attribute_equality("class", &PVCLASS_GROUP)
+                || e.attribute_equality("class", &PVCLASS_ACCOUNT)
+            {
+                let spn = e
+                    .generate_spn(domain_name)
+                    .ok_or(OperationError::InvalidEntryState)
+                    .map_err(|e| {
+                        admin_error!(
+                            "Account or group missing name, unable to generate spn!? {:?}",
+                            e
+                        );
+                        e
+                    })?;
+                trace!("plugin_spn: set spn to {:?}", spn);
+                e.set_ava("spn", once(spn));
+            }
+        }
+        Ok(())
     }
 }
 
