@@ -226,6 +226,7 @@ pub enum OperationError {
     InvalidSchemaState(String),
     InvalidAccountState(String),
     MissingEntries,
+    ModifyAssertionFailed,
     BackendEngine,
     SqliteError, //(RusqliteError)
     FsError,

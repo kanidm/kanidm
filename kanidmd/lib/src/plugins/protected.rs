@@ -129,11 +129,17 @@ impl Plugin for Protected {
         me.modlist.iter().try_fold((), |(), m| {
             // Already hit an error, move on.
             let a = match m {
-                Modify::Present(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => a,
+                Modify::Present(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => Some(a),
+                Modify::Assert(_, _) => None,
             };
-            match ALLOWED_ATTRS.get(a.as_str()) {
-                Some(_) => Ok(()),
-                None => Err(OperationError::SystemProtectedObject),
+            if let Some(a) = a {
+                match ALLOWED_ATTRS.get(a.as_str()) {
+                    Some(_) => Ok(()),
+                    None => Err(OperationError::SystemProtectedObject),
+                }
+            } else {
+                // Was not a mod needing checking
+                Ok(())
             }
         })
     }
@@ -206,11 +212,17 @@ impl Plugin for Protected {
             .try_fold((), |(), m| {
                 // Already hit an error, move on.
                 let a = match m {
-                    Modify::Present(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => a,
+                    Modify::Present(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => Some(a),
+                    Modify::Assert(_, _) => None,
                 };
-                match ALLOWED_ATTRS.get(a.as_str()) {
-                    Some(_) => Ok(()),
-                    None => Err(OperationError::SystemProtectedObject),
+                if let Some(a) = a {
+                    match ALLOWED_ATTRS.get(a.as_str()) {
+                        Some(_) => Ok(()),
+                        None => Err(OperationError::SystemProtectedObject),
+                    }
+                } else {
+                    // Was not a mod needing checking
+                    Ok(())
                 }
             })
     }

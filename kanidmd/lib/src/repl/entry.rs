@@ -66,6 +66,7 @@ enum Transition {
     ModifyPurge(AttrString),
     ModifyPresent(AttrString, Box<Value>),
     ModifyRemoved(AttrString, Box<PartialValue>),
+    ModifyAssert(AttrString, Box<PartialValue>),
     Recycle,
     Revive,
     Tombstone(Eattrs),
@@ -78,6 +79,7 @@ impl fmt::Display for Transition {
             Transition::ModifyPurge(a) => write!(f, "ModifyPurge({})", a),
             Transition::ModifyPresent(a, _) => write!(f, "ModifyPresent({})", a),
             Transition::ModifyRemoved(a, _) => write!(f, "ModifyRemoved({})", a),
+            Transition::ModifyAssert(a, _) => write!(f, "ModifyAssert({})", a),
             Transition::Recycle => write!(f, "Recycle"),
             Transition::Revive => write!(f, "Revive"),
             Transition::Tombstone(_) => write!(f, "Tombstone"),
@@ -122,6 +124,20 @@ impl State {
                     if rm {
                         attrs.remove(attr);
                     };
+                }
+                (State::Live(ref mut attrs), Transition::ModifyAssert(attr, value)) => {
+                    trace!("Live + ModifyAssert({}) -> Live", attr);
+
+                    if attrs
+                        .get(attr)
+                        .map(|vs| vs.contains(&value))
+                        .unwrap_or(false)
+                    {
+                        // Valid
+                    } else {
+                        warn!("{} + {:?} -> Assertion not met - REJECTING", attr, value);
+                        return Err(state);
+                    }
                 }
                 (State::Live(attrs), Transition::Recycle) => {
                     trace!("Live + Recycle -> Recycled");
@@ -273,6 +289,23 @@ impl EntryChangelog {
             .into_iter()
             .map(|v| Transition::ModifyRemoved(AttrString::from(attr), Box::new(v)))
             .for_each(|t| change.s.push(t));
+    }
+
+    pub fn assert_ava(&mut self, cid: &Cid, attr: &str, value: PartialValue) {
+        if !self.changes.contains_key(cid) {
+            self.changes.insert(cid.clone(), Change { s: Vec::new() });
+        }
+
+        #[allow(clippy::expect_used)]
+        let change = self
+            .changes
+            .get_mut(cid)
+            .expect("Memory corruption, change must exist");
+
+        change.s.push(Transition::ModifyAssert(
+            AttrString::from(attr),
+            Box::new(value),
+        ))
     }
 
     pub fn purge_ava(&mut self, cid: &Cid, attr: &str) {

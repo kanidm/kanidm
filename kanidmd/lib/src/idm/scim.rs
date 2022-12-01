@@ -238,7 +238,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         changes: &ScimSyncRequest,
         _ct: Duration,
     ) -> Result<(), OperationError> {
-        let (sync_uuid, _sync_authority_set, change_entries) =
+        let (sync_uuid, sync_authority_set, change_entries) =
             self.scim_sync_apply_phase_1(sse, changes)?;
 
         // TODO: If the from_state is refresh and the to_state is active, then we need to
@@ -250,12 +250,17 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // delete here as some entries may have been modified by users with authority over the
         // attributes.
 
-        self.qs_write
-            .scim_sync_apply_phase_2(sse, &change_entries, sync_uuid)?;
+        self.scim_sync_apply_phase_2(&change_entries, sync_uuid)?;
 
-        // All stubs are now set-up.
+        // All stubs are now set-up. We can proceed to assert entry content.
+        self.scim_sync_apply_phase_3(&change_entries, sync_uuid, &sync_authority_set)?;
 
-        Err(OperationError::AccessDenied)
+        // Remove entries that now need deletion, We do this post assert in case an
+        // entry was mistakenly ALSO in the assert set.
+        self.scim_sync_apply_phase_4(&changes.delete_uuids, sync_uuid)?;
+
+        // Final house keeping. Commit the new sync state.
+        self.scim_sync_apply_phase_5(sync_uuid, &changes.to_state)
     }
 
     fn scim_sync_apply_phase_1<'b>(
@@ -341,6 +346,169 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .collect();
 
         Ok((sync_uuid, sync_authority_set, change_entries))
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub(crate) fn scim_sync_apply_phase_2(
+        &mut self,
+        change_entries: &BTreeMap<Uuid, &ScimEntry>,
+        sync_uuid: Uuid,
+    ) -> Result<(), OperationError> {
+        // First, search for all uuids present in the change set.
+        // Note - we don't check the delete_uuids set here, that's done later. We use that
+        // differently as we are somewhat more forgiving about reqs to delete uuids that are
+        // already delete/tombstoned, or outside of the scope of this sync agreement.
+        let filter_or = change_entries
+            .keys()
+            .copied()
+            .map(|u| f_eq("uuid", PartialValue::new_uuid(u)))
+            .collect();
+
+        // NOTE: We bypass recycled/ts here because we WANT to know if we are in that
+        // state so we can AVOID updates to these entries!
+        let existing_entries = self
+            .qs_write
+            .internal_search(filter_all!(f_or(filter_or)))
+            .map_err(|e| {
+                error!("Failed to determine existing entries set");
+                e
+            })?;
+
+        // Refuse to proceed if any entries are in the recycled or tombstone state, since subsequent
+        // operations WOULD fail.
+        //
+        // I'm still a bit not sure what to do here though, because if we have uuid re-use from the
+        // external system, that would be a pain, but I think we have to do this. This would be an
+        // exceedingly rare situation though since 389-ds doesn't allow external uuid to be set, nor
+        // does openldap. It would break both of their replication models for it to occur.
+        //
+        // Still we cover the possibility
+        let mut fail = false;
+        existing_entries.iter().for_each(|e| {
+            if e.mask_recycled_ts().is_none() {
+                error!("Unable to proceed: entry uuid {} is masked. You must re-map this entries uuid in the sync connector to proceed.", e.get_uuid());
+                fail = true;
+            }
+        });
+        if fail {
+            return Err(OperationError::InvalidEntryState);
+        }
+        // From that set of entries, parition to entries that exist and are
+        // present, and entries that do not yet exist.
+        //
+        // We can't easily parititon here because we need to iterate over the
+        // existing entry set to work out what we need, so what we do is copy
+        // the change_entries set, then remove what we already have.
+        let mut missing_scim = change_entries.clone();
+        existing_entries.iter().for_each(|entry| {
+            missing_scim.remove(&entry.get_uuid());
+        });
+
+        // For entries that do not exist, create stub entries. We don't create the external ID here
+        // yet, because we need to ensure that it's unique.
+        let create_stubs: Vec<EntryInitNew> = missing_scim
+            .keys()
+            .copied()
+            .map(|u| {
+                entry_init!(
+                    ("class", Value::new_class("object")),
+                    ("class", Value::new_class("sync_object")),
+                    ("sync_parent_uuid", Value::new_refer(sync_uuid)),
+                    ("uuid", Value::new_uuid(u))
+                )
+            })
+            .collect();
+
+        // We use internal create here to ensure that the values of these entries are all setup correctly.
+        // We know that uuid won't conflict because it didn't exist in the previous search, so if we error
+        // it has to be something bad.
+        self.qs_write.internal_create(create_stubs).map_err(|e| {
+            error!("Unable to create stub entries");
+            e
+        })?;
+
+        // We have to search again now, this way we can do the internal mod process for
+        // updating the external_id.
+        //
+        // For entries that do exist, mod their external_id
+        //
+        // Basicly we just set this up as a batch modify and submit it.
+        self.qs_write
+            .internal_batch_modify(change_entries.iter().filter_map(|(u, scim_ent)| {
+                // If the entry has an external id
+                scim_ent.external_id.as_ref().map(|ext_id| {
+                    // Add it to the mod request.
+                    (
+                        *u,
+                        ModifyList::new_purge_and_set("sync_external_id", Value::new_iutf8(ext_id)),
+                    )
+                })
+            }))
+            .map_err(|e| {
+                error!("Unable to setup external ids from sync entries");
+                e
+            })?;
+
+        // Ready to go.
+
+        Ok(())
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub(crate) fn scim_sync_apply_phase_3(
+        &mut self,
+        change_entries: &BTreeMap<Uuid, &ScimEntry>,
+        _sync_uuid: Uuid,
+        _sync_authority_set: &BTreeSet<String>,
+    ) -> Result<(), OperationError> {
+        // Generally this is just assembling a large batch modify. Since we rely on external_id
+        // to be present and valid, this is why we pre-apply that in phase 2.
+        //
+        // Another key point here is this is where we exclude changes to entries that our
+        // domain has been granted authority over.
+        //
+
+        // let schema = self.qs_write.get_schema();
+
+        let asserts = change_entries
+            .iter()
+            .map(|(u, _scim_ent)| {
+                // Assert the sync_uuid -> sync_parent_uuid
+                // Transform each scim_ent attr -> Value
+                // Skip where external_id is missing.
+                //
+                // We don't have to worry too much about multi/single value here.
+                Ok((*u, ModifyList::new_list(vec![])))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        // We can't just pass the above iter in here since it's fallible due to the
+        // external resolve phase.
+
+        self.qs_write
+            .internal_batch_modify(asserts.into_iter())
+            .map_err(|e| {
+                error!("Unable to apply modifications to sync entries.");
+                e
+            })
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub(crate) fn scim_sync_apply_phase_4(
+        &mut self,
+        _delete_uuids: &[Uuid],
+        _sync_uuid: Uuid,
+    ) -> Result<(), OperationError> {
+        Err(OperationError::AccessDenied)
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub(crate) fn scim_sync_apply_phase_5(
+        &mut self,
+        _sync_uuid: Uuid,
+        _to_state: &ScimSyncState,
+    ) -> Result<(), OperationError> {
+        Err(OperationError::AccessDenied)
     }
 }
 
@@ -686,8 +854,7 @@ mod tests {
                 .expect("Failed to run phase 1");
 
             let _ = idms_prox_write
-                .qs_write
-                .scim_sync_apply_phase_2(&sse, &change_entries, sync_uuid)
+                .scim_sync_apply_phase_2(&change_entries, sync_uuid)
                 .expect("Failed to run phase 2");
 
             let synced_entry = idms_prox_write
@@ -755,10 +922,7 @@ mod tests {
                 .scim_sync_apply_phase_1(&sse, &changes)
                 .expect("Failed to run phase 1");
 
-            let res =
-                idms_prox_write
-                    .qs_write
-                    .scim_sync_apply_phase_2(&sse, &change_entries, sync_uuid);
+            let res = idms_prox_write.scim_sync_apply_phase_2(&change_entries, sync_uuid);
 
             assert!(matches!(res, Err(OperationError::InvalidEntryState)));
 

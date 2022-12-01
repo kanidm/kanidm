@@ -159,11 +159,12 @@ impl Plugin for Base {
     ) -> Result<(), OperationError> {
         me.modlist.iter().try_for_each(|modify| {
             let attr = match &modify {
-                Modify::Present(a, _) => a,
-                Modify::Removed(a, _) => a,
-                Modify::Purged(a) => a,
+                Modify::Present(a, _) => Some(a),
+                Modify::Removed(a, _) => Some(a),
+                Modify::Purged(a) => Some(a),
+                Modify::Assert(_, _) => None,
             };
-            if attr == "uuid" {
+            if attr.map(|s| s.as_str()) == Some("uuid") {
                 debug!(?modify, "Modify in violation");
                 request_error!("Modifications to UUID's are NOT ALLOWED");
                 Err(OperationError::SystemProtectedAttribute)
@@ -184,11 +185,12 @@ impl Plugin for Base {
             .flat_map(|ml| ml.iter())
             .try_for_each(|modify| {
                 let attr = match &modify {
-                    Modify::Present(a, _) => a,
-                    Modify::Removed(a, _) => a,
-                    Modify::Purged(a) => a,
+                    Modify::Present(a, _) => Some(a),
+                    Modify::Removed(a, _) => Some(a),
+                    Modify::Purged(a) => Some(a),
+                    Modify::Assert(_, _) => None,
                 };
-                if attr == "uuid" {
+                if attr.map(|s| s.as_str()) == Some("uuid") {
                     debug!(?modify, "Modify in violation");
                     request_error!("Modifications to UUID's are NOT ALLOWED");
                     Err(OperationError::SystemProtectedAttribute)

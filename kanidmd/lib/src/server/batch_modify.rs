@@ -112,14 +112,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
                 me.modset
                     .get(&u)
-                    .map(|modlist| {
-                        ent_mut.apply_modlist(modlist);
-                        // Now return the mutated entry.
-                        ent_mut
-                    })
                     .ok_or_else(|| {
                         error!("No entry for uuid {} was found, aborting", u);
                         OperationError::NoMatchingEntries
+                    })
+                    .and_then(|modlist| {
+                        ent_mut
+                            .apply_modlist(modlist)
+                            // Return if success
+                            .map(|()| ent_mut)
+                            // Error log otherwise.
+                            .map_err(|e| {
+                                error!("Modification failed for {}", u);
+                                e
+                            })
                     })
             })
             .collect::<Result<Vec<EntryInvalidCommitted>, _>>()?;

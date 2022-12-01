@@ -2304,6 +2304,17 @@ where
         self.add_ava_int(attr, value)
     }
 
+    fn assert_ava(&mut self, attr: &str, value: &PartialValue) -> Result<(), OperationError> {
+        self.valid
+            .eclog
+            .assert_ava(&self.valid.cid, attr, value.clone());
+        if self.attribute_equality(attr, value) {
+            Ok(())
+        } else {
+            Err(OperationError::ModifyAssertionFailed)
+        }
+    }
+
     /// Remove an attribute-value pair from this entry. If the ava doesn't exist, we
     /// don't do anything else since we are asserting the abscence of a value.
     pub(crate) fn remove_ava(&mut self, attr: &str, value: &PartialValue) {
@@ -2375,19 +2386,30 @@ where
     }
 
     /// Apply the content of this modlist to this entry, enforcing the expressed state.
-    pub fn apply_modlist(&mut self, modlist: &ModifyList<ModifyValid>) {
-        // -> Result<Entry<EntryInvalid, STATE>, OperationError> {
-        // Apply a modlist, generating a new entry that conforms to the changes.
-        // This is effectively clone-and-transform
-
-        // mutate
+    pub fn apply_modlist(
+        &mut self,
+        modlist: &ModifyList<ModifyValid>,
+    ) -> Result<(), OperationError> {
         for modify in modlist {
             match modify {
-                Modify::Present(a, v) => self.add_ava(a.as_str(), v.clone()),
-                Modify::Removed(a, v) => self.remove_ava(a.as_str(), v),
-                Modify::Purged(a) => self.purge_ava(a.as_str()),
+                Modify::Present(a, v) => {
+                    self.add_ava(a.as_str(), v.clone());
+                }
+                Modify::Removed(a, v) => {
+                    self.remove_ava(a.as_str(), v);
+                }
+                Modify::Purged(a) => {
+                    self.purge_ava(a.as_str());
+                }
+                Modify::Assert(a, v) => {
+                    self.assert_ava(a.as_str(), v).map_err(|e| {
+                        error!("Modification assertion was not met. {} {:?}", a, v);
+                        e
+                    })?;
+                }
             }
         }
+        Ok(())
     }
 }
 
@@ -2594,7 +2616,7 @@ mod tests {
             )])
         };
 
-        e.apply_modlist(&present_single_mods);
+        assert!(e.apply_modlist(&present_single_mods).is_ok());
 
         // Assert the changes are there
         assert!(e.attribute_equality("userid", &PartialValue::new_utf8s("william")));
@@ -2608,7 +2630,7 @@ mod tests {
             ])
         };
 
-        e.apply_modlist(&present_multivalue_mods);
+        assert!(e.apply_modlist(&present_multivalue_mods).is_ok());
 
         assert!(e.attribute_equality("class", &PartialValue::new_iutf8("test")));
         assert!(e.attribute_equality("class", &PartialValue::new_iutf8("multi_test")));
@@ -2617,20 +2639,20 @@ mod tests {
         let purge_single_mods =
             unsafe { ModifyList::new_valid_list(vec![Modify::Purged(AttrString::from("attr"))]) };
 
-        e.apply_modlist(&purge_single_mods);
+        assert!(e.apply_modlist(&purge_single_mods).is_ok());
 
         assert!(!e.attribute_pres("attr"));
 
         let purge_multi_mods =
             unsafe { ModifyList::new_valid_list(vec![Modify::Purged(AttrString::from("class"))]) };
 
-        e.apply_modlist(&purge_multi_mods);
+        assert!(e.apply_modlist(&purge_multi_mods).is_ok());
 
         assert!(!e.attribute_pres("class"));
 
         let purge_empty_mods = purge_single_mods;
 
-        e.apply_modlist(&purge_empty_mods);
+        assert!(e.apply_modlist(&purge_empty_mods).is_ok());
 
         // Assert removed on value that exists and doesn't exist
         let remove_mods = unsafe {
@@ -2640,14 +2662,14 @@ mod tests {
             )])
         };
 
-        e.apply_modlist(&present_single_mods);
+        assert!(e.apply_modlist(&present_single_mods).is_ok());
         assert!(e.attribute_equality("attr", &PartialValue::new_iutf8("value")));
-        e.apply_modlist(&remove_mods);
+        assert!(e.apply_modlist(&remove_mods).is_ok());
         assert!(e.attrs.get("attr").is_none());
 
         let remove_empty_mods = remove_mods;
 
-        e.apply_modlist(&remove_empty_mods);
+        assert!(e.apply_modlist(&remove_empty_mods).is_ok());
 
         assert!(e.attrs.get("attr").is_none());
     }

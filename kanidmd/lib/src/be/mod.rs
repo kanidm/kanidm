@@ -851,6 +851,10 @@ pub trait BackendTransaction {
         self.get_idlayer().name2uuid(name)
     }
 
+    fn externalid2uuid(&self, name: &str) -> Result<Option<Uuid>, OperationError> {
+        self.get_idlayer().externalid2uuid(name)
+    }
+
     fn uuid2spn(&self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
         self.get_idlayer().uuid2spn(uuid)
     }

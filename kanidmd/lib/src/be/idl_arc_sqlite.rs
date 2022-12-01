@@ -334,6 +334,8 @@ pub trait IdlArcSqliteTransaction {
 
     fn name2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError>;
 
+    fn externalid2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError>;
+
     fn uuid2spn(&mut self, uuid: Uuid) -> Result<Option<Value>, OperationError>;
 
     fn uuid2rdn(&mut self, uuid: Uuid) -> Result<Option<String>, OperationError>;
@@ -398,6 +400,10 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
 
     fn name2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
         name2uuid!(self, name)
+    }
+
+    fn externalid2uuid(&mut self, _name: &str) -> Result<Option<Uuid>, OperationError> {
+        Ok(None)
     }
 
     fn uuid2spn(&mut self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
@@ -483,6 +489,10 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
 
     fn name2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
         name2uuid!(self, name)
+    }
+
+    fn externalid2uuid(&mut self, _name: &str) -> Result<Option<Uuid>, OperationError> {
+        Ok(None)
     }
 
     fn uuid2spn(&mut self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
