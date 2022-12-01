@@ -3407,6 +3407,11 @@ mod tests {
     }
 
     #[qs_test]
+    async fn test_modify_assert(server: &QueryServer) {
+        todo!();
+    }
+
+    #[qs_test]
     async fn test_modify_invalid_class(server: &QueryServer) {
         // Test modifying an entry and adding an extra class, that would cause the entry
         // to no longer conform to schema.
