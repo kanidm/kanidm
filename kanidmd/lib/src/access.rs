@@ -959,7 +959,10 @@ pub trait AccessControlsTransaction<'a> {
             }
         };
 
-        todo!();
+        error!("How did you get here?! Batch modify isn't public yet!");
+        debug_assert!(false);
+
+        Err(OperationError::InvalidState)
     }
 
     #[allow(clippy::cognitive_complexity)]

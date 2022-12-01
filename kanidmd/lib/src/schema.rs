@@ -1585,7 +1585,9 @@ impl<'a> SchemaWriteTransaction<'a> {
                     AttrString::from("uuid"),
                     AttrString::from("sync_parent_uuid")
                 ],
-                // systemmay: vec![],
+                systemmay: vec![
+                    AttrString::from("sync_external_id")
+                ],
                 .. Default::default()
             },
         );

@@ -114,17 +114,12 @@ impl Plugin for AttrUnique {
         "plugin_attrunique"
     }
 
-    #[instrument(
-        level = "debug",
-        name = "attrunique_pre_create_transform",
-        skip(qs, cand, _ce)
-    )]
+    #[instrument(level = "debug", name = "attrunique_pre_create_transform", skip_all)]
     fn pre_create_transform(
         qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        // Needs to clone to avoid a borrow issue?
         let uniqueattrs = {
             let schema = qs.get_schema();
             schema.get_attributes_unique()
@@ -136,13 +131,29 @@ impl Plugin for AttrUnique {
         r
     }
 
-    #[instrument(level = "debug", name = "attrunique_pre_modify", skip(qs, cand, _me))]
+    #[instrument(level = "debug", name = "attrunique_pre_modify", skip_all)]
     fn pre_modify(
         qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        // Needs to clone to avoid a borrow issue?
+        let uniqueattrs = {
+            let schema = qs.get_schema();
+            schema.get_attributes_unique()
+        };
+
+        let r: Result<(), OperationError> = uniqueattrs
+            .iter()
+            .try_for_each(|attr| enforce_unique(qs, cand, attr.as_str()));
+        r
+    }
+
+    #[instrument(level = "debug", name = "attrunique_pre_batch_modify", skip_all)]
+    fn pre_batch_modify(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        _me: &BatchModifyEvent,
+    ) -> Result<(), OperationError> {
         let uniqueattrs = {
             let schema = qs.get_schema();
             schema.get_attributes_unique()

@@ -291,6 +291,9 @@ async fn process_ipa_sync_result(
     }
 }
 
+// TODO: Allow re-map of uuid -> uuid
+// TODO: Allow exclusion of entry by uuid / external_id
+
 fn ipa_to_scim_entry(sync_entry: LdapSyncReplEntry) -> Result<Option<ScimEntry>, ()> {
     debug!("{:#?}", sync_entry);
     // Is this an entry we need to observe/look at?

@@ -216,7 +216,7 @@ impl Plugin for MemberOf {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        let dyngroup_change = super::dyngroup::DynGroup::post_create(qs, cand, ce)?;
+        let dyngroup_change = super::dyngroup::DynGroup::post_create(qs, cand, &ce.ident)?;
 
         let group_affect = cand
             .iter()
@@ -239,74 +239,25 @@ impl Plugin for MemberOf {
         apply_memberof(qs, group_affect)
     }
 
-    #[instrument(
-        level = "debug",
-        name = "memberof_post_modify",
-        skip(qs, pre_cand, cand, me)
-    )]
+    #[instrument(level = "debug", name = "memberof_post_modify", skip_all)]
     fn post_modify(
         qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        let dyngroup_change = super::dyngroup::DynGroup::post_modify(qs, pre_cand, cand, me)?;
-
-        // TODO: Limit this to when it's a class, member, mo, dmo change instead.
-        let group_affect = cand
-            .iter()
-            .map(|post| post.get_uuid())
-            .chain(dyngroup_change.into_iter())
-            .chain(
-                pre_cand
-                    .iter()
-                    .filter_map(|pre| {
-                        if pre.attribute_equality("class", &PVCLASS_GROUP) {
-                            pre.get_ava_as_refuuid("member")
-                        } else {
-                            None
-                        }
-                    })
-                    .flatten(),
-            )
-            .chain(
-                cand.iter()
-                    .filter_map(|post| {
-                        if post.attribute_equality("class", &PVCLASS_GROUP) {
-                            post.get_ava_as_refuuid("member")
-                        } else {
-                            None
-                        }
-                    })
-                    .flatten(),
-            )
-            .collect();
-
-        apply_memberof(qs, group_affect)
+        Self::post_modify_inner(qs, pre_cand, cand, &me.ident)
     }
 
-    /*
-    fn pre_delete(
-        _qs: &QueryServerWriteTransaction,
-        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
-        _de: &DeleteEvent,
+    #[instrument(level = "debug", name = "memberof_post_batch_modify", skip_all)]
+    fn post_batch_modify(
+        qs: &mut QueryServerWriteTransaction,
+        pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
+        cand: &[Entry<EntrySealed, EntryCommitted>],
+        me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        // It is not valid for a recycled group to be considered
-        // a member of any other type. We simply purge the ava from
-        // the entries. This is because it will be removed from all
-        // locations where it *was* a member.
-        //
-        // As a result, on restore, the graph of where it was a member
-        // would have to be rebuilt.
-        //
-        // NOTE: DO NOT purge directmemberof - we use that to restore memberships
-        // in recycle revive!
-        let mo_purge = unsafe { ModifyList::new_purge("memberof").into_valid() };
-
-        cand.iter_mut().for_each(|e| e.apply_modlist(&mo_purge));
-        Ok(())
+        Self::post_modify_inner(qs, pre_cand, cand, &me.ident)
     }
-    */
 
     #[instrument(level = "debug", name = "memberof_post_delete", skip(qs, cand, _de))]
     fn post_delete(
@@ -421,6 +372,49 @@ impl Plugin for MemberOf {
         }
 
         r
+    }
+}
+
+impl MemberOf {
+    fn post_modify_inner(
+        qs: &mut QueryServerWriteTransaction,
+        pre_cand: &[Arc<EntrySealedCommitted>],
+        cand: &[EntrySealedCommitted],
+        ident: &Identity,
+    ) -> Result<(), OperationError> {
+        let dyngroup_change = super::dyngroup::DynGroup::post_modify(qs, pre_cand, cand, ident)?;
+
+        // TODO: Limit this to when it's a class, member, mo, dmo change instead.
+        let group_affect = cand
+            .iter()
+            .map(|post| post.get_uuid())
+            .chain(dyngroup_change.into_iter())
+            .chain(
+                pre_cand
+                    .iter()
+                    .filter_map(|pre| {
+                        if pre.attribute_equality("class", &PVCLASS_GROUP) {
+                            pre.get_ava_as_refuuid("member")
+                        } else {
+                            None
+                        }
+                    })
+                    .flatten(),
+            )
+            .chain(
+                cand.iter()
+                    .filter_map(|post| {
+                        if post.attribute_equality("class", &PVCLASS_GROUP) {
+                            post.get_ava_as_refuuid("member")
+                        } else {
+                            None
+                        }
+                    })
+                    .flatten(),
+            )
+            .collect();
+
+        apply_memberof(qs, group_affect)
     }
 }
 

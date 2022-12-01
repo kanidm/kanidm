@@ -660,6 +660,8 @@ mod tests {
             let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
             let sse = ScimSyncUpdateEvent { ident };
 
+            let user_sync_uuid = uuid::uuid!("91b7aaf2-2445-46ce-8998-96d9f186cc69");
+
             let changes = ScimSyncRequest {
                 from_state: ScimSyncState::Refresh,
                 to_state: ScimSyncState::Active {
@@ -667,7 +669,7 @@ mod tests {
                 },
                 entries: vec![ScimEntry {
                     schemas: vec![SCIM_SCHEMA_SYNC_PERSON.to_string()],
-                    id: uuid::uuid!("91b7aaf2-2445-46ce-8998-96d9f186cc69"),
+                    id: user_sync_uuid,
                     external_id: Some("dn=william,ou=people,dc=test".to_string()),
                     meta: None,
                     attrs: btreemap!((
@@ -686,6 +688,17 @@ mod tests {
                 .qs_write
                 .scim_sync_apply_phase_2(&sse, &change_entries, sync_uuid)
                 .expect("Failed to run phase 2");
+
+            let synced_entry = idms_prox_write
+                .qs_write
+                .internal_search_uuid(&user_sync_uuid)
+                .expect("Failed to access sync stub entry");
+
+            assert!(
+                synced_entry.get_ava_single_iutf8("sync_external_id")
+                    == Some("dn=william,ou=people,dc=test")
+            );
+            assert!(synced_entry.get_uuid() == user_sync_uuid);
 
             assert!(idms_prox_write.commit().is_ok());
         })

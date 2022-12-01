@@ -19,11 +19,7 @@ impl Plugin for Spn {
     }
 
     // hook on pre-create and modify to generate / validate.
-    #[instrument(
-        level = "debug",
-        name = "spn_pre_create_transform",
-        skip_all
-    )]
+    #[instrument(level = "debug", name = "spn_pre_create_transform", skip_all)]
     fn pre_create_transform(
         qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
@@ -48,16 +44,12 @@ impl Plugin for Spn {
     fn pre_batch_modify(
         qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
-        _me: &ModifyEvent,
+        _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
         Self::modify_inner(qs, cand)
     }
 
-    #[instrument(
-        level = "debug",
-        name = "spn_post_modify",
-        skip(qs, pre_cand, cand, _ce)
-    )]
+    #[instrument(level = "debug", name = "spn_post_modify", skip_all)]
     fn post_modify(
         qs: &mut QueryServerWriteTransaction,
         // List of what we modified that was valid?
@@ -65,40 +57,18 @@ impl Plugin for Spn {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        // On modify, if changing domain_name on UUID_DOMAIN_INFO
-        //    trigger the spn regen ... which is expensive. Future
-        // TODO #157: will be improvements to modify on large txns.
+        Self::post_modify_inner(qs, pre_cand, cand)
+    }
 
-        let domain_name_changed = cand.iter().zip(pre_cand.iter()).find_map(|(post, pre)| {
-            let domain_name = post.get_ava_single("domain_name");
-            if post.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)
-                && domain_name != pre.get_ava_single("domain_name")
-            {
-                domain_name
-            } else {
-                None
-            }
-        });
-
-        let domain_name = match domain_name_changed {
-            Some(s) => s,
-            None => return Ok(()),
-        };
-
-        admin_info!(
-            "IMPORTANT!!! Changing domain name to \"{:?}\". THIS MAY TAKE A LONG TIME ...",
-            domain_name
-        );
-
-        // All we do is purge spn, and allow the plugin to recreate. Neat! It's also all still
-        // within the transaction, just incase!
-        qs.internal_modify(
-            &filter!(f_or!([
-                f_eq("class", PVCLASS_GROUP.clone()),
-                f_eq("class", PVCLASS_ACCOUNT.clone())
-            ])),
-            &modlist!([m_purge("spn")]),
-        )
+    #[instrument(level = "debug", name = "spn_post_batch_modify", skip_all)]
+    fn post_batch_modify(
+        qs: &mut QueryServerWriteTransaction,
+        // List of what we modified that was valid?
+        pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
+        cand: &[Entry<EntrySealed, EntryCommitted>],
+        _ce: &BatchModifyEvent,
+    ) -> Result<(), OperationError> {
+        Self::post_modify_inner(qs, pre_cand, cand)
     }
 
     #[instrument(level = "debug", name = "spn_verify", skip(qs))]
@@ -188,6 +158,47 @@ impl Spn {
             }
         }
         Ok(())
+    }
+
+    fn post_modify_inner(
+        qs: &mut QueryServerWriteTransaction,
+        pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
+        cand: &[Entry<EntrySealed, EntryCommitted>],
+    ) -> Result<(), OperationError> {
+        // On modify, if changing domain_name on UUID_DOMAIN_INFO
+        //    trigger the spn regen ... which is expensive. Future
+        // TODO #157: will be improvements to modify on large txns.
+
+        let domain_name_changed = cand.iter().zip(pre_cand.iter()).find_map(|(post, pre)| {
+            let domain_name = post.get_ava_single("domain_name");
+            if post.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)
+                && domain_name != pre.get_ava_single("domain_name")
+            {
+                domain_name
+            } else {
+                None
+            }
+        });
+
+        let domain_name = match domain_name_changed {
+            Some(s) => s,
+            None => return Ok(()),
+        };
+
+        admin_info!(
+            "IMPORTANT!!! Changing domain name to \"{:?}\". THIS MAY TAKE A LONG TIME ...",
+            domain_name
+        );
+
+        // All we do is purge spn, and allow the plugin to recreate. Neat! It's also all still
+        // within the transaction, just incase!
+        qs.internal_modify(
+            &filter!(f_or!([
+                f_eq("class", PVCLASS_GROUP.clone()),
+                f_eq("class", PVCLASS_ACCOUNT.clone())
+            ])),
+            &modlist!([m_purge("spn")]),
+        )
     }
 }
 

@@ -72,6 +72,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // For entries that do exist, mod their external_id
         //
         // Basicly we just set this up as a batch modify and submit it.
+        self.internal_batch_modify(change_entries.iter().filter_map(|(u, scim_ent)| {
+            // If the entry has an external id
+            scim_ent.external_id.as_ref().map(|ext_id| {
+                // Add it to the mod request.
+                (
+                    *u,
+                    ModifyList::new_purge_and_set("sync_external_id", Value::new_iutf8(ext_id)),
+                )
+            })
+        }))
+        .map_err(|e| {
+            error!("Unable to setup external ids from sync entries");
+            e
+        })?;
 
         // Ready to go.
 
