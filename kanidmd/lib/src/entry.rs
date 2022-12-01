@@ -1129,6 +1129,15 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     #[inline]
+    /// Given this entry, extract the set of strings that can externally identify this
+    /// entry for sync purposes. These strings are then indexed.
+    fn get_externalid2uuid(&self) -> Option<String> {
+        self.attrs
+            .get("sync_external_id")
+            .and_then(|vs| vs.to_proto_string_single())
+    }
+
+    #[inline]
     /// Given this entry, extract it's primary security prinicple name, or if not present
     /// extract it's name, and if that's not present, extract it's uuid.
     pub(crate) fn get_uuid2spn(&self) -> Value {
@@ -1194,15 +1203,33 @@ impl Entry<EntrySealed, EntryCommitted> {
 
     /// Generate the required values for externalid2uuid.
     pub(crate) fn idx_externalid2uuid_diff(
-        _pre: Option<&Self>,
-        _post: Option<&Self>,
-    ) -> (
-        // Add
-        Option<Set<String>>,
-        // Remove
-        Option<Set<String>>,
-    ) {
-        todo!();
+        pre: Option<&Self>,
+        post: Option<&Self>,
+    ) -> (Option<String>, Option<String>) {
+        match (pre, post) {
+            (None, None) => {
+                // no action
+                (None, None)
+            }
+            (None, Some(b)) => {
+                // add
+                (b.get_externalid2uuid(), None)
+            }
+            (Some(a), None) => {
+                // remove
+                (None, a.get_externalid2uuid())
+            }
+            (Some(a), Some(b)) => {
+                let ia = a.get_externalid2uuid();
+                let ib = b.get_externalid2uuid();
+                if ia != ib {
+                    (ia, ib)
+                } else {
+                    // no action
+                    (None, None)
+                }
+            }
+        }
     }
 
     /// Generate a differential between a previous and current entry state, and what changes this

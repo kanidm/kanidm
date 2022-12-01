@@ -1382,7 +1382,7 @@ impl IdlSqliteWriteTransaction {
         }
         //   * if v5 -> create externalid2uuid
         if dbv_id2entry == 5 {
-            self.create_externalid2uuid()
+            self.create_externalid2uuid()?;
             dbv_id2entry = 6;
             admin_info!(entry = %dbv_id2entry, "dbv_id2entry migrated (externalid2uuid)");
         }

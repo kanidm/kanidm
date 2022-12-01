@@ -1236,7 +1236,14 @@ impl<'a> BackendWriteTransaction<'a> {
         let u2s_act = Entry::idx_uuid2spn_diff(mask_pre, mask_post);
         let u2r_act = Entry::idx_uuid2rdn_diff(mask_pre, mask_post);
 
-        trace!(?n2u_add, ?n2u_rem, ?eid2u_add, ?eid2u_rem, ?u2s_act, ?u2r_act);
+        trace!(
+            ?n2u_add,
+            ?n2u_rem,
+            ?eid2u_add,
+            ?eid2u_rem,
+            ?u2s_act,
+            ?u2r_act
+        );
 
         // Write the changes out to the backend
         if let Some(add) = n2u_add {
@@ -1346,6 +1353,9 @@ impl<'a> BackendWriteTransaction<'a> {
         // Create name2uuid and uuid2name
         trace!("Creating index -> name2uuid");
         idlayer.create_name2uuid()?;
+
+        trace!("Creating index -> externalid2uuid");
+        idlayer.create_externalid2uuid()?;
 
         trace!("Creating index -> uuid2spn");
         idlayer.create_uuid2spn()?;

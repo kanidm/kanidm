@@ -427,7 +427,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
         name2uuid!(self, name)
     }
 
-    fn externalid2uuid(&mut self, _name: &str) -> Result<Option<Uuid>, OperationError> {
+    fn externalid2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
         externalid2uuid!(self, name)
     }
 
@@ -516,7 +516,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         name2uuid!(self, name)
     }
 
-    fn externalid2uuid(&mut self, _name: &str) -> Result<Option<Uuid>, OperationError> {
+    fn externalid2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
         externalid2uuid!(self, name)
     }
 
@@ -1013,21 +1013,17 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     pub fn write_externalid2uuid_add(
         &mut self,
         uuid: Uuid,
-        add: BTreeSet<String>,
+        add: String,
     ) -> Result<(), OperationError> {
-        add.into_iter().for_each(|k| {
-            let cache_key = NameCacheKey::ExternalId2Uuid(k);
-            let cache_value = NameCacheValue::U(uuid);
-            self.name_cache.insert_dirty(cache_key, cache_value)
-        });
+        let cache_key = NameCacheKey::ExternalId2Uuid(add);
+        let cache_value = NameCacheValue::U(uuid);
+        self.name_cache.insert_dirty(cache_key, cache_value);
         Ok(())
     }
 
-    pub fn write_externalid2uuid_rem(&mut self, rem: BTreeSet<String>) -> Result<(), OperationError> {
-        rem.into_iter().for_each(|k| {
-            let cache_key = NameCacheKey::ExternalId2Uuid(k);
-            self.name_cache.remove_dirty(cache_key)
-        });
+    pub fn write_externalid2uuid_rem(&mut self, rem: String) -> Result<(), OperationError> {
+        let cache_key = NameCacheKey::ExternalId2Uuid(rem);
+        self.name_cache.remove_dirty(cache_key);
         Ok(())
     }
 

@@ -3900,7 +3900,7 @@ mod tests {
         assert!(server_txn
             .internal_create(vec![entry_init!(
                 ("class", Value::new_class("object")),
-                ("class", Value::new_class("sync_object")),
+                ("class", Value::new_class("extensibleobject")),
                 ("uuid", Value::Uuid(t_uuid)),
                 ("sync_external_id", Value::new_iutf8("uid=testperson"))
             ),])
