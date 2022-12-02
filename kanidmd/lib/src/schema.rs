@@ -474,6 +474,21 @@ pub trait SchemaTransaction {
         res
     }
 
+    fn class_query_attrs(&self, class_name: &str) -> Option<BTreeSet<&str>> {
+        let class_snapshot = self.get_classes();
+
+        class_snapshot.get(class_name).map(|class| {
+            class
+                .systemmay
+                .iter()
+                .chain(class.may.iter())
+                .chain(class.systemmust.iter())
+                .chain(class.must.iter())
+                .map(|s| s.as_str())
+                .collect()
+        })
+    }
+
     fn is_multivalue(&self, attr: &str) -> Result<bool, SchemaError> {
         match self.get_attributes().get(attr) {
             Some(a_schema) => Ok(a_schema.multivalue),

@@ -308,8 +308,6 @@ impl Entry<EntryInit, EntryNew> {
         let x = map2?;
 
         Ok(Entry {
-            // For now, we do a straight move, and we sort the incoming data
-            // sets so that BST works.
             state: EntryNew,
             valid: EntryInit,
             attrs: x,

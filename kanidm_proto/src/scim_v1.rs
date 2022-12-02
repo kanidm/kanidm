@@ -24,6 +24,8 @@ pub struct ScimSyncRequest {
 }
 
 pub const SCIM_SCHEMA_SYNC_PERSON: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:sync:person";
+pub const SCIM_SCHEMA_SYNC_ACCOUNT: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:sync:account";
+pub const SCIM_SCHEMA_SYNC_POSIXACCOUNT: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:sync:posixaccount";
 
 #[derive(Serialize, Debug, Clone)]
 #[serde(into = "ScimEntry")]
@@ -33,7 +35,6 @@ pub struct ScimSyncPerson {
     pub user_name: String,
     pub display_name: String,
     pub gidnumber: Option<u32>,
-    pub homedirectory: Option<String>,
     pub password_import: Option<String>,
     pub login_shell: Option<String>,
 }
@@ -56,21 +57,30 @@ impl Into<ScimEntry> for ScimSyncPerson {
             user_name,
             display_name,
             gidnumber,
-            homedirectory,
             password_import,
             login_shell,
         } = self;
 
-        let schemas = vec![SCIM_SCHEMA_SYNC_PERSON.to_string()];
+        let schemas = if gidnumber.is_some() {
+            vec![
+                SCIM_SCHEMA_SYNC_PERSON.to_string(),
+                SCIM_SCHEMA_SYNC_ACCOUNT.to_string(),
+            ]
+        } else {
+            vec![
+                SCIM_SCHEMA_SYNC_PERSON.to_string(),
+                SCIM_SCHEMA_SYNC_ACCOUNT.to_string(),
+                SCIM_SCHEMA_SYNC_POSIXACCOUNT.to_string(),
+            ]
+        };
 
         let mut attrs = BTreeMap::default();
 
-        set_string!(attrs, "userName", user_name);
-        set_string!(attrs, "displayName", display_name);
-        set_option_u32!(attrs, "gidNumber", gidnumber);
-        set_option_string!(attrs, "homeDirectory", homedirectory);
-        set_option_string!(attrs, "passwordImport", password_import);
-        set_option_string!(attrs, "loginShell", login_shell);
+        set_string!(attrs, "name", user_name);
+        set_string!(attrs, "displayname", display_name);
+        set_option_u32!(attrs, "gidnumber", gidnumber);
+        set_option_string!(attrs, "password_import", password_import);
+        set_option_string!(attrs, "loginshell", login_shell);
 
         ScimEntry {
             schemas,
@@ -83,6 +93,7 @@ impl Into<ScimEntry> for ScimSyncPerson {
 }
 
 pub const SCIM_SCHEMA_SYNC_GROUP: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group";
+pub const SCIM_SCHEMA_SYNC_POSIXGROUP: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:sync:posixgroup";
 
 #[derive(Serialize, Debug, Clone)]
 pub struct ScimExternalMember {
@@ -135,14 +146,21 @@ impl Into<ScimEntry> for ScimSyncGroup {
             members,
         } = self;
 
-        let schemas = vec![SCIM_SCHEMA_SYNC_GROUP.to_string()];
+        let schemas = if gidnumber.is_some() {
+            vec![
+                SCIM_SCHEMA_SYNC_GROUP.to_string(),
+                SCIM_SCHEMA_SYNC_POSIXGROUP.to_string()
+            ]
+        } else {
+            vec![SCIM_SCHEMA_SYNC_GROUP.to_string()]
+        };
 
         let mut attrs = BTreeMap::default();
 
         set_string!(attrs, "name", name);
-        set_option_u32!(attrs, "gidNumber", gidnumber);
+        set_option_u32!(attrs, "gidnumber", gidnumber);
         set_option_string!(attrs, "description", description);
-        set_multi_complex!(attrs, "members", members);
+        set_multi_complex!(attrs, "member", members);
 
         ScimEntry {
             schemas,

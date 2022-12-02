@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use base64urlsafedata::Base64UrlSafeData;
 
+use crate::schema::SchemaTransaction;
 use compact_jwt::{Jws, JwsSigner};
 use kanidm_proto::scim_v1::ScimSyncRequest;
 use kanidm_proto::scim_v1::*;
@@ -441,7 +442,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     (
                         *u,
                         ModifyList::new_list(vec![
-                            Modify::Assert("sync_parent_uuid".into(), PartialValue::Refer(sync_uuid)),
+                            Modify::Assert(
+                                "sync_parent_uuid".into(),
+                                PartialValue::Refer(sync_uuid),
+                            ),
                             Modify::Purged("sync_external_id".into()),
                             Modify::Present("sync_external_id".into(), Value::new_iutf8(ext_id)),
                         ]),
@@ -458,12 +462,119 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(())
     }
 
+    fn process_scim_value(
+        &self,
+        attr_name: &str,
+        _scim_attr: &ScimAttr,
+    ) -> Result<Vec<Value>, OperationError> {
+        let schema = self.qs_write.get_schema();
+
+        // Lookup the attr
+        match schema.get_attributes().get(attr_name) {
+            Some(schema_a) => match schema_a.syntax {
+                _ => todo!(),
+            },
+            None => Err(OperationError::InvalidAttributeName(attr_name.to_string())),
+        }
+    }
+
+    fn scim_entry_to_mod(
+        &self,
+        sync_uuid: Uuid,
+        sync_authority_set: &BTreeSet<String>,
+        u: Uuid,
+        scim_ent: &ScimEntry,
+    ) -> Result<(Uuid, ModifyList<ModifyInvalid>), OperationError> {
+        let schema = self.qs_write.get_schema();
+
+        let mut mods = Vec::with_capacity(
+            // We have the number of present mods
+            scim_ent.attrs.values().map(|a| a.len()).sum::<usize>() +
+            // The number of purges for existing attrs
+            scim_ent.attrs.len() +
+            // The assert on the sync_parent_uuid
+            1 +
+            // The addition of classes (person + posix + account OR group + posix)
+            scim_ent.schemas.len(),
+        );
+
+        mods.push(Modify::Assert(
+            "sync_parent_uuid".into(),
+            PartialValue::Refer(sync_uuid),
+        ));
+
+        let mut supported_attrs = BTreeSet::default();
+
+        for scim_schema in &scim_ent.schemas {
+            match scim_schema.as_str() {
+                SCIM_SCHEMA_SYNC_PERSON => {
+                    mods.push(Modify::Present("class".into(), Value::new_class("person")));
+                    if let Some(mut attrs) = schema.class_query_attrs("person") {
+                        supported_attrs.append(&mut attrs)
+                    } else {
+                        error!("Schema may be corrupt, missing class person");
+                        return Err(OperationError::InvalidState);
+                    }
+                }
+                SCIM_SCHEMA_SYNC_ACCOUNT => {
+                    mods.push(Modify::Present("class".into(), Value::new_class("account")));
+                }
+                SCIM_SCHEMA_SYNC_POSIXACCOUNT => {
+                    mods.push(Modify::Present(
+                        "class".into(),
+                        Value::new_class("posixaccount"),
+                    ));
+                }
+                SCIM_SCHEMA_SYNC_GROUP => {
+                    mods.push(Modify::Present("class".into(), Value::new_class("group")));
+                }
+                SCIM_SCHEMA_SYNC_POSIXGROUP => {
+                    mods.push(Modify::Present(
+                        "class".into(),
+                        Value::new_class("posixgroup"),
+                    ));
+                }
+                schema => {
+                    error!(?schema, scim_entry_id = ?u, "Unrecognised scim entry schema");
+                    return Err(OperationError::InvalidEntryState);
+                }
+            }
+        }
+
+        // Remove existing attrs? For now this is additive only, but how can we remove values? We
+        // can either examine the pre-entry state, or we can remove by schema?
+        //
+        // Or we rely on scim to send us empty values?
+
+        for (attr_name, scim_attr) in scim_ent.attrs.iter() {
+            if sync_authority_set.contains(attr_name) {
+                // Skipping attribute that we do not have authority over.
+                debug!(?attr_name, scim_entry_id = ?u, "ignoring attribute that has been yielded authority to kanidm.");
+                continue;
+            }
+
+            let values = self.process_scim_value(attr_name, scim_attr).map_err(|e| {
+                error!(?attr_name, scim_entry_id = ?u, "Invalid scim attribute");
+                e
+            })?;
+
+            // Now turn those values into mods?
+            mods.push(Modify::Purged(attr_name.into()));
+
+            for value in values.into_iter() {
+                mods.push(Modify::Present(attr_name.into(), value));
+            }
+        }
+
+        Ok((u, ModifyList::new_list(mods)))
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn scim_sync_apply_phase_3(
         &mut self,
         change_entries: &BTreeMap<Uuid, &ScimEntry>,
-        _sync_uuid: Uuid,
-        _sync_authority_set: &BTreeSet<String>,
+        sync_uuid: Uuid,
+        sync_authority_set: &BTreeSet<String>,
     ) -> Result<(), OperationError> {
         // Generally this is just assembling a large batch modify. Since we rely on external_id
         // to be present and valid, this is why we pre-apply that in phase 2.
@@ -472,17 +583,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // domain has been granted authority over.
         //
 
-        // let schema = self.qs_write.get_schema();
-
         let asserts = change_entries
             .iter()
-            .map(|(u, _scim_ent)| {
-                // Assert the sync_uuid -> sync_parent_uuid
-                // Transform each scim_ent attr -> Value
-                // Skip where external_id is missing.
-                //
-                // We don't have to worry too much about multi/single value here.
-                Ok((*u, ModifyList::new_list(vec![])))
+            .map(|(u, scim_ent)| {
+                self.scim_entry_to_mod(sync_uuid, sync_authority_set, *u, scim_ent)
             })
             .collect::<Result<Vec<_>, _>>()?;
 
@@ -958,91 +1062,95 @@ mod tests {
 
     const TEST_SYNC_SCIM_IPA_1: &str = r#"
     {
-      "from_state": "Refresh",
-      "to_state": {
-        "Active": {
-          "cookie": "aXBhLXN5bmNyZXBsLWthbmkuZGV2LmJsYWNraGF0cy5uZXQuYXU6Mzg5I2NuPWRpcmVjdG9yeSBtYW5hZ2VyOmRjPWRldixkYz1ibGFja2hhdHMsZGM9bmV0LGRjPWF1Oih8KCYob2JqZWN0Q2xhc3M9cGVyc29uKShvYmplY3RDbGFzcz1pcGFudHVzZXJhdHRycykob2JqZWN0Q2xhc3M9cG9zaXhhY2NvdW50KSkoJihvYmplY3RDbGFzcz1ncm91cG9mbmFtZXMpKG9iamVjdENsYXNzPWlwYXVzZXJncm91cCkoIShvYmplY3RDbGFzcz1tZXBtYW5hZ2VkZW50cnkpKSghKGNuPWFkbWlucykpKCEoY249aXBhdXNlcnMpKSkoJihvYmplY3RDbGFzcz1pcGF0b2tlbikob2JqZWN0Q2xhc3M9aXBhdG9rZW50b3RwKSkpIzEwOQ"
-        }
-      },
-      "entries": [
+  "from_state": "Refresh",
+  "to_state": {
+    "Active": {
+      "cookie": "aXBhLXN5bmNyZXBsLWthbmkuZGV2LmJsYWNraGF0cy5uZXQuYXU6Mzg5I2NuPWRpcmVjdG9yeSBtYW5hZ2VyOmRjPWRldixkYz1ibGFja2hhdHMsZGM9bmV0LGRjPWF1Oih8KCYob2JqZWN0Q2xhc3M9cGVyc29uKShvYmplY3RDbGFzcz1pcGFudHVzZXJhdHRycykob2JqZWN0Q2xhc3M9cG9zaXhhY2NvdW50KSkoJihvYmplY3RDbGFzcz1ncm91cG9mbmFtZXMpKG9iamVjdENsYXNzPWlwYXVzZXJncm91cCkoIShvYmplY3RDbGFzcz1tZXBtYW5hZ2VkZW50cnkpKSghKGNuPWFkbWlucykpKCEoY249aXBhdXNlcnMpKSkoJihvYmplY3RDbGFzcz1pcGF0b2tlbikob2JqZWN0Q2xhc3M9aXBhdG9rZW50b3RwKSkpIzEyMQ"
+    }
+  },
+  "entries": [
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:person",
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:account",
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:posixaccount"
+      ],
+      "id": "ac60034b-3498-11ed-a50d-919b4b1a5ec0",
+      "externalId": "uid=admin,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "displayname": "Administrator",
+      "gidnumber": 8200000,
+      "loginshell": "/bin/bash",
+      "name": "admin",
+      "password_import": "ipaNTHash: CVBguEizG80swI8sftaknw"
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group",
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:posixgroup"
+      ],
+      "id": "ac60034e-3498-11ed-a50d-919b4b1a5ec0",
+      "externalId": "cn=editors,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "description": "Limited admins who can edit other users",
+      "gidnumber": 8200002,
+      "name": "editors"
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
+      ],
+      "id": "0c56a965-3499-11ed-a50d-919b4b1a5ec0",
+      "externalId": "cn=trust admins,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "description": "Trusts administrators group",
+      "member": [
         {
-          "schemas": [
-            "urn:ietf:params:scim:schemas:kanidm:1.0:sync:person"
-          ],
-          "id": "ac60034b-3498-11ed-a50d-919b4b1a5ec0",
-          "externalId": "uid=admin,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
-          "displayName": "Administrator",
-          "gidNumber": 8200000,
-          "homeDirectory": "/home/admin",
-          "loginShell": "/bin/bash",
-          "passwordImport": "CVBguEizG80swI8sftaknw",
-          "userName": "admin"
-        },
-        {
-          "schemas": [
-            "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
-          ],
-          "id": "ac60034e-3498-11ed-a50d-919b4b1a5ec0",
-          "externalId": "cn=editors,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
-          "description": "Limited admins who can edit other users",
-          "gidNumber": 8200002,
-          "name": "editors"
-        },
-        {
-          "schemas": [
-            "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
-          ],
-          "id": "0c56a965-3499-11ed-a50d-919b4b1a5ec0",
-          "externalId": "cn=trust admins,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
-          "description": "Trusts administrators group",
-          "members": [
-            {
-              "external_id": "uid=admin,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
-            }
-          ],
-          "name": "trust admins"
-        },
-        {
-          "schemas": [
-            "urn:ietf:params:scim:schemas:kanidm:1.0:sync:person"
-          ],
-          "id": "babb8302-43a1-11ed-a50d-919b4b1a5ec0",
-          "externalId": "uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
-          "displayName": "Test User",
-          "gidNumber": 12345,
-          "homeDirectory": "/home/testuser",
-          "loginShell": "/bin/sh",
-          "passwordImport": "iEb36u6PsRetBr3YMLdYbA",
-          "userName": "testuser"
-        },
-        {
-          "schemas": [
-            "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
-          ],
-          "id": "d547c581-5f26-11ed-a50d-919b4b1a5ec0",
-          "externalId": "cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
-          "description": "Test group",
-          "name": "testgroup"
-        },
-        {
-          "schemas": [
-            "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
-          ],
-          "id": "d547c583-5f26-11ed-a50d-919b4b1a5ec0",
-          "externalId": "cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
-          "name": "testexternal"
-        },
-        {
-          "schemas": [
-            "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
-          ],
-          "id": "f90b0b81-5f26-11ed-a50d-919b4b1a5ec0",
-          "externalId": "cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
-          "gidNumber": 1234567,
-          "name": "testposix"
+          "external_id": "uid=admin,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
         }
       ],
-      "delete_uuids": []
+      "name": "trust admins"
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:person",
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:account",
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:posixaccount"
+      ],
+      "id": "babb8302-43a1-11ed-a50d-919b4b1a5ec0",
+      "externalId": "uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "displayname": "Test User",
+      "gidnumber": 12345,
+      "loginshell": "/bin/sh",
+      "name": "testuser",
+      "password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA"
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
+      ],
+      "id": "d547c581-5f26-11ed-a50d-919b4b1a5ec0",
+      "externalId": "cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "description": "Test group",
+      "name": "testgroup"
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
+      ],
+      "id": "d547c583-5f26-11ed-a50d-919b4b1a5ec0",
+      "externalId": "cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "name": "testexternal"
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group",
+        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:posixgroup"
+      ],
+      "id": "f90b0b81-5f26-11ed-a50d-919b4b1a5ec0",
+      "externalId": "cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "gidnumber": 1234567,
+      "name": "testposix"
+    }
+  ],
+  "delete_uuids": []
     }
     "#;
 }
