@@ -413,7 +413,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 entry_init!(
                     ("class", Value::new_class("object")),
                     ("class", Value::new_class("sync_object")),
-                    ("sync_parent_uuid", Value::new_refer(sync_uuid)),
+                    ("sync_parent_uuid", Value::Refer(sync_uuid)),
                     ("uuid", Value::new_uuid(u))
                 )
             })
@@ -440,7 +440,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     // Add it to the mod request.
                     (
                         *u,
-                        ModifyList::new_purge_and_set("sync_external_id", Value::new_iutf8(ext_id)),
+                        ModifyList::new_list(vec![
+                            Modify::Assert("sync_parent_uuid".into(), PartialValue::Refer(sync_uuid)),
+                            Modify::Purged("sync_external_id".into()),
+                            Modify::Present("sync_external_id".into(), Value::new_iutf8(ext_id)),
+                        ]),
                     )
                 })
             }))
