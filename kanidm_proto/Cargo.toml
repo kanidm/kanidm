@@ -23,6 +23,7 @@ scim_proto.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 time = { workspace = true, features = ["serde", "std"] }
+tracing.workspace = true
 url = { workspace = true, features = ["serde"] }
 urlencoding.workspace = true
 uuid = { workspace = true, features = ["serde"] }

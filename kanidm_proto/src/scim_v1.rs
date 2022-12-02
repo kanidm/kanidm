@@ -2,6 +2,7 @@ use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use uuid::Uuid;
+use tracing::debug;
 
 pub use scim_proto::prelude::{ScimAttr, ScimEntry, ScimError, ScimSimpleAttr};
 use scim_proto::*;
@@ -39,15 +40,40 @@ pub struct ScimSyncPerson {
     pub login_shell: Option<String>,
 }
 
-/*
-impl TryFrom<ScimEntry> for ScimSyncPerson {
+impl TryFrom<&ScimEntry> for ScimSyncPerson {
     type Error = ScimError;
 
-    fn try_from(_value: ScimEntry) -> Result<Self, Self::Error> {
-        todo!();
+    fn try_from(value: &ScimEntry) -> Result<Self, Self::Error> {
+        if !(value.schemas.iter().any(|i| i == SCIM_SCHEMA_SYNC_PERSON)
+            && value.schemas.iter().any(|i| i == SCIM_SCHEMA_SYNC_ACCOUNT)) {
+            return Err(ScimError::EntryMissingSchema);
+        }
+
+        let is_posix = value.schemas.iter().any(|i| i == SCIM_SCHEMA_SYNC_POSIXACCOUNT);
+
+        // we clone the inner atters, because these macros will pop things from them.
+        let attrs = value.attrs.clone();
+
+        // Pop stuff
+
+
+        if !attrs.is_empty() {
+            debug!(?attrs, "Excess attrs detected");
+            return Err(ScimError::InvalidAttribute);
+        }
+
+
+        Ok(ScimSyncPerson {
+            id,
+            external_id,
+            user_name,
+            display_name,
+            gidnumber,
+            password_import,
+            login_shell,
+        })
     }
 }
-*/
 
 impl Into<ScimEntry> for ScimSyncPerson {
     fn into(self) -> ScimEntry {
@@ -125,15 +151,37 @@ pub struct ScimSyncGroup {
     pub members: Vec<ScimExternalMember>,
 }
 
-/*
-impl TryFrom<ScimEntry> for ScimSyncPerson {
+impl TryFrom<&ScimEntry> for ScimSyncGroup {
     type Error = ScimError;
 
-    fn try_from(_value: ScimEntry) -> Result<Self, Self::Error> {
-        todo!();
+    fn try_from(value: &ScimEntry) -> Result<Self, Self::Error> {
+        if !value.schemas.iter().any(|i| i == SCIM_SCHEMA_SYNC_GROUP) {
+            return Err(ScimError::EntryMissingSchema);
+        }
+
+        let is_posix = value.schemas.iter().any(|i| i == SCIM_SCHEMA_SYNC_POSIXGROUP);
+
+        // we clone the inner atters, because these macros will pop things from them.
+        let attrs = value.attrs.clone();
+
+        // Pop stuff
+
+
+        if !attrs.is_empty() {
+            debug!(?attrs, "Excess attrs detected");
+            return Err(ScimError::InvalidAttribute);
+        }
+
+        Ok(ScimSyncGroup {
+            id,
+            external_id,
+            name,
+            description,
+            gidnumber,
+            members,
+        })
     }
 }
-*/
 
 impl Into<ScimEntry> for ScimSyncGroup {
     fn into(self) -> ScimEntry {

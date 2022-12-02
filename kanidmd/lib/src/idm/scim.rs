@@ -3,7 +3,6 @@ use std::time::Duration;
 
 use base64urlsafedata::Base64UrlSafeData;
 
-use crate::schema::SchemaTransaction;
 use compact_jwt::{Jws, JwsSigner};
 use kanidm_proto::scim_v1::ScimSyncRequest;
 use kanidm_proto::scim_v1::*;
@@ -334,8 +333,32 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             }
         };
 
-        // Retrieve the sync_authority_set
-        let sync_authority_set = BTreeSet::default();
+        // Retrieve the sync_authority_set. We also add default attributes that the
+        // scim connector should NOT be touching.
+        let sync_authority_set = {
+            /*
+            let schema = self.qs_write.get_schema();
+
+            let mut supported_attrs = BTreeSet::default();
+
+            schema.class_query_attrs("object")
+                .map(|attrs| supported_attrs.extend(attrs.into_iter().map(str::to_string)))
+                .ok_or_else(|| {
+                error!("Schema may be corrupt, missing class object");
+                OperationError::InvalidState
+                })?;
+
+            schema.class_query_attrs("sync_object")
+                .map(|attrs| supported_attrs.extend(attrs.into_iter().map(str::to_string)))
+                .ok_or_else(|| {
+                error!("Schema may be corrupt, missing class sync_object");
+                OperationError::InvalidState
+                })?;
+
+            supported_attrs
+            */
+            BTreeSet::default()
+        };
 
         // Return these.
 
@@ -462,20 +485,36 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(())
     }
 
-    fn process_scim_value(
+    fn scim_sync_person_to_mod(
         &self,
-        attr_name: &str,
-        _scim_attr: &ScimAttr,
-    ) -> Result<Vec<Value>, OperationError> {
-        let schema = self.qs_write.get_schema();
+        sync_uuid: Uuid,
+        _sync_authority_set: &BTreeSet<String>,
+        _scim_sync_person: ScimSyncPerson,
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+        let mut mods = Vec::new();
 
-        // Lookup the attr
-        match schema.get_attributes().get(attr_name) {
-            Some(schema_a) => match schema_a.syntax {
-                _ => todo!(),
-            },
-            None => Err(OperationError::InvalidAttributeName(attr_name.to_string())),
-        }
+        mods.push(Modify::Assert(
+            "sync_parent_uuid".into(),
+            PartialValue::Refer(sync_uuid),
+        ));
+
+        Ok(ModifyList::new_list(mods))
+    }
+
+    fn scim_sync_group_to_mod(
+        &self,
+        sync_uuid: Uuid,
+        _sync_authority_set: &BTreeSet<String>,
+        _scim_sync_group: ScimSyncGroup,
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+        let mut mods = Vec::new();
+
+        mods.push(Modify::Assert(
+            "sync_parent_uuid".into(),
+            PartialValue::Refer(sync_uuid),
+        ));
+
+        Ok(ModifyList::new_list(mods))
     }
 
     fn scim_entry_to_mod(
@@ -485,88 +524,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         u: Uuid,
         scim_ent: &ScimEntry,
     ) -> Result<(Uuid, ModifyList<ModifyInvalid>), OperationError> {
-        let schema = self.qs_write.get_schema();
-
-        let mut mods = Vec::with_capacity(
-            // We have the number of present mods
-            scim_ent.attrs.values().map(|a| a.len()).sum::<usize>() +
-            // The number of purges for existing attrs
-            scim_ent.attrs.len() +
-            // The assert on the sync_parent_uuid
-            1 +
-            // The addition of classes (person + posix + account OR group + posix)
-            scim_ent.schemas.len(),
-        );
-
-        mods.push(Modify::Assert(
-            "sync_parent_uuid".into(),
-            PartialValue::Refer(sync_uuid),
-        ));
-
-        let mut supported_attrs = BTreeSet::default();
-
-        for scim_schema in &scim_ent.schemas {
-            match scim_schema.as_str() {
-                SCIM_SCHEMA_SYNC_PERSON => {
-                    mods.push(Modify::Present("class".into(), Value::new_class("person")));
-                    if let Some(mut attrs) = schema.class_query_attrs("person") {
-                        supported_attrs.append(&mut attrs)
-                    } else {
-                        error!("Schema may be corrupt, missing class person");
-                        return Err(OperationError::InvalidState);
-                    }
-                }
-                SCIM_SCHEMA_SYNC_ACCOUNT => {
-                    mods.push(Modify::Present("class".into(), Value::new_class("account")));
-                }
-                SCIM_SCHEMA_SYNC_POSIXACCOUNT => {
-                    mods.push(Modify::Present(
-                        "class".into(),
-                        Value::new_class("posixaccount"),
-                    ));
-                }
-                SCIM_SCHEMA_SYNC_GROUP => {
-                    mods.push(Modify::Present("class".into(), Value::new_class("group")));
-                }
-                SCIM_SCHEMA_SYNC_POSIXGROUP => {
-                    mods.push(Modify::Present(
-                        "class".into(),
-                        Value::new_class("posixgroup"),
-                    ));
-                }
-                schema => {
-                    error!(?schema, scim_entry_id = ?u, "Unrecognised scim entry schema");
-                    return Err(OperationError::InvalidEntryState);
-                }
-            }
+        if let Ok(scim_sync_person) = ScimSyncPerson::try_from(scim_ent) {
+            self.scim_sync_person_to_mod(sync_uuid, sync_authority_set, scim_sync_person)
+                .map(|modlist| (u, modlist))
+        } else if let Ok(scim_sync_group) = ScimSyncGroup::try_from(scim_ent) {
+            self.scim_sync_group_to_mod(sync_uuid, sync_authority_set, scim_sync_group)
+                .map(|modlist| (u, modlist))
+        } else {
+            error!(schema = ?scim_ent.schemas, scim_entry_id = ?u, "Unrecognised scim entry schemas");
+            return Err(OperationError::InvalidEntryState);
         }
-
-        // Remove existing attrs? For now this is additive only, but how can we remove values? We
-        // can either examine the pre-entry state, or we can remove by schema?
-        //
-        // Or we rely on scim to send us empty values?
-
-        for (attr_name, scim_attr) in scim_ent.attrs.iter() {
-            if sync_authority_set.contains(attr_name) {
-                // Skipping attribute that we do not have authority over.
-                debug!(?attr_name, scim_entry_id = ?u, "ignoring attribute that has been yielded authority to kanidm.");
-                continue;
-            }
-
-            let values = self.process_scim_value(attr_name, scim_attr).map_err(|e| {
-                error!(?attr_name, scim_entry_id = ?u, "Invalid scim attribute");
-                e
-            })?;
-
-            // Now turn those values into mods?
-            mods.push(Modify::Purged(attr_name.into()));
-
-            for value in values.into_iter() {
-                mods.push(Modify::Present(attr_name.into(), value));
-            }
-        }
-
-        Ok((u, ModifyList::new_list(mods)))
     }
 
     #[instrument(level = "debug", skip_all)]

@@ -2292,6 +2292,7 @@ dependencies = [
  "serde",
  "serde_json",
  "time 0.2.27",
+ "tracing",
  "url",
  "urlencoding",
  "uuid",
