@@ -2369,6 +2369,22 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.modify(&me)
     }
 
+    pub fn internal_modify_uuid(
+        &mut self,
+        target_uuid: Uuid,
+        modlist: &ModifyList<ModifyInvalid>,
+    ) -> Result<(), OperationError> {
+        let filter = filter!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
+        let f_valid = filter
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+        let m_valid = modlist
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+        let me = ModifyEvent::new_internal(f_valid, m_valid);
+        self.modify(&me)
+    }
+
     pub fn impersonate_modify_valid(
         &mut self,
         f_valid: Filter<FilterValid>,
@@ -3408,7 +3424,40 @@ mod tests {
 
     #[qs_test]
     async fn test_modify_assert(server: &QueryServer) {
-        todo!();
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
+
+        let t_uuid = Uuid::new_v4();
+        let r_uuid = Uuid::new_v4();
+
+        assert!(server_txn
+            .internal_create(vec![entry_init!(
+                ("class", Value::new_class("object")),
+                ("uuid", Value::Uuid(t_uuid))
+            ),])
+            .is_ok());
+
+        // This assertion will FAIL
+        assert!(matches!(
+            server_txn.internal_modify_uuid(
+                t_uuid,
+                &ModifyList::new_list(vec![
+                    m_assert("uuid", &PartialValue::Uuid(r_uuid)),
+                    m_pres("description", &Value::Utf8("test".into()))
+                ])
+            ),
+            Err(OperationError::ModifyAssertionFailed)
+        ));
+
+        // This assertion will PASS
+        assert!(server_txn
+            .internal_modify_uuid(
+                t_uuid,
+                &ModifyList::new_list(vec![
+                    m_assert("uuid", &PartialValue::Uuid(t_uuid)),
+                    m_pres("description", &Value::Utf8("test".into()))
+                ])
+            )
+            .is_ok());
     }
 
     #[qs_test]

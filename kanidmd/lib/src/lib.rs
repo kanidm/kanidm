@@ -80,7 +80,7 @@ pub mod prelude {
     pub use crate::identity::{AccessScope, IdentType, Identity, IdentityId};
     pub use crate::idm::server::{IdmServer, IdmServerDelayed};
     pub use crate::modify::{
-        m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList, ModifyValid,
+        m_assert, m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList, ModifyValid,
     };
     pub use crate::server::batch_modify::BatchModifyEvent;
     pub use crate::server::{
