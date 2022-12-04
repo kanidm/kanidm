@@ -6,7 +6,6 @@
         <title>Kanidm Administration</title>
         <meta name="robots" content="noindex" />
         <!-- Custom HTML head -->
-        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
@@ -28,13 +27,13 @@
     </head>
     <body>
         <!-- Provide site root to javascript -->
-        <script type="text/javascript">
+        <script>
             var path_to_root = "";
             var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
         </script>
 
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
-        <script type="text/javascript">
+        <script>
             try {
                 var theme = localStorage.getItem('mdbook-theme');
                 var sidebar = localStorage.getItem('mdbook-sidebar');
@@ -50,7 +49,7 @@
         </script>
 
         <!-- Set the theme before any content is loaded, prevents flash -->
-        <script type="text/javascript">
+        <script>
             var theme;
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
@@ -62,7 +61,7 @@
         </script>
 
         <!-- Hide / unhide sidebar before it is displayed -->
-        <script type="text/javascript">
+        <script>
             var html = document.querySelector('html');
             var sidebar = 'hidden';
             if (document.body.clientWidth >= 1080) {
@@ -93,7 +92,7 @@
                             <i class="fa fa-paint-brush"></i>
                         </button>
                         <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
-                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
@@ -127,7 +126,7 @@
                     </div>
                 </div>
                 <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
-                <script type="text/javascript">
+                <script>
                     document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
                     document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
                     Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
@@ -2484,19 +2483,19 @@ docker run --name radiusd \
 so if you wish to use Wi-Fi-assigned VLANs on your infrastructure, you can 
 assign these by groups in the configuration file as shown in the above examples.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="ldap"><a class="header" href="#ldap">LDAP</a></h1>
-<p>While many applications can support systems like Security Assertion Markup 
-Language (SAML), or Open Authorization (OAuth), many do not. 
-Lightweight Directory Access Protocol (LDAP) has been the &quot;lingua franca&quot; of 
-authentication for many years, with almost every application in the world being 
-able to search and bind to LDAP. As many organization still rely on LDAP, Kanidm 
-can host a read-only LDAP interface.</p>
+<p>While many applications can support external authentication and identity services through
+Oauth2, not all services can.
+Lightweight Directory Access Protocol (LDAP) has been the &quot;lingua franca&quot; of
+authentication for many years, with almost every application in the world being
+able to search and bind to LDAP. As many organisations still rely on LDAP, Kanidm
+can host a read-only LDAP interface for these legacy applications.</p>
 <table>
 <tr>
     <td rowspan=2><img src="integrations/../images/kani-warning.png" alt="Kani Warning" /></td>
     <td><strong>Warning!</strong></td>
     </tr>
 <tr>
-    <td>The LDAP server in Kanidm is not RFC compliant. This is intentional, as Kanidm wants to cover the common use case,  simple bind and search.</td>
+    <td>The LDAP server in Kanidm is not a fully RFC-compliant LDAP server. This is intentional, as Kanidm wants to cover the common use cases - simple bind and search.</td>
 </tr>
 </table>
 <h2 id="what-is-ldap"><a class="header" href="#what-is-ldap">What is LDAP</a></h2>
@@ -2510,21 +2509,21 @@ many applications - an IDM just like Kanidm!</p>
 <p>Kanidm cannot be mapped 100% to LDAP's objects. This is because LDAP
 types are simple key-values on objects which are all UTF8 strings (or subsets
 thereof) based on validation (matching) rules. Kanidm internally implements complex
-data types such as tagging on SSH keys, or multi-value credentials. These can not 
+data types such as tagging on SSH keys, or multi-value credentials. These can not
 be represented in LDAP.</p>
 <p>Many of the structures in Kanidm do not correlate closely to LDAP. For example
-Kanidm only has a GID number, where LDAP's schemas define both a UID number and a 
+Kanidm only has a GID number, where LDAP's schemas define both a UID number and a
 GID number.</p>
 <p>Entries in the database also have a specific name in LDAP, related to their path
 in the directory tree. Kanidm is a flat model, so we have to emulate some tree-like
 elements, and ignore others.</p>
 <p>For this reason, when you search the LDAP interface, Kanidm will make some mapping decisions.</p>
 <ul>
+<li>The Kanidm domain name is used to generate the DN of the suffix.</li>
 <li>The domain_info object becomes the suffix root.</li>
 <li>All other entries are direct subordinates of the domain_info for DN purposes.</li>
-<li>Distinguished Names (DNs) are generated from the attributes naming attributes.</li>
+<li>Distinguished Names (DNs) are generated from the spn, name, or uuid attribute.</li>
 <li>Bind DNs can be remapped and rewritten, and may not even be a DN during bind.</li>
-<li>The Kanidm domain name is used to generate the base DN.</li>
 <li>The '*' and '+' operators can not be used in conjuction with attribute lists in searches.</li>
 </ul>
 <p>These decisions were made to make the path as simple and effective as possible,
@@ -2536,27 +2535,32 @@ we don't believe this is a limitation for the consuming applications.</p>
 <p>StartTLS is not supported due to security risks. LDAPS is the only secure method
 of communicating to any LDAP server. Kanidm, when configured with certificates, will
 use them for LDAPS (and will not listen on a plaintext LDAP port).</p>
+<h3 id="writes"><a class="header" href="#writes">Writes</a></h3>
+<p>LDAP's structure is too simplistic for writing to the complex entries that Kanidm internally
+contains. As a result, writes are rejected for all users via the LDAP interface.</p>
 <h3 id="access-controls"><a class="header" href="#access-controls">Access Controls</a></h3>
 <p>LDAP only supports password authentication. As LDAP is used heavily in POSIX environments
 the LDAP bind for any DN will use its configured posix password.</p>
 <p>As the POSIX password is not equivalent in strength to the primary credentials of Kanidm
-(which may be multi-factor authentication, MFA), the LDAP bind does not grant 
-rights to elevated read permissions. All binds have the permissions of &quot;Anonymous&quot; 
+(which may be multi-factor authentication, MFA), the LDAP bind does not grant
+rights to elevated read permissions. All binds have the permissions of &quot;Anonymous&quot;
 even if the anonymous account is locked.</p>
+<p>The exception is service accounts which can use api-tokens during an LDAP bind for elevated
+read permissions.</p>
 <h2 id="server-configuration-1"><a class="header" href="#server-configuration-1">Server Configuration</a></h2>
 <p>To configure Kanidm to provide LDAP, add the argument to the <code>server.toml</code> configuration:</p>
 <pre><code>ldapbindaddress = &quot;127.0.0.1:3636&quot;
 </code></pre>
-<p>You should configure TLS certificates and keys as usual - LDAP will re-use the Web 
+<p>You should configure TLS certificates and keys as usual - LDAP will re-use the Web
 server TLS material.</p>
 <h2 id="showing-ldap-entries-and-attribute-maps"><a class="header" href="#showing-ldap-entries-and-attribute-maps">Showing LDAP Entries and Attribute Maps</a></h2>
-<p>By default Kanidm is limited in what attributes are generated or remapped into 
-LDAP entries. However, the server internally contains a map of extended attribute 
+<p>By default Kanidm is limited in what attributes are generated or remapped into
+LDAP entries. However, the server internally contains a map of extended attribute
 mappings for application specific requests that must be satisfied.</p>
 <p>An example is that some applications expect and require a 'CN' value, even though Kanidm does not
 provide it. If the application is unable to be configured to accept &quot;name&quot; it may be necessary
 to use Kanidm's mapping feature. Currently these are compiled into the server, so you may need to open
-an issue with your requirements.</p>
+an issue with your requirements for attribute maps.</p>
 <p>To show what attribute maps exists for an entry you can use the attribute search term '+'.</p>
 <pre><code># To show Kanidm attributes
 ldapsearch ... -x '(name=admin)' '*'
@@ -2567,15 +2571,22 @@ ldapsearch ... -x '(name=admin)' '+'
 Kanidm native attributes.</p>
 <pre><code>ldapsearch ... -x '(name=admin)' cn objectClass displayname memberof
 </code></pre>
+<h2 id="service-accounts"><a class="header" href="#service-accounts">Service Accounts</a></h2>
+<p>If you have <a href="integrations/../accounts_and_groups.html#using-api-tokens-with-service-accounts">issued api tokens for a service account</a>
+they can be used to gain extended read permissions for those service accounts.</p>
+<p>Api tokens can also be used to gain extended search permissions with LDAP. To do this you can bind
+with a dn of &quot;dn=token&quot; and provide the api token in the password.</p>
+<blockquote>
+<p><strong>NOTE</strong> The 'dn=token' keyword is guaranteed to not be used by any other entry, which is why it was chosen as the keyword to initiate api token binds.</p>
+</blockquote>
+<pre><code class="language-shell">ldapwhoami -H ldaps://URL -x -D &quot;dn=token&quot; -w &quot;TOKEN&quot;
+ldapwhoami -H ldaps://idm.example.com -x -D &quot;dn=token&quot; -w &quot;...&quot;
+# u: demo_service@idm.example.com
+</code></pre>
 <h2 id="example"><a class="header" href="#example">Example</a></h2>
 <p>Given a default install with domain &quot;example.com&quot; the configured LDAP DN will be &quot;dc=example,dc=com&quot;.</p>
-<p>Run your server:</p>
-<pre><code>cargo run -- server \
-    -D kanidm.db \
-    -C ca.pem -c cert.pem \
-    -k key.pem \
-    -b 127.0.0.1:8443 \
-    -l 127.0.0.1:3636
+<pre><code># from server.toml
+ldapbindaddress = &quot;[::]:3636&quot;
 </code></pre>
 <p>This can be queried with:</p>
 <pre><code>LDAPTLS_CACERT=ca.pem ldapsearch \
@@ -2597,7 +2608,7 @@ entryuuid: 22a65b6c-80c8-4e1a-9b76-3f3afdff8400
 </code></pre>
 <p>It is recommended that client applications filter accounts that can login with <code>(class=account)</code>
 and groups with <code>(class=group)</code>. If possible, group membership is defined in RFC2307bis or
-Active Directory style. This means groups are determined from the &quot;memberof&quot; attribute which 
+Active Directory style. This means groups are determined from the &quot;memberof&quot; attribute which
 contains a DN to a group.</p>
 <p>LDAP binds can use any unique identifier of the account. The following are all valid bind DNs for
 the object listed above (if it was a POSIX account, that is).</p>
@@ -2609,7 +2620,7 @@ ldapwhoami ... -x -D '22a65b6c-80c8-4e1a-9b76-3f3afdff8400'
 ldapwhoami ... -x -D 'spn=test1@example.com,dc=example,dc=com'
 ldapwhoami ... -x -D 'name=test1,dc=example,dc=com'
 </code></pre>
-<p>Most LDAP clients are very picky about TLS, and can be very hard to debug or display errors. 
+<p>Most LDAP clients are very picky about TLS, and can be very hard to debug or display errors.
 For example these commands:</p>
 <pre><code>ldapsearch -H ldaps://127.0.0.1:3636 -b 'dc=example,dc=com' -x '(name=test1)'
 ldapsearch -H ldap://127.0.0.1:3636 -b 'dc=example,dc=com' -x '(name=test1)'
@@ -3882,18 +3893,18 @@ debs/all:
 
         </div>
 
-        <script type="text/javascript">
+        <script>
             window.playground_copyable = true;
         </script>
-        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
-        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
-        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
-        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
 
         <!-- Custom JS scripts -->
-        <script type="text/javascript">
+        <script>
         window.addEventListener('load', function() {
             window.setTimeout(window.print, 100);
         });
