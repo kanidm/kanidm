@@ -24,7 +24,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 compact_jwt = { version = "^0.2.3", default-features = false, features = ["unsafe_release_without_verify"] }
 gloo = "^0.8.0"
-gloo-net = "0.2.4"
+gloo-net = "0.2.5"
 js-sys = "^0.3.58"
 kanidm_proto = { path = "../kanidm_proto", features = ["wasm"] }
 qrcode = { version = "^0.12.0", default-features = false, features = ["svg"] }
