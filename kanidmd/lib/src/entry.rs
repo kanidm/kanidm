@@ -2475,6 +2475,8 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         let desc_v = vs_utf8![s.description.clone()];
 
         let multivalue_v = vs_bool![s.multivalue];
+        let sync_allowed_v = vs_bool![s.sync_allowed];
+        let phantom_v = vs_bool![s.phantom];
         let unique_v = vs_bool![s.unique];
 
         let index_v = ValueSetIndex::from_iter(s.index.iter().copied());
@@ -2488,6 +2490,8 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         attrs.insert(AttrString::from("description"), desc_v);
         attrs.insert(AttrString::from("uuid"), uuid_v);
         attrs.insert(AttrString::from("multivalue"), multivalue_v);
+        attrs.insert(AttrString::from("phantom"), phantom_v);
+        attrs.insert(AttrString::from("sync_allowed"), sync_allowed_v);
         attrs.insert(AttrString::from("unique"), unique_v);
         if let Some(vs) = index_v {
             attrs.insert(AttrString::from("index"), vs);
@@ -2513,11 +2517,13 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
         let uuid_v = vs_uuid![s.uuid];
         let name_v = vs_iutf8![s.name.as_str()];
         let desc_v = vs_utf8![s.description.clone()];
+        let sync_allowed_v = vs_bool![s.sync_allowed];
 
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
         let mut attrs: Map<AttrString, ValueSet> = Map::new();
         attrs.insert(AttrString::from("classname"), name_v);
         attrs.insert(AttrString::from("description"), desc_v);
+        attrs.insert(AttrString::from("sync_allowed"), sync_allowed_v);
         attrs.insert(AttrString::from("uuid"), uuid_v);
         attrs.insert(
             AttrString::from("class"),

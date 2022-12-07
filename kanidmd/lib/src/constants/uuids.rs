@@ -217,6 +217,8 @@ pub const _UUID_SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING: Uuid =
 pub const UUID_SCHEMA_ATTR_SYNC_EXTERNAL_ID: Uuid = uuid!("00000000-0000-0000-0000-ffff00000121");
 pub const UUID_SCHEMA_ATTR_SYNC_PARENT_UUID: Uuid = uuid!("00000000-0000-0000-0000-ffff00000122");
 pub const UUID_SCHEMA_CLASS_SYNC_OBJECT: Uuid = uuid!("00000000-0000-0000-0000-ffff00000123");
+pub const UUID_SCHEMA_ATTR_SYNC_CLASS: Uuid = uuid!("00000000-0000-0000-0000-ffff00000124");
+pub const UUID_SCHEMA_ATTR_SYNC_ALLOWED: Uuid = uuid!("00000000-0000-0000-0000-ffff00000125");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

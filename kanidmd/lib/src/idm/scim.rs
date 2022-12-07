@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::time::Duration;
 
 use base64urlsafedata::Base64UrlSafeData;
@@ -8,11 +7,13 @@ use kanidm_proto::scim_v1::ScimSyncRequest;
 use kanidm_proto::scim_v1::*;
 use kanidm_proto::v1::ApiTokenPurpose;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, BTreeMap};
 
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
 use crate::prelude::*;
 use crate::value::Session;
+
+use crate::schema::{SchemaTransaction, SchemaClass};
 
 // Internals of a Scim Sync token
 
@@ -232,6 +233,7 @@ pub struct ScimSyncUpdateEvent {
 }
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
+    #[instrument(level = "info", skip_all)]
     pub fn scim_sync_apply(
         &mut self,
         sse: &ScimSyncUpdateEvent,
@@ -263,6 +265,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.scim_sync_apply_phase_5(sync_uuid, &changes.to_state)
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn scim_sync_apply_phase_1<'b>(
         &mut self,
         sse: &'b ScimSyncUpdateEvent,
@@ -333,34 +336,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             }
         };
 
-        // Retrieve the sync_authority_set. We also add default attributes that the
-        // scim connector should NOT be touching.
-        let sync_authority_set = {
-            /*
-            let schema = self.qs_write.get_schema();
-
-            let mut supported_attrs = BTreeSet::default();
-
-            schema.class_query_attrs("object")
-                .map(|attrs| supported_attrs.extend(attrs.into_iter().map(str::to_string)))
-                .ok_or_else(|| {
-                error!("Schema may be corrupt, missing class object");
-                OperationError::InvalidState
-                })?;
-
-            schema.class_query_attrs("sync_object")
-                .map(|attrs| supported_attrs.extend(attrs.into_iter().map(str::to_string)))
-                .ok_or_else(|| {
-                error!("Schema may be corrupt, missing class sync_object");
-                OperationError::InvalidState
-                })?;
-
-            supported_attrs
-            */
-            BTreeSet::default()
-        };
-
-        // Return these.
+        // Get the sync authority set from the entry.
+        let sync_authority_set = BTreeSet::default();
 
         // Transform the changes into something that supports lookups.
         let change_entries: BTreeMap<Uuid, &ScimEntry> = changes
@@ -485,55 +462,97 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(())
     }
 
-    fn scim_sync_person_to_mod(
-        &self,
-        sync_uuid: Uuid,
-        _sync_authority_set: &BTreeSet<String>,
-        _scim_sync_person: ScimSyncPerson,
-    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        let mut mods = Vec::new();
-
-        mods.push(Modify::Assert(
-            "sync_parent_uuid".into(),
-            PartialValue::Refer(sync_uuid),
-        ));
-
-        Ok(ModifyList::new_list(mods))
-    }
-
-    fn scim_sync_group_to_mod(
-        &self,
-        sync_uuid: Uuid,
-        _sync_authority_set: &BTreeSet<String>,
-        _scim_sync_group: ScimSyncGroup,
-    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        let mut mods = Vec::new();
-
-        mods.push(Modify::Assert(
-            "sync_parent_uuid".into(),
-            PartialValue::Refer(sync_uuid),
-        ));
-
-        Ok(ModifyList::new_list(mods))
-    }
-
     fn scim_entry_to_mod(
         &self,
-        sync_uuid: Uuid,
-        sync_authority_set: &BTreeSet<String>,
-        u: Uuid,
         scim_ent: &ScimEntry,
-    ) -> Result<(Uuid, ModifyList<ModifyInvalid>), OperationError> {
-        if let Ok(scim_sync_person) = ScimSyncPerson::try_from(scim_ent) {
-            self.scim_sync_person_to_mod(sync_uuid, sync_authority_set, scim_sync_person)
-                .map(|modlist| (u, modlist))
-        } else if let Ok(scim_sync_group) = ScimSyncGroup::try_from(scim_ent) {
-            self.scim_sync_group_to_mod(sync_uuid, sync_authority_set, scim_sync_group)
-                .map(|modlist| (u, modlist))
-        } else {
-            error!(schema = ?scim_ent.schemas, scim_entry_id = ?u, "Unrecognised scim entry schemas");
-            return Err(OperationError::InvalidEntryState);
+        sync_uuid: Uuid,
+        sync_allow_class_set: &BTreeMap<String, SchemaClass>,
+        sync_allow_attr_set: &BTreeSet<String>,
+        phantom_attr_set: &BTreeSet<String>,
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+
+        // What classes did they request for this entry to sync?
+        let requested_classes = scim_ent.schemas.iter()
+            .map(|schema| {
+                schema.as_str().strip_prefix(SCIM_SCHEMA_SYNC)
+                    .ok_or_else(|| {
+                        error!(?schema, "Invalid requested schema - Not a kanidm sync schema.");
+                        OperationError::InvalidEntryState
+                    })
+                    // Now look up if it's satisfiable.
+                    .and_then(|cls_name| {
+                        sync_allow_class_set.get_key_value(cls_name)
+                        .ok_or_else(|| {
+                            error!(?cls_name, "Invalid requested schema - Class does not exist in Kanidm or is not a sync_allowed class");
+                            OperationError::InvalidEntryState
+                        })
+                    })
+            })
+            .collect::<Result<BTreeMap<&String, &SchemaClass>, _>>()?;
+
+        // Get all the classes.
+        debug!("Schemas valid - Proceeding with entry {}", scim_ent.id);
+
+        let mut mods = Vec::new();
+
+        mods.push(Modify::Assert(
+            "sync_parent_uuid".into(),
+            PartialValue::Refer(sync_uuid),
+        ));
+
+        for req_class in requested_classes.keys() {
+            mods.push(Modify::Present(
+                "sync_class".into(),
+                Value::new_iutf8(req_class),
+            ));
+            mods.push(Modify::Present(
+                "class".into(),
+                Value::new_iutf8(req_class),
+            ));
         }
+
+        // Clean up from removed classes. NEED THE OLD ENTRY FOR THIS.
+        // Technically this is an EDGE case because in 99% of cases people aren't going to rug pull and REMOVE values on
+        // ldap entries because of how it works.
+        //
+        // If we do decide to add this we use the sync_class attr to determine what was *previously* added to the object
+        // rather than what we as kanidm added.
+        //
+        // We can then diff the sync_class from the set of req classes to work out what to remove.
+        //
+        // Cleaning up old attributes is weirder though. I'm not sure it's trivial or easy. Because we need to know if some attr X
+        // is solely owned by that sync_class before we remove it, but it may not be. There could be two classes that allow it
+        // and the other supporting class remains, so we shouldn't touch it. But then it has to be asked, where did it come from?
+        // who owned it? Was it the sync side or kani? I think in general removal will be challenging.
+
+        debug!(?requested_classes);
+
+        // What attrs are owned by the set of requested classes?
+            // We also need to account for phantom attrs somehow!
+            //
+            // - either we nominate phantom attrs on the classes they can import with
+            //   or we need to always allow them?
+        let sync_owned_attrs: BTreeSet<_> = requested_classes.values().flat_map(|cls| {
+            cls
+                .systemmay
+                .iter()
+                .chain(cls.may.iter())
+                .chain(cls.systemmust.iter())
+                .chain(cls.must.iter())
+            })
+            .map(|s| s.as_str())
+            // Finally, establish if the attribute is syncable. Technically this could probe some attrs
+            // multiple times due to how the loop is established, but in reality there are few attr overlaps.
+            .filter(|a| sync_allow_attr_set.contains(*a))
+            // Add in the set of phantom syncable attrs.
+            .chain(phantom_attr_set.iter().map(|s| s.as_str()))
+            .collect();
+
+        debug!(?sync_owned_attrs);
+
+        // For each attr in the scim entry, see if it's in the sync_owned set. If so, proceed.
+
+        Ok(ModifyList::new_list(mods))
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -550,10 +569,45 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // domain has been granted authority over.
         //
 
+        // The sync_allow_attr_set is what the sync connect *can* change. Authority is what the user
+        // wants kani to control. As a result:
+        //   sync_allow_attr = set of attrs from classes subtract attrs from authority.
+
+        let schema = self.qs_write.get_schema();
+
+        let class_snapshot = schema.get_classes();
+        let attr_snapshot = schema.get_attributes();
+
+        let sync_allow_class_set: BTreeMap<String, SchemaClass> = class_snapshot.values()
+            .filter_map(|cls| if cls.sync_allowed {
+                Some((cls.name.to_string(), cls.clone()))
+            } else {
+                None
+            })
+            .collect();
+
+        let sync_allow_attr_set: BTreeSet<String> = attr_snapshot.values()
+            // Only add attrs to this if they are both sync allowed AND authority granted.
+            .filter_map(|attr| if attr.sync_allowed && !sync_authority_set.contains(attr.name.as_str()) {
+                Some(attr.name.to_string())
+            } else {
+                None
+            })
+            .collect();
+
+        let phantom_attr_set: BTreeSet<String> = attr_snapshot.values()
+            .filter_map(|attr| if attr.phantom && attr.sync_allowed {
+                Some(attr.name.to_string())
+            } else {
+                None
+            })
+            .collect();
+
         let asserts = change_entries
             .iter()
             .map(|(u, scim_ent)| {
-                self.scim_entry_to_mod(sync_uuid, sync_authority_set, *u, scim_ent)
+                self.scim_entry_to_mod(scim_ent, sync_uuid, &sync_allow_class_set, &sync_allow_attr_set, &phantom_attr_set)
+                    .map(|e| (*u, e))
             })
             .collect::<Result<Vec<_>, _>>()?;
 
@@ -1005,6 +1059,175 @@ mod tests {
         })
     }
 
+    // Phase 3
+
+    async fn apply_phase_3_test(
+        idms: &IdmServer,
+        entries: Vec<ScimEntry>,
+    ) -> Result<(), OperationError> {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent { ident };
+
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            entries,
+            delete_uuids: Vec::default(),
+        };
+
+        let (sync_uuid, sync_authority_set, change_entries) = idms_prox_write
+            .scim_sync_apply_phase_1(&sse, &changes)
+            .expect("Failed to run phase 1");
+
+        assert!(idms_prox_write.scim_sync_apply_phase_2(&change_entries, sync_uuid).is_ok());
+
+        assert!(idms_prox_write.scim_sync_apply_phase_3(&change_entries, sync_uuid, &sync_authority_set).is_ok());
+
+        idms_prox_write.commit()
+    }
+
+    #[test]
+    fn test_idm_scim_sync_phase_3_basic() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let user_sync_uuid = Uuid::new_v4();
+
+            assert!(task::block_on(apply_phase_3_test(
+                idms,
+                vec![ScimEntry {
+                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                    id: user_sync_uuid,
+                    external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
+                    meta: None,
+                    attrs: btreemap!((
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                    ),),
+                }]
+            )).is_ok());
+        })
+    }
+
+    // -- try to set uuid
+    #[test]
+    fn test_idm_scim_sync_phase_3_uuid_manipulation() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let user_sync_uuid = Uuid::new_v4();
+
+            assert!(task::block_on(apply_phase_3_test(
+                idms,
+                vec![ScimEntry {
+                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                    id: user_sync_uuid,
+                    external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
+                    meta: None,
+                    attrs: btreemap!((
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(
+                            ScimSimpleAttr::String("testgroup".to_string())
+                        )
+                    ), (
+                        "uuid".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("2c019619-f894-4a94-b356-05d371850e3d".to_string()))
+                    )),
+                }]
+            )).is_ok());
+        })
+    }
+
+    // -- try to set sync_uuid / sync_object attrs
+    #[test]
+    fn test_idm_scim_sync_phase_3_sync_parent_uuid_manipulation() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let user_sync_uuid = Uuid::new_v4();
+
+            assert!(task::block_on(apply_phase_3_test(
+                idms,
+                vec![ScimEntry {
+                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                    id: user_sync_uuid,
+                    external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
+                    meta: None,
+                    attrs: btreemap!((
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(
+                            ScimSimpleAttr::String("testgroup".to_string())
+                        )
+                    ), (
+                        "sync_parent_uuid".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("2c019619-f894-4a94-b356-05d371850e3d".to_string()))
+                    )),
+                }]
+            )).is_ok());
+        })
+    }
+
+    // -- try to add class via class attr (not via scim schema)
+    #[test]
+    fn test_idm_scim_sync_phase_3_disallowed_class_forbidden() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let user_sync_uuid = Uuid::new_v4();
+
+            assert!(task::block_on(apply_phase_3_test(
+                idms,
+                vec![ScimEntry {
+                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                    id: user_sync_uuid,
+                    external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
+                    meta: None,
+                    attrs: btreemap!((
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                    ), (
+                        "class".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("posixgroup".to_string()))
+                    )),
+                }]
+            )).is_ok());
+        })
+    }
+
+    // -- try to add class not in allowed class set (via scim schema)
+
+    #[test]
+    fn test_idm_scim_sync_phase_3_disallowed_class_system() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let user_sync_uuid = Uuid::new_v4();
+
+            assert!(task::block_on(apply_phase_3_test(
+                idms,
+                vec![ScimEntry {
+                    schemas: vec![format!("{}system", SCIM_SCHEMA_SYNC)],
+                    id: user_sync_uuid,
+                    external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
+                    meta: None,
+                    attrs: btreemap!((
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                    ),),
+                }]
+            )).is_ok());
+        })
+    }
+
+    // Phase 4
+
+    // Phase 5
+
+    // End to End examples
     #[test]
     fn test_idm_scim_sync_refresh_1() {
         run_idm_test!(|_qs: &QueryServer,

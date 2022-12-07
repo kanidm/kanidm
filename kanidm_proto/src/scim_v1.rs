@@ -2,7 +2,6 @@ use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use uuid::Uuid;
-use tracing::debug;
 
 pub use scim_proto::prelude::{ScimAttr, ScimEntry, ScimError, ScimSimpleAttr};
 use scim_proto::*;
@@ -24,9 +23,10 @@ pub struct ScimSyncRequest {
     pub delete_uuids: Vec<Uuid>,
 }
 
-pub const SCIM_SCHEMA_SYNC_PERSON: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:sync:person";
-pub const SCIM_SCHEMA_SYNC_ACCOUNT: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:sync:account";
-pub const SCIM_SCHEMA_SYNC_POSIXACCOUNT: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:sync:posixaccount";
+pub const SCIM_SCHEMA_SYNC: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:";
+pub const SCIM_SCHEMA_SYNC_PERSON: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:person";
+pub const SCIM_SCHEMA_SYNC_ACCOUNT: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:account";
+pub const SCIM_SCHEMA_SYNC_POSIXACCOUNT: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:posixaccount";
 
 #[derive(Serialize, Debug, Clone)]
 #[serde(into = "ScimEntry")]
@@ -40,6 +40,7 @@ pub struct ScimSyncPerson {
     pub login_shell: Option<String>,
 }
 
+/*
 impl TryFrom<&ScimEntry> for ScimSyncPerson {
     type Error = ScimError;
 
@@ -74,6 +75,7 @@ impl TryFrom<&ScimEntry> for ScimSyncPerson {
         })
     }
 }
+*/
 
 impl Into<ScimEntry> for ScimSyncPerson {
     fn into(self) -> ScimEntry {
@@ -118,8 +120,8 @@ impl Into<ScimEntry> for ScimSyncPerson {
     }
 }
 
-pub const SCIM_SCHEMA_SYNC_GROUP: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group";
-pub const SCIM_SCHEMA_SYNC_POSIXGROUP: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:sync:posixgroup";
+pub const SCIM_SCHEMA_SYNC_GROUP: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:group";
+pub const SCIM_SCHEMA_SYNC_POSIXGROUP: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:posixgroup";
 
 #[derive(Serialize, Debug, Clone)]
 pub struct ScimExternalMember {
@@ -151,6 +153,7 @@ pub struct ScimSyncGroup {
     pub members: Vec<ScimExternalMember>,
 }
 
+/*
 impl TryFrom<&ScimEntry> for ScimSyncGroup {
     type Error = ScimError;
 
@@ -182,6 +185,7 @@ impl TryFrom<&ScimEntry> for ScimSyncGroup {
         })
     }
 }
+*/
 
 impl Into<ScimEntry> for ScimSyncGroup {
     fn into(self) -> ScimEntry {

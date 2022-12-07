@@ -20,6 +20,7 @@ impl KanidmClient {
         let mut new_acct = Entry {
             attrs: BTreeMap::new(),
         };
+
         new_acct
             .attrs
             .insert("name".to_string(), vec![name.to_string()]);
@@ -28,6 +29,7 @@ impl KanidmClient {
                 .attrs
                 .insert("description".to_string(), vec![description.to_string()]);
         }
+
         self.perform_post_request("/v1/sync_account", new_acct)
             .await
     }

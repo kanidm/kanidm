@@ -163,9 +163,11 @@ impl fmt::Display for IndexType {
     Deserialize,
     Serialize,
     TryFromPrimitive,
+    Default,
 )]
 #[repr(u16)]
 pub enum SyntaxType {
+    #[default]
     Utf8String = 0,
     Utf8StringInsensitive = 1,
     Uuid = 2,
