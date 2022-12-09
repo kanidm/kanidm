@@ -1,6 +1,7 @@
 """ tests ssl validation and CA setting etc """
 
 from pathlib import Path
+from ssl import SSLCertVerificationError
 
 import aiohttp
 import aiohttp.client_exceptions
@@ -168,7 +169,7 @@ async def test_ssl_untrusted_root_throws() -> None:
         uri="https://untrusted-root.badssl.com/",
     )
     with pytest.raises(
-        aiohttp.client_exceptions.ClientConnectorCertificateError,
+        aiohttp.client_exceptions.ClientConnectorCertificateError | SSLCertVerificationError,
         match="certificate verify failed: self signed certificate in certificate chain",
     ):
         result = await client.call_get("/")
