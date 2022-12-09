@@ -139,22 +139,22 @@ impl Spn {
     ) -> Result<(), OperationError> {
         let domain_name = qs.get_domain_name();
 
-        for e in cand.iter_mut() {
-            if e.attribute_equality("class", &PVCLASS_GROUP)
-                || e.attribute_equality("class", &PVCLASS_ACCOUNT)
+        for ent in cand.iter_mut() {
+            if ent.attribute_equality("class", &PVCLASS_GROUP)
+                || ent.attribute_equality("class", &PVCLASS_ACCOUNT)
             {
-                let spn = e
+                let spn = ent
                     .generate_spn(domain_name)
                     .ok_or(OperationError::InvalidEntryState)
                     .map_err(|e| {
                         admin_error!(
-                            "Account or group missing name, unable to generate spn!? {:?}",
-                            e
+                            "Account or group missing name, unable to generate spn!? {:?} entry_id = {:?}",
+                            e, ent.get_uuid()
                         );
                         e
                     })?;
                 trace!("plugin_spn: set spn to {:?}", spn);
-                e.set_ava("spn", once(spn));
+                ent.set_ava("spn", once(spn));
             }
         }
         Ok(())

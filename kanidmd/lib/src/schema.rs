@@ -1466,7 +1466,11 @@ impl<'a> SchemaWriteTransaction<'a> {
                 name: AttrString::from("attributetype"),
                 uuid: UUID_SCHEMA_CLASS_ATTRIBUTETYPE,
                 description: String::from("Definition of a schema attribute"),
-                systemmay: vec![AttrString::from("phantom"), AttrString::from("sync_allowed"), AttrString::from("index")],
+                systemmay: vec![
+                    AttrString::from("phantom"),
+                    AttrString::from("sync_allowed"),
+                    AttrString::from("index"),
+                ],
                 systemmust: vec![
                     AttrString::from("class"),
                     AttrString::from("attributename"),
