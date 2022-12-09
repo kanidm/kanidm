@@ -169,7 +169,7 @@ async def test_ssl_untrusted_root_throws() -> None:
         uri="https://untrusted-root.badssl.com/",
     )
     with pytest.raises(
-        (aiohttp.client_exceptions.ClientConnectorCertificateError, SSLCertVerificationError,),
+        SSLCertVerificationError,
         match="certificate verify failed: self signed certificate in certificate chain",
     ):
         result = await client.call_get("/")
