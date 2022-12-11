@@ -37,7 +37,7 @@ aiohttp = "^3.8.1"
 Authlib = "^1.1.0"
 
 [tool.poetry.dev-dependencies]
-pylint = "^2.15.7"
+pylint = "^2.15.8"
 mypy = "^0.991"
 pytest = "^7.2.0"
 types-toml = "^0.10.8"
