@@ -1,6 +1,7 @@
 """ tests ssl validation and CA setting etc """
 
 from pathlib import Path
+from ssl import SSLCertVerificationError
 
 import aiohttp
 import aiohttp.client_exceptions
@@ -34,7 +35,7 @@ async def test_ssl_self_signed() -> None:
 
     url = "https://self-signed.badssl.com"
 
-    print("testing self signed cert with defaults and expecting an error")
+    print("testing self.?signed cert with defaults and expecting an error")
     client = KanidmClient(
         uri=url,
     )
@@ -168,8 +169,8 @@ async def test_ssl_untrusted_root_throws() -> None:
         uri="https://untrusted-root.badssl.com/",
     )
     with pytest.raises(
-        aiohttp.client_exceptions.ClientConnectorCertificateError,
-        match="certificate verify failed: self signed certificate in certificate chain",
+        SSLCertVerificationError,
+        match="certificate verify failed: self.?signed certificate in certificate chain",
     ):
         result = await client.call_get("/")
         assert result.content
@@ -191,7 +192,7 @@ async def test_ssl_untrusted_root_configured() -> None:
     )
     with pytest.raises(
         aiohttp.client_exceptions.ClientConnectorCertificateError,
-        match="certificate verify failed: self signed certificate in certificate chain",
+        match="certificate verify failed: self.?signed certificate in certificate chain",
     ):
         result = await client.call_get("/")
         assert result.content
