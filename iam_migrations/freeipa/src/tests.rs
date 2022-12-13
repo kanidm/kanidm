@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use crate::process_ipa_sync_result;
 use kanidm_proto::scim_v1::{ScimSyncRequest, ScimSyncState};
+use std::collections::HashMap;
 
 use ldap3_client::LdapSyncRepl;
 
@@ -16,9 +16,10 @@ async fn test_ldap_to_scim() {
 
     let entry_config_map = HashMap::default();
 
-    let scim_sync_request = process_ipa_sync_result(ScimSyncState::Refresh, sync_request, &entry_config_map)
-        .await
-        .expect("failed to process ldap sync repl to scim");
+    let scim_sync_request =
+        process_ipa_sync_result(ScimSyncState::Refresh, sync_request, &entry_config_map)
+            .await
+            .expect("failed to process ldap sync repl to scim");
 
     println!(
         "{}",

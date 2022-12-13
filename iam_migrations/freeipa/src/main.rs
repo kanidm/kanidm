@@ -26,11 +26,11 @@ use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::thread;
-use uuid::Uuid;
 use tokio::runtime;
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
+use uuid::Uuid;
 
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::scim_v1::{
@@ -203,7 +203,13 @@ async fn driver_main(opt: Opt) {
 
     // pre-process the entries.
     //  - > fn so we can test.
-    let scim_sync_request = match process_ipa_sync_result(scim_sync_status, sync_result, &sync_config.entry_map).await {
+    let scim_sync_request = match process_ipa_sync_result(
+        scim_sync_status,
+        sync_result,
+        &sync_config.entry_map,
+    )
+    .await
+    {
         Ok(ssr) => ssr,
         Err(()) => return,
     };
@@ -265,12 +271,15 @@ async fn process_ipa_sync_result(
             let entries = entries
                 .into_iter()
                 .filter_map(|e| {
-                let e_config = entry_config_map.get(&e.entry_uuid).cloned().unwrap_or_default();
-                match ipa_to_scim_entry(e, &e_config) {
-                    Ok(Some(e)) => Some(Ok(e)),
-                    Ok(None) => None,
-                    Err(()) => Some(Err(())),
-                }
+                    let e_config = entry_config_map
+                        .get(&e.entry_uuid)
+                        .cloned()
+                        .unwrap_or_default();
+                    match ipa_to_scim_entry(e, &e_config) {
+                        Ok(Some(e)) => Some(Ok(e)),
+                        Ok(None) => None,
+                        Err(()) => Some(Err(())),
+                    }
                 })
                 .collect::<Result<Vec<_>, _>>();
 
@@ -304,7 +313,10 @@ async fn process_ipa_sync_result(
 
 // TODO: Allow re-map of uuid -> uuid
 
-fn ipa_to_scim_entry(sync_entry: LdapSyncReplEntry, entry_config: &EntryConfig) -> Result<Option<ScimEntry>, ()> {
+fn ipa_to_scim_entry(
+    sync_entry: LdapSyncReplEntry,
+    entry_config: &EntryConfig,
+) -> Result<Option<ScimEntry>, ()> {
     debug!("{:#?}", sync_entry);
 
     // check the sync_entry state?

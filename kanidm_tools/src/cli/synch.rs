@@ -7,7 +7,7 @@ impl SynchOpt {
             SynchOpt::Get(nopt) => nopt.copt.debug,
             SynchOpt::Create { copt, .. }
             | SynchOpt::GenerateToken { copt, .. }
-            | SynchOpt::DestroyToken { copt, .. } 
+            | SynchOpt::DestroyToken { copt, .. }
             | SynchOpt::ForceRefresh { copt, .. } => copt.debug,
         }
     }

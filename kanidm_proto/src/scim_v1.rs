@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
-pub use scim_proto::prelude::{ScimAttr, ScimEntry, ScimError, ScimSimpleAttr, ScimComplexAttr};
+pub use scim_proto::prelude::{ScimAttr, ScimComplexAttr, ScimEntry, ScimError, ScimSimpleAttr};
 use scim_proto::*;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -37,7 +37,8 @@ impl ScimSyncRequest {
 pub const SCIM_SCHEMA_SYNC: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:";
 pub const SCIM_SCHEMA_SYNC_PERSON: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:person";
 pub const SCIM_SCHEMA_SYNC_ACCOUNT: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:account";
-pub const SCIM_SCHEMA_SYNC_POSIXACCOUNT: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:posixaccount";
+pub const SCIM_SCHEMA_SYNC_POSIXACCOUNT: &str =
+    "urn:ietf:params:scim:schemas:kanidm:1.0:posixaccount";
 
 #[derive(Serialize, Debug, Clone)]
 #[serde(into = "ScimEntry")]
@@ -212,7 +213,7 @@ impl Into<ScimEntry> for ScimSyncGroup {
         let schemas = if gidnumber.is_some() {
             vec![
                 SCIM_SCHEMA_SYNC_GROUP.to_string(),
-                SCIM_SCHEMA_SYNC_POSIXGROUP.to_string()
+                SCIM_SCHEMA_SYNC_POSIXGROUP.to_string(),
             ]
         } else {
             vec![SCIM_SCHEMA_SYNC_GROUP.to_string()]

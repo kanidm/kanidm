@@ -1,7 +1,7 @@
 use serde::Deserialize;
+use std::collections::HashMap;
 use url::Url;
 use uuid::Uuid;
-use std::collections::HashMap;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -24,10 +24,7 @@ pub struct EntryConfig {
     // Default false
     #[serde(default)]
     pub exclude: bool,
-
     // map_uuid: Option<Uuid>,
     // map_external_id: Option<String>,
     // map_name: Option<String>,
 }
-
-
