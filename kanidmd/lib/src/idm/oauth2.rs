@@ -1386,6 +1386,12 @@ impl Oauth2ResourceServersReadTransaction {
                     }
                 };
 
+                let preferred_username = if o2rs.prefer_short_username {
+                    Some(account.name)
+                } else {
+                    Some(account.spn)
+                };
+
                 let (email, email_verified) = if scopes.contains(&"email".to_string()) {
                     if let Some(mp) = account.mail_primary {
                         (Some(mp), Some(true))
@@ -1419,9 +1425,8 @@ impl Oauth2ResourceServersReadTransaction {
                     s_claims: OidcClaims {
                         // Map from displayname
                         name: Some(account.displayname.clone()),
-                        // Map from spn
-                        preferred_username: Some(account.spn),
                         scopes: scopes,
+                        preferred_username,
                         email,
                         email_verified,
                         ..Default::default()
@@ -1634,6 +1639,7 @@ mod tests {
         ct: Duration,
         enable_pkce: bool,
         enable_legacy_crypto: bool,
+        prefer_short_username: bool,
     ) -> (String, UserAuthToken, Identity, Uuid) {
         let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
@@ -1676,6 +1682,10 @@ mod tests {
             (
                 "oauth2_jwt_legacy_crypto_enable",
                 Value::new_bool(enable_legacy_crypto)
+            ),
+            (
+                "oauth2_prefer_short_username",
+                Value::new_bool(prefer_short_username)
             )
         );
         let ce = CreateEvent::new_internal(vec![e]);
@@ -1739,7 +1749,8 @@ mod tests {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
-                let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
+                let (secret, uat, ident, _) =
+                    setup_oauth2_resource_server(idms, ct, true, false, false);
 
                 let idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -1810,7 +1821,8 @@ mod tests {
                        _idms_delayed: &mut IdmServerDelayed| {
             // Test invalid oauth2 authorisation states/requests.
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
+            let (_secret, uat, ident, _) =
+                setup_oauth2_resource_server(idms, ct, true, false, false);
 
             let (anon_uat, anon_ident) = setup_idm_admin(idms, ct, AuthType::Anonymous);
             let (idm_admin_uat, idm_admin_ident) = setup_idm_admin(idms, ct, AuthType::PasswordMfa);
@@ -1974,7 +1986,8 @@ mod tests {
                        _idms_delayed: &mut IdmServerDelayed| {
             // Test invalid oauth2 authorisation states/requests.
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
+            let (_secret, uat, ident, _) =
+                setup_oauth2_resource_server(idms, ct, true, false, false);
 
             let (uat2, ident2) = {
                 let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
@@ -2053,7 +2066,7 @@ mod tests {
             |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
                 let (secret, mut uat, ident, _) =
-                    setup_oauth2_resource_server(idms, ct, true, false);
+                    setup_oauth2_resource_server(idms, ct, true, false, false);
 
                 // ⚠️  We set the uat expiry time to 5 seconds from TEST_CURRENT_TIME. This
                 // allows all our other tests to pass, but it means when we specifically put the
@@ -2227,7 +2240,8 @@ mod tests {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
-                let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
+                let (secret, uat, ident, _) =
+                    setup_oauth2_resource_server(idms, ct, true, false, false);
                 let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
                 let idms_prox_read = task::block_on(idms.proxy_read());
@@ -2335,7 +2349,8 @@ mod tests {
             |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 // First, setup to get a token.
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
-                let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
+                let (secret, uat, ident, _) =
+                    setup_oauth2_resource_server(idms, ct, true, false, false);
                 let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
                 let idms_prox_read = task::block_on(idms.proxy_read());
@@ -2509,7 +2524,8 @@ mod tests {
             |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 // First, setup to get a token.
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
-                let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
+                let (secret, uat, ident, _) =
+                    setup_oauth2_resource_server(idms, ct, true, false, false);
                 let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
                 let idms_prox_read = task::block_on(idms.proxy_read());
@@ -2612,7 +2628,8 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
+            let (_secret, uat, ident, _) =
+                setup_oauth2_resource_server(idms, ct, true, false, false);
 
             let (uat2, ident2) = {
                 let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
@@ -2697,7 +2714,8 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, _uat, _ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
+            let (_secret, _uat, _ident, _) =
+                setup_oauth2_resource_server(idms, ct, true, false, false);
 
             let idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -2837,7 +2855,8 @@ mod tests {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
-                let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
+                let (secret, uat, ident, _) =
+                    setup_oauth2_resource_server(idms, ct, true, false, false);
                 let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
                 let idms_prox_read = task::block_on(idms.proxy_read());
@@ -2961,6 +2980,97 @@ mod tests {
         )
     }
 
+    #[test]
+    fn test_idm_oauth2_openid_short_username() {
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+                // we run the same test as test_idm_oauth2_openid_extensions()
+                // but change the preferred_username setting on the RS
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
+                let (secret, uat, ident, _) =
+                    setup_oauth2_resource_server(idms, ct, true, false, true);
+                let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
+
+                let idms_prox_read = task::block_on(idms.proxy_read());
+
+                let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+                let consent_request =
+                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+
+                let consent_token =
+                    if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
+                        consent_request
+                    {
+                        consent_token
+                    } else {
+                        unreachable!();
+                    };
+
+                // == Manually submit the consent token to the permit for the permit_success
+                let permit_success = idms_prox_read
+                    .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
+                    .expect("Failed to perform oauth2 permit");
+
+                // Assert that the consent was submitted
+                match idms_delayed.async_rx.blocking_recv() {
+                    Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
+                    _ => assert!(false),
+                }
+
+                // == Submit the token exchange code.
+                let token_req = AccessTokenRequest {
+                    grant_type: "authorization_code".to_string(),
+                    code: permit_success.code,
+                    redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                    client_id: None,
+                    client_secret: None,
+                    // From the first step.
+                    code_verifier,
+                };
+
+                let token_response = idms_prox_read
+                    .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+                    .expect("Failed to perform oauth2 token exchange");
+
+                // Assert that the session creation was submitted
+                match idms_delayed.async_rx.blocking_recv() {
+                    Some(DelayedAction::Oauth2SessionRecord(_)) => {}
+                    _ => assert!(false),
+                }
+
+                let id_token = token_response.id_token.expect("No id_token in response!");
+                let access_token = token_response.access_token;
+
+                let mut jwkset = idms_prox_read
+                    .oauth2_openid_publickey("test_resource_server")
+                    .expect("Failed to get public key");
+                let public_jwk = jwkset.keys.pop().expect("no such jwk");
+
+                let jws_validator =
+                    JwsValidator::try_from(&public_jwk).expect("failed to build validator");
+
+                let oidc_unverified =
+                    OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
+
+                let iat = ct.as_secs() as i64;
+
+                let oidc = oidc_unverified
+                    .validate(&jws_validator, iat)
+                    .expect("Failed to verify oidc");
+
+                // Do we have the short username in the token claims?
+                assert!(oidc.s_claims.preferred_username == Some("admin".to_string()));
+                // Do the id_token details line up to the userinfo?
+                let userinfo = idms_prox_read
+                    .oauth2_openid_userinfo("test_resource_server", &access_token, ct)
+                    .expect("failed to get userinfo");
+
+                assert!(oidc.s_claims == userinfo.s_claims);
+            }
+        )
+    }
+
     //  Check insecure pkce behaviour.
     #[test]
     fn test_idm_oauth2_insecure_pkce() {
@@ -2968,7 +3078,8 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, false, false);
+            let (_secret, uat, ident, _) =
+                setup_oauth2_resource_server(idms, ct, false, false, false);
 
             let idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -3003,7 +3114,8 @@ mod tests {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
-                let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, false, true);
+                let (secret, uat, ident, _) =
+                    setup_oauth2_resource_server(idms, ct, false, true, false);
                 let idms_prox_read = task::block_on(idms.proxy_read());
                 // The public key url should offer an rs key
                 // discovery should offer RS256
@@ -3106,7 +3218,8 @@ mod tests {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
-                let (_secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
+                let (_secret, uat, ident, _) =
+                    setup_oauth2_resource_server(idms, ct, true, false, false);
 
                 let idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -3307,7 +3420,7 @@ mod tests {
             |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
                 let (_secret, uat, ident, o2rs_uuid) =
-                    setup_oauth2_resource_server(idms, ct, true, false);
+                    setup_oauth2_resource_server(idms, ct, true, false, false);
 
                 // Assert there are no consent maps yet.
                 assert!(ident.get_oauth2_consent_scopes(o2rs_uuid).is_none());
@@ -3400,7 +3513,8 @@ mod tests {
             |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
                 // Enable pkce is set to FALSE
-                let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, false, false);
+                let (secret, uat, ident, _) =
+                    setup_oauth2_resource_server(idms, ct, false, false, false);
 
                 let idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -3479,7 +3593,8 @@ mod tests {
             |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
                 // Enable pkce is set to FALSE
-                let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, false, false);
+                let (secret, uat, ident, _) =
+                    setup_oauth2_resource_server(idms, ct, false, false, false);
 
                 let idms_prox_read = task::block_on(idms.proxy_read());
 
