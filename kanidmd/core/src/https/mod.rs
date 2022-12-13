@@ -320,7 +320,7 @@ pub fn generate_integrity_hash(filename: String) -> Result<String, String> {
 // TODO: Add request limits.
 pub fn create_https_server(
     address: String,
-    origin: String,
+    domain: String,
     // opt_tls_params: Option<SslAcceptorBuilder>,
     opt_tls_params: Option<&TlsConfiguration>,
     role: ServerRole,
@@ -392,7 +392,7 @@ pub fn create_https_server(
             .with_session_ttl(None)
             .with_cookie_name("kanidm-session")
             // Without this, the cookies won't be used on subdomains of origin.
-            .with_cookie_domain(&origin)
+            .with_cookie_domain(&domain)
             // Im not sure if we need Lax here, I don't think we do because on the first get
             // we don't need the cookie since wasm drives the fetches.
             .with_same_site_policy(tide::http::cookies::SameSite::Strict),

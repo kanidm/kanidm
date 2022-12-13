@@ -791,7 +791,7 @@ pub async fn create_server_core(
         // ⚠️  only start the sockets and listeners in non-config-test modes.
         let h = self::https::create_https_server(
             config.address,
-            config.origin,
+            config.domain,
             config.tls_config.as_ref(),
             config.role,
             config.trust_x_forward_for,
