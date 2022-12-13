@@ -443,57 +443,21 @@ const TEST_SCIM_SYNC_REPL_1: &str = r#"
   "entries": [
     {
       "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:person"
-      ],
-      "id": "ac60034b-3498-11ed-a50d-919b4b1a5ec0",
-      "externalId": "uid=admin,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
-      "displayName": "Administrator",
-      "gidNumber": 8200000,
-      "homeDirectory": "/home/admin",
-      "loginShell": "/bin/bash",
-      "passwordImport": "ipaNTHash: CVBguEizG80swI8sftaknw",
-      "userName": "admin"
-    },
-    {
-      "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
-      ],
-      "id": "ac60034e-3498-11ed-a50d-919b4b1a5ec0",
-      "externalId": "cn=editors,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
-      "description": "Limited admins who can edit other users",
-      "gidNumber": 8200002,
-      "name": "editors"
-    },
-    {
-      "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
-      ],
-      "id": "0c56a965-3499-11ed-a50d-919b4b1a5ec0",
-      "externalId": "cn=trust admins,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
-      "description": "Trusts administrators group",
-      "members": [
-        {
-          "external_id": "uid=admin,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
-        }
-      ],
-      "name": "trust admins"
-    },
-    {
-      "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:person"
+        "urn:ietf:params:scim:schemas:kanidm:1.0:person",
+        "urn:ietf:params:scim:schemas:kanidm:1.0:account",
+        "urn:ietf:params:scim:schemas:kanidm:1.0:posixaccount"
       ],
       "id": "babb8302-43a1-11ed-a50d-919b4b1a5ec0",
       "externalId": "uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
-      "displayName": "Test User",
-      "gidNumber": 12345,
-      "homeDirectory": "/home/testuser",
-      "loginShell": "/bin/sh",
-      "passwordImport": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA",
-      "userName": "testuser"
+      "displayname": "Test User",
+      "gidnumber": 12345,
+      "loginshell": "/bin/sh",
+      "name": "testuser",
+      "password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA"
     },
     {
       "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
+        "urn:ietf:params:scim:schemas:kanidm:1.0:group"
       ],
       "id": "d547c581-5f26-11ed-a50d-919b4b1a5ec0",
       "externalId": "cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
@@ -502,7 +466,7 @@ const TEST_SCIM_SYNC_REPL_1: &str = r#"
     },
     {
       "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
+        "urn:ietf:params:scim:schemas:kanidm:1.0:group"
       ],
       "id": "d547c583-5f26-11ed-a50d-919b4b1a5ec0",
       "externalId": "cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
@@ -510,11 +474,12 @@ const TEST_SCIM_SYNC_REPL_1: &str = r#"
     },
     {
       "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group"
+        "urn:ietf:params:scim:schemas:kanidm:1.0:group",
+        "urn:ietf:params:scim:schemas:kanidm:1.0:posixgroup"
       ],
       "id": "f90b0b81-5f26-11ed-a50d-919b4b1a5ec0",
       "externalId": "cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
-      "gidNumber": 1234567,
+      "gidnumber": 1234567,
       "name": "testposix"
     }
   ],
