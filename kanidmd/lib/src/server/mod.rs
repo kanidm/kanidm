@@ -278,14 +278,14 @@ pub trait QueryServerTransaction<'a> {
     }
 
     // Similar to name, but where we lookup from external_id instead.
-    fn sync_external_id_to_uuid(&self, external_id: &str) -> Result<Uuid, OperationError> {
+    fn sync_external_id_to_uuid(&self, external_id: &str) -> Result<Option<Uuid>, OperationError> {
         // Is it just a uuid?
-        Uuid::parse_str(external_id).or_else(|_| {
-            let lname = external_id.to_lowercase();
-            self.get_be_txn()
-                .externalid2uuid(lname.as_str())?
-                .ok_or(OperationError::NoMatchingEntries)
-        })
+        Uuid::parse_str(external_id)
+            .map(|uuid| Some(uuid))
+            .or_else(|_| {
+                let lname = external_id.to_lowercase();
+                self.get_be_txn().externalid2uuid(lname.as_str())
+            })
     }
 
     fn uuid_to_spn(&self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
@@ -1155,7 +1155,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             security_info!(name = %ce.ident, "create initiator");
         }
 
-        // Log the request
+        if ce.entries.is_empty() {
+            request_error!("create: empty create request");
+            return Err(OperationError::EmptyRequest);
+        }
 
         // TODO #67: Do we need limits on number of creates, or do we constraint
         // based on request size in the frontend?
@@ -3962,16 +3965,16 @@ mod tests {
 
         // Name doesn't exist
         let r1 = server_txn.sync_external_id_to_uuid("tobias");
-        assert!(r1.is_err());
+        assert!(r1 == Ok(None));
         // Name doesn't exist (not syntax normalised)
         let r2 = server_txn.sync_external_id_to_uuid("tObIAs");
-        assert!(r2.is_err());
+        assert!(r2 == Ok(None));
         // Name does exist
         let r3 = server_txn.sync_external_id_to_uuid("uid=testperson");
-        assert!(r3 == Ok(t_uuid));
+        assert!(r3 == Ok(Some(t_uuid)));
         // Name is not syntax normalised (but exists)
         let r4 = server_txn.sync_external_id_to_uuid("uId=TeStPeRsOn");
-        assert!(r4 == Ok(t_uuid));
+        assert!(r4 == Ok(Some(t_uuid)));
     }
 
     #[qs_test]

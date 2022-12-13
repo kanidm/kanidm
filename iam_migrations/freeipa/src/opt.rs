@@ -26,6 +26,11 @@ pub struct Opt {
     #[clap(short, long, hide = true)]
     pub proto_dump: bool,
 
+    /// Read entries from ipa, and check the connection to kanidm, but take no actions against
+    /// kanidm that would change state.
+    #[clap(short = 'n')]
+    pub dry_run: bool,
+
     /// Skip the root user permission check.
     #[clap(short, long, hide = true)]
     pub skip_root_check: bool,

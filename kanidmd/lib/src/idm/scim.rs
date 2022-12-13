@@ -3,7 +3,6 @@ use std::time::Duration;
 use base64urlsafedata::Base64UrlSafeData;
 
 use compact_jwt::{Jws, JwsSigner};
-use kanidm_proto::scim_v1::ScimSyncRequest;
 use kanidm_proto::scim_v1::*;
 use kanidm_proto::v1::ApiTokenPurpose;
 use serde::{Deserialize, Serialize};
@@ -240,7 +239,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         changes: &ScimSyncRequest,
         _ct: Duration,
     ) -> Result<(), OperationError> {
-        let (sync_uuid, sync_authority_set, change_entries) =
+        let (sync_uuid, sync_authority_set, change_entries, sync_refresh) =
             self.scim_sync_apply_phase_1(sse, changes)?;
 
         // TODO: If the from_state is refresh and the to_state is active, then we need to
@@ -253,6 +252,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // attributes.
 
         self.scim_sync_apply_phase_2(&change_entries, sync_uuid)?;
+
+        // Remove dangling entries if this is a refresh operation.
+        if sync_refresh {
+            self.scim_sync_apply_phase_refresh_cleanup(&change_entries, sync_uuid)?;
+        }
 
         // All stubs are now set-up. We can proceed to assert entry content.
         self.scim_sync_apply_phase_3(&change_entries, sync_uuid, &sync_authority_set)?;
@@ -270,7 +274,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         sse: &'b ScimSyncUpdateEvent,
         changes: &'b ScimSyncRequest,
-    ) -> Result<(Uuid, BTreeSet<String>, BTreeMap<Uuid, &'b ScimEntry>), OperationError> {
+    ) -> Result<(Uuid, BTreeSet<String>, BTreeMap<Uuid, &'b ScimEntry>, bool), OperationError> {
         // Assert the token is valid.
         let sync_uuid = match &sse.ident.origin {
             IdentType::User(_) | IdentType::Internal => {
@@ -309,7 +313,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             &changes.from_state,
             sync_entry.get_ava_single_private_binary("sync_cookie"),
         ) {
-            (ScimSyncState::Refresh, None) => {
+            (ScimSyncState::Refresh, _) => {
                 // valid
                 info!("Refresh Sync");
             }
@@ -326,15 +330,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     info!("Active Sync with valid cookie");
                 }
             }
-            (ScimSyncState::Refresh, Some(_)) => {
-                error!("Invalid Sync State - Refresh, but agreement has Active sync.");
-                return Err(OperationError::InvalidSyncState);
-            }
             (ScimSyncState::Active { cookie: _ }, None) => {
-                error!("Invalid Sync State - Active, but agreement has Refresh Required.");
+                error!("Invalid Sync State - Sync Tool Reports Active, but agreement has Refresh Required. You can resync the agreement with `kanidm system sync force-refresh`");
                 return Err(OperationError::InvalidSyncState);
             }
         };
+
+        let sync_refresh = matches!(&changes.from_state, ScimSyncState::Refresh);
 
         // Get the sync authority set from the entry.
         let sync_authority_set = BTreeSet::default();
@@ -346,7 +348,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .map(|scim_entry| (scim_entry.id, scim_entry))
             .collect();
 
-        Ok((sync_uuid, sync_authority_set, change_entries))
+        Ok((sync_uuid, sync_authority_set, change_entries, sync_refresh))
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -428,10 +430,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // We use internal create here to ensure that the values of these entries are all setup correctly.
         // We know that uuid won't conflict because it didn't exist in the previous search, so if we error
         // it has to be something bad.
-        self.qs_write.internal_create(create_stubs).map_err(|e| {
-            error!("Unable to create stub entries");
-            e
-        })?;
+        if !create_stubs.is_empty() {
+            self.qs_write.internal_create(create_stubs).map_err(|e| {
+                error!("Unable to create stub entries");
+                e
+            })?;
+        }
 
         // We have to search again now, this way we can do the internal mod process for
         // updating the external_id.
@@ -467,6 +471,63 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(())
     }
 
+    #[instrument(level = "debug", skip_all)]
+    pub(crate) fn scim_sync_apply_phase_refresh_cleanup(
+        &mut self,
+        change_entries: &BTreeMap<Uuid, &ScimEntry>,
+        sync_uuid: Uuid,
+    ) -> Result<(), OperationError> {
+        // If this is a refresh, then the providing server is sending a full state of entries
+        // and what state they should be in. This means that a situation can exist where on the
+        // supplier you have:
+        //
+        //    Supplier           Kanidm
+        //    Add X
+        //    Sync X   ---------> X
+        //    Delete X
+        //    Refresh  --------->
+        //
+        // Since the delete uuid event wouldn't be sent, we need to ensure that Kanidm will clean
+        // up entries that are *not* present in the change set here.
+        //
+        // To achieve this we do a delete where the condition is sync parent and not in the change
+        // entry set.
+        let filter_or = change_entries
+            .keys()
+            .copied()
+            .map(|u| f_eq("uuid", PartialValue::new_uuid(u)))
+            .collect::<Vec<_>>();
+
+        let delete_filter = if filter_or.is_empty() {
+            filter!(f_and!([
+                // Must be part of this sync agreement.
+                f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
+            ]))
+        } else {
+            filter!(f_and!([
+                // Must be part of this sync agreement.
+                f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid)),
+                // Must not be an entry in the change set.
+                f_andnot(f_or(filter_or))
+            ]))
+        };
+
+        self.qs_write
+            .internal_delete(&delete_filter)
+            .or_else(|err| {
+                // Skip if there is nothing to do
+                if err == OperationError::NoMatchingEntries {
+                    Ok(())
+                } else {
+                    Err(err)
+                }
+            })
+            .map_err(|e| {
+                error!(?e, "Failed to delete dangling uuids");
+                e
+            })
+    }
+
     fn scim_attr_to_values(
         &self,
         scim_attr_name: &str,
@@ -487,6 +548,86 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 false,
                 ScimAttr::SingleSimple(ScimSimpleAttr::String(value)),
             ) => Ok(vec![Value::new_iname(&value)]),
+            (
+                SyntaxType::Utf8String,
+                false,
+                ScimAttr::SingleSimple(ScimSimpleAttr::String(value)),
+            ) => Ok(vec![Value::new_utf8(value.clone())]),
+
+            (
+                SyntaxType::Utf8StringInsensitive,
+                false,
+                ScimAttr::SingleSimple(ScimSimpleAttr::String(value)),
+            ) => Ok(vec![Value::new_iutf8(value)]),
+
+            (
+                SyntaxType::Uint32,
+                false,
+                ScimAttr::SingleSimple(ScimSimpleAttr::Number(js_value)),
+            ) => js_value
+                .as_u64()
+                .ok_or_else(|| {
+                    error!("Invalid value - not a valid unsigned integer");
+                    OperationError::InvalidAttribute(format!(
+                        "Invalid unsigned integer - {}",
+                        scim_attr_name
+                    ))
+                })
+                .and_then(|i| {
+                    u32::try_from(i).map_err(|_| {
+                        error!("Invalid value - not within the bounds of a u32");
+                        OperationError::InvalidAttribute(format!(
+                            "Out of bounds unsigned integer - {}",
+                            scim_attr_name
+                        ))
+                    })
+                })
+                .map(|value| vec![Value::Uint32(value)]),
+
+            (SyntaxType::ReferenceUuid, true, ScimAttr::MultiComplex(values)) => {
+                // In this case, because it's a reference uuid only, despite the multicomplex structure, it's a list of
+                // "external_id" to external_ids. These *might* also be uuids. So we need to use sync_external_id_to_uuid
+                // here to resolve things.
+                //
+                // This is why in phase 2 we "precreate" all objects to make sure they resolve.
+                //
+                // If an id does NOT resolve, we warn and SKIP since it's possible it may have been filtered.
+
+                let mut vs = Vec::with_capacity(values.len());
+                for complex in values.iter() {
+                    let external_id = complex.attrs.get("external_id").ok_or_else(|| {
+                        error!("Invalid scim complex attr - missing required key external_id");
+                        OperationError::InvalidAttribute(format!(
+                            "missing required key external_id - {}",
+                            scim_attr_name
+                        ))
+                    })?;
+
+                    let value = match external_id {
+                        ScimSimpleAttr::String(value) => Ok(value.as_str()),
+                        _ => {
+                            error!("Invalid external_id attribute - must be scim simple string");
+                            Err(OperationError::InvalidAttribute(format!(
+                                "external_id must be scim simple string - {}",
+                                scim_attr_name
+                            )))
+                        }
+                    }?;
+
+                    let maybe_uuid =
+                        self.qs_write.sync_external_id_to_uuid(value).map_err(|e| {
+                            error!(?e, "Unable to resolve external_id to uuid");
+                            e
+                        })?;
+
+                    if let Some(uuid) = maybe_uuid {
+                        vs.push(Value::Refer(uuid))
+                    } else {
+                        warn!("Could not convert external_id to reference - {}", value);
+                    }
+                }
+                Ok(vs)
+            }
             (syn, mv, sa) => {
                 error!(?syn, ?mv, ?sa, "Unsupported scim attribute conversion. This may be a syntax error in your import, or a missing feature in Kanidm.");
                 Err(OperationError::InvalidAttribute(format!(
@@ -850,6 +991,7 @@ mod tests {
     use compact_jwt::Jws;
     use kanidm_proto::scim_v1::*;
     use kanidm_proto::v1::ApiTokenPurpose;
+    use std::sync::Arc;
     use std::time::Duration;
 
     use super::{GenerateScimSyncTokenEvent, ScimSyncToken, ScimSyncUpdateEvent};
@@ -1136,7 +1278,7 @@ mod tests {
                 delete_uuids: Vec::default(),
             };
 
-            let (sync_uuid, _sync_authority_set, change_entries) = idms_prox_write
+            let (sync_uuid, _sync_authority_set, change_entries, _sync_refresh) = idms_prox_write
                 .scim_sync_apply_phase_1(&sse, &changes)
                 .expect("Failed to run phase 1");
 
@@ -1205,7 +1347,7 @@ mod tests {
                 delete_uuids: Vec::default(),
             };
 
-            let (sync_uuid, _sync_authority_set, change_entries) = idms_prox_write
+            let (sync_uuid, _sync_authority_set, change_entries, _sync_refresh) = idms_prox_write
                 .scim_sync_apply_phase_1(&sse, &changes)
                 .expect("Failed to run phase 1");
 
@@ -1237,7 +1379,7 @@ mod tests {
             delete_uuids: Vec::default(),
         };
 
-        let (sync_uuid, sync_authority_set, change_entries) = idms_prox_write
+        let (sync_uuid, sync_authority_set, change_entries, _sync_refresh) = idms_prox_write
             .scim_sync_apply_phase_1(&sse, &changes)
             .expect("Failed to run phase 1");
 
@@ -1271,6 +1413,22 @@ mod tests {
                 }]
             ))
             .is_ok());
+
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let idms_prox_write = task::block_on(idms.proxy_write(ct));
+
+            let ent = idms_prox_write
+                .qs_write
+                .internal_search_uuid(&user_sync_uuid)
+                .expect("Unable to access entry");
+
+            assert!(ent.get_ava_single_iname("name") == Some("testgroup"));
+            assert!(
+                ent.get_ava_single_iutf8("sync_external_id")
+                    == Some("cn=testgroup,ou=people,dc=test")
+            );
+
+            assert!(idms_prox_write.commit().is_ok());
         })
     }
 
@@ -1632,12 +1790,28 @@ mod tests {
         })
     }
 
-    // End to End examples
-
-    // Test filter-excluding entries that would conflict?
-    // Test remap of uuids of incoming entries?
-
     // Test the client doing a sync refresh request (active -> refresh).
+
+    // Real sample data test
+
+    fn get_single_entry(
+        name: &str,
+        idms_prox_write: &mut IdmServerProxyWriteTransaction,
+    ) -> Arc<EntrySealedCommitted> {
+        idms_prox_write
+            .qs_write
+            .internal_search(filter!(f_eq("name", PartialValue::new_iname(name))))
+            .map_err(|_| ())
+            .and_then(|mut entries| {
+                if entries.len() != 1 {
+                    error!("Incorrect number of results {:?}", entries);
+                    Err(())
+                } else {
+                    entries.pop().ok_or(())
+                }
+            })
+            .expect("Failed to access entry.")
+    }
 
     #[test]
     fn test_idm_scim_sync_refresh_ipa_example_1() {
@@ -1652,66 +1826,234 @@ mod tests {
             let changes =
                 serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
 
-            let res = idms_prox_write.scim_sync_apply(&sse, &changes, ct);
-
-            // Currently in testing this is just access denied.
-            assert!(matches!(res, Err(OperationError::AccessDenied)));
+            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
 
             assert!(idms_prox_write.commit().is_ok());
 
             // Test properties of the imported entries.
-            todo!();
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+
+            let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
+            assert!(
+                testgroup.get_ava_single_iutf8("sync_external_id")
+                    == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+            );
+            assert!(testgroup.get_ava_single_uint32("gidnumber") == None);
+
+            let testposix = get_single_entry("testposix", &mut idms_prox_write);
+            assert!(
+                testposix.get_ava_single_iutf8("sync_external_id")
+                    == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+            );
+            assert!(testposix.get_ava_single_uint32("gidnumber") == Some(1234567));
+
+            let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
+            assert!(
+                testexternal.get_ava_single_iutf8("sync_external_id")
+                    == Some(
+                        "cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
+                    )
+            );
+            assert!(testexternal.get_ava_single_uint32("gidnumber") == None);
+
+            let testuser = get_single_entry("testuser", &mut idms_prox_write);
+            assert!(
+                testuser.get_ava_single_iutf8("sync_external_id")
+                    == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+            );
+            assert!(testuser.get_ava_single_uint32("gidnumber") == Some(12345));
+            assert!(testuser.get_ava_single_utf8("displayname") == Some("Test User"));
+            assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
+
+            // Check memberof works.
+            let testgroup_mb = testgroup.get_ava_refer("member").expect("No members!");
+            assert!(testgroup_mb.contains(&testuser.get_uuid()));
+
+            let testposix_mb = testposix.get_ava_refer("member").expect("No members!");
+            assert!(testposix_mb.contains(&testuser.get_uuid()));
+
+            let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
+            assert!(testuser_mo.contains(&testposix.get_uuid()));
+            assert!(testuser_mo.contains(&testgroup.get_uuid()));
+
+            assert!(idms_prox_write.commit().is_ok());
+
+            // Now apply updates.
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+            let changes =
+                serde_json::from_str(TEST_SYNC_SCIM_IPA_2).expect("failed to parse scim sync");
+
+            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+            assert!(idms_prox_write.commit().is_ok());
+
+            // Test properties of the updated entries.
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+
+            // Deleted
+            assert!(idms_prox_write
+                .qs_write
+                .internal_search(filter!(f_eq("name", PartialValue::new_iname("testgroup"))))
+                .unwrap()
+                .is_empty());
+
+            let testposix = get_single_entry("testposix", &mut idms_prox_write);
+            info!("{:?}", testposix);
+            assert!(
+                testposix.get_ava_single_iutf8("sync_external_id")
+                    == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+            );
+            assert!(testposix.get_ava_single_uint32("gidnumber") == Some(1234567));
+
+            let testexternal = get_single_entry("testexternal2", &mut idms_prox_write);
+            info!("{:?}", testexternal);
+            assert!(
+                testexternal.get_ava_single_iutf8("sync_external_id")
+                    == Some(
+                        "cn=testexternal2,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
+                    )
+            );
+            assert!(testexternal.get_ava_single_uint32("gidnumber") == None);
+
+            let testuser = get_single_entry("testuser", &mut idms_prox_write);
+
+            // Check memberof works.
+            let testexternal_mb = testexternal.get_ava_refer("member").expect("No members!");
+            assert!(testexternal_mb.contains(&testuser.get_uuid()));
+
+            assert!(testposix.get_ava_refer("member").is_none());
+
+            let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
+            assert!(testuser_mo.contains(&testexternal.get_uuid()));
+
+            assert!(idms_prox_write.commit().is_ok());
+        })
+    }
+
+    #[test]
+    fn test_idm_scim_sync_refresh_ipa_example_2() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+            let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+            let sse = ScimSyncUpdateEvent { ident };
+
+            let changes =
+                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
+
+            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+            let from_state = changes.to_state.clone();
+
+            // Indicate the next set of changes will be a refresh. Don't change content.
+            // Strictly speaking this step isn't need.
+
+            let changes = ScimSyncRequest::need_refresh(from_state);
+            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+            // Check entries still remain as expected.
+            let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
+            assert!(
+                testgroup.get_ava_single_iutf8("sync_external_id")
+                    == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+            );
+            assert!(testgroup.get_ava_single_uint32("gidnumber") == None);
+
+            let testposix = get_single_entry("testposix", &mut idms_prox_write);
+            assert!(
+                testposix.get_ava_single_iutf8("sync_external_id")
+                    == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+            );
+            assert!(testposix.get_ava_single_uint32("gidnumber") == Some(1234567));
+
+            let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
+            assert!(
+                testexternal.get_ava_single_iutf8("sync_external_id")
+                    == Some(
+                        "cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
+                    )
+            );
+            assert!(testexternal.get_ava_single_uint32("gidnumber") == None);
+
+            let testuser = get_single_entry("testuser", &mut idms_prox_write);
+            assert!(
+                testuser.get_ava_single_iutf8("sync_external_id")
+                    == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+            );
+            assert!(testuser.get_ava_single_uint32("gidnumber") == Some(12345));
+            assert!(testuser.get_ava_single_utf8("displayname") == Some("Test User"));
+            assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
+
+            // Check memberof works.
+            let testgroup_mb = testgroup.get_ava_refer("member").expect("No members!");
+            assert!(testgroup_mb.contains(&testuser.get_uuid()));
+
+            let testposix_mb = testposix.get_ava_refer("member").expect("No members!");
+            assert!(testposix_mb.contains(&testuser.get_uuid()));
+
+            let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
+            assert!(testuser_mo.contains(&testposix.get_uuid()));
+            assert!(testuser_mo.contains(&testgroup.get_uuid()));
+
+            // Now, the next change is the refresh.
+
+            let changes = serde_json::from_str(TEST_SYNC_SCIM_IPA_REFRESH_1)
+                .expect("failed to parse scim sync");
+
+            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+            assert!(idms_prox_write
+                .qs_write
+                .internal_search(filter!(f_eq("name", PartialValue::new_iname("testposix"))))
+                .unwrap()
+                .is_empty());
+
+            assert!(idms_prox_write
+                .qs_write
+                .internal_search(filter!(f_eq(
+                    "name",
+                    PartialValue::new_iname("testexternal")
+                )))
+                .unwrap()
+                .is_empty());
+
+            let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
+            assert!(
+                testgroup.get_ava_single_iutf8("sync_external_id")
+                    == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+            );
+            assert!(testgroup.get_ava_single_uint32("gidnumber") == None);
+
+            let testuser = get_single_entry("testuser", &mut idms_prox_write);
+            assert!(
+                testuser.get_ava_single_iutf8("sync_external_id")
+                    == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+            );
+            assert!(testuser.get_ava_single_uint32("gidnumber") == Some(12345));
+            assert!(testuser.get_ava_single_utf8("displayname") == Some("Test User"));
+            assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
+
+            // Check memberof works.
+            let testgroup_mb = testgroup.get_ava_refer("member").expect("No members!");
+            assert!(testgroup_mb.contains(&testuser.get_uuid()));
+
+            let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
+            assert!(testuser_mo.contains(&testgroup.get_uuid()));
+
+            assert!(idms_prox_write.commit().is_ok());
         })
     }
 
     const TEST_SYNC_SCIM_IPA_1: &str = r#"
-    {
+{
   "from_state": "Refresh",
   "to_state": {
     "Active": {
-      "cookie": "aXBhLXN5bmNyZXBsLWthbmkuZGV2LmJsYWNraGF0cy5uZXQuYXU6Mzg5I2NuPWRpcmVjdG9yeSBtYW5hZ2VyOmRjPWRldixkYz1ibGFja2hhdHMsZGM9bmV0LGRjPWF1Oih8KCYob2JqZWN0Q2xhc3M9cGVyc29uKShvYmplY3RDbGFzcz1pcGFudHVzZXJhdHRycykob2JqZWN0Q2xhc3M9cG9zaXhhY2NvdW50KSkoJihvYmplY3RDbGFzcz1ncm91cG9mbmFtZXMpKG9iamVjdENsYXNzPWlwYXVzZXJncm91cCkoIShvYmplY3RDbGFzcz1tZXBtYW5hZ2VkZW50cnkpKSghKGNuPWFkbWlucykpKCEoY249aXBhdXNlcnMpKSkoJihvYmplY3RDbGFzcz1pcGF0b2tlbikob2JqZWN0Q2xhc3M9aXBhdG9rZW50b3RwKSkpIzEyMQ"
+      "cookie": "aXBhLXN5bmNyZXBsLWthbmkuZGV2LmJsYWNraGF0cy5uZXQuYXU6Mzg5I2NuPWRpcmVjdG9yeSBtYW5hZ2VyOmRjPWRldixkYz1ibGFja2hhdHMsZGM9bmV0LGRjPWF1Oih8KCYob2JqZWN0Q2xhc3M9cGVyc29uKShvYmplY3RDbGFzcz1pcGFudHVzZXJhdHRycykob2JqZWN0Q2xhc3M9cG9zaXhhY2NvdW50KSkoJihvYmplY3RDbGFzcz1ncm91cG9mbmFtZXMpKG9iamVjdENsYXNzPWlwYXVzZXJncm91cCkoIShvYmplY3RDbGFzcz1tZXBtYW5hZ2VkZW50cnkpKSghKGNuPWFkbWlucykpKCEoY249aXBhdXNlcnMpKSkoJihvYmplY3RDbGFzcz1pcGF0b2tlbikob2JqZWN0Q2xhc3M9aXBhdG9rZW50b3RwKSkpIzEzNQ"
     }
   },
   "entries": [
-    {
-      "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:person",
-        "urn:ietf:params:scim:schemas:kanidm:1.0:account",
-        "urn:ietf:params:scim:schemas:kanidm:1.0:posixaccount"
-      ],
-      "id": "ac60034b-3498-11ed-a50d-919b4b1a5ec0",
-      "externalId": "uid=admin,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
-      "displayname": "Administrator",
-      "gidnumber": 8200000,
-      "loginshell": "/bin/bash",
-      "name": "admin",
-      "password_import": "ipaNTHash: CVBguEizG80swI8sftaknw"
-    },
-    {
-      "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:group",
-        "urn:ietf:params:scim:schemas:kanidm:1.0:posixgroup"
-      ],
-      "id": "ac60034e-3498-11ed-a50d-919b4b1a5ec0",
-      "externalId": "cn=editors,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
-      "description": "Limited admins who can edit other users",
-      "gidnumber": 8200002,
-      "name": "editors"
-    },
-    {
-      "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:group"
-      ],
-      "id": "0c56a965-3499-11ed-a50d-919b4b1a5ec0",
-      "externalId": "cn=trust admins,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
-      "description": "Trusts administrators group",
-      "member": [
-        {
-          "external_id": "uid=admin,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
-        }
-      ],
-      "name": "trust admins"
-    },
     {
       "schemas": [
         "urn:ietf:params:scim:schemas:kanidm:1.0:person",
@@ -1733,6 +2075,11 @@ mod tests {
       "id": "d547c581-5f26-11ed-a50d-919b4b1a5ec0",
       "externalId": "cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
       "description": "Test group",
+      "member": [
+        {
+          "external_id": "uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
+        }
+      ],
       "name": "testgroup"
     },
     {
@@ -1751,10 +2098,100 @@ mod tests {
       "id": "f90b0b81-5f26-11ed-a50d-919b4b1a5ec0",
       "externalId": "cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
       "gidnumber": 1234567,
+      "member": [
+        {
+          "external_id": "uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
+        }
+      ],
       "name": "testposix"
     }
   ],
   "delete_uuids": []
+}
+    "#;
+
+    const TEST_SYNC_SCIM_IPA_2: &str = r#"
+{
+  "from_state": {
+    "Active": {
+      "cookie": "aXBhLXN5bmNyZXBsLWthbmkuZGV2LmJsYWNraGF0cy5uZXQuYXU6Mzg5I2NuPWRpcmVjdG9yeSBtYW5hZ2VyOmRjPWRldixkYz1ibGFja2hhdHMsZGM9bmV0LGRjPWF1Oih8KCYob2JqZWN0Q2xhc3M9cGVyc29uKShvYmplY3RDbGFzcz1pcGFudHVzZXJhdHRycykob2JqZWN0Q2xhc3M9cG9zaXhhY2NvdW50KSkoJihvYmplY3RDbGFzcz1ncm91cG9mbmFtZXMpKG9iamVjdENsYXNzPWlwYXVzZXJncm91cCkoIShvYmplY3RDbGFzcz1tZXBtYW5hZ2VkZW50cnkpKSghKGNuPWFkbWlucykpKCEoY249aXBhdXNlcnMpKSkoJihvYmplY3RDbGFzcz1pcGF0b2tlbikob2JqZWN0Q2xhc3M9aXBhdG9rZW50b3RwKSkpIzEzNQ"
     }
+  },
+  "to_state": {
+    "Active": {
+      "cookie": "aXBhLXN5bmNyZXBsLWthbmkuZGV2LmJsYWNraGF0cy5uZXQuYXU6Mzg5I2NuPWRpcmVjdG9yeSBtYW5hZ2VyOmRjPWRldixkYz1ibGFja2hhdHMsZGM9bmV0LGRjPWF1Oih8KCYob2JqZWN0Q2xhc3M9cGVyc29uKShvYmplY3RDbGFzcz1pcGFudHVzZXJhdHRycykob2JqZWN0Q2xhc3M9cG9zaXhhY2NvdW50KSkoJihvYmplY3RDbGFzcz1ncm91cG9mbmFtZXMpKG9iamVjdENsYXNzPWlwYXVzZXJncm91cCkoIShvYmplY3RDbGFzcz1tZXBtYW5hZ2VkZW50cnkpKSghKGNuPWFkbWlucykpKCEoY249aXBhdXNlcnMpKSkoJihvYmplY3RDbGFzcz1pcGF0b2tlbikob2JqZWN0Q2xhc3M9aXBhdG9rZW50b3RwKSkpIzE0MA"
+    }
+  },
+  "entries": [
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:group"
+      ],
+      "id": "d547c583-5f26-11ed-a50d-919b4b1a5ec0",
+      "externalId": "cn=testexternal2,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "member": [
+        {
+          "external_id": "uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
+        }
+      ],
+      "name": "testexternal2"
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:group",
+        "urn:ietf:params:scim:schemas:kanidm:1.0:posixgroup"
+      ],
+      "id": "f90b0b81-5f26-11ed-a50d-919b4b1a5ec0",
+      "externalId": "cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "gidnumber": 1234567,
+      "name": "testposix"
+    }
+  ],
+  "delete_uuids": [
+    "d547c581-5f26-11ed-a50d-919b4b1a5ec0"
+  ]
+}
+    "#;
+
+    const TEST_SYNC_SCIM_IPA_REFRESH_1: &str = r#"
+{
+  "from_state": "Refresh",
+  "to_state": {
+    "Active": {
+      "cookie": "aXBhLXN5bmNyZXBsLWthbmkuZGV2LmJsYWNraGF0cy5uZXQuYXU6Mzg5I2NuPWRpcmVjdG9yeSBtYW5hZ2VyOmRjPWRldixkYz1ibGFja2hhdHMsZGM9bmV0LGRjPWF1Oih8KCYob2JqZWN0Q2xhc3M9cGVyc29uKShvYmplY3RDbGFzcz1pcGFudHVzZXJhdHRycykob2JqZWN0Q2xhc3M9cG9zaXhhY2NvdW50KSkoJihvYmplY3RDbGFzcz1ncm91cG9mbmFtZXMpKG9iamVjdENsYXNzPWlwYXVzZXJncm91cCkoIShvYmplY3RDbGFzcz1tZXBtYW5hZ2VkZW50cnkpKSghKGNuPWFkbWlucykpKCEoY249aXBhdXNlcnMpKSkoJihvYmplY3RDbGFzcz1pcGF0b2tlbikob2JqZWN0Q2xhc3M9aXBhdG9rZW50b3RwKSkpIzEzNQ"
+    }
+  },
+  "entries": [
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:person",
+        "urn:ietf:params:scim:schemas:kanidm:1.0:account",
+        "urn:ietf:params:scim:schemas:kanidm:1.0:posixaccount"
+      ],
+      "id": "babb8302-43a1-11ed-a50d-919b4b1a5ec0",
+      "externalId": "uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "displayname": "Test User",
+      "gidnumber": 12345,
+      "loginshell": "/bin/sh",
+      "name": "testuser",
+      "password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA"
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:group"
+      ],
+      "id": "d547c581-5f26-11ed-a50d-919b4b1a5ec0",
+      "externalId": "cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "description": "Test group",
+      "member": [
+        {
+          "external_id": "uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
+        }
+      ],
+      "name": "testgroup"
+    }
+  ],
+  "delete_uuids": []
+}
     "#;
 }

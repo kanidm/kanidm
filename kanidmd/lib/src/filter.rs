@@ -107,7 +107,7 @@ pub fn f_spn_name(id: &str) -> FC<'static> {
 
 /// This is the short-form for tests and internal filters that can then
 /// be transformed into a filter for the server to use.
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub enum FC<'a> {
     Eq(&'a str, PartialValue),
     Sub(&'a str, PartialValue),

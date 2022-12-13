@@ -7,7 +7,8 @@ impl SynchOpt {
             SynchOpt::Get(nopt) => nopt.copt.debug,
             SynchOpt::Create { copt, .. }
             | SynchOpt::GenerateToken { copt, .. }
-            | SynchOpt::DestroyToken { copt, .. } => copt.debug,
+            | SynchOpt::DestroyToken { copt, .. } 
+            | SynchOpt::ForceRefresh { copt, .. } => copt.debug,
         }
     }
 
@@ -59,6 +60,13 @@ impl SynchOpt {
             SynchOpt::DestroyToken { account_id, copt } => {
                 let client = copt.to_client().await;
                 match client.idm_sync_account_destroy_token(&account_id).await {
+                    Ok(()) => println!("Success"),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
+            SynchOpt::ForceRefresh { account_id, copt } => {
+                let client = copt.to_client().await;
+                match client.idm_sync_account_force_refresh(&account_id).await {
                     Ok(()) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }

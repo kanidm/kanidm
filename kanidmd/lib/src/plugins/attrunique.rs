@@ -5,6 +5,7 @@
 //
 //
 use std::collections::BTreeMap;
+use std::collections::VecDeque;
 
 use kanidm_proto::v1::{ConsistencyError, PluginError};
 use tracing::trace;
@@ -79,13 +80,13 @@ fn enforce_unique<STATE>(
     let filt_in = filter!(f_or(
         // for each cand_attr
         cand_attr
-            .into_iter()
+            .iter()
             .map(|(v, uuid)| {
                 // and[ attr eq k, andnot [ uuid eq v ]]
                 // Basically this says where name but also not self.
                 f_and(vec![
-                    FC::Eq(attr, v),
-                    f_andnot(FC::Eq("uuid", PartialValue::new_uuid(uuid))),
+                    FC::Eq(attr, v.clone()),
+                    f_andnot(FC::Eq("uuid", PartialValue::new_uuid(*uuid))),
                 ])
             })
             .collect()
@@ -99,12 +100,81 @@ fn enforce_unique<STATE>(
         e
     })?;
 
-    // If all okay, okay!
+    // TODO! Need to make this show what conflicted!
+    // We can probably bisect over the filter to work this out?
+
     if conflict_cand {
+        // Some kind of confilct exists. We need to isolate which parts of the filter were suspect.
+        // To do this, we bisect over the filter and it's suspect elements.
+        //
+        // In most cases there is likely only 1 suspect element. But in some there are more. To make
+        // this process faster we "bisect" over chunks of the filter remaining until we have only single elements left.
+        //
+        // We do a bisect rather than a linear one-at-a-time search because we want to try to somewhat minimise calls
+        // through internal exists since that has a filter resolve and validate step.
+
+        // First create the vec of filters.
+        let mut cand_filters: Vec<_> = cand_attr
+            .into_iter()
+            .map(|(v, uuid)| {
+                // and[ attr eq k, andnot [ uuid eq v ]]
+                // Basically this says where name but also not self.
+                f_and(vec![
+                    FC::Eq(attr, v),
+                    f_andnot(FC::Eq("uuid", PartialValue::new_uuid(uuid))),
+                ])
+            })
+            .collect();
+
+        // Fast-ish path. There is 0 or 1 element, so we just fast return.
+        if cand_filters.len() < 2 {
+            error!(
+                ?cand_filters,
+                "The following filter conditions failed to assert uniqueness"
+            );
+        } else {
+            // First iteration, we already failed and we know that, so we just prime and setup two
+            // chunks here.
+
+            let mid = cand_filters.len() / 2;
+            let right = cand_filters.split_off(mid);
+
+            let mut queue = VecDeque::new();
+            queue.push_back(cand_filters);
+            queue.push_back(right);
+
+            // Ok! We are setup to go
+
+            while let Some(mut cand_query) = queue.pop_front() {
+                let filt_in = filter!(f_or(cand_query.clone()));
+                let conflict_cand = qs.internal_exists(filt_in).map_err(|e| {
+                    admin_error!("internal exists error {:?}", e);
+                    e
+                })?;
+
+                // A conflict was found!
+                if conflict_cand {
+                    if cand_query.len() >= 2 {
+                        // Continue to split to isolate.
+                        let mid = cand_query.len() / 2;
+                        let right = cand_query.split_off(mid);
+                        queue.push_back(cand_query);
+                        queue.push_back(right);
+                        // Continue!
+                    } else {
+                        // Report this as a failing query.
+                        error!(cand_filters = ?cand_query, "The following filter conditions failed to assert uniqueness");
+                    }
+                }
+            }
+            // End logging / warning iterator
+        }
+
         Err(OperationError::Plugin(PluginError::AttrUnique(
             "duplicate value detected".to_string(),
         )))
     } else {
+        // If all okay, okay!
         Ok(())
     }
 }

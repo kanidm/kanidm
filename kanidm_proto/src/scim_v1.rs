@@ -3,16 +3,16 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
-pub use scim_proto::prelude::{ScimAttr, ScimEntry, ScimError, ScimSimpleAttr};
+pub use scim_proto::prelude::{ScimAttr, ScimEntry, ScimError, ScimSimpleAttr, ScimComplexAttr};
 use scim_proto::*;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ScimSyncState {
     Refresh,
     Active { cookie: Base64UrlSafeData },
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ScimSyncRequest {
     pub from_state: ScimSyncState,
     pub to_state: ScimSyncState,
@@ -21,6 +21,17 @@ pub struct ScimSyncRequest {
     pub entries: Vec<ScimEntry>,
     // Delete uuids?
     pub delete_uuids: Vec<Uuid>,
+}
+
+impl ScimSyncRequest {
+    pub fn need_refresh(from_state: ScimSyncState) -> Self {
+        ScimSyncRequest {
+            from_state,
+            to_state: ScimSyncState::Refresh,
+            entries: Vec::default(),
+            delete_uuids: Vec::default(),
+        }
+    }
 }
 
 pub const SCIM_SCHEMA_SYNC: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:";
@@ -93,12 +104,12 @@ impl Into<ScimEntry> for ScimSyncPerson {
             vec![
                 SCIM_SCHEMA_SYNC_PERSON.to_string(),
                 SCIM_SCHEMA_SYNC_ACCOUNT.to_string(),
+                SCIM_SCHEMA_SYNC_POSIXACCOUNT.to_string(),
             ]
         } else {
             vec![
                 SCIM_SCHEMA_SYNC_PERSON.to_string(),
                 SCIM_SCHEMA_SYNC_ACCOUNT.to_string(),
-                SCIM_SCHEMA_SYNC_POSIXACCOUNT.to_string(),
             ]
         };
 

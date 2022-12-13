@@ -16,8 +16,9 @@ mod config;
 #[cfg(test)]
 mod tests;
 
-use crate::config::Config;
+use crate::config::{Config, EntryConfig};
 use clap::Parser;
+use std::collections::HashMap;
 use std::fs::metadata;
 use std::fs::File;
 use std::io::Read;
@@ -25,6 +26,7 @@ use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::thread;
+use uuid::Uuid;
 use tokio::runtime;
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::prelude::*;
@@ -201,7 +203,7 @@ async fn driver_main(opt: Opt) {
 
     // pre-process the entries.
     //  - > fn so we can test.
-    let scim_sync_request = match process_ipa_sync_result(scim_sync_status, sync_result).await {
+    let scim_sync_request = match process_ipa_sync_result(scim_sync_status, sync_result, &sync_config.entry_map).await {
         Ok(ssr) => ssr,
         Err(()) => return,
     };
@@ -212,13 +214,18 @@ async fn driver_main(opt: Opt) {
         if let Err(e) = serde_json::to_writer_pretty(stdout, &scim_sync_request) {
             error!(?e, "Failed to serialise scim sync request");
         };
+    } else if opt.dry_run {
+        info!("dry-run complete");
+        info!("Success!");
     } else {
         if let Err(e) = rsclient.scim_v1_sync_update(&scim_sync_request).await {
             error!(
                 ?e,
                 "Failed to submit scim sync update - see the kanidmd server log for more details."
             );
-        };
+        } else {
+            info!("Success!");
+        }
     }
     // done!
 }
@@ -226,6 +233,7 @@ async fn driver_main(opt: Opt) {
 async fn process_ipa_sync_result(
     from_state: ScimSyncState,
     sync_result: LdapSyncRepl,
+    entry_config_map: &HashMap<Uuid, EntryConfig>,
 ) -> Result<ScimSyncRequest, ()> {
     match sync_result {
         LdapSyncRepl::Success {
@@ -256,10 +264,13 @@ async fn process_ipa_sync_result(
             // Future - make this par-map
             let entries = entries
                 .into_iter()
-                .filter_map(|e| match ipa_to_scim_entry(e) {
+                .filter_map(|e| {
+                let e_config = entry_config_map.get(&e.entry_uuid).cloned().unwrap_or_default();
+                match ipa_to_scim_entry(e, &e_config) {
                     Ok(Some(e)) => Some(Ok(e)),
                     Ok(None) => None,
                     Err(()) => Some(Err(())),
+                }
                 })
                 .collect::<Result<Vec<_>, _>>();
 
@@ -292,18 +303,22 @@ async fn process_ipa_sync_result(
 }
 
 // TODO: Allow re-map of uuid -> uuid
-// TODO: Allow exclusion of entry by uuid / external_id
 
-fn ipa_to_scim_entry(sync_entry: LdapSyncReplEntry) -> Result<Option<ScimEntry>, ()> {
+fn ipa_to_scim_entry(sync_entry: LdapSyncReplEntry, entry_config: &EntryConfig) -> Result<Option<ScimEntry>, ()> {
     debug!("{:#?}", sync_entry);
-    // Is this an entry we need to observe/look at?
 
     // check the sync_entry state?
     if sync_entry.state != LdapSyncStateValue::Add {
-        todo!();
+        unimplemented!();
     }
 
     let dn = sync_entry.entry.dn.clone();
+
+    // Is this an entry we need to observe/look at?
+    if entry_config.exclude {
+        info!("entry_config excludes {}", dn);
+        return Ok(None);
+    }
 
     let oc = sync_entry.entry.attrs.get("objectclass").ok_or_else(|| {
         error!("Invalid entry - no object class {}", dn);
@@ -321,6 +336,12 @@ fn ipa_to_scim_entry(sync_entry: LdapSyncReplEntry) -> Result<Option<ScimEntry>,
         let user_name = entry.remove_ava_single("uid").ok_or_else(|| {
             error!("Missing required attribute uid");
         })?;
+
+        // ⚠️  hardcoded skip on admin here!!!
+        if user_name == "admin" {
+            info!("kanidm excludes {}", dn);
+            return Ok(None);
+        }
 
         let display_name = entry.remove_ava_single("cn").ok_or_else(|| {
             error!("Missing required attribute cn");
@@ -365,6 +386,12 @@ fn ipa_to_scim_entry(sync_entry: LdapSyncReplEntry) -> Result<Option<ScimEntry>,
         let name = entry.remove_ava_single("cn").ok_or_else(|| {
             error!("Missing required attribute cn");
         })?;
+
+        // ⚠️  hardcoded skip on trust admins / editors / ipausers here!!!
+        if name == "trust admins" || name == "editors" || name == "ipausers" || name == "admins" {
+            info!("kanidm excludes {}", dn);
+            return Ok(None);
+        }
 
         let description = entry.remove_ava_single("description");
 
@@ -505,6 +532,4 @@ fn main() {
     tracing::debug!("Using {} worker threads", par_count);
 
     rt.block_on(async move { driver_main(opt).await });
-
-    info!("Success!");
 }

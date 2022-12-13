@@ -1308,7 +1308,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 name: AttrString::from("password_import"),
                 uuid: UUID_SCHEMA_ATTR_PASSWORD_IMPORT,
                 description: String::from("An imported password hash from an external system."),
-                multivalue: true,
+                multivalue: false,
                 unique: false,
                 phantom: true,
                 sync_allowed: true,

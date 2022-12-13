@@ -1221,7 +1221,9 @@ impl Entry<EntrySealed, EntryCommitted> {
                 let ia = a.get_externalid2uuid();
                 let ib = b.get_externalid2uuid();
                 if ia != ib {
-                    (ia, ib)
+                    // Note, we swap these since ib is the new post state
+                    // we want to add, and ia is what we remove.
+                    (ib, ia)
                 } else {
                     // no action
                     (None, None)
