@@ -158,7 +158,27 @@ we need to consider that at any point the lifecycle of a presented entry may cha
 batch. Because of this, we have to treat the operation differently within kanidm to ensure a consistent outcome.
 
 Additionally we have to "fail fast". This means that on any conflict the sync will abort and the administrator
-must intervene. REASON HERE account - group memership loss.
+must intervene.
+
+To understand why we chose this, we have to look at what happens in a "soft fail" condition.
+
+In this example we have an account named X and a group named Y. The group contains X as a member.
+
+When we submit this for an initial sync, or after the account X is created, if we had a "soft" fail
+during the import of the account, we would reject it from being added to Kanidm but would then continue
+with the synchronisation. Then the group Y would be imported. Since the member pointing to X would
+not be valid, it would be silently removed.
+
+At this point we would have group Y imported, but it has no members and the account X would not
+have been imported. The administrator may intervene and fix the account X to allow sync to proceed. However
+this would not repair the missing group membership. To repair the group membership a change to group Y
+would need to be triggered to also sync the group status.
+
+Since the admin may not be aware of this, it would silently mean the membership is missing.
+
+To avoid this, by "failing fast" if account X couldn't be imported for any reason, than we would
+stop the whole sync process until it could be repaired. Then when repaired both the account X and
+group Y would sync and the membership would be intact.
 
 ### Phase 1 - Validation of Update State
 
