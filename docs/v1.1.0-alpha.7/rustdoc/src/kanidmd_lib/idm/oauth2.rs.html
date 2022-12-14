@@ -3568,6 +3568,121 @@
 <span id="3568">3568</span>
 <span id="3569">3569</span>
 <span id="3570">3570</span>
+<span id="3571">3571</span>
+<span id="3572">3572</span>
+<span id="3573">3573</span>
+<span id="3574">3574</span>
+<span id="3575">3575</span>
+<span id="3576">3576</span>
+<span id="3577">3577</span>
+<span id="3578">3578</span>
+<span id="3579">3579</span>
+<span id="3580">3580</span>
+<span id="3581">3581</span>
+<span id="3582">3582</span>
+<span id="3583">3583</span>
+<span id="3584">3584</span>
+<span id="3585">3585</span>
+<span id="3586">3586</span>
+<span id="3587">3587</span>
+<span id="3588">3588</span>
+<span id="3589">3589</span>
+<span id="3590">3590</span>
+<span id="3591">3591</span>
+<span id="3592">3592</span>
+<span id="3593">3593</span>
+<span id="3594">3594</span>
+<span id="3595">3595</span>
+<span id="3596">3596</span>
+<span id="3597">3597</span>
+<span id="3598">3598</span>
+<span id="3599">3599</span>
+<span id="3600">3600</span>
+<span id="3601">3601</span>
+<span id="3602">3602</span>
+<span id="3603">3603</span>
+<span id="3604">3604</span>
+<span id="3605">3605</span>
+<span id="3606">3606</span>
+<span id="3607">3607</span>
+<span id="3608">3608</span>
+<span id="3609">3609</span>
+<span id="3610">3610</span>
+<span id="3611">3611</span>
+<span id="3612">3612</span>
+<span id="3613">3613</span>
+<span id="3614">3614</span>
+<span id="3615">3615</span>
+<span id="3616">3616</span>
+<span id="3617">3617</span>
+<span id="3618">3618</span>
+<span id="3619">3619</span>
+<span id="3620">3620</span>
+<span id="3621">3621</span>
+<span id="3622">3622</span>
+<span id="3623">3623</span>
+<span id="3624">3624</span>
+<span id="3625">3625</span>
+<span id="3626">3626</span>
+<span id="3627">3627</span>
+<span id="3628">3628</span>
+<span id="3629">3629</span>
+<span id="3630">3630</span>
+<span id="3631">3631</span>
+<span id="3632">3632</span>
+<span id="3633">3633</span>
+<span id="3634">3634</span>
+<span id="3635">3635</span>
+<span id="3636">3636</span>
+<span id="3637">3637</span>
+<span id="3638">3638</span>
+<span id="3639">3639</span>
+<span id="3640">3640</span>
+<span id="3641">3641</span>
+<span id="3642">3642</span>
+<span id="3643">3643</span>
+<span id="3644">3644</span>
+<span id="3645">3645</span>
+<span id="3646">3646</span>
+<span id="3647">3647</span>
+<span id="3648">3648</span>
+<span id="3649">3649</span>
+<span id="3650">3650</span>
+<span id="3651">3651</span>
+<span id="3652">3652</span>
+<span id="3653">3653</span>
+<span id="3654">3654</span>
+<span id="3655">3655</span>
+<span id="3656">3656</span>
+<span id="3657">3657</span>
+<span id="3658">3658</span>
+<span id="3659">3659</span>
+<span id="3660">3660</span>
+<span id="3661">3661</span>
+<span id="3662">3662</span>
+<span id="3663">3663</span>
+<span id="3664">3664</span>
+<span id="3665">3665</span>
+<span id="3666">3666</span>
+<span id="3667">3667</span>
+<span id="3668">3668</span>
+<span id="3669">3669</span>
+<span id="3670">3670</span>
+<span id="3671">3671</span>
+<span id="3672">3672</span>
+<span id="3673">3673</span>
+<span id="3674">3674</span>
+<span id="3675">3675</span>
+<span id="3676">3676</span>
+<span id="3677">3677</span>
+<span id="3678">3678</span>
+<span id="3679">3679</span>
+<span id="3680">3680</span>
+<span id="3681">3681</span>
+<span id="3682">3682</span>
+<span id="3683">3683</span>
+<span id="3684">3684</span>
+<span id="3685">3685</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations
 //!
 //! This contains the in memory and loaded set of active oauth2 resource server
@@ -4966,6 +5081,12 @@
                     }
                 };
 
+                <span class="kw">let </span>preferred_username = <span class="kw">if </span>o2rs.prefer_short_username {
+                    <span class="prelude-val">Some</span>(account.name)
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">Some</span>(account.spn)
+                };
+
                 <span class="kw">let </span>(email, email_verified) = <span class="kw">if </span>scopes.contains(<span class="kw-2">&amp;</span><span class="string">&quot;email&quot;</span>.to_string()) {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(mp) = account.mail_primary {
                         (<span class="prelude-val">Some</span>(mp), <span class="prelude-val">Some</span>(<span class="bool-val">true</span>))
@@ -4999,9 +5120,8 @@
                     s_claims: OidcClaims {
                         <span class="comment">// Map from displayname
                         </span>name: <span class="prelude-val">Some</span>(account.displayname.clone()),
-                        <span class="comment">// Map from spn
-                        </span>preferred_username: <span class="prelude-val">Some</span>(account.spn),
                         scopes: scopes,
+                        preferred_username,
                         email,
                         email_verified,
                         ..Default::default()
@@ -5214,6 +5334,7 @@
         ct: Duration,
         enable_pkce: bool,
         enable_legacy_crypto: bool,
+        prefer_short_username: bool,
     ) -&gt; (String, UserAuthToken, Identity, Uuid) {
         <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
 
@@ -5256,6 +5377,10 @@
             (
                 <span class="string">&quot;oauth2_jwt_legacy_crypto_enable&quot;</span>,
                 Value::new_bool(enable_legacy_crypto)
+            ),
+            (
+                <span class="string">&quot;oauth2_prefer_short_username&quot;</span>,
+                Value::new_bool(prefer_short_username)
             )
         );
         <span class="kw">let </span>ce = CreateEvent::new_internal(<span class="macro">vec!</span>[e]);
@@ -5319,7 +5444,8 @@
         <span class="macro">run_idm_test!</span>(
             |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
                 <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-                <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) = setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
+                <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
+                    setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
 
                 <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -5390,7 +5516,8 @@
                        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
             <span class="comment">// Test invalid oauth2 authorisation states/requests.
             </span><span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span>(_secret, uat, ident, <span class="kw">_</span>) = setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
+            <span class="kw">let </span>(_secret, uat, ident, <span class="kw">_</span>) =
+                setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
 
             <span class="kw">let </span>(anon_uat, anon_ident) = setup_idm_admin(idms, ct, AuthType::Anonymous);
             <span class="kw">let </span>(idm_admin_uat, idm_admin_ident) = setup_idm_admin(idms, ct, AuthType::PasswordMfa);
@@ -5554,7 +5681,8 @@
                        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
             <span class="comment">// Test invalid oauth2 authorisation states/requests.
             </span><span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span>(_secret, uat, ident, <span class="kw">_</span>) = setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
+            <span class="kw">let </span>(_secret, uat, ident, <span class="kw">_</span>) =
+                setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
 
             <span class="kw">let </span>(uat2, ident2) = {
                 <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
@@ -5633,7 +5761,7 @@
             |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
                 <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
                 <span class="kw">let </span>(secret, <span class="kw-2">mut </span>uat, ident, <span class="kw">_</span>) =
-                    setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
+                    setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
 
                 <span class="comment">// ⚠️  We set the uat expiry time to 5 seconds from TEST_CURRENT_TIME. This
                 // allows all our other tests to pass, but it means when we specifically put the
@@ -5807,7 +5935,8 @@
         <span class="macro">run_idm_test!</span>(
             |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
                 <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-                <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) = setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
+                <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
+                    setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
                 <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
 
                 <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
@@ -5915,7 +6044,8 @@
             |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
                 <span class="comment">// First, setup to get a token.
                 </span><span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-                <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) = setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
+                <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
+                    setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
                 <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
 
                 <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
@@ -6089,7 +6219,8 @@
             |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
                 <span class="comment">// First, setup to get a token.
                 </span><span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-                <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) = setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
+                <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
+                    setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
                 <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
 
                 <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
@@ -6192,7 +6323,8 @@
                        idms: <span class="kw-2">&amp;</span>IdmServer,
                        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
             <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span>(_secret, uat, ident, <span class="kw">_</span>) = setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
+            <span class="kw">let </span>(_secret, uat, ident, <span class="kw">_</span>) =
+                setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
 
             <span class="kw">let </span>(uat2, ident2) = {
                 <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
@@ -6277,7 +6409,8 @@
                        idms: <span class="kw-2">&amp;</span>IdmServer,
                        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
             <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span>(_secret, _uat, _ident, <span class="kw">_</span>) = setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
+            <span class="kw">let </span>(_secret, _uat, _ident, <span class="kw">_</span>) =
+                setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
 
             <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -6417,7 +6550,8 @@
         <span class="macro">run_idm_test!</span>(
             |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
                 <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-                <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) = setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
+                <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
+                    setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
                 <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
 
                 <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
@@ -6541,6 +6675,97 @@
         )
     }
 
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_idm_oauth2_openid_short_username() {
+        <span class="macro">run_idm_test!</span>(
+            |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
+                <span class="comment">// we run the same test as test_idm_oauth2_openid_extensions()
+                // but change the preferred_username setting on the RS
+                </span><span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+                <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
+                    setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>);
+                <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
+
+                <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+
+                <span class="kw">let </span>(code_verifier, code_challenge) = <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
+
+                <span class="kw">let </span>consent_request =
+                    <span class="macro">good_authorisation_request!</span>(idms_prox_read, <span class="kw-2">&amp;</span>ident, <span class="kw-2">&amp;</span>uat, ct, code_challenge);
+
+                <span class="kw">let </span>consent_token =
+                    <span class="kw">if let </span>AuthoriseResponse::ConsentRequested { consent_token, .. } =
+                        consent_request
+                    {
+                        consent_token
+                    } <span class="kw">else </span>{
+                        <span class="macro">unreachable!</span>();
+                    };
+
+                <span class="comment">// == Manually submit the consent token to the permit for the permit_success
+                </span><span class="kw">let </span>permit_success = idms_prox_read
+                    .check_oauth2_authorise_permit(<span class="kw-2">&amp;</span>ident, <span class="kw-2">&amp;</span>uat, <span class="kw-2">&amp;</span>consent_token, ct)
+                    .expect(<span class="string">&quot;Failed to perform oauth2 permit&quot;</span>);
+
+                <span class="comment">// Assert that the consent was submitted
+                </span><span class="kw">match </span>idms_delayed.async_rx.blocking_recv() {
+                    <span class="prelude-val">Some</span>(DelayedAction::Oauth2ConsentGrant(<span class="kw">_</span>)) =&gt; {}
+                    <span class="kw">_ </span>=&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                }
+
+                <span class="comment">// == Submit the token exchange code.
+                </span><span class="kw">let </span>token_req = AccessTokenRequest {
+                    grant_type: <span class="string">&quot;authorization_code&quot;</span>.to_string(),
+                    code: permit_success.code,
+                    redirect_uri: Url::parse(<span class="string">&quot;https://demo.example.com/oauth2/result&quot;</span>).unwrap(),
+                    client_id: <span class="prelude-val">None</span>,
+                    client_secret: <span class="prelude-val">None</span>,
+                    <span class="comment">// From the first step.
+                    </span>code_verifier,
+                };
+
+                <span class="kw">let </span>token_response = idms_prox_read
+                    .check_oauth2_token_exchange(client_authz.as_deref(), <span class="kw-2">&amp;</span>token_req, ct)
+                    .expect(<span class="string">&quot;Failed to perform oauth2 token exchange&quot;</span>);
+
+                <span class="comment">// Assert that the session creation was submitted
+                </span><span class="kw">match </span>idms_delayed.async_rx.blocking_recv() {
+                    <span class="prelude-val">Some</span>(DelayedAction::Oauth2SessionRecord(<span class="kw">_</span>)) =&gt; {}
+                    <span class="kw">_ </span>=&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                }
+
+                <span class="kw">let </span>id_token = token_response.id_token.expect(<span class="string">&quot;No id_token in response!&quot;</span>);
+                <span class="kw">let </span>access_token = token_response.access_token;
+
+                <span class="kw">let </span><span class="kw-2">mut </span>jwkset = idms_prox_read
+                    .oauth2_openid_publickey(<span class="string">&quot;test_resource_server&quot;</span>)
+                    .expect(<span class="string">&quot;Failed to get public key&quot;</span>);
+                <span class="kw">let </span>public_jwk = jwkset.keys.pop().expect(<span class="string">&quot;no such jwk&quot;</span>);
+
+                <span class="kw">let </span>jws_validator =
+                    JwsValidator::try_from(<span class="kw-2">&amp;</span>public_jwk).expect(<span class="string">&quot;failed to build validator&quot;</span>);
+
+                <span class="kw">let </span>oidc_unverified =
+                    OidcUnverified::from_str(<span class="kw-2">&amp;</span>id_token).expect(<span class="string">&quot;Failed to parse id_token&quot;</span>);
+
+                <span class="kw">let </span>iat = ct.as_secs() <span class="kw">as </span>i64;
+
+                <span class="kw">let </span>oidc = oidc_unverified
+                    .validate(<span class="kw-2">&amp;</span>jws_validator, iat)
+                    .expect(<span class="string">&quot;Failed to verify oidc&quot;</span>);
+
+                <span class="comment">// Do we have the short username in the token claims?
+                </span><span class="macro">assert!</span>(oidc.s_claims.preferred_username == <span class="prelude-val">Some</span>(<span class="string">&quot;admin&quot;</span>.to_string()));
+                <span class="comment">// Do the id_token details line up to the userinfo?
+                </span><span class="kw">let </span>userinfo = idms_prox_read
+                    .oauth2_openid_userinfo(<span class="string">&quot;test_resource_server&quot;</span>, <span class="kw-2">&amp;</span>access_token, ct)
+                    .expect(<span class="string">&quot;failed to get userinfo&quot;</span>);
+
+                <span class="macro">assert!</span>(oidc.s_claims == userinfo.s_claims);
+            }
+        )
+    }
+
     <span class="comment">//  Check insecure pkce behaviour.
     </span><span class="attribute">#[test]
     </span><span class="kw">fn </span>test_idm_oauth2_insecure_pkce() {
@@ -6548,7 +6773,8 @@
                        idms: <span class="kw-2">&amp;</span>IdmServer,
                        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
             <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span>(_secret, uat, ident, <span class="kw">_</span>) = setup_oauth2_resource_server(idms, ct, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
+            <span class="kw">let </span>(_secret, uat, ident, <span class="kw">_</span>) =
+                setup_oauth2_resource_server(idms, ct, <span class="bool-val">false</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
 
             <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -6583,7 +6809,8 @@
         <span class="macro">run_idm_test!</span>(
             |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
                 <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-                <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) = setup_oauth2_resource_server(idms, ct, <span class="bool-val">false</span>, <span class="bool-val">true</span>);
+                <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
+                    setup_oauth2_resource_server(idms, ct, <span class="bool-val">false</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
                 <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
                 <span class="comment">// The public key url should offer an rs key
                 // discovery should offer RS256
@@ -6686,7 +6913,8 @@
         <span class="macro">run_idm_test!</span>(
             |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
                 <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-                <span class="kw">let </span>(_secret, uat, ident, <span class="kw">_</span>) = setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
+                <span class="kw">let </span>(_secret, uat, ident, <span class="kw">_</span>) =
+                    setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
 
                 <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -6887,7 +7115,7 @@
             |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
                 <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
                 <span class="kw">let </span>(_secret, uat, ident, o2rs_uuid) =
-                    setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
+                    setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
 
                 <span class="comment">// Assert there are no consent maps yet.
                 </span><span class="macro">assert!</span>(ident.get_oauth2_consent_scopes(o2rs_uuid).is_none());
@@ -6980,7 +7208,8 @@
             |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
                 <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
                 <span class="comment">// Enable pkce is set to FALSE
-                </span><span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) = setup_oauth2_resource_server(idms, ct, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
+                </span><span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
+                    setup_oauth2_resource_server(idms, ct, <span class="bool-val">false</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
 
                 <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -7059,7 +7288,8 @@
             |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
                 <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
                 <span class="comment">// Enable pkce is set to FALSE
-                </span><span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) = setup_oauth2_resource_server(idms, ct, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
+                </span><span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
+                    setup_oauth2_resource_server(idms, ct, <span class="bool-val">false</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
 
                 <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
 
