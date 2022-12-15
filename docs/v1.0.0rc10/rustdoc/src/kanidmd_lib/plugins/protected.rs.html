@@ -500,6 +500,98 @@
 <span id="500">500</span>
 <span id="501">501</span>
 <span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
 </pre><pre class="rust"><code><span class="comment">// System protected objects. Items matching specific requirements
 // may only have certain modifications performed.
 
@@ -559,6 +651,7 @@
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_TOMBSTONE)
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_RECYCLED)
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DYNGROUP)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT)
             {
                 <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject)
             } <span class="kw">else </span>{
@@ -570,8 +663,7 @@
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;protected_pre_modify&quot;</span>, skip(_qs, cand, me))]
     </span><span class="kw">fn </span>pre_modify(
         _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
-        <span class="comment">// Should these be EntrySealed?
-        </span>cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;EntryInvalidCommitted&gt;,
         me: <span class="kw-2">&amp;</span>ModifyEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="kw">if </span>me.ident.is_internal() {
@@ -581,13 +673,13 @@
         <span class="comment">// Prevent adding class: system, domain_info, tombstone, or recycled.
         </span>me.modlist.iter().try_fold((), |(), m| <span class="kw">match </span>m {
             Modify::Present(a, v) =&gt; {
-                <span class="comment">// TODO: Can we avoid this clone?
-                </span><span class="kw">if </span>a == <span class="string">&quot;class&quot;
+                <span class="kw">if </span>a == <span class="string">&quot;class&quot;
                     </span>&amp;&amp; (v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_SYSTEM)
                         || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_DOMAIN_INFO)
                         || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_SYSTEM_INFO)
                         || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_SYSTEM_CONFIG)
                         || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_DYNGROUP)
+                        || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_SYNC_OBJECT)
                         || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_TOMBSTONE)
                         || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_RECYCLED))
                 {
@@ -605,6 +697,8 @@
             <span class="kw">if </span>cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_TOMBSTONE)
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_RECYCLED)
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DYNGROUP)
+                <span class="comment">// Temporary until I move this into access.rs
+                </span>|| cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT)
             {
                 <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject)
             } <span class="kw">else </span>{
@@ -629,13 +723,102 @@
         </span>me.modlist.iter().try_fold((), |(), m| {
             <span class="comment">// Already hit an error, move on.
             </span><span class="kw">let </span>a = <span class="kw">match </span>m {
-                Modify::Present(a, <span class="kw">_</span>) | Modify::Removed(a, <span class="kw">_</span>) | Modify::Purged(a) =&gt; a,
+                Modify::Present(a, <span class="kw">_</span>) | Modify::Removed(a, <span class="kw">_</span>) | Modify::Purged(a) =&gt; <span class="prelude-val">Some</span>(a),
+                Modify::Assert(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
             };
-            <span class="kw">match </span>ALLOWED_ATTRS.get(a.as_str()) {
-                <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
-                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject),
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(a) = a {
+                <span class="kw">match </span>ALLOWED_ATTRS.get(a.as_str()) {
+                    <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+                    <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject),
+                }
+            } <span class="kw">else </span>{
+                <span class="comment">// Was not a mod needing checking
+                </span><span class="prelude-val">Ok</span>(())
             }
         })
+    }
+
+    <span class="kw">fn </span>pre_batch_modify(
+        _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;EntryInvalidCommitted&gt;,
+        me: <span class="kw-2">&amp;</span>BatchModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">if </span>me.ident.is_internal() {
+            <span class="macro">trace!</span>(<span class="string">&quot;Internal operation, not enforcing system object protection&quot;</span>);
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+        }
+
+        me.modset
+            .values()
+            .flat_map(|ml| ml.iter())
+            .try_fold((), |(), m| <span class="kw">match </span>m {
+                Modify::Present(a, v) =&gt; {
+                    <span class="kw">if </span>a == <span class="string">&quot;class&quot;
+                        </span>&amp;&amp; (v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_SYSTEM)
+                            || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_DOMAIN_INFO)
+                            || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_SYSTEM_INFO)
+                            || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_SYSTEM_CONFIG)
+                            || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_DYNGROUP)
+                            || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_SYNC_OBJECT)
+                            || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_TOMBSTONE)
+                            || v == <span class="kw-2">&amp;</span>(<span class="kw-2">*</span>CLASS_RECYCLED))
+                    {
+                        <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">Ok</span>(())
+                    }
+                }
+                <span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(()),
+            })<span class="question-mark">?</span>;
+
+        <span class="comment">// HARD block mods on tombstone or recycle. We soft block on the rest as they may
+        // have some allowed attrs.
+        </span>cand.iter().try_fold((), |(), cand| {
+            <span class="kw">if </span>cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_TOMBSTONE)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_RECYCLED)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DYNGROUP)
+                <span class="comment">// Temporary until I move this into access.rs
+                </span>|| cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT)
+            {
+                <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject)
+            } <span class="kw">else </span>{
+                <span class="prelude-val">Ok</span>(())
+            }
+        })<span class="question-mark">?</span>;
+
+        <span class="comment">// if class: system, check the mods are &quot;allowed&quot;
+        </span><span class="kw">let </span>system_pres = cand.iter().any(|c| {
+            <span class="comment">// We don&#39;t need to check for domain info here because domain_info has a class
+            // system also. We just need to block it from being created.
+            </span>c.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYSTEM)
+        });
+
+        <span class="macro">trace!</span>(<span class="string">&quot;class: system -&gt; {}&quot;</span>, system_pres);
+        <span class="comment">// No system types being altered, return.
+        </span><span class="kw">if </span>!system_pres {
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+        }
+
+        <span class="comment">// Something altered is system, check if it&#39;s allowed.
+        </span>me.modset
+            .values()
+            .flat_map(|ml| ml.iter())
+            .try_fold((), |(), m| {
+                <span class="comment">// Already hit an error, move on.
+                </span><span class="kw">let </span>a = <span class="kw">match </span>m {
+                    Modify::Present(a, <span class="kw">_</span>) | Modify::Removed(a, <span class="kw">_</span>) | Modify::Purged(a) =&gt; <span class="prelude-val">Some</span>(a),
+                    Modify::Assert(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
+                };
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(a) = a {
+                    <span class="kw">match </span>ALLOWED_ATTRS.get(a.as_str()) {
+                        <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+                        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject),
+                    }
+                } <span class="kw">else </span>{
+                    <span class="comment">// Was not a mod needing checking
+                    </span><span class="prelude-val">Ok</span>(())
+                }
+            })
     }
 
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;protected_pre_delete&quot;</span>, skip(_qs, cand, de))]
@@ -658,6 +841,7 @@
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_TOMBSTONE)
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_RECYCLED)
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DYNGROUP)
+                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT)
             {
                 <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject)
             } <span class="kw">else </span>{

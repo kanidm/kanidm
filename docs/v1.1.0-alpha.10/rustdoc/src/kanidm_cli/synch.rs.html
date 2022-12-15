@@ -66,6 +66,14 @@
 <span id="66">66</span>
 <span id="67">67</span>
 <span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::SynchOpt;
 
 <span class="kw">impl </span>SynchOpt {
@@ -75,7 +83,8 @@
             SynchOpt::Get(nopt) =&gt; nopt.copt.debug,
             SynchOpt::Create { copt, .. }
             | SynchOpt::GenerateToken { copt, .. }
-            | SynchOpt::DestroyToken { copt, .. } =&gt; copt.debug,
+            | SynchOpt::DestroyToken { copt, .. }
+            | SynchOpt::ForceRefresh { copt, .. } =&gt; copt.debug,
         }
     }
 
@@ -127,6 +136,13 @@
             SynchOpt::DestroyToken { account_id, copt } =&gt; {
                 <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_sync_account_destroy_token(<span class="kw-2">&amp;</span>account_id).<span class="kw">await </span>{
+                    <span class="prelude-val">Ok</span>(()) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
+                }
+            }
+            SynchOpt::ForceRefresh { account_id, copt } =&gt; {
+                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">match </span>client.idm_sync_account_force_refresh(<span class="kw-2">&amp;</span>account_id).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                 }

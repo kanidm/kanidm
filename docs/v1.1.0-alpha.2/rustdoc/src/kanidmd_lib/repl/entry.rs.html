@@ -553,6 +553,39 @@
 <span id="553">553</span>
 <span id="554">554</span>
 <span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::btree_map::Keys;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::fmt;
@@ -621,6 +654,7 @@ impl fmt::Display for EntryChangelog {
     ModifyPurge(AttrString),
     ModifyPresent(AttrString, Box&lt;Value&gt;),
     ModifyRemoved(AttrString, Box&lt;PartialValue&gt;),
+    ModifyAssert(AttrString, Box&lt;PartialValue&gt;),
     Recycle,
     Revive,
     Tombstone(Eattrs),
@@ -633,6 +667,7 @@ impl fmt::Display for EntryChangelog {
             Transition::ModifyPurge(a) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;ModifyPurge({})&quot;</span>, a),
             Transition::ModifyPresent(a, <span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;ModifyPresent({})&quot;</span>, a),
             Transition::ModifyRemoved(a, <span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;ModifyRemoved({})&quot;</span>, a),
+            Transition::ModifyAssert(a, <span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;ModifyAssert({})&quot;</span>, a),
             Transition::Recycle =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Recycle&quot;</span>),
             Transition::Revive =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Revive&quot;</span>),
             Transition::Tombstone(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Tombstone&quot;</span>),
@@ -677,6 +712,20 @@ impl fmt::Display for EntryChangelog {
                     <span class="kw">if </span>rm {
                         attrs.remove(attr);
                     };
+                }
+                (State::Live(<span class="kw-2">ref mut </span>attrs), Transition::ModifyAssert(attr, value)) =&gt; {
+                    <span class="macro">trace!</span>(<span class="string">&quot;Live + ModifyAssert({}) -&gt; Live&quot;</span>, attr);
+
+                    <span class="kw">if </span>attrs
+                        .get(attr)
+                        .map(|vs| vs.contains(<span class="kw-2">&amp;</span>value))
+                        .unwrap_or(<span class="bool-val">false</span>)
+                    {
+                        <span class="comment">// Valid
+                    </span>} <span class="kw">else </span>{
+                        <span class="macro">warn!</span>(<span class="string">&quot;{} + {:?} -&gt; Assertion not met - REJECTING&quot;</span>, attr, value);
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(state);
+                    }
                 }
                 (State::Live(attrs), Transition::Recycle) =&gt; {
                     <span class="macro">trace!</span>(<span class="string">&quot;Live + Recycle -&gt; Recycled&quot;</span>);
@@ -828,6 +877,23 @@ impl fmt::Display for EntryChangelog {
             .into_iter()
             .map(|v| Transition::ModifyRemoved(AttrString::from(attr), Box::new(v)))
             .for_each(|t| change.s.push(t));
+    }
+
+    <span class="kw">pub fn </span>assert_ava(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cid: <span class="kw-2">&amp;</span>Cid, attr: <span class="kw-2">&amp;</span>str, value: PartialValue) {
+        <span class="kw">if </span>!<span class="self">self</span>.changes.contains_key(cid) {
+            <span class="self">self</span>.changes.insert(cid.clone(), Change { s: Vec::new() });
+        }
+
+        <span class="attribute">#[allow(clippy::expect_used)]
+        </span><span class="kw">let </span>change = <span class="self">self
+            </span>.changes
+            .get_mut(cid)
+            .expect(<span class="string">&quot;Memory corruption, change must exist&quot;</span>);
+
+        change.s.push(Transition::ModifyAssert(
+            AttrString::from(attr),
+            Box::new(value),
+        ))
     }
 
     <span class="kw">pub fn </span>purge_ava(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cid: <span class="kw-2">&amp;</span>Cid, attr: <span class="kw-2">&amp;</span>str) {

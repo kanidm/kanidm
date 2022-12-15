@@ -880,23 +880,6 @@
 <span id="880">880</span>
 <span id="881">881</span>
 <span id="882">882</span>
-<span id="883">883</span>
-<span id="884">884</span>
-<span id="885">885</span>
-<span id="886">886</span>
-<span id="887">887</span>
-<span id="888">888</span>
-<span id="889">889</span>
-<span id="890">890</span>
-<span id="891">891</span>
-<span id="892">892</span>
-<span id="893">893</span>
-<span id="894">894</span>
-<span id="895">895</span>
-<span id="896">896</span>
-<span id="897">897</span>
-<span id="898">898</span>
-<span id="899">899</span>
 </pre><pre class="rust"><code><span class="comment">// Referential Integrity
 //
 // Given an entry, modification or change, ensure that all referential links
@@ -913,11 +896,9 @@
 
 <span class="kw">use </span>hashbrown::HashSet <span class="kw">as </span>Set;
 <span class="kw">use </span>kanidm_proto::v1::{ConsistencyError, PluginError};
-<span class="kw">use </span>tracing::trace;
 
 <span class="kw">use </span><span class="kw">crate</span>::event::{CreateEvent, DeleteEvent, ModifyEvent};
 <span class="kw">use </span><span class="kw">crate</span>::filter::f_eq;
-<span class="kw">use </span><span class="kw">crate</span>::modify::Modify;
 <span class="kw">use </span><span class="kw">crate</span>::plugins::Plugin;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::schema::SchemaTransaction;
@@ -987,82 +968,30 @@
         cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
         _ce: <span class="kw-2">&amp;</span>CreateEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="kw">let </span>schema = qs.get_schema();
-        <span class="kw">let </span>ref_types = schema.get_reference_types();
-
-        <span class="comment">// Fast Path
-        </span><span class="kw">let </span><span class="kw-2">mut </span>vsiter = cand.iter().flat_map(|c| {
-            ref_types
-                .values()
-                .filter_map(<span class="kw">move </span>|rtype| c.get_ava_set(<span class="kw-2">&amp;</span>rtype.name))
-        });
-
-        <span class="comment">// Could check len first?
-        </span><span class="kw">let </span><span class="kw-2">mut </span>i = Vec::new();
-
-        vsiter.try_for_each(|vs| {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(uuid_iter) = vs.as_ref_uuid_iter() {
-                uuid_iter.for_each(|u| {
-                    i.push(PartialValue::new_uuid(u))
-                });
-                <span class="prelude-val">Ok</span>(())
-            } <span class="kw">else </span>{
-                <span class="macro">admin_error!</span>(<span class="question-mark">?</span>vs, <span class="string">&quot;reference value could not convert to reference uuid.&quot;</span>);
-                <span class="macro">admin_error!</span>(<span class="string">&quot;If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.&quot;</span>);
-                <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(
-                    <span class="string">&quot;uuid could not become reference value&quot;</span>.to_string(),
-                ))
-            }
-        })<span class="question-mark">?</span>;
-
-        <span class="self">Self</span>::check_uuids_exist(qs, i)
+        <span class="self">Self</span>::post_modify_inner(qs, cand)
     }
 
-    <span class="attribute">#[instrument(
-        level = <span class="string">&quot;debug&quot;</span>,
-        name = <span class="string">&quot;refint_post_modify&quot;</span>,
-        skip(qs, _pre_cand, _cand, me)
-    )]
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;refint_post_modify&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>post_modify(
         qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         _pre_cand: <span class="kw-2">&amp;</span>[Arc&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;],
-        _cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
-        me: <span class="kw-2">&amp;</span>ModifyEvent,
+        cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
+        _me: <span class="kw-2">&amp;</span>ModifyEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="kw">let </span>schema = qs.get_schema();
-        <span class="kw">let </span>ref_types = schema.get_reference_types();
-
-        <span class="kw">let </span>i: <span class="prelude-ty">Result</span>&lt;Vec&lt;PartialValue&gt;, <span class="kw">_</span>&gt; = me.modlist.into_iter().filter_map(|modify| {
-            <span class="kw">if let </span>Modify::Present(a, v) = <span class="kw-2">&amp;</span>modify {
-                <span class="kw">if </span>ref_types.get(a).is_some() {
-                    <span class="prelude-val">Some</span>(v)
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">None
-                </span>}
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>}
-        })
-        .map(|v| {
-            v.to_ref_uuid()
-                .map(|uuid| PartialValue::new_uuid(uuid))
-                .ok_or_else(|| {
-                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span>v, <span class="string">&quot;reference value could not convert to reference uuid.&quot;</span>);
-                    <span class="macro">admin_error!</span>(<span class="string">&quot;If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.&quot;</span>);
-                    OperationError::InvalidAttribute(
-                        <span class="string">&quot;uuid could not become reference value&quot;</span>.to_string(),
-                    )
-                })
-
-        })
-        .collect();
-
-        <span class="kw">let </span>i = i<span class="question-mark">?</span>;
-
-        <span class="self">Self</span>::check_uuids_exist(qs, i)
+        <span class="self">Self</span>::post_modify_inner(qs, cand)
     }
 
-    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;refint_post_delete&quot;</span>, skip(qs, cand, _ce))]
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;refint_post_batch_modify&quot;</span>, skip_all)]
+    </span><span class="kw">fn </span>post_batch_modify(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        _pre_cand: <span class="kw-2">&amp;</span>[Arc&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;],
+        cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
+        _me: <span class="kw-2">&amp;</span>BatchModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">Self</span>::post_modify_inner(qs, cand)
+    }
+
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;refint_post_delete&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>post_delete(
         qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
@@ -1112,7 +1041,7 @@
             })
             .unzip();
 
-        qs.internal_batch_modify(pre_candidates, candidates)
+        qs.internal_apply_writable(pre_candidates, candidates)
     }
 
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;verify&quot;</span>, skip(qs))]
@@ -1159,6 +1088,43 @@
         }
 
         res
+    }
+}
+
+<span class="kw">impl </span>ReferentialIntegrity {
+    <span class="kw">fn </span>post_modify_inner(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">let </span>schema = qs.get_schema();
+        <span class="kw">let </span>ref_types = schema.get_reference_types();
+
+        <span class="comment">// Fast Path
+        </span><span class="kw">let </span><span class="kw-2">mut </span>vsiter = cand.iter().flat_map(|c| {
+            ref_types
+                .values()
+                .filter_map(<span class="kw">move </span>|rtype| c.get_ava_set(<span class="kw-2">&amp;</span>rtype.name))
+        });
+
+        <span class="comment">// Could check len first?
+        </span><span class="kw">let </span><span class="kw-2">mut </span>i = Vec::with_capacity(cand.len() * <span class="number">2</span>);
+
+        vsiter.try_for_each(|vs| {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(uuid_iter) = vs.as_ref_uuid_iter() {
+                uuid_iter.for_each(|u| {
+                    i.push(PartialValue::new_uuid(u))
+                });
+                <span class="prelude-val">Ok</span>(())
+            } <span class="kw">else </span>{
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span>vs, <span class="string">&quot;reference value could not convert to reference uuid.&quot;</span>);
+                <span class="macro">admin_error!</span>(<span class="string">&quot;If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.&quot;</span>);
+                <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(
+                    <span class="string">&quot;uuid could not become reference value&quot;</span>.to_string(),
+                ))
+            }
+        })<span class="question-mark">?</span>;
+
+        <span class="self">Self</span>::check_uuids_exist(qs, i)
     }
 }
 

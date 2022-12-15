@@ -910,17 +910,11 @@
 <span id="910">910</span>
 <span id="911">911</span>
 <span id="912">912</span>
-<span id="913">913</span>
-<span id="914">914</span>
-<span id="915">915</span>
-<span id="916">916</span>
-<span id="917">917</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>kanidm_proto::v1::Filter <span class="kw">as </span>ProtoFilter;
 
-<span class="kw">use </span><span class="kw">crate</span>::event::{CreateEvent, ModifyEvent};
 <span class="kw">use </span><span class="kw">crate</span>::filter::FilterInvalid;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 
@@ -1049,11 +1043,11 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;dyngroup_post_create&quot;</span>, skip(qs, cand, ce))]
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;dyngroup_post_create&quot;</span>, skip_all)]
     </span><span class="kw">pub fn </span>post_create(
         qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
-        ce: <span class="kw-2">&amp;</span>CreateEvent,
+        ident: <span class="kw-2">&amp;</span>Identity,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Uuid&gt;, OperationError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>affected_uuids = Vec::with_capacity(cand.len());
 
@@ -1121,7 +1115,7 @@
             <span class="macro">trace!</span>(<span class="string">&quot;considering new dyngroups&quot;</span>);
             <span class="self">Self</span>::apply_dyngroup_change(
                 qs,
-                <span class="kw-2">&amp;</span>ce.ident,
+                ident,
                 <span class="kw-2">&amp;mut </span>pre_candidates,
                 <span class="kw-2">&amp;mut </span>candidates,
                 <span class="kw-2">&amp;mut </span>affected_uuids,
@@ -1136,7 +1130,7 @@
         </span><span class="macro">debug_assert!</span>(pre_candidates.len() == candidates.len());
         <span class="comment">// Write this stripe if populated.
         </span><span class="kw">if </span>!pre_candidates.is_empty() {
-            qs.internal_batch_modify(pre_candidates, candidates)
+            qs.internal_apply_writable(pre_candidates, candidates)
                 .map_err(|e| {
                     <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to commit dyngroup set {:?}&quot;</span>, e);
                     e
@@ -1146,16 +1140,12 @@
         <span class="prelude-val">Ok</span>(affected_uuids)
     }
 
-    <span class="attribute">#[instrument(
-        level = <span class="string">&quot;debug&quot;</span>,
-        name = <span class="string">&quot;memberof_post_modify&quot;</span>,
-        skip(qs, pre_cand, cand, me)
-    )]
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;memberof_post_modify&quot;</span>, skip_all)]
     </span><span class="kw">pub fn </span>post_modify(
         qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         pre_cand: <span class="kw-2">&amp;</span>[Arc&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;],
         cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
-        me: <span class="kw-2">&amp;</span>ModifyEvent,
+        ident: <span class="kw-2">&amp;</span>Identity,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Uuid&gt;, OperationError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>affected_uuids = Vec::with_capacity(cand.len());
 
@@ -1185,7 +1175,7 @@
             <span class="macro">trace!</span>(<span class="string">&quot;considering modified dyngroups&quot;</span>);
             <span class="self">Self</span>::apply_dyngroup_change(
                 qs,
-                <span class="kw-2">&amp;</span>me.ident,
+                ident,
                 <span class="kw-2">&amp;mut </span>pre_candidates,
                 <span class="kw-2">&amp;mut </span>candidates,
                 <span class="kw-2">&amp;mut </span>affected_uuids,
@@ -1250,7 +1240,7 @@
         </span><span class="macro">debug_assert!</span>(pre_candidates.len() == candidates.len());
         <span class="comment">// Write this stripe if populated.
         </span><span class="kw">if </span>!pre_candidates.is_empty() {
-            qs.internal_batch_modify(pre_candidates, candidates)
+            qs.internal_apply_writable(pre_candidates, candidates)
                 .map_err(|e| {
                     <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to commit dyngroup set {:?}&quot;</span>, e);
                     e

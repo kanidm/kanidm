@@ -505,6 +505,46 @@
 <span id="505">505</span>
 <span id="506">506</span>
 <span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
 </pre><pre class="rust"><code><span class="attribute">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -523,8 +563,9 @@
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>tests;
 
-<span class="kw">use </span><span class="kw">crate</span>::config::Config;
+<span class="kw">use </span><span class="kw">crate</span>::config::{Config, EntryConfig};
 <span class="kw">use </span>clap::Parser;
+<span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::fs::metadata;
 <span class="kw">use </span>std::fs::File;
 <span class="kw">use </span>std::io::Read;
@@ -536,6 +577,7 @@
 <span class="kw">use </span>tracing::{debug, error, info, warn};
 <span class="kw">use </span>tracing_subscriber::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>tracing_subscriber::{fmt, EnvFilter};
+<span class="kw">use </span>uuid::Uuid;
 
 <span class="kw">use </span>kanidm_client::KanidmClientBuilder;
 <span class="kw">use </span>kanidm_proto::scim_v1::{
@@ -708,7 +750,13 @@
 
     <span class="comment">// pre-process the entries.
     //  - &gt; fn so we can test.
-    </span><span class="kw">let </span>scim_sync_request = <span class="kw">match </span>process_ipa_sync_result(scim_sync_status, sync_result).<span class="kw">await </span>{
+    </span><span class="kw">let </span>scim_sync_request = <span class="kw">match </span>process_ipa_sync_result(
+        scim_sync_status,
+        sync_result,
+        <span class="kw-2">&amp;</span>sync_config.entry_map,
+    )
+    .<span class="kw">await
+    </span>{
         <span class="prelude-val">Ok</span>(ssr) =&gt; ssr,
         <span class="prelude-val">Err</span>(()) =&gt; <span class="kw">return</span>,
     };
@@ -719,13 +767,18 @@
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = serde_json::to_writer_pretty(stdout, <span class="kw-2">&amp;</span>scim_sync_request) {
             <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Failed to serialise scim sync request&quot;</span>);
         };
+    } <span class="kw">else if </span>opt.dry_run {
+        <span class="macro">info!</span>(<span class="string">&quot;dry-run complete&quot;</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;Success!&quot;</span>);
     } <span class="kw">else </span>{
         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = rsclient.scim_v1_sync_update(<span class="kw-2">&amp;</span>scim_sync_request).<span class="kw">await </span>{
             <span class="macro">error!</span>(
                 <span class="question-mark">?</span>e,
                 <span class="string">&quot;Failed to submit scim sync update - see the kanidmd server log for more details.&quot;
             </span>);
-        };
+        } <span class="kw">else </span>{
+            <span class="macro">info!</span>(<span class="string">&quot;Success!&quot;</span>);
+        }
     }
     <span class="comment">// done!
 </span>}
@@ -733,6 +786,7 @@
 <span class="kw">async fn </span>process_ipa_sync_result(
     from_state: ScimSyncState,
     sync_result: LdapSyncRepl,
+    entry_config_map: <span class="kw-2">&amp;</span>HashMap&lt;Uuid, EntryConfig&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;ScimSyncRequest, ()&gt; {
     <span class="kw">match </span>sync_result {
         LdapSyncRepl::Success {
@@ -763,10 +817,16 @@
             <span class="comment">// Future - make this par-map
             </span><span class="kw">let </span>entries = entries
                 .into_iter()
-                .filter_map(|e| <span class="kw">match </span>ipa_to_scim_entry(e) {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(e)) =&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(e)),
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
-                    <span class="prelude-val">Err</span>(()) =&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(())),
+                .filter_map(|e| {
+                    <span class="kw">let </span>e_config = entry_config_map
+                        .get(<span class="kw-2">&amp;</span>e.entry_uuid)
+                        .cloned()
+                        .unwrap_or_default();
+                    <span class="kw">match </span>ipa_to_scim_entry(e, <span class="kw-2">&amp;</span>e_config) {
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(e)) =&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(e)),
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
+                        <span class="prelude-val">Err</span>(()) =&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(())),
+                    }
                 })
                 .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;();
 
@@ -798,16 +858,26 @@
     }
 }
 
-<span class="kw">fn </span>ipa_to_scim_entry(sync_entry: LdapSyncReplEntry) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;ScimEntry&gt;, ()&gt; {
-    <span class="macro">debug!</span>(<span class="string">&quot;{:#?}&quot;</span>, sync_entry);
-    <span class="comment">// Is this an entry we need to observe/look at?
+<span class="comment">// TODO: Allow re-map of uuid -&gt; uuid
 
-    // check the sync_entry state?
+</span><span class="kw">fn </span>ipa_to_scim_entry(
+    sync_entry: LdapSyncReplEntry,
+    entry_config: <span class="kw-2">&amp;</span>EntryConfig,
+) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;ScimEntry&gt;, ()&gt; {
+    <span class="macro">debug!</span>(<span class="string">&quot;{:#?}&quot;</span>, sync_entry);
+
+    <span class="comment">// check the sync_entry state?
     </span><span class="kw">if </span>sync_entry.state != LdapSyncStateValue::Add {
-        <span class="macro">todo!</span>();
+        <span class="macro">unimplemented!</span>();
     }
 
     <span class="kw">let </span>dn = sync_entry.entry.dn.clone();
+
+    <span class="comment">// Is this an entry we need to observe/look at?
+    </span><span class="kw">if </span>entry_config.exclude {
+        <span class="macro">info!</span>(<span class="string">&quot;entry_config excludes {}&quot;</span>, dn);
+        <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
+    }
 
     <span class="kw">let </span>oc = sync_entry.entry.attrs.get(<span class="string">&quot;objectclass&quot;</span>).ok_or_else(|| {
         <span class="macro">error!</span>(<span class="string">&quot;Invalid entry - no object class {}&quot;</span>, dn);
@@ -826,6 +896,12 @@
             <span class="macro">error!</span>(<span class="string">&quot;Missing required attribute uid&quot;</span>);
         })<span class="question-mark">?</span>;
 
+        <span class="comment">// ⚠️  hardcoded skip on admin here!!!
+        </span><span class="kw">if </span>user_name == <span class="string">&quot;admin&quot; </span>{
+            <span class="macro">info!</span>(<span class="string">&quot;kanidm excludes {}&quot;</span>, dn);
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
+        }
+
         <span class="kw">let </span>display_name = entry.remove_ava_single(<span class="string">&quot;cn&quot;</span>).ok_or_else(|| {
             <span class="macro">error!</span>(<span class="string">&quot;Missing required attribute cn&quot;</span>);
         })<span class="question-mark">?</span>;
@@ -839,8 +915,9 @@
             })
             .transpose()<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>homedirectory = entry.remove_ava_single(<span class="string">&quot;homedirectory&quot;</span>);
-        <span class="kw">let </span>password_import = entry.remove_ava_single(<span class="string">&quot;ipanthash&quot;</span>);
+        <span class="kw">let </span>password_import = entry
+            .remove_ava_single(<span class="string">&quot;ipanthash&quot;</span>)
+            .map(|s| <span class="macro">format!</span>(<span class="string">&quot;ipaNTHash: {}&quot;</span>, s));
         <span class="kw">let </span>login_shell = entry.remove_ava_single(<span class="string">&quot;loginshell&quot;</span>);
         <span class="kw">let </span>external_id = <span class="prelude-val">Some</span>(entry.dn);
 
@@ -851,7 +928,6 @@
                 user_name,
                 display_name,
                 gidnumber,
-                homedirectory,
                 password_import,
                 login_shell,
             }
@@ -869,6 +945,12 @@
         <span class="kw">let </span>name = entry.remove_ava_single(<span class="string">&quot;cn&quot;</span>).ok_or_else(|| {
             <span class="macro">error!</span>(<span class="string">&quot;Missing required attribute cn&quot;</span>);
         })<span class="question-mark">?</span>;
+
+        <span class="comment">// ⚠️  hardcoded skip on trust admins / editors / ipausers here!!!
+        </span><span class="kw">if </span>name == <span class="string">&quot;trust admins&quot; </span>|| name == <span class="string">&quot;editors&quot; </span>|| name == <span class="string">&quot;ipausers&quot; </span>|| name == <span class="string">&quot;admins&quot; </span>{
+            <span class="macro">info!</span>(<span class="string">&quot;kanidm excludes {}&quot;</span>, dn);
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
+        }
 
         <span class="kw">let </span>description = entry.remove_ava_single(<span class="string">&quot;description&quot;</span>);
 
@@ -1009,8 +1091,6 @@
     <span class="macro">tracing::debug!</span>(<span class="string">&quot;Using {} worker threads&quot;</span>, par_count);
 
     rt.block_on(<span class="kw">async move </span>{ driver_main(opt).<span class="kw">await </span>});
-
-    <span class="macro">info!</span>(<span class="string">&quot;Success!&quot;</span>);
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_ipa_sync" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

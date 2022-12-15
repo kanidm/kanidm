@@ -1856,6 +1856,12 @@
 <span id="1856">1856</span>
 <span id="1857">1857</span>
 <span id="1858">1858</span>
+<span id="1859">1859</span>
+<span id="1860">1860</span>
+<span id="1861">1861</span>
+<span id="1862">1862</span>
+<span id="1863">1863</span>
+<span id="1864">1864</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of
 //! the [`Value`] module allow storage and transformation of various types of input into strongly
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
@@ -2021,10 +2027,12 @@
     Deserialize,
     Serialize,
     TryFromPrimitive,
+    Default,
 )]
 #[repr(u16)]
 </span><span class="kw">pub enum </span>SyntaxType {
-    Utf8String = <span class="number">0</span>,
+    <span class="attribute">#[default]
+    </span>Utf8String = <span class="number">0</span>,
     Utf8StringInsensitive = <span class="number">1</span>,
     Uuid = <span class="number">2</span>,
     Boolean = <span class="number">3</span>,
@@ -2684,6 +2692,10 @@
             | (Value::SecretValue(<span class="kw">_</span>), Value::SecretValue(<span class="kw">_</span>)) =&gt; <span class="bool-val">false</span>,
             <span class="comment">// Specifically related to migrations, we allow the invalid comparison.
             </span>(Value::Iutf8(<span class="kw">_</span>), Value::Iname(<span class="kw">_</span>)) | (Value::Iname(<span class="kw">_</span>), Value::Iutf8(<span class="kw">_</span>)) =&gt; <span class="bool-val">false</span>,
+            <span class="comment">// When upgrading between uuid -&gt; name -&gt; spn we have to allow some invalid types.
+            </span>(Value::Uuid(<span class="kw">_</span>), Value::Iname(<span class="kw">_</span>))
+            | (Value::Iname(<span class="kw">_</span>), Value::Spn(<span class="kw">_</span>, <span class="kw">_</span>))
+            | (Value::Uuid(<span class="kw">_</span>), Value::Spn(<span class="kw">_</span>, <span class="kw">_</span>)) =&gt; <span class="bool-val">false</span>,
             (l, r) =&gt; {
                 <span class="macro">error!</span>(<span class="question-mark">?</span>l, <span class="question-mark">?</span>r, <span class="string">&quot;mismatched value types&quot;</span>);
                 <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);

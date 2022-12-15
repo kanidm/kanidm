@@ -3133,6 +3133,36 @@
 <span id="3133">3133</span>
 <span id="3134">3134</span>
 <span id="3135">3135</span>
+<span id="3136">3136</span>
+<span id="3137">3137</span>
+<span id="3138">3138</span>
+<span id="3139">3139</span>
+<span id="3140">3140</span>
+<span id="3141">3141</span>
+<span id="3142">3142</span>
+<span id="3143">3143</span>
+<span id="3144">3144</span>
+<span id="3145">3145</span>
+<span id="3146">3146</span>
+<span id="3147">3147</span>
+<span id="3148">3148</span>
+<span id="3149">3149</span>
+<span id="3150">3150</span>
+<span id="3151">3151</span>
+<span id="3152">3152</span>
+<span id="3153">3153</span>
+<span id="3154">3154</span>
+<span id="3155">3155</span>
+<span id="3156">3156</span>
+<span id="3157">3157</span>
+<span id="3158">3158</span>
+<span id="3159">3159</span>
+<span id="3160">3160</span>
+<span id="3161">3161</span>
+<span id="3162">3162</span>
+<span id="3163">3163</span>
+<span id="3164">3164</span>
+<span id="3165">3165</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The backend. This contains the &quot;low level&quot; storage and query code, which is
 //! implemented as a json-like kv document database. This has no rules about content
 //! of the server, which are all enforced at higher levels. The role of the backend
@@ -3986,6 +4016,10 @@
         <span class="self">self</span>.get_idlayer().name2uuid(name)
     }
 
+    <span class="kw">fn </span>externalid2uuid(<span class="kw-2">&amp;</span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
+        <span class="self">self</span>.get_idlayer().externalid2uuid(name)
+    }
+
     <span class="kw">fn </span>uuid2spn(<span class="kw-2">&amp;</span><span class="self">self</span>, uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Value&gt;, OperationError&gt; {
         <span class="self">self</span>.get_idlayer().uuid2spn(uuid)
     }
@@ -4324,14 +4358,22 @@
             <span class="comment">// There will never be content to add.
             </span><span class="macro">assert!</span>(n2u_add.is_none());
 
+            <span class="kw">let </span>(eid2u_add, eid2u_rem) = Entry::idx_externalid2uuid_diff(mask_pre, <span class="prelude-val">None</span>);
+            <span class="comment">// There will never be content to add.
+            </span><span class="macro">assert!</span>(eid2u_add.is_none());
+
             <span class="kw">let </span>u2s_act = Entry::idx_uuid2spn_diff(mask_pre, <span class="prelude-val">None</span>);
             <span class="kw">let </span>u2r_act = Entry::idx_uuid2rdn_diff(mask_pre, <span class="prelude-val">None</span>);
 
-            <span class="macro">trace!</span>(<span class="question-mark">?</span>n2u_rem, <span class="question-mark">?</span>u2s_act, <span class="question-mark">?</span>u2r_act,);
+            <span class="macro">trace!</span>(<span class="question-mark">?</span>n2u_rem, <span class="question-mark">?</span>eid2u_rem, <span class="question-mark">?</span>u2s_act, <span class="question-mark">?</span>u2r_act,);
 
             <span class="comment">// Write the changes out to the backend
             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(rem) = n2u_rem {
                 idlayer.write_name2uuid_rem(rem)<span class="question-mark">?
+            </span>}
+
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(rem) = eid2u_rem {
+                idlayer.write_externalid2uuid_rem(rem)<span class="question-mark">?
             </span>}
 
             <span class="kw">match </span>u2s_act {
@@ -4354,11 +4396,19 @@
 
         <span class="kw">let </span>mask_post = post.and_then(|e| e.mask_recycled_ts());
         <span class="kw">let </span>(n2u_add, n2u_rem) = Entry::idx_name2uuid_diff(mask_pre, mask_post);
+        <span class="kw">let </span>(eid2u_add, eid2u_rem) = Entry::idx_externalid2uuid_diff(mask_pre, mask_post);
 
         <span class="kw">let </span>u2s_act = Entry::idx_uuid2spn_diff(mask_pre, mask_post);
         <span class="kw">let </span>u2r_act = Entry::idx_uuid2rdn_diff(mask_pre, mask_post);
 
-        <span class="macro">trace!</span>(<span class="question-mark">?</span>n2u_add, <span class="question-mark">?</span>n2u_rem, <span class="question-mark">?</span>u2s_act, <span class="question-mark">?</span>u2r_act);
+        <span class="macro">trace!</span>(
+            <span class="question-mark">?</span>n2u_add,
+            <span class="question-mark">?</span>n2u_rem,
+            <span class="question-mark">?</span>eid2u_add,
+            <span class="question-mark">?</span>eid2u_rem,
+            <span class="question-mark">?</span>u2s_act,
+            <span class="question-mark">?</span>u2r_act
+        );
 
         <span class="comment">// Write the changes out to the backend
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(add) = n2u_add {
@@ -4366,6 +4416,13 @@
         </span>}
         <span class="kw">if let </span><span class="prelude-val">Some</span>(rem) = n2u_rem {
             idlayer.write_name2uuid_rem(rem)<span class="question-mark">?
+        </span>}
+
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(add) = eid2u_add {
+            idlayer.write_externalid2uuid_add(e_uuid, add)<span class="question-mark">?
+        </span>}
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(rem) = eid2u_rem {
+            idlayer.write_externalid2uuid_rem(rem)<span class="question-mark">?
         </span>}
 
         <span class="kw">match </span>u2s_act {
@@ -4461,6 +4518,9 @@
         <span class="comment">// Create name2uuid and uuid2name
         </span><span class="macro">trace!</span>(<span class="string">&quot;Creating index -&gt; name2uuid&quot;</span>);
         idlayer.create_name2uuid()<span class="question-mark">?</span>;
+
+        <span class="macro">trace!</span>(<span class="string">&quot;Creating index -&gt; externalid2uuid&quot;</span>);
+        idlayer.create_externalid2uuid()<span class="question-mark">?</span>;
 
         <span class="macro">trace!</span>(<span class="string">&quot;Creating index -&gt; uuid2spn&quot;</span>);
         idlayer.create_uuid2spn()<span class="question-mark">?</span>;

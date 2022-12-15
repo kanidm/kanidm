@@ -49,6 +49,21 @@
 <span id="49">49</span>
 <span id="50">50</span>
 <span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{ClientError, KanidmClient};
 <span class="kw">use </span>kanidm_proto::v1::Entry;
 <span class="kw">use </span>std::collections::BTreeMap;
@@ -71,6 +86,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>new_acct = Entry {
             attrs: BTreeMap::new(),
         };
+
         new_acct
             .attrs
             .insert(<span class="string">&quot;name&quot;</span>.to_string(), <span class="macro">vec!</span>[name.to_string()]);
@@ -79,6 +95,7 @@
                 .attrs
                 .insert(<span class="string">&quot;description&quot;</span>.to_string(), <span class="macro">vec!</span>[description.to_string()]);
         }
+
         <span class="self">self</span>.perform_post_request(<span class="string">&quot;/v1/sync_account&quot;</span>, new_acct)
             .<span class="kw">await
     </span>}
@@ -97,6 +114,19 @@
 
     <span class="kw">pub async fn </span>idm_sync_account_destroy_token(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), ClientError&gt; {
         <span class="self">self</span>.perform_delete_request(<span class="macro">format!</span>(<span class="string">&quot;/v1/sync_account/{}/_sync_token&quot;</span>, id,).as_str())
+            .<span class="kw">await
+    </span>}
+
+    <span class="kw">pub async fn </span>idm_sync_account_force_refresh(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), ClientError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>update_entry = Entry {
+            attrs: BTreeMap::new(),
+        };
+
+        update_entry
+            .attrs
+            .insert(<span class="string">&quot;sync_cookie&quot;</span>.to_string(), Vec::with_capacity(<span class="number">0</span>));
+
+        <span class="self">self</span>.perform_patch_request(<span class="macro">format!</span>(<span class="string">&quot;/v1/sync_account/{}&quot;</span>, id).as_str(), update_entry)
             .<span class="kw">await
     </span>}
 }

@@ -910,6 +910,9 @@
 <span id="910">910</span>
 <span id="911">911</span>
 <span id="912">912</span>
+<span id="913">913</span>
+<span id="914">914</span>
+<span id="915">915</span>
 </pre><pre class="rust"><code><span class="kw">mod </span>manifest;
 <span class="kw">pub mod </span>middleware;
 <span class="kw">mod </span>oauth2;
@@ -1232,6 +1235,7 @@ Disallow: /
 <span class="comment">// TODO: Add request limits.
 </span><span class="kw">pub fn </span>create_https_server(
     address: String,
+    domain: String,
     <span class="comment">// opt_tls_params: Option&lt;SslAcceptorBuilder&gt;,
     </span>opt_tls_params: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>TlsConfiguration&gt;,
     role: ServerRole,
@@ -1302,6 +1306,8 @@ Disallow: /
         </span>tide::sessions::SessionMiddleware::new(tide::sessions::CookieStore::new(), cookie_key)
             .with_session_ttl(<span class="prelude-val">None</span>)
             .with_cookie_name(<span class="string">&quot;kanidm-session&quot;</span>)
+            <span class="comment">// Without this, the cookies won&#39;t be used on subdomains of origin.
+            </span>.with_cookie_domain(<span class="kw-2">&amp;</span>domain)
             <span class="comment">// Im not sure if we need Lax here, I don&#39;t think we do because on the first get
             // we don&#39;t need the cookie since wasm drives the fetches.
             </span>.with_same_site_policy(tide::http::cookies::SameSite::Strict),

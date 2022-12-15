@@ -298,6 +298,12 @@
 <span id="298">298</span>
 <span id="299">299</span>
 <span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
 </pre><pre class="rust"><code><span class="attribute">#![allow(clippy::unwrap_used)]
 
 </span><span class="kw">use </span>uuid::{uuid, Uuid};
@@ -513,6 +519,12 @@
 <span class="kw">pub const </span>_UUID_SCHEMA_ATTR_GRANT_UI_HINT: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000119&quot;</span>);
 <span class="kw">pub const </span>_UUID_SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000120&quot;</span>);
+
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_SYNC_EXTERNAL_ID: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000121&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_SYNC_PARENT_UUID: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000122&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_CLASS_SYNC_OBJECT: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000123&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_SYNC_CLASS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000124&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_SYNC_ALLOWED: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000125&quot;</span>);
 
 <span class="comment">// System and domain infos
 // I&#39;d like to strongly criticise william of the past for making poor choices about these allocations.

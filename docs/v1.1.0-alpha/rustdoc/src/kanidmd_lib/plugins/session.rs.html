@@ -573,6 +573,24 @@
 <span id="573">573</span>
 <span id="574">574</span>
 <span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This plugin maintains consistency of authenticated sessions on accounts.
 //!
 //! An example of this is that oauth2 sessions are child of user auth sessions,
@@ -600,6 +618,24 @@
         qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
         _me: <span class="kw-2">&amp;</span>ModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">Self</span>::modify_inner(qs, cand)
+    }
+
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;session_consistency&quot;</span>, skip_all)]
+    </span><span class="kw">fn </span>pre_batch_modify(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
+        _me: <span class="kw-2">&amp;</span>BatchModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">Self</span>::modify_inner(qs, cand)
+    }
+}
+
+<span class="kw">impl </span>SessionConsistency {
+    <span class="kw">fn </span>modify_inner&lt;T: Clone + std::fmt::Debug&gt;(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, T&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="kw">let </span>curtime = qs.get_curtime();
         <span class="kw">let </span>curtime_odt = OffsetDateTime::unix_epoch() + curtime;

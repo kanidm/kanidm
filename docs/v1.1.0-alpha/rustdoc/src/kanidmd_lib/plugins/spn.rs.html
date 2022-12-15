@@ -350,6 +350,10 @@
 <span id="350">350</span>
 <span id="351">351</span>
 <span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
 </pre><pre class="rust"><code><span class="comment">// Generate and manage spn&#39;s for all entries in the domain. Also deals with
 // the infrequent - but possible - case where a domain is renamed.
 </span><span class="kw">use </span>std::iter::once;
@@ -371,11 +375,7 @@
     </span>}
 
     <span class="comment">// hook on pre-create and modify to generate / validate.
-    </span><span class="attribute">#[instrument(
-        level = <span class="string">&quot;debug&quot;</span>,
-        name = <span class="string">&quot;spn_pre_create_transform&quot;</span>,
-        skip(qs, cand, _ce)
-    )]
+    </span><span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;spn_pre_create_transform&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>pre_create_transform(
         qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryNew&gt;&gt;,
@@ -384,68 +384,28 @@
         <span class="comment">// Always generate the spn and set it. Why? Because the effort
         // needed to validate is the same as generation, so we may as well
         // just generate and set blindly when required.
-
-        // Should we work out what classes dynamically from schema into a filter?
-        // No - types that are trust replicated are fixed.
-        </span><span class="kw">let </span>domain_name = qs.get_domain_name();
-
-        <span class="kw">for </span>e <span class="kw">in </span>cand.iter_mut() {
-            <span class="kw">if </span>e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_GROUP)
-                || e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_ACCOUNT)
-            {
-                <span class="kw">let </span>spn = e
-                    .generate_spn(domain_name)
-                    .ok_or(OperationError::InvalidEntryState)
-                    .map_err(|e| {
-                        <span class="macro">admin_error!</span>(
-                            <span class="string">&quot;Account or group missing name, unable to generate spn!? {:?}&quot;</span>,
-                            e
-                        );
-                        e
-                    })<span class="question-mark">?</span>;
-                <span class="macro">trace!</span>(<span class="string">&quot;plugin_spn: set spn to {:?}&quot;</span>, spn);
-                e.set_ava(<span class="string">&quot;spn&quot;</span>, once(spn));
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
+        </span><span class="self">Self</span>::modify_inner(qs, cand)
     }
 
-    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;spn_pre_modify&quot;</span>, skip(qs, cand, _me))]
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;spn_pre_modify&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>pre_modify(
         qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
         _me: <span class="kw-2">&amp;</span>ModifyEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="comment">// Always generate and set *if* spn was an attribute on any of the mod
-        // list events.
-        </span><span class="kw">let </span>domain_name = qs.get_domain_name();
-
-        <span class="kw">for </span>e <span class="kw">in </span>cand.iter_mut() {
-            <span class="kw">if </span>e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_GROUP)
-                || e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_ACCOUNT)
-            {
-                <span class="kw">let </span>spn = e
-                    .generate_spn(domain_name)
-                    .ok_or(OperationError::InvalidEntryState)
-                    .map_err(|e| {
-                        <span class="macro">admin_error!</span>(
-                            <span class="string">&quot;Account or group missing name, unable to generate spn!? {:?}&quot;</span>,
-                            e
-                        );
-                        e
-                    })<span class="question-mark">?</span>;
-                <span class="macro">trace!</span>(<span class="string">&quot;plugin_spn: set spn to {:?}&quot;</span>, spn);
-                e.set_ava(<span class="string">&quot;spn&quot;</span>, once(spn));
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
+        <span class="self">Self</span>::modify_inner(qs, cand)
     }
 
-    <span class="attribute">#[instrument(
-        level = <span class="string">&quot;debug&quot;</span>,
-        name = <span class="string">&quot;spn_post_modify&quot;</span>,
-        skip(qs, pre_cand, cand, _ce)
-    )]
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;spn_pre_batch_modify&quot;</span>, skip_all)]
+    </span><span class="kw">fn </span>pre_batch_modify(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
+        _me: <span class="kw-2">&amp;</span>BatchModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">Self</span>::modify_inner(qs, cand)
+    }
+
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;spn_post_modify&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>post_modify(
         qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         <span class="comment">// List of what we modified that was valid?
@@ -453,40 +413,18 @@
         cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
         _ce: <span class="kw-2">&amp;</span>ModifyEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="comment">// On modify, if changing domain_name on UUID_DOMAIN_INFO
-        //    trigger the spn regen ... which is expensive. Future
-        // TODO #157: will be improvements to modify on large txns.
+        <span class="self">Self</span>::post_modify_inner(qs, pre_cand, cand)
+    }
 
-        </span><span class="kw">let </span>domain_name_changed = cand.iter().zip(pre_cand.iter()).find_map(|(post, pre)| {
-            <span class="kw">let </span>domain_name = post.get_ava_single(<span class="string">&quot;domain_name&quot;</span>);
-            <span class="kw">if </span>post.attribute_equality(<span class="string">&quot;uuid&quot;</span>, <span class="kw-2">&amp;</span>PVUUID_DOMAIN_INFO)
-                &amp;&amp; domain_name != pre.get_ava_single(<span class="string">&quot;domain_name&quot;</span>)
-            {
-                domain_name
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>}
-        });
-
-        <span class="kw">let </span>domain_name = <span class="kw">match </span>domain_name_changed {
-            <span class="prelude-val">Some</span>(s) =&gt; s,
-            <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
-        };
-
-        <span class="macro">admin_info!</span>(
-            <span class="string">&quot;IMPORTANT!!! Changing domain name to \&quot;{:?}\&quot;. THIS MAY TAKE A LONG TIME ...&quot;</span>,
-            domain_name
-        );
-
-        <span class="comment">// All we do is purge spn, and allow the plugin to recreate. Neat! It&#39;s also all still
-        // within the transaction, just incase!
-        </span>qs.internal_modify(
-            <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="macro">f_or!</span>([
-                f_eq(<span class="string">&quot;class&quot;</span>, PVCLASS_GROUP.clone()),
-                f_eq(<span class="string">&quot;class&quot;</span>, PVCLASS_ACCOUNT.clone())
-            ])),
-            <span class="kw-2">&amp;</span><span class="macro">modlist!</span>([m_purge(<span class="string">&quot;spn&quot;</span>)]),
-        )
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;spn_post_batch_modify&quot;</span>, skip_all)]
+    </span><span class="kw">fn </span>post_batch_modify(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        <span class="comment">// List of what we modified that was valid?
+        </span>pre_cand: <span class="kw-2">&amp;</span>[Arc&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;],
+        cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
+        _ce: <span class="kw-2">&amp;</span>BatchModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">Self</span>::post_modify_inner(qs, pre_cand, cand)
     }
 
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;spn_verify&quot;</span>, skip(qs))]
@@ -547,6 +485,76 @@
             }
         }
         r
+    }
+}
+
+<span class="kw">impl </span>Spn {
+    <span class="kw">fn </span>modify_inner&lt;T: Clone + std::fmt::Debug&gt;(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, T&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">let </span>domain_name = qs.get_domain_name();
+
+        <span class="kw">for </span>ent <span class="kw">in </span>cand.iter_mut() {
+            <span class="kw">if </span>ent.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_GROUP)
+                || ent.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_ACCOUNT)
+            {
+                <span class="kw">let </span>spn = ent
+                    .generate_spn(domain_name)
+                    .ok_or(OperationError::InvalidEntryState)
+                    .map_err(|e| {
+                        <span class="macro">admin_error!</span>(
+                            <span class="string">&quot;Account or group missing name, unable to generate spn!? {:?} entry_id = {:?}&quot;</span>,
+                            e, ent.get_uuid()
+                        );
+                        e
+                    })<span class="question-mark">?</span>;
+                <span class="macro">trace!</span>(<span class="string">&quot;plugin_spn: set spn to {:?}&quot;</span>, spn);
+                ent.set_ava(<span class="string">&quot;spn&quot;</span>, once(spn));
+            }
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn </span>post_modify_inner(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        pre_cand: <span class="kw-2">&amp;</span>[Arc&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;],
+        cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="comment">// On modify, if changing domain_name on UUID_DOMAIN_INFO
+        //    trigger the spn regen ... which is expensive. Future
+        // TODO #157: will be improvements to modify on large txns.
+
+        </span><span class="kw">let </span>domain_name_changed = cand.iter().zip(pre_cand.iter()).find_map(|(post, pre)| {
+            <span class="kw">let </span>domain_name = post.get_ava_single(<span class="string">&quot;domain_name&quot;</span>);
+            <span class="kw">if </span>post.attribute_equality(<span class="string">&quot;uuid&quot;</span>, <span class="kw-2">&amp;</span>PVUUID_DOMAIN_INFO)
+                &amp;&amp; domain_name != pre.get_ava_single(<span class="string">&quot;domain_name&quot;</span>)
+            {
+                domain_name
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>}
+        });
+
+        <span class="kw">let </span>domain_name = <span class="kw">match </span>domain_name_changed {
+            <span class="prelude-val">Some</span>(s) =&gt; s,
+            <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
+        };
+
+        <span class="macro">admin_info!</span>(
+            <span class="string">&quot;IMPORTANT!!! Changing domain name to \&quot;{:?}\&quot;. THIS MAY TAKE A LONG TIME ...&quot;</span>,
+            domain_name
+        );
+
+        <span class="comment">// All we do is purge spn, and allow the plugin to recreate. Neat! It&#39;s also all still
+        // within the transaction, just incase!
+        </span>qs.internal_modify(
+            <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="macro">f_or!</span>([
+                f_eq(<span class="string">&quot;class&quot;</span>, PVCLASS_GROUP.clone()),
+                f_eq(<span class="string">&quot;class&quot;</span>, PVCLASS_ACCOUNT.clone())
+            ])),
+            <span class="kw-2">&amp;</span><span class="macro">modlist!</span>([m_purge(<span class="string">&quot;spn&quot;</span>)]),
+        )
     }
 }
 

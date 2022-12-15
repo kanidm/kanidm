@@ -29,6 +29,12 @@
 <span id="29">29</span>
 <span id="30">30</span>
 <span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
 </pre><pre class="rust"><code>
 
 <span class="kw">use </span>kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
@@ -49,15 +55,21 @@
     </span><span class="attribute">#[clap(parse(from_os_str), short, long, default_value_os_t = DEFAULT_IPA_CONFIG_PATH.into())]
     </span><span class="kw">pub </span>ipa_sync_config: PathBuf,
 
-    <span class="attribute">#[clap(short, long, hide = <span class="bool-val">true</span>)]
-    </span><span class="doccomment">/// Dump the ldap protocol inputs, as well as the scim outputs. This can be used
+    <span class="doccomment">/// Dump the ldap protocol inputs, as well as the scim outputs. This can be used
     /// to create test cases for testing the parser.
     ///
     /// No actions are taken on the kanidm instance, this is purely a dump of the
     /// state in/out.
+    </span><span class="attribute">#[clap(short, long, hide = <span class="bool-val">true</span>)]
     </span><span class="kw">pub </span>proto_dump: bool,
 
-    <span class="attribute">#[clap(short, long, hide = <span class="bool-val">true</span>)]
+    <span class="doccomment">/// Read entries from ipa, and check the connection to kanidm, but take no actions against
+    /// kanidm that would change state.
+    </span><span class="attribute">#[clap(short = <span class="string">&#39;n&#39;</span>)]
+    </span><span class="kw">pub </span>dry_run: bool,
+
+    <span class="doccomment">/// Skip the root user permission check.
+    </span><span class="attribute">#[clap(short, long, hide = <span class="bool-val">true</span>)]
     </span><span class="kw">pub </span>skip_root_check: bool,
 }
 </code></pre></div>

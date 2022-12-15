@@ -51,6 +51,8 @@
 <span id="51">51</span>
 <span id="52">52</span>
 <span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::uuids::UUID_DOMAIN_INFO;
 <span class="kw">use </span><span class="kw">crate</span>::value::{PartialValue, Value};
 <span class="kw">use </span>url::Url;
@@ -84,6 +86,7 @@
     <span class="kw">pub static </span><span class="kw-2">ref </span>PVCLASS_SERVICE_ACCOUNT: PartialValue =
         PartialValue::new_class(<span class="string">&quot;service_account&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>PVCLASS_SYNC_ACCOUNT: PartialValue = PartialValue::new_class(<span class="string">&quot;sync_account&quot;</span>);
+    <span class="kw">pub static </span><span class="kw-2">ref </span>PVCLASS_SYNC_OBJECT: PartialValue = PartialValue::new_class(<span class="string">&quot;sync_object&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>PVCLASS_SYSTEM: PartialValue = PartialValue::new_class(<span class="string">&quot;system&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>PVCLASS_SYSTEM_INFO: PartialValue = PartialValue::new_class(<span class="string">&quot;system_info&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>PVCLASS_SYSTEM_CONFIG: PartialValue = PartialValue::new_class(<span class="string">&quot;system_config&quot;</span>);
@@ -99,6 +102,7 @@
     <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_OBJECT: Value = Value::new_class(<span class="string">&quot;object&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_RECYCLED: Value = Value::new_class(<span class="string">&quot;recycled&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_SERVICE_ACCOUNT: Value = Value::new_class(<span class="string">&quot;service_account&quot;</span>);
+    <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_SYNC_OBJECT: Value = Value::new_class(<span class="string">&quot;sync_object&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_SYSTEM: Value = Value::new_class(<span class="string">&quot;system&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_SYSTEM_CONFIG: Value = Value::new_class(<span class="string">&quot;system_config&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_SYSTEM_INFO: Value = Value::new_class(<span class="string">&quot;system_info&quot;</span>);

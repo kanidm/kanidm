@@ -120,30 +120,6 @@
 <span id="120">120</span>
 <span id="121">121</span>
 <span id="122">122</span>
-<span id="123">123</span>
-<span id="124">124</span>
-<span id="125">125</span>
-<span id="126">126</span>
-<span id="127">127</span>
-<span id="128">128</span>
-<span id="129">129</span>
-<span id="130">130</span>
-<span id="131">131</span>
-<span id="132">132</span>
-<span id="133">133</span>
-<span id="134">134</span>
-<span id="135">135</span>
-<span id="136">136</span>
-<span id="137">137</span>
-<span id="138">138</span>
-<span id="139">139</span>
-<span id="140">140</span>
-<span id="141">141</span>
-<span id="142">142</span>
-<span id="143">143</span>
-<span id="144">144</span>
-<span id="145">145</span>
-<span id="146">146</span>
 </pre><pre class="rust"><code><span class="comment">// Manage and generate domain uuid&#39;s and/or trust related domain
 // management.
 
@@ -167,15 +143,38 @@
         <span class="string">&quot;plugin_domain&quot;
     </span>}
 
-    <span class="attribute">#[instrument(
-        level = <span class="string">&quot;debug&quot;</span>,
-        name = <span class="string">&quot;domain_pre_create_transform&quot;</span>,
-        skip(qs, cand, _ce)
-    )]
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;domain_pre_create_transform&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>pre_create_transform(
         qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryNew&gt;&gt;,
         _ce: <span class="kw-2">&amp;</span>CreateEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">Self</span>::modify_inner(qs, cand)
+    }
+
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;domain_pre_modify&quot;</span>, skip_all)]
+    </span><span class="kw">fn </span>pre_modify(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
+        _me: <span class="kw-2">&amp;</span>ModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">Self</span>::modify_inner(qs, cand)
+    }
+
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;domain_pre_batch_modify&quot;</span>, skip_all)]
+    </span><span class="kw">fn </span>pre_batch_modify(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
+        _me: <span class="kw-2">&amp;</span>BatchModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">Self</span>::modify_inner(qs, cand)
+    }
+}
+
+<span class="kw">impl </span>Domain {
+    <span class="kw">fn </span>modify_inner&lt;T: Clone + std::fmt::Debug&gt;(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, T&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         cand.iter_mut().try_for_each(|e| {
             <span class="kw">if </span>e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DOMAIN_INFO)
@@ -185,54 +184,7 @@
                 </span><span class="kw">let </span>u = Value::new_uuid(qs.get_domain_uuid());
                 e.set_ava(<span class="string">&quot;domain_uuid&quot;</span>, once(u));
                 <span class="macro">trace!</span>(<span class="string">&quot;plugin_domain: Applying uuid transform&quot;</span>);
-                <span class="comment">// We only apply this if one isn&#39;t provided.
-                </span><span class="kw">if </span>!e.attribute_pres(<span class="string">&quot;domain_name&quot;</span>) {
-                    <span class="kw">let </span>n = Value::new_iname(qs.get_domain_name());
-                    e.set_ava(<span class="string">&quot;domain_name&quot;</span>, once(n));
-                    <span class="macro">trace!</span>(<span class="string">&quot;plugin_domain: Applying domain_name transform&quot;</span>);
-                }
-                <span class="comment">// create the domain_display_name if it&#39;s missing
-                </span><span class="kw">if </span>!e.attribute_pres(<span class="string">&quot;domain_display_name&quot;</span>) {
-                    <span class="kw">let </span>domain_display_name = Value::new_utf8(<span class="macro">format!</span>(<span class="string">&quot;Kanidm {}&quot;</span>, qs.get_domain_name()));
-                    <span class="macro">security_info!</span>(<span class="string">&quot;plugin_domain: setting default domain_display_name to {:?}&quot;</span>, domain_display_name);
 
-                    e.set_ava(<span class="string">&quot;domain_display_name&quot;</span>, once(domain_display_name));
-                }
-                <span class="kw">if </span>!e.attribute_pres(<span class="string">&quot;fernet_private_key_str&quot;</span>) {
-                    <span class="macro">security_info!</span>(<span class="string">&quot;regenerating domain token encryption key&quot;</span>);
-                    <span class="kw">let </span>k = fernet::Fernet::generate_key();
-                    <span class="kw">let </span>v = Value::new_secret_str(<span class="kw-2">&amp;</span>k);
-                    e.add_ava(<span class="string">&quot;fernet_private_key_str&quot;</span>, v);
-                }
-                <span class="kw">if </span>!e.attribute_pres(<span class="string">&quot;es256_private_key_der&quot;</span>) {
-                    <span class="macro">security_info!</span>(<span class="string">&quot;regenerating domain es256 private key&quot;</span>);
-                    <span class="kw">let </span>der = JwsSigner::generate_es256()
-                        .and_then(|jws| jws.private_key_to_der())
-                        .map_err(|e| {
-                            <span class="macro">admin_error!</span>(err = <span class="question-mark">?</span>e, <span class="string">&quot;Unable to generate ES256 JwsSigner private key&quot;</span>);
-                            OperationError::CryptographyError
-                        })<span class="question-mark">?</span>;
-                    <span class="kw">let </span>v = Value::new_privatebinary(<span class="kw-2">&amp;</span>der);
-                    e.add_ava(<span class="string">&quot;es256_private_key_der&quot;</span>, v);
-                }
-                <span class="macro">trace!</span>(<span class="question-mark">?</span>e);
-                <span class="prelude-val">Ok</span>(())
-            } <span class="kw">else </span>{
-                <span class="prelude-val">Ok</span>(())
-            }
-        })
-    }
-
-    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;domain_pre_modify&quot;</span>, skip(qs, cand, _me))]
-    </span><span class="kw">fn </span>pre_modify(
-        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
-        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
-        _me: <span class="kw-2">&amp;</span>ModifyEvent,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        cand.iter_mut().try_for_each(|e| {
-            <span class="kw">if </span>e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DOMAIN_INFO)
-                &amp;&amp; e.attribute_equality(<span class="string">&quot;uuid&quot;</span>, <span class="kw-2">&amp;</span>PVUUID_DOMAIN_INFO)
-            {
                 <span class="comment">// We only apply this if one isn&#39;t provided.
                 </span><span class="kw">if </span>!e.attribute_pres(<span class="string">&quot;domain_name&quot;</span>) {
                     <span class="kw">let </span>n = Value::new_iname(qs.get_domain_name());

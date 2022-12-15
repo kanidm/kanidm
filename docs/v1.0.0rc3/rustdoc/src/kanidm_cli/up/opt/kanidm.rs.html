@@ -865,6 +865,16 @@
 <span id="865">865</span>
 <span id="866">866</span>
 <span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
 </pre><pre class="rust"><code><span class="kw">use </span>clap::{Args, Subcommand};
 
 <span class="attribute">#[derive(Debug, Args)]
@@ -1642,6 +1652,16 @@
         <span class="attribute">#[clap(flatten)]
         </span>copt: CommonOpt,
     },
+    <span class="doccomment">/// Reset the sync cookie of this connector, so that on the next operation of the sync tool
+    /// a full refresh of the provider is requested. Kanidm attributes that have been granted
+    /// authority will *not* be lost or deleted.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;force-refresh&quot;</span>)]
+    </span>ForceRefresh {
+        <span class="attribute">#[clap()]
+        </span>account_id: String,
+        <span class="attribute">#[clap(flatten)]
+        </span>copt: CommonOpt,
+    }
 }
 
 <span class="attribute">#[derive(Debug, Subcommand)]

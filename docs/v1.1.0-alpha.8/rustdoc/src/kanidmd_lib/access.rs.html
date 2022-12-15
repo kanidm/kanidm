@@ -2867,6 +2867,47 @@
 <span id="2867">2867</span>
 <span id="2868">2868</span>
 <span id="2869">2869</span>
+<span id="2870">2870</span>
+<span id="2871">2871</span>
+<span id="2872">2872</span>
+<span id="2873">2873</span>
+<span id="2874">2874</span>
+<span id="2875">2875</span>
+<span id="2876">2876</span>
+<span id="2877">2877</span>
+<span id="2878">2878</span>
+<span id="2879">2879</span>
+<span id="2880">2880</span>
+<span id="2881">2881</span>
+<span id="2882">2882</span>
+<span id="2883">2883</span>
+<span id="2884">2884</span>
+<span id="2885">2885</span>
+<span id="2886">2886</span>
+<span id="2887">2887</span>
+<span id="2888">2888</span>
+<span id="2889">2889</span>
+<span id="2890">2890</span>
+<span id="2891">2891</span>
+<span id="2892">2892</span>
+<span id="2893">2893</span>
+<span id="2894">2894</span>
+<span id="2895">2895</span>
+<span id="2896">2896</span>
+<span id="2897">2897</span>
+<span id="2898">2898</span>
+<span id="2899">2899</span>
+<span id="2900">2900</span>
+<span id="2901">2901</span>
+<span id="2902">2902</span>
+<span id="2903">2903</span>
+<span id="2904">2904</span>
+<span id="2905">2905</span>
+<span id="2906">2906</span>
+<span id="2907">2907</span>
+<span id="2908">2908</span>
+<span id="2909">2909</span>
+<span id="2910">2910</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Access Control Profiles
 //!
 //! This is a pretty important and security sensitive part of the code - it&#39;s
@@ -3791,6 +3832,47 @@
             <span class="macro">security_access!</span>(<span class="string">&quot;denied ❌&quot;</span>);
         }
         <span class="prelude-val">Ok</span>(r)
+    }
+
+    <span class="attribute">#[allow(clippy::cognitive_complexity)]
+    #[instrument(
+        level = <span class="string">&quot;debug&quot;</span>,
+        name = <span class="string">&quot;access::batch_modify_allow_operation&quot;</span>,
+        skip_all
+    )]
+    </span><span class="kw">fn </span>batch_modify_allow_operation(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        me: <span class="kw-2">&amp;</span>BatchModifyEvent,
+        _entries: <span class="kw-2">&amp;</span>[Arc&lt;EntrySealedCommitted&gt;],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, OperationError&gt; {
+        <span class="kw">match </span><span class="kw-2">&amp;</span>me.ident.origin {
+            IdentType::Internal =&gt; {
+                <span class="macro">trace!</span>(<span class="string">&quot;Internal operation, bypassing access check&quot;</span>);
+                <span class="comment">// No need to check ACS
+                </span><span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>);
+            }
+            IdentType::Synch(<span class="kw">_</span>) =&gt; {
+                <span class="macro">security_critical!</span>(<span class="string">&quot;Blocking sync check&quot;</span>);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidState);
+            }
+            IdentType::User(<span class="kw">_</span>) =&gt; {}
+        };
+        <span class="macro">info!</span>(event = %me.ident, <span class="string">&quot;Access check for batch modify event&quot;</span>);
+
+        <span class="kw">match </span>me.ident.access_scope() {
+            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise =&gt; {
+                <span class="macro">security_access!</span>(<span class="string">&quot;denied ❌ - identity access scope is not permitted to modify&quot;</span>);
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
+            }
+            AccessScope::ReadWrite =&gt; {
+                <span class="comment">// As you were
+            </span>}
+        };
+
+        <span class="macro">error!</span>(<span class="string">&quot;How did you get here?! Batch modify isn&#39;t public yet!&quot;</span>);
+        <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
+
+        <span class="prelude-val">Err</span>(OperationError::InvalidState)
     }
 
     <span class="attribute">#[allow(clippy::cognitive_complexity)]

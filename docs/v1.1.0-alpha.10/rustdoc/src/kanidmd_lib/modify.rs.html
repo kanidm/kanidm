@@ -240,6 +240,22 @@
 <span id="240">240</span>
 <span id="241">241</span>
 <span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Modification expressions and validation. This is how `ModifyEvents` store and
 //! express the series of Modifications that should be applied. These are expressed
 //! as &quot;states&quot; on what attribute-values should appear as within the `Entry`
@@ -274,6 +290,8 @@
     </span>Removed(AttrString, PartialValue),
     <span class="comment">// This attr *should not* exist.
     </span>Purged(AttrString),
+    <span class="comment">// This attr and value must exist *in this state* for this change to proceed.
+    </span>Assert(AttrString, PartialValue),
 }
 
 <span class="attribute">#[allow(dead_code)]
@@ -289,6 +307,11 @@
 <span class="attribute">#[allow(dead_code)]
 </span><span class="kw">pub fn </span>m_purge(a: <span class="kw-2">&amp;</span>str) -&gt; Modify {
     Modify::Purged(AttrString::from(a))
+}
+
+<span class="attribute">#[allow(dead_code)]
+</span><span class="kw">pub fn </span>m_assert(a: <span class="kw-2">&amp;</span>str, v: <span class="kw-2">&amp;</span>PartialValue) -&gt; Modify {
+    Modify::Assert(a.into(), v.clone())
 }
 
 <span class="kw">impl </span>Modify {
@@ -425,6 +448,15 @@
                         <span class="prelude-val">Some</span>(schema_a) =&gt; schema_a
                             .validate_partialvalue(attr_norm.as_str(), value)
                             .map(|<span class="kw">_</span>| Modify::Removed(attr_norm, value.clone())),
+                        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(SchemaError::InvalidAttribute(attr_norm.to_string())),
+                    }
+                }
+                Modify::Assert(attr, value) =&gt; {
+                    <span class="kw">let </span>attr_norm = schema.normalise_attr_name(attr);
+                    <span class="kw">match </span>schema_attributes.get(<span class="kw-2">&amp;</span>attr_norm) {
+                        <span class="prelude-val">Some</span>(schema_a) =&gt; schema_a
+                            .validate_partialvalue(attr_norm.as_str(), value)
+                            .map(|<span class="kw">_</span>| Modify::Assert(attr_norm, value.clone())),
                         <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(SchemaError::InvalidAttribute(attr_norm.to_string())),
                     }
                 }

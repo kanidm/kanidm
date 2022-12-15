@@ -1193,6 +1193,66 @@
 <span id="1193">1193</span>
 <span id="1194">1194</span>
 <span id="1195">1195</span>
+<span id="1196">1196</span>
+<span id="1197">1197</span>
+<span id="1198">1198</span>
+<span id="1199">1199</span>
+<span id="1200">1200</span>
+<span id="1201">1201</span>
+<span id="1202">1202</span>
+<span id="1203">1203</span>
+<span id="1204">1204</span>
+<span id="1205">1205</span>
+<span id="1206">1206</span>
+<span id="1207">1207</span>
+<span id="1208">1208</span>
+<span id="1209">1209</span>
+<span id="1210">1210</span>
+<span id="1211">1211</span>
+<span id="1212">1212</span>
+<span id="1213">1213</span>
+<span id="1214">1214</span>
+<span id="1215">1215</span>
+<span id="1216">1216</span>
+<span id="1217">1217</span>
+<span id="1218">1218</span>
+<span id="1219">1219</span>
+<span id="1220">1220</span>
+<span id="1221">1221</span>
+<span id="1222">1222</span>
+<span id="1223">1223</span>
+<span id="1224">1224</span>
+<span id="1225">1225</span>
+<span id="1226">1226</span>
+<span id="1227">1227</span>
+<span id="1228">1228</span>
+<span id="1229">1229</span>
+<span id="1230">1230</span>
+<span id="1231">1231</span>
+<span id="1232">1232</span>
+<span id="1233">1233</span>
+<span id="1234">1234</span>
+<span id="1235">1235</span>
+<span id="1236">1236</span>
+<span id="1237">1237</span>
+<span id="1238">1238</span>
+<span id="1239">1239</span>
+<span id="1240">1240</span>
+<span id="1241">1241</span>
+<span id="1242">1242</span>
+<span id="1243">1243</span>
+<span id="1244">1244</span>
+<span id="1245">1245</span>
+<span id="1246">1246</span>
+<span id="1247">1247</span>
+<span id="1248">1248</span>
+<span id="1249">1249</span>
+<span id="1250">1250</span>
+<span id="1251">1251</span>
+<span id="1252">1252</span>
+<span id="1253">1253</span>
+<span id="1254">1254</span>
+<span id="1255">1255</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
 <span class="kw">use </span>std::convert::TryInto;
 <span class="kw">use </span>std::ops::DerefMut;
@@ -1231,6 +1291,7 @@
 <span class="attribute">#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 </span><span class="kw">enum </span>NameCacheKey {
     Name2Uuid(String),
+    ExternalId2Uuid(String),
     Uuid2Rdn(Uuid),
     Uuid2Spn(Uuid),
 }
@@ -1423,6 +1484,30 @@
     }};
 }
 
+<span class="macro">macro_rules! </span>externalid2uuid {
+    (
+        <span class="macro-nonterminal">$self</span>:expr,
+        <span class="macro-nonterminal">$name</span>:expr
+    ) =&gt; {{
+        <span class="kw">let </span>cache_key = NameCacheKey::ExternalId2Uuid(<span class="macro-nonterminal">$name</span>.to_string());
+        <span class="kw">let </span>cache_r = <span class="macro-nonterminal">$self</span>.name_cache.get(<span class="kw-2">&amp;</span>cache_key);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(NameCacheValue::U(uuid)) = cache_r {
+            <span class="macro">trace!</span>(<span class="question-mark">?</span>uuid, <span class="string">&quot;Got cached externalid2uuid&quot;</span>);
+            <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(uuid.clone()));
+        } <span class="kw">else </span>{
+            <span class="macro">trace!</span>(<span class="string">&quot;Cache miss uuid for externalid2uuid&quot;</span>);
+        }
+
+        <span class="kw">let </span>db_r = <span class="macro-nonterminal">$self</span>.db.externalid2uuid(<span class="macro-nonterminal">$name</span>)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(uuid) = db_r {
+            <span class="macro-nonterminal">$self
+                </span>.name_cache
+                .insert(cache_key, NameCacheValue::U(uuid.clone()))
+        }
+        <span class="prelude-val">Ok</span>(db_r)
+    }};
+}
+
 <span class="macro">macro_rules! </span>uuid2spn {
     (
         <span class="macro-nonterminal">$self</span>:expr,
@@ -1529,6 +1614,8 @@
 
     <span class="kw">fn </span>name2uuid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt;;
 
+    <span class="kw">fn </span>externalid2uuid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt;;
+
     <span class="kw">fn </span>uuid2spn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Value&gt;, OperationError&gt;;
 
     <span class="kw">fn </span>uuid2rdn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;String&gt;, OperationError&gt;;
@@ -1593,6 +1680,10 @@
 
     <span class="kw">fn </span>name2uuid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
         <span class="macro">name2uuid!</span>(<span class="self">self</span>, name)
+    }
+
+    <span class="kw">fn </span>externalid2uuid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
+        <span class="macro">externalid2uuid!</span>(<span class="self">self</span>, name)
     }
 
     <span class="kw">fn </span>uuid2spn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Value&gt;, OperationError&gt; {
@@ -1678,6 +1769,10 @@
 
     <span class="kw">fn </span>name2uuid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
         <span class="macro">name2uuid!</span>(<span class="self">self</span>, name)
+    }
+
+    <span class="kw">fn </span>externalid2uuid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
+        <span class="macro">externalid2uuid!</span>(<span class="self">self</span>, name)
     }
 
     <span class="kw">fn </span>uuid2spn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Value&gt;, OperationError&gt; {
@@ -1766,6 +1861,10 @@
                     db.write_name2uuid_add(k, <span class="kw-2">*</span>v)
                 }
                 (NameCacheKey::Name2Uuid(k), <span class="prelude-val">None</span>) =&gt; db.write_name2uuid_rem(k),
+                (NameCacheKey::ExternalId2Uuid(k), <span class="prelude-val">Some</span>(NameCacheValue::U(v))) =&gt; {
+                    db.write_externalid2uuid_add(k, <span class="kw-2">*</span>v)
+                }
+                (NameCacheKey::ExternalId2Uuid(k), <span class="prelude-val">None</span>) =&gt; db.write_externalid2uuid_rem(k),
                 (NameCacheKey::Uuid2Spn(uuid), <span class="prelude-val">Some</span>(NameCacheValue::S(v))) =&gt; {
                     db.write_uuid2spn(<span class="kw-2">*</span>uuid, <span class="prelude-val">Some</span>(v))
                 }
@@ -2159,6 +2258,27 @@
             </span><span class="kw">let </span>cache_key = NameCacheKey::Name2Uuid(k);
             <span class="self">self</span>.name_cache.remove_dirty(cache_key)
         });
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">pub fn </span>create_externalid2uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">self</span>.db.create_externalid2uuid()
+    }
+
+    <span class="kw">pub fn </span>write_externalid2uuid_add(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        uuid: Uuid,
+        add: String,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">let </span>cache_key = NameCacheKey::ExternalId2Uuid(add);
+        <span class="kw">let </span>cache_value = NameCacheValue::U(uuid);
+        <span class="self">self</span>.name_cache.insert_dirty(cache_key, cache_value);
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">pub fn </span>write_externalid2uuid_rem(<span class="kw-2">&amp;mut </span><span class="self">self</span>, rem: String) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">let </span>cache_key = NameCacheKey::ExternalId2Uuid(rem);
+        <span class="self">self</span>.name_cache.remove_dirty(cache_key);
         <span class="prelude-val">Ok</span>(())
     }
 

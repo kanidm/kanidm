@@ -343,9 +343,6 @@
 <span id="343">343</span>
 <span id="344">344</span>
 <span id="345">345</span>
-<span id="346">346</span>
-<span id="347">347</span>
-<span id="348">348</span>
 </pre><pre class="rust"><code><span class="comment">// A plugin that generates gid numbers on types that require them for posix
 // support.
 
@@ -412,34 +409,31 @@
         <span class="string">&quot;plugin_gidnumber&quot;
     </span>}
 
-    <span class="attribute">#[instrument(
-        level = <span class="string">&quot;debug&quot;</span>,
-        name = <span class="string">&quot;gidnumber_pre_create_transform&quot;</span>,
-        skip(_qs, cand, _ce)
-    )]
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;gidnumber_pre_create_transform&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>pre_create_transform(
         _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryNew&gt;&gt;,
         _ce: <span class="kw-2">&amp;</span>CreateEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="kw">for </span>e <span class="kw">in </span>cand.iter_mut() {
-            apply_gidnumber(e)<span class="question-mark">?</span>;
-        }
-
-        <span class="prelude-val">Ok</span>(())
+        cand.iter_mut().try_for_each(|e| apply_gidnumber(e))
     }
 
-    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;gidnumber_pre_modify&quot;</span>, skip(_qs, cand, _me))]
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;gidnumber_pre_modify&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>pre_modify(
         _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
         _me: <span class="kw-2">&amp;</span>ModifyEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="kw">for </span>e <span class="kw">in </span>cand.iter_mut() {
-            apply_gidnumber(e)<span class="question-mark">?</span>;
-        }
+        cand.iter_mut().try_for_each(|e| apply_gidnumber(e))
+    }
 
-        <span class="prelude-val">Ok</span>(())
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;gidnumber_pre_batch_modify&quot;</span>, skip_all)]
+    </span><span class="kw">fn </span>pre_batch_modify(
+        _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
+        _me: <span class="kw-2">&amp;</span>BatchModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        cand.iter_mut().try_for_each(|e| apply_gidnumber(e))
     }
 }
 

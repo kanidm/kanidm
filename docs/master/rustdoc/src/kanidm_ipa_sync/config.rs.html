@@ -10,8 +10,28 @@
 <span id="10">10</span>
 <span id="11">11</span>
 <span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
 </pre><pre class="rust"><code><span class="kw">use </span>serde::Deserialize;
+<span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>url::Url;
+<span class="kw">use </span>uuid::Uuid;
 
 <span class="attribute">#[derive(Debug, Deserialize)]
 </span><span class="kw">pub struct </span>Config {
@@ -21,6 +41,22 @@
     <span class="kw">pub </span>ipa_sync_dn: String,
     <span class="kw">pub </span>ipa_sync_pw: String,
     <span class="kw">pub </span>ipa_sync_base_dn: String,
+
+    <span class="comment">// pub entry: Option&lt;Vec&lt;EntryConfig&gt;&gt;,
+    </span><span class="attribute">#[serde(flatten)]
+    </span><span class="kw">pub </span>entry_map: HashMap&lt;Uuid, EntryConfig&gt;,
 }
+
+<span class="attribute">#[derive(Debug, Deserialize, Default, Clone)]
+</span><span class="kw">pub struct </span>EntryConfig {
+    <span class="comment">// uuid: Uuid,
+
+    // Default false
+    </span><span class="attribute">#[serde(default)]
+    </span><span class="kw">pub </span>exclude: bool,
+    <span class="comment">// map_uuid: Option&lt;Uuid&gt;,
+    // map_external_id: Option&lt;String&gt;,
+    // map_name: Option&lt;String&gt;,
+</span>}
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm_ipa_sync" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

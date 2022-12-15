@@ -95,6 +95,9 @@
 <span id="95">95</span>
 <span id="96">96</span>
 <span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The Kanidmd server library. This implements all of the internal components of the server
 //! which is used to process authentication, store identities and enforce access controls.
 
@@ -167,8 +170,8 @@
     <span class="kw">pub use </span><span class="kw">crate</span>::constants::<span class="kw-2">*</span>;
     <span class="kw">pub use </span><span class="kw">crate</span>::entry::{
         Entry, EntryCommitted, EntryInit, EntryInitNew, EntryInvalid, EntryInvalidCommitted,
-        EntryNew, EntryReduced, EntryReducedCommitted, EntrySealed, EntrySealedCommitted,
-        EntryTuple, EntryValid,
+        EntryInvalidNew, EntryNew, EntryReduced, EntryReducedCommitted, EntrySealed,
+        EntrySealedCommitted, EntrySealedNew, EntryTuple, EntryValid,
     };
     <span class="kw">pub use </span><span class="kw">crate</span>::filter::{
         f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub, Filter,
@@ -176,7 +179,10 @@
     };
     <span class="kw">pub use </span><span class="kw">crate</span>::identity::{AccessScope, IdentType, Identity, IdentityId};
     <span class="kw">pub use </span><span class="kw">crate</span>::idm::server::{IdmServer, IdmServerDelayed};
-    <span class="kw">pub use </span><span class="kw">crate</span>::modify::{m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList};
+    <span class="kw">pub use </span><span class="kw">crate</span>::modify::{
+        m_assert, m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList, ModifyValid,
+    };
+    <span class="kw">pub use </span><span class="kw">crate</span>::server::batch_modify::BatchModifyEvent;
     <span class="kw">pub use </span><span class="kw">crate</span>::server::{
         QueryServer, QueryServerReadTransaction, QueryServerTransaction,
         QueryServerWriteTransaction,

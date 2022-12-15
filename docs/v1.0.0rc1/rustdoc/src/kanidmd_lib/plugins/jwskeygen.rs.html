@@ -189,6 +189,13 @@
 <span id="189">189</span>
 <span id="190">190</span>
 <span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
 </pre><pre class="rust"><code><span class="kw">use </span>compact_jwt::JwsSigner;
 
 <span class="kw">use </span><span class="kw">crate</span>::event::{CreateEvent, ModifyEvent};
@@ -198,23 +205,57 @@
 
 <span class="kw">pub struct </span>JwsKeygen {}
 
-<span class="macro">macro_rules! </span>keygen_transform {
-    (
-        <span class="macro-nonterminal">$e</span>:expr
-    ) =&gt; {{
-        <span class="kw">if </span><span class="macro-nonterminal">$e</span>.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_OAUTH2_BASIC) {
-            <span class="kw">if </span>!<span class="macro-nonterminal">$e</span>.attribute_pres(<span class="string">&quot;oauth2_rs_basic_secret&quot;</span>) {
+<span class="kw">impl </span>Plugin <span class="kw">for </span>JwsKeygen {
+    <span class="kw">fn </span>id() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
+        <span class="string">&quot;plugin_jws_keygen&quot;
+    </span>}
+
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;jwskeygen_pre_create_transform&quot;</span>, skip_all)]
+    </span><span class="kw">fn </span>pre_create_transform(
+        _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryNew&gt;&gt;,
+        _ce: <span class="kw-2">&amp;</span>CreateEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">Self</span>::modify_inner(cand)
+    }
+
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;jwskeygen_pre_modify&quot;</span>, skip_all)]
+    </span><span class="kw">fn </span>pre_modify(
+        _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
+        _me: <span class="kw-2">&amp;</span>ModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">Self</span>::modify_inner(cand)
+    }
+
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;jwskeygen_pre_batch_modify&quot;</span>, skip_all)]
+    </span><span class="kw">fn </span>pre_batch_modify(
+        _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
+        _me: <span class="kw-2">&amp;</span>BatchModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">Self</span>::modify_inner(cand)
+    }
+}
+
+<span class="kw">impl </span>JwsKeygen {
+    <span class="kw">fn </span>modify_inner&lt;T: Clone&gt;(
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, T&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        cand.iter_mut().try_for_each(|e| {
+        <span class="kw">if </span>e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_OAUTH2_BASIC) {
+            <span class="kw">if </span>!e.attribute_pres(<span class="string">&quot;oauth2_rs_basic_secret&quot;</span>) {
                 <span class="macro">security_info!</span>(<span class="string">&quot;regenerating oauth2 basic secret&quot;</span>);
                 <span class="kw">let </span>v = Value::SecretValue(password_from_random());
-                <span class="macro-nonterminal">$e</span>.add_ava(<span class="string">&quot;oauth2_rs_basic_secret&quot;</span>, v);
+                e.add_ava(<span class="string">&quot;oauth2_rs_basic_secret&quot;</span>, v);
             }
-            <span class="kw">if </span>!<span class="macro-nonterminal">$e</span>.attribute_pres(<span class="string">&quot;oauth2_rs_token_key&quot;</span>) {
+            <span class="kw">if </span>!e.attribute_pres(<span class="string">&quot;oauth2_rs_token_key&quot;</span>) {
                 <span class="macro">security_info!</span>(<span class="string">&quot;regenerating oauth2 token key&quot;</span>);
                 <span class="kw">let </span>k = fernet::Fernet::generate_key();
                 <span class="kw">let </span>v = Value::new_secret_str(<span class="kw-2">&amp;</span>k);
-                <span class="macro-nonterminal">$e</span>.add_ava(<span class="string">&quot;oauth2_rs_token_key&quot;</span>, v);
+                e.add_ava(<span class="string">&quot;oauth2_rs_token_key&quot;</span>, v);
             }
-            <span class="kw">if </span>!<span class="macro-nonterminal">$e</span>.attribute_pres(<span class="string">&quot;es256_private_key_der&quot;</span>) {
+            <span class="kw">if </span>!e.attribute_pres(<span class="string">&quot;es256_private_key_der&quot;</span>) {
                 <span class="macro">security_info!</span>(<span class="string">&quot;regenerating oauth2 es256 private key&quot;</span>);
                 <span class="kw">let </span>der = JwsSigner::generate_es256()
                     .and_then(|jws| jws.private_key_to_der())
@@ -223,10 +264,10 @@
                         OperationError::CryptographyError
                     })<span class="question-mark">?</span>;
                 <span class="kw">let </span>v = Value::new_privatebinary(<span class="kw-2">&amp;</span>der);
-                <span class="macro-nonterminal">$e</span>.add_ava(<span class="string">&quot;es256_private_key_der&quot;</span>, v);
+                e.add_ava(<span class="string">&quot;es256_private_key_der&quot;</span>, v);
             }
-            <span class="kw">if </span><span class="macro-nonterminal">$e</span>.get_ava_single_bool(<span class="string">&quot;oauth2_jwt_legacy_crypto_enable&quot;</span>).unwrap_or(<span class="bool-val">false</span>) {
-                <span class="kw">if </span>!<span class="macro-nonterminal">$e</span>.attribute_pres(<span class="string">&quot;rs256_private_key_der&quot;</span>) {
+            <span class="kw">if </span>e.get_ava_single_bool(<span class="string">&quot;oauth2_jwt_legacy_crypto_enable&quot;</span>).unwrap_or(<span class="bool-val">false</span>) {
+                <span class="kw">if </span>!e.attribute_pres(<span class="string">&quot;rs256_private_key_der&quot;</span>) {
                     <span class="macro">security_info!</span>(<span class="string">&quot;regenerating oauth2 legacy rs256 private key&quot;</span>);
                     <span class="kw">let </span>der = JwsSigner::generate_legacy_rs256()
                         .and_then(|jws| jws.private_key_to_der())
@@ -235,15 +276,15 @@
                             OperationError::CryptographyError
                         })<span class="question-mark">?</span>;
                     <span class="kw">let </span>v = Value::new_privatebinary(<span class="kw-2">&amp;</span>der);
-                    <span class="macro-nonterminal">$e</span>.add_ava(<span class="string">&quot;rs256_private_key_der&quot;</span>, v);
+                    e.add_ava(<span class="string">&quot;rs256_private_key_der&quot;</span>, v);
                 }
             }
         }
 
-        <span class="kw">if </span><span class="macro-nonterminal">$e</span>.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SERVICE_ACCOUNT) ||
-           <span class="macro-nonterminal">$e</span>.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_ACCOUNT)
+        <span class="kw">if </span>e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SERVICE_ACCOUNT) ||
+           e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_ACCOUNT)
         {
-            <span class="kw">if </span>!<span class="macro-nonterminal">$e</span>.attribute_pres(<span class="string">&quot;jws_es256_private_key&quot;</span>) {
+            <span class="kw">if </span>!e.attribute_pres(<span class="string">&quot;jws_es256_private_key&quot;</span>) {
                 <span class="macro">security_info!</span>(<span class="string">&quot;regenerating jws es256 private key&quot;</span>);
                 <span class="kw">let </span>jwssigner = JwsSigner::generate_es256()
                     .map_err(|e| {
@@ -251,39 +292,12 @@
                         OperationError::CryptographyError
                     })<span class="question-mark">?</span>;
                 <span class="kw">let </span>v = Value::JwsKeyEs256(jwssigner);
-                <span class="macro-nonterminal">$e</span>.add_ava(<span class="string">&quot;jws_es256_private_key&quot;</span>, v);
+                e.add_ava(<span class="string">&quot;jws_es256_private_key&quot;</span>, v);
             }
         }
 
         <span class="prelude-val">Ok</span>(())
-    }};
-}
-
-<span class="kw">impl </span>Plugin <span class="kw">for </span>JwsKeygen {
-    <span class="kw">fn </span>id() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str {
-        <span class="string">&quot;plugin_jws_keygen&quot;
-    </span>}
-
-    <span class="attribute">#[instrument(
-        level = <span class="string">&quot;debug&quot;</span>,
-        name = <span class="string">&quot;jwskeygen_pre_create_transform&quot;</span>,
-        skip(_qs, cand, _ce)
-    )]
-    </span><span class="kw">fn </span>pre_create_transform(
-        _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
-        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryNew&gt;&gt;,
-        _ce: <span class="kw-2">&amp;</span>CreateEvent,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        cand.iter_mut().try_for_each(|e| <span class="macro">keygen_transform!</span>(e))
-    }
-
-    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;jwskeygen_pre_modify&quot;</span>, skip(_qs, cand, _me))]
-    </span><span class="kw">fn </span>pre_modify(
-        _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
-        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
-        _me: <span class="kw-2">&amp;</span>ModifyEvent,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        cand.iter_mut().try_for_each(|e| <span class="macro">keygen_transform!</span>(e))
+        })
     }
 }
 

@@ -1620,8 +1620,8 @@
         <span class="comment">// ⚠️  only start the sockets and listeners in non-config-test modes.
         </span><span class="kw">let </span>h = <span class="self">self</span>::https::create_https_server(
             config.address,
-            <span class="comment">// opt_tls_params,
-            </span>config.tls_config.as_ref(),
+            config.domain,
+            config.tls_config.as_ref(),
             config.role,
             config.trust_x_forward_for,
             <span class="kw-2">&amp;</span>cookie_key,

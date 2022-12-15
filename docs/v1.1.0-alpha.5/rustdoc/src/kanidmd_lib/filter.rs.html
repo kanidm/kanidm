@@ -2083,7 +2083,7 @@
 
 <span class="doccomment">/// This is the short-form for tests and internal filters that can then
 /// be transformed into a filter for the server to use.
-</span><span class="attribute">#[derive(Debug, Deserialize)]
+</span><span class="attribute">#[derive(Clone, Debug, Deserialize)]
 </span><span class="kw">pub enum </span>FC&lt;<span class="lifetime">&#39;a</span>&gt; {
     Eq(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>str, PartialValue),
     Sub(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>str, PartialValue),

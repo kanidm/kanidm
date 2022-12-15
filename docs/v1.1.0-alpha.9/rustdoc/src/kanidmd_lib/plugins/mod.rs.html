@@ -215,6 +215,62 @@
 <span id="215">215</span>
 <span id="216">216</span>
 <span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Plugins allow an `Event` to be inspected and transformed during the write
 //! paths of the server. This allows richer expression of some concepts and
 //! helps to ensure that data is always in specific known states within the
@@ -246,7 +302,7 @@
 
     <span class="kw">fn </span>pre_create_transform(
         _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
-        _cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryNew&gt;&gt;,
+        _cand: <span class="kw-2">&amp;mut </span>Vec&lt;EntryInvalidNew&gt;,
         _ce: <span class="kw-2">&amp;</span>CreateEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="macro">admin_error!</span>(
@@ -259,7 +315,7 @@
     <span class="kw">fn </span>pre_create(
         _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         <span class="comment">// List of what we will commit that is valid?
-        </span>_cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryNew&gt;],
+        </span>_cand: <span class="kw-2">&amp;</span>[EntrySealedNew],
         _ce: <span class="kw-2">&amp;</span>CreateEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="macro">admin_error!</span>(<span class="string">&quot;plugin {} has an unimplemented pre_create!&quot;</span>, <span class="self">Self</span>::id());
@@ -269,7 +325,7 @@
     <span class="kw">fn </span>post_create(
         _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         <span class="comment">// List of what we commited that was valid?
-        </span>_cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
+        </span>_cand: <span class="kw-2">&amp;</span>[EntrySealedCommitted],
         _ce: <span class="kw-2">&amp;</span>CreateEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="macro">admin_error!</span>(<span class="string">&quot;plugin {} has an unimplemented post_create!&quot;</span>, <span class="self">Self</span>::id());
@@ -278,7 +334,7 @@
 
     <span class="kw">fn </span>pre_modify(
         _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
-        _cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
+        _cand: <span class="kw-2">&amp;mut </span>Vec&lt;EntryInvalidCommitted&gt;,
         _me: <span class="kw-2">&amp;</span>ModifyEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="macro">admin_error!</span>(<span class="string">&quot;plugin {} has an unimplemented pre_modify!&quot;</span>, <span class="self">Self</span>::id());
@@ -288,17 +344,43 @@
     <span class="kw">fn </span>post_modify(
         _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         <span class="comment">// List of what we modified that was valid?
-        </span>_pre_cand: <span class="kw-2">&amp;</span>[Arc&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;],
-        _cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
+        </span>_pre_cand: <span class="kw-2">&amp;</span>[Arc&lt;EntrySealedCommitted&gt;],
+        _cand: <span class="kw-2">&amp;</span>[EntrySealedCommitted],
         _ce: <span class="kw-2">&amp;</span>ModifyEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="macro">admin_error!</span>(<span class="string">&quot;plugin {} has an unimplemented post_modify!&quot;</span>, <span class="self">Self</span>::id());
         <span class="prelude-val">Err</span>(OperationError::InvalidState)
     }
 
+    <span class="kw">fn </span>pre_batch_modify(
+        _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        _cand: <span class="kw-2">&amp;mut </span>Vec&lt;EntryInvalidCommitted&gt;,
+        _me: <span class="kw-2">&amp;</span>BatchModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="macro">admin_error!</span>(
+            <span class="string">&quot;plugin {} has an unimplemented pre_batch_modify!&quot;</span>,
+            <span class="self">Self</span>::id()
+        );
+        <span class="prelude-val">Err</span>(OperationError::InvalidState)
+    }
+
+    <span class="kw">fn </span>post_batch_modify(
+        _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        <span class="comment">// List of what we modified that was valid?
+        </span>_pre_cand: <span class="kw-2">&amp;</span>[Arc&lt;EntrySealedCommitted&gt;],
+        _cand: <span class="kw-2">&amp;</span>[EntrySealedCommitted],
+        _me: <span class="kw-2">&amp;</span>BatchModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="macro">admin_error!</span>(
+            <span class="string">&quot;plugin {} has an unimplemented post_batch_modify!&quot;</span>,
+            <span class="self">Self</span>::id()
+        );
+        <span class="prelude-val">Err</span>(OperationError::InvalidState)
+    }
+
     <span class="kw">fn </span>pre_delete(
         _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
-        _cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
+        _cand: <span class="kw-2">&amp;mut </span>Vec&lt;EntryInvalidCommitted&gt;,
         _de: <span class="kw-2">&amp;</span>DeleteEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="macro">admin_error!</span>(<span class="string">&quot;plugin {} has an unimplemented pre_delete!&quot;</span>, <span class="self">Self</span>::id());
@@ -308,7 +390,7 @@
     <span class="kw">fn </span>post_delete(
         _qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         <span class="comment">// List of what we delete that was valid?
-        </span>_cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
+        </span>_cand: <span class="kw-2">&amp;</span>[EntrySealedCommitted],
         _ce: <span class="kw-2">&amp;</span>DeleteEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="macro">admin_error!</span>(<span class="string">&quot;plugin {} has an unimplemented post_delete!&quot;</span>, <span class="self">Self</span>::id());
@@ -398,6 +480,36 @@
         refint::ReferentialIntegrity::post_modify(qs, pre_cand, cand, me)
             .and_then(|<span class="kw">_</span>| spn::Spn::post_modify(qs, pre_cand, cand, me))
             .and_then(|<span class="kw">_</span>| memberof::MemberOf::post_modify(qs, pre_cand, cand, me))
+    }
+
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;plugins::run_pre_batch_modify&quot;</span>, skip_all)]
+    </span><span class="kw">pub fn </span>run_pre_batch_modify(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
+        me: <span class="kw-2">&amp;</span>BatchModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        protected::Protected::pre_batch_modify(qs, cand, me)
+            .and_then(|<span class="kw">_</span>| base::Base::pre_batch_modify(qs, cand, me))
+            .and_then(|<span class="kw">_</span>| password_import::PasswordImport::pre_batch_modify(qs, cand, me))
+            .and_then(|<span class="kw">_</span>| jwskeygen::JwsKeygen::pre_batch_modify(qs, cand, me))
+            .and_then(|<span class="kw">_</span>| gidnumber::GidNumber::pre_batch_modify(qs, cand, me))
+            .and_then(|<span class="kw">_</span>| domain::Domain::pre_batch_modify(qs, cand, me))
+            .and_then(|<span class="kw">_</span>| spn::Spn::pre_batch_modify(qs, cand, me))
+            .and_then(|<span class="kw">_</span>| session::SessionConsistency::pre_batch_modify(qs, cand, me))
+            <span class="comment">// attr unique should always be last
+            </span>.and_then(|<span class="kw">_</span>| attrunique::AttrUnique::pre_batch_modify(qs, cand, me))
+    }
+
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;plugins::run_post_batch_modify&quot;</span>, skip_all)]
+    </span><span class="kw">pub fn </span>run_post_batch_modify(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        pre_cand: <span class="kw-2">&amp;</span>[Arc&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;],
+        cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
+        me: <span class="kw-2">&amp;</span>BatchModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        refint::ReferentialIntegrity::post_batch_modify(qs, pre_cand, cand, me)
+            .and_then(|<span class="kw">_</span>| spn::Spn::post_batch_modify(qs, pre_cand, cand, me))
+            .and_then(|<span class="kw">_</span>| memberof::MemberOf::post_batch_modify(qs, pre_cand, cand, me))
     }
 
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;plugins::run_pre_delete&quot;</span>, skip_all)]

@@ -1575,12 +1575,6 @@
 <span id="1575">1575</span>
 <span id="1576">1576</span>
 <span id="1577">1577</span>
-<span id="1578">1578</span>
-<span id="1579">1579</span>
-<span id="1580">1580</span>
-<span id="1581">1581</span>
-<span id="1582">1582</span>
-<span id="1583">1583</span>
 </pre><pre class="rust"><code><span class="comment">// Member Of
 //
 // Generate reverse relationships for groups to their members.
@@ -1753,7 +1747,7 @@
         <span class="macro">debug_assert!</span>(pre_candidates.len() == candidates.len());
         <span class="comment">// Write this stripe if populated.
         </span><span class="kw">if </span>!pre_candidates.is_empty() {
-            qs.internal_batch_modify(pre_candidates, candidates)
+            qs.internal_apply_writable(pre_candidates, candidates)
                 .map_err(|e| {
                     <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to commit memberof group set {:?}&quot;</span>, e);
                     e
@@ -1784,7 +1778,7 @@
 
     <span class="comment">// Turn the other_cache into a write set.
     // Write the batch out in a single stripe.
-    </span>qs.internal_batch_modify(pre_candidates, candidates)
+    </span>qs.internal_apply_writable(pre_candidates, candidates)
     <span class="comment">// Done! 🎉
 </span>}
 
@@ -1799,7 +1793,7 @@
         cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
         ce: <span class="kw-2">&amp;</span>CreateEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="kw">let </span>dyngroup_change = <span class="kw">super</span>::dyngroup::DynGroup::post_create(qs, cand, ce)<span class="question-mark">?</span>;
+        <span class="kw">let </span>dyngroup_change = <span class="kw">super</span>::dyngroup::DynGroup::post_create(qs, cand, <span class="kw-2">&amp;</span>ce.ident)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>group_affect = cand
             .iter()
@@ -1822,76 +1816,27 @@
         apply_memberof(qs, group_affect)
     }
 
-    <span class="attribute">#[instrument(
-        level = <span class="string">&quot;debug&quot;</span>,
-        name = <span class="string">&quot;memberof_post_modify&quot;</span>,
-        skip(qs, pre_cand, cand, me)
-    )]
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;memberof_post_modify&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>post_modify(
         qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         pre_cand: <span class="kw-2">&amp;</span>[Arc&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;],
         cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
         me: <span class="kw-2">&amp;</span>ModifyEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="kw">let </span>dyngroup_change = <span class="kw">super</span>::dyngroup::DynGroup::post_modify(qs, pre_cand, cand, me)<span class="question-mark">?</span>;
-
-        <span class="comment">// TODO: Limit this to when it&#39;s a class, member, mo, dmo change instead.
-        </span><span class="kw">let </span>group_affect = cand
-            .iter()
-            .map(|post| post.get_uuid())
-            .chain(dyngroup_change.into_iter())
-            .chain(
-                pre_cand
-                    .iter()
-                    .filter_map(|pre| {
-                        <span class="kw">if </span>pre.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_GROUP) {
-                            pre.get_ava_as_refuuid(<span class="string">&quot;member&quot;</span>)
-                        } <span class="kw">else </span>{
-                            <span class="prelude-val">None
-                        </span>}
-                    })
-                    .flatten(),
-            )
-            .chain(
-                cand.iter()
-                    .filter_map(|post| {
-                        <span class="kw">if </span>post.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_GROUP) {
-                            post.get_ava_as_refuuid(<span class="string">&quot;member&quot;</span>)
-                        } <span class="kw">else </span>{
-                            <span class="prelude-val">None
-                        </span>}
-                    })
-                    .flatten(),
-            )
-            .collect();
-
-        apply_memberof(qs, group_affect)
+        <span class="self">Self</span>::post_modify_inner(qs, pre_cand, cand, <span class="kw-2">&amp;</span>me.ident)
     }
 
-    <span class="comment">/*
-    fn pre_delete(
-        _qs: &amp;QueryServerWriteTransaction,
-        cand: &amp;mut Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
-        _de: &amp;DeleteEvent,
-    ) -&gt; Result&lt;(), OperationError&gt; {
-        // It is not valid for a recycled group to be considered
-        // a member of any other type. We simply purge the ava from
-        // the entries. This is because it will be removed from all
-        // locations where it *was* a member.
-        //
-        // As a result, on restore, the graph of where it was a member
-        // would have to be rebuilt.
-        //
-        // NOTE: DO NOT purge directmemberof - we use that to restore memberships
-        // in recycle revive!
-        let mo_purge = unsafe { ModifyList::new_purge(&quot;memberof&quot;).into_valid() };
-
-        cand.iter_mut().for_each(|e| e.apply_modlist(&amp;mo_purge));
-        Ok(())
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;memberof_post_batch_modify&quot;</span>, skip_all)]
+    </span><span class="kw">fn </span>post_batch_modify(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        pre_cand: <span class="kw-2">&amp;</span>[Arc&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;],
+        cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
+        me: <span class="kw-2">&amp;</span>BatchModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="self">Self</span>::post_modify_inner(qs, pre_cand, cand, <span class="kw-2">&amp;</span>me.ident)
     }
-    */
 
-    </span><span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;memberof_post_delete&quot;</span>, skip(qs, cand, _de))]
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;memberof_post_delete&quot;</span>, skip(qs, cand, _de))]
     </span><span class="kw">fn </span>post_delete(
         qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
@@ -2004,6 +1949,49 @@
         </span>}
 
         r
+    }
+}
+
+<span class="kw">impl </span>MemberOf {
+    <span class="kw">fn </span>post_modify_inner(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        pre_cand: <span class="kw-2">&amp;</span>[Arc&lt;EntrySealedCommitted&gt;],
+        cand: <span class="kw-2">&amp;</span>[EntrySealedCommitted],
+        ident: <span class="kw-2">&amp;</span>Identity,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">let </span>dyngroup_change = <span class="kw">super</span>::dyngroup::DynGroup::post_modify(qs, pre_cand, cand, ident)<span class="question-mark">?</span>;
+
+        <span class="comment">// TODO: Limit this to when it&#39;s a class, member, mo, dmo change instead.
+        </span><span class="kw">let </span>group_affect = cand
+            .iter()
+            .map(|post| post.get_uuid())
+            .chain(dyngroup_change.into_iter())
+            .chain(
+                pre_cand
+                    .iter()
+                    .filter_map(|pre| {
+                        <span class="kw">if </span>pre.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_GROUP) {
+                            pre.get_ava_as_refuuid(<span class="string">&quot;member&quot;</span>)
+                        } <span class="kw">else </span>{
+                            <span class="prelude-val">None
+                        </span>}
+                    })
+                    .flatten(),
+            )
+            .chain(
+                cand.iter()
+                    .filter_map(|post| {
+                        <span class="kw">if </span>post.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_GROUP) {
+                            post.get_ava_as_refuuid(<span class="string">&quot;member&quot;</span>)
+                        } <span class="kw">else </span>{
+                            <span class="prelude-val">None
+                        </span>}
+                    })
+                    .flatten(),
+            )
+            .collect();
+
+        apply_memberof(qs, group_affect)
     }
 }
 
