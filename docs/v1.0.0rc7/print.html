@@ -958,8 +958,8 @@ kanidm group get &lt;name&gt;
 <h2 id="creating-person-accounts"><a class="header" href="#creating-person-accounts">Creating Person Accounts</a></h2>
 <p>By default <code>idm_admin</code> has the privileges to create new persons in the system.</p>
 <pre><code class="language-shell">kanidm login --name idm_admin
-kanidm account create demo_user &quot;Demonstration User&quot; --name idm_admin
-kanidm account get demo_user --name idm_admin
+kanidm person create demo_user &quot;Demonstration User&quot; --name idm_admin
+kanidm person get demo_user --name idm_admin
 
 kanidm group create demo_group --name idm_admin
 kanidm group add_members demo_group demo_user --name idm_admin
@@ -968,12 +968,12 @@ kanidm group list_members demo_group --name idm_admin
 <p>You can also use anonymous to view accounts and groups - note that you won't see certain fields due
 to the limits of the access control anonymous access profile.</p>
 <pre><code>kanidm login --name anonymous
-kanidm account get demo_user --name anonymous
+kanidm person get demo_user --name anonymous
 </code></pre>
 <p>Kanidm allows person accounts to include human related attributes, such as their legal name and email address.</p>
 <p>Initially, a person does not have these attributes. If desired, a person may be modified to have these attributes.</p>
 <pre><code class="language-shell"># Note, both the --legalname and --mail flags may be omitted
-kanidm account person update demo_user --legalname &quot;initial name&quot; --mail &quot;initial@email.address&quot;
+kanidm person update demo_user --legalname &quot;initial name&quot; --mail &quot;initial@email.address&quot;
 </code></pre>
 <table>
 <tr>
@@ -990,7 +990,7 @@ accounts security and login aspects. This includes resetting account credentials
 <p>You can perform a password reset on the demo_user, for example as the idm_admin user, who is
 a default member of this group. The lines below prefixed with <code>#</code> are the interactive credential
 update interface.</p>
-<pre><code class="language-shell">kanidm account credential update demo_user --name idm_admin
+<pre><code class="language-shell">kanidm person credential update demo_user --name idm_admin
 # spn: demo_user@idm.example.com
 # Name: Demonstration User
 # Primary Credential:
@@ -1071,16 +1071,16 @@ are shown through the &quot;memberof&quot; attribute on groups and accounts.</p>
 <p>An example can be easily shown with:</p>
 <pre><code class="language-shell">kanidm group create group_1 --name idm_admin
 kanidm group create group_2 --name idm_admin
-kanidm account create nest_example &quot;Nesting Account Example&quot; --name idm_admin
+kanidm person create nest_example &quot;Nesting Account Example&quot; --name idm_admin
 kanidm group add_members group_1 group_2 --name idm_admin
 kanidm group add_members group_2 nest_example --name idm_admin
-kanidm account get nest_example --name anonymous
+kanidm person get nest_example --name anonymous
 </code></pre>
 <h2 id="account-validity"><a class="header" href="#account-validity">Account Validity</a></h2>
 <p>Kanidm supports accounts that are only able to authenticate between a pair of dates and times; the &quot;valid
 from&quot; and &quot;expires&quot; timestamps define these points in time.</p>
 <p>This can be displayed with:</p>
-<pre><code>kanidm account validity show demo_user --name idm_admin
+<pre><code>kanidm person validity show demo_user --name idm_admin
 valid after: 2020-09-25T21:22:04+10:00
 expire: 2020-09-25T01:22:04+10:00
 </code></pre>
@@ -1094,18 +1094,18 @@ as:</p>
 Year-Month-Day T hour:minutes:seconds Z +- timezone offset
 </code></pre>
 <p>Set the earliest time the account can start authenticating:</p>
-<pre><code class="language-shell">kanidm account validity begin_from demo_user '2020-09-25T11:22:04+00:00' --name idm_admin
+<pre><code class="language-shell">kanidm person validity begin_from demo_user '2020-09-25T11:22:04+00:00' --name idm_admin
 </code></pre>
 <p>Set the expiry or end date of the account:</p>
-<pre><code class="language-shell">kanidm account validity expire_at demo_user '2020-09-25T11:22:04+00:00' --name idm_admin
+<pre><code class="language-shell">kanidm person validity expire_at demo_user '2020-09-25T11:22:04+00:00' --name idm_admin
 </code></pre>
 <p>To unset or remove these values the following can be used, where <code>any|clear</code> means you may use either <code>any</code> or <code>clear</code>.</p>
-<pre><code class="language-shell">kanidm account validity begin_from demo_user any|clear --name idm_admin
-kanidm account validity expire_at demo_user never|clear --name idm_admin
+<pre><code class="language-shell">kanidm person validity begin_from demo_user any|clear --name idm_admin
+kanidm person validity expire_at demo_user never|clear --name idm_admin
 </code></pre>
 <p>To &quot;lock&quot; an account, you can set the expire_at value to the past, or unix epoch. Even in the situation
 where the &quot;valid from&quot; is <em>after</em> the expire_at, the expire_at will be respected.</p>
-<pre><code>kanidm account validity expire_at demo_user 1970-01-01T00:00:00+00:00 --name idm_admin
+<pre><code>kanidm person validity expire_at demo_user 1970-01-01T00:00:00+00:00 --name idm_admin
 </code></pre>
 <p>These validity settings impact all authentication functions of the account (kanidm, ldap, radius).</p>
 <h3 id="allowing-people-accounts-to-change-their-mail-attribute"><a class="header" href="#allowing-people-accounts-to-change-their-mail-attribute">Allowing people accounts to change their mail attribute</a></h3>
