@@ -33,8 +33,8 @@ We recommend you have the following before continuing:
    1. `<FQDN>`: The fully qualified domain name with an A record pointing to your k8s ingress.
    2. `<KANIDM_FQDN>`: The fully qualified domain name of your Kanidm deployment.
    3. `<COOKIE_SECRET>`: The output from step 3.
-   4. `<OAUTH2_RS_NAME>`: Please see the output from step 2.1 or [get](../oauth2.md) the OAuth2 resource you create from that step.
-   5. `<OAUTH2_RS_BASIC_SECRET>`: Please see the output from step 2.1 or [get](../oauth2.md) the OAuth2 resource you create from that step.
+   4. `<OAUTH2_RS_NAME>`: Please see the output from step 2.1 or [get](../integrations/oauth2.md) the OAuth2 resource you create from that step.
+   5. `<OAUTH2_RS_BASIC_SECRET>`: Please see the output from step 2.1 or [get](../integrations/oauth2.md) the OAuth2 resource you create from that step.
 
     This will deploy the following to your cluster:
     - [modem7/docker-starwars](https://github.com/modem7/docker-starwars) - An example web site.
