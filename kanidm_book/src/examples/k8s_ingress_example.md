@@ -23,8 +23,8 @@ We recommend you have the following before continuing:
    3.  Create a Kanidm group. Please see the section [Creating Accounts](../accounts_and_groups.md).
    4.  Add the account you created to the group you create. Please see the section [Creating Accounts](../accounts_and_groups.md).
 2. Create a Kanidm OAuth2 resource:
-   1. Create the OAuth2 resource for your domain. Please see the section [Create the Kanidm Configuration](../oauth2.md).
-   2. Add a scope mapping from the resource you created to the group you create with the openid, profile, and email scopes. Please see the section [Create the Kanidm Configuration](../oauth2.md).
+   1. Create the OAuth2 resource for your domain. Please see the section [Create the Kanidm Configuration](../integrations/oauth2.md).
+   2. Add a scope mapping from the resource you created to the group you create with the openid, profile, and email scopes. Please see the section [Create the Kanidm Configuration](../integrations/oauth2.md).
 3. Create a `Cookie Secret` to for the placeholder `<COOKIE_SECRET>` in step 4:
       ```shell
       docker run -ti --rm python:3-alpine python -c 'import secrets,base64; print(base64.b64encode(base64.b64encode(secrets.token_bytes(16))).decode("utf-8"));'
@@ -33,8 +33,8 @@ We recommend you have the following before continuing:
    1. `<FQDN>`: The fully qualified domain name with an A record pointing to your k8s ingress.
    2. `<KANIDM_FQDN>`: The fully qualified domain name of your Kanidm deployment.
    3. `<COOKIE_SECRET>`: The output from step 3.
-   4. `<OAUTH2_RS_NAME>`: Please see the output from step 2.1 or [get](../oauth2.md) the OAuth2 resource you create from that step.
-   5. `<OAUTH2_RS_BASIC_SECRET>`: Please see the output from step 2.1 or [get](../oauth2.md) the OAuth2 resource you create from that step.
+   4. `<OAUTH2_RS_NAME>`: Please see the output from step 2.1 or [get](../integrations/oauth2.md) the OAuth2 resource you create from that step.
+   5. `<OAUTH2_RS_BASIC_SECRET>`: Please see the output from step 2.1 or [get](../integrations/oauth2.md) the OAuth2 resource you create from that step.
 
     This will deploy the following to your cluster:
     - [modem7/docker-starwars](https://github.com/modem7/docker-starwars) - An example web site.
