@@ -82,7 +82,7 @@ account.
 
 ```shell
 kanidm login -D admin
-kanidm service-account credential generate-pw -D admin idm_admin
+kanidm service-account credential generate -D admin idm_admin
 # Success: wJX...
 ```
 
@@ -241,7 +241,7 @@ persons. Service accounts may only have server side generated high entropy passw
 To re-generate this password to an account
 
 ```shell
-kanidm service-account credential generate-pw demo_service --name admin
+kanidm service-account credential generate demo_service --name admin
 ```
 
 ## Nested Groups
