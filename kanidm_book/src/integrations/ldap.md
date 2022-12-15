@@ -118,9 +118,9 @@ If you have [issued api tokens for a service account](../accounts_and_groups.htm
 they can be used to gain extended read permissions for those service accounts.
 
 Api tokens can also be used to gain extended search permissions with LDAP. To do this you can bind
-with a dn of "dn=token" and provide the api token in the password.
+with a dn of `dn=token` and provide the api token in the password.
 
-> **NOTE** The 'dn=token' keyword is guaranteed to not be used by any other entry, which is why it was chosen as the keyword to initiate api token binds.
+> **NOTE** The `dn=token` keyword is guaranteed to not be used by any other entry, which is why it was chosen as the keyword to initiate api token binds.
 
 ```shell
 ldapwhoami -H ldaps://URL -x -D "dn=token" -w "TOKEN"
