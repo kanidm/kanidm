@@ -219,11 +219,11 @@ kanidm service-account api-token destroy --name admin demo_service 4de2a4e9-e06a
 ```
 
 Api tokens can also be used to gain extended search permissions with LDAP. To do this you can bind
-with a dn of "" (empty string) and provide the api token in the password.
+with a dn of `dn=token` and provide the api token in the password.
 
 ```shell
-ldapwhoami -H ldaps://URL -x -D "" -w "TOKEN"
-ldapwhoami -H ldaps://idm.example.com -x -D "" -w "..."
+ldapwhoami -H ldaps://URL -x -D "dn=token" -w "TOKEN"
+ldapwhoami -H ldaps://idm.example.com -x -D "dn=token" -w "..."
 # u: demo_service@idm.example.com
 ```
 
