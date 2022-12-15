@@ -2670,8 +2670,8 @@ ldapsearch -H ldap://127.0.0.1:3389 -b 'dc=example,dc=com' -x '(name=test1)'
 <li>
 <p>Create a Kanidm OAuth2 resource:</p>
 <ol>
-<li>Create the OAuth2 resource for your domain. Please see the section <a href="examples/../oauth2.html">Create the Kanidm Configuration</a>.</li>
-<li>Add a scope mapping from the resource you created to the group you create with the openid, profile, and email scopes. Please see the section <a href="examples/../oauth2.html">Create the Kanidm Configuration</a>.</li>
+<li>Create the OAuth2 resource for your domain. Please see the section <a href="examples/../integrations/oauth2.html">Create the Kanidm Configuration</a>.</li>
+<li>Add a scope mapping from the resource you created to the group you create with the openid, profile, and email scopes. Please see the section <a href="examples/../integrations/oauth2.html">Create the Kanidm Configuration</a>.</li>
 </ol>
 </li>
 <li>
@@ -2685,8 +2685,8 @@ ldapsearch -H ldap://127.0.0.1:3389 -b 'dc=example,dc=com' -x '(name=test1)'
 <li><code>&lt;FQDN&gt;</code>: The fully qualified domain name with an A record pointing to your k8s ingress.</li>
 <li><code>&lt;KANIDM_FQDN&gt;</code>: The fully qualified domain name of your Kanidm deployment.</li>
 <li><code>&lt;COOKIE_SECRET&gt;</code>: The output from step 3.</li>
-<li><code>&lt;OAUTH2_RS_NAME&gt;</code>: Please see the output from step 2.1 or <a href="examples/../oauth2.html">get</a> the OAuth2 resource you create from that step.</li>
-<li><code>&lt;OAUTH2_RS_BASIC_SECRET&gt;</code>: Please see the output from step 2.1 or <a href="examples/../oauth2.html">get</a> the OAuth2 resource you create from that step.</li>
+<li><code>&lt;OAUTH2_RS_NAME&gt;</code>: Please see the output from step 2.1 or <a href="examples/../integrations/oauth2.html">get</a> the OAuth2 resource you create from that step.</li>
+<li><code>&lt;OAUTH2_RS_BASIC_SECRET&gt;</code>: Please see the output from step 2.1 or <a href="examples/../integrations/oauth2.html">get</a> the OAuth2 resource you create from that step.</li>
 </ol>
 <p>This will deploy the following to your cluster:</p>
 <ul>
