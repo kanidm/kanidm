@@ -1,3 +1,3 @@
 (function() {var implementors = {
-"kanidmd_core":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.65.0/core/ops/drop/trait.Drop.html\" title=\"trait core::ops::drop::Drop\">Drop</a> for <a class=\"struct\" href=\"kanidmd_core/struct.CoreHandle.html\" title=\"struct kanidmd_core::CoreHandle\">CoreHandle</a>"]]
+"kanidmd_core":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.66.0/core/ops/drop/trait.Drop.html\" title=\"trait core::ops::drop::Drop\">Drop</a> for <a class=\"struct\" href=\"kanidmd_core/struct.CoreHandle.html\" title=\"struct kanidmd_core::CoreHandle\">CoreHandle</a>"]]
 };if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

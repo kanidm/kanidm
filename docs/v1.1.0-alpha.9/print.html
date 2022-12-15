@@ -2583,9 +2583,9 @@ Kanidm native attributes.</p>
 <p>If you have <a href="integrations/../accounts_and_groups.html#using-api-tokens-with-service-accounts">issued api tokens for a service account</a>
 they can be used to gain extended read permissions for those service accounts.</p>
 <p>Api tokens can also be used to gain extended search permissions with LDAP. To do this you can bind
-with a dn of &quot;dn=token&quot; and provide the api token in the password.</p>
+with a dn of <code>dn=token</code> and provide the api token in the password.</p>
 <blockquote>
-<p><strong>NOTE</strong> The 'dn=token' keyword is guaranteed to not be used by any other entry, which is why it was chosen as the keyword to initiate api token binds.</p>
+<p><strong>NOTE</strong> The <code>dn=token</code> keyword is guaranteed to not be used by any other entry, which is why it was chosen as the keyword to initiate api token binds.</p>
 </blockquote>
 <pre><code class="language-shell">ldapwhoami -H ldaps://URL -x -D &quot;dn=token&quot; -w &quot;TOKEN&quot;
 ldapwhoami -H ldaps://idm.example.com -x -D &quot;dn=token&quot; -w &quot;...&quot;
