@@ -104,8 +104,8 @@ By default `idm_admin` has the privileges to create new persons in the system.
 
 ```shell
 kanidm login --name idm_admin
-kanidm account create demo_user "Demonstration User" --name idm_admin
-kanidm account get demo_user --name idm_admin
+kanidm person create demo_user "Demonstration User" --name idm_admin
+kanidm person get demo_user --name idm_admin
 
 kanidm group create demo_group --name idm_admin
 kanidm group add_members demo_group demo_user --name idm_admin
@@ -117,7 +117,7 @@ to the limits of the access control anonymous access profile.
 
 ```
 kanidm login --name anonymous
-kanidm account get demo_user --name anonymous
+kanidm person get demo_user --name anonymous
 ```
 
 Kanidm allows person accounts to include human related attributes, such as their legal name and email address.
@@ -126,7 +126,7 @@ Initially, a person does not have these attributes. If desired, a person may be 
 
 ```shell
 # Note, both the --legalname and --mail flags may be omitted
-kanidm account person update demo_user --legalname "initial name" --mail "initial@email.address"
+kanidm person update demo_user --legalname "initial name" --mail "initial@email.address"
 ```
 
 {{#template
@@ -146,7 +146,7 @@ a default member of this group. The lines below prefixed with `#` are the intera
 update interface.
 
 ```shell
-kanidm account credential update demo_user --name idm_admin
+kanidm person credential update demo_user --name idm_admin
 # spn: demo_user@idm.example.com
 # Name: Demonstration User
 # Primary Credential:
@@ -256,10 +256,10 @@ An example can be easily shown with:
 ```shell
 kanidm group create group_1 --name idm_admin
 kanidm group create group_2 --name idm_admin
-kanidm account create nest_example "Nesting Account Example" --name idm_admin
+kanidm person create nest_example "Nesting Account Example" --name idm_admin
 kanidm group add_members group_1 group_2 --name idm_admin
 kanidm group add_members group_2 nest_example --name idm_admin
-kanidm account get nest_example --name anonymous
+kanidm person get nest_example --name anonymous
 ```
 
 ## Account Validity
@@ -269,7 +269,7 @@ from" and "expires" timestamps define these points in time.
 
 This can be displayed with:
 
-    kanidm account validity show demo_user --name idm_admin
+    kanidm person validity show demo_user --name idm_admin
     valid after: 2020-09-25T21:22:04+10:00
     expire: 2020-09-25T01:22:04+10:00
 
@@ -290,26 +290,26 @@ Year-Month-Day T hour:minutes:seconds Z +- timezone offset
 Set the earliest time the account can start authenticating:
 
 ```shell
-kanidm account validity begin_from demo_user '2020-09-25T11:22:04+00:00' --name idm_admin
+kanidm person validity begin_from demo_user '2020-09-25T11:22:04+00:00' --name idm_admin
 ```
     
 Set the expiry or end date of the account:
 
 ```shell
-kanidm account validity expire_at demo_user '2020-09-25T11:22:04+00:00' --name idm_admin
+kanidm person validity expire_at demo_user '2020-09-25T11:22:04+00:00' --name idm_admin
 ```
 
 To unset or remove these values the following can be used, where `any|clear` means you may use either `any` or `clear`.
 
 ```shell
-kanidm account validity begin_from demo_user any|clear --name idm_admin
-kanidm account validity expire_at demo_user never|clear --name idm_admin
+kanidm person validity begin_from demo_user any|clear --name idm_admin
+kanidm person validity expire_at demo_user never|clear --name idm_admin
 ```
 
 To "lock" an account, you can set the expire_at value to the past, or unix epoch. Even in the situation
 where the "valid from" is *after* the expire_at, the expire_at will be respected.
 
-    kanidm account validity expire_at demo_user 1970-01-01T00:00:00+00:00 --name idm_admin
+    kanidm person validity expire_at demo_user 1970-01-01T00:00:00+00:00 --name idm_admin
 
 These validity settings impact all authentication functions of the account (kanidm, ldap, radius).
 
