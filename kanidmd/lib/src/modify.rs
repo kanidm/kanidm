@@ -32,6 +32,8 @@ pub enum Modify {
     Removed(AttrString, PartialValue),
     // This attr *should not* exist.
     Purged(AttrString),
+    // This attr and value must exist *in this state* for this change to proceed.
+    Assert(AttrString, PartialValue),
 }
 
 #[allow(dead_code)]
@@ -47,6 +49,11 @@ pub fn m_remove(a: &str, v: &PartialValue) -> Modify {
 #[allow(dead_code)]
 pub fn m_purge(a: &str) -> Modify {
     Modify::Purged(AttrString::from(a))
+}
+
+#[allow(dead_code)]
+pub fn m_assert(a: &str, v: &PartialValue) -> Modify {
+    Modify::Assert(a.into(), v.clone())
 }
 
 impl Modify {
@@ -183,6 +190,15 @@ impl ModifyList<ModifyInvalid> {
                         Some(schema_a) => schema_a
                             .validate_partialvalue(attr_norm.as_str(), value)
                             .map(|_| Modify::Removed(attr_norm, value.clone())),
+                        None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
+                    }
+                }
+                Modify::Assert(attr, value) => {
+                    let attr_norm = schema.normalise_attr_name(attr);
+                    match schema_attributes.get(&attr_norm) {
+                        Some(schema_a) => schema_a
+                            .validate_partialvalue(attr_norm.as_str(), value)
+                            .map(|_| Modify::Assert(attr_norm, value.clone())),
                         None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
                     }
                 }

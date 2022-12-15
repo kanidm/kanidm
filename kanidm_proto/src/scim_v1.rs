@@ -3,16 +3,16 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
-pub use scim_proto::prelude::{ScimEntry, ScimError};
+pub use scim_proto::prelude::{ScimAttr, ScimComplexAttr, ScimEntry, ScimError, ScimSimpleAttr};
 use scim_proto::*;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ScimSyncState {
     Refresh,
     Active { cookie: Base64UrlSafeData },
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ScimSyncRequest {
     pub from_state: ScimSyncState,
     pub to_state: ScimSyncState,
@@ -23,7 +23,22 @@ pub struct ScimSyncRequest {
     pub delete_uuids: Vec<Uuid>,
 }
 
-pub const SCIM_SCHEMA_SYNC_PERSON: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:sync:person";
+impl ScimSyncRequest {
+    pub fn need_refresh(from_state: ScimSyncState) -> Self {
+        ScimSyncRequest {
+            from_state,
+            to_state: ScimSyncState::Refresh,
+            entries: Vec::default(),
+            delete_uuids: Vec::default(),
+        }
+    }
+}
+
+pub const SCIM_SCHEMA_SYNC: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:";
+pub const SCIM_SCHEMA_SYNC_PERSON: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:person";
+pub const SCIM_SCHEMA_SYNC_ACCOUNT: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:account";
+pub const SCIM_SCHEMA_SYNC_POSIXACCOUNT: &str =
+    "urn:ietf:params:scim:schemas:kanidm:1.0:posixaccount";
 
 #[derive(Serialize, Debug, Clone)]
 #[serde(into = "ScimEntry")]
@@ -33,17 +48,43 @@ pub struct ScimSyncPerson {
     pub user_name: String,
     pub display_name: String,
     pub gidnumber: Option<u32>,
-    pub homedirectory: Option<String>,
     pub password_import: Option<String>,
     pub login_shell: Option<String>,
 }
 
 /*
-impl TryFrom<ScimEntry> for ScimSyncPerson {
+impl TryFrom<&ScimEntry> for ScimSyncPerson {
     type Error = ScimError;
 
-    fn try_from(_value: ScimEntry) -> Result<Self, Self::Error> {
-        todo!();
+    fn try_from(value: &ScimEntry) -> Result<Self, Self::Error> {
+        if !(value.schemas.iter().any(|i| i == SCIM_SCHEMA_SYNC_PERSON)
+            && value.schemas.iter().any(|i| i == SCIM_SCHEMA_SYNC_ACCOUNT)) {
+            return Err(ScimError::EntryMissingSchema);
+        }
+
+        let is_posix = value.schemas.iter().any(|i| i == SCIM_SCHEMA_SYNC_POSIXACCOUNT);
+
+        // we clone the inner atters, because these macros will pop things from them.
+        let attrs = value.attrs.clone();
+
+        // Pop stuff
+
+
+        if !attrs.is_empty() {
+            debug!(?attrs, "Excess attrs detected");
+            return Err(ScimError::InvalidAttribute);
+        }
+
+
+        Ok(ScimSyncPerson {
+            id,
+            external_id,
+            user_name,
+            display_name,
+            gidnumber,
+            password_import,
+            login_shell,
+        })
     }
 }
 */
@@ -56,21 +97,30 @@ impl Into<ScimEntry> for ScimSyncPerson {
             user_name,
             display_name,
             gidnumber,
-            homedirectory,
             password_import,
             login_shell,
         } = self;
 
-        let schemas = vec![SCIM_SCHEMA_SYNC_PERSON.to_string()];
+        let schemas = if gidnumber.is_some() {
+            vec![
+                SCIM_SCHEMA_SYNC_PERSON.to_string(),
+                SCIM_SCHEMA_SYNC_ACCOUNT.to_string(),
+                SCIM_SCHEMA_SYNC_POSIXACCOUNT.to_string(),
+            ]
+        } else {
+            vec![
+                SCIM_SCHEMA_SYNC_PERSON.to_string(),
+                SCIM_SCHEMA_SYNC_ACCOUNT.to_string(),
+            ]
+        };
 
         let mut attrs = BTreeMap::default();
 
-        set_string!(attrs, "userName", user_name);
-        set_string!(attrs, "displayName", display_name);
-        set_option_u32!(attrs, "gidNumber", gidnumber);
-        set_option_string!(attrs, "homeDirectory", homedirectory);
-        set_option_string!(attrs, "passwordImport", password_import);
-        set_option_string!(attrs, "loginShell", login_shell);
+        set_string!(attrs, "name", user_name);
+        set_string!(attrs, "displayname", display_name);
+        set_option_u32!(attrs, "gidnumber", gidnumber);
+        set_option_string!(attrs, "password_import", password_import);
+        set_option_string!(attrs, "loginshell", login_shell);
 
         ScimEntry {
             schemas,
@@ -82,7 +132,8 @@ impl Into<ScimEntry> for ScimSyncPerson {
     }
 }
 
-pub const SCIM_SCHEMA_SYNC_GROUP: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:sync:group";
+pub const SCIM_SCHEMA_SYNC_GROUP: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:group";
+pub const SCIM_SCHEMA_SYNC_POSIXGROUP: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:posixgroup";
 
 #[derive(Serialize, Debug, Clone)]
 pub struct ScimExternalMember {
@@ -115,11 +166,35 @@ pub struct ScimSyncGroup {
 }
 
 /*
-impl TryFrom<ScimEntry> for ScimSyncPerson {
+impl TryFrom<&ScimEntry> for ScimSyncGroup {
     type Error = ScimError;
 
-    fn try_from(_value: ScimEntry) -> Result<Self, Self::Error> {
-        todo!();
+    fn try_from(value: &ScimEntry) -> Result<Self, Self::Error> {
+        if !value.schemas.iter().any(|i| i == SCIM_SCHEMA_SYNC_GROUP) {
+            return Err(ScimError::EntryMissingSchema);
+        }
+
+        let is_posix = value.schemas.iter().any(|i| i == SCIM_SCHEMA_SYNC_POSIXGROUP);
+
+        // we clone the inner atters, because these macros will pop things from them.
+        let attrs = value.attrs.clone();
+
+        // Pop stuff
+
+
+        if !attrs.is_empty() {
+            debug!(?attrs, "Excess attrs detected");
+            return Err(ScimError::InvalidAttribute);
+        }
+
+        Ok(ScimSyncGroup {
+            id,
+            external_id,
+            name,
+            description,
+            gidnumber,
+            members,
+        })
     }
 }
 */
@@ -135,14 +210,21 @@ impl Into<ScimEntry> for ScimSyncGroup {
             members,
         } = self;
 
-        let schemas = vec![SCIM_SCHEMA_SYNC_GROUP.to_string()];
+        let schemas = if gidnumber.is_some() {
+            vec![
+                SCIM_SCHEMA_SYNC_GROUP.to_string(),
+                SCIM_SCHEMA_SYNC_POSIXGROUP.to_string(),
+            ]
+        } else {
+            vec![SCIM_SCHEMA_SYNC_GROUP.to_string()]
+        };
 
         let mut attrs = BTreeMap::default();
 
         set_string!(attrs, "name", name);
-        set_option_u32!(attrs, "gidNumber", gidnumber);
+        set_option_u32!(attrs, "gidnumber", gidnumber);
         set_option_string!(attrs, "description", description);
-        set_multi_complex!(attrs, "members", members);
+        set_multi_complex!(attrs, "member", members);
 
         ScimEntry {
             schemas,

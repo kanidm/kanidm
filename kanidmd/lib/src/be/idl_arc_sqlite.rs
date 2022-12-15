@@ -36,6 +36,7 @@ const DEFAULT_CACHE_WMISS: usize = 4;
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 enum NameCacheKey {
     Name2Uuid(String),
+    ExternalId2Uuid(String),
     Uuid2Rdn(Uuid),
     Uuid2Spn(Uuid),
 }
@@ -228,6 +229,30 @@ macro_rules! name2uuid {
     }};
 }
 
+macro_rules! externalid2uuid {
+    (
+        $self:expr,
+        $name:expr
+    ) => {{
+        let cache_key = NameCacheKey::ExternalId2Uuid($name.to_string());
+        let cache_r = $self.name_cache.get(&cache_key);
+        if let Some(NameCacheValue::U(uuid)) = cache_r {
+            trace!(?uuid, "Got cached externalid2uuid");
+            return Ok(Some(uuid.clone()));
+        } else {
+            trace!("Cache miss uuid for externalid2uuid");
+        }
+
+        let db_r = $self.db.externalid2uuid($name)?;
+        if let Some(uuid) = db_r {
+            $self
+                .name_cache
+                .insert(cache_key, NameCacheValue::U(uuid.clone()))
+        }
+        Ok(db_r)
+    }};
+}
+
 macro_rules! uuid2spn {
     (
         $self:expr,
@@ -334,6 +359,8 @@ pub trait IdlArcSqliteTransaction {
 
     fn name2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError>;
 
+    fn externalid2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError>;
+
     fn uuid2spn(&mut self, uuid: Uuid) -> Result<Option<Value>, OperationError>;
 
     fn uuid2rdn(&mut self, uuid: Uuid) -> Result<Option<String>, OperationError>;
@@ -398,6 +425,10 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
 
     fn name2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
         name2uuid!(self, name)
+    }
+
+    fn externalid2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
+        externalid2uuid!(self, name)
     }
 
     fn uuid2spn(&mut self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
@@ -483,6 +514,10 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
 
     fn name2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
         name2uuid!(self, name)
+    }
+
+    fn externalid2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
+        externalid2uuid!(self, name)
     }
 
     fn uuid2spn(&mut self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
@@ -571,6 +606,10 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
                     db.write_name2uuid_add(k, *v)
                 }
                 (NameCacheKey::Name2Uuid(k), None) => db.write_name2uuid_rem(k),
+                (NameCacheKey::ExternalId2Uuid(k), Some(NameCacheValue::U(v))) => {
+                    db.write_externalid2uuid_add(k, *v)
+                }
+                (NameCacheKey::ExternalId2Uuid(k), None) => db.write_externalid2uuid_rem(k),
                 (NameCacheKey::Uuid2Spn(uuid), Some(NameCacheValue::S(v))) => {
                     db.write_uuid2spn(*uuid, Some(v))
                 }
@@ -964,6 +1003,27 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             let cache_key = NameCacheKey::Name2Uuid(k);
             self.name_cache.remove_dirty(cache_key)
         });
+        Ok(())
+    }
+
+    pub fn create_externalid2uuid(&self) -> Result<(), OperationError> {
+        self.db.create_externalid2uuid()
+    }
+
+    pub fn write_externalid2uuid_add(
+        &mut self,
+        uuid: Uuid,
+        add: String,
+    ) -> Result<(), OperationError> {
+        let cache_key = NameCacheKey::ExternalId2Uuid(add);
+        let cache_value = NameCacheValue::U(uuid);
+        self.name_cache.insert_dirty(cache_key, cache_value);
+        Ok(())
+    }
+
+    pub fn write_externalid2uuid_rem(&mut self, rem: String) -> Result<(), OperationError> {
+        let cache_key = NameCacheKey::ExternalId2Uuid(rem);
+        self.name_cache.remove_dirty(cache_key);
         Ok(())
     }
 

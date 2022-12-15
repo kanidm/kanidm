@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use kanidm_proto::v1::Filter as ProtoFilter;
 
-use crate::event::{CreateEvent, ModifyEvent};
 use crate::filter::FilterInvalid;
 use crate::prelude::*;
 
@@ -132,11 +131,11 @@ impl DynGroup {
         Ok(())
     }
 
-    #[instrument(level = "debug", name = "dyngroup_post_create", skip(qs, cand, ce))]
+    #[instrument(level = "debug", name = "dyngroup_post_create", skip_all)]
     pub fn post_create(
         qs: &mut QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
-        ce: &CreateEvent,
+        ident: &Identity,
     ) -> Result<Vec<Uuid>, OperationError> {
         let mut affected_uuids = Vec::with_capacity(cand.len());
 
@@ -204,7 +203,7 @@ impl DynGroup {
             trace!("considering new dyngroups");
             Self::apply_dyngroup_change(
                 qs,
-                &ce.ident,
+                ident,
                 &mut pre_candidates,
                 &mut candidates,
                 &mut affected_uuids,
@@ -219,7 +218,7 @@ impl DynGroup {
         debug_assert!(pre_candidates.len() == candidates.len());
         // Write this stripe if populated.
         if !pre_candidates.is_empty() {
-            qs.internal_batch_modify(pre_candidates, candidates)
+            qs.internal_apply_writable(pre_candidates, candidates)
                 .map_err(|e| {
                     admin_error!("Failed to commit dyngroup set {:?}", e);
                     e
@@ -229,16 +228,12 @@ impl DynGroup {
         Ok(affected_uuids)
     }
 
-    #[instrument(
-        level = "debug",
-        name = "memberof_post_modify",
-        skip(qs, pre_cand, cand, me)
-    )]
+    #[instrument(level = "debug", name = "memberof_post_modify", skip_all)]
     pub fn post_modify(
         qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
-        me: &ModifyEvent,
+        ident: &Identity,
     ) -> Result<Vec<Uuid>, OperationError> {
         let mut affected_uuids = Vec::with_capacity(cand.len());
 
@@ -268,7 +263,7 @@ impl DynGroup {
             trace!("considering modified dyngroups");
             Self::apply_dyngroup_change(
                 qs,
-                &me.ident,
+                ident,
                 &mut pre_candidates,
                 &mut candidates,
                 &mut affected_uuids,
@@ -333,7 +328,7 @@ impl DynGroup {
         debug_assert!(pre_candidates.len() == candidates.len());
         // Write this stripe if populated.
         if !pre_candidates.is_empty() {
-            qs.internal_batch_modify(pre_candidates, candidates)
+            qs.internal_apply_writable(pre_candidates, candidates)
                 .map_err(|e| {
                     admin_error!("Failed to commit dyngroup set {:?}", e);
                     e

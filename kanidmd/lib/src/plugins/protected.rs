@@ -57,6 +57,7 @@ impl Plugin for Protected {
                 || cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
                 || cand.attribute_equality("class", &PVCLASS_RECYCLED)
                 || cand.attribute_equality("class", &PVCLASS_DYNGROUP)
+                || cand.attribute_equality("class", &PVCLASS_SYNC_OBJECT)
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -68,8 +69,7 @@ impl Plugin for Protected {
     #[instrument(level = "debug", name = "protected_pre_modify", skip(_qs, cand, me))]
     fn pre_modify(
         _qs: &mut QueryServerWriteTransaction,
-        // Should these be EntrySealed?
-        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        cand: &mut Vec<EntryInvalidCommitted>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         if me.ident.is_internal() {
@@ -79,13 +79,13 @@ impl Plugin for Protected {
         // Prevent adding class: system, domain_info, tombstone, or recycled.
         me.modlist.iter().try_fold((), |(), m| match m {
             Modify::Present(a, v) => {
-                // TODO: Can we avoid this clone?
                 if a == "class"
                     && (v == &(*CLASS_SYSTEM)
                         || v == &(*CLASS_DOMAIN_INFO)
                         || v == &(*CLASS_SYSTEM_INFO)
                         || v == &(*CLASS_SYSTEM_CONFIG)
                         || v == &(*CLASS_DYNGROUP)
+                        || v == &(*CLASS_SYNC_OBJECT)
                         || v == &(*CLASS_TOMBSTONE)
                         || v == &(*CLASS_RECYCLED))
                 {
@@ -103,6 +103,8 @@ impl Plugin for Protected {
             if cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
                 || cand.attribute_equality("class", &PVCLASS_RECYCLED)
                 || cand.attribute_equality("class", &PVCLASS_DYNGROUP)
+                // Temporary until I move this into access.rs
+                || cand.attribute_equality("class", &PVCLASS_SYNC_OBJECT)
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -127,13 +129,102 @@ impl Plugin for Protected {
         me.modlist.iter().try_fold((), |(), m| {
             // Already hit an error, move on.
             let a = match m {
-                Modify::Present(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => a,
+                Modify::Present(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => Some(a),
+                Modify::Assert(_, _) => None,
             };
-            match ALLOWED_ATTRS.get(a.as_str()) {
-                Some(_) => Ok(()),
-                None => Err(OperationError::SystemProtectedObject),
+            if let Some(a) = a {
+                match ALLOWED_ATTRS.get(a.as_str()) {
+                    Some(_) => Ok(()),
+                    None => Err(OperationError::SystemProtectedObject),
+                }
+            } else {
+                // Was not a mod needing checking
+                Ok(())
             }
         })
+    }
+
+    fn pre_batch_modify(
+        _qs: &mut QueryServerWriteTransaction,
+        cand: &mut Vec<EntryInvalidCommitted>,
+        me: &BatchModifyEvent,
+    ) -> Result<(), OperationError> {
+        if me.ident.is_internal() {
+            trace!("Internal operation, not enforcing system object protection");
+            return Ok(());
+        }
+
+        me.modset
+            .values()
+            .flat_map(|ml| ml.iter())
+            .try_fold((), |(), m| match m {
+                Modify::Present(a, v) => {
+                    if a == "class"
+                        && (v == &(*CLASS_SYSTEM)
+                            || v == &(*CLASS_DOMAIN_INFO)
+                            || v == &(*CLASS_SYSTEM_INFO)
+                            || v == &(*CLASS_SYSTEM_CONFIG)
+                            || v == &(*CLASS_DYNGROUP)
+                            || v == &(*CLASS_SYNC_OBJECT)
+                            || v == &(*CLASS_TOMBSTONE)
+                            || v == &(*CLASS_RECYCLED))
+                    {
+                        Err(OperationError::SystemProtectedObject)
+                    } else {
+                        Ok(())
+                    }
+                }
+                _ => Ok(()),
+            })?;
+
+        // HARD block mods on tombstone or recycle. We soft block on the rest as they may
+        // have some allowed attrs.
+        cand.iter().try_fold((), |(), cand| {
+            if cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
+                || cand.attribute_equality("class", &PVCLASS_RECYCLED)
+                || cand.attribute_equality("class", &PVCLASS_DYNGROUP)
+                // Temporary until I move this into access.rs
+                || cand.attribute_equality("class", &PVCLASS_SYNC_OBJECT)
+            {
+                Err(OperationError::SystemProtectedObject)
+            } else {
+                Ok(())
+            }
+        })?;
+
+        // if class: system, check the mods are "allowed"
+        let system_pres = cand.iter().any(|c| {
+            // We don't need to check for domain info here because domain_info has a class
+            // system also. We just need to block it from being created.
+            c.attribute_equality("class", &PVCLASS_SYSTEM)
+        });
+
+        trace!("class: system -> {}", system_pres);
+        // No system types being altered, return.
+        if !system_pres {
+            return Ok(());
+        }
+
+        // Something altered is system, check if it's allowed.
+        me.modset
+            .values()
+            .flat_map(|ml| ml.iter())
+            .try_fold((), |(), m| {
+                // Already hit an error, move on.
+                let a = match m {
+                    Modify::Present(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => Some(a),
+                    Modify::Assert(_, _) => None,
+                };
+                if let Some(a) = a {
+                    match ALLOWED_ATTRS.get(a.as_str()) {
+                        Some(_) => Ok(()),
+                        None => Err(OperationError::SystemProtectedObject),
+                    }
+                } else {
+                    // Was not a mod needing checking
+                    Ok(())
+                }
+            })
     }
 
     #[instrument(level = "debug", name = "protected_pre_delete", skip(_qs, cand, de))]
@@ -156,6 +247,7 @@ impl Plugin for Protected {
                 || cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
                 || cand.attribute_equality("class", &PVCLASS_RECYCLED)
                 || cand.attribute_equality("class", &PVCLASS_DYNGROUP)
+                || cand.attribute_equality("class", &PVCLASS_SYNC_OBJECT)
             {
                 Err(OperationError::SystemProtectedObject)
             } else {

@@ -2261,6 +2261,7 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "users",
+ "uuid",
 ]
 
 [[package]]
@@ -2292,6 +2293,7 @@ dependencies = [
  "serde",
  "serde_json",
  "time 0.2.27",
+ "tracing",
  "url",
  "urlencoding",
  "uuid",
@@ -3761,7 +3763,7 @@ dependencies = [
 [[package]]
 name = "scim_proto"
 version = "0.1.0"
-source = "git+https://github.com/kanidm/scim.git#f7a9241bf413ac2e40cb974876d2b0433a866c74"
+source = "git+https://github.com/kanidm/scim.git#cb147c80fb14dd87218698d3d5608f2abd8617d5"
 dependencies = [
  "base64urlsafedata",
  "serde",

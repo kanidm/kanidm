@@ -775,6 +775,16 @@ pub enum SynchOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
+    /// Reset the sync cookie of this connector, so that on the next operation of the sync tool
+    /// a full refresh of the provider is requested. Kanidm attributes that have been granted
+    /// authority will *not* be lost or deleted.
+    #[clap(name = "force-refresh")]
+    ForceRefresh {
+        #[clap()]
+        account_id: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    }
 }
 
 #[derive(Debug, Subcommand)]

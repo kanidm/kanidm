@@ -26,6 +26,7 @@ impl Plugin for PasswordImport {
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
+        /*
         cand.iter_mut()
             .try_for_each(|e| {
                 // is there a password we are trying to import?
@@ -62,6 +63,8 @@ impl Plugin for PasswordImport {
                     }
                 }
             })
+        */
+        Self::modify_inner(cand)
     }
 
     #[instrument(
@@ -73,6 +76,23 @@ impl Plugin for PasswordImport {
         _qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
+    ) -> Result<(), OperationError> {
+        Self::modify_inner(cand)
+    }
+
+    #[instrument(level = "debug", name = "password_import_pre_batch_modify", skip_all)]
+    fn pre_batch_modify(
+        _qs: &mut QueryServerWriteTransaction,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        _me: &BatchModifyEvent,
+    ) -> Result<(), OperationError> {
+        Self::modify_inner(cand)
+    }
+}
+
+impl PasswordImport {
+    fn modify_inner<T: Clone>(
+        cand: &mut Vec<Entry<EntryInvalid, T>>,
     ) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
             // is there a password we are trying to import?

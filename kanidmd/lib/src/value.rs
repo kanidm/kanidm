@@ -163,9 +163,11 @@ impl fmt::Display for IndexType {
     Deserialize,
     Serialize,
     TryFromPrimitive,
+    Default,
 )]
 #[repr(u16)]
 pub enum SyntaxType {
+    #[default]
     Utf8String = 0,
     Utf8StringInsensitive = 1,
     Uuid = 2,
@@ -826,6 +828,10 @@ impl PartialEq for Value {
             | (Value::SecretValue(_), Value::SecretValue(_)) => false,
             // Specifically related to migrations, we allow the invalid comparison.
             (Value::Iutf8(_), Value::Iname(_)) | (Value::Iname(_), Value::Iutf8(_)) => false,
+            // When upgrading between uuid -> name -> spn we have to allow some invalid types.
+            (Value::Uuid(_), Value::Iname(_))
+            | (Value::Iname(_), Value::Spn(_, _))
+            | (Value::Uuid(_), Value::Spn(_, _)) => false,
             (l, r) => {
                 error!(?l, ?r, "mismatched value types");
                 debug_assert!(false);

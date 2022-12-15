@@ -217,6 +217,7 @@ pub enum OperationError {
     InvalidValueState,
     InvalidEntryId,
     InvalidRequestState,
+    InvalidSyncState,
     InvalidState,
     InvalidEntryState,
     InvalidUuid,
@@ -224,6 +225,8 @@ pub enum OperationError {
     InvalidAcpState(String),
     InvalidSchemaState(String),
     InvalidAccountState(String),
+    MissingEntries,
+    ModifyAssertionFailed,
     BackendEngine,
     SqliteError, //(RusqliteError)
     FsError,

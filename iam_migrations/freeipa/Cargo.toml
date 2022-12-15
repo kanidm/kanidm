@@ -27,6 +27,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 toml.workspace = true
 url = { workspace = true, features = ["serde"] }
+uuid = { workspace = true, features = ["serde"] }
 
 # For file metadata, should this me moved out?
 kanidmd_lib.workspace = true

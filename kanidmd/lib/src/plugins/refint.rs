@@ -14,11 +14,9 @@ use std::sync::Arc;
 
 use hashbrown::HashSet as Set;
 use kanidm_proto::v1::{ConsistencyError, PluginError};
-use tracing::trace;
 
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::filter::f_eq;
-use crate::modify::Modify;
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
@@ -88,82 +86,30 @@ impl Plugin for ReferentialIntegrity {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        let schema = qs.get_schema();
-        let ref_types = schema.get_reference_types();
-
-        // Fast Path
-        let mut vsiter = cand.iter().flat_map(|c| {
-            ref_types
-                .values()
-                .filter_map(move |rtype| c.get_ava_set(&rtype.name))
-        });
-
-        // Could check len first?
-        let mut i = Vec::new();
-
-        vsiter.try_for_each(|vs| {
-            if let Some(uuid_iter) = vs.as_ref_uuid_iter() {
-                uuid_iter.for_each(|u| {
-                    i.push(PartialValue::new_uuid(u))
-                });
-                Ok(())
-            } else {
-                admin_error!(?vs, "reference value could not convert to reference uuid.");
-                admin_error!("If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
-                Err(OperationError::InvalidAttribute(
-                    "uuid could not become reference value".to_string(),
-                ))
-            }
-        })?;
-
-        Self::check_uuids_exist(qs, i)
+        Self::post_modify_inner(qs, cand)
     }
 
-    #[instrument(
-        level = "debug",
-        name = "refint_post_modify",
-        skip(qs, _pre_cand, _cand, me)
-    )]
+    #[instrument(level = "debug", name = "refint_post_modify", skip_all)]
     fn post_modify(
         qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
-        _cand: &[Entry<EntrySealed, EntryCommitted>],
-        me: &ModifyEvent,
+        cand: &[Entry<EntrySealed, EntryCommitted>],
+        _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        let schema = qs.get_schema();
-        let ref_types = schema.get_reference_types();
-
-        let i: Result<Vec<PartialValue>, _> = me.modlist.into_iter().filter_map(|modify| {
-            if let Modify::Present(a, v) = &modify {
-                if ref_types.get(a).is_some() {
-                    Some(v)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        })
-        .map(|v| {
-            v.to_ref_uuid()
-                .map(|uuid| PartialValue::new_uuid(uuid))
-                .ok_or_else(|| {
-                    admin_error!(?v, "reference value could not convert to reference uuid.");
-                    admin_error!("If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
-                    OperationError::InvalidAttribute(
-                        "uuid could not become reference value".to_string(),
-                    )
-                })
-
-        })
-        .collect();
-
-        let i = i?;
-
-        Self::check_uuids_exist(qs, i)
+        Self::post_modify_inner(qs, cand)
     }
 
-    #[instrument(level = "debug", name = "refint_post_delete", skip(qs, cand, _ce))]
+    #[instrument(level = "debug", name = "refint_post_batch_modify", skip_all)]
+    fn post_batch_modify(
+        qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
+        cand: &[Entry<EntrySealed, EntryCommitted>],
+        _me: &BatchModifyEvent,
+    ) -> Result<(), OperationError> {
+        Self::post_modify_inner(qs, cand)
+    }
+
+    #[instrument(level = "debug", name = "refint_post_delete", skip_all)]
     fn post_delete(
         qs: &mut QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
@@ -213,7 +159,7 @@ impl Plugin for ReferentialIntegrity {
             })
             .unzip();
 
-        qs.internal_batch_modify(pre_candidates, candidates)
+        qs.internal_apply_writable(pre_candidates, candidates)
     }
 
     #[instrument(level = "debug", name = "verify", skip(qs))]
@@ -260,6 +206,43 @@ impl Plugin for ReferentialIntegrity {
         }
 
         res
+    }
+}
+
+impl ReferentialIntegrity {
+    fn post_modify_inner(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &[Entry<EntrySealed, EntryCommitted>],
+    ) -> Result<(), OperationError> {
+        let schema = qs.get_schema();
+        let ref_types = schema.get_reference_types();
+
+        // Fast Path
+        let mut vsiter = cand.iter().flat_map(|c| {
+            ref_types
+                .values()
+                .filter_map(move |rtype| c.get_ava_set(&rtype.name))
+        });
+
+        // Could check len first?
+        let mut i = Vec::with_capacity(cand.len() * 2);
+
+        vsiter.try_for_each(|vs| {
+            if let Some(uuid_iter) = vs.as_ref_uuid_iter() {
+                uuid_iter.for_each(|u| {
+                    i.push(PartialValue::new_uuid(u))
+                });
+                Ok(())
+            } else {
+                admin_error!(?vs, "reference value could not convert to reference uuid.");
+                admin_error!("If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
+                Err(OperationError::InvalidAttribute(
+                    "uuid could not become reference value".to_string(),
+                ))
+            }
+        })?;
+
+        Self::check_uuids_exist(qs, i)
     }
 }
 

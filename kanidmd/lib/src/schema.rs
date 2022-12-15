@@ -78,7 +78,7 @@ pub struct SchemaReadTransaction {
 /// [`Entry`]: ../entry/index.html
 /// [`indexed`]: ../value/enum.IndexType.html
 /// [`syntax`]: ../value/enum.SyntaxType.html
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SchemaAttribute {
     // Is this ... used?
     // class: Vec<String>,
@@ -89,6 +89,7 @@ pub struct SchemaAttribute {
     pub multivalue: bool,
     pub unique: bool,
     pub phantom: bool,
+    pub sync_allowed: bool,
     pub index: Vec<IndexType>,
     pub syntax: SyntaxType,
 }
@@ -136,6 +137,9 @@ impl SchemaAttribute {
             OperationError::InvalidSchemaState("missing unique".to_string())
         })?;
         let phantom = value.get_ava_single_bool("phantom").unwrap_or(false);
+
+        let sync_allowed = value.get_ava_single_bool("sync_allowed").unwrap_or(false);
+
         // index vec
         // even if empty, it SHOULD be present ... (is that valid to put an empty set?)
         // The get_ava_opt_index handles the optional case for us :)
@@ -156,6 +160,7 @@ impl SchemaAttribute {
             multivalue,
             unique,
             phantom,
+            sync_allowed,
             index,
             syntax,
         })
@@ -306,6 +311,7 @@ pub struct SchemaClass {
     pub name: AttrString,
     pub uuid: Uuid,
     pub description: String,
+    pub sync_allowed: bool,
     /// This allows modification of system types to be extended in custom ways
     pub systemmay: Vec<AttrString>,
     pub may: Vec<AttrString>,
@@ -352,6 +358,8 @@ impl SchemaClass {
                 OperationError::InvalidSchemaState("missing description".to_string())
             })?;
 
+        let sync_allowed = value.get_ava_single_bool("sync_allowed").unwrap_or(false);
+
         // These are all "optional" lists of strings.
         let systemmay = value
             .get_ava_iter_iutf8("systemmay")
@@ -391,6 +399,7 @@ impl SchemaClass {
             name,
             uuid,
             description,
+            sync_allowed,
             systemmay,
             may,
             systemmust,
@@ -659,6 +668,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![IndexType::Equality, IndexType::Presence],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -674,6 +684,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 // needing to check recycled objects too.
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![IndexType::Equality, IndexType::Presence],
                 syntax: SyntaxType::Uuid,
             },
@@ -689,6 +700,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 // needing to check recycled objects too.
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Cid,
             },
@@ -702,6 +714,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: true,
                 phantom: false,
+                sync_allowed: true,
                 index: vec![IndexType::Equality, IndexType::Presence],
                 syntax: SyntaxType::Utf8StringIname,
             },
@@ -717,6 +730,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: true,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![IndexType::Equality],
                 syntax: SyntaxType::SecurityPrincipalName,
             },
@@ -730,6 +744,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: true,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![IndexType::Equality],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -743,6 +758,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: true,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![IndexType::Equality],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -756,6 +772,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: false,
                 phantom: false,
+                sync_allowed: true,
                 index: vec![],
                 syntax: SyntaxType::Utf8String,
             },
@@ -767,6 +784,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Boolean,
             });
@@ -777,6 +795,18 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
+                index: vec![],
+                syntax: SyntaxType::Boolean,
+            });
+        self.attributes.insert(AttrString::from("sync_allowed"), SchemaAttribute {
+                name: AttrString::from("sync_allowed"),
+                uuid: UUID_SCHEMA_ATTR_SYNC_ALLOWED,
+                description: String::from("If true, this attribute or class can by synchronised by an external scim import"),
+                multivalue: false,
+                unique: false,
+                phantom: false,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Boolean,
             });
@@ -791,6 +821,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Boolean,
             },
@@ -806,6 +837,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::IndexId,
             },
@@ -821,6 +853,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![IndexType::Equality],
                 syntax: SyntaxType::SyntaxId,
             },
@@ -836,6 +869,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -851,6 +885,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -866,6 +901,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -881,6 +917,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -896,6 +933,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: true,
                     unique: false,
                     phantom: false,
+                sync_allowed: false,
                     index: vec![],
                     syntax: SyntaxType::Utf8StringInsensitive,
                 },
@@ -911,6 +949,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: true,
                     unique: false,
                     phantom: false,
+                sync_allowed: false,
                     index: vec![],
                     syntax: SyntaxType::Utf8StringInsensitive,
                 },
@@ -926,6 +965,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -941,6 +981,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: true,
                     unique: false,
                     phantom: false,
+                sync_allowed: false,
                     index: vec![],
                     syntax: SyntaxType::Utf8StringInsensitive,
                 },
@@ -957,6 +998,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: false,
                     unique: false,
                     phantom: false,
+                sync_allowed: false,
                     index: vec![IndexType::Equality],
                     syntax: SyntaxType::Boolean,
                 },
@@ -973,6 +1015,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![IndexType::Equality, IndexType::SubString],
                 syntax: SyntaxType::JsonFilter,
             },
@@ -988,6 +1031,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![IndexType::Equality],
                 syntax: SyntaxType::ReferenceUuid,
             },
@@ -1004,6 +1048,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![IndexType::Equality, IndexType::SubString],
                 syntax: SyntaxType::JsonFilter,
             },
@@ -1019,6 +1064,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![IndexType::Equality],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -1032,6 +1078,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![IndexType::Equality],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -1047,6 +1094,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![IndexType::Equality],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -1063,6 +1111,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![IndexType::Equality],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -1078,6 +1127,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![IndexType::Equality],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -1091,6 +1141,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: true,
                     unique: false,
                     phantom: false,
+                sync_allowed: false,
                     index: vec![IndexType::Equality],
                     syntax: SyntaxType::Utf8StringInsensitive,
                 },
@@ -1105,6 +1156,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![IndexType::Equality],
                 syntax: SyntaxType::ReferenceUuid,
             },
@@ -1118,6 +1170,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![IndexType::Equality],
                 syntax: SyntaxType::ReferenceUuid,
             },
@@ -1131,6 +1184,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: false,
+                sync_allowed: true,
                 index: vec![IndexType::Equality],
                 syntax: SyntaxType::ReferenceUuid,
             },
@@ -1147,6 +1201,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Uint32,
             },
@@ -1161,6 +1216,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: false,
+                sync_allowed: false,
                 index: vec![IndexType::Equality],
                 syntax: SyntaxType::Utf8StringIname,
             },
@@ -1176,6 +1232,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: true,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -1191,6 +1248,55 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: true,
+                sync_allowed: false,
+                index: vec![],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+
+        // External Scim Sync
+        self.attributes.insert(
+            AttrString::from("sync_external_id"),
+            SchemaAttribute {
+                name: AttrString::from("sync_external_id"),
+                uuid: UUID_SCHEMA_ATTR_SYNC_EXTERNAL_ID,
+                description: String::from(
+                    "An external string ID of an entry imported from a sync agreement",
+                ),
+                multivalue: false,
+                unique: true,
+                phantom: false,
+                sync_allowed: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::Utf8StringInsensitive,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("sync_parent_uuid"),
+            SchemaAttribute {
+                name: AttrString::from("sync_parent_uuid"),
+                uuid: UUID_SCHEMA_ATTR_SYNC_PARENT_UUID,
+                description: String::from(
+                    "The UUID of the parent sync agreement that created this entry.",
+                ),
+                multivalue: false,
+                unique: false,
+                phantom: false,
+                sync_allowed: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::ReferenceUuid,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("sync_class"),
+            SchemaAttribute {
+                name: AttrString::from("sync_class"),
+                uuid: UUID_SCHEMA_ATTR_SYNC_CLASS,
+                description: String::from("The set of classes requested by the sync client."),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -1202,9 +1308,10 @@ impl<'a> SchemaWriteTransaction<'a> {
                 name: AttrString::from("password_import"),
                 uuid: UUID_SCHEMA_ATTR_PASSWORD_IMPORT,
                 description: String::from("An imported password hash from an external system."),
-                multivalue: true,
+                multivalue: false,
                 unique: false,
                 phantom: true,
+                sync_allowed: true,
                 index: vec![],
                 syntax: SyntaxType::Utf8String,
             },
@@ -1220,6 +1327,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: false,
                 phantom: true,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -1233,6 +1341,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: false,
                 phantom: true,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -1246,6 +1355,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: false,
                 phantom: true,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Uuid,
             },
@@ -1259,6 +1369,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: true,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -1272,6 +1383,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: false,
                 phantom: true,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Utf8StringIname,
             },
@@ -1285,6 +1397,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: true,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::SshKey,
             },
@@ -1298,6 +1411,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: true,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::SshKey,
             },
@@ -1311,6 +1425,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: true,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::EmailAddress,
             },
@@ -1324,6 +1439,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: true,
                 unique: false,
                 phantom: true,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::EmailAddress,
             },
@@ -1337,6 +1453,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 multivalue: false,
                 unique: false,
                 phantom: true,
+                sync_allowed: false,
                 index: vec![],
                 syntax: SyntaxType::Uint32,
             },
@@ -1349,7 +1466,11 @@ impl<'a> SchemaWriteTransaction<'a> {
                 name: AttrString::from("attributetype"),
                 uuid: UUID_SCHEMA_CLASS_ATTRIBUTETYPE,
                 description: String::from("Definition of a schema attribute"),
-                systemmay: vec![AttrString::from("phantom"), AttrString::from("index")],
+                systemmay: vec![
+                    AttrString::from("phantom"),
+                    AttrString::from("sync_allowed"),
+                    AttrString::from("index"),
+                ],
                 systemmust: vec![
                     AttrString::from("class"),
                     AttrString::from("attributename"),
@@ -1369,6 +1490,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 uuid: UUID_SCHEMA_CLASS_CLASSTYPE,
                 description: String::from("Definition of a schema classtype"),
                 systemmay: vec![
+                    AttrString::from("sync_allowed"),
                     AttrString::from("systemmay"),
                     AttrString::from("may"),
                     AttrString::from("systemmust"),
@@ -1535,14 +1657,31 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.classes.insert(
-                AttrString::from("system"),
-                SchemaClass {
-                    name: AttrString::from("system"),
-                    uuid: UUID_SCHEMA_CLASS_SYSTEM,
-                    description: String::from("A class denoting that a type is system generated and protected. It has special internal behaviour."),
-                    .. Default::default()
-                },
-            );
+            AttrString::from("system"),
+            SchemaClass {
+                name: AttrString::from("system"),
+                uuid: UUID_SCHEMA_CLASS_SYSTEM,
+                description: String::from("A class denoting that a type is system generated and protected. It has special internal behaviour."),
+                .. Default::default()
+            },
+        );
+        self.classes.insert(
+            AttrString::from("sync_object"),
+            SchemaClass {
+                name: AttrString::from("sync_object"),
+                uuid: UUID_SCHEMA_CLASS_SYNC_OBJECT,
+                description: String::from("A class denoting that an entry is synchronised from an external source. This entry may not be modifiable."),
+                systemmust: vec![
+                    AttrString::from("uuid"),
+                    AttrString::from("sync_parent_uuid")
+                ],
+                systemmay: vec![
+                    AttrString::from("sync_external_id"),
+                    AttrString::from("sync_class"),
+                ],
+                .. Default::default()
+            },
+        );
 
         let r = self.validate();
         if r.is_empty() {
@@ -1912,11 +2051,9 @@ mod tests {
             name: AttrString::from("single_value"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
-            multivalue: false,
-            unique: false,
-            phantom: false,
             index: vec![IndexType::Equality],
             syntax: SyntaxType::Utf8StringInsensitive,
+            ..Default::default()
         };
 
         let r1 = single_value_string.validate_ava("single_value", &(vs_iutf8!["test"] as _));
@@ -1939,10 +2076,9 @@ mod tests {
             uuid: Uuid::new_v4(),
             description: String::from(""),
             multivalue: true,
-            unique: false,
-            phantom: false,
             index: vec![IndexType::Equality],
             syntax: SyntaxType::Utf8String,
+            ..Default::default()
         };
 
         let rvs = vs_utf8!["test1".to_string(), "test2".to_string()] as _;
@@ -1955,10 +2091,9 @@ mod tests {
             uuid: Uuid::new_v4(),
             description: String::from(""),
             multivalue: true,
-            unique: false,
-            phantom: false,
             index: vec![IndexType::Equality],
             syntax: SyntaxType::Boolean,
+            ..Default::default()
         };
 
         // Since valueset now disallows such shenangians at a type level, this can't occur
@@ -1987,11 +2122,9 @@ mod tests {
             name: AttrString::from("sv_syntax"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
-            multivalue: false,
-            unique: false,
-            phantom: false,
             index: vec![IndexType::Equality],
             syntax: SyntaxType::SyntaxId,
+            ..Default::default()
         };
 
         let rvs = vs_syntax![SyntaxType::try_from("UTF8STRING").unwrap()] as _;
@@ -2010,11 +2143,9 @@ mod tests {
             name: AttrString::from("sv_index"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
-            multivalue: false,
-            unique: false,
-            phantom: false,
             index: vec![IndexType::Equality],
             syntax: SyntaxType::IndexId,
+            ..Default::default()
         };
         //
         let rvs = vs_index![IndexType::try_from("EQUALITY").unwrap()] as _;

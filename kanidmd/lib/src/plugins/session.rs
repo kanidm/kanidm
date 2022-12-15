@@ -26,6 +26,24 @@ impl Plugin for SessionConsistency {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
+        Self::modify_inner(qs, cand)
+    }
+
+    #[instrument(level = "debug", name = "session_consistency", skip_all)]
+    fn pre_batch_modify(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        _me: &BatchModifyEvent,
+    ) -> Result<(), OperationError> {
+        Self::modify_inner(qs, cand)
+    }
+}
+
+impl SessionConsistency {
+    fn modify_inner<T: Clone + std::fmt::Debug>(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &mut Vec<Entry<EntryInvalid, T>>,
+    ) -> Result<(), OperationError> {
         let curtime = qs.get_curtime();
         let curtime_odt = OffsetDateTime::unix_epoch() + curtime;
 

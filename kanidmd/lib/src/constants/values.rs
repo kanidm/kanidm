@@ -31,6 +31,7 @@ lazy_static! {
     pub static ref PVCLASS_SERVICE_ACCOUNT: PartialValue =
         PartialValue::new_class("service_account");
     pub static ref PVCLASS_SYNC_ACCOUNT: PartialValue = PartialValue::new_class("sync_account");
+    pub static ref PVCLASS_SYNC_OBJECT: PartialValue = PartialValue::new_class("sync_object");
     pub static ref PVCLASS_SYSTEM: PartialValue = PartialValue::new_class("system");
     pub static ref PVCLASS_SYSTEM_INFO: PartialValue = PartialValue::new_class("system_info");
     pub static ref PVCLASS_SYSTEM_CONFIG: PartialValue = PartialValue::new_class("system_config");
@@ -46,6 +47,7 @@ lazy_static! {
     pub static ref CLASS_OBJECT: Value = Value::new_class("object");
     pub static ref CLASS_RECYCLED: Value = Value::new_class("recycled");
     pub static ref CLASS_SERVICE_ACCOUNT: Value = Value::new_class("service_account");
+    pub static ref CLASS_SYNC_OBJECT: Value = Value::new_class("sync_object");
     pub static ref CLASS_SYSTEM: Value = Value::new_class("system");
     pub static ref CLASS_SYSTEM_CONFIG: Value = Value::new_class("system_config");
     pub static ref CLASS_SYSTEM_INFO: Value = Value::new_class("system_info");

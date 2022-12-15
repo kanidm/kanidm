@@ -29,7 +29,7 @@ trait Plugin {
 
     fn pre_create_transform(
         _qs: &mut QueryServerWriteTransaction,
-        _cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
+        _cand: &mut Vec<EntryInvalidNew>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         admin_error!(
@@ -42,7 +42,7 @@ trait Plugin {
     fn pre_create(
         _qs: &mut QueryServerWriteTransaction,
         // List of what we will commit that is valid?
-        _cand: &[Entry<EntrySealed, EntryNew>],
+        _cand: &[EntrySealedNew],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented pre_create!", Self::id());
@@ -52,7 +52,7 @@ trait Plugin {
     fn post_create(
         _qs: &mut QueryServerWriteTransaction,
         // List of what we commited that was valid?
-        _cand: &[Entry<EntrySealed, EntryCommitted>],
+        _cand: &[EntrySealedCommitted],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented post_create!", Self::id());
@@ -61,7 +61,7 @@ trait Plugin {
 
     fn pre_modify(
         _qs: &mut QueryServerWriteTransaction,
-        _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        _cand: &mut Vec<EntryInvalidCommitted>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented pre_modify!", Self::id());
@@ -71,17 +71,43 @@ trait Plugin {
     fn post_modify(
         _qs: &mut QueryServerWriteTransaction,
         // List of what we modified that was valid?
-        _pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
-        _cand: &[Entry<EntrySealed, EntryCommitted>],
+        _pre_cand: &[Arc<EntrySealedCommitted>],
+        _cand: &[EntrySealedCommitted],
         _ce: &ModifyEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented post_modify!", Self::id());
         Err(OperationError::InvalidState)
     }
 
+    fn pre_batch_modify(
+        _qs: &mut QueryServerWriteTransaction,
+        _cand: &mut Vec<EntryInvalidCommitted>,
+        _me: &BatchModifyEvent,
+    ) -> Result<(), OperationError> {
+        admin_error!(
+            "plugin {} has an unimplemented pre_batch_modify!",
+            Self::id()
+        );
+        Err(OperationError::InvalidState)
+    }
+
+    fn post_batch_modify(
+        _qs: &mut QueryServerWriteTransaction,
+        // List of what we modified that was valid?
+        _pre_cand: &[Arc<EntrySealedCommitted>],
+        _cand: &[EntrySealedCommitted],
+        _me: &BatchModifyEvent,
+    ) -> Result<(), OperationError> {
+        admin_error!(
+            "plugin {} has an unimplemented post_batch_modify!",
+            Self::id()
+        );
+        Err(OperationError::InvalidState)
+    }
+
     fn pre_delete(
         _qs: &mut QueryServerWriteTransaction,
-        _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        _cand: &mut Vec<EntryInvalidCommitted>,
         _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented pre_delete!", Self::id());
@@ -91,7 +117,7 @@ trait Plugin {
     fn post_delete(
         _qs: &mut QueryServerWriteTransaction,
         // List of what we delete that was valid?
-        _cand: &[Entry<EntrySealed, EntryCommitted>],
+        _cand: &[EntrySealedCommitted],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
         admin_error!("plugin {} has an unimplemented post_delete!", Self::id());
@@ -181,6 +207,36 @@ impl Plugins {
         refint::ReferentialIntegrity::post_modify(qs, pre_cand, cand, me)
             .and_then(|_| spn::Spn::post_modify(qs, pre_cand, cand, me))
             .and_then(|_| memberof::MemberOf::post_modify(qs, pre_cand, cand, me))
+    }
+
+    #[instrument(level = "debug", name = "plugins::run_pre_batch_modify", skip_all)]
+    pub fn run_pre_batch_modify(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        me: &BatchModifyEvent,
+    ) -> Result<(), OperationError> {
+        protected::Protected::pre_batch_modify(qs, cand, me)
+            .and_then(|_| base::Base::pre_batch_modify(qs, cand, me))
+            .and_then(|_| password_import::PasswordImport::pre_batch_modify(qs, cand, me))
+            .and_then(|_| jwskeygen::JwsKeygen::pre_batch_modify(qs, cand, me))
+            .and_then(|_| gidnumber::GidNumber::pre_batch_modify(qs, cand, me))
+            .and_then(|_| domain::Domain::pre_batch_modify(qs, cand, me))
+            .and_then(|_| spn::Spn::pre_batch_modify(qs, cand, me))
+            .and_then(|_| session::SessionConsistency::pre_batch_modify(qs, cand, me))
+            // attr unique should always be last
+            .and_then(|_| attrunique::AttrUnique::pre_batch_modify(qs, cand, me))
+    }
+
+    #[instrument(level = "debug", name = "plugins::run_post_batch_modify", skip_all)]
+    pub fn run_post_batch_modify(
+        qs: &mut QueryServerWriteTransaction,
+        pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
+        cand: &[Entry<EntrySealed, EntryCommitted>],
+        me: &BatchModifyEvent,
+    ) -> Result<(), OperationError> {
+        refint::ReferentialIntegrity::post_batch_modify(qs, pre_cand, cand, me)
+            .and_then(|_| spn::Spn::post_batch_modify(qs, pre_cand, cand, me))
+            .and_then(|_| memberof::MemberOf::post_batch_modify(qs, pre_cand, cand, me))
     }
 
     #[instrument(level = "debug", name = "plugins::run_pre_delete", skip_all)]

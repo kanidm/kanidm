@@ -38,6 +38,12 @@ use crate::schema::{
 };
 use crate::valueset::uuid_to_proto_string;
 
+pub mod batch_modify;
+pub mod create;
+pub mod delete;
+pub mod modify;
+pub mod search;
+
 const RESOLVE_FILTER_CACHE_MAX: usize = 4096;
 const RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
 
@@ -261,30 +267,25 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    // Should this actually be names_to_uuids and we do batches?
-    //  In the initial design "no", we can always write a batched
-    //  interface later.
-    //
-    // The main question is if we need association between the name and
-    // the request uuid - if we do, we need singular. If we don't, we can
-    // just do the batching.
-    //
-    // Filter conversion likely needs 1:1, due to and/or conversions
-    // but create/mod likely doesn't due to the nature of the attributes.
-    //
-    // In the end, singular is the simple and correct option, so lets do
-    // that first, and we can add batched (and cache!) later.
-    //
-    // Remember, we don't care if the name is invalid, because search
-    // will validate/normalise the filter we construct for us. COOL!
     fn name_to_uuid(&self, name: &str) -> Result<Uuid, OperationError> {
         // Is it just a uuid?
         Uuid::parse_str(name).or_else(|_| {
             let lname = name.to_lowercase();
             self.get_be_txn()
                 .name2uuid(lname.as_str())?
-                .ok_or(OperationError::NoMatchingEntries) // should we log this?
+                .ok_or(OperationError::NoMatchingEntries)
         })
+    }
+
+    // Similar to name, but where we lookup from external_id instead.
+    fn sync_external_id_to_uuid(&self, external_id: &str) -> Result<Option<Uuid>, OperationError> {
+        // Is it just a uuid?
+        Uuid::parse_str(external_id)
+            .map(|uuid| Some(uuid))
+            .or_else(|_| {
+                let lname = external_id.to_lowercase();
+                self.get_be_txn().externalid2uuid(lname.as_str())
+            })
     }
 
     fn uuid_to_spn(&self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
@@ -460,35 +461,18 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::IndexId => Value::new_indexs(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Index syntax".to_string())),
                     SyntaxType::Uuid => {
-                        // It's a uuid - we do NOT check for existance, because that
-                        // could be revealing or disclosing - it is up to acp to assert
-                        // if we can see the value or not, and it's not up to us to
-                        // assert the filter value exists.
-                        Value::new_uuids(value)
-                            .or_else(|| {
-                                // it's not a uuid, try to resolve it.
-                                // if the value is NOT found, we map to "does not exist" to allow
-                                // the value to continue being evaluated, which of course, will fail
-                                // all subsequent filter tests because it ... well, doesn't exist.
-                                let un = self
-                                    .name_to_uuid( value)
-                                    .unwrap_or(UUID_DOES_NOT_EXIST);
-                                Some(Value::new_uuid(un))
-                            })
-                            // I think this is unreachable due to how the .or_else works.
-                            .ok_or_else(|| OperationError::InvalidAttribute("Invalid UUID syntax".to_string()))
+                        // Attempt to resolve this name to a uuid. If it's already a uuid, then
+                        // name to uuid will "do the right thing" and give us the Uuid back.
+                        let un = self
+                            .name_to_uuid(value)
+                            .unwrap_or(UUID_DOES_NOT_EXIST);
+                        Ok(Value::Uuid(un))
                     }
                     SyntaxType::ReferenceUuid => {
-                        // See comments above.
-                        Value::new_refer_s(value)
-                            .or_else(|| {
-                                let un = self
-                                    .name_to_uuid( value)
-                                    .unwrap_or(UUID_DOES_NOT_EXIST);
-                                Some(Value::new_refer(un))
-                            })
-                            // I think this is unreachable due to how the .or_else works.
-                            .ok_or_else(|| OperationError::InvalidAttribute("Invalid Reference syntax".to_string()))
+                        let un = self
+                            .name_to_uuid(value)
+                            .unwrap_or(UUID_DOES_NOT_EXIST);
+                        Ok(Value::Refer(un))
                     }
                     SyntaxType::JsonFilter => Value::new_json_filter_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Filter syntax".to_string())),
@@ -553,31 +537,8 @@ pub trait QueryServerTransaction<'a> {
                         OperationError::InvalidAttribute("Invalid Index syntax".to_string())
                     }),
                     SyntaxType::Uuid => {
-                        PartialValue::new_uuids(value)
-                            .or_else(|| {
-                                // it's not a uuid, try to resolve it.
-                                // if the value is NOT found, we map to "does not exist" to allow
-                                // the value to continue being evaluated, which of course, will fail
-                                // all subsequent filter tests because it ... well, doesn't exist.
-                                let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
-                                Some(PartialValue::new_uuid(un))
-                            })
-                            // I think this is unreachable due to how the .or_else works.
-                            .ok_or_else(|| {
-                                OperationError::InvalidAttribute("Invalid UUID syntax".to_string())
-                            })
-                        // This avoids having unreachable code:
-                        // Ok(PartialValue::new_uuids(value)
-                        //     .unwrap_or_else(|| {
-                        //         // it's not a uuid, try to resolve it.
-                        //         // if the value is NOT found, we map to "does not exist" to allow
-                        //         // the value to continue being evaluated, which of course, will fail
-                        //         // all subsequent filter tests because it ... well, doesn't exist.
-                        //         let un = self
-                        //             .name_to_uuid( value)
-                        //             .unwrap_or(*UUID_DOES_NOT_EXIST);
-                        //         PartialValue::new_uuid(un)
-                        //     }))
+                        let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
+                        Ok(PartialValue::Uuid(un))
                     }
                     // ⚠️   Any types here need to also be added to update_attributes in
                     // schema.rs for reference type / cache awareness during referential
@@ -586,19 +547,8 @@ pub trait QueryServerTransaction<'a> {
                     | SyntaxType::OauthScopeMap
                     | SyntaxType::Session
                     | SyntaxType::Oauth2Session => {
-                        // See comments above.
-                        PartialValue::new_refer_s(value)
-                            .or_else(|| {
-                                let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
-                                Some(PartialValue::new_refer(un))
-                            })
-                            // I think this is unreachable due to how the .or_else works.
-                            // See above case for how to avoid having unreachable code
-                            .ok_or_else(|| {
-                                OperationError::InvalidAttribute(
-                                    "Invalid Reference syntax".to_string(),
-                                )
-                            })
+                        let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
+                        Ok(PartialValue::Refer(un))
                     }
                     SyntaxType::JsonFilter => {
                         PartialValue::new_json_filter_s(value).ok_or_else(|| {
@@ -1205,7 +1155,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             security_info!(name = %ce.ident, "create initiator");
         }
 
-        // Log the request
+        if ce.entries.is_empty() {
+            request_error!("create: empty create request");
+            return Err(OperationError::EmptyRequest);
+        }
 
         // TODO #67: Do we need limits on number of creates, or do we constraint
         // based on request size in the frontend?
@@ -1852,9 +1805,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
             .collect();
 
-        candidates
-            .iter_mut()
-            .for_each(|er| er.apply_modlist(&me.modlist));
+        candidates.iter_mut().try_for_each(|er| {
+            er.apply_modlist(&me.modlist).map_err(|e| {
+                error!("Modification failed for {:?}", er.get_uuid());
+                e
+            })
+        })?;
 
         trace!("modify: candidates -> {:?}", candidates);
 
@@ -2001,9 +1957,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
     }
 
-    /// Used in conjunction with internal_batch_modify, to get a pre/post
+    /// Used in conjunction with internal_apply_writable, to get a pre/post
     /// pair, where post is pre-configured with metadata to allow
-    /// modificiation before submit back to internal_batch_modify
+    /// modificiation before submit back to internal_apply_writable
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn internal_search_writeable(
         &self,
@@ -2030,7 +1986,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// probably want modify instead.
     #[allow(clippy::needless_pass_by_value)]
     #[instrument(level = "debug", skip_all)]
-    pub(crate) fn internal_batch_modify(
+    pub(crate) fn internal_apply_writable(
         &self,
         pre_candidates: Vec<Arc<EntrySealedCommitted>>,
         candidates: Vec<Entry<EntryInvalid, EntryCommitted>>,
@@ -2041,7 +1997,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
 
         if pre_candidates.len() != candidates.len() {
-            admin_error!("internal_batch_modify - cand lengths differ");
+            admin_error!("internal_apply_writable - cand lengths differ");
             return Err(OperationError::InvalidRequestState);
         }
 
@@ -2051,7 +2007,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 e.validate(&self.schema)
                     .map_err(|e| {
                         admin_error!(
-                            "Schema Violation in internal_batch_modify validate: {:?}",
+                            "Schema Violation in internal_apply_writable validate: {:?}",
                             e
                         );
                         OperationError::SchemaViolation(e)
@@ -2376,8 +2332,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &mut self,
         entries: Vec<Entry<EntryInit, EntryNew>>,
     ) -> Result<(), OperationError> {
-        // Start the audit scope
-        // Create the CreateEvent
         let ce = CreateEvent::new_internal(entries);
         self.create(&ce)
     }
@@ -2408,6 +2362,22 @@ impl<'a> QueryServerWriteTransaction<'a> {
         filter: &Filter<FilterInvalid>,
         modlist: &ModifyList<ModifyInvalid>,
     ) -> Result<(), OperationError> {
+        let f_valid = filter
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+        let m_valid = modlist
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+        let me = ModifyEvent::new_internal(f_valid, m_valid);
+        self.modify(&me)
+    }
+
+    pub fn internal_modify_uuid(
+        &mut self,
+        target_uuid: Uuid,
+        modlist: &ModifyList<ModifyInvalid>,
+    ) -> Result<(), OperationError> {
+        let filter = filter!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -3245,8 +3215,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 }
 
-// Auth requests? How do we structure these ...
-
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
@@ -3455,6 +3423,44 @@ mod tests {
         assert!(server_txn.modify(&me_mult).is_ok());
 
         assert!(server_txn.commit().is_ok());
+    }
+
+    #[qs_test]
+    async fn test_modify_assert(server: &QueryServer) {
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
+
+        let t_uuid = Uuid::new_v4();
+        let r_uuid = Uuid::new_v4();
+
+        assert!(server_txn
+            .internal_create(vec![entry_init!(
+                ("class", Value::new_class("object")),
+                ("uuid", Value::Uuid(t_uuid))
+            ),])
+            .is_ok());
+
+        // This assertion will FAIL
+        assert!(matches!(
+            server_txn.internal_modify_uuid(
+                t_uuid,
+                &ModifyList::new_list(vec![
+                    m_assert("uuid", &PartialValue::Uuid(r_uuid)),
+                    m_pres("description", &Value::Utf8("test".into()))
+                ])
+            ),
+            Err(OperationError::ModifyAssertionFailed)
+        ));
+
+        // This assertion will PASS
+        assert!(server_txn
+            .internal_modify_uuid(
+                t_uuid,
+                &ModifyList::new_list(vec![
+                    m_assert("uuid", &PartialValue::Uuid(t_uuid)),
+                    m_pres("description", &Value::Utf8("test".into()))
+                ])
+            )
+            .is_ok());
     }
 
     #[qs_test]
@@ -3917,20 +3923,17 @@ mod tests {
     async fn test_name_to_uuid(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
-        let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson1")),
-            (
-                "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
-            ),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
-        );
-        let ce = CreateEvent::new_internal(vec![e1]);
-        let cr = server_txn.create(&ce);
-        assert!(cr.is_ok());
+        let t_uuid = Uuid::new_v4();
+        assert!(server_txn
+            .internal_create(vec![entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("name", Value::new_iname("testperson1")),
+                ("uuid", Value::Uuid(t_uuid)),
+                ("description", Value::new_utf8s("testperson1")),
+                ("displayname", Value::new_utf8s("testperson1"))
+            ),])
+            .is_ok());
 
         // Name doesn't exist
         let r1 = server_txn.name_to_uuid("testpers");
@@ -3940,10 +3943,38 @@ mod tests {
         assert!(r2.is_err());
         // Name does exist
         let r3 = server_txn.name_to_uuid("testperson1");
-        assert!(r3.is_ok());
+        assert!(r3 == Ok(t_uuid));
         // Name is not syntax normalised (but exists)
         let r4 = server_txn.name_to_uuid("tEsTpErSoN1");
-        assert!(r4.is_ok());
+        assert!(r4 == Ok(t_uuid));
+    }
+
+    #[qs_test]
+    async fn test_external_id_to_uuid(server: &QueryServer) {
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
+
+        let t_uuid = Uuid::new_v4();
+        assert!(server_txn
+            .internal_create(vec![entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("extensibleobject")),
+                ("uuid", Value::Uuid(t_uuid)),
+                ("sync_external_id", Value::new_iutf8("uid=testperson"))
+            ),])
+            .is_ok());
+
+        // Name doesn't exist
+        let r1 = server_txn.sync_external_id_to_uuid("tobias");
+        assert!(r1 == Ok(None));
+        // Name doesn't exist (not syntax normalised)
+        let r2 = server_txn.sync_external_id_to_uuid("tObIAs");
+        assert!(r2 == Ok(None));
+        // Name does exist
+        let r3 = server_txn.sync_external_id_to_uuid("uid=testperson");
+        assert!(r3 == Ok(Some(t_uuid)));
+        // Name is not syntax normalised (but exists)
+        let r4 = server_txn.sync_external_id_to_uuid("uId=TeStPeRsOn");
+        assert!(r4 == Ok(Some(t_uuid)));
     }
 
     #[qs_test]

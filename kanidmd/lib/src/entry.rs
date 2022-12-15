@@ -89,6 +89,8 @@ use crate::valueset::{self, ValueSet};
 //
 
 pub type EntryInitNew = Entry<EntryInit, EntryNew>;
+pub type EntryInvalidNew = Entry<EntryInvalid, EntryNew>;
+pub type EntrySealedNew = Entry<EntrySealed, EntryNew>;
 pub type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
 pub type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
 pub type EntryReducedCommitted = Entry<EntryReduced, EntryCommitted>;
@@ -306,8 +308,6 @@ impl Entry<EntryInit, EntryNew> {
         let x = map2?;
 
         Ok(Entry {
-            // For now, we do a straight move, and we sort the incoming data
-            // sets so that BST works.
             state: EntryNew,
             valid: EntryInit,
             attrs: x,
@@ -1127,6 +1127,15 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     #[inline]
+    /// Given this entry, extract the set of strings that can externally identify this
+    /// entry for sync purposes. These strings are then indexed.
+    fn get_externalid2uuid(&self) -> Option<String> {
+        self.attrs
+            .get("sync_external_id")
+            .and_then(|vs| vs.to_proto_string_single())
+    }
+
+    #[inline]
     /// Given this entry, extract it's primary security prinicple name, or if not present
     /// extract it's name, and if that's not present, extract it's uuid.
     pub(crate) fn get_uuid2spn(&self) -> Value {
@@ -1186,6 +1195,39 @@ impl Entry<EntrySealed, EntryCommitted> {
                 // what is in pre, but not post (removed)
                 let rem_set: Set<_> = pre_set.difference(&post_set).cloned().collect();
                 (Some(add_set), Some(rem_set))
+            }
+        }
+    }
+
+    /// Generate the required values for externalid2uuid.
+    pub(crate) fn idx_externalid2uuid_diff(
+        pre: Option<&Self>,
+        post: Option<&Self>,
+    ) -> (Option<String>, Option<String>) {
+        match (pre, post) {
+            (None, None) => {
+                // no action
+                (None, None)
+            }
+            (None, Some(b)) => {
+                // add
+                (b.get_externalid2uuid(), None)
+            }
+            (Some(a), None) => {
+                // remove
+                (None, a.get_externalid2uuid())
+            }
+            (Some(a), Some(b)) => {
+                let ia = a.get_externalid2uuid();
+                let ib = b.get_externalid2uuid();
+                if ia != ib {
+                    // Note, we swap these since ib is the new post state
+                    // we want to add, and ia is what we remove.
+                    (ib, ia)
+                } else {
+                    // no action
+                    (None, None)
+                }
             }
         }
     }
@@ -2302,6 +2344,17 @@ where
         self.add_ava_int(attr, value)
     }
 
+    fn assert_ava(&mut self, attr: &str, value: &PartialValue) -> Result<(), OperationError> {
+        self.valid
+            .eclog
+            .assert_ava(&self.valid.cid, attr, value.clone());
+        if self.attribute_equality(attr, value) {
+            Ok(())
+        } else {
+            Err(OperationError::ModifyAssertionFailed)
+        }
+    }
+
     /// Remove an attribute-value pair from this entry. If the ava doesn't exist, we
     /// don't do anything else since we are asserting the abscence of a value.
     pub(crate) fn remove_ava(&mut self, attr: &str, value: &PartialValue) {
@@ -2373,19 +2426,30 @@ where
     }
 
     /// Apply the content of this modlist to this entry, enforcing the expressed state.
-    pub fn apply_modlist(&mut self, modlist: &ModifyList<ModifyValid>) {
-        // -> Result<Entry<EntryInvalid, STATE>, OperationError> {
-        // Apply a modlist, generating a new entry that conforms to the changes.
-        // This is effectively clone-and-transform
-
-        // mutate
+    pub fn apply_modlist(
+        &mut self,
+        modlist: &ModifyList<ModifyValid>,
+    ) -> Result<(), OperationError> {
         for modify in modlist {
             match modify {
-                Modify::Present(a, v) => self.add_ava(a.as_str(), v.clone()),
-                Modify::Removed(a, v) => self.remove_ava(a.as_str(), v),
-                Modify::Purged(a) => self.purge_ava(a.as_str()),
+                Modify::Present(a, v) => {
+                    self.add_ava(a.as_str(), v.clone());
+                }
+                Modify::Removed(a, v) => {
+                    self.remove_ava(a.as_str(), v);
+                }
+                Modify::Purged(a) => {
+                    self.purge_ava(a.as_str());
+                }
+                Modify::Assert(a, v) => {
+                    self.assert_ava(a.as_str(), v).map_err(|e| {
+                        error!("Modification assertion was not met. {} {:?}", a, v);
+                        e
+                    })?;
+                }
             }
         }
+        Ok(())
     }
 }
 
@@ -2413,6 +2477,8 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         let desc_v = vs_utf8![s.description.clone()];
 
         let multivalue_v = vs_bool![s.multivalue];
+        let sync_allowed_v = vs_bool![s.sync_allowed];
+        let phantom_v = vs_bool![s.phantom];
         let unique_v = vs_bool![s.unique];
 
         let index_v = ValueSetIndex::from_iter(s.index.iter().copied());
@@ -2426,6 +2492,8 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         attrs.insert(AttrString::from("description"), desc_v);
         attrs.insert(AttrString::from("uuid"), uuid_v);
         attrs.insert(AttrString::from("multivalue"), multivalue_v);
+        attrs.insert(AttrString::from("phantom"), phantom_v);
+        attrs.insert(AttrString::from("sync_allowed"), sync_allowed_v);
         attrs.insert(AttrString::from("unique"), unique_v);
         if let Some(vs) = index_v {
             attrs.insert(AttrString::from("index"), vs);
@@ -2451,11 +2519,13 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
         let uuid_v = vs_uuid![s.uuid];
         let name_v = vs_iutf8![s.name.as_str()];
         let desc_v = vs_utf8![s.description.clone()];
+        let sync_allowed_v = vs_bool![s.sync_allowed];
 
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
         let mut attrs: Map<AttrString, ValueSet> = Map::new();
         attrs.insert(AttrString::from("classname"), name_v);
         attrs.insert(AttrString::from("description"), desc_v);
+        attrs.insert(AttrString::from("sync_allowed"), sync_allowed_v);
         attrs.insert(AttrString::from("uuid"), uuid_v);
         attrs.insert(
             AttrString::from("class"),
@@ -2592,7 +2662,7 @@ mod tests {
             )])
         };
 
-        e.apply_modlist(&present_single_mods);
+        assert!(e.apply_modlist(&present_single_mods).is_ok());
 
         // Assert the changes are there
         assert!(e.attribute_equality("userid", &PartialValue::new_utf8s("william")));
@@ -2606,7 +2676,7 @@ mod tests {
             ])
         };
 
-        e.apply_modlist(&present_multivalue_mods);
+        assert!(e.apply_modlist(&present_multivalue_mods).is_ok());
 
         assert!(e.attribute_equality("class", &PartialValue::new_iutf8("test")));
         assert!(e.attribute_equality("class", &PartialValue::new_iutf8("multi_test")));
@@ -2615,20 +2685,20 @@ mod tests {
         let purge_single_mods =
             unsafe { ModifyList::new_valid_list(vec![Modify::Purged(AttrString::from("attr"))]) };
 
-        e.apply_modlist(&purge_single_mods);
+        assert!(e.apply_modlist(&purge_single_mods).is_ok());
 
         assert!(!e.attribute_pres("attr"));
 
         let purge_multi_mods =
             unsafe { ModifyList::new_valid_list(vec![Modify::Purged(AttrString::from("class"))]) };
 
-        e.apply_modlist(&purge_multi_mods);
+        assert!(e.apply_modlist(&purge_multi_mods).is_ok());
 
         assert!(!e.attribute_pres("class"));
 
         let purge_empty_mods = purge_single_mods;
 
-        e.apply_modlist(&purge_empty_mods);
+        assert!(e.apply_modlist(&purge_empty_mods).is_ok());
 
         // Assert removed on value that exists and doesn't exist
         let remove_mods = unsafe {
@@ -2638,14 +2708,14 @@ mod tests {
             )])
         };
 
-        e.apply_modlist(&present_single_mods);
+        assert!(e.apply_modlist(&present_single_mods).is_ok());
         assert!(e.attribute_equality("attr", &PartialValue::new_iutf8("value")));
-        e.apply_modlist(&remove_mods);
+        assert!(e.apply_modlist(&remove_mods).is_ok());
         assert!(e.attrs.get("attr").is_none());
 
         let remove_empty_mods = remove_mods;
 
-        e.apply_modlist(&remove_empty_mods);
+        assert!(e.apply_modlist(&remove_empty_mods).is_ok());
 
         assert!(e.attrs.get("attr").is_none());
     }

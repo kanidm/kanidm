@@ -151,3 +151,95 @@ entries that Kanidm now has authority over will NOT be synced and will be highli
 The administrator then needs to decide how to proceed with these conflicts determining which data
 source is the authority on the information.
 
+## Internal Batch Update Operation Phases
+
+We have to consider in our batch updates that there are multiple stages of the update. This is because
+we need to consider that at any point the lifecycle of a presented entry may change within a single
+batch. Because of this, we have to treat the operation differently within kanidm to ensure a consistent outcome.
+
+Additionally we have to "fail fast". This means that on any conflict the sync will abort and the administrator
+must intervene.
+
+To understand why we chose this, we have to look at what happens in a "soft fail" condition.
+
+In this example we have an account named X and a group named Y. The group contains X as a member.
+
+When we submit this for an initial sync, or after the account X is created, if we had a "soft" fail
+during the import of the account, we would reject it from being added to Kanidm but would then continue
+with the synchronisation. Then the group Y would be imported. Since the member pointing to X would
+not be valid, it would be silently removed.
+
+At this point we would have group Y imported, but it has no members and the account X would not
+have been imported. The administrator may intervene and fix the account X to allow sync to proceed. However
+this would not repair the missing group membership. To repair the group membership a change to group Y
+would need to be triggered to also sync the group status.
+
+Since the admin may not be aware of this, it would silently mean the membership is missing.
+
+To avoid this, by "failing fast" if account X couldn't be imported for any reason, than we would
+stop the whole sync process until it could be repaired. Then when repaired both the account X and
+group Y would sync and the membership would be intact.
+
+### Phase 1 - Validation of Update State
+
+In this phase we need to assert that the batch operation can proceed and is consistent with the expectations
+we have of the server's state.
+
+Assert the token provided is valid, and contains the correct access requirements.
+
+From this token, retrieve the related synchronisation entry.
+
+Assert that the batch updates from and to state identifiers are consistent with the synchronisation
+entry.
+
+Retrieve the sync\_parent\_uuid from the sync entry.
+
+Retrieve the sync\_authority value from the sync entry.
+
+### Phase 2 - Entry Location, Creation and Authority
+
+In this phase we are ensuring that all the entries within the operation are within the control of
+this sync domain. We also ensure that entries we intend to act upon exist with our authority
+markers such that the subsequent operations are all "modifications" rather than mixed create/modify
+
+For each entry in the sync request, if an entry with that uuid exists retrieve it.
+
+* If an entry exists in the database, assert that it's sync\_parent\_uuid is the same as our agreements.
+    * If there is no sync\_parent\_uuid or the sync\_parent\_uuid does not match, reject the operation.
+
+* If no entry exists in the database, create a "stub" entry with our sync\_parent\_uuid
+    * Create the entry immediately, and then retrieve it.
+
+### Phase 3 - Entry Assertion
+
+Remove all attributes in the sync that are overlapped with our sync\_authority value.
+
+For all uuids in the entry present set
+    Assert their attributes match what was synced in.
+    Resolve types that need resolving (name2uuid, externalid2uuid)
+
+Write all
+
+### Phase 4 - Entry Removal
+
+For all uuids in the delete\_uuids set:
+    if their sync\_parent\_uuid matches ours, assert they are deleted (recycled).
+
+### Phase 5 - Commit
+
+Write the updated "state" from the request to\_state to our current state of the sync
+
+Write an updated "authority" value to the agreement of what attributes we can change.
+
+Commit the txn.
+
+
+
+
+
+
+
+
+
+
+

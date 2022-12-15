@@ -157,18 +157,47 @@ impl Plugin for Base {
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        for modify in me.modlist.into_iter() {
+        me.modlist.iter().try_for_each(|modify| {
             let attr = match &modify {
-                Modify::Present(a, _) => a,
-                Modify::Removed(a, _) => a,
-                Modify::Purged(a) => a,
+                Modify::Present(a, _) => Some(a),
+                Modify::Removed(a, _) => Some(a),
+                Modify::Purged(a) => Some(a),
+                Modify::Assert(_, _) => None,
             };
-            if attr == "uuid" {
+            if attr.map(|s| s.as_str()) == Some("uuid") {
+                debug!(?modify, "Modify in violation");
                 request_error!("Modifications to UUID's are NOT ALLOWED");
-                return Err(OperationError::SystemProtectedAttribute);
+                Err(OperationError::SystemProtectedAttribute)
+            } else {
+                Ok(())
             }
-        }
-        Ok(())
+        })
+    }
+
+    #[instrument(level = "debug", name = "base_pre_modify", skip(_qs, _cand, me))]
+    fn pre_batch_modify(
+        _qs: &mut QueryServerWriteTransaction,
+        _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        me: &BatchModifyEvent,
+    ) -> Result<(), OperationError> {
+        me.modset
+            .values()
+            .flat_map(|ml| ml.iter())
+            .try_for_each(|modify| {
+                let attr = match &modify {
+                    Modify::Present(a, _) => Some(a),
+                    Modify::Removed(a, _) => Some(a),
+                    Modify::Purged(a) => Some(a),
+                    Modify::Assert(_, _) => None,
+                };
+                if attr.map(|s| s.as_str()) == Some("uuid") {
+                    debug!(?modify, "Modify in violation");
+                    request_error!("Modifications to UUID's are NOT ALLOWED");
+                    Err(OperationError::SystemProtectedAttribute)
+                } else {
+                    Ok(())
+                }
+            })
     }
 
     #[instrument(level = "debug", name = "base_verify", skip(qs))]

@@ -1,5 +1,6 @@
 use crate::process_ipa_sync_result;
-use kanidm_proto::scim_v1::ScimSyncState;
+use kanidm_proto::scim_v1::{ScimSyncRequest, ScimSyncState};
+use std::collections::HashMap;
 
 use ldap3_client::LdapSyncRepl;
 
@@ -10,18 +11,28 @@ async fn test_ldap_to_scim() {
     let sync_request: LdapSyncRepl =
         serde_json::from_str(TEST_LDAP_SYNC_REPL_1).expect("failed to parse ldap sync");
 
-    let scim_sync_request = process_ipa_sync_result(ScimSyncState::Refresh, sync_request)
-        .await
-        .expect("failed to process ldap sync repl");
+    let expect_scim_request: ScimSyncRequest =
+        serde_json::from_str(TEST_SCIM_SYNC_REPL_1).expect("failed to parse scim sync");
 
-    assert!(matches!(
-        scim_sync_request.from_state,
-        ScimSyncState::Refresh
-    ));
+    let entry_config_map = HashMap::default();
 
-    // need to setup a fake ldap sync result.
+    let scim_sync_request =
+        process_ipa_sync_result(ScimSyncState::Refresh, sync_request, &entry_config_map)
+            .await
+            .expect("failed to process ldap sync repl to scim");
 
-    // What do we expect?
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&scim_sync_request).unwrap()
+    );
+
+    assert!(scim_sync_request.from_state == expect_scim_request.from_state);
+
+    assert!(scim_sync_request.to_state == expect_scim_request.to_state);
+
+    assert!(scim_sync_request.entries == expect_scim_request.entries);
+
+    assert!(scim_sync_request.delete_uuids == expect_scim_request.delete_uuids);
 }
 
 const TEST_LDAP_SYNC_REPL_1: &str = r#"
@@ -419,5 +430,60 @@ const TEST_LDAP_SYNC_REPL_1: &str = r#"
     "delete_uuids": [],
     "present_uuids": []
   }
+}
+"#;
+
+const TEST_SCIM_SYNC_REPL_1: &str = r#"
+{
+  "from_state": "Refresh",
+  "to_state": {
+    "Active": {
+      "cookie": "aXBhLXN5bmNyZXBsLWthbmkuZGV2LmJsYWNraGF0cy5uZXQuYXU6Mzg5I2NuPWRpcmVjdG9yeSBtYW5hZ2VyOmRjPWRldixkYz1ibGFja2hhdHMsZGM9bmV0LGRjPWF1Oih8KCYob2JqZWN0Q2xhc3M9cGVyc29uKShvYmplY3RDbGFzcz1pcGFudHVzZXJhdHRycykob2JqZWN0Q2xhc3M9cG9zaXhhY2NvdW50KSkoJihvYmplY3RDbGFzcz1ncm91cG9mbmFtZXMpKG9iamVjdENsYXNzPWlwYXVzZXJncm91cCkoIShvYmplY3RDbGFzcz1tZXBtYW5hZ2VkZW50cnkpKSkoJihvYmplY3RDbGFzcz1pcGF0b2tlbikob2JqZWN0Q2xhc3M9aXBhdG9rZW50b3RwKSkpIzEwOQ"
+    }
+  },
+  "entries": [
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:person",
+        "urn:ietf:params:scim:schemas:kanidm:1.0:account",
+        "urn:ietf:params:scim:schemas:kanidm:1.0:posixaccount"
+      ],
+      "id": "babb8302-43a1-11ed-a50d-919b4b1a5ec0",
+      "externalId": "uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "displayname": "Test User",
+      "gidnumber": 12345,
+      "loginshell": "/bin/sh",
+      "name": "testuser",
+      "password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA"
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:group"
+      ],
+      "id": "d547c581-5f26-11ed-a50d-919b4b1a5ec0",
+      "externalId": "cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "description": "Test group",
+      "name": "testgroup"
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:group"
+      ],
+      "id": "d547c583-5f26-11ed-a50d-919b4b1a5ec0",
+      "externalId": "cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "name": "testexternal"
+    },
+    {
+      "schemas": [
+        "urn:ietf:params:scim:schemas:kanidm:1.0:group",
+        "urn:ietf:params:scim:schemas:kanidm:1.0:posixgroup"
+      ],
+      "id": "f90b0b81-5f26-11ed-a50d-919b4b1a5ec0",
+      "externalId": "cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
+      "gidnumber": 1234567,
+      "name": "testposix"
+    }
+  ],
+  "delete_uuids": []
 }
 "#;

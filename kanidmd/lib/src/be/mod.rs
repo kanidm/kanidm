@@ -851,6 +851,10 @@ pub trait BackendTransaction {
         self.get_idlayer().name2uuid(name)
     }
 
+    fn externalid2uuid(&self, name: &str) -> Result<Option<Uuid>, OperationError> {
+        self.get_idlayer().externalid2uuid(name)
+    }
+
     fn uuid2spn(&self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
         self.get_idlayer().uuid2spn(uuid)
     }
@@ -1189,14 +1193,22 @@ impl<'a> BackendWriteTransaction<'a> {
             // There will never be content to add.
             assert!(n2u_add.is_none());
 
+            let (eid2u_add, eid2u_rem) = Entry::idx_externalid2uuid_diff(mask_pre, None);
+            // There will never be content to add.
+            assert!(eid2u_add.is_none());
+
             let u2s_act = Entry::idx_uuid2spn_diff(mask_pre, None);
             let u2r_act = Entry::idx_uuid2rdn_diff(mask_pre, None);
 
-            trace!(?n2u_rem, ?u2s_act, ?u2r_act,);
+            trace!(?n2u_rem, ?eid2u_rem, ?u2s_act, ?u2r_act,);
 
             // Write the changes out to the backend
             if let Some(rem) = n2u_rem {
                 idlayer.write_name2uuid_rem(rem)?
+            }
+
+            if let Some(rem) = eid2u_rem {
+                idlayer.write_externalid2uuid_rem(rem)?
             }
 
             match u2s_act {
@@ -1219,11 +1231,19 @@ impl<'a> BackendWriteTransaction<'a> {
 
         let mask_post = post.and_then(|e| e.mask_recycled_ts());
         let (n2u_add, n2u_rem) = Entry::idx_name2uuid_diff(mask_pre, mask_post);
+        let (eid2u_add, eid2u_rem) = Entry::idx_externalid2uuid_diff(mask_pre, mask_post);
 
         let u2s_act = Entry::idx_uuid2spn_diff(mask_pre, mask_post);
         let u2r_act = Entry::idx_uuid2rdn_diff(mask_pre, mask_post);
 
-        trace!(?n2u_add, ?n2u_rem, ?u2s_act, ?u2r_act);
+        trace!(
+            ?n2u_add,
+            ?n2u_rem,
+            ?eid2u_add,
+            ?eid2u_rem,
+            ?u2s_act,
+            ?u2r_act
+        );
 
         // Write the changes out to the backend
         if let Some(add) = n2u_add {
@@ -1231,6 +1251,13 @@ impl<'a> BackendWriteTransaction<'a> {
         }
         if let Some(rem) = n2u_rem {
             idlayer.write_name2uuid_rem(rem)?
+        }
+
+        if let Some(add) = eid2u_add {
+            idlayer.write_externalid2uuid_add(e_uuid, add)?
+        }
+        if let Some(rem) = eid2u_rem {
+            idlayer.write_externalid2uuid_rem(rem)?
         }
 
         match u2s_act {
@@ -1326,6 +1353,9 @@ impl<'a> BackendWriteTransaction<'a> {
         // Create name2uuid and uuid2name
         trace!("Creating index -> name2uuid");
         idlayer.create_name2uuid()?;
+
+        trace!("Creating index -> externalid2uuid");
+        idlayer.create_externalid2uuid()?;
 
         trace!("Creating index -> uuid2spn");
         idlayer.create_uuid2spn()?;

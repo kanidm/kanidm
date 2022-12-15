@@ -288,6 +288,26 @@ pub trait IdlSqliteTransaction {
         Ok(uuid)
     }
 
+    fn externalid2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
+        // The table exists - lets now get the actual index itself.
+        let mut stmt = self
+            .get_conn()
+            .prepare(&format!(
+                "SELECT uuid FROM {}.idx_externalid2uuid WHERE eid = :eid",
+                self.get_db_name()
+            ))
+            .map_err(sqlite_error)?;
+        let uuid_raw: Option<String> = stmt
+            .query_row(&[(":eid", &name)], |row| row.get(0))
+            // We don't mind if it doesn't exist
+            .optional()
+            .map_err(sqlite_error)?;
+
+        let uuid = uuid_raw.as_ref().and_then(|u| Uuid::parse_str(u).ok());
+
+        Ok(uuid)
+    }
+
     fn uuid2spn(&mut self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
         let uuids = uuid.as_hyphenated().to_string();
         // The table exists - lets now get the actual index itself.
@@ -866,6 +886,45 @@ impl IdlSqliteWriteTransaction {
             .map_err(sqlite_error)
     }
 
+    pub fn create_externalid2uuid(&self) -> Result<(), OperationError> {
+        self.conn
+            .execute(
+                &format!("CREATE TABLE IF NOT EXISTS {}.idx_externalid2uuid (eid TEXT PRIMARY KEY, uuid TEXT)", "main"),
+                [],
+            )
+            .map(|_| ())
+            .map_err(sqlite_error)
+    }
+
+    pub fn write_externalid2uuid_add(&self, name: &str, uuid: Uuid) -> Result<(), OperationError> {
+        let uuids = uuid.as_hyphenated().to_string();
+
+        self.conn
+            .prepare(&format!(
+                "INSERT OR REPLACE INTO {}.idx_externalid2uuid (eid, uuid) VALUES(:eid, :uuid)",
+                "main"
+            ))
+            .and_then(|mut stmt| {
+                stmt.execute(named_params! {
+                    ":eid": &name,
+                    ":uuid": uuids.as_str()
+                })
+            })
+            .map(|_| ())
+            .map_err(sqlite_error)
+    }
+
+    pub fn write_externalid2uuid_rem(&self, name: &str) -> Result<(), OperationError> {
+        self.conn
+            .prepare(&format!(
+                "DELETE FROM {}.idx_externalid2uuid WHERE eid = :eid",
+                "main"
+            ))
+            .and_then(|mut stmt| stmt.execute(&[(":eid", &name)]))
+            .map(|_| ())
+            .map_err(sqlite_error)
+    }
+
     pub fn create_uuid2spn(&self) -> Result<(), OperationError> {
         self.conn
             .execute(
@@ -1321,8 +1380,13 @@ impl IdlSqliteWriteTransaction {
             dbv_id2entry = 5;
             admin_info!(entry = %dbv_id2entry, "dbv_id2entry migrated (dbentryv1 -> dbentryv2)");
         }
-
-        //   * if v5 -> complete.
+        //   * if v5 -> create externalid2uuid
+        if dbv_id2entry == 5 {
+            self.create_externalid2uuid()?;
+            dbv_id2entry = 6;
+            admin_info!(entry = %dbv_id2entry, "dbv_id2entry migrated (externalid2uuid)");
+        }
+        //   * if v6 -> complete.
 
         self.set_db_version_key(DBV_ID2ENTRY, dbv_id2entry)
             .map_err(sqlite_error)?;

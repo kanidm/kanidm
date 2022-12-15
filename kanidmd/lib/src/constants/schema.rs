@@ -21,6 +21,9 @@ pub const JSON_SCHEMA_ATTR_DISPLAYNAME: &str = r#"{
       "multivalue": [
         "false"
       ],
+      "sync_allowed": [
+        "true"
+      ],
       "attributename": [
         "displayname"
       ],
@@ -52,6 +55,9 @@ pub const JSON_SCHEMA_ATTR_MAIL: &str = r#"
       "multivalue": [
         "true"
       ],
+      "sync_allowed": [
+        "true"
+      ],
       "attributename": [
         "mail"
       ],
@@ -80,6 +86,9 @@ pub const JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &str = r#"
         "false"
       ],
       "multivalue": [
+        "true"
+      ],
+      "sync_allowed": [
         "true"
       ],
       "attributename": [
@@ -143,6 +152,9 @@ pub const JSON_SCHEMA_ATTR_LEGALNAME: &str = r#"{
       "multivalue": [
         "false"
       ],
+      "sync_allowed": [
+        "true"
+      ],
       "attributename": [
         "legalname"
       ],
@@ -170,6 +182,9 @@ pub const JSON_SCHEMA_ATTR_RADIUS_SECRET: &str = r#"{
       ],
       "multivalue": [
         "false"
+      ],
+      "sync_allowed": [
+        "true"
       ],
       "attributename": [
         "radius_secret"
@@ -384,6 +399,9 @@ pub const JSON_SCHEMA_ATTR_GIDNUMBER: &str = r#"{
       "multivalue": [
         "false"
       ],
+      "sync_allowed": [
+        "true"
+      ],
       "attributename": [
         "gidnumber"
       ],
@@ -441,6 +459,9 @@ pub const JSON_SCHEMA_ATTR_LOGINSHELL: &str = r#"{
       ],
       "multivalue": [
         "false"
+      ],
+      "sync_allowed": [
+        "true"
       ],
       "attributename": [
         "loginshell"
@@ -502,6 +523,9 @@ pub const JSON_SCHEMA_ATTR_NSUNIQUEID: &str = r#"{
       "multivalue": [
         "false"
       ],
+      "sync_allowed": [
+        "true"
+      ],
       "attributename": [
         "nsuniqueid"
       ],
@@ -531,6 +555,9 @@ pub const JSON_SCHEMA_ATTR_ACCOUNT_EXPIRE: &str = r#"{
       "multivalue": [
         "false"
       ],
+      "sync_allowed": [
+        "true"
+      ],
       "attributename": [
         "account_expire"
       ],
@@ -559,6 +586,9 @@ pub const JSON_SCHEMA_ATTR_ACCOUNT_VALID_FROM: &str = r#"{
       ],
       "multivalue": [
         "false"
+      ],
+      "sync_allowed": [
+        "true"
       ],
       "attributename": [
         "account_valid_from"
@@ -1038,6 +1068,9 @@ pub const JSON_SCHEMA_ATTR_PASSKEYS: &str = r#"{
       "multivalue": [
         "true"
       ],
+      "sync_allowed": [
+        "true"
+      ],
       "attributename": [
         "passkeys"
       ],
@@ -1067,6 +1100,9 @@ pub const JSON_SCHEMA_ATTR_DEVICEKEYS: &str = r#"{
         "false"
       ],
       "multivalue": [
+        "true"
+      ],
+      "sync_allowed": [
         "true"
       ],
       "attributename": [
@@ -1335,6 +1371,9 @@ pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
       "description": [
         "Object representation of a person"
       ],
+      "sync_allowed": [
+        "true"
+      ],
       "classname": [
         "person"
       ],
@@ -1393,12 +1432,16 @@ pub const JSON_SCHEMA_CLASS_GROUP: &str = r#"
       "description": [
         "Object representation of a group"
       ],
+      "sync_allowed": [
+        "true"
+      ],
       "classname": [
         "group"
       ],
       "systemmay": [
         "member",
-        "grant_ui_hint"
+        "grant_ui_hint",
+        "description"
       ],
       "systemmust": [
         "name",
@@ -1449,6 +1492,9 @@ pub const JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
       "description": [
         "Object representation of a account"
       ],
+      "sync_allowed": [
+        "true"
+      ],
       "classname": [
         "account"
       ],
@@ -1464,7 +1510,8 @@ pub const JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
         "mail",
         "oauth2_consent_scope_map",
         "user_auth_token_session",
-        "oauth2_session"
+        "oauth2_session",
+        "description"
       ],
       "systemmust": [
         "displayname",
@@ -1492,6 +1539,9 @@ pub const JSON_SCHEMA_CLASS_SERVICE_ACCOUNT: &str = r#"
       ],
       "description": [
         "Object representation of service account"
+      ],
+      "sync_allowed": [
+        "true"
       ],
       "classname": [
         "service_account"
@@ -1593,6 +1643,9 @@ pub const JSON_SCHEMA_CLASS_POSIXGROUP: &str = r#"
       "description": [
         "Object representation of a posix group, requires group"
       ],
+      "sync_allowed": [
+        "true"
+      ],
       "classname": [
         "posixgroup"
       ],
@@ -1619,6 +1672,9 @@ pub const JSON_SCHEMA_CLASS_POSIXACCOUNT: &str = r#"
       ],
       "description": [
         "Object representation of a posix account, requires account"
+      ],
+      "sync_allowed": [
+        "true"
       ],
       "classname": [
         "posixaccount"
