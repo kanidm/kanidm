@@ -1,9 +1,9 @@
 use std::fmt;
 use std::time::Duration;
 
+use crate::prelude::*;
 use kanidm_proto::v1::OperationError;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq, PartialOrd, Ord, Hash)]
 pub struct Cid {
@@ -42,8 +42,8 @@ impl Cid {
     #[cfg(test)]
     pub unsafe fn new_count(c: u64) -> Self {
         Cid {
-            d_uuid: Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
-            s_uuid: Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
+            d_uuid: uuid!("00000000-0000-0000-0000-000000000000"),
+            s_uuid: uuid!("00000000-0000-0000-0000-000000000000"),
             ts: Duration::new(c, 0),
         }
     }
@@ -62,10 +62,8 @@ impl Cid {
         self.ts
             .checked_sub(Duration::from_secs(secs))
             .map(|r| Cid {
-                d_uuid: Uuid::parse_str("00000000-0000-0000-0000-000000000000")
-                    .expect("Invalid compiled d_uuid"),
-                s_uuid: Uuid::parse_str("00000000-0000-0000-0000-000000000000")
-                    .expect("Invalid compiled s_uuid"),
+                d_uuid: uuid!("00000000-0000-0000-0000-000000000000"),
+                s_uuid: uuid!("00000000-0000-0000-0000-000000000000"),
                 ts: r,
             })
             .ok_or(OperationError::InvalidReplChangeId)
@@ -74,10 +72,9 @@ impl Cid {
 
 #[cfg(test)]
 mod tests {
+    use crate::prelude::*;
     use std::cmp::Ordering;
     use std::time::Duration;
-
-    use uuid::Uuid;
 
     use crate::repl::cid::Cid;
 
@@ -85,13 +82,13 @@ mod tests {
     fn test_cid_ordering() {
         // Check diff ts
         let cid_a = Cid::new(
-            Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
-            Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
+            uuid!("00000000-0000-0000-0000-000000000001"),
+            uuid!("00000000-0000-0000-0000-000000000001"),
             Duration::new(5, 0),
         );
         let cid_b = Cid::new(
-            Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
-            Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
+            uuid!("00000000-0000-0000-0000-000000000001"),
+            uuid!("00000000-0000-0000-0000-000000000001"),
             Duration::new(15, 0),
         );
 
@@ -101,13 +98,13 @@ mod tests {
 
         // check same ts diff d_uuid
         let cid_c = Cid::new(
-            Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
-            Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
+            uuid!("00000000-0000-0000-0000-000000000000"),
+            uuid!("00000000-0000-0000-0000-000000000001"),
             Duration::new(5, 0),
         );
         let cid_d = Cid::new(
-            Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
-            Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
+            uuid!("00000000-0000-0000-0000-000000000001"),
+            uuid!("00000000-0000-0000-0000-000000000001"),
             Duration::new(5, 0),
         );
 
@@ -117,13 +114,13 @@ mod tests {
 
         // check same ts, d_uuid, diff s_uuid
         let cid_e = Cid::new(
-            Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
-            Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
+            uuid!("00000000-0000-0000-0000-000000000001"),
+            uuid!("00000000-0000-0000-0000-000000000000"),
             Duration::new(5, 0),
         );
         let cid_f = Cid::new(
-            Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
-            Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
+            uuid!("00000000-0000-0000-0000-000000000001"),
+            uuid!("00000000-0000-0000-0000-000000000001"),
             Duration::new(5, 0),
         );
 
@@ -134,7 +131,7 @@ mod tests {
 
     #[test]
     fn test_cid_lamport() {
-        let d_uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
+        let d_uuid = uuid!("00000000-0000-0000-0000-000000000001");
         let s_uuid = d_uuid.clone();
 
         let ts5 = Duration::new(5, 0);

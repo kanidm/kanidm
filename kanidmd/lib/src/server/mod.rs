@@ -3229,9 +3229,7 @@ mod tests {
     async fn test_create_user(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         let filt = filter!(f_eq("name", PartialValue::new_iname("testperson")));
-        let admin = server_txn
-            .internal_search_uuid(UUID_ADMIN)
-            .expect("failed");
+        let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
         let se1 = unsafe { SearchEvent::new_impersonate_entry(admin.clone(), filt.clone()) };
         let se2 = unsafe { SearchEvent::new_impersonate_entry(admin, filt) };
@@ -3623,9 +3621,7 @@ mod tests {
         let time_p3 = time_p2 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
 
         let mut server_txn = server.write(time_p1).await;
-        let admin = server_txn
-            .internal_search_uuid(UUID_ADMIN)
-            .expect("failed");
+        let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
         let filt_i_ts = filter_all!(f_eq("class", PartialValue::new_class("tombstone")));
 
@@ -3732,9 +3728,7 @@ mod tests {
         let time_p2 = time_p1 + Duration::from_secs(RECYCLEBIN_MAX_AGE * 2);
 
         let mut server_txn = server.write(time_p1).await;
-        let admin = server_txn
-            .internal_search_uuid(UUID_ADMIN)
-            .expect("failed");
+        let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
         let filt_i_rc = filter_all!(f_eq("class", PartialValue::new_class("recycled")));
 
@@ -3876,9 +3870,7 @@ mod tests {
     async fn test_qs_recycle_advanced(server: &QueryServer) {
         // Create items
         let mut server_txn = server.write(duration_from_epoch_now()).await;
-        let admin = server_txn
-            .internal_search_uuid(UUID_ADMIN)
-            .expect("failed");
+        let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
         let e1 = entry_init!(
             ("class", Value::new_class("object")),
@@ -3996,18 +3988,15 @@ mod tests {
         assert!(cr.is_ok());
 
         // Name doesn't exist
-        let r1 = server_txn
-            .uuid_to_spn(uuid!("bae3f507-e6c3-44ba-ad01-f8ff1083534a"));
+        let r1 = server_txn.uuid_to_spn(uuid!("bae3f507-e6c3-44ba-ad01-f8ff1083534a"));
         // There is nothing.
         assert!(r1 == Ok(None));
         // Name does exist
-        let r3 = server_txn
-            .uuid_to_spn(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"));
+        let r3 = server_txn.uuid_to_spn(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"));
         println!("{:?}", r3);
         assert!(r3.unwrap().unwrap() == Value::new_spn_str("testperson1", "example.com"));
         // Name is not syntax normalised (but exists)
-        let r4 = server_txn
-            .uuid_to_spn(uuid!("CC8E95B4-C24F-4D68-BA54-8BED76F63930"));
+        let r4 = server_txn.uuid_to_spn(uuid!("CC8E95B4-C24F-4D68-BA54-8BED76F63930"));
         assert!(r4.unwrap().unwrap() == Value::new_spn_str("testperson1", "example.com"));
     }
 
@@ -4032,18 +4021,15 @@ mod tests {
         assert!(cr.is_ok());
 
         // Name doesn't exist
-        let r1 = server_txn
-            .uuid_to_rdn(uuid!("bae3f507-e6c3-44ba-ad01-f8ff1083534a"));
+        let r1 = server_txn.uuid_to_rdn(uuid!("bae3f507-e6c3-44ba-ad01-f8ff1083534a"));
         // There is nothing.
         assert!(r1.unwrap() == "uuid=bae3f507-e6c3-44ba-ad01-f8ff1083534a");
         // Name does exist
-        let r3 = server_txn
-            .uuid_to_rdn(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"));
+        let r3 = server_txn.uuid_to_rdn(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"));
         println!("{:?}", r3);
         assert!(r3.unwrap() == "spn=testperson1@example.com");
         // Uuid is not syntax normalised (but exists)
-        let r4 = server_txn
-            .uuid_to_rdn(uuid!("CC8E95B4-C24F-4D68-BA54-8BED76F63930"));
+        let r4 = server_txn.uuid_to_rdn(uuid!("CC8E95B4-C24F-4D68-BA54-8BED76F63930"));
         assert!(r4.unwrap() == "spn=testperson1@example.com");
     }
 
@@ -4099,9 +4085,7 @@ mod tests {
         assert!(server_txn.name_to_uuid("testperson1").is_err());
 
         // revive
-        let admin = server_txn
-            .internal_search_uuid(UUID_ADMIN)
-            .expect("failed");
+        let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
         let rre_rc = unsafe {
             ReviveRecycledEvent::new_impersonate_entry(
                 admin,
@@ -4412,9 +4396,7 @@ mod tests {
     async fn test_revive_advanced_directmemberships(server: &QueryServer) {
         // Create items
         let mut server_txn = server.write(duration_from_epoch_now()).await;
-        let admin = server_txn
-            .internal_search_uuid(UUID_ADMIN)
-            .expect("failed");
+        let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
         // Right need a user in a direct group.
         let u1 = create_user("u1", "22b47373-d123-421f-859e-9ddd8ab14a2a");

@@ -278,9 +278,7 @@ mod tests {
             |_| {},
             |qs: &QueryServerWriteTransaction| {
                 let e = qs
-                    .internal_search_uuid(
-                        uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"),
-                    )
+                    .internal_search_uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
                     .expect("failed to get entry");
                 let c = e
                     .get_ava_single_credential("primary_credential")

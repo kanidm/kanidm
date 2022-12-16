@@ -1295,13 +1295,10 @@ impl<'a> IdmServerAuthTransaction<'a> {
         lae: &LdapAuthEvent,
         ct: Duration,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
-        let account_entry = self
-            .qs_read
-            .internal_search_uuid(lae.target)
-            .map_err(|e| {
-                admin_error!("Failed to start auth ldap -> {:?}", e);
-                e
-            })?;
+        let account_entry = self.qs_read.internal_search_uuid(lae.target).map_err(|e| {
+            admin_error!("Failed to start auth ldap -> {:?}", e);
+            e
+        })?;
 
         // if anonymous
         if lae.target == UUID_ANONYMOUS {
@@ -2940,9 +2937,9 @@ mod tests {
 
                 let mut idms_prox_read = task::block_on(idms.proxy_read());
 
-                let ugte = UnixGroupTokenEvent::new_internal(
-                    uuid!("01609135-a1c4-43d5-966b-a28227644445")
-                );
+                let ugte = UnixGroupTokenEvent::new_internal(uuid!(
+                    "01609135-a1c4-43d5-966b-a28227644445"
+                ));
                 let tok_g = idms_prox_read
                     .get_unixgrouptoken(&ugte)
                     .expect("Failed to generate unix group token");
@@ -2963,10 +2960,9 @@ mod tests {
                 assert!(tok_r.valid == true);
 
                 // Show we can get the admin as a unix group token too
-                let ugte = UnixGroupTokenEvent::new_internal(
-                    Uuid::parse_str("00000000-0000-0000-0000-000000000000")
-                        .expect("failed to parse uuid"),
-                );
+                let ugte = UnixGroupTokenEvent::new_internal(uuid!(
+                    "00000000-0000-0000-0000-000000000000"
+                ));
                 let tok_g = idms_prox_read
                     .get_unixgrouptoken(&ugte)
                     .expect("Failed to generate unix group token");

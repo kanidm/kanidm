@@ -255,10 +255,7 @@ pub struct LdapAuthEvent {
 }
 
 impl LdapAuthEvent {
-    pub fn from_parts(
-        target: Uuid,
-        cleartext: String,
-    ) -> Result<Self, OperationError> {
+    pub fn from_parts(target: Uuid, cleartext: String) -> Result<Self, OperationError> {
         // let e = Event::from_ro_uat(audit, qs, uat)?;
 
         Ok(LdapAuthEvent {

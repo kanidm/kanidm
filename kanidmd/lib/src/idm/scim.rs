@@ -298,13 +298,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         };
 
         // Retrieve the related sync entry.
-        let sync_entry = self
-            .qs_write
-            .internal_search_uuid(sync_uuid)
-            .map_err(|e| {
-                error!("Failed to located sync entry related to {}", sync_uuid);
-                e
-            })?;
+        let sync_entry = self.qs_write.internal_search_uuid(sync_uuid).map_err(|e| {
+            error!("Failed to located sync entry related to {}", sync_uuid);
+            e
+        })?;
 
         // Assert that the requested "from" state is consistent to this entry.
         // OperationError::InvalidSyncState

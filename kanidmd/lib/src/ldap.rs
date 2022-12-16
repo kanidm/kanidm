@@ -487,9 +487,9 @@ impl LdapServer {
                 Some(u) => Ok(LdapResponseState::Respond(
                     wr.gen_success(format!("u: {}", u.spn).as_str()),
                 )),
-                None => Ok(LdapResponseState::Respond(wr.gen_operror(
-                    format!("Unbound Connection {}", eventid).as_str(),
-                ))),
+                None => Ok(LdapResponseState::Respond(
+                    wr.gen_operror(format!("Unbound Connection {}", eventid).as_str()),
+                )),
             },
         } // end match server op
     }

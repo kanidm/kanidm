@@ -724,7 +724,7 @@ mod tests {
             (
                 "oauth2_rs_scope_map",
                 Value::new_oauthscopemap(
-                    Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid"),
+                    uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                     btreeset!["read".to_string()]
                 )
                 .expect("Invalid scope")

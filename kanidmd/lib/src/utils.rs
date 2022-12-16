@@ -15,9 +15,9 @@ use rand::{thread_rng, Rng};
 use touch::file as touch_file;
 // #[cfg(target_os = "windows")]
 // use std::os::windows::fs::MetadataExt;
+use crate::prelude::*;
 #[cfg(target_family = "unix")]
 use users::{get_current_gid, get_current_uid};
-use uuid::{Builder, Uuid};
 
 #[derive(Debug)]
 pub struct DistinctAlpha;
@@ -38,7 +38,7 @@ fn uuid_from_u64_u32(a: u64, b: u32, sid: Sid) -> Uuid {
     v.extend_from_slice(&sid);
 
     #[allow(clippy::expect_used)]
-    Builder::from_slice(v.as_slice())
+    uuid::Builder::from_slice(v.as_slice())
         .expect("invalid slice for uuid builder")
         .into_uuid()
 }
@@ -185,9 +185,8 @@ pub fn file_permissions_readonly(meta: &Metadata) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use crate::prelude::*;
     use std::time::Duration;
-
-    use uuid::Uuid;
 
     use crate::utils::{uuid_from_duration, uuid_to_gid_u32};
 
@@ -208,15 +207,15 @@ mod tests {
 
     #[test]
     fn test_utils_uuid_to_gid_u32() {
-        let u1 = Uuid::parse_str("00000000-0000-0001-0000-000000000000").unwrap();
+        let u1 = uuid!("00000000-0000-0001-0000-000000000000");
         let r1 = uuid_to_gid_u32(u1);
         assert!(r1 == 0);
 
-        let u2 = Uuid::parse_str("00000000-0000-0001-0000-0000ffffffff").unwrap();
+        let u2 = uuid!("00000000-0000-0001-0000-0000ffffffff");
         let r2 = uuid_to_gid_u32(u2);
         assert!(r2 == 0xffffffff);
 
-        let u3 = Uuid::parse_str("00000000-0000-0001-0000-ffff12345678").unwrap();
+        let u3 = uuid!("00000000-0000-0001-0000-ffff12345678");
         let r3 = uuid_to_gid_u32(u3);
         assert!(r3 == 0x12345678);
     }
