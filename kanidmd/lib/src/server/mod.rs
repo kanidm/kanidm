@@ -389,9 +389,9 @@ pub trait QueryServerTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     fn internal_search_uuid(
         &self,
-        uuid: &Uuid,
+        uuid: Uuid,
     ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
-        let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
+        let filter = filter!(f_eq("uuid", PartialValue::Uuid(uuid)));
         let f_valid = filter.validate(self.get_schema()).map_err(|e| {
             error!(?e, "Filter Validate - SchemaViolation");
             OperationError::SchemaViolation(e)
@@ -408,11 +408,11 @@ pub trait QueryServerTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     fn impersonate_search_ext_uuid(
         &self,
-        uuid: &Uuid,
+        uuid: Uuid,
         event: &Identity,
     ) -> Result<Entry<EntryReduced, EntryCommitted>, OperationError> {
-        let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
-        let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
+        let filter_intent = filter_all!(f_eq("uuid", PartialValue::Uuid(uuid)));
+        let filter = filter!(f_eq("uuid", PartialValue::Uuid(uuid)));
 
         let mut vs = self.impersonate_search_ext(filter, filter_intent, event)?;
         match vs.pop() {
@@ -424,11 +424,11 @@ pub trait QueryServerTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     fn impersonate_search_uuid(
         &self,
-        uuid: &Uuid,
+        uuid: Uuid,
         event: &Identity,
     ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
-        let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
-        let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
+        let filter_intent = filter_all!(f_eq("uuid", PartialValue::Uuid(uuid)));
+        let filter = filter!(f_eq("uuid", PartialValue::Uuid(uuid)));
 
         let mut vs = self.impersonate_search(filter, filter_intent, event)?;
         match vs.pop() {
@@ -675,7 +675,7 @@ pub trait QueryServerTransaction<'a> {
 
     /// Pull the domain name from the database
     fn get_db_domain_name(&self) -> Result<String, OperationError> {
-        self.internal_search_uuid(&UUID_DOMAIN_INFO)
+        self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 trace!(?e);
                 e.get_ava_single_iname("domain_name")
@@ -689,7 +689,7 @@ pub trait QueryServerTransaction<'a> {
     }
 
     fn get_domain_fernet_private_key(&self) -> Result<String, OperationError> {
-        self.internal_search_uuid(&UUID_DOMAIN_INFO)
+        self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 e.get_ava_single_secret("fernet_private_key_str")
                     .map(str::to_string)
@@ -702,7 +702,7 @@ pub trait QueryServerTransaction<'a> {
     }
 
     fn get_domain_es256_private_key(&self) -> Result<Vec<u8>, OperationError> {
-        self.internal_search_uuid(&UUID_DOMAIN_INFO)
+        self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 e.get_ava_single_private_binary("es256_private_key_der")
                     .map(|s| s.to_vec())
@@ -716,7 +716,7 @@ pub trait QueryServerTransaction<'a> {
 
     // This is a helper to get password badlist.
     fn get_password_badlist(&self) -> Result<HashSet<String>, OperationError> {
-        self.internal_search_uuid(&UUID_SYSTEM_CONFIG)
+        self.internal_search_uuid(UUID_SYSTEM_CONFIG)
             .map(|e| match e.get_ava_iter_iutf8("badlist_password") {
                 Some(vs_str_iter) => vs_str_iter.map(str::to_string).collect::<HashSet<_>>(),
                 None => HashSet::default(),
@@ -1085,7 +1085,7 @@ impl QueryServer {
         // If we are "in the process of being setup" this is 0, and the migrations will have no
         // effect as ... there is nothing to migrate! It allows reset of the version to 0 to force
         // db migrations to take place.
-        let system_info_version = match migrate_txn.internal_search_uuid(&UUID_SYSTEM_INFO) {
+        let system_info_version = match migrate_txn.internal_search_uuid(UUID_SYSTEM_INFO) {
             Ok(e) => Ok(e.get_ava_single_uint32("version").unwrap_or(0)),
             Err(OperationError::NoMatchingEntries) => Ok(0),
             Err(r) => Err(r),
@@ -3043,7 +3043,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     fn get_db_domain_display_name(&self) -> Result<String, OperationError> {
-        self.internal_search_uuid(&UUID_DOMAIN_INFO)
+        self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 trace!(?e);
                 e.get_ava_single_utf8("domain_display_name")
@@ -3230,7 +3230,7 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         let filt = filter!(f_eq("name", PartialValue::new_iname("testperson")));
         let admin = server_txn
-            .internal_search_uuid(&UUID_ADMIN)
+            .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
 
         let se1 = unsafe { SearchEvent::new_impersonate_entry(admin.clone(), filt.clone()) };
@@ -3624,7 +3624,7 @@ mod tests {
 
         let mut server_txn = server.write(time_p1).await;
         let admin = server_txn
-            .internal_search_uuid(&UUID_ADMIN)
+            .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
 
         let filt_i_ts = filter_all!(f_eq("class", PartialValue::new_class("tombstone")));
@@ -3733,7 +3733,7 @@ mod tests {
 
         let mut server_txn = server.write(time_p1).await;
         let admin = server_txn
-            .internal_search_uuid(&UUID_ADMIN)
+            .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
 
         let filt_i_rc = filter_all!(f_eq("class", PartialValue::new_class("recycled")));
@@ -3877,7 +3877,7 @@ mod tests {
         // Create items
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         let admin = server_txn
-            .internal_search_uuid(&UUID_ADMIN)
+            .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
 
         let e1 = entry_init!(
@@ -3997,17 +3997,17 @@ mod tests {
 
         // Name doesn't exist
         let r1 = server_txn
-            .uuid_to_spn(Uuid::parse_str("bae3f507-e6c3-44ba-ad01-f8ff1083534a").unwrap());
+            .uuid_to_spn(uuid!("bae3f507-e6c3-44ba-ad01-f8ff1083534a"));
         // There is nothing.
         assert!(r1 == Ok(None));
         // Name does exist
         let r3 = server_txn
-            .uuid_to_spn(Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap());
+            .uuid_to_spn(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"));
         println!("{:?}", r3);
         assert!(r3.unwrap().unwrap() == Value::new_spn_str("testperson1", "example.com"));
         // Name is not syntax normalised (but exists)
         let r4 = server_txn
-            .uuid_to_spn(Uuid::parse_str("CC8E95B4-C24F-4D68-BA54-8BED76F63930").unwrap());
+            .uuid_to_spn(uuid!("CC8E95B4-C24F-4D68-BA54-8BED76F63930"));
         assert!(r4.unwrap().unwrap() == Value::new_spn_str("testperson1", "example.com"));
     }
 
@@ -4033,17 +4033,17 @@ mod tests {
 
         // Name doesn't exist
         let r1 = server_txn
-            .uuid_to_rdn(Uuid::parse_str("bae3f507-e6c3-44ba-ad01-f8ff1083534a").unwrap());
+            .uuid_to_rdn(uuid!("bae3f507-e6c3-44ba-ad01-f8ff1083534a"));
         // There is nothing.
         assert!(r1.unwrap() == "uuid=bae3f507-e6c3-44ba-ad01-f8ff1083534a");
         // Name does exist
         let r3 = server_txn
-            .uuid_to_rdn(Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap());
+            .uuid_to_rdn(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"));
         println!("{:?}", r3);
         assert!(r3.unwrap() == "spn=testperson1@example.com");
         // Uuid is not syntax normalised (but exists)
         let r4 = server_txn
-            .uuid_to_rdn(Uuid::parse_str("CC8E95B4-C24F-4D68-BA54-8BED76F63930").unwrap());
+            .uuid_to_rdn(uuid!("CC8E95B4-C24F-4D68-BA54-8BED76F63930"));
         assert!(r4.unwrap() == "spn=testperson1@example.com");
     }
 
@@ -4058,13 +4058,13 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             ("description", Value::new_utf8s("testperson1")),
             ("displayname", Value::new_utf8s("testperson1"))
         );
 
-        let tuuid = Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap();
+        let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
         let ce = CreateEvent::new_internal(vec![e1]);
         let cr = server_txn.create(&ce);
@@ -4100,7 +4100,7 @@ mod tests {
 
         // revive
         let admin = server_txn
-            .internal_search_uuid(&UUID_ADMIN)
+            .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
         let rre_rc = unsafe {
             ReviveRecycledEvent::new_impersonate_entry(
@@ -4231,7 +4231,7 @@ mod tests {
         assert!(server_txn.create(&ce_fail).is_err());
         // Search our entry
         let testobj1 = server_txn
-            .internal_search_uuid(&Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap())
+            .internal_search_uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             .expect("failed");
         assert!(testobj1.attribute_equality("class", &PartialValue::new_class("testclass")));
 
@@ -4248,7 +4248,7 @@ mod tests {
             ("name", Value::new_iname("testobj1")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             ("testattr", Value::new_utf8s("test"))
         );
@@ -4259,7 +4259,7 @@ mod tests {
             ("class", Value::new_class("attributetype")),
             (
                 "uuid",
-                Value::new_uuids("cfcae205-31c3-484b-8ced-667d1709c5e3").expect("uuid")
+                Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
             ("attributename", Value::new_iutf8("testattr")),
             ("description", Value::new_utf8s("Test Attribute")),
@@ -4313,7 +4313,7 @@ mod tests {
         // Search the entry - the attribute will still be present
         // even if we can't search on it.
         let testobj1 = server_txn
-            .internal_search_uuid(&Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap())
+            .internal_search_uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             .expect("failed");
         assert!(testobj1.attribute_equality("testattr", &PartialValue::new_utf8s("test")));
 
@@ -4363,7 +4363,7 @@ mod tests {
 
         // assert it exists and the password checks out
         let test_ent = server_txn
-            .internal_search_uuid(&Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap())
+            .internal_search_uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             .expect("failed");
         // get the primary ava
         let cred_ref = test_ent
@@ -4413,7 +4413,7 @@ mod tests {
         // Create items
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         let admin = server_txn
-            .internal_search_uuid(&UUID_ADMIN)
+            .internal_search_uuid(UUID_ADMIN)
             .expect("failed");
 
         // Right need a user in a direct group.
@@ -4646,7 +4646,7 @@ mod tests {
         // Assert that it migrated and worked as expected.
         let server_txn = server.write(duration_from_epoch_now()).await;
         let domain = server_txn
-            .internal_search_uuid(&UUID_DOMAIN_INFO)
+            .internal_search_uuid(UUID_DOMAIN_INFO)
             .expect("failed");
         // ++ assert all names are iname
         assert!(

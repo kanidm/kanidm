@@ -299,10 +299,10 @@ mod tests {
 
         // Now check them
         let ent_a = server_txn
-            .internal_search_uuid(&uuid_a)
+            .internal_search_uuid(uuid_a)
             .expect("Failed to get entry.");
         let ent_b = server_txn
-            .internal_search_uuid(&uuid_b)
+            .internal_search_uuid(uuid_b)
             .expect("Failed to get entry.");
 
         assert!(ent_a.get_ava_single_utf8("description") == Some("a"));

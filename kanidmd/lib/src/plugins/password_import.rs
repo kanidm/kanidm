@@ -279,7 +279,7 @@ mod tests {
             |qs: &QueryServerWriteTransaction| {
                 let e = qs
                     .internal_search_uuid(
-                        &Uuid::parse_str("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap(),
+                        uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"),
                     )
                     .expect("failed to get entry");
                 let c = e

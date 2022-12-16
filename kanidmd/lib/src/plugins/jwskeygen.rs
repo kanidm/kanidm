@@ -134,7 +134,7 @@ mod tests {
             None,
             |qs: &QueryServerWriteTransaction| {
                 let e = qs
-                    .internal_search_uuid(&uuid)
+                    .internal_search_uuid(uuid)
                     .expect("failed to get oauth2 config");
                 assert!(e.attribute_pres("oauth2_rs_basic_secret"));
                 assert!(e.attribute_pres("oauth2_rs_token_key"));
@@ -180,7 +180,7 @@ mod tests {
             |_| {},
             |qs: &QueryServerWriteTransaction| {
                 let e = qs
-                    .internal_search_uuid(&uuid)
+                    .internal_search_uuid(uuid)
                     .expect("failed to get oauth2 config");
                 assert!(e.attribute_pres("oauth2_rs_basic_secret"));
                 assert!(e.attribute_pres("oauth2_rs_token_key"));

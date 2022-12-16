@@ -186,7 +186,7 @@ mod tests {
 
         // Still there
 
-        let entry = server_txn.internal_search_uuid(&tuuid).expect("failed");
+        let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         assert!(entry.attribute_equality("user_auth_token_session", &pv_session_id));
 
@@ -205,7 +205,7 @@ mod tests {
             .expect("Failed to modify user");
 
         // Session gone.
-        let entry = server_txn.internal_search_uuid(&tuuid).expect("failed");
+        let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note it's a not condition now.
         assert!(!entry.attribute_equality("user_auth_token_session", &pv_session_id));
@@ -318,7 +318,7 @@ mod tests {
 
         // Still there
 
-        let entry = server_txn.internal_search_uuid(&tuuid).expect("failed");
+        let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         assert!(entry.attribute_equality("user_auth_token_session", &pv_parent_id));
         assert!(entry.attribute_equality("oauth2_session", &pv_session_id));
@@ -341,7 +341,7 @@ mod tests {
             .expect("Failed to modify user");
 
         // Session gone.
-        let entry = server_txn.internal_search_uuid(&tuuid).expect("failed");
+        let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note the uat is still present
         assert!(entry.attribute_equality("user_auth_token_session", &pv_parent_id));
@@ -452,7 +452,7 @@ mod tests {
 
         // Still there
 
-        let entry = server_txn.internal_search_uuid(&tuuid).expect("failed");
+        let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         assert!(entry.attribute_equality("user_auth_token_session", &pv_parent_id));
         assert!(entry.attribute_equality("oauth2_session", &pv_session_id));
@@ -472,7 +472,7 @@ mod tests {
             .expect("Failed to modify user");
 
         // Session gone.
-        let entry = server_txn.internal_search_uuid(&tuuid).expect("failed");
+        let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note the uat is removed
         assert!(!entry.attribute_equality("user_auth_token_session", &pv_parent_id));
@@ -561,7 +561,7 @@ mod tests {
 
         // Still there
 
-        let entry = server_txn.internal_search_uuid(&tuuid).expect("failed");
+        let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         assert!(entry.attribute_equality("oauth2_session", &pv_session_id));
 
@@ -583,7 +583,7 @@ mod tests {
             .expect("Failed to modify user");
 
         // Session gone.
-        let entry = server_txn.internal_search_uuid(&tuuid).expect("failed");
+        let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note it's a not condition now.
         assert!(!entry.attribute_equality("oauth2_session", &pv_session_id));

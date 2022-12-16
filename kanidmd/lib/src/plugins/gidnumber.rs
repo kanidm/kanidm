@@ -98,7 +98,7 @@ mod tests {
 
     fn check_gid(qs_write: &QueryServerWriteTransaction, uuid: &str, gid: u32) {
         let u = Uuid::parse_str(uuid).unwrap();
-        let e = qs_write.internal_search_uuid(&u).unwrap();
+        let e = qs_write.internal_search_uuid(u).unwrap();
         let gidnumber = e.get_ava_single("gidnumber").unwrap();
         let ex_gid = Value::new_uint32(gid);
         assert!(ex_gid == gidnumber);

@@ -66,7 +66,7 @@ impl LdapServer {
         // get the domain_info item
         let domain_entry = idms_prox_read
             .qs_read
-            .internal_search_uuid(&UUID_DOMAIN_INFO)?;
+            .internal_search_uuid(UUID_DOMAIN_INFO)?;
 
         let domain_name = domain_entry
             .get_ava_single_iname("domain_name")
@@ -432,7 +432,7 @@ impl LdapServer {
         idms: &IdmServer,
         server_op: ServerOps,
         uat: Option<LdapBoundToken>,
-        eventid: &Uuid,
+        eventid: Uuid,
     ) -> Result<LdapResponseState, OperationError> {
         match server_op {
             ServerOps::SimpleBind(sbr) => self
@@ -488,7 +488,7 @@ impl LdapServer {
                     wr.gen_success(format!("u: {}", u.spn).as_str()),
                 )),
                 None => Ok(LdapResponseState::Respond(wr.gen_operror(
-                    format!("Unbound Connection {:?}", &eventid).as_str(),
+                    format!("Unbound Connection {}", eventid).as_str(),
                 ))),
             },
         } // end match server op
@@ -606,7 +606,7 @@ mod tests {
                 };
                 assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
-                let pce = UnixPasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+                let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
                 assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
                 assert!(idms_prox_write.commit().is_ok());

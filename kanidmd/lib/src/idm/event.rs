@@ -17,10 +17,10 @@ pub(crate) struct PasswordChangeEvent {
 
 #[cfg(test)]
 impl PasswordChangeEvent {
-    pub fn new_internal(target: &Uuid, cleartext: &str) -> Self {
+    pub fn new_internal(target: Uuid, cleartext: &str) -> Self {
         PasswordChangeEvent {
             ident: Identity::from_internal(),
-            target: *target,
+            target,
             cleartext: cleartext.to_string(),
         }
     }
@@ -34,10 +34,10 @@ pub struct UnixPasswordChangeEvent {
 
 impl UnixPasswordChangeEvent {
     #[cfg(test)]
-    pub fn new_internal(target: &Uuid, cleartext: &str) -> Self {
+    pub fn new_internal(target: Uuid, cleartext: &str) -> Self {
         UnixPasswordChangeEvent {
             ident: Identity::from_internal(),
-            target: *target,
+            target,
             cleartext: cleartext.to_string(),
         }
     }
@@ -181,10 +181,10 @@ impl std::fmt::Debug for UnixUserAuthEvent {
 
 impl UnixUserAuthEvent {
     #[cfg(test)]
-    pub fn new_internal(target: &Uuid, cleartext: &str) -> Self {
+    pub fn new_internal(target: Uuid, cleartext: &str) -> Self {
         UnixUserAuthEvent {
             ident: Identity::from_internal(),
-            target: *target,
+            target,
             cleartext: cleartext.to_string(),
         }
     }
@@ -255,20 +255,7 @@ pub struct LdapAuthEvent {
 }
 
 impl LdapAuthEvent {
-    /*
-    #[cfg(test)]
-    pub fn new_internal(target: &Uuid, cleartext: &str) -> Self {
-        LdapAuthEvent {
-            // ident: Identity::from_internal(),
-            target: *target,
-            cleartext: cleartext.to_string(),
-        }
-    }
-    */
-
     pub fn from_parts(
-        // qs: &mut QueryServerReadTransaction,
-        // uat: Option<UserAuthToken>,
         target: Uuid,
         cleartext: String,
     ) -> Result<Self, OperationError> {

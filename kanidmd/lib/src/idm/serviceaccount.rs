@@ -194,7 +194,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<String, OperationError> {
         let service_account = self
             .qs_write
-            .internal_search_uuid(&gte.target)
+            .internal_search_uuid(gte.target)
             .and_then(|account_entry| ServiceAccount::try_from_entry_rw(&account_entry))
             .map_err(|e| {
                 admin_error!(?e, "Failed to search service account");

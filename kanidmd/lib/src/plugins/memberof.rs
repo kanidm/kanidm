@@ -26,14 +26,14 @@ pub struct MemberOf;
 
 fn do_memberof(
     qs: &QueryServerWriteTransaction,
-    uuid: &Uuid,
+    uuid: Uuid,
     tgte: &mut EntryInvalidCommitted,
 ) -> Result<(), OperationError> {
     //  search where we are member
     let groups = qs
         .internal_search(filter!(f_and!([
             f_eq("class", PVCLASS_GROUP.clone()),
-            f_eq("member", PartialValue::new_refer(*uuid))
+            f_eq("member", PartialValue::Refer(uuid))
         ])))
         .map_err(|e| {
             admin_error!("internal search failure -> {:?}", e);
@@ -142,7 +142,7 @@ fn apply_memberof(
 
             trace!("=> processing group update -> {:?}", guuid);
 
-            do_memberof(qs, &guuid, &mut tgte)?;
+            do_memberof(qs, guuid, &mut tgte)?;
 
             // Did we change? Note we don't check if the class changed, only if mo changed.
             if pre.get_ava_set("memberof") != tgte.get_ava_set("memberof")
@@ -188,7 +188,7 @@ fn apply_memberof(
         .try_for_each(|(auuid, (pre, mut tgte))| {
             trace!("=> processing affected uuid {:?}", auuid);
             debug_assert!(!tgte.attribute_equality("class", &PVCLASS_GROUP));
-            do_memberof(qs, &auuid, &mut tgte)?;
+            do_memberof(qs, auuid, &mut tgte)?;
             // Only write if a change occured.
             if pre.get_ava_set("memberof") != tgte.get_ava_set("memberof")
                 || pre.get_ava_set("directmemberof") != tgte.get_ava_set("directmemberof")

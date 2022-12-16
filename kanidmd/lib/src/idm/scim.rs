@@ -135,7 +135,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Get the target signing key.
         let sync_account = self
             .qs_write
-            .internal_search_uuid(&gte.target)
+            .internal_search_uuid(gte.target)
             .and_then(|entry| SyncAccount::try_from_entry_rw(&entry))
             .map_err(|e| {
                 admin_error!(?e, "Failed to search service account");
@@ -300,7 +300,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Retrieve the related sync entry.
         let sync_entry = self
             .qs_write
-            .internal_search_uuid(&sync_uuid)
+            .internal_search_uuid(sync_uuid)
             .map_err(|e| {
                 error!("Failed to located sync entry related to {}", sync_uuid);
                 e
@@ -953,7 +953,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             }
             IdentType::Synch(u) => {
                 // Ok!
-                u
+                *u
             }
         };
 
@@ -1151,7 +1151,7 @@ mod tests {
 
             let sync_entry = idms_prox_read
                 .qs_read
-                .internal_search_uuid(&sync_uuid)
+                .internal_search_uuid(sync_uuid)
                 .expect("Unable to access sync entry");
 
             let jws_key = sync_entry
@@ -1288,7 +1288,7 @@ mod tests {
 
             let synced_entry = idms_prox_write
                 .qs_write
-                .internal_search_uuid(&user_sync_uuid)
+                .internal_search_uuid(user_sync_uuid)
                 .expect("Failed to access sync stub entry");
 
             assert!(
@@ -1419,7 +1419,7 @@ mod tests {
 
             let ent = idms_prox_write
                 .qs_write
-                .internal_search_uuid(&user_sync_uuid)
+                .internal_search_uuid(user_sync_uuid)
                 .expect("Unable to access entry");
 
             assert!(ent.get_ava_single_iname("name") == Some("testgroup"));

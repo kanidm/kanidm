@@ -139,7 +139,7 @@ mod tests {
 
             let ident = idms_prox_read
                 .qs_read
-                .internal_search_uuid(&usr_uuid)
+                .internal_search_uuid(usr_uuid)
                 .map(Identity::from_impersonate_entry_readonly)
                 .expect("Failed to impersonate identity");
 
@@ -165,7 +165,7 @@ mod tests {
 
             let ident = idms_prox_read
                 .qs_read
-                .internal_search_uuid(&usr_uuid)
+                .internal_search_uuid(usr_uuid)
                 .map(Identity::from_impersonate_entry_readonly)
                 .expect("Failed to impersonate identity");
 

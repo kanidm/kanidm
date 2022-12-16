@@ -326,7 +326,7 @@ mod tests {
         // get the current domain name
         // check the spn on admin is admin@<initial domain>
         let e_pre = server_txn
-            .internal_search_uuid(&UUID_ADMIN)
+            .internal_search_uuid(UUID_ADMIN)
             .expect("must not fail");
 
         let e_pre_spn = e_pre.get_ava_single("spn").expect("must not fail");
@@ -343,7 +343,7 @@ mod tests {
 
         // check the spn on admin is admin@<new domain>
         let e_post = server_txn
-            .internal_search_uuid(&UUID_ADMIN)
+            .internal_search_uuid(UUID_ADMIN)
             .expect("must not fail");
 
         let e_post_spn = e_post.get_ava_single("spn").expect("must not fail");

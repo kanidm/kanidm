@@ -1703,7 +1703,7 @@ mod tests {
 
         let entry = idms_prox_write
             .qs_write
-            .internal_search_uuid(&uuid)
+            .internal_search_uuid(uuid)
             .expect("Failed to retrieve oauth2 resource entry ");
         let secret = entry
             .get_ava_single_secret("oauth2_rs_basic_secret")
@@ -1712,7 +1712,7 @@ mod tests {
 
         // Setup the uat we'll be using.
         let account = idms_prox_write
-            .target_to_account(&UUID_ADMIN)
+            .target_to_account(UUID_ADMIN)
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
@@ -1739,7 +1739,7 @@ mod tests {
     ) -> (UserAuthToken, Identity) {
         let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
         let account = idms_prox_write
-            .target_to_account(&UUID_IDM_ADMIN)
+            .target_to_account(UUID_IDM_ADMIN)
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
@@ -2002,7 +2002,7 @@ mod tests {
             let (uat2, ident2) = {
                 let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 let account = idms_prox_write
-                    .target_to_account(&UUID_IDM_ADMIN)
+                    .target_to_account(UUID_IDM_ADMIN)
                     .expect("account must exist");
                 let session_id = uuid::Uuid::new_v4();
                 let uat2 = account
@@ -2596,7 +2596,7 @@ mod tests {
                 // Check it is now there
                 let entry = idms_prox_write
                     .qs_write
-                    .internal_search_uuid(&UUID_ADMIN)
+                    .internal_search_uuid(UUID_ADMIN)
                     .expect("failed");
                 let valid = entry
                     .get_ava_as_oauth2session_map("oauth2_session")
@@ -2619,7 +2619,7 @@ mod tests {
                 // integrity plugin.
                 let entry = idms_prox_write
                     .qs_write
-                    .internal_search_uuid(&UUID_ADMIN)
+                    .internal_search_uuid(UUID_ADMIN)
                     .expect("failed");
                 let valid = entry
                     .get_ava_as_oauth2session_map("oauth2_session")
@@ -2644,7 +2644,7 @@ mod tests {
             let (uat2, ident2) = {
                 let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 let account = idms_prox_write
-                    .target_to_account(&UUID_IDM_ADMIN)
+                    .target_to_account(UUID_IDM_ADMIN)
                     .expect("account must exist");
                 let session_id = uuid::Uuid::new_v4();
                 let uat2 = account
