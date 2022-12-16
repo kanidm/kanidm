@@ -208,7 +208,7 @@ access the kanidmd binary.</p>
 <p>Once you have access to the admin account, it is able to reset the credentials of the <code>idm_admin</code>
 account.</p>
 <pre><code class="language-shell">kanidm login -D admin
-kanidm service-account credential generate-pw -D admin idm_admin
+kanidm service-account credential generate -D admin idm_admin
 # Success: wJX...
 </code></pre>
 <p>These accounts will be used through the remainder of this document for managing the server.</p>
@@ -307,9 +307,9 @@ command.</p>
 kanidm service-account api-token destroy --name admin demo_service 4de2a4e9-e06a-4c5e-8a1b-33f4e7dd5dc7
 </code></pre>
 <p>Api tokens can also be used to gain extended search permissions with LDAP. To do this you can bind
-with a dn of &quot;&quot; (empty string) and provide the api token in the password.</p>
-<pre><code class="language-shell">ldapwhoami -H ldaps://URL -x -D &quot;&quot; -w &quot;TOKEN&quot;
-ldapwhoami -H ldaps://idm.example.com -x -D &quot;&quot; -w &quot;...&quot;
+with a dn of <code>dn=token</code> and provide the api token in the password.</p>
+<pre><code class="language-shell">ldapwhoami -H ldaps://URL -x -D &quot;dn=token&quot; -w &quot;TOKEN&quot;
+ldapwhoami -H ldaps://idm.example.com -x -D &quot;dn=token&quot; -w &quot;...&quot;
 # u: demo_service@idm.example.com
 </code></pre>
 <h2 id="resetting-service-account-credentials-deprecated"><a class="header" href="#resetting-service-account-credentials-deprecated">Resetting Service Account Credentials (Deprecated)</a></h2>
@@ -325,7 +325,7 @@ ldapwhoami -H ldaps://idm.example.com -x -D &quot;&quot; -w &quot;...&quot;
 <p>Service accounts can not have their credentials interactively updated in the same manner as
 persons. Service accounts may only have server side generated high entropy passwords.</p>
 <p>To re-generate this password to an account</p>
-<pre><code class="language-shell">kanidm service-account credential generate-pw demo_service --name admin
+<pre><code class="language-shell">kanidm service-account credential generate demo_service --name admin
 </code></pre>
 <h2 id="nested-groups"><a class="header" href="#nested-groups">Nested Groups</a></h2>
 <p>Kanidm supports groups being members of groups, allowing nested groups. These nesting relationships
