@@ -91,9 +91,7 @@ impl Plugin for PasswordImport {
 }
 
 impl PasswordImport {
-    fn modify_inner<T: Clone>(
-        cand: &mut Vec<Entry<EntryInvalid, T>>,
-    ) -> Result<(), OperationError> {
+    fn modify_inner<T: Clone>(cand: &mut [Entry<EntryInvalid, T>]) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
             // is there a password we are trying to import?
             let vs = match e.pop_ava("password_import") {

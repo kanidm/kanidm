@@ -280,12 +280,10 @@ pub trait QueryServerTransaction<'a> {
     // Similar to name, but where we lookup from external_id instead.
     fn sync_external_id_to_uuid(&self, external_id: &str) -> Result<Option<Uuid>, OperationError> {
         // Is it just a uuid?
-        Uuid::parse_str(external_id)
-            .map(|uuid| Some(uuid))
-            .or_else(|_| {
-                let lname = external_id.to_lowercase();
-                self.get_be_txn().externalid2uuid(lname.as_str())
-            })
+        Uuid::parse_str(external_id).map(Some).or_else(|_| {
+            let lname = external_id.to_lowercase();
+            self.get_be_txn().externalid2uuid(lname.as_str())
+        })
     }
 
     fn uuid_to_spn(&self, uuid: Uuid) -> Result<Option<Value>, OperationError> {

@@ -42,7 +42,7 @@ impl Plugin for SessionConsistency {
 impl SessionConsistency {
     fn modify_inner<T: Clone + std::fmt::Debug>(
         qs: &mut QueryServerWriteTransaction,
-        cand: &mut Vec<Entry<EntryInvalid, T>>,
+        cand: &mut [Entry<EntryInvalid, T>],
     ) -> Result<(), OperationError> {
         let curtime = qs.get_curtime();
         let curtime_odt = OffsetDateTime::unix_epoch() + curtime;

@@ -876,7 +876,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerAuthTransaction<'a> {
     }
 
     fn get_uat_validator_txn(&self) -> &JwsValidator {
-        &*self.uat_jwt_validator
+        &self.uat_jwt_validator
     }
 }
 
@@ -1150,7 +1150,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             &self.async_tx,
                             self.webauthn,
                             pw_badlist_cache,
-                            &*self.uat_jwt_signer,
+                            &self.uat_jwt_signer,
                         )
                         .map(|aus| {
                             // Inspect the result:
@@ -1422,7 +1422,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
     }
 
     fn get_uat_validator_txn(&self) -> &JwsValidator {
-        &*self.uat_jwt_validator
+        &self.uat_jwt_validator
     }
 }
 
@@ -1599,7 +1599,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
     }
 
     fn get_uat_validator_txn(&self) -> &JwsValidator {
-        &*self.uat_jwt_validator
+        &self.uat_jwt_validator
     }
 }
 

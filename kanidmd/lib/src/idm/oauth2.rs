@@ -997,7 +997,7 @@ impl Oauth2ResourceServersReadTransaction {
             self.check_oauth2_token_exchange_authorization_code(o2rs, token_req, ct, async_tx)
         } else {
             admin_warn!("Invalid oauth2 grant_type (should be 'authorization_code')");
-            return Err(Oauth2Error::InvalidRequest);
+            Err(Oauth2Error::InvalidRequest)
         }
     }
 
@@ -1422,7 +1422,7 @@ impl Oauth2ResourceServersReadTransaction {
                     iss,
                     sub: OidcSubject::U(uuid),
                     aud: client_id.to_string(),
-                    iat: iat,
+                    iat,
                     nbf: Some(nbf),
                     exp,
                     auth_time: None,
@@ -1435,7 +1435,7 @@ impl Oauth2ResourceServersReadTransaction {
                     s_claims: OidcClaims {
                         // Map from displayname
                         name: Some(account.displayname.clone()),
-                        scopes: scopes,
+                        scopes,
                         preferred_username,
                         email,
                         email_verified,
@@ -1552,7 +1552,7 @@ impl Oauth2ResourceServersReadTransaction {
 
 fn parse_basic_authz(client_authz: &str) -> Result<(String, String), Oauth2Error> {
     // Check the client_authz
-    let authz = base64::decode(&client_authz)
+    let authz = base64::decode(client_authz)
         .map_err(|_| {
             admin_error!("Basic authz invalid base64");
             Oauth2Error::AuthenticationRequired

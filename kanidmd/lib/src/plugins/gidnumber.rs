@@ -70,7 +70,7 @@ impl Plugin for GidNumber {
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        cand.iter_mut().try_for_each(|e| apply_gidnumber(e))
+        cand.iter_mut().try_for_each(apply_gidnumber)
     }
 
     #[instrument(level = "debug", name = "gidnumber_pre_modify", skip_all)]
@@ -79,7 +79,7 @@ impl Plugin for GidNumber {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        cand.iter_mut().try_for_each(|e| apply_gidnumber(e))
+        cand.iter_mut().try_for_each(apply_gidnumber)
     }
 
     #[instrument(level = "debug", name = "gidnumber_pre_batch_modify", skip_all)]
@@ -88,7 +88,7 @@ impl Plugin for GidNumber {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        cand.iter_mut().try_for_each(|e| apply_gidnumber(e))
+        cand.iter_mut().try_for_each(apply_gidnumber)
     }
 }
 

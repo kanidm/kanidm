@@ -52,7 +52,7 @@ impl Plugin for Domain {
 impl Domain {
     fn modify_inner<T: Clone + std::fmt::Debug>(
         qs: &mut QueryServerWriteTransaction,
-        cand: &mut Vec<Entry<EntryInvalid, T>>,
+        cand: &mut [Entry<EntryInvalid, T>],
     ) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
             if e.attribute_equality("class", &PVCLASS_DOMAIN_INFO)

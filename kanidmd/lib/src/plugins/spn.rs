@@ -135,7 +135,7 @@ impl Plugin for Spn {
 impl Spn {
     fn modify_inner<T: Clone + std::fmt::Debug>(
         qs: &mut QueryServerWriteTransaction,
-        cand: &mut Vec<Entry<EntryInvalid, T>>,
+        cand: &mut [Entry<EntryInvalid, T>],
     ) -> Result<(), OperationError> {
         let domain_name = qs.get_domain_name();
 

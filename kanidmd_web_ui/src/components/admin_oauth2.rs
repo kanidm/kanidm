@@ -225,10 +225,11 @@ impl Component for AdminListOAuth2 {
                 // TODO: do we paginate here?
                 #[cfg(debug_assertions)]
                 for key in response.keys() {
-                    console::log!(
-                        "response: {:?}",
-                        serde_json::to_string(response.get(key).unwrap()).unwrap()
-                    );
+                    let j = response
+                        .get(key)
+                        .and_then(|k| serde_json::to_string(k).ok())
+                        .unwrap_or_else(|| "Failed to dump response key".to_string());
+                    console::log!("response: {}", j);
                 }
                 self.state = ListViewState::Responded { response };
                 return true;

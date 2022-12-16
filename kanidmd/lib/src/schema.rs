@@ -1696,37 +1696,37 @@ impl<'a> SchemaWriteTransaction<'a> {
 
 impl<'a> SchemaTransaction for SchemaWriteTransaction<'a> {
     fn get_attributes_unique(&self) -> &Vec<AttrString> {
-        &(*self.unique_cache)
+        &self.unique_cache
     }
 
     fn get_reference_types(&self) -> &HashMap<AttrString, SchemaAttribute> {
-        &(*self.ref_cache)
+        &self.ref_cache
     }
 
     fn get_classes(&self) -> &HashMap<AttrString, SchemaClass> {
-        &(*self.classes)
+        &self.classes
     }
 
     fn get_attributes(&self) -> &HashMap<AttrString, SchemaAttribute> {
-        &(*self.attributes)
+        &self.attributes
     }
 }
 
 impl SchemaTransaction for SchemaReadTransaction {
     fn get_attributes_unique(&self) -> &Vec<AttrString> {
-        &(*self.unique_cache)
+        &self.unique_cache
     }
 
     fn get_reference_types(&self) -> &HashMap<AttrString, SchemaAttribute> {
-        &(*self.ref_cache)
+        &self.ref_cache
     }
 
     fn get_classes(&self) -> &HashMap<AttrString, SchemaClass> {
-        &(*self.classes)
+        &self.classes
     }
 
     fn get_attributes(&self) -> &HashMap<AttrString, SchemaAttribute> {
-        &(*self.attributes)
+        &self.attributes
     }
 }
 

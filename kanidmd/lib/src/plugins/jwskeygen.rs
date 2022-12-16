@@ -41,9 +41,7 @@ impl Plugin for JwsKeygen {
 }
 
 impl JwsKeygen {
-    fn modify_inner<T: Clone>(
-        cand: &mut Vec<Entry<EntryInvalid, T>>,
-    ) -> Result<(), OperationError> {
+    fn modify_inner<T: Clone>(cand: &mut [Entry<EntryInvalid, T>]) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
         if e.attribute_equality("class", &PVCLASS_OAUTH2_BASIC) {
             if !e.attribute_pres("oauth2_rs_basic_secret") {
@@ -68,25 +66,23 @@ impl JwsKeygen {
                 let v = Value::new_privatebinary(&der);
                 e.add_ava("es256_private_key_der", v);
             }
-            if e.get_ava_single_bool("oauth2_jwt_legacy_crypto_enable").unwrap_or(false) {
-                if !e.attribute_pres("rs256_private_key_der") {
-                    security_info!("regenerating oauth2 legacy rs256 private key");
-                    let der = JwsSigner::generate_legacy_rs256()
-                        .and_then(|jws| jws.private_key_to_der())
-                        .map_err(|e| {
-                            admin_error!(err = ?e, "Unable to generate Legacy RS256 JwsSigner private key");
-                            OperationError::CryptographyError
-                        })?;
-                    let v = Value::new_privatebinary(&der);
-                    e.add_ava("rs256_private_key_der", v);
-                }
+            if e.get_ava_single_bool("oauth2_jwt_legacy_crypto_enable").unwrap_or(false)
+                && !e.attribute_pres("rs256_private_key_der") {
+                security_info!("regenerating oauth2 legacy rs256 private key");
+                let der = JwsSigner::generate_legacy_rs256()
+                    .and_then(|jws| jws.private_key_to_der())
+                    .map_err(|e| {
+                        admin_error!(err = ?e, "Unable to generate Legacy RS256 JwsSigner private key");
+                        OperationError::CryptographyError
+                    })?;
+                let v = Value::new_privatebinary(&der);
+                e.add_ava("rs256_private_key_der", v);
             }
         }
 
-        if e.attribute_equality("class", &PVCLASS_SERVICE_ACCOUNT) ||
-           e.attribute_equality("class", &PVCLASS_SYNC_ACCOUNT)
-        {
-            if !e.attribute_pres("jws_es256_private_key") {
+        if (e.attribute_equality("class", &PVCLASS_SERVICE_ACCOUNT) ||
+            e.attribute_equality("class", &PVCLASS_SYNC_ACCOUNT)) &&
+            !e.attribute_pres("jws_es256_private_key") {
                 security_info!("regenerating jws es256 private key");
                 let jwssigner = JwsSigner::generate_es256()
                     .map_err(|e| {
@@ -95,7 +91,6 @@ impl JwsKeygen {
                     })?;
                 let v = Value::JwsKeyEs256(jwssigner);
                 e.add_ava("jws_es256_private_key", v);
-            }
         }
 
         Ok(())

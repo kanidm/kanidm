@@ -174,7 +174,7 @@ pub trait IdlSqliteTransaction {
                 for id in idli {
                     let iid = i64::try_from(id).map_err(|_| OperationError::InvalidEntryId)?;
                     let id2entry_iter = stmt
-                        .query_map(&[&iid], |row| {
+                        .query_map([&iid], |row| {
                             Ok(IdSqliteEntry {
                                 id: row.get(0)?,
                                 data: row.get(1)?,
@@ -797,7 +797,7 @@ impl IdlSqliteWriteTransaction {
 
         debug_assert!(iid > 0);
 
-        stmt.execute(&[&iid]).map(|_| ()).map_err(sqlite_error)
+        stmt.execute([&iid]).map(|_| ()).map_err(sqlite_error)
     }
 
     pub fn write_idl(

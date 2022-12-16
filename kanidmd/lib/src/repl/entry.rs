@@ -130,7 +130,7 @@ impl State {
 
                     if attrs
                         .get(attr)
-                        .map(|vs| vs.contains(&value))
+                        .map(|vs| vs.contains(value))
                         .unwrap_or(false)
                     {
                         // Valid

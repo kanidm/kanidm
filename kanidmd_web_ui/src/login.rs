@@ -116,7 +116,7 @@ impl LoginApp {
                 .get("x-kanidm-auth-session-id")
                 .ok()
                 .flatten()
-                .unwrap_or_else(|| "".to_string());
+                .unwrap_or_default();
             let jsval = JsFuture::from(resp.json()?).await?;
             let state: AuthResponse = serde_wasm_bindgen::from_value(jsval)
                 .expect_throw("Invalid response type - auth_init::AuthResponse");
@@ -553,7 +553,7 @@ impl Component for LoginApp {
         // -- clear the bearer to prevent conflict
         models::clear_bearer_token();
         // Do we have a login hint?
-        let inputvalue = models::pop_login_hint().unwrap_or_else(|| "".to_string());
+        let inputvalue = models::pop_login_hint().unwrap_or_default();
 
         #[cfg(debug_assertions)]
         {

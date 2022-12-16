@@ -1211,7 +1211,10 @@ impl KanidmClient {
         }
     }
 
-    pub async fn auth_passkey_complete(&self, pkc: Box<PublicKeyCredential>) -> Result<(), ClientError> {
+    pub async fn auth_passkey_complete(
+        &self,
+        pkc: Box<PublicKeyCredential>,
+    ) -> Result<(), ClientError> {
         let r = self.auth_step_passkey_complete(pkc).await?;
         match r.state {
             AuthState::Success(_token) => Ok(()),

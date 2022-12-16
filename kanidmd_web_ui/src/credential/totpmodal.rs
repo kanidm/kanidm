@@ -159,8 +159,8 @@ impl Component for TotpModalApp {
             }
             Msg::TotpSubmit => {
                 // Send off the submit, lock the form.
-                let totp =
-                    utils::get_value_from_element_id("totp").unwrap_or_else(|| "".to_string());
+                // default is empty str
+                let totp = utils::get_value_from_element_id("totp").unwrap_or_default();
 
                 match totp.trim().parse::<u32>() {
                     Ok(totp) => {

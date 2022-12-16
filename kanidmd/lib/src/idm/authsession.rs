@@ -545,6 +545,9 @@ enum AuthSessionState {
     Init(Vec<CredHandler>),
     // Stop! Don't make this a vec - make the credhandler able to hold multiple
     // internal copies of it's type and check against them all.
+    //
+    // Clippy wants this to be boxxed, however match on box types is a pain / problematic,
+    // so I'm not sure it can be done.
     InProgress(CredHandler),
     Success,
     Denied(&'static str),

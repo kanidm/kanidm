@@ -82,7 +82,7 @@ impl Component for AppsApp {
         match &self.state {
             State::Waiting => self.view_waiting(),
             State::Ready { apps } => self.view_ready(ctx, apps.as_slice()),
-            State::Error { emsg, kopid } => self.view_error(ctx, &emsg, kopid.as_deref()),
+            State::Error { emsg, kopid } => self.view_error(ctx, emsg, kopid.as_deref()),
         }
     }
 }

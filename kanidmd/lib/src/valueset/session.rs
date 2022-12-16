@@ -505,7 +505,7 @@ impl ValueSetT for ValueSetOauth2Session {
             b.iter().for_each(|(k, v)| {
                 if !self.map.contains_key(k) {
                     self.rs_filter.insert(v.rs_uuid);
-                    self.map.insert(k.clone(), v.clone());
+                    self.map.insert(*k, v.clone());
                 }
             });
             Ok(())

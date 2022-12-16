@@ -547,7 +547,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 SyntaxType::Utf8StringIname,
                 false,
                 ScimAttr::SingleSimple(ScimSimpleAttr::String(value)),
-            ) => Ok(vec![Value::new_iname(&value)]),
+            ) => Ok(vec![Value::new_iname(value)]),
             (
                 SyntaxType::Utf8String,
                 false,
@@ -723,7 +723,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         debug!(?sync_owned_attrs);
 
-        for attr in sync_owned_attrs.iter().map(|a| *a) {
+        for attr in sync_owned_attrs.iter().copied() {
             if !phantom_attr_set.contains(attr) {
                 // These are the attrs that are "real" and need to be cleaned out first.
                 mods.push(Modify::Purged(attr.into()));
