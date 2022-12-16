@@ -86,7 +86,7 @@ pub fn f_self<'a>() -> FC<'a> {
 pub fn f_id(id: &str) -> FC<'static> {
     let uf = Uuid::parse_str(id)
         .ok()
-        .map(|u| FC::Eq("uuid", PartialValue::new_uuid(u)));
+        .map(|u| FC::Eq("uuid", PartialValue::Uuid(u)));
     let spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq("spn", spn));
     let nf = FC::Eq("name", PartialValue::new_iname(id));
     let f: Vec<_> = iter::once(uf)
@@ -1087,7 +1087,7 @@ impl FilterResolved {
                     .get(&idxkref as &dyn IdxKeyToRef)
                     .copied()
                     .and_then(NonZeroU8::new);
-                FilterResolved::Eq(uuid_s, PartialValue::new_uuid(uuid), idx)
+                FilterResolved::Eq(uuid_s, PartialValue::Uuid(uuid), idx)
             }),
             FilterComp::Sub(a, v) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
@@ -1161,7 +1161,7 @@ impl FilterResolved {
             FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
                 FilterResolved::Eq(
                     AttrString::from("uuid"),
-                    PartialValue::new_uuid(uuid),
+                    PartialValue::Uuid(uuid),
                     NonZeroU8::new(true as u8),
                 )
             }),
@@ -1839,7 +1839,7 @@ mod tests {
             ("name", Value::new_iname("testperson3")),
             (
                 "uuid",
-                Value::new_uuids("9557f49c-97a5-4277-a9a5-097d17eb8317").expect("uuid")
+                Value::Uuid(uuid!("9557f49c-97a5-4277-a9a5-097d17eb8317"))
             ),
             ("description", Value::new_utf8s("testperson3")),
             ("displayname", Value::new_utf8s("testperson3"))

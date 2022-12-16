@@ -1584,13 +1584,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     dm_mods
                         .entry(g_uuid)
                         .and_modify(|mlist| {
-                            let m =
-                                Modify::Present(AttrString::from("member"), Value::new_refer_r(&u));
+                            let m = Modify::Present(AttrString::from("member"), Value::Refer(u));
                             mlist.push_mod(m);
                         })
                         .or_insert({
-                            let m =
-                                Modify::Present(AttrString::from("member"), Value::new_refer_r(&u));
+                            let m = Modify::Present(AttrString::from("member"), Value::Refer(u));
                             ModifyList::new_list(vec![m])
                         });
                 }
@@ -1649,7 +1647,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // I think the filter/filter_all shouldn't matter here because the only
             // valid direct memberships should be still valid/live references, as refint
             // removes anything that was deleted even from recycled entries.
-            let f = filter_all!(f_eq("uuid", PartialValue::new_uuid(g)));
+            let f = filter_all!(f_eq("uuid", PartialValue::Uuid(g)));
             self.internal_modify(&f, &mods)?;
         }
 
@@ -1700,13 +1698,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     dm_mods
                         .entry(g_uuid)
                         .and_modify(|mlist| {
-                            let m =
-                                Modify::Present(AttrString::from("member"), Value::new_refer_r(&u));
+                            let m = Modify::Present(AttrString::from("member"), Value::Refer(u));
                             mlist.push_mod(m);
                         })
                         .or_insert({
-                            let m =
-                                Modify::Present(AttrString::from("member"), Value::new_refer_r(&u));
+                            let m = Modify::Present(AttrString::from("member"), Value::Refer(u));
                             ModifyList::new_list(vec![m])
                         });
                 }
@@ -1720,7 +1716,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         for (g, mods) in dm_mods {
             // I think the filter/filter_all shouldn't matter here because the only
             // valid direct memberships should be still valid/live references.
-            let f = filter_all!(f_eq("uuid", PartialValue::new_uuid(g)));
+            let f = filter_all!(f_eq("uuid", PartialValue::Uuid(g)));
             self.internal_modify(&f, &mods)?;
         }
         Ok(())
@@ -2346,7 +2342,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn internal_delete_uuid(&mut self, target_uuid: Uuid) -> Result<(), OperationError> {
-        let filter = filter!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
+        let filter = filter!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -2375,7 +2371,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         target_uuid: Uuid,
         modlist: &ModifyList<ModifyInvalid>,
     ) -> Result<(), OperationError> {
-        let filter = filter!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
+        let filter = filter!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -3242,7 +3238,7 @@ mod tests {
             ("spn", Value::new_spn_str("testperson", "example.com")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson"))
@@ -3262,10 +3258,10 @@ mod tests {
 
         // We apply some member-of in the server now, so we add these before we seal.
         e.add_ava("class", Value::new_class("memberof"));
-        e.add_ava("memberof", Value::new_refer(UUID_IDM_ALL_PERSONS));
-        e.add_ava("directmemberof", Value::new_refer(UUID_IDM_ALL_PERSONS));
-        e.add_ava("memberof", Value::new_refer(UUID_IDM_ALL_ACCOUNTS));
-        e.add_ava("directmemberof", Value::new_refer(UUID_IDM_ALL_ACCOUNTS));
+        e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_PERSONS));
+        e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_PERSONS));
+        e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));
+        e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));
 
         let expected = unsafe { vec![Arc::new(e.into_sealed_committed())] };
 
@@ -3311,7 +3307,7 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             ("description", Value::new_utf8s("testperson1")),
             ("displayname", Value::new_utf8s("testperson1"))
@@ -3323,7 +3319,7 @@ mod tests {
             ("name", Value::new_iname("testperson2")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63932").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
             ),
             ("description", Value::new_utf8s("testperson2")),
             ("displayname", Value::new_utf8s("testperson2"))
@@ -3471,7 +3467,7 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             ("description", Value::new_utf8s("testperson1")),
             ("displayname", Value::new_utf8s("testperson1"))
@@ -3543,7 +3539,7 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson1"))
@@ -3555,7 +3551,7 @@ mod tests {
             ("name", Value::new_iname("testperson2")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63932").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
             ),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson2"))
@@ -3567,7 +3563,7 @@ mod tests {
             ("name", Value::new_iname("testperson3")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63933").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63933"))
             ),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson3"))
@@ -3587,7 +3583,7 @@ mod tests {
         let de_empty = unsafe {
             DeleteEvent::new_internal_invalid(filter!(f_eq(
                 "uuid",
-                PartialValue::new_uuids("cc8e95b4-c24f-4d68-ba54-000000000000").unwrap()
+                PartialValue::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-000000000000"))
             )))
         };
         assert!(server_txn.delete(&de_empty).is_err());
@@ -3648,7 +3644,7 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
-                Value::new_uuids("9557f49c-97a5-4277-a9a5-097d17eb8317").expect("uuid")
+                Value::Uuid(uuid!("9557f49c-97a5-4277-a9a5-097d17eb8317"))
             ),
             ("description", Value::new_utf8s("testperson1")),
             ("displayname", Value::new_utf8s("testperson1"))
@@ -3770,7 +3766,7 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             ("description", Value::new_utf8s("testperson1")),
             ("displayname", Value::new_utf8s("testperson1"))
@@ -3782,7 +3778,7 @@ mod tests {
             ("name", Value::new_iname("testperson2")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63932").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
             ),
             ("description", Value::new_utf8s("testperson2")),
             ("displayname", Value::new_utf8s("testperson2"))
@@ -3878,7 +3874,7 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             ("description", Value::new_utf8s("testperson1")),
             ("displayname", Value::new_utf8s("testperson1"))
@@ -3978,7 +3974,7 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             ("description", Value::new_utf8s("testperson1")),
             ("displayname", Value::new_utf8s("testperson1"))
@@ -4011,7 +4007,7 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson1"))
@@ -4115,7 +4111,7 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             ("description", Value::new_utf8s("testperson1")),
             ("displayname", Value::new_utf8s("testperson1"))
@@ -4138,7 +4134,7 @@ mod tests {
         // test attr reference
         let r3 = server_txn.clone_value(&"member".to_string(), &"testperson1".to_string());
 
-        assert!(r3 == Ok(Value::new_refer_s("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap()));
+        assert!(r3 == Ok(Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))));
 
         // test attr reference already resolved.
         let r4 = server_txn.clone_value(
@@ -4147,7 +4143,7 @@ mod tests {
         );
 
         debug!("{:?}", r4);
-        assert!(r4 == Ok(Value::new_refer_s("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap()));
+        assert!(r4 == Ok(Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))));
     }
 
     #[qs_test]
@@ -4158,7 +4154,7 @@ mod tests {
             ("name", Value::new_iname("testobj1")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             )
         );
 
@@ -4169,7 +4165,7 @@ mod tests {
             ("classname", Value::new_iutf8("testclass")),
             (
                 "uuid",
-                Value::new_uuids("cfcae205-31c3-484b-8ced-667d1709c5e3").expect("uuid")
+                Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
             ("description", Value::new_utf8s("Test Class")),
             ("may", Value::new_iutf8("name"))
@@ -4314,7 +4310,7 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             ("description", Value::new_utf8s("testperson1")),
             ("displayname", Value::new_utf8s("testperson1"))
@@ -4362,7 +4358,7 @@ mod tests {
             ("class", Value::new_class("object")),
             ("class", Value::new_class("person")),
             ("name", Value::new_iname(name)),
-            ("uuid", Value::new_uuids(uuid).expect("uuid")),
+            ("uuid", Value::new_uuid_s(uuid).expect("uuid")),
             ("description", Value::new_utf8s("testperson-entry")),
             ("displayname", Value::new_utf8s(name))
         )
@@ -4373,7 +4369,7 @@ mod tests {
             ("class", Value::new_class("object")),
             ("class", Value::new_class("group")),
             ("name", Value::new_iname(name)),
-            ("uuid", Value::new_uuids(uuid).expect("uuid")),
+            ("uuid", Value::new_uuid_s(uuid).expect("uuid")),
             ("description", Value::new_utf8s("testgroup-entry"))
         );
         members
@@ -4577,7 +4573,7 @@ mod tests {
         // ++ Mod domain name and name to be the old type.
         let me_dn = unsafe {
             ModifyEvent::new_internal_invalid(
-                filter!(f_eq("uuid", PartialValue::new_uuid(UUID_DOMAIN_INFO))),
+                filter!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO))),
                 ModifyList::new_list(vec![
                     Modify::Purged(AttrString::from("name")),
                     Modify::Purged(AttrString::from("domain_name")),

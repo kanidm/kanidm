@@ -772,7 +772,7 @@ mod tests {
                         ("name", Value::new_iname("testperson1")),
                         (
                             "uuid",
-                            Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                            Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                         ),
                         ("description", Value::new_utf8s("testperson1")),
                         ("displayname", Value::new_utf8s("testperson1")),
@@ -926,7 +926,7 @@ mod tests {
                         ("class", Value::new_class("object")),
                         ("class", Value::new_class("service_account")),
                         ("class", Value::new_class("account")),
-                        ("uuid", Value::new_uuid(sa_uuid)),
+                        ("uuid", Value::Uuid(sa_uuid)),
                         ("name", Value::new_iname("service_permission_test")),
                         ("displayname", Value::new_utf8s("service_permission_test"))
                     );
@@ -965,7 +965,7 @@ mod tests {
                             )),
                             ModifyList::new_list(vec![Modify::Present(
                                 AttrString::from("member"),
-                                Value::new_refer(sa_uuid),
+                                Value::Refer(sa_uuid),
                             )]),
                         )
                     };

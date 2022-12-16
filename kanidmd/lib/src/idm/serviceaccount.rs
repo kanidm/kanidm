@@ -249,9 +249,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(gte.target))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(gte.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(gte.target))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(gte.target))),
                 &modlist,
                 // Provide the event to impersonate
                 &gte.ident,
@@ -396,7 +396,7 @@ mod tests {
             ("class", Value::new_class("account")),
             ("class", Value::new_class("service_account")),
             ("name", Value::new_iname("test_account_only")),
-            ("uuid", Value::new_uuid(testaccount_uuid)),
+            ("uuid", Value::Uuid(testaccount_uuid)),
             ("description", Value::new_utf8s("testaccount")),
             ("displayname", Value::new_utf8s("testaccount"))
         );

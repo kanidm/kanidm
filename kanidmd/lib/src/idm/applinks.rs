@@ -118,7 +118,7 @@ mod tests {
                 ("class", Value::new_class("account")),
                 ("class", Value::new_class("person")),
                 ("name", Value::new_iname("testaccount")),
-                ("uuid", Value::new_uuid(usr_uuid)),
+                ("uuid", Value::Uuid(usr_uuid)),
                 ("description", Value::new_utf8s("testaccount")),
                 ("displayname", Value::new_utf8s("Test Account"))
             );
@@ -126,7 +126,7 @@ mod tests {
             let e_grp = entry_init!(
                 ("class", Value::new_class("object")),
                 ("class", Value::new_class("group")),
-                ("uuid", Value::new_uuid(grp_uuid)),
+                ("uuid", Value::Uuid(grp_uuid)),
                 ("name", Value::new_iname("test_oauth2_group"))
             );
 

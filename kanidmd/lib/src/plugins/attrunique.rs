@@ -86,7 +86,7 @@ fn enforce_unique<STATE>(
                 // Basically this says where name but also not self.
                 f_and(vec![
                     FC::Eq(attr, v.clone()),
-                    f_andnot(FC::Eq("uuid", PartialValue::new_uuid(*uuid))),
+                    f_andnot(FC::Eq("uuid", PartialValue::Uuid(*uuid))),
                 ])
             })
             .collect()
@@ -121,7 +121,7 @@ fn enforce_unique<STATE>(
                 // Basically this says where name but also not self.
                 f_and(vec![
                     FC::Eq(attr, v),
-                    f_andnot(FC::Eq("uuid", PartialValue::new_uuid(uuid))),
+                    f_andnot(FC::Eq("uuid", PartialValue::Uuid(uuid))),
                 ])
             })
             .collect();

@@ -1710,9 +1710,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .qs_write
             .impersonate_modify_gen_event(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(pce.target))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(pce.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(pce.target))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(pce.target))),
                 &modlist,
                 &pce.ident,
             )
@@ -1789,9 +1789,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .qs_write
             .impersonate_modify_gen_event(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(pce.target))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(pce.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(pce.target))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(pce.target))),
                 &modlist,
                 &pce.ident,
             )
@@ -1856,7 +1856,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .internal_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(target))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(target))),
                 &modlist,
             )
             .map_err(|e| {
@@ -1895,9 +1895,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(gpe.target))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(gpe.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(gpe.target))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(gpe.target))),
                 &modlist,
                 // Provide the event to impersonate
                 &gpe.ident,
@@ -1934,9 +1934,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(gbe.target))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(gbe.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(gbe.target))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(gbe.target))),
                 &modlist,
                 // Provide the event to impersonate
                 &gbe.ident,
@@ -1963,9 +1963,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(account.uuid))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(account.uuid))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(account.uuid))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(account.uuid))),
                 &modlist,
                 &rte.ident,
             )
@@ -2000,9 +2000,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(rrse.target))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(rrse.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(rrse.target))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(rrse.target))),
                 &modlist,
                 // Provide the event to impersonate
                 &rrse.ident,
@@ -2034,7 +2034,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 })?;
 
             self.qs_write.internal_modify(
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(pwu.target_uuid))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(pwu.target_uuid))),
                 &modlist,
             )
         } else {
@@ -2068,7 +2068,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 })?;
 
             self.qs_write.internal_modify(
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(pwu.target_uuid))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(pwu.target_uuid))),
                 &modlist,
             )
         } else {
@@ -2094,7 +2094,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         if let Some(modlist) = opt_modlist {
             self.qs_write.internal_modify(
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(wci.target_uuid))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(wci.target_uuid))),
                 &modlist,
             )
         } else {
@@ -2120,7 +2120,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })?;
 
         self.qs_write.internal_modify(
-            &filter_all!(f_eq("uuid", PartialValue::new_uuid(bcr.target_uuid))),
+            &filter_all!(f_eq("uuid", PartialValue::Uuid(bcr.target_uuid))),
             &modlist,
         )
     }
@@ -2154,7 +2154,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         self.qs_write
             .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::new_uuid(asr.target_uuid))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(asr.target_uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -2180,7 +2180,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ]);
 
         self.qs_write.internal_modify(
-            &filter_all!(f_eq("uuid", PartialValue::new_uuid(o2cg.target_uuid))),
+            &filter_all!(f_eq("uuid", PartialValue::Uuid(o2cg.target_uuid))),
             &modlist,
         )
     }
@@ -2206,7 +2206,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         self.qs_write
             .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::new_uuid(osr.target_uuid))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(osr.target_uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -4018,7 +4018,7 @@ mod tests {
                 let mut idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
                 let me_reset_tokens = unsafe {
                     ModifyEvent::new_internal_invalid(
-                        filter!(f_eq("uuid", PartialValue::new_uuid(UUID_DOMAIN_INFO))),
+                        filter!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO))),
                         ModifyList::new_list(vec![
                             Modify::Purged(AttrString::from("fernet_private_key_str")),
                             Modify::Purged(AttrString::from("es256_private_key_der")),
@@ -4065,7 +4065,7 @@ mod tests {
                 ("class", Value::new_class("account")),
                 ("class", Value::new_class("service_account")),
                 ("name", Value::new_iname("testaccount")),
-                ("uuid", Value::new_uuid(target_uuid)),
+                ("uuid", Value::Uuid(target_uuid)),
                 ("description", Value::new_utf8s("testaccount")),
                 ("displayname", Value::new_utf8s("Test Account"))
             );

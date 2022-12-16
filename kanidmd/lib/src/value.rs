@@ -423,24 +423,12 @@ impl PartialValue {
         matches!(self, PartialValue::Bool(_))
     }
 
-    pub fn new_uuid(u: Uuid) -> Self {
-        PartialValue::Uuid(u)
-    }
-
-    pub fn new_uuids(us: &str) -> Option<Self> {
+    pub fn new_uuid_s(us: &str) -> Option<Self> {
         Uuid::parse_str(us).map(PartialValue::Uuid).ok()
     }
 
     pub fn is_uuid(&self) -> bool {
         matches!(self, PartialValue::Uuid(_))
-    }
-
-    pub fn new_refer(u: Uuid) -> Self {
-        PartialValue::Refer(u)
-    }
-
-    pub fn new_refer_r(u: &Uuid) -> Self {
-        PartialValue::Refer(*u)
     }
 
     pub fn new_refer_s(us: &str) -> Option<Self> {
@@ -970,11 +958,7 @@ impl Value {
         matches!(self, Value::Iname(_))
     }
 
-    pub fn new_uuid(u: Uuid) -> Self {
-        Value::Uuid(u)
-    }
-
-    pub fn new_uuids(s: &str) -> Option<Self> {
+    pub fn new_uuid_s(s: &str) -> Option<Self> {
         Uuid::parse_str(s).map(Value::Uuid).ok()
     }
 
@@ -1018,14 +1002,6 @@ impl Value {
 
     pub fn is_index(&self) -> bool {
         matches!(self, Value::Index(_))
-    }
-
-    pub fn new_refer(u: Uuid) -> Self {
-        Value::Refer(u)
-    }
-
-    pub fn new_refer_r(u: &Uuid) -> Self {
-        Value::Refer(*u)
     }
 
     pub fn new_refer_s(us: &str) -> Option<Self> {

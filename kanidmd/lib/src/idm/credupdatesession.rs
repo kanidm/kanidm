@@ -453,7 +453,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .internal_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(account.uuid))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(account.uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -627,7 +627,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .internal_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(account.uuid))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(account.uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -808,7 +808,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .internal_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(session.account.uuid))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(session.account.uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -868,7 +868,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             self.qs_write
                 .internal_modify(
                     // Filter as executed
-                    &filter!(f_eq("uuid", PartialValue::new_uuid(session.account.uuid))),
+                    &filter!(f_eq("uuid", PartialValue::Uuid(session.account.uuid))),
                     &modlist,
                 )
                 .map_err(|e| {
@@ -1508,7 +1508,7 @@ mod tests {
             ("class", Value::new_class("account")),
             ("class", Value::new_class("service_account")),
             ("name", Value::new_iname("user_account_only")),
-            ("uuid", Value::new_uuid(testaccount_uuid)),
+            ("uuid", Value::Uuid(testaccount_uuid)),
             ("description", Value::new_utf8s("testaccount")),
             ("displayname", Value::new_utf8s("testaccount"))
         );
@@ -1518,7 +1518,7 @@ mod tests {
             ("class", Value::new_class("account")),
             ("class", Value::new_class("person")),
             ("name", Value::new_iname("testperson")),
-            ("uuid", Value::new_uuid(TESTPERSON_UUID)),
+            ("uuid", Value::Uuid(TESTPERSON_UUID)),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson"))
         );
@@ -1612,7 +1612,7 @@ mod tests {
             ("class", Value::new_class("account")),
             ("class", Value::new_class("person")),
             ("name", Value::new_iname("testperson")),
-            ("uuid", Value::new_uuid(TESTPERSON_UUID)),
+            ("uuid", Value::Uuid(TESTPERSON_UUID)),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson"))
         );

@@ -52,7 +52,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .modset
             .keys()
             .copied()
-            .map(|u| f_eq("uuid", PartialValue::new_uuid(u)))
+            .map(|u| f_eq("uuid", PartialValue::Uuid(u)))
             .collect();
 
         let filter = filter_all!(f_or(filter_or))

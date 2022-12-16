@@ -142,7 +142,7 @@ mod tests {
             ("class", Value::new_class("person")),
             ("class", Value::new_class("account")),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::new_uuid(tuuid)),
+            ("uuid", Value::Uuid(tuuid)),
             ("description", Value::new_utf8s("testperson1")),
             ("displayname", Value::new_utf8s("testperson1"))
         );
@@ -152,7 +152,7 @@ mod tests {
 
         // Create a fake session.
         let session_id = Uuid::new_v4();
-        let pv_session_id = PartialValue::new_refer(session_id);
+        let pv_session_id = PartialValue::Refer(session_id);
         let expiry = Some(exp_curtime_odt);
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
@@ -178,10 +178,7 @@ mod tests {
         let modlist = ModifyList::new_append("user_auth_token_session", session);
 
         server_txn
-            .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::new_uuid(tuuid))),
-                &modlist,
-            )
+            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
             .expect("Failed to modify user");
 
         // Still there
@@ -198,10 +195,7 @@ mod tests {
             ModifyList::new_purge_and_set("description", Value::new_utf8s("test person 1 change"));
 
         server_txn
-            .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::new_uuid(tuuid))),
-                &modlist,
-            )
+            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
             .expect("Failed to modify user");
 
         // Session gone.
@@ -234,7 +228,7 @@ mod tests {
             ("class", Value::new_class("person")),
             ("class", Value::new_class("account")),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::new_uuid(tuuid)),
+            ("uuid", Value::Uuid(tuuid)),
             ("description", Value::new_utf8s("testperson1")),
             ("displayname", Value::new_utf8s("testperson1"))
         );
@@ -243,7 +237,7 @@ mod tests {
             ("class", Value::new_class("object")),
             ("class", Value::new_class("oauth2_resource_server")),
             ("class", Value::new_class("oauth2_resource_server_basic")),
-            ("uuid", Value::new_uuid(rs_uuid)),
+            ("uuid", Value::Uuid(rs_uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
             (
@@ -264,10 +258,10 @@ mod tests {
         // Create a fake session and oauth2 session.
 
         let session_id = Uuid::new_v4();
-        let pv_session_id = PartialValue::new_refer(session_id);
+        let pv_session_id = PartialValue::Refer(session_id);
 
         let parent = Uuid::new_v4();
-        let pv_parent_id = PartialValue::new_refer(parent);
+        let pv_parent_id = PartialValue::Refer(parent);
         let expiry = Some(exp_curtime_odt);
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
@@ -310,10 +304,7 @@ mod tests {
         ]);
 
         server_txn
-            .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::new_uuid(tuuid))),
-                &modlist,
-            )
+            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
             .expect("Failed to modify user");
 
         // Still there
@@ -334,10 +325,7 @@ mod tests {
             ModifyList::new_purge_and_set("description", Value::new_utf8s("test person 1 change"));
 
         server_txn
-            .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::new_uuid(tuuid))),
-                &modlist,
-            )
+            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
             .expect("Failed to modify user");
 
         // Session gone.
@@ -369,7 +357,7 @@ mod tests {
             ("class", Value::new_class("person")),
             ("class", Value::new_class("account")),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::new_uuid(tuuid)),
+            ("uuid", Value::Uuid(tuuid)),
             ("description", Value::new_utf8s("testperson1")),
             ("displayname", Value::new_utf8s("testperson1"))
         );
@@ -378,7 +366,7 @@ mod tests {
             ("class", Value::new_class("object")),
             ("class", Value::new_class("oauth2_resource_server")),
             ("class", Value::new_class("oauth2_resource_server_basic")),
-            ("uuid", Value::new_uuid(rs_uuid)),
+            ("uuid", Value::Uuid(rs_uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
             (
@@ -399,10 +387,10 @@ mod tests {
         // Create a fake session and oauth2 session.
 
         let session_id = Uuid::new_v4();
-        let pv_session_id = PartialValue::new_refer(session_id);
+        let pv_session_id = PartialValue::Refer(session_id);
 
         let parent = Uuid::new_v4();
-        let pv_parent_id = PartialValue::new_refer(parent);
+        let pv_parent_id = PartialValue::Refer(parent);
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
         let scope = AccessScope::IdentityOnly;
@@ -444,10 +432,7 @@ mod tests {
         ]);
 
         server_txn
-            .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::new_uuid(tuuid))),
-                &modlist,
-            )
+            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
             .expect("Failed to modify user");
 
         // Still there
@@ -465,10 +450,7 @@ mod tests {
         let modlist = ModifyList::new_remove("user_auth_token_session", pv_parent_id.clone());
 
         server_txn
-            .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::new_uuid(tuuid))),
-                &modlist,
-            )
+            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
             .expect("Failed to modify user");
 
         // Session gone.
@@ -503,7 +485,7 @@ mod tests {
             ("class", Value::new_class("person")),
             ("class", Value::new_class("account")),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::new_uuid(tuuid)),
+            ("uuid", Value::Uuid(tuuid)),
             ("description", Value::new_utf8s("testperson1")),
             ("displayname", Value::new_utf8s("testperson1"))
         );
@@ -512,7 +494,7 @@ mod tests {
             ("class", Value::new_class("object")),
             ("class", Value::new_class("oauth2_resource_server")),
             ("class", Value::new_class("oauth2_resource_server_basic")),
-            ("uuid", Value::new_uuid(rs_uuid)),
+            ("uuid", Value::Uuid(rs_uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
             (
@@ -532,7 +514,7 @@ mod tests {
 
         // Create a fake session.
         let session_id = Uuid::new_v4();
-        let pv_session_id = PartialValue::new_refer(session_id);
+        let pv_session_id = PartialValue::Refer(session_id);
 
         let parent = Uuid::new_v4();
         let issued_at = curtime_odt;
@@ -553,10 +535,7 @@ mod tests {
         let modlist = ModifyList::new_append("oauth2_session", session);
 
         server_txn
-            .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::new_uuid(tuuid))),
-                &modlist,
-            )
+            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
             .expect("Failed to modify user");
 
         // Still there
@@ -576,10 +555,7 @@ mod tests {
             ModifyList::new_purge_and_set("description", Value::new_utf8s("test person 1 change"));
 
         server_txn
-            .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::new_uuid(tuuid))),
-                &modlist,
-            )
+            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
             .expect("Failed to modify user");
 
         // Session gone.

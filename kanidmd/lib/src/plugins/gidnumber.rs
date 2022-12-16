@@ -112,7 +112,7 @@ mod tests {
             ("name", Value::new_iname("testperson")),
             (
                 "uuid",
-                Value::new_uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
+                Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson"))
@@ -207,7 +207,7 @@ mod tests {
             ("name", Value::new_iname("testperson")),
             (
                 "uuid",
-                Value::new_uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
+                Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson"))
@@ -239,7 +239,7 @@ mod tests {
             ("name", Value::new_iname("testperson")),
             (
                 "uuid",
-                Value::new_uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
+                Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson"))
@@ -273,7 +273,7 @@ mod tests {
             ("name", Value::new_iname("testperson")),
             (
                 "uuid",
-                Value::new_uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-000000000244"))
+                Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-000000000244"))
             ),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson"))

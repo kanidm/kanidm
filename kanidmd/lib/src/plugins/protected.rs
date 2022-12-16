@@ -273,14 +273,14 @@ mod tests {
             ("class", Value::new_class("memberof")),
             ("name", Value::new_iname("test_account_1")),
             ("displayname", Value::new_utf8s("test_account_1")),
-            ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT)),
-            ("memberof", Value::new_refer(UUID_TEST_GROUP))
+            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT)),
+            ("memberof", Value::Refer(UUID_TEST_GROUP))
         );
         pub static ref TEST_GROUP: EntryInitNew = entry_init!(
             ("class", Value::new_class("group")),
             ("name", Value::new_iname("test_group_a")),
-            ("uuid", Value::new_uuid(UUID_TEST_GROUP)),
-            ("member", Value::new_refer(UUID_TEST_ACCOUNT))
+            ("uuid", Value::Uuid(UUID_TEST_GROUP)),
+            ("member", Value::Refer(UUID_TEST_ACCOUNT))
         );
         pub static ref ALLOW_ALL: EntryInitNew = entry_init!(
             ("class", Value::new_class("object")),
@@ -290,7 +290,7 @@ mod tests {
             ("class", Value::new_class("access_control_delete")),
             ("class", Value::new_class("access_control_search")),
             ("name", Value::new_iname("idm_admins_acp_allow_all_test")),
-            ("uuid", Value::new_uuid(UUID_TEST_ACP)),
+            ("uuid", Value::Uuid(UUID_TEST_ACP)),
             ("acp_receiver_group", Value::Refer(UUID_TEST_GROUP)),
             (
                 "acp_targetscope",

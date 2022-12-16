@@ -953,7 +953,7 @@ pub async fn group_get_id_unix_token(req: tide::Request<AppState>) -> tide::Resu
 }
 
 pub async fn domain_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("uuid", PartialValue::new_uuid(UUID_DOMAIN_INFO)));
+    let filter = filter_all!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO)));
     json_rest_event_get(req, filter, None).await
 }
 
@@ -974,7 +974,7 @@ pub async fn domain_delete_attr(req: tide::Request<AppState>) -> tide::Result {
 }
 
 pub async fn system_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("uuid", PartialValue::new_uuid(UUID_SYSTEM_CONFIG)));
+    let filter = filter_all!(f_eq("uuid", PartialValue::Uuid(UUID_SYSTEM_CONFIG)));
     json_rest_event_get(req, filter, None).await
 }
 

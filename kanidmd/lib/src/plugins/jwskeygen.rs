@@ -111,7 +111,7 @@ mod tests {
             ("class", Value::new_class("object")),
             ("class", Value::new_class("oauth2_resource_server")),
             ("class", Value::new_class("oauth2_resource_server_basic")),
-            ("uuid", Value::new_uuid(uuid)),
+            ("uuid", Value::Uuid(uuid)),
             ("displayname", Value::new_utf8s("test_resource_server")),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             (
@@ -150,7 +150,7 @@ mod tests {
             ("class", Value::new_class("object")),
             ("class", Value::new_class("oauth2_resource_server")),
             ("class", Value::new_class("oauth2_resource_server_basic")),
-            ("uuid", Value::new_uuid(uuid)),
+            ("uuid", Value::Uuid(uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
             (
@@ -171,7 +171,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid(uuid))),
+            filter!(f_eq("uuid", PartialValue::Uuid(uuid))),
             ModifyList::new_list(vec![
                 Modify::Purged(AttrString::from("oauth2_rs_basic_secret"),),
                 Modify::Purged(AttrString::from("oauth2_rs_token_key"),)

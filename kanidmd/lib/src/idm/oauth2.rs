@@ -529,10 +529,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 )]);
 
                 self.qs_write
-                    .internal_modify(
-                        &filter!(f_eq("uuid", PartialValue::new_uuid(uuid))),
-                        &modlist,
-                    )
+                    .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(uuid))), &modlist)
                     .map_err(|e| {
                         admin_error!("Failed to modify - revoke oauth2 session {:?}", e);
                         Oauth2Error::ServerError(e)
@@ -1659,7 +1656,7 @@ mod tests {
             ("class", Value::new_class("object")),
             ("class", Value::new_class("oauth2_resource_server")),
             ("class", Value::new_class("oauth2_resource_server_basic")),
-            ("uuid", Value::new_uuid(uuid)),
+            ("uuid", Value::Uuid(uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
             (

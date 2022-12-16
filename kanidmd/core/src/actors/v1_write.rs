@@ -125,7 +125,7 @@ impl QueryServerWriteV1 {
                 e
             })?;
 
-        let f_uuid = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
+        let f_uuid = filter_all!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
         // Add any supplemental conditions we have.
         let joined_filter = Filter::join_parts_and(f_uuid, filter);
 

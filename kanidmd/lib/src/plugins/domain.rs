@@ -59,7 +59,7 @@ impl Domain {
                 && e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)
             {
                 // We always set this, because the DB uuid is authorative.
-                let u = Value::new_uuid(qs.get_domain_uuid());
+                let u = Value::Uuid(qs.get_domain_uuid());
                 e.set_ava("domain_uuid", once(u));
                 trace!("plugin_domain: Applying uuid transform");
 
@@ -117,6 +117,6 @@ mod tests {
 
         let u_dom = server_txn.get_domain_uuid();
 
-        assert!(e_dom.attribute_equality("domain_uuid", &PartialValue::new_uuid(u_dom)));
+        assert!(e_dom.attribute_equality("domain_uuid", &PartialValue::Uuid(u_dom)));
     }
 }

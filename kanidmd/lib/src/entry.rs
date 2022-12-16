@@ -383,7 +383,7 @@ impl Entry<EntryInit, EntryNew> {
                     }
                     "uuid" | "domain_uuid" => {
                         valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_uuids(v.as_str())
+                            vs.into_iter().map(|v| Value::new_uuid_s(v.as_str())
                                 .unwrap_or_else(|| {
                                     warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
                                     Value::new_utf8(v)
@@ -1143,7 +1143,7 @@ impl Entry<EntrySealed, EntryCommitted> {
             .get("spn")
             .and_then(|vs| vs.to_value_single())
             .or_else(|| self.attrs.get("name").and_then(|vs| vs.to_value_single()))
-            .unwrap_or_else(|| Value::new_uuid(self.get_uuid()))
+            .unwrap_or_else(|| Value::Uuid(self.get_uuid()))
     }
 
     #[inline]
@@ -2553,6 +2553,7 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
 
 #[cfg(test)]
 mod tests {
+    use crate::prelude::*;
     use std::collections::BTreeSet as Set;
 
     use hashbrown::HashMap;
@@ -2897,7 +2898,7 @@ mod tests {
             e.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
             e.add_ava(
                 "uuid",
-                Value::new_uuids("9fec0398-c46c-4df4-9df5-b0016f7d563f").unwrap(),
+                Value::Uuid(uuid!("9fec0398-c46c-4df4-9df5-b0016f7d563f")),
             );
             let e = unsafe { e.into_sealed_committed() };
 

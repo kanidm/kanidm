@@ -177,9 +177,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(gte.target))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(gte.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(gte.target))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(gte.target))),
                 &modlist,
                 // Provide the event to impersonate
                 &gte.ident,
@@ -366,7 +366,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let filter_or = change_entries
             .keys()
             .copied()
-            .map(|u| f_eq("uuid", PartialValue::new_uuid(u)))
+            .map(|u| f_eq("uuid", PartialValue::Uuid(u)))
             .collect();
 
         // NOTE: We bypass recycled/ts here because we WANT to know if we are in that
@@ -419,7 +419,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     ("class", Value::new_class("object")),
                     ("class", Value::new_class("sync_object")),
                     ("sync_parent_uuid", Value::Refer(sync_uuid)),
-                    ("uuid", Value::new_uuid(u))
+                    ("uuid", Value::Uuid(u))
                 )
             })
             .collect();
@@ -492,7 +492,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let filter_or = change_entries
             .keys()
             .copied()
-            .map(|u| f_eq("uuid", PartialValue::new_uuid(u)))
+            .map(|u| f_eq("uuid", PartialValue::Uuid(u)))
             .collect::<Vec<_>>();
 
         let delete_filter = if filter_or.is_empty() {
@@ -862,7 +862,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let filter_or = delete_uuids
             .iter()
             .copied()
-            .map(|u| f_eq("uuid", PartialValue::new_uuid(u)))
+            .map(|u| f_eq("uuid", PartialValue::Uuid(u)))
             .collect();
 
         // NOTE: We bypass recycled/ts here because we WANT to know if we are in that
@@ -888,7 +888,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     );
                     Some(Err(OperationError::AccessDenied))
                 } else {
-                    Some(Ok(f_eq("uuid", PartialValue::new_uuid(ent.get_uuid()))))
+                    Some(Ok(f_eq("uuid", PartialValue::Uuid(ent.get_uuid()))))
                 }
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -1007,7 +1007,7 @@ mod tests {
             ("class", Value::new_class("object")),
             ("class", Value::new_class("sync_account")),
             ("name", Value::new_iname("test_scim_sync")),
-            ("uuid", Value::new_uuid(sync_uuid)),
+            ("uuid", Value::Uuid(sync_uuid)),
             ("description", Value::new_utf8s("A test sync agreement"))
         );
 
@@ -1075,7 +1075,7 @@ mod tests {
                 ("class", Value::new_class("object")),
                 ("class", Value::new_class("sync_account")),
                 ("name", Value::new_iname("test_scim_sync")),
-                ("uuid", Value::new_uuid(sync_uuid)),
+                ("uuid", Value::Uuid(sync_uuid)),
                 ("description", Value::new_utf8s("A test sync agreement"))
             );
 
@@ -1197,7 +1197,7 @@ mod tests {
             ("class", Value::new_class("object")),
             ("class", Value::new_class("sync_account")),
             ("name", Value::new_iname("test_scim_sync")),
-            ("uuid", Value::new_uuid(sync_uuid)),
+            ("uuid", Value::Uuid(sync_uuid)),
             ("description", Value::new_utf8s("A test sync agreement"))
         );
 
