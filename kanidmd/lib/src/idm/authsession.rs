@@ -1514,6 +1514,7 @@ mod tests {
 
             let resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
+                .map(Box::new)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1547,6 +1548,7 @@ mod tests {
             let resp = wa
                 // HERE -> we use inv_chal instead.
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), inv_chal)
+                .map(Box::new)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1585,6 +1587,7 @@ mod tests {
             // Create the response.
             let resp = inv_wa
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
+                .map(Box::new)
                 .expect("Failed to use softtoken for response.");
 
             let (mut session, _chal) = start_webauthn_only_session!(&mut audit, account, &webauthn);
@@ -1679,6 +1682,7 @@ mod tests {
             let resp = wa
                 // HERE -> we use inv_chal instead.
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), inv_chal)
+                .map(Box::new)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1702,6 +1706,7 @@ mod tests {
 
             let resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
+                .map(Box::new)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1742,6 +1747,7 @@ mod tests {
 
             let resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
+                .map(Box::new)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1862,6 +1868,7 @@ mod tests {
             let resp = wa
                 // HERE -> we use inv_chal instead.
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), inv_chal)
+                .map(Box::new)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1885,6 +1892,7 @@ mod tests {
 
             let resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
+                .map(Box::new)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1988,6 +1996,7 @@ mod tests {
 
             let resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
+                .map(Box::new)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(

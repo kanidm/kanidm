@@ -199,6 +199,7 @@ impl LoginOpt {
         println!("Your authenticator will now flash for you to interact with it.");
         let auth = wa
             .do_authentication(client.get_origin().clone(), pkr)
+            .map(Box::new)
             .unwrap_or_else(|e| {
                 error!("Failed to interact with webauthn device. -- {:?}", e);
                 std::process::exit(1);
@@ -216,6 +217,7 @@ impl LoginOpt {
         println!("Your authenticator will now flash for you to interact with it.");
         let auth = wa
             .do_authentication(client.get_origin().clone(), pkr)
+            .map(Box::new)
             .unwrap_or_else(|e| {
                 error!("Failed to interact with webauthn device. -- {:?}", e);
                 std::process::exit(1);

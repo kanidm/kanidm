@@ -682,7 +682,7 @@ impl Component for LoginApp {
                 #[cfg(debug_assertions)]
                 console::debug!("At securitykey step".to_string());
                 let authreq = AuthRequest {
-                    step: AuthStep::Cred(AuthCredential::SecurityKey(resp)),
+                    step: AuthStep::Cred(AuthCredential::SecurityKey(Box::new(resp))),
                 };
                 let session_id = self.session_id.clone();
                 ctx.link().send_future(async {
@@ -698,7 +698,7 @@ impl Component for LoginApp {
                 #[cfg(debug_assertions)]
                 console::debug!("At passkey step".to_string());
                 let authreq = AuthRequest {
-                    step: AuthStep::Cred(AuthCredential::Passkey(resp)),
+                    step: AuthStep::Cred(AuthCredential::Passkey(Box::new(resp))),
                 };
                 let session_id = self.session_id.clone();
                 ctx.link().send_future(async {

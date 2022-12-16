@@ -998,7 +998,7 @@ impl KanidmClient {
 
     pub async fn auth_step_securitykey_complete(
         &self,
-        pkc: PublicKeyCredential,
+        pkc: Box<PublicKeyCredential>,
     ) -> Result<AuthResponse, ClientError> {
         let auth_req = AuthRequest {
             step: AuthStep::Cred(AuthCredential::SecurityKey(pkc)),
@@ -1015,7 +1015,7 @@ impl KanidmClient {
 
     pub async fn auth_step_passkey_complete(
         &self,
-        pkc: PublicKeyCredential,
+        pkc: Box<PublicKeyCredential>,
     ) -> Result<AuthResponse, ClientError> {
         let auth_req = AuthRequest {
             step: AuthStep::Cred(AuthCredential::Passkey(pkc)),
@@ -1211,7 +1211,7 @@ impl KanidmClient {
         }
     }
 
-    pub async fn auth_passkey_complete(&self, pkc: PublicKeyCredential) -> Result<(), ClientError> {
+    pub async fn auth_passkey_complete(&self, pkc: Box<PublicKeyCredential>) -> Result<(), ClientError> {
         let r = self.auth_step_passkey_complete(pkc).await?;
         match r.state {
             AuthState::Success(_token) => Ok(()),

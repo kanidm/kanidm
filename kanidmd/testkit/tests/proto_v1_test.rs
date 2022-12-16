@@ -1161,6 +1161,7 @@ async fn test_server_credential_update_session_passkey(rsclient: KanidmClient) {
 
     let pkc = wa
         .do_authentication(rsclient.get_origin().clone(), res)
+        .map(Box::new)
         .expect("Failed to authentication with soft passkey");
 
     let res = rsclient.auth_passkey_complete(pkc).await;

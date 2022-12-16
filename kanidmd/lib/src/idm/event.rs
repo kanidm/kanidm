@@ -406,7 +406,7 @@ impl AuthEventStep {
     pub fn cred_step_passkey(sid: Uuid, passkey_response: PublicKeyCredential) -> Self {
         AuthEventStep::Cred(AuthEventStepCred {
             sessionid: sid,
-            cred: AuthCredential::Passkey(passkey_response),
+            cred: AuthCredential::Passkey(Box::new(passkey_response)),
         })
     }
 }

@@ -862,10 +862,10 @@ pub enum AuthCredential {
     Anonymous,
     Password(String),
     Totp(u32),
-    SecurityKey(PublicKeyCredential),
+    SecurityKey(Box<PublicKeyCredential>),
     BackupCode(String),
     // Should this just be discoverable?
-    Passkey(PublicKeyCredential),
+    Passkey(Box<PublicKeyCredential>),
 }
 
 impl fmt::Debug for AuthCredential {
@@ -920,17 +920,16 @@ pub enum AuthStep {
     // name
     Init(String),
     // A new way to issue sessions. Doing this as a new init type
-    // to prevent breaking existing clients.
+    // to prevent breaking existing clients. Allows requesting of the type
+    // of session that will be issued at the end if successful.
     Init2 {
         username: String,
         issue: AuthIssueSession,
     },
     // We want to talk to you like this.
     Begin(AuthMech),
-    // Step
+    // Provide a response to a challenge.
     Cred(AuthCredential),
-    // Should we have a "finalise" type to attempt to finish based on
-    // what we have given?
 }
 
 // Request auth for identity X with roles Y?
