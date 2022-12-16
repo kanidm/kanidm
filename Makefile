@@ -13,7 +13,7 @@ BOOK_VERSION ?= master
 
 .DEFAULT: help
 help:
-	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##/\n\t/'
+	@grep -E -h '\s##\s' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 buildx/kanidmd/x86_64_v3: ## build multiarch server images
 buildx/kanidmd/x86_64_v3:
