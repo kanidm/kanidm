@@ -156,7 +156,7 @@ impl Account {
     #[instrument(level = "trace", skip_all)]
     pub(crate) fn try_from_entry_ro(
         value: &Entry<EntrySealed, EntryCommitted>,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let groups = Group::try_from_account_entry_ro(value, qs)?;
         try_from_entry!(value, groups)
