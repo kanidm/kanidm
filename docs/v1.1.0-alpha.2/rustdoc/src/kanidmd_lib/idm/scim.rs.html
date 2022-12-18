@@ -2192,9 +2192,6 @@
 <span id="2192">2192</span>
 <span id="2193">2193</span>
 <span id="2194">2194</span>
-<span id="2195">2195</span>
-<span id="2196">2196</span>
-<span id="2197">2197</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>base64urlsafedata::Base64UrlSafeData;
@@ -2332,7 +2329,7 @@
         <span class="comment">// Get the target signing key.
         </span><span class="kw">let </span>sync_account = <span class="self">self
             </span>.qs_write
-            .internal_search_uuid(<span class="kw-2">&amp;</span>gte.target)
+            .internal_search_uuid(gte.target)
             .and_then(|entry| SyncAccount::try_from_entry_rw(<span class="kw-2">&amp;</span>entry))
             .map_err(|e| {
                 <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Failed to search service account&quot;</span>);
@@ -2374,9 +2371,9 @@
         <span class="self">self</span>.qs_write
             .impersonate_modify(
                 <span class="comment">// Filter as executed
-                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(gte.target))),
+                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(gte.target))),
                 <span class="comment">// Filter as intended (acp)
-                </span><span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(gte.target))),
+                </span><span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(gte.target))),
                 <span class="kw-2">&amp;</span>modlist,
                 <span class="comment">// Provide the event to impersonate
                 </span><span class="kw-2">&amp;</span>gte.ident,
@@ -2495,13 +2492,10 @@
         };
 
         <span class="comment">// Retrieve the related sync entry.
-        </span><span class="kw">let </span>sync_entry = <span class="self">self
-            </span>.qs_write
-            .internal_search_uuid(<span class="kw-2">&amp;</span>sync_uuid)
-            .map_err(|e| {
-                <span class="macro">error!</span>(<span class="string">&quot;Failed to located sync entry related to {}&quot;</span>, sync_uuid);
-                e
-            })<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>sync_entry = <span class="self">self</span>.qs_write.internal_search_uuid(sync_uuid).map_err(|e| {
+            <span class="macro">error!</span>(<span class="string">&quot;Failed to located sync entry related to {}&quot;</span>, sync_uuid);
+            e
+        })<span class="question-mark">?</span>;
 
         <span class="comment">// Assert that the requested &quot;from&quot; state is consistent to this entry.
         // OperationError::InvalidSyncState
@@ -2566,7 +2560,7 @@
         </span><span class="kw">let </span>filter_or = change_entries
             .keys()
             .copied()
-            .map(|u| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(u)))
+            .map(|u| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(u)))
             .collect();
 
         <span class="comment">// NOTE: We bypass recycled/ts here because we WANT to know if we are in that
@@ -2619,7 +2613,7 @@
                     (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
                     (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;sync_object&quot;</span>)),
                     (<span class="string">&quot;sync_parent_uuid&quot;</span>, Value::Refer(sync_uuid)),
-                    (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(u))
+                    (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(u))
                 )
             })
             .collect();
@@ -2692,7 +2686,7 @@
         </span><span class="kw">let </span>filter_or = change_entries
             .keys()
             .copied()
-            .map(|u| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(u)))
+            .map(|u| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(u)))
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
         <span class="kw">let </span>delete_filter = <span class="kw">if </span>filter_or.is_empty() {
@@ -2744,7 +2738,7 @@
                 SyntaxType::Utf8StringIname,
                 <span class="bool-val">false</span>,
                 ScimAttr::SingleSimple(ScimSimpleAttr::String(value)),
-            ) =&gt; <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[Value::new_iname(<span class="kw-2">&amp;</span>value)]),
+            ) =&gt; <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[Value::new_iname(value)]),
             (
                 SyntaxType::Utf8String,
                 <span class="bool-val">false</span>,
@@ -2920,7 +2914,7 @@
 
         <span class="macro">debug!</span>(<span class="question-mark">?</span>sync_owned_attrs);
 
-        <span class="kw">for </span>attr <span class="kw">in </span>sync_owned_attrs.iter().map(|a| <span class="kw-2">*</span>a) {
+        <span class="kw">for </span>attr <span class="kw">in </span>sync_owned_attrs.iter().copied() {
             <span class="kw">if </span>!phantom_attr_set.contains(attr) {
                 <span class="comment">// These are the attrs that are &quot;real&quot; and need to be cleaned out first.
                 </span>mods.push(Modify::Purged(attr.into()));
@@ -3062,7 +3056,7 @@
         </span><span class="kw">let </span>filter_or = delete_uuids
             .iter()
             .copied()
-            .map(|u| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(u)))
+            .map(|u| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(u)))
             .collect();
 
         <span class="comment">// NOTE: We bypass recycled/ts here because we WANT to know if we are in that
@@ -3088,7 +3082,7 @@
                     );
                     <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(OperationError::AccessDenied))
                 } <span class="kw">else </span>{
-                    <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(ent.get_uuid()))))
+                    <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(ent.get_uuid()))))
                 }
             })
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
@@ -3150,7 +3144,7 @@
             }
             IdentType::Synch(u) =&gt; {
                 <span class="comment">// Ok!
-                </span>u
+                </span><span class="kw-2">*</span>u
             }
         };
 
@@ -3207,7 +3201,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;sync_account&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_scim_sync&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(sync_uuid)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(sync_uuid)),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;A test sync agreement&quot;</span>))
         );
 
@@ -3275,7 +3269,7 @@
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;sync_account&quot;</span>)),
                 (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_scim_sync&quot;</span>)),
-                (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(sync_uuid)),
+                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(sync_uuid)),
                 (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;A test sync agreement&quot;</span>))
             );
 
@@ -3348,7 +3342,7 @@
 
             </span><span class="kw">let </span>sync_entry = idms_prox_read
                 .qs_read
-                .internal_search_uuid(<span class="kw-2">&amp;</span>sync_uuid)
+                .internal_search_uuid(sync_uuid)
                 .expect(<span class="string">&quot;Unable to access sync entry&quot;</span>);
 
             <span class="kw">let </span>jws_key = sync_entry
@@ -3397,7 +3391,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;sync_account&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_scim_sync&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(sync_uuid)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(sync_uuid)),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;A test sync agreement&quot;</span>))
         );
 
@@ -3485,7 +3479,7 @@
 
             <span class="kw">let </span>synced_entry = idms_prox_write
                 .qs_write
-                .internal_search_uuid(<span class="kw-2">&amp;</span>user_sync_uuid)
+                .internal_search_uuid(user_sync_uuid)
                 .expect(<span class="string">&quot;Failed to access sync stub entry&quot;</span>);
 
             <span class="macro">assert!</span>(
@@ -3616,7 +3610,7 @@
 
             <span class="kw">let </span>ent = idms_prox_write
                 .qs_write
-                .internal_search_uuid(<span class="kw-2">&amp;</span>user_sync_uuid)
+                .internal_search_uuid(user_sync_uuid)
                 .expect(<span class="string">&quot;Unable to access entry&quot;</span>);
 
             <span class="macro">assert!</span>(ent.get_ava_single_iname(<span class="string">&quot;name&quot;</span>) == <span class="prelude-val">Some</span>(<span class="string">&quot;testgroup&quot;</span>));

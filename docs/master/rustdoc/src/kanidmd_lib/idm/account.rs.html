@@ -1331,7 +1331,7 @@
         <span class="comment">// Get the entry.
         </span><span class="kw">let </span>account_entry = <span class="self">self
             </span>.qs_write
-            .internal_search_uuid(<span class="kw-2">&amp;</span>target_uuid)
+            .internal_search_uuid(target_uuid)
             .map_err(|e| {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to start service account into person -&gt; {:?}&quot;</span>, e);
                 e
@@ -1378,9 +1378,9 @@
         </span><span class="self">self</span>.qs_write
             .impersonate_modify(
                 <span class="comment">// Filter as executed
-                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(target_uuid))),
+                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(target_uuid))),
                 <span class="comment">// Filter as intended (acp)
-                </span><span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(target_uuid))),
+                </span><span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(target_uuid))),
                 <span class="kw-2">&amp;</span>modlist,
                 <span class="comment">// Provide the entry to impersonate
                 </span>ident,
@@ -1487,7 +1487,7 @@
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
                 (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testaccount&quot;</span>)),
-                (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(target_uuid)),
+                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(target_uuid)),
                 (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testaccount&quot;</span>)),
                 (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;Test Account&quot;</span>))
             );
@@ -1496,7 +1496,7 @@
             <span class="macro">assert!</span>(idms_prox_write.qs_write.create(<span class="kw-2">&amp;</span>ce).is_ok());
 
             <span class="kw">let </span>account = idms_prox_write
-                .target_to_account(<span class="kw-2">&amp;</span>target_uuid)
+                .target_to_account(target_uuid)
                 .expect(<span class="string">&quot;account must exist&quot;</span>);
             <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
             <span class="kw">let </span>uat = account
@@ -1523,7 +1523,7 @@
 
             <span class="comment">// Check the ui hints are as expected.
             </span><span class="kw">let </span>account = idms_prox_write
-                .target_to_account(<span class="kw-2">&amp;</span>target_uuid)
+                .target_to_account(target_uuid)
                 .expect(<span class="string">&quot;account must exist&quot;</span>);
             <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
             <span class="kw">let </span>uat = account
@@ -1547,7 +1547,7 @@
 
             <span class="comment">// Check the ui hints are as expected.
             </span><span class="kw">let </span>account = idms_prox_write
-                .target_to_account(<span class="kw-2">&amp;</span>target_uuid)
+                .target_to_account(target_uuid)
                 .expect(<span class="string">&quot;account must exist&quot;</span>);
             <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
             <span class="kw">let </span>uat = account

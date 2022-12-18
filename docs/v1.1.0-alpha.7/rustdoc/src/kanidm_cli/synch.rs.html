@@ -112,7 +112,7 @@
             } =&gt; {
                 <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
                 <span class="kw">match </span>client
-                    .idm_sync_account_create(<span class="kw-2">&amp;</span>account_id, description.as_deref())
+                    .idm_sync_account_create(account_id, description.as_deref())
                     .<span class="kw">await
                 </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
@@ -126,7 +126,7 @@
             } =&gt; {
                 <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
                 <span class="kw">match </span>client
-                    .idm_sync_account_generate_token(<span class="kw-2">&amp;</span>account_id, <span class="kw-2">&amp;</span>label)
+                    .idm_sync_account_generate_token(account_id, label)
                     .<span class="kw">await
                 </span>{
                     <span class="prelude-val">Ok</span>(token) =&gt; <span class="macro">println!</span>(<span class="string">&quot;token: {}&quot;</span>, token),
@@ -135,14 +135,14 @@
             }
             SynchOpt::DestroyToken { account_id, copt } =&gt; {
                 <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
-                <span class="kw">match </span>client.idm_sync_account_destroy_token(<span class="kw-2">&amp;</span>account_id).<span class="kw">await </span>{
+                <span class="kw">match </span>client.idm_sync_account_destroy_token(account_id).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                 }
             }
             SynchOpt::ForceRefresh { account_id, copt } =&gt; {
                 <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
-                <span class="kw">match </span>client.idm_sync_account_force_refresh(<span class="kw-2">&amp;</span>account_id).<span class="kw">await </span>{
+                <span class="kw">match </span>client.idm_sync_account_force_refresh(account_id).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                 }

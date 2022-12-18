@@ -718,7 +718,7 @@ impl fmt::Display for EntryChangelog {
 
                     <span class="kw">if </span>attrs
                         .get(attr)
-                        .map(|vs| vs.contains(<span class="kw-2">&amp;</span>value))
+                        .map(|vs| vs.contains(value))
                         .unwrap_or(<span class="bool-val">false</span>)
                     {
                         <span class="comment">// Valid

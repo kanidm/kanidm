@@ -948,7 +948,7 @@
         </span><span class="kw">let </span>filt = <span class="macro">filter!</span>(FC::Or(
             n_dyn_groups
                 .iter()
-                .map(|e| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(e.get_uuid())))
+                .map(|e| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(e.get_uuid())))
                 .collect()
         ));
         <span class="kw">let </span>work_set = qs.internal_search_writeable(<span class="kw-2">&amp;</span>filt)<span class="question-mark">?</span>;
@@ -1090,14 +1090,14 @@
                 .collect();
 
             <span class="kw">if </span>!matches.is_empty() {
-                <span class="kw">let </span>filt = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(<span class="kw-2">*</span>dg_uuid)));
+                <span class="kw">let </span>filt = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(<span class="kw-2">*</span>dg_uuid)));
                 <span class="kw">let </span><span class="kw-2">mut </span>work_set = qs.internal_search_writeable(<span class="kw-2">&amp;</span>filt)<span class="question-mark">?</span>;
 
                 <span class="kw">if let </span><span class="prelude-val">Some</span>((pre, <span class="kw-2">mut </span>d_group)) = work_set.pop() {
                     matches
                         .iter()
                         .copied()
-                        .for_each(|u| d_group.add_ava(<span class="string">&quot;member&quot;</span>, Value::new_refer(u)));
+                        .for_each(|u| d_group.add_ava(<span class="string">&quot;member&quot;</span>, Value::Refer(u)));
 
                     affected_uuids.extend(matches.into_iter());
                     affected_uuids.push(<span class="kw-2">*</span>dg_uuid);
@@ -1215,13 +1215,13 @@
                 .collect();
 
             <span class="kw">if </span>!matches.is_empty() {
-                <span class="kw">let </span>filt = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(<span class="kw-2">*</span>dg_uuid)));
+                <span class="kw">let </span>filt = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(<span class="kw-2">*</span>dg_uuid)));
                 <span class="kw">let </span><span class="kw-2">mut </span>work_set = qs.internal_search_writeable(<span class="kw-2">&amp;</span>filt)<span class="question-mark">?</span>;
 
                 <span class="kw">if let </span><span class="prelude-val">Some</span>((pre, <span class="kw-2">mut </span>d_group)) = work_set.pop() {
                     matches.iter().copied().for_each(|choice| <span class="kw">match </span>choice {
-                        <span class="prelude-val">Ok</span>(u) =&gt; d_group.add_ava(<span class="string">&quot;member&quot;</span>, Value::new_refer(u)),
-                        <span class="prelude-val">Err</span>(u) =&gt; d_group.remove_ava(<span class="string">&quot;member&quot;</span>, <span class="kw-2">&amp;</span>PartialValue::new_refer(u)),
+                        <span class="prelude-val">Ok</span>(u) =&gt; d_group.add_ava(<span class="string">&quot;member&quot;</span>, Value::Refer(u)),
+                        <span class="prelude-val">Err</span>(u) =&gt; d_group.remove_ava(<span class="string">&quot;member&quot;</span>, <span class="kw-2">&amp;</span>PartialValue::Refer(u)),
                     });
 
                     affected_uuids.extend(matches.into_iter().map(|choice| <span class="kw">match </span>choice {
@@ -1281,7 +1281,7 @@
         <span class="kw">let </span>e_group: Entry&lt;EntryInit, EntryNew&gt; = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testgroup&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_GROUP))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_GROUP))
         );
 
         <span class="kw">let </span>preload = <span class="macro">vec!</span>[e_group];
@@ -1327,7 +1327,7 @@
         <span class="kw">let </span>e_group: Entry&lt;EntryInit, EntryNew&gt; = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testgroup&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_GROUP))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_GROUP))
         );
 
         <span class="kw">let </span>preload = <span class="macro">vec!</span>[e_dyn];
@@ -1376,7 +1376,7 @@
         <span class="kw">let </span>e_group: Entry&lt;EntryInit, EntryNew&gt; = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testgroup&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_GROUP))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_GROUP))
         );
 
         <span class="kw">let </span>preload = <span class="macro">vec!</span>[e_dyn];
@@ -1418,7 +1418,7 @@
         <span class="kw">let </span>e_group: Entry&lt;EntryInit, EntryNew&gt; = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testgroup&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_GROUP))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_GROUP))
         );
 
         <span class="kw">let </span>preload = <span class="macro">vec!</span>[];
@@ -1467,7 +1467,7 @@
         <span class="kw">let </span>e_group: Entry&lt;EntryInit, EntryNew&gt; = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testgroup&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_GROUP))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_GROUP))
         );
 
         <span class="kw">let </span>preload = <span class="macro">vec!</span>[e_dyn, e_group];
@@ -1519,7 +1519,7 @@
         <span class="kw">let </span>e_group: Entry&lt;EntryInit, EntryNew&gt; = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testgroup&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_GROUP))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_GROUP))
         );
 
         <span class="kw">let </span>preload = <span class="macro">vec!</span>[e_dyn, e_group];
@@ -1570,7 +1570,7 @@
         <span class="kw">let </span>e_group: Entry&lt;EntryInit, EntryNew&gt; = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testgroup&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_GROUP))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_GROUP))
         );
 
         <span class="kw">let </span>preload = <span class="macro">vec!</span>[e_dyn, e_group];
@@ -1581,7 +1581,7 @@
             <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;test_dyngroup&quot;</span>))),
             ModifyList::new_list(<span class="macro">vec!</span>[Modify::Present(
                 AttrString::from(<span class="string">&quot;member&quot;</span>),
-                Value::new_refer(UUID_ADMIN)
+                Value::Refer(UUID_ADMIN)
             )]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
@@ -1620,7 +1620,7 @@
         <span class="kw">let </span>e_group: Entry&lt;EntryInit, EntryNew&gt; = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testgroup&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_GROUP))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_GROUP))
         );
 
         <span class="kw">let </span>preload = <span class="macro">vec!</span>[e_dyn, e_group];
@@ -1666,7 +1666,7 @@
         <span class="kw">let </span>e_group: Entry&lt;EntryInit, EntryNew&gt; = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;not_testgroup&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_GROUP))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_GROUP))
         );
 
         <span class="kw">let </span>preload = <span class="macro">vec!</span>[e_dyn, e_group];
@@ -1715,7 +1715,7 @@
         <span class="kw">let </span>e_group: Entry&lt;EntryInit, EntryNew&gt; = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testgroup&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_GROUP))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_GROUP))
         );
 
         <span class="kw">let </span>preload = <span class="macro">vec!</span>[e_dyn, e_group];
@@ -1760,7 +1760,7 @@
         <span class="kw">let </span>e_group: Entry&lt;EntryInit, EntryNew&gt; = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testgroup&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_GROUP))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_GROUP))
         );
 
         <span class="kw">let </span>preload = <span class="macro">vec!</span>[e_dyn, e_group];
@@ -1800,7 +1800,7 @@
         <span class="kw">let </span>e_group: Entry&lt;EntryInit, EntryNew&gt; = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testgroup&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_GROUP))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_GROUP))
         );
 
         <span class="kw">let </span>preload = <span class="macro">vec!</span>[e_dyn, e_group];

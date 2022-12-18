@@ -415,7 +415,7 @@
         cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryNew&gt;&gt;,
         _ce: <span class="kw-2">&amp;</span>CreateEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        cand.iter_mut().try_for_each(|e| apply_gidnumber(e))
+        cand.iter_mut().try_for_each(apply_gidnumber)
     }
 
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;gidnumber_pre_modify&quot;</span>, skip_all)]
@@ -424,7 +424,7 @@
         cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
         _me: <span class="kw-2">&amp;</span>ModifyEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        cand.iter_mut().try_for_each(|e| apply_gidnumber(e))
+        cand.iter_mut().try_for_each(apply_gidnumber)
     }
 
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;gidnumber_pre_batch_modify&quot;</span>, skip_all)]
@@ -433,7 +433,7 @@
         cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
         _me: <span class="kw-2">&amp;</span>BatchModifyEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        cand.iter_mut().try_for_each(|e| apply_gidnumber(e))
+        cand.iter_mut().try_for_each(apply_gidnumber)
     }
 }
 
@@ -443,7 +443,7 @@
 
     <span class="kw">fn </span>check_gid(qs_write: <span class="kw-2">&amp;</span>QueryServerWriteTransaction, uuid: <span class="kw-2">&amp;</span>str, gid: u32) {
         <span class="kw">let </span>u = Uuid::parse_str(uuid).unwrap();
-        <span class="kw">let </span>e = qs_write.internal_search_uuid(<span class="kw-2">&amp;</span>u).unwrap();
+        <span class="kw">let </span>e = qs_write.internal_search_uuid(u).unwrap();
         <span class="kw">let </span>gidnumber = e.get_ava_single(<span class="string">&quot;gidnumber&quot;</span>).unwrap();
         <span class="kw">let </span>ex_gid = Value::new_uint32(gid);
         <span class="macro">assert!</span>(ex_gid == gidnumber);
@@ -457,7 +457,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))
@@ -489,7 +489,7 @@
             (<span class="string">&quot;gidnumber&quot;</span>, Value::Uint32(<span class="number">10001</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))
@@ -520,7 +520,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))
@@ -552,7 +552,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
+                Value::Uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))
@@ -584,7 +584,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
+                Value::Uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-2f7b997ef244&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))
@@ -618,7 +618,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-000000000244&quot;</span>))
+                Value::Uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;83a0927f-3de1-45ec-bea0-000000000244&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))

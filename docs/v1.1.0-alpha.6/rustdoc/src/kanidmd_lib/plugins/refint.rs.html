@@ -877,9 +877,6 @@
 <span id="877">877</span>
 <span id="878">878</span>
 <span id="879">879</span>
-<span id="880">880</span>
-<span id="881">881</span>
-<span id="882">882</span>
 </pre><pre class="rust"><code><span class="comment">// Referential Integrity
 //
 // Given an entry, modification or change, ensure that all referential links
@@ -1017,7 +1014,7 @@
                 .map(|e| e.get_uuid())
                 .flat_map(|u| ref_types.values().map(<span class="kw">move </span>|r_type| {
                     <span class="comment">// For everything that references the uuid&#39;s in the deleted set.
-                    </span>f_eq(r_type.name.as_str(), PartialValue::new_refer(u))
+                    </span>f_eq(r_type.name.as_str(), PartialValue::Refer(u))
                 }))
                 .collect(),
         ));
@@ -1026,7 +1023,7 @@
 
         <span class="kw">let </span>removed_ids: BTreeSet&lt;<span class="kw">_</span>&gt; = cand
             .iter()
-            .map(|e| PartialValue::new_refer(e.get_uuid()))
+            .map(|e| PartialValue::Refer(e.get_uuid()))
             .collect();
 
         <span class="kw">let </span>work_set = qs.internal_search_writeable(<span class="kw-2">&amp;</span>filt)<span class="question-mark">?</span>;
@@ -1112,7 +1109,7 @@
         vsiter.try_for_each(|vs| {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(uuid_iter) = vs.as_ref_uuid_iter() {
                 uuid_iter.for_each(|u| {
-                    i.push(PartialValue::new_uuid(u))
+                    i.push(PartialValue::Uuid(u))
                 });
                 <span class="prelude-val">Ok</span>(())
             } <span class="kw">else </span>{
@@ -1350,11 +1347,11 @@
             ModifyList::new_list(<span class="macro">vec!</span>[
                 Modify::Present(
                     AttrString::from(<span class="string">&quot;member&quot;</span>),
-                    Value::new_refer_s(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).unwrap()
+                    Value::Refer(<span class="macro">uuid!</span>(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>))
                 ),
                 Modify::Present(
                     AttrString::from(<span class="string">&quot;member&quot;</span>),
-                    Value::new_refer(UUID_DOES_NOT_EXIST)
+                    Value::Refer(UUID_DOES_NOT_EXIST)
                 ),
             ]),
             <span class="prelude-val">None</span>,
@@ -1606,7 +1603,7 @@
             (
                 <span class="string">&quot;oauth2_rs_scope_map&quot;</span>,
                 Value::new_oauthscopemap(
-                    Uuid::parse_str(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>),
+                    <span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>),
                     <span class="macro">btreeset!</span>[<span class="string">&quot;read&quot;</span>.to_string()]
                 )
                 .expect(<span class="string">&quot;Invalid scope&quot;</span>)
@@ -1618,7 +1615,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testgroup&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testgroup&quot;</span>))
         );
@@ -1661,7 +1658,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(tuuid)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(tuuid)),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
         );
@@ -1670,7 +1667,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server_basic&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(rs_uuid)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(rs_uuid)),
             (<span class="string">&quot;oauth2_rs_name&quot;</span>, Value::new_iname(<span class="string">&quot;test_resource_server&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;test_resource_server&quot;</span>)),
             (
@@ -1691,10 +1688,10 @@
         <span class="comment">// Create a fake session and oauth2 session.
 
         </span><span class="kw">let </span>session_id = Uuid::new_v4();
-        <span class="kw">let </span>pv_session_id = PartialValue::new_refer(session_id);
+        <span class="kw">let </span>pv_session_id = PartialValue::Refer(session_id);
 
         <span class="kw">let </span>parent = Uuid::new_v4();
-        <span class="kw">let </span>pv_parent_id = PartialValue::new_refer(parent);
+        <span class="kw">let </span>pv_parent_id = PartialValue::Refer(parent);
         <span class="kw">let </span>issued_at = curtime_odt;
         <span class="kw">let </span>issued_by = IdentityId::User(tuuid);
         <span class="kw">let </span>scope = AccessScope::IdentityOnly;
@@ -1736,15 +1733,12 @@
         ]);
 
         server_txn
-            .internal_modify(
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(tuuid))),
-                <span class="kw-2">&amp;</span>modlist,
-            )
+            .internal_modify(<span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(tuuid))), <span class="kw-2">&amp;</span>modlist)
             .expect(<span class="string">&quot;Failed to modify user&quot;</span>);
 
         <span class="comment">// Still there
 
-        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(<span class="kw-2">&amp;</span>tuuid).expect(<span class="string">&quot;failed&quot;</span>);
+        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(tuuid).expect(<span class="string">&quot;failed&quot;</span>);
         <span class="macro">assert!</span>(entry.attribute_equality(<span class="string">&quot;user_auth_token_session&quot;</span>, <span class="kw-2">&amp;</span>pv_parent_id));
         <span class="macro">assert!</span>(entry.attribute_equality(<span class="string">&quot;oauth2_session&quot;</span>, <span class="kw-2">&amp;</span>pv_session_id));
 
@@ -1752,7 +1746,7 @@
         </span><span class="macro">assert!</span>(server_txn.internal_delete_uuid(rs_uuid).is_ok());
 
         <span class="comment">// Oauth2 Session gone.
-        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(<span class="kw-2">&amp;</span>tuuid).expect(<span class="string">&quot;failed&quot;</span>);
+        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(tuuid).expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="comment">// Note the uat is present still.
         </span><span class="macro">assert!</span>(entry.attribute_equality(<span class="string">&quot;user_auth_token_session&quot;</span>, <span class="kw-2">&amp;</span>pv_parent_id));

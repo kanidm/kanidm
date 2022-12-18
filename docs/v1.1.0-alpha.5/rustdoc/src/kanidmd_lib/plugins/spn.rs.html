@@ -491,7 +491,7 @@
 <span class="kw">impl </span>Spn {
     <span class="kw">fn </span>modify_inner&lt;T: Clone + std::fmt::Debug&gt;(
         qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
-        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, T&gt;&gt;,
+        cand: <span class="kw-2">&amp;mut </span>[Entry&lt;EntryInvalid, T&gt;],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="kw">let </span>domain_name = qs.get_domain_name();
 
@@ -682,7 +682,7 @@
         <span class="comment">// get the current domain name
         // check the spn on admin is admin@&lt;initial domain&gt;
         </span><span class="kw">let </span>e_pre = server_txn
-            .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_ADMIN)
+            .internal_search_uuid(UUID_ADMIN)
             .expect(<span class="string">&quot;must not fail&quot;</span>);
 
         <span class="kw">let </span>e_pre_spn = e_pre.get_ava_single(<span class="string">&quot;spn&quot;</span>).expect(<span class="string">&quot;must not fail&quot;</span>);
@@ -699,7 +699,7 @@
 
         <span class="comment">// check the spn on admin is admin@&lt;new domain&gt;
         </span><span class="kw">let </span>e_post = server_txn
-            .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_ADMIN)
+            .internal_search_uuid(UUID_ADMIN)
             .expect(<span class="string">&quot;must not fail&quot;</span>);
 
         <span class="kw">let </span>e_post_spn = e_post.get_ava_single(<span class="string">&quot;spn&quot;</span>).expect(<span class="string">&quot;must not fail&quot;</span>);

@@ -4083,11 +4083,6 @@
 <span id="4083">4083</span>
 <span id="4084">4084</span>
 <span id="4085">4085</span>
-<span id="4086">4086</span>
-<span id="4087">4087</span>
-<span id="4088">4088</span>
-<span id="4089">4089</span>
-<span id="4090">4090</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::TryFrom;
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::sync::Arc;
@@ -4671,7 +4666,7 @@
         iat: i64,
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Account&gt;, OperationError&gt; {
-        <span class="kw">let </span>entry = <span class="self">self</span>.get_qs_txn().internal_search_uuid(<span class="kw-2">&amp;</span>uuid).map_err(|e| {
+        <span class="kw">let </span>entry = <span class="self">self</span>.get_qs_txn().internal_search_uuid(uuid).map_err(|e| {
             <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;check_oauth2_account_uuid_valid failed&quot;</span>);
             e
         })<span class="question-mark">?</span>;
@@ -4734,7 +4729,7 @@
         <span class="comment">// From a UAT, get the current identity and associated information.
         </span><span class="kw">let </span>entry = <span class="self">self
             </span>.get_qs_txn()
-            .internal_search_uuid(<span class="kw-2">&amp;</span>uat.uuid)
+            .internal_search_uuid(uat.uuid)
             .map_err(|e| {
                 <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;from_ro_uat failed&quot;</span>);
                 e
@@ -4824,16 +4819,16 @@
             LdapSession::UnixBind(uuid) =&gt; {
                 <span class="kw">let </span>anon_entry = <span class="self">self
                     </span>.get_qs_txn()
-                    .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_ANONYMOUS)
+                    .internal_search_uuid(UUID_ANONYMOUS)
                     .map_err(|e| {
                         <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to validate ldap session -&gt; {:?}&quot;</span>, e);
                         e
                     })<span class="question-mark">?</span>;
 
-                <span class="kw">let </span>entry = <span class="kw">if </span>uuid == <span class="kw-2">&amp;</span>UUID_ANONYMOUS {
+                <span class="kw">let </span>entry = <span class="kw">if </span><span class="kw-2">*</span>uuid == UUID_ANONYMOUS {
                     anon_entry.clone()
                 } <span class="kw">else </span>{
-                    <span class="self">self</span>.get_qs_txn().internal_search_uuid(uuid).map_err(|e| {
+                    <span class="self">self</span>.get_qs_txn().internal_search_uuid(<span class="kw-2">*</span>uuid).map_err(|e| {
                         <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to start auth ldap -&gt; {:?}&quot;</span>, e);
                         e
                     })<span class="question-mark">?
@@ -4863,7 +4858,7 @@
             LdapSession::ApiToken(apit) =&gt; {
                 <span class="kw">let </span>entry = <span class="self">self
                     </span>.get_qs_txn()
-                    .internal_search_uuid(<span class="kw-2">&amp;</span>apit.account_id)
+                    .internal_search_uuid(apit.account_id)
                     .map_err(|e| {
                         <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to validate ldap session -&gt; {:?}&quot;</span>, e);
                         e
@@ -4966,15 +4961,15 @@
     }
 
     <span class="kw">fn </span>get_uat_validator_txn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>JwsValidator {
-        <span class="kw-2">&amp;*</span><span class="self">self</span>.uat_jwt_validator
+        <span class="kw-2">&amp;</span><span class="self">self</span>.uat_jwt_validator
     }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; IdmServerAuthTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="attribute">#[cfg(test)]
-    </span><span class="kw">pub fn </span>is_sessionid_present(<span class="kw-2">&amp;</span><span class="self">self</span>, sessionid: <span class="kw-2">&amp;</span>Uuid) -&gt; bool {
+    </span><span class="kw">pub fn </span>is_sessionid_present(<span class="kw-2">&amp;</span><span class="self">self</span>, sessionid: Uuid) -&gt; bool {
         <span class="kw">let </span>session_read = <span class="self">self</span>.sessions.read();
-        session_read.contains_key(sessionid)
+        session_read.contains_key(<span class="kw-2">&amp;</span>sessionid)
     }
 
     <span class="attribute">#[instrument(level = <span class="string">&quot;trace&quot;</span>, skip(<span class="self">self</span>))]
@@ -5022,7 +5017,7 @@
                 </span><span class="kw">let </span>euuid = <span class="self">self</span>.qs_read.name_to_uuid(init.username.as_str())<span class="question-mark">?</span>;
 
                 <span class="comment">// Get the first / single entry we expect here ....
-                </span><span class="kw">let </span>entry = <span class="self">self</span>.qs_read.internal_search_uuid(<span class="kw-2">&amp;</span>euuid)<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>entry = <span class="self">self</span>.qs_read.internal_search_uuid(euuid)<span class="question-mark">?</span>;
 
                 <span class="macro">security_info!</span>(
                     username = %init.username,
@@ -5240,7 +5235,7 @@
                             <span class="kw-2">&amp;</span><span class="self">self</span>.async_tx,
                             <span class="self">self</span>.webauthn,
                             pw_badlist_cache,
-                            <span class="kw-2">&amp;*</span><span class="self">self</span>.uat_jwt_signer,
+                            <span class="kw-2">&amp;</span><span class="self">self</span>.uat_jwt_signer,
                         )
                         .map(|aus| {
                             <span class="comment">// Inspect the result:
@@ -5280,7 +5275,7 @@
         <span class="comment">// Get the entry/target we are working on.
         </span><span class="kw">let </span>account = <span class="self">self
             </span>.qs_read
-            .internal_search_uuid(<span class="kw-2">&amp;</span>uae.target)
+            .internal_search_uuid(uae.target)
             .and_then(|account_entry| {
                 UnixUserAccount::try_from_entry_ro(account_entry.as_ref(), <span class="kw-2">&amp;mut </span><span class="self">self</span>.qs_read)
             })
@@ -5385,13 +5380,10 @@
         lae: <span class="kw-2">&amp;</span>LdapAuthEvent,
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;LdapBoundToken&gt;, OperationError&gt; {
-        <span class="kw">let </span>account_entry = <span class="self">self
-            </span>.qs_read
-            .internal_search_uuid(<span class="kw-2">&amp;</span>lae.target)
-            .map_err(|e| {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to start auth ldap -&gt; {:?}&quot;</span>, e);
-                e
-            })<span class="question-mark">?</span>;
+        <span class="kw">let </span>account_entry = <span class="self">self</span>.qs_read.internal_search_uuid(lae.target).map_err(|e| {
+            <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to start auth ldap -&gt; {:?}&quot;</span>, e);
+            e
+        })<span class="question-mark">?</span>;
 
         <span class="comment">// if anonymous
         </span><span class="kw">if </span>lae.target == UUID_ANONYMOUS {
@@ -5512,7 +5504,7 @@
     }
 
     <span class="kw">fn </span>get_uat_validator_txn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>JwsValidator {
-        <span class="kw-2">&amp;*</span><span class="self">self</span>.uat_jwt_validator
+        <span class="kw-2">&amp;</span><span class="self">self</span>.uat_jwt_validator
     }
 }
 
@@ -5524,7 +5516,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;RadiusAuthToken, OperationError&gt; {
         <span class="kw">let </span>account = <span class="self">self
             </span>.qs_read
-            .impersonate_search_ext_uuid(<span class="kw-2">&amp;</span>rate.target, <span class="kw-2">&amp;</span>rate.ident)
+            .impersonate_search_ext_uuid(rate.target, <span class="kw-2">&amp;</span>rate.ident)
             .and_then(|account_entry| {
                 RadiusAccount::try_from_entry_reduced(<span class="kw-2">&amp;</span>account_entry, <span class="kw-2">&amp;mut </span><span class="self">self</span>.qs_read)
             })
@@ -5543,7 +5535,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;UnixUserToken, OperationError&gt; {
         <span class="kw">let </span>account = <span class="self">self
             </span>.qs_read
-            .impersonate_search_uuid(<span class="kw-2">&amp;</span>uute.target, <span class="kw-2">&amp;</span>uute.ident)
+            .impersonate_search_uuid(uute.target, <span class="kw-2">&amp;</span>uute.ident)
             .and_then(|account_entry| {
                 UnixUserAccount::try_from_entry_ro(<span class="kw-2">&amp;</span>account_entry, <span class="kw-2">&amp;mut </span><span class="self">self</span>.qs_read)
             })
@@ -5561,7 +5553,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;UnixGroupToken, OperationError&gt; {
         <span class="kw">let </span>group = <span class="self">self
             </span>.qs_read
-            .impersonate_search_ext_uuid(<span class="kw-2">&amp;</span>uute.target, <span class="kw-2">&amp;</span>uute.ident)
+            .impersonate_search_ext_uuid(uute.target, <span class="kw-2">&amp;</span>uute.ident)
             .and_then(|e| UnixGroup::try_from_entry_reduced(<span class="kw-2">&amp;</span>e))
             .map_err(|e| {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to start unix group token {:?}&quot;</span>, e);
@@ -5576,7 +5568,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CredentialStatus, OperationError&gt; {
         <span class="kw">let </span>account = <span class="self">self
             </span>.qs_read
-            .impersonate_search_ext_uuid(<span class="kw-2">&amp;</span>cse.target, <span class="kw-2">&amp;</span>cse.ident)
+            .impersonate_search_ext_uuid(cse.target, <span class="kw-2">&amp;</span>cse.ident)
             .and_then(|account_entry| {
                 Account::try_from_entry_reduced(<span class="kw-2">&amp;</span>account_entry, <span class="kw-2">&amp;mut </span><span class="self">self</span>.qs_read)
             })
@@ -5594,7 +5586,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;BackupCodesView, OperationError&gt; {
         <span class="kw">let </span>account = <span class="self">self
             </span>.qs_read
-            .impersonate_search_ext_uuid(<span class="kw-2">&amp;</span>rbce.target, <span class="kw-2">&amp;</span>rbce.ident)
+            .impersonate_search_ext_uuid(rbce.target, <span class="kw-2">&amp;</span>rbce.ident)
             .and_then(|account_entry| {
                 Account::try_from_entry_reduced(<span class="kw-2">&amp;</span>account_entry, <span class="kw-2">&amp;mut </span><span class="self">self</span>.qs_read)
             })
@@ -5689,7 +5681,7 @@
     }
 
     <span class="kw">fn </span>get_uat_validator_txn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>JwsValidator {
-        <span class="kw-2">&amp;*</span><span class="self">self</span>.uat_jwt_validator
+        <span class="kw-2">&amp;</span><span class="self">self</span>.uat_jwt_validator
     }
 }
 
@@ -5758,7 +5750,7 @@
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>target_to_account(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target: <span class="kw-2">&amp;</span>Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;Account, OperationError&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>target_to_account(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;Account, OperationError&gt; {
         <span class="comment">// Get the account
         </span><span class="kw">let </span>account = <span class="self">self
             </span>.qs_write
@@ -5786,7 +5778,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         pce: <span class="kw-2">&amp;</span>PasswordChangeEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="kw">let </span>account = <span class="self">self</span>.target_to_account(<span class="kw-2">&amp;</span>pce.target)<span class="question-mark">?</span>;
+        <span class="kw">let </span>account = <span class="self">self</span>.target_to_account(pce.target)<span class="question-mark">?</span>;
 
         <span class="comment">// Get the modifications we *want* to perform.
         </span><span class="kw">let </span>modlist = account
@@ -5803,9 +5795,9 @@
             </span>.qs_write
             .impersonate_modify_gen_event(
                 <span class="comment">// Filter as executed
-                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(pce.target))),
+                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(pce.target))),
                 <span class="comment">// Filter as intended (acp)
-                </span><span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(pce.target))),
+                </span><span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(pce.target))),
                 <span class="kw-2">&amp;</span>modlist,
                 <span class="kw-2">&amp;</span>pce.ident,
             )
@@ -5852,7 +5844,7 @@
         <span class="comment">// Get the account
         </span><span class="kw">let </span>account = <span class="self">self
             </span>.qs_write
-            .internal_search_uuid(<span class="kw-2">&amp;</span>pce.target)
+            .internal_search_uuid(pce.target)
             .and_then(|account_entry| {
                 <span class="comment">// Assert the account is unix and valid.
                 </span>UnixUserAccount::try_from_entry_rw(<span class="kw-2">&amp;</span>account_entry, <span class="kw-2">&amp;mut </span><span class="self">self</span>.qs_write)
@@ -5882,9 +5874,9 @@
             </span>.qs_write
             .impersonate_modify_gen_event(
                 <span class="comment">// Filter as executed
-                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(pce.target))),
+                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(pce.target))),
                 <span class="comment">// Filter as intended (acp)
-                </span><span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(pce.target))),
+                </span><span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(pce.target))),
                 <span class="kw-2">&amp;</span>modlist,
                 <span class="kw-2">&amp;</span>pce.ident,
             )
@@ -5932,7 +5924,7 @@
             e
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>account = <span class="self">self</span>.target_to_account(<span class="kw-2">&amp;</span>target)<span class="question-mark">?</span>;
+        <span class="kw">let </span>account = <span class="self">self</span>.target_to_account(target)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>cleartext = cleartext
             .map(|s| s.to_string())
@@ -5949,7 +5941,7 @@
         <span class="self">self</span>.qs_write
             .internal_modify(
                 <span class="comment">// Filter as executed
-                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(target))),
+                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(target))),
                 <span class="kw-2">&amp;</span>modlist,
             )
             .map_err(|e| {
@@ -5964,7 +5956,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         gpe: <span class="kw-2">&amp;</span>GeneratePasswordEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;String, OperationError&gt; {
-        <span class="kw">let </span>account = <span class="self">self</span>.target_to_account(<span class="kw-2">&amp;</span>gpe.target)<span class="question-mark">?</span>;
+        <span class="kw">let </span>account = <span class="self">self</span>.target_to_account(gpe.target)<span class="question-mark">?</span>;
         <span class="comment">// Ask if tis all good - this step checks pwpolicy and such
 
         // Generate a new random, long pw.
@@ -5988,9 +5980,9 @@
         </span><span class="self">self</span>.qs_write
             .impersonate_modify(
                 <span class="comment">// Filter as executed
-                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(gpe.target))),
+                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(gpe.target))),
                 <span class="comment">// Filter as intended (acp)
-                </span><span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(gpe.target))),
+                </span><span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(gpe.target))),
                 <span class="kw-2">&amp;</span>modlist,
                 <span class="comment">// Provide the event to impersonate
                 </span><span class="kw-2">&amp;</span>gpe.ident,
@@ -6027,9 +6019,9 @@
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &amp;filter!(f_eq(&quot;uuid&quot;, PartialValue::new_uuid(gbe.target))),
+                &amp;filter!(f_eq(&quot;uuid&quot;, PartialValue::Uuid(gbe.target))),
                 // Filter as intended (acp)
-                &amp;filter_all!(f_eq(&quot;uuid&quot;, PartialValue::new_uuid(gbe.target))),
+                &amp;filter_all!(f_eq(&quot;uuid&quot;, PartialValue::Uuid(gbe.target))),
                 &amp;modlist,
                 // Provide the event to impersonate
                 &amp;gbe.ident,
@@ -6056,9 +6048,9 @@
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &amp;filter!(f_eq(&quot;uuid&quot;, PartialValue::new_uuid(account.uuid))),
+                &amp;filter!(f_eq(&quot;uuid&quot;, PartialValue::Uuid(account.uuid))),
                 // Filter as intended (acp)
-                &amp;filter_all!(f_eq(&quot;uuid&quot;, PartialValue::new_uuid(account.uuid))),
+                &amp;filter_all!(f_eq(&quot;uuid&quot;, PartialValue::Uuid(account.uuid))),
                 &amp;modlist,
                 &amp;rte.ident,
             )
@@ -6074,7 +6066,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         rrse: <span class="kw-2">&amp;</span>RegenerateRadiusSecretEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;String, OperationError&gt; {
-        <span class="kw">let </span>account = <span class="self">self</span>.target_to_account(<span class="kw-2">&amp;</span>rrse.target)<span class="question-mark">?</span>;
+        <span class="kw">let </span>account = <span class="self">self</span>.target_to_account(rrse.target)<span class="question-mark">?</span>;
 
         <span class="comment">// Difference to the password above, this is intended to be read/copied
         // by a human wiath a keyboard in some cases.
@@ -6093,9 +6085,9 @@
         </span><span class="self">self</span>.qs_write
             .impersonate_modify(
                 <span class="comment">// Filter as executed
-                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(rrse.target))),
+                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(rrse.target))),
                 <span class="comment">// Filter as intended (acp)
-                </span><span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(rrse.target))),
+                </span><span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(rrse.target))),
                 <span class="kw-2">&amp;</span>modlist,
                 <span class="comment">// Provide the event to impersonate
                 </span><span class="kw-2">&amp;</span>rrse.ident,
@@ -6110,7 +6102,7 @@
     <span class="comment">// -- delayed action processing --
     </span><span class="kw">fn </span>process_pwupgrade(<span class="kw-2">&amp;mut </span><span class="self">self</span>, pwu: <span class="kw-2">&amp;</span>PasswordUpgrade) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="comment">// get the account
-        </span><span class="kw">let </span>account = <span class="self">self</span>.target_to_account(<span class="kw-2">&amp;</span>pwu.target_uuid)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>account = <span class="self">self</span>.target_to_account(pwu.target_uuid)<span class="question-mark">?</span>;
 
         <span class="macro">info!</span>(session_id = %pwu.target_uuid, <span class="string">&quot;Processing password hash upgrade&quot;</span>);
 
@@ -6127,7 +6119,7 @@
                 })<span class="question-mark">?</span>;
 
             <span class="self">self</span>.qs_write.internal_modify(
-                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(pwu.target_uuid))),
+                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(pwu.target_uuid))),
                 <span class="kw-2">&amp;</span>modlist,
             )
         } <span class="kw">else </span>{
@@ -6141,7 +6133,7 @@
 
         <span class="kw">let </span>account = <span class="self">self
             </span>.qs_write
-            .internal_search_uuid(<span class="kw-2">&amp;</span>pwu.target_uuid)
+            .internal_search_uuid(pwu.target_uuid)
             .and_then(|account_entry| {
                 UnixUserAccount::try_from_entry_rw(<span class="kw-2">&amp;</span>account_entry, <span class="kw-2">&amp;mut </span><span class="self">self</span>.qs_write)
             })
@@ -6161,7 +6153,7 @@
                 })<span class="question-mark">?</span>;
 
             <span class="self">self</span>.qs_write.internal_modify(
-                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(pwu.target_uuid))),
+                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(pwu.target_uuid))),
                 <span class="kw-2">&amp;</span>modlist,
             )
         } <span class="kw">else </span>{
@@ -6175,7 +6167,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="macro">info!</span>(session_id = %wci.target_uuid, <span class="string">&quot;Processing webauthn counter increment&quot;</span>);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>account = <span class="self">self</span>.target_to_account(<span class="kw-2">&amp;</span>wci.target_uuid)<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>account = <span class="self">self</span>.target_to_account(wci.target_uuid)<span class="question-mark">?</span>;
 
         <span class="comment">// Generate an optional mod and then attempt to apply it.
         </span><span class="kw">let </span>opt_modlist = account
@@ -6187,7 +6179,7 @@
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(modlist) = opt_modlist {
             <span class="self">self</span>.qs_write.internal_modify(
-                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(wci.target_uuid))),
+                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(wci.target_uuid))),
                 <span class="kw-2">&amp;</span>modlist,
             )
         } <span class="kw">else </span>{
@@ -6203,7 +6195,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="macro">info!</span>(session_id = %bcr.target_uuid, <span class="string">&quot;Processing backup code removal&quot;</span>);
 
-        <span class="kw">let </span>account = <span class="self">self</span>.target_to_account(<span class="kw-2">&amp;</span>bcr.target_uuid)<span class="question-mark">?</span>;
+        <span class="kw">let </span>account = <span class="self">self</span>.target_to_account(bcr.target_uuid)<span class="question-mark">?</span>;
         <span class="comment">// Generate an optional mod and then attempt to apply it.
         </span><span class="kw">let </span>modlist = account
             .invalidate_backup_code_mod(<span class="kw-2">&amp;</span>bcr.code_to_remove)
@@ -6213,7 +6205,7 @@
             })<span class="question-mark">?</span>;
 
         <span class="self">self</span>.qs_write.internal_modify(
-            <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(bcr.target_uuid))),
+            <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(bcr.target_uuid))),
             <span class="kw-2">&amp;</span>modlist,
         )
     }
@@ -6247,7 +6239,7 @@
 
         <span class="self">self</span>.qs_write
             .internal_modify(
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(asr.target_uuid))),
+                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(asr.target_uuid))),
                 <span class="kw-2">&amp;</span>modlist,
             )
             .map_err(|e| {
@@ -6273,7 +6265,7 @@
         ]);
 
         <span class="self">self</span>.qs_write.internal_modify(
-            <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(o2cg.target_uuid))),
+            <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(o2cg.target_uuid))),
             <span class="kw-2">&amp;</span>modlist,
         )
     }
@@ -6299,7 +6291,7 @@
 
         <span class="self">self</span>.qs_write
             .internal_modify(
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(osr.target_uuid))),
+                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(osr.target_uuid))),
                 <span class="kw-2">&amp;</span>modlist,
             )
             .map_err(|e| {
@@ -6837,7 +6829,7 @@
     </span><span class="kw">fn </span>test_idm_simple_password_reset() {
         <span class="macro">run_idm_test!</span>(
             |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, _idms_delayed: <span class="kw-2">&amp;</span>IdmServerDelayed| {
-                <span class="kw">let </span>pce = PasswordChangeEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, TEST_PASSWORD);
+                <span class="kw">let </span>pce = PasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
                 <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write =
                     task::block_on(idms.proxy_write(duration_from_epoch_now()));
@@ -6852,7 +6844,7 @@
     </span><span class="kw">fn </span>test_idm_anonymous_set_password_denied() {
         <span class="macro">run_idm_test!</span>(
             |_qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, _idms_delayed: <span class="kw-2">&amp;</span>IdmServerDelayed| {
-                <span class="kw">let </span>pce = PasswordChangeEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ANONYMOUS, TEST_PASSWORD);
+                <span class="kw">let </span>pce = PasswordChangeEvent::new_internal(UUID_ANONYMOUS, TEST_PASSWORD);
 
                 <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write =
                     task::block_on(idms.proxy_write(duration_from_epoch_now()));
@@ -6896,11 +6888,11 @@
                     .expect(<span class="string">&quot;Failed to reset radius credential 1&quot;</span>);
 
                 <span class="comment">// Try and set that as the main account password, should fail.
-                </span><span class="kw">let </span>pce = PasswordChangeEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, r1.as_str());
+                </span><span class="kw">let </span>pce = PasswordChangeEvent::new_internal(UUID_ADMIN, r1.as_str());
                 <span class="kw">let </span>e = idms_prox_write.set_account_password(<span class="kw-2">&amp;</span>pce);
                 <span class="macro">assert!</span>(e.is_err());
 
-                <span class="kw">let </span>pce = UnixPasswordChangeEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, r1.as_str());
+                <span class="kw">let </span>pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, r1.as_str());
                 <span class="kw">let </span>e = idms_prox_write.set_unix_account_password(<span class="kw-2">&amp;</span>pce);
                 <span class="macro">assert!</span>(e.is_err());
 
@@ -6941,23 +6933,23 @@
                 </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write =
                     task::block_on(idms.proxy_write(duration_from_epoch_now()));
 
-                <span class="kw">let </span>pce = PasswordChangeEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, <span class="string">&quot;password&quot;</span>);
+                <span class="kw">let </span>pce = PasswordChangeEvent::new_internal(UUID_ADMIN, <span class="string">&quot;password&quot;</span>);
                 <span class="kw">let </span>e = idms_prox_write.set_account_password(<span class="kw-2">&amp;</span>pce);
                 <span class="macro">assert!</span>(e.is_err());
 
                 <span class="comment">// zxcvbn check
-                </span><span class="kw">let </span>pce = PasswordChangeEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, <span class="string">&quot;password1234&quot;</span>);
+                </span><span class="kw">let </span>pce = PasswordChangeEvent::new_internal(UUID_ADMIN, <span class="string">&quot;password1234&quot;</span>);
                 <span class="kw">let </span>e = idms_prox_write.set_account_password(<span class="kw-2">&amp;</span>pce);
                 <span class="macro">assert!</span>(e.is_err());
 
                 <span class="comment">// Check the &quot;name&quot; checking works too (I think admin may hit a common pw rule first)
-                </span><span class="kw">let </span>pce = PasswordChangeEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, <span class="string">&quot;admin_nta&quot;</span>);
+                </span><span class="kw">let </span>pce = PasswordChangeEvent::new_internal(UUID_ADMIN, <span class="string">&quot;admin_nta&quot;</span>);
                 <span class="kw">let </span>e = idms_prox_write.set_account_password(<span class="kw-2">&amp;</span>pce);
                 <span class="macro">assert!</span>(e.is_err());
 
                 <span class="comment">// Check that the demo badlist password is rejected.
                 </span><span class="kw">let </span>pce = PasswordChangeEvent::new_internal(
-                    <span class="kw-2">&amp;</span>UUID_ADMIN,
+                    UUID_ADMIN,
                     <span class="string">&quot;demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1&quot;</span>,
                 );
                 <span class="kw">let </span>e = idms_prox_write.set_account_password(<span class="kw-2">&amp;</span>pce);
@@ -6976,7 +6968,7 @@
                     task::block_on(idms.proxy_write(duration_from_epoch_now()));
 
                 <span class="comment">// Check that the badlist password inserted is rejected.
-                </span><span class="kw">let </span>pce = PasswordChangeEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, <span class="string">&quot;bad@no3IBTyqHu$list&quot;</span>);
+                </span><span class="kw">let </span>pce = PasswordChangeEvent::new_internal(UUID_ADMIN, <span class="string">&quot;bad@no3IBTyqHu$list&quot;</span>);
                 <span class="kw">let </span>e = idms_prox_write.set_account_password(<span class="kw-2">&amp;</span>pce);
                 <span class="macro">assert!</span>(e.is_err());
 
@@ -7013,12 +7005,12 @@
                     (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testgroup&quot;</span>)),
                     (
                         <span class="string">&quot;uuid&quot;</span>,
-                        Value::new_uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;01609135-a1c4-43d5-966b-a28227644445&quot;</span>))
+                        Value::Uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;01609135-a1c4-43d5-966b-a28227644445&quot;</span>))
                     ),
                     (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testgroup&quot;</span>)),
                     (
                         <span class="string">&quot;member&quot;</span>,
-                        Value::new_refer(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>))
+                        Value::Refer(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>))
                     )
                 );
 
@@ -7030,10 +7022,9 @@
 
                 <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
-                <span class="kw">let </span>ugte = UnixGroupTokenEvent::new_internal(
-                    Uuid::parse_str(<span class="string">&quot;01609135-a1c4-43d5-966b-a28227644445&quot;</span>)
-                        .expect(<span class="string">&quot;failed to parse uuid&quot;</span>),
-                );
+                <span class="kw">let </span>ugte = UnixGroupTokenEvent::new_internal(<span class="macro">uuid!</span>(
+                    <span class="string">&quot;01609135-a1c4-43d5-966b-a28227644445&quot;
+                </span>));
                 <span class="kw">let </span>tok_g = idms_prox_read
                     .get_unixgrouptoken(<span class="kw-2">&amp;</span>ugte)
                     .expect(<span class="string">&quot;Failed to generate unix group token&quot;</span>);
@@ -7054,10 +7045,9 @@
                 <span class="macro">assert!</span>(tok_r.valid == <span class="bool-val">true</span>);
 
                 <span class="comment">// Show we can get the admin as a unix group token too
-                </span><span class="kw">let </span>ugte = UnixGroupTokenEvent::new_internal(
-                    Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>)
-                        .expect(<span class="string">&quot;failed to parse uuid&quot;</span>),
-                );
+                </span><span class="kw">let </span>ugte = UnixGroupTokenEvent::new_internal(<span class="macro">uuid!</span>(
+                    <span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;
+                </span>));
                 <span class="kw">let </span>tok_g = idms_prox_read
                     .get_unixgrouptoken(<span class="kw-2">&amp;</span>ugte)
                     .expect(<span class="string">&quot;Failed to generate unix group token&quot;</span>);
@@ -7089,7 +7079,7 @@
                 };
                 <span class="macro">assert!</span>(idms_prox_write.qs_write.modify(<span class="kw-2">&amp;</span>me_posix).is_ok());
 
-                <span class="kw">let </span>pce = UnixPasswordChangeEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, TEST_PASSWORD);
+                <span class="kw">let </span>pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
                 <span class="macro">assert!</span>(idms_prox_write.set_unix_account_password(<span class="kw-2">&amp;</span>pce).is_ok());
                 <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
@@ -7097,7 +7087,7 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>idms_auth = idms.auth();
                 <span class="comment">// Check auth verification of the password
 
-                </span><span class="kw">let </span>uuae_good = UnixUserAuthEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, TEST_PASSWORD);
+                </span><span class="kw">let </span>uuae_good = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
                 <span class="kw">let </span>a1 = task::block_on(
                     idms_auth.auth_unix(<span class="kw-2">&amp;</span>uuae_good, Duration::from_secs(TEST_CURRENT_TIME)),
                 );
@@ -7106,7 +7096,7 @@
                     <span class="kw">_ </span>=&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
                 <span class="comment">// Check bad password
-                </span><span class="kw">let </span>uuae_bad = UnixUserAuthEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, TEST_PASSWORD_INC);
+                </span><span class="kw">let </span>uuae_bad = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD_INC);
                 <span class="kw">let </span>a2 = task::block_on(
                     idms_auth.auth_unix(<span class="kw-2">&amp;</span>uuae_bad, Duration::from_secs(TEST_CURRENT_TIME)),
                 );
@@ -7228,7 +7218,7 @@
                 <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
                 idms_delayed.check_is_empty_or_panic();
                 <span class="comment">// Get the auth ready.
-                </span><span class="kw">let </span>uuae = UnixUserAuthEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, <span class="string">&quot;password&quot;</span>);
+                </span><span class="kw">let </span>uuae = UnixUserAuthEvent::new_internal(UUID_ADMIN, <span class="string">&quot;password&quot;</span>);
                 <span class="kw">let </span><span class="kw-2">mut </span>idms_auth = idms.auth();
                 <span class="kw">let </span>a1 = task::block_on(
                     idms_auth.auth_unix(<span class="kw-2">&amp;</span>uuae, Duration::from_secs(TEST_CURRENT_TIME)),
@@ -7378,14 +7368,14 @@
                 };
                 <span class="macro">assert!</span>(idms_prox_write.qs_write.modify(<span class="kw-2">&amp;</span>me_posix).is_ok());
 
-                <span class="kw">let </span>pce = UnixPasswordChangeEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, TEST_PASSWORD);
+                <span class="kw">let </span>pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
                 <span class="macro">assert!</span>(idms_prox_write.set_unix_account_password(<span class="kw-2">&amp;</span>pce).is_ok());
                 <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
                 <span class="comment">// Now check auth when the time is too high or too low.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>idms_auth = idms.auth();
-                <span class="kw">let </span>uuae_good = UnixUserAuthEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, TEST_PASSWORD);
+                <span class="kw">let </span>uuae_good = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
                 <span class="kw">let </span>a1 = task::block_on(idms_auth.auth_unix(<span class="kw-2">&amp;</span>uuae_good, time_low));
                 <span class="comment">// Should this actually send an error with the details? Or just silently act as
@@ -7737,13 +7727,13 @@
                 };
                 <span class="macro">assert!</span>(idms_prox_write.qs_write.modify(<span class="kw-2">&amp;</span>me_posix).is_ok());
 
-                <span class="kw">let </span>pce = UnixPasswordChangeEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, TEST_PASSWORD);
+                <span class="kw">let </span>pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
                 <span class="macro">assert!</span>(idms_prox_write.set_unix_account_password(<span class="kw-2">&amp;</span>pce).is_ok());
                 <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
                 <span class="kw">let </span><span class="kw-2">mut </span>idms_auth = idms.auth();
-                <span class="kw">let </span>uuae_good = UnixUserAuthEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, TEST_PASSWORD);
-                <span class="kw">let </span>uuae_bad = UnixUserAuthEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, TEST_PASSWORD_INC);
+                <span class="kw">let </span>uuae_good = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
+                <span class="kw">let </span>uuae_bad = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD_INC);
 
                 <span class="kw">let </span>a2 = task::block_on(
                     idms_auth.auth_unix(<span class="kw-2">&amp;</span>uuae_bad, Duration::from_secs(TEST_CURRENT_TIME)),
@@ -7828,7 +7818,7 @@
             </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
             <span class="kw">let </span>admin = idms_prox_read
                 .qs_read
-                .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_ADMIN)
+                .internal_search_uuid(UUID_ADMIN)
                 .expect(<span class="string">&quot;failed&quot;</span>);
             <span class="kw">let </span>sessions = admin.get_ava_as_session_map(<span class="string">&quot;user_auth_token_session&quot;</span>);
             <span class="macro">assert!</span>(sessions.is_none());
@@ -7851,7 +7841,7 @@
             </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
             <span class="kw">let </span>admin = idms_prox_read
                 .qs_read
-                .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_ADMIN)
+                .internal_search_uuid(UUID_ADMIN)
                 .expect(<span class="string">&quot;failed&quot;</span>);
             <span class="kw">let </span>sessions = admin
                 .get_ava_as_session_map(<span class="string">&quot;user_auth_token_session&quot;</span>)
@@ -7884,7 +7874,7 @@
             <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
             <span class="kw">let </span>admin = idms_prox_read
                 .qs_read
-                .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_ADMIN)
+                .internal_search_uuid(UUID_ADMIN)
                 .expect(<span class="string">&quot;failed&quot;</span>);
             <span class="kw">let </span>sessions = admin
                 .get_ava_as_session_map(<span class="string">&quot;user_auth_token_session&quot;</span>)
@@ -7987,7 +7977,7 @@
 
             <span class="comment">// get an account.
             </span><span class="kw">let </span>account = idms_prox_write
-                .target_to_account(<span class="kw-2">&amp;</span>UUID_ADMIN)
+                .target_to_account(UUID_ADMIN)
                 .expect(<span class="string">&quot;account must exist&quot;</span>);
 
             <span class="comment">// Create some fake UATs, then process them and see what claims fall out 🥳
@@ -8113,7 +8103,7 @@
                 </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
                 <span class="kw">let </span>me_reset_tokens = <span class="kw">unsafe </span>{
                     ModifyEvent::new_internal_invalid(
-                        <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(UUID_DOMAIN_INFO))),
+                        <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(UUID_DOMAIN_INFO))),
                         ModifyList::new_list(<span class="macro">vec!</span>[
                             Modify::Purged(AttrString::from(<span class="string">&quot;fernet_private_key_str&quot;</span>)),
                             Modify::Purged(AttrString::from(<span class="string">&quot;es256_private_key_der&quot;</span>)),
@@ -8160,7 +8150,7 @@
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;service_account&quot;</span>)),
                 (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testaccount&quot;</span>)),
-                (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(target_uuid)),
+                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(target_uuid)),
                 (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testaccount&quot;</span>)),
                 (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;Test Account&quot;</span>))
             );

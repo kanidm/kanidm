@@ -3030,6 +3030,7 @@
 <span id="3030">3030</span>
 <span id="3031">3031</span>
 <span id="3032">3032</span>
+<span id="3033">3033</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Entries are the base unit of object storage in the server. This is one of the three foundational
 //! concepts along with [`filter`]s and [`schema`] that everything else builds upon.
 //!
@@ -3415,7 +3416,7 @@
                     }
                     <span class="string">&quot;uuid&quot; </span>| <span class="string">&quot;domain_uuid&quot; </span>=&gt; {
                         valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_uuids(v.as_str())
+                            vs.into_iter().map(|v| Value::new_uuid_s(v.as_str())
                                 .unwrap_or_else(|| {
                                     <span class="macro">warn!</span>(<span class="string">&quot;WARNING: Allowing syntax incorrect attribute to be presented UTF8 string&quot;</span>);
                                     Value::new_utf8(v)
@@ -4175,7 +4176,7 @@
             .get(<span class="string">&quot;spn&quot;</span>)
             .and_then(|vs| vs.to_value_single())
             .or_else(|| <span class="self">self</span>.attrs.get(<span class="string">&quot;name&quot;</span>).and_then(|vs| vs.to_value_single()))
-            .unwrap_or_else(|| Value::new_uuid(<span class="self">self</span>.get_uuid()))
+            .unwrap_or_else(|| Value::Uuid(<span class="self">self</span>.get_uuid()))
     }
 
     <span class="attribute">#[inline]
@@ -5585,6 +5586,7 @@
 
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
+    <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>std::collections::BTreeSet <span class="kw">as </span>Set;
 
     <span class="kw">use </span>hashbrown::HashMap;
@@ -5929,7 +5931,7 @@
             e.add_ava(<span class="string">&quot;spn&quot;</span>, Value::new_spn_str(<span class="string">&quot;testperson&quot;</span>, <span class="string">&quot;example.com&quot;</span>));
             e.add_ava(
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;9fec0398-c46c-4df4-9df5-b0016f7d563f&quot;</span>).unwrap(),
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;9fec0398-c46c-4df4-9df5-b0016f7d563f&quot;</span>)),
             );
             <span class="kw">let </span>e = <span class="kw">unsafe </span>{ e.into_sealed_committed() };
 

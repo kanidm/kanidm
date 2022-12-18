@@ -4641,30 +4641,6 @@
 <span id="4641">4641</span>
 <span id="4642">4642</span>
 <span id="4643">4643</span>
-<span id="4644">4644</span>
-<span id="4645">4645</span>
-<span id="4646">4646</span>
-<span id="4647">4647</span>
-<span id="4648">4648</span>
-<span id="4649">4649</span>
-<span id="4650">4650</span>
-<span id="4651">4651</span>
-<span id="4652">4652</span>
-<span id="4653">4653</span>
-<span id="4654">4654</span>
-<span id="4655">4655</span>
-<span id="4656">4656</span>
-<span id="4657">4657</span>
-<span id="4658">4658</span>
-<span id="4659">4659</span>
-<span id="4660">4660</span>
-<span id="4661">4661</span>
-<span id="4662">4662</span>
-<span id="4663">4663</span>
-<span id="4664">4664</span>
-<span id="4665">4665</span>
-<span id="4666">4666</span>
-<span id="4667">4667</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
@@ -4947,12 +4923,10 @@
     <span class="comment">// Similar to name, but where we lookup from external_id instead.
     </span><span class="kw">fn </span>sync_external_id_to_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>, external_id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
         <span class="comment">// Is it just a uuid?
-        </span>Uuid::parse_str(external_id)
-            .map(|uuid| <span class="prelude-val">Some</span>(uuid))
-            .or_else(|<span class="kw">_</span>| {
-                <span class="kw">let </span>lname = external_id.to_lowercase();
-                <span class="self">self</span>.get_be_txn().externalid2uuid(lname.as_str())
-            })
+        </span>Uuid::parse_str(external_id).map(<span class="prelude-val">Some</span>).or_else(|<span class="kw">_</span>| {
+            <span class="kw">let </span>lname = external_id.to_lowercase();
+            <span class="self">self</span>.get_be_txn().externalid2uuid(lname.as_str())
+        })
     }
 
     <span class="kw">fn </span>uuid_to_spn(<span class="kw-2">&amp;</span><span class="self">self</span>, uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Value&gt;, OperationError&gt; {
@@ -5058,9 +5032,9 @@
     </span><span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>internal_search_uuid(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        uuid: <span class="kw-2">&amp;</span>Uuid,
+        uuid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Arc&lt;EntrySealedCommitted&gt;, OperationError&gt; {
-        <span class="kw">let </span>filter = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(<span class="kw-2">*</span>uuid)));
+        <span class="kw">let </span>filter = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(uuid)));
         <span class="kw">let </span>f_valid = filter.validate(<span class="self">self</span>.get_schema()).map_err(|e| {
             <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Filter Validate - SchemaViolation&quot;</span>);
             OperationError::SchemaViolation(e)
@@ -5077,11 +5051,11 @@
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>impersonate_search_ext_uuid(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        uuid: <span class="kw-2">&amp;</span>Uuid,
+        uuid: Uuid,
         event: <span class="kw-2">&amp;</span>Identity,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Entry&lt;EntryReduced, EntryCommitted&gt;, OperationError&gt; {
-        <span class="kw">let </span>filter_intent = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(<span class="kw-2">*</span>uuid)));
-        <span class="kw">let </span>filter = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(<span class="kw-2">*</span>uuid)));
+        <span class="kw">let </span>filter_intent = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(uuid)));
+        <span class="kw">let </span>filter = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(uuid)));
 
         <span class="kw">let </span><span class="kw-2">mut </span>vs = <span class="self">self</span>.impersonate_search_ext(filter, filter_intent, event)<span class="question-mark">?</span>;
         <span class="kw">match </span>vs.pop() {
@@ -5093,11 +5067,11 @@
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>impersonate_search_uuid(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        uuid: <span class="kw-2">&amp;</span>Uuid,
+        uuid: Uuid,
         event: <span class="kw-2">&amp;</span>Identity,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Arc&lt;EntrySealedCommitted&gt;, OperationError&gt; {
-        <span class="kw">let </span>filter_intent = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(<span class="kw-2">*</span>uuid)));
-        <span class="kw">let </span>filter = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(<span class="kw-2">*</span>uuid)));
+        <span class="kw">let </span>filter_intent = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(uuid)));
+        <span class="kw">let </span>filter = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(uuid)));
 
         <span class="kw">let </span><span class="kw-2">mut </span>vs = <span class="self">self</span>.impersonate_search(filter, filter_intent, event)<span class="question-mark">?</span>;
         <span class="kw">match </span>vs.pop() {
@@ -5344,7 +5318,7 @@
 
     <span class="doccomment">/// Pull the domain name from the database
     </span><span class="kw">fn </span>get_db_domain_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, OperationError&gt; {
-        <span class="self">self</span>.internal_search_uuid(<span class="kw-2">&amp;</span>UUID_DOMAIN_INFO)
+        <span class="self">self</span>.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 <span class="macro">trace!</span>(<span class="question-mark">?</span>e);
                 e.get_ava_single_iname(<span class="string">&quot;domain_name&quot;</span>)
@@ -5358,7 +5332,7 @@
     }
 
     <span class="kw">fn </span>get_domain_fernet_private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, OperationError&gt; {
-        <span class="self">self</span>.internal_search_uuid(<span class="kw-2">&amp;</span>UUID_DOMAIN_INFO)
+        <span class="self">self</span>.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 e.get_ava_single_secret(<span class="string">&quot;fernet_private_key_str&quot;</span>)
                     .map(str::to_string)
@@ -5371,7 +5345,7 @@
     }
 
     <span class="kw">fn </span>get_domain_es256_private_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, OperationError&gt; {
-        <span class="self">self</span>.internal_search_uuid(<span class="kw-2">&amp;</span>UUID_DOMAIN_INFO)
+        <span class="self">self</span>.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 e.get_ava_single_private_binary(<span class="string">&quot;es256_private_key_der&quot;</span>)
                     .map(|s| s.to_vec())
@@ -5385,7 +5359,7 @@
 
     <span class="comment">// This is a helper to get password badlist.
     </span><span class="kw">fn </span>get_password_badlist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;HashSet&lt;String&gt;, OperationError&gt; {
-        <span class="self">self</span>.internal_search_uuid(<span class="kw-2">&amp;</span>UUID_SYSTEM_CONFIG)
+        <span class="self">self</span>.internal_search_uuid(UUID_SYSTEM_CONFIG)
             .map(|e| <span class="kw">match </span>e.get_ava_iter_iutf8(<span class="string">&quot;badlist_password&quot;</span>) {
                 <span class="prelude-val">Some</span>(vs_str_iter) =&gt; vs_str_iter.map(str::to_string).collect::&lt;HashSet&lt;<span class="kw">_</span>&gt;&gt;(),
                 <span class="prelude-val">None </span>=&gt; HashSet::default(),
@@ -5754,7 +5728,7 @@
         <span class="comment">// If we are &quot;in the process of being setup&quot; this is 0, and the migrations will have no
         // effect as ... there is nothing to migrate! It allows reset of the version to 0 to force
         // db migrations to take place.
-        </span><span class="kw">let </span>system_info_version = <span class="kw">match </span>migrate_txn.internal_search_uuid(<span class="kw-2">&amp;</span>UUID_SYSTEM_INFO) {
+        </span><span class="kw">let </span>system_info_version = <span class="kw">match </span>migrate_txn.internal_search_uuid(UUID_SYSTEM_INFO) {
             <span class="prelude-val">Ok</span>(e) =&gt; <span class="prelude-val">Ok</span>(e.get_ava_single_uint32(<span class="string">&quot;version&quot;</span>).unwrap_or(<span class="number">0</span>)),
             <span class="prelude-val">Err</span>(OperationError::NoMatchingEntries) =&gt; <span class="prelude-val">Ok</span>(<span class="number">0</span>),
             <span class="prelude-val">Err</span>(r) =&gt; <span class="prelude-val">Err</span>(r),
@@ -6253,13 +6227,11 @@
                     dm_mods
                         .entry(g_uuid)
                         .and_modify(|mlist| {
-                            <span class="kw">let </span>m =
-                                Modify::Present(AttrString::from(<span class="string">&quot;member&quot;</span>), Value::new_refer_r(<span class="kw-2">&amp;</span>u));
+                            <span class="kw">let </span>m = Modify::Present(AttrString::from(<span class="string">&quot;member&quot;</span>), Value::Refer(u));
                             mlist.push_mod(m);
                         })
                         .or_insert({
-                            <span class="kw">let </span>m =
-                                Modify::Present(AttrString::from(<span class="string">&quot;member&quot;</span>), Value::new_refer_r(<span class="kw-2">&amp;</span>u));
+                            <span class="kw">let </span>m = Modify::Present(AttrString::from(<span class="string">&quot;member&quot;</span>), Value::Refer(u));
                             ModifyList::new_list(<span class="macro">vec!</span>[m])
                         });
                 }
@@ -6318,7 +6290,7 @@
             <span class="comment">// I think the filter/filter_all shouldn&#39;t matter here because the only
             // valid direct memberships should be still valid/live references, as refint
             // removes anything that was deleted even from recycled entries.
-            </span><span class="kw">let </span>f = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(g)));
+            </span><span class="kw">let </span>f = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(g)));
             <span class="self">self</span>.internal_modify(<span class="kw-2">&amp;</span>f, <span class="kw-2">&amp;</span>mods)<span class="question-mark">?</span>;
         }
 
@@ -6369,13 +6341,11 @@
                     dm_mods
                         .entry(g_uuid)
                         .and_modify(|mlist| {
-                            <span class="kw">let </span>m =
-                                Modify::Present(AttrString::from(<span class="string">&quot;member&quot;</span>), Value::new_refer_r(<span class="kw-2">&amp;</span>u));
+                            <span class="kw">let </span>m = Modify::Present(AttrString::from(<span class="string">&quot;member&quot;</span>), Value::Refer(u));
                             mlist.push_mod(m);
                         })
                         .or_insert({
-                            <span class="kw">let </span>m =
-                                Modify::Present(AttrString::from(<span class="string">&quot;member&quot;</span>), Value::new_refer_r(<span class="kw-2">&amp;</span>u));
+                            <span class="kw">let </span>m = Modify::Present(AttrString::from(<span class="string">&quot;member&quot;</span>), Value::Refer(u));
                             ModifyList::new_list(<span class="macro">vec!</span>[m])
                         });
                 }
@@ -6389,7 +6359,7 @@
         </span><span class="kw">for </span>(g, mods) <span class="kw">in </span>dm_mods {
             <span class="comment">// I think the filter/filter_all shouldn&#39;t matter here because the only
             // valid direct memberships should be still valid/live references.
-            </span><span class="kw">let </span>f = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(g)));
+            </span><span class="kw">let </span>f = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(g)));
             <span class="self">self</span>.internal_modify(<span class="kw-2">&amp;</span>f, <span class="kw-2">&amp;</span>mods)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
@@ -7015,7 +6985,7 @@
     }
 
     <span class="kw">pub fn </span>internal_delete_uuid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target_uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="kw">let </span>filter = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(target_uuid)));
+        <span class="kw">let </span>filter = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(target_uuid)));
         <span class="kw">let </span>f_valid = filter
             .validate(<span class="self">self</span>.get_schema())
             .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
@@ -7044,7 +7014,7 @@
         target_uuid: Uuid,
         modlist: <span class="kw-2">&amp;</span>ModifyList&lt;ModifyInvalid&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="kw">let </span>filter = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(target_uuid)));
+        <span class="kw">let </span>filter = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(target_uuid)));
         <span class="kw">let </span>f_valid = filter
             .validate(<span class="self">self</span>.get_schema())
             .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
@@ -7712,7 +7682,7 @@
     }
 
     <span class="kw">fn </span>get_db_domain_display_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, OperationError&gt; {
-        <span class="self">self</span>.internal_search_uuid(<span class="kw-2">&amp;</span>UUID_DOMAIN_INFO)
+        <span class="self">self</span>.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 <span class="macro">trace!</span>(<span class="question-mark">?</span>e);
                 e.get_ava_single_utf8(<span class="string">&quot;domain_display_name&quot;</span>)
@@ -7898,9 +7868,7 @@
     </span><span class="kw">async fn </span>test_create_user(server: <span class="kw-2">&amp;</span>QueryServer) {
         <span class="kw">let </span><span class="kw-2">mut </span>server_txn = server.write(duration_from_epoch_now()).<span class="kw">await</span>;
         <span class="kw">let </span>filt = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testperson&quot;</span>)));
-        <span class="kw">let </span>admin = server_txn
-            .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_ADMIN)
-            .expect(<span class="string">&quot;failed&quot;</span>);
+        <span class="kw">let </span>admin = server_txn.internal_search_uuid(UUID_ADMIN).expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="kw">let </span>se1 = <span class="kw">unsafe </span>{ SearchEvent::new_impersonate_entry(admin.clone(), filt.clone()) };
         <span class="kw">let </span>se2 = <span class="kw">unsafe </span>{ SearchEvent::new_impersonate_entry(admin, filt) };
@@ -7913,7 +7881,7 @@
             (<span class="string">&quot;spn&quot;</span>, Value::new_spn_str(<span class="string">&quot;testperson&quot;</span>, <span class="string">&quot;example.com&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))
@@ -7933,10 +7901,10 @@
 
         <span class="comment">// We apply some member-of in the server now, so we add these before we seal.
         </span>e.add_ava(<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;memberof&quot;</span>));
-        e.add_ava(<span class="string">&quot;memberof&quot;</span>, Value::new_refer(UUID_IDM_ALL_PERSONS));
-        e.add_ava(<span class="string">&quot;directmemberof&quot;</span>, Value::new_refer(UUID_IDM_ALL_PERSONS));
-        e.add_ava(<span class="string">&quot;memberof&quot;</span>, Value::new_refer(UUID_IDM_ALL_ACCOUNTS));
-        e.add_ava(<span class="string">&quot;directmemberof&quot;</span>, Value::new_refer(UUID_IDM_ALL_ACCOUNTS));
+        e.add_ava(<span class="string">&quot;memberof&quot;</span>, Value::Refer(UUID_IDM_ALL_PERSONS));
+        e.add_ava(<span class="string">&quot;directmemberof&quot;</span>, Value::Refer(UUID_IDM_ALL_PERSONS));
+        e.add_ava(<span class="string">&quot;memberof&quot;</span>, Value::Refer(UUID_IDM_ALL_ACCOUNTS));
+        e.add_ava(<span class="string">&quot;directmemberof&quot;</span>, Value::Refer(UUID_IDM_ALL_ACCOUNTS));
 
         <span class="kw">let </span>expected = <span class="kw">unsafe </span>{ <span class="macro">vec!</span>[Arc::new(e.into_sealed_committed())] };
 
@@ -7982,7 +7950,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
@@ -7994,7 +7962,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson2&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63932&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63932&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson2&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson2&quot;</span>))
@@ -8142,7 +8110,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
@@ -8214,7 +8182,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
@@ -8226,7 +8194,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson2&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63932&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63932&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson2&quot;</span>))
@@ -8238,7 +8206,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson3&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63933&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63933&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson3&quot;</span>))
@@ -8258,7 +8226,7 @@
         </span><span class="kw">let </span>de_empty = <span class="kw">unsafe </span>{
             DeleteEvent::new_internal_invalid(<span class="macro">filter!</span>(f_eq(
                 <span class="string">&quot;uuid&quot;</span>,
-                PartialValue::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-000000000000&quot;</span>).unwrap()
+                PartialValue::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-000000000000&quot;</span>))
             )))
         };
         <span class="macro">assert!</span>(server_txn.delete(<span class="kw-2">&amp;</span>de_empty).is_err());
@@ -8292,9 +8260,7 @@
         <span class="kw">let </span>time_p3 = time_p2 + Duration::from_secs(CHANGELOG_MAX_AGE * <span class="number">2</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>server_txn = server.write(time_p1).<span class="kw">await</span>;
-        <span class="kw">let </span>admin = server_txn
-            .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_ADMIN)
-            .expect(<span class="string">&quot;failed&quot;</span>);
+        <span class="kw">let </span>admin = server_txn.internal_search_uuid(UUID_ADMIN).expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="kw">let </span>filt_i_ts = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;class&quot;</span>, PartialValue::new_class(<span class="string">&quot;tombstone&quot;</span>)));
 
@@ -8321,7 +8287,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;9557f49c-97a5-4277-a9a5-097d17eb8317&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;9557f49c-97a5-4277-a9a5-097d17eb8317&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
@@ -8401,9 +8367,7 @@
         <span class="kw">let </span>time_p2 = time_p1 + Duration::from_secs(RECYCLEBIN_MAX_AGE * <span class="number">2</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>server_txn = server.write(time_p1).<span class="kw">await</span>;
-        <span class="kw">let </span>admin = server_txn
-            .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_ADMIN)
-            .expect(<span class="string">&quot;failed&quot;</span>);
+        <span class="kw">let </span>admin = server_txn.internal_search_uuid(UUID_ADMIN).expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="kw">let </span>filt_i_rc = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;class&quot;</span>, PartialValue::new_class(<span class="string">&quot;recycled&quot;</span>)));
 
@@ -8445,7 +8409,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
@@ -8457,7 +8421,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson2&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63932&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63932&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson2&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson2&quot;</span>))
@@ -8545,9 +8509,7 @@
     </span><span class="kw">async fn </span>test_qs_recycle_advanced(server: <span class="kw-2">&amp;</span>QueryServer) {
         <span class="comment">// Create items
         </span><span class="kw">let </span><span class="kw-2">mut </span>server_txn = server.write(duration_from_epoch_now()).<span class="kw">await</span>;
-        <span class="kw">let </span>admin = server_txn
-            .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_ADMIN)
-            .expect(<span class="string">&quot;failed&quot;</span>);
+        <span class="kw">let </span>admin = server_txn.internal_search_uuid(UUID_ADMIN).expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="kw">let </span>e1 = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
@@ -8555,7 +8517,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
@@ -8655,7 +8617,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
@@ -8665,18 +8627,15 @@
         <span class="macro">assert!</span>(cr.is_ok());
 
         <span class="comment">// Name doesn&#39;t exist
-        </span><span class="kw">let </span>r1 = server_txn
-            .uuid_to_spn(Uuid::parse_str(<span class="string">&quot;bae3f507-e6c3-44ba-ad01-f8ff1083534a&quot;</span>).unwrap());
+        </span><span class="kw">let </span>r1 = server_txn.uuid_to_spn(<span class="macro">uuid!</span>(<span class="string">&quot;bae3f507-e6c3-44ba-ad01-f8ff1083534a&quot;</span>));
         <span class="comment">// There is nothing.
         </span><span class="macro">assert!</span>(r1 == <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>));
         <span class="comment">// Name does exist
-        </span><span class="kw">let </span>r3 = server_txn
-            .uuid_to_spn(Uuid::parse_str(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).unwrap());
+        </span><span class="kw">let </span>r3 = server_txn.uuid_to_spn(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>));
         <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, r3);
         <span class="macro">assert!</span>(r3.unwrap().unwrap() == Value::new_spn_str(<span class="string">&quot;testperson1&quot;</span>, <span class="string">&quot;example.com&quot;</span>));
         <span class="comment">// Name is not syntax normalised (but exists)
-        </span><span class="kw">let </span>r4 = server_txn
-            .uuid_to_spn(Uuid::parse_str(<span class="string">&quot;CC8E95B4-C24F-4D68-BA54-8BED76F63930&quot;</span>).unwrap());
+        </span><span class="kw">let </span>r4 = server_txn.uuid_to_spn(<span class="macro">uuid!</span>(<span class="string">&quot;CC8E95B4-C24F-4D68-BA54-8BED76F63930&quot;</span>));
         <span class="macro">assert!</span>(r4.unwrap().unwrap() == Value::new_spn_str(<span class="string">&quot;testperson1&quot;</span>, <span class="string">&quot;example.com&quot;</span>));
     }
 
@@ -8691,7 +8650,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
@@ -8701,18 +8660,15 @@
         <span class="macro">assert!</span>(cr.is_ok());
 
         <span class="comment">// Name doesn&#39;t exist
-        </span><span class="kw">let </span>r1 = server_txn
-            .uuid_to_rdn(Uuid::parse_str(<span class="string">&quot;bae3f507-e6c3-44ba-ad01-f8ff1083534a&quot;</span>).unwrap());
+        </span><span class="kw">let </span>r1 = server_txn.uuid_to_rdn(<span class="macro">uuid!</span>(<span class="string">&quot;bae3f507-e6c3-44ba-ad01-f8ff1083534a&quot;</span>));
         <span class="comment">// There is nothing.
         </span><span class="macro">assert!</span>(r1.unwrap() == <span class="string">&quot;uuid=bae3f507-e6c3-44ba-ad01-f8ff1083534a&quot;</span>);
         <span class="comment">// Name does exist
-        </span><span class="kw">let </span>r3 = server_txn
-            .uuid_to_rdn(Uuid::parse_str(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).unwrap());
+        </span><span class="kw">let </span>r3 = server_txn.uuid_to_rdn(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>));
         <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, r3);
         <span class="macro">assert!</span>(r3.unwrap() == <span class="string">&quot;spn=testperson1@example.com&quot;</span>);
         <span class="comment">// Uuid is not syntax normalised (but exists)
-        </span><span class="kw">let </span>r4 = server_txn
-            .uuid_to_rdn(Uuid::parse_str(<span class="string">&quot;CC8E95B4-C24F-4D68-BA54-8BED76F63930&quot;</span>).unwrap());
+        </span><span class="kw">let </span>r4 = server_txn.uuid_to_rdn(<span class="macro">uuid!</span>(<span class="string">&quot;CC8E95B4-C24F-4D68-BA54-8BED76F63930&quot;</span>));
         <span class="macro">assert!</span>(r4.unwrap() == <span class="string">&quot;spn=testperson1@example.com&quot;</span>);
     }
 
@@ -8727,13 +8683,13 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
         );
 
-        <span class="kw">let </span>tuuid = Uuid::parse_str(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).unwrap();
+        <span class="kw">let </span>tuuid = <span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>);
 
         <span class="kw">let </span>ce = CreateEvent::new_internal(<span class="macro">vec!</span>[e1]);
         <span class="kw">let </span>cr = server_txn.create(<span class="kw-2">&amp;</span>ce);
@@ -8768,9 +8724,7 @@
         <span class="macro">assert!</span>(server_txn.name_to_uuid(<span class="string">&quot;testperson1&quot;</span>).is_err());
 
         <span class="comment">// revive
-        </span><span class="kw">let </span>admin = server_txn
-            .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_ADMIN)
-            .expect(<span class="string">&quot;failed&quot;</span>);
+        </span><span class="kw">let </span>admin = server_txn.internal_search_uuid(UUID_ADMIN).expect(<span class="string">&quot;failed&quot;</span>);
         <span class="kw">let </span>rre_rc = <span class="kw">unsafe </span>{
             ReviveRecycledEvent::new_impersonate_entry(
                 admin,
@@ -8800,7 +8754,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
@@ -8823,7 +8777,7 @@
         <span class="comment">// test attr reference
         </span><span class="kw">let </span>r3 = server_txn.clone_value(<span class="kw-2">&amp;</span><span class="string">&quot;member&quot;</span>.to_string(), <span class="kw-2">&amp;</span><span class="string">&quot;testperson1&quot;</span>.to_string());
 
-        <span class="macro">assert!</span>(r3 == <span class="prelude-val">Ok</span>(Value::new_refer_s(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).unwrap()));
+        <span class="macro">assert!</span>(r3 == <span class="prelude-val">Ok</span>(Value::Refer(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))));
 
         <span class="comment">// test attr reference already resolved.
         </span><span class="kw">let </span>r4 = server_txn.clone_value(
@@ -8832,7 +8786,7 @@
         );
 
         <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, r4);
-        <span class="macro">assert!</span>(r4 == <span class="prelude-val">Ok</span>(Value::new_refer_s(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).unwrap()));
+        <span class="macro">assert!</span>(r4 == <span class="prelude-val">Ok</span>(Value::Refer(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))));
     }
 
     <span class="attribute">#[qs_test]
@@ -8843,7 +8797,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testobj1&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
             )
         );
 
@@ -8854,7 +8808,7 @@
             (<span class="string">&quot;classname&quot;</span>, Value::new_iutf8(<span class="string">&quot;testclass&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cfcae205-31c3-484b-8ced-667d1709c5e3&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cfcae205-31c3-484b-8ced-667d1709c5e3&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;Test Class&quot;</span>)),
             (<span class="string">&quot;may&quot;</span>, Value::new_iutf8(<span class="string">&quot;name&quot;</span>))
@@ -8900,7 +8854,7 @@
         <span class="macro">assert!</span>(server_txn.create(<span class="kw-2">&amp;</span>ce_fail).is_err());
         <span class="comment">// Search our entry
         </span><span class="kw">let </span>testobj1 = server_txn
-            .internal_search_uuid(<span class="kw-2">&amp;</span>Uuid::parse_str(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).unwrap())
+            .internal_search_uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
             .expect(<span class="string">&quot;failed&quot;</span>);
         <span class="macro">assert!</span>(testobj1.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PartialValue::new_class(<span class="string">&quot;testclass&quot;</span>)));
 
@@ -8917,7 +8871,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testobj1&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
             ),
             (<span class="string">&quot;testattr&quot;</span>, Value::new_utf8s(<span class="string">&quot;test&quot;</span>))
         );
@@ -8928,7 +8882,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;attributetype&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cfcae205-31c3-484b-8ced-667d1709c5e3&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cfcae205-31c3-484b-8ced-667d1709c5e3&quot;</span>))
             ),
             (<span class="string">&quot;attributename&quot;</span>, Value::new_iutf8(<span class="string">&quot;testattr&quot;</span>)),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;Test Attribute&quot;</span>)),
@@ -8982,7 +8936,7 @@
         <span class="comment">// Search the entry - the attribute will still be present
         // even if we can&#39;t search on it.
         </span><span class="kw">let </span>testobj1 = server_txn
-            .internal_search_uuid(<span class="kw-2">&amp;</span>Uuid::parse_str(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).unwrap())
+            .internal_search_uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
             .expect(<span class="string">&quot;failed&quot;</span>);
         <span class="macro">assert!</span>(testobj1.attribute_equality(<span class="string">&quot;testattr&quot;</span>, <span class="kw-2">&amp;</span>PartialValue::new_utf8s(<span class="string">&quot;test&quot;</span>)));
 
@@ -8999,7 +8953,7 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
@@ -9032,7 +8986,7 @@
 
         <span class="comment">// assert it exists and the password checks out
         </span><span class="kw">let </span>test_ent = server_txn
-            .internal_search_uuid(<span class="kw-2">&amp;</span>Uuid::parse_str(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).unwrap())
+            .internal_search_uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
             .expect(<span class="string">&quot;failed&quot;</span>);
         <span class="comment">// get the primary ava
         </span><span class="kw">let </span>cred_ref = test_ent
@@ -9047,7 +9001,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(name)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuids(uuid).expect(<span class="string">&quot;uuid&quot;</span>)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid_s(uuid).expect(<span class="string">&quot;uuid&quot;</span>)),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson-entry&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(name))
         )
@@ -9058,7 +9012,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(name)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuids(uuid).expect(<span class="string">&quot;uuid&quot;</span>)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid_s(uuid).expect(<span class="string">&quot;uuid&quot;</span>)),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testgroup-entry&quot;</span>))
         );
         members
@@ -9081,9 +9035,7 @@
     </span><span class="kw">async fn </span>test_revive_advanced_directmemberships(server: <span class="kw-2">&amp;</span>QueryServer) {
         <span class="comment">// Create items
         </span><span class="kw">let </span><span class="kw-2">mut </span>server_txn = server.write(duration_from_epoch_now()).<span class="kw">await</span>;
-        <span class="kw">let </span>admin = server_txn
-            .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_ADMIN)
-            .expect(<span class="string">&quot;failed&quot;</span>);
+        <span class="kw">let </span>admin = server_txn.internal_search_uuid(UUID_ADMIN).expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="comment">// Right need a user in a direct group.
         </span><span class="kw">let </span>u1 = create_user(<span class="string">&quot;u1&quot;</span>, <span class="string">&quot;22b47373-d123-421f-859e-9ddd8ab14a2a&quot;</span>);
@@ -9264,7 +9216,7 @@
         <span class="comment">// ++ Mod domain name and name to be the old type.
         </span><span class="kw">let </span>me_dn = <span class="kw">unsafe </span>{
             ModifyEvent::new_internal_invalid(
-                <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(UUID_DOMAIN_INFO))),
+                <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(UUID_DOMAIN_INFO))),
                 ModifyList::new_list(<span class="macro">vec!</span>[
                     Modify::Purged(AttrString::from(<span class="string">&quot;name&quot;</span>)),
                     Modify::Purged(AttrString::from(<span class="string">&quot;domain_name&quot;</span>)),
@@ -9315,7 +9267,7 @@
         <span class="comment">// Assert that it migrated and worked as expected.
         </span><span class="kw">let </span>server_txn = server.write(duration_from_epoch_now()).<span class="kw">await</span>;
         <span class="kw">let </span>domain = server_txn
-            .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_DOMAIN_INFO)
+            .internal_search_uuid(UUID_DOMAIN_INFO)
             .expect(<span class="string">&quot;failed&quot;</span>);
         <span class="comment">// ++ assert all names are iname
         </span><span class="macro">assert!</span>(

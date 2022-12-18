@@ -3680,9 +3680,6 @@
 <span id="3680">3680</span>
 <span id="3681">3681</span>
 <span id="3682">3682</span>
-<span id="3683">3683</span>
-<span id="3684">3684</span>
-<span id="3685">3685</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations
 //!
 //! This contains the in memory and loaded set of active oauth2 resource server
@@ -4214,10 +4211,7 @@
                 )]);
 
                 <span class="self">self</span>.qs_write
-                    .internal_modify(
-                        <span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(uuid))),
-                        <span class="kw-2">&amp;</span>modlist,
-                    )
+                    .internal_modify(<span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(uuid))), <span class="kw-2">&amp;</span>modlist)
                     .map_err(|e| {
                         <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to modify - revoke oauth2 session {:?}&quot;</span>, e);
                         Oauth2Error::ServerError(e)
@@ -4682,7 +4676,7 @@
             <span class="self">self</span>.check_oauth2_token_exchange_authorization_code(o2rs, token_req, ct, async_tx)
         } <span class="kw">else </span>{
             <span class="macro">admin_warn!</span>(<span class="string">&quot;Invalid oauth2 grant_type (should be &#39;authorization_code&#39;)&quot;</span>);
-            <span class="kw">return </span><span class="prelude-val">Err</span>(Oauth2Error::InvalidRequest);
+            <span class="prelude-val">Err</span>(Oauth2Error::InvalidRequest)
         }
     }
 
@@ -5107,7 +5101,7 @@
                     iss,
                     sub: OidcSubject::U(uuid),
                     aud: client_id.to_string(),
-                    iat: iat,
+                    iat,
                     nbf: <span class="prelude-val">Some</span>(nbf),
                     exp,
                     auth_time: <span class="prelude-val">None</span>,
@@ -5120,7 +5114,7 @@
                     s_claims: OidcClaims {
                         <span class="comment">// Map from displayname
                         </span>name: <span class="prelude-val">Some</span>(account.displayname.clone()),
-                        scopes: scopes,
+                        scopes,
                         preferred_username,
                         email,
                         email_verified,
@@ -5237,7 +5231,7 @@
 
 <span class="kw">fn </span>parse_basic_authz(client_authz: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(String, String), Oauth2Error&gt; {
     <span class="comment">// Check the client_authz
-    </span><span class="kw">let </span>authz = base64::decode(<span class="kw-2">&amp;</span>client_authz)
+    </span><span class="kw">let </span>authz = base64::decode(client_authz)
         .map_err(|<span class="kw">_</span>| {
             <span class="macro">admin_error!</span>(<span class="string">&quot;Basic authz invalid base64&quot;</span>);
             Oauth2Error::AuthenticationRequired
@@ -5344,7 +5338,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server_basic&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(uuid)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(uuid)),
             (<span class="string">&quot;oauth2_rs_name&quot;</span>, Value::new_iname(<span class="string">&quot;test_resource_server&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;test_resource_server&quot;</span>)),
             (
@@ -5388,7 +5382,7 @@
 
         <span class="kw">let </span>entry = idms_prox_write
             .qs_write
-            .internal_search_uuid(<span class="kw-2">&amp;</span>uuid)
+            .internal_search_uuid(uuid)
             .expect(<span class="string">&quot;Failed to retrieve oauth2 resource entry &quot;</span>);
         <span class="kw">let </span>secret = entry
             .get_ava_single_secret(<span class="string">&quot;oauth2_rs_basic_secret&quot;</span>)
@@ -5397,7 +5391,7 @@
 
         <span class="comment">// Setup the uat we&#39;ll be using.
         </span><span class="kw">let </span>account = idms_prox_write
-            .target_to_account(<span class="kw-2">&amp;</span>UUID_ADMIN)
+            .target_to_account(UUID_ADMIN)
             .expect(<span class="string">&quot;account must exist&quot;</span>);
         <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
         <span class="kw">let </span>uat = account
@@ -5424,7 +5418,7 @@
     ) -&gt; (UserAuthToken, Identity) {
         <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
         <span class="kw">let </span>account = idms_prox_write
-            .target_to_account(<span class="kw-2">&amp;</span>UUID_IDM_ADMIN)
+            .target_to_account(UUID_IDM_ADMIN)
             .expect(<span class="string">&quot;account must exist&quot;</span>);
         <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
         <span class="kw">let </span>uat = account
@@ -5687,7 +5681,7 @@
             <span class="kw">let </span>(uat2, ident2) = {
                 <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
                 <span class="kw">let </span>account = idms_prox_write
-                    .target_to_account(<span class="kw-2">&amp;</span>UUID_IDM_ADMIN)
+                    .target_to_account(UUID_IDM_ADMIN)
                     .expect(<span class="string">&quot;account must exist&quot;</span>);
                 <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
                 <span class="kw">let </span>uat2 = account
@@ -6281,7 +6275,7 @@
                 <span class="comment">// Check it is now there
                 </span><span class="kw">let </span>entry = idms_prox_write
                     .qs_write
-                    .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_ADMIN)
+                    .internal_search_uuid(UUID_ADMIN)
                     .expect(<span class="string">&quot;failed&quot;</span>);
                 <span class="kw">let </span>valid = entry
                     .get_ava_as_oauth2session_map(<span class="string">&quot;oauth2_session&quot;</span>)
@@ -6304,7 +6298,7 @@
                 // integrity plugin.
                 </span><span class="kw">let </span>entry = idms_prox_write
                     .qs_write
-                    .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_ADMIN)
+                    .internal_search_uuid(UUID_ADMIN)
                     .expect(<span class="string">&quot;failed&quot;</span>);
                 <span class="kw">let </span>valid = entry
                     .get_ava_as_oauth2session_map(<span class="string">&quot;oauth2_session&quot;</span>)
@@ -6329,7 +6323,7 @@
             <span class="kw">let </span>(uat2, ident2) = {
                 <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
                 <span class="kw">let </span>account = idms_prox_write
-                    .target_to_account(<span class="kw-2">&amp;</span>UUID_IDM_ADMIN)
+                    .target_to_account(UUID_IDM_ADMIN)
                     .expect(<span class="string">&quot;account must exist&quot;</span>);
                 <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
                 <span class="kw">let </span>uat2 = account

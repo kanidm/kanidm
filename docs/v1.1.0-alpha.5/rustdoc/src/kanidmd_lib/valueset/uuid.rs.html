@@ -406,11 +406,11 @@
     }
 
     <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
-        Box::new(<span class="self">self</span>.set.iter().copied().map(PartialValue::new_uuid))
+        Box::new(<span class="self">self</span>.set.iter().copied().map(PartialValue::Uuid))
     }
 
     <span class="kw">fn </span>to_value_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Value&gt; + <span class="lifetime">&#39;_</span>&gt; {
-        Box::new(<span class="self">self</span>.set.iter().copied().map(Value::new_uuid))
+        Box::new(<span class="self">self</span>.set.iter().copied().map(Value::Uuid))
     }
 
     <span class="kw">fn </span>equal(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; bool {
@@ -555,11 +555,11 @@
     }
 
     <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
-        Box::new(<span class="self">self</span>.set.iter().copied().map(PartialValue::new_refer))
+        Box::new(<span class="self">self</span>.set.iter().copied().map(PartialValue::Refer))
     }
 
     <span class="kw">fn </span>to_value_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Value&gt; + <span class="lifetime">&#39;_</span>&gt; {
-        Box::new(<span class="self">self</span>.set.iter().copied().map(Value::new_refer))
+        Box::new(<span class="self">self</span>.set.iter().copied().map(Value::Refer))
     }
 
     <span class="kw">fn </span>equal(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; bool {

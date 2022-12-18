@@ -1093,7 +1093,7 @@
                 .get(<span class="string">&quot;x-kanidm-auth-session-id&quot;</span>)
                 .ok()
                 .flatten()
-                .unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_string());
+                .unwrap_or_default();
             <span class="kw">let </span>jsval = JsFuture::from(resp.json()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
             <span class="kw">let </span>state: AuthResponse = serde_wasm_bindgen::from_value(jsval)
                 .expect_throw(<span class="string">&quot;Invalid response type - auth_init::AuthResponse&quot;</span>);
@@ -1530,7 +1530,7 @@
         // -- clear the bearer to prevent conflict
         </span>models::clear_bearer_token();
         <span class="comment">// Do we have a login hint?
-        </span><span class="kw">let </span>inputvalue = models::pop_login_hint().unwrap_or_else(|| <span class="string">&quot;&quot;</span>.to_string());
+        </span><span class="kw">let </span>inputvalue = models::pop_login_hint().unwrap_or_default();
 
         <span class="attribute">#[cfg(debug_assertions)]
         </span>{
@@ -1659,7 +1659,7 @@
                 <span class="attribute">#[cfg(debug_assertions)]
                 </span><span class="macro">console::debug!</span>(<span class="string">&quot;At securitykey step&quot;</span>.to_string());
                 <span class="kw">let </span>authreq = AuthRequest {
-                    step: AuthStep::Cred(AuthCredential::SecurityKey(resp)),
+                    step: AuthStep::Cred(AuthCredential::SecurityKey(Box::new(resp))),
                 };
                 <span class="kw">let </span>session_id = <span class="self">self</span>.session_id.clone();
                 ctx.link().send_future(<span class="kw">async </span>{
@@ -1675,7 +1675,7 @@
                 <span class="attribute">#[cfg(debug_assertions)]
                 </span><span class="macro">console::debug!</span>(<span class="string">&quot;At passkey step&quot;</span>.to_string());
                 <span class="kw">let </span>authreq = AuthRequest {
-                    step: AuthStep::Cred(AuthCredential::Passkey(resp)),
+                    step: AuthStep::Cred(AuthCredential::Passkey(Box::new(resp))),
                 };
                 <span class="kw">let </span>session_id = <span class="self">self</span>.session_id.clone();
                 ctx.link().send_future(<span class="kw">async </span>{

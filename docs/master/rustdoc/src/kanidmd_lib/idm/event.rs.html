@@ -493,22 +493,6 @@
 <span id="493">493</span>
 <span id="494">494</span>
 <span id="495">495</span>
-<span id="496">496</span>
-<span id="497">497</span>
-<span id="498">498</span>
-<span id="499">499</span>
-<span id="500">500</span>
-<span id="501">501</span>
-<span id="502">502</span>
-<span id="503">503</span>
-<span id="504">504</span>
-<span id="505">505</span>
-<span id="506">506</span>
-<span id="507">507</span>
-<span id="508">508</span>
-<span id="509">509</span>
-<span id="510">510</span>
-<span id="511">511</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span><span class="kw">crate</span>::idm::AuthState;
@@ -528,10 +512,10 @@
 
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">impl </span>PasswordChangeEvent {
-    <span class="kw">pub fn </span>new_internal(target: <span class="kw-2">&amp;</span>Uuid, cleartext: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new_internal(target: Uuid, cleartext: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
         PasswordChangeEvent {
             ident: Identity::from_internal(),
-            target: <span class="kw-2">*</span>target,
+            target,
             cleartext: cleartext.to_string(),
         }
     }
@@ -545,10 +529,10 @@
 
 <span class="kw">impl </span>UnixPasswordChangeEvent {
     <span class="attribute">#[cfg(test)]
-    </span><span class="kw">pub fn </span>new_internal(target: <span class="kw-2">&amp;</span>Uuid, cleartext: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new_internal(target: Uuid, cleartext: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
         UnixPasswordChangeEvent {
             ident: Identity::from_internal(),
-            target: <span class="kw-2">*</span>target,
+            target,
             cleartext: cleartext.to_string(),
         }
     }
@@ -692,10 +676,10 @@
 
 <span class="kw">impl </span>UnixUserAuthEvent {
     <span class="attribute">#[cfg(test)]
-    </span><span class="kw">pub fn </span>new_internal(target: <span class="kw-2">&amp;</span>Uuid, cleartext: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new_internal(target: Uuid, cleartext: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
         UnixUserAuthEvent {
             ident: Identity::from_internal(),
-            target: <span class="kw-2">*</span>target,
+            target,
             cleartext: cleartext.to_string(),
         }
     }
@@ -766,23 +750,7 @@
 }
 
 <span class="kw">impl </span>LdapAuthEvent {
-    <span class="comment">/*
-    #[cfg(test)]
-    pub fn new_internal(target: &amp;Uuid, cleartext: &amp;str) -&gt; Self {
-        LdapAuthEvent {
-            // ident: Identity::from_internal(),
-            target: *target,
-            cleartext: cleartext.to_string(),
-        }
-    }
-    */
-
-    </span><span class="kw">pub fn </span>from_parts(
-        <span class="comment">// qs: &amp;mut QueryServerReadTransaction,
-        // uat: Option&lt;UserAuthToken&gt;,
-        </span>target: Uuid,
-        cleartext: String,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+    <span class="kw">pub fn </span>from_parts(target: Uuid, cleartext: String) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="comment">// let e = Event::from_ro_uat(audit, qs, uat)?;
 
         </span><span class="prelude-val">Ok</span>(LdapAuthEvent {
@@ -917,7 +885,7 @@
     </span><span class="kw">pub fn </span>cred_step_passkey(sid: Uuid, passkey_response: PublicKeyCredential) -&gt; <span class="self">Self </span>{
         AuthEventStep::Cred(AuthEventStepCred {
             sessionid: sid,
-            cred: AuthCredential::Passkey(passkey_response),
+            cred: AuthCredential::Passkey(Box::new(passkey_response)),
         })
     }
 }

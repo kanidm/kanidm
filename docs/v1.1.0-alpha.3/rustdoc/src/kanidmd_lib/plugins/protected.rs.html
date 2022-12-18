@@ -867,14 +867,14 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;memberof&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_account_1&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;test_account_1&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_ACCOUNT)),
-            (<span class="string">&quot;memberof&quot;</span>, Value::new_refer(UUID_TEST_GROUP))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_ACCOUNT)),
+            (<span class="string">&quot;memberof&quot;</span>, Value::Refer(UUID_TEST_GROUP))
         );
         <span class="kw">pub static </span><span class="kw-2">ref </span>TEST_GROUP: EntryInitNew = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_group_a&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_GROUP)),
-            (<span class="string">&quot;member&quot;</span>, Value::new_refer(UUID_TEST_ACCOUNT))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_GROUP)),
+            (<span class="string">&quot;member&quot;</span>, Value::Refer(UUID_TEST_ACCOUNT))
         );
         <span class="kw">pub static </span><span class="kw-2">ref </span>ALLOW_ALL: EntryInitNew = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
@@ -884,7 +884,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;access_control_delete&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;access_control_search&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;idm_admins_acp_allow_all_test&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_ACP)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_ACP)),
             (<span class="string">&quot;acp_receiver_group&quot;</span>, Value::Refer(UUID_TEST_GROUP)),
             (
                 <span class="string">&quot;acp_targetscope&quot;</span>,

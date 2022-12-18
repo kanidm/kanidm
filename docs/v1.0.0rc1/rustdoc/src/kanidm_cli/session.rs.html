@@ -520,6 +520,8 @@
 <span id="520">520</span>
 <span id="521">521</span>
 <span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::fs::{create_dir, File};
 <span class="kw">use </span>std::io::{<span class="self">self</span>, BufReader, BufWriter, ErrorKind, Write};
@@ -721,6 +723,7 @@
         <span class="macro">println!</span>(<span class="string">&quot;Your authenticator will now flash for you to interact with it.&quot;</span>);
         <span class="kw">let </span>auth = wa
             .do_authentication(client.get_origin().clone(), pkr)
+            .map(Box::new)
             .unwrap_or_else(|e| {
                 <span class="macro">error!</span>(<span class="string">&quot;Failed to interact with webauthn device. -- {:?}&quot;</span>, e);
                 std::process::exit(<span class="number">1</span>);
@@ -738,6 +741,7 @@
         <span class="macro">println!</span>(<span class="string">&quot;Your authenticator will now flash for you to interact with it.&quot;</span>);
         <span class="kw">let </span>auth = wa
             .do_authentication(client.get_origin().clone(), pkr)
+            .map(Box::new)
             .unwrap_or_else(|e| {
                 <span class="macro">error!</span>(<span class="string">&quot;Failed to interact with webauthn device. -- {:?}&quot;</span>, e);
                 std::process::exit(<span class="number">1</span>);

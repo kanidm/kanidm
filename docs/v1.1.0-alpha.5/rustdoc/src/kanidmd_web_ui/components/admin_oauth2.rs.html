@@ -429,6 +429,7 @@
 <span id="429">429</span>
 <span id="430">430</span>
 <span id="431">431</span>
+<span id="432">432</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use </span>gloo::console;
@@ -656,10 +657,11 @@
                 <span class="comment">// TODO: do we paginate here?
                 </span><span class="attribute">#[cfg(debug_assertions)]
                 </span><span class="kw">for </span>key <span class="kw">in </span>response.keys() {
-                    <span class="macro">console::log!</span>(
-                        <span class="string">&quot;response: {:?}&quot;</span>,
-                        serde_json::to_string(response.get(key).unwrap()).unwrap()
-                    );
+                    <span class="kw">let </span>j = response
+                        .get(key)
+                        .and_then(|k| serde_json::to_string(k).ok())
+                        .unwrap_or_else(|| <span class="string">&quot;Failed to dump response key&quot;</span>.to_string());
+                    <span class="macro">console::log!</span>(<span class="string">&quot;response: {}&quot;</span>, j);
                 }
                 <span class="self">self</span>.state = ListViewState::Responded { response };
                 <span class="kw">return </span><span class="bool-val">true</span>;

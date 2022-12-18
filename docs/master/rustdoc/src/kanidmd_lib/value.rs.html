@@ -1784,84 +1784,6 @@
 <span id="1784">1784</span>
 <span id="1785">1785</span>
 <span id="1786">1786</span>
-<span id="1787">1787</span>
-<span id="1788">1788</span>
-<span id="1789">1789</span>
-<span id="1790">1790</span>
-<span id="1791">1791</span>
-<span id="1792">1792</span>
-<span id="1793">1793</span>
-<span id="1794">1794</span>
-<span id="1795">1795</span>
-<span id="1796">1796</span>
-<span id="1797">1797</span>
-<span id="1798">1798</span>
-<span id="1799">1799</span>
-<span id="1800">1800</span>
-<span id="1801">1801</span>
-<span id="1802">1802</span>
-<span id="1803">1803</span>
-<span id="1804">1804</span>
-<span id="1805">1805</span>
-<span id="1806">1806</span>
-<span id="1807">1807</span>
-<span id="1808">1808</span>
-<span id="1809">1809</span>
-<span id="1810">1810</span>
-<span id="1811">1811</span>
-<span id="1812">1812</span>
-<span id="1813">1813</span>
-<span id="1814">1814</span>
-<span id="1815">1815</span>
-<span id="1816">1816</span>
-<span id="1817">1817</span>
-<span id="1818">1818</span>
-<span id="1819">1819</span>
-<span id="1820">1820</span>
-<span id="1821">1821</span>
-<span id="1822">1822</span>
-<span id="1823">1823</span>
-<span id="1824">1824</span>
-<span id="1825">1825</span>
-<span id="1826">1826</span>
-<span id="1827">1827</span>
-<span id="1828">1828</span>
-<span id="1829">1829</span>
-<span id="1830">1830</span>
-<span id="1831">1831</span>
-<span id="1832">1832</span>
-<span id="1833">1833</span>
-<span id="1834">1834</span>
-<span id="1835">1835</span>
-<span id="1836">1836</span>
-<span id="1837">1837</span>
-<span id="1838">1838</span>
-<span id="1839">1839</span>
-<span id="1840">1840</span>
-<span id="1841">1841</span>
-<span id="1842">1842</span>
-<span id="1843">1843</span>
-<span id="1844">1844</span>
-<span id="1845">1845</span>
-<span id="1846">1846</span>
-<span id="1847">1847</span>
-<span id="1848">1848</span>
-<span id="1849">1849</span>
-<span id="1850">1850</span>
-<span id="1851">1851</span>
-<span id="1852">1852</span>
-<span id="1853">1853</span>
-<span id="1854">1854</span>
-<span id="1855">1855</span>
-<span id="1856">1856</span>
-<span id="1857">1857</span>
-<span id="1858">1858</span>
-<span id="1859">1859</span>
-<span id="1860">1860</span>
-<span id="1861">1861</span>
-<span id="1862">1862</span>
-<span id="1863">1863</span>
-<span id="1864">1864</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of
 //! the [`Value`] module allow storage and transformation of various types of input into strongly
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
@@ -2287,24 +2209,12 @@
         <span class="macro">matches!</span>(<span class="self">self</span>, PartialValue::Bool(<span class="kw">_</span>))
     }
 
-    <span class="kw">pub fn </span>new_uuid(u: Uuid) -&gt; <span class="self">Self </span>{
-        PartialValue::Uuid(u)
-    }
-
-    <span class="kw">pub fn </span>new_uuids(us: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
+    <span class="kw">pub fn </span>new_uuid_s(us: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
         Uuid::parse_str(us).map(PartialValue::Uuid).ok()
     }
 
     <span class="kw">pub fn </span>is_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="macro">matches!</span>(<span class="self">self</span>, PartialValue::Uuid(<span class="kw">_</span>))
-    }
-
-    <span class="kw">pub fn </span>new_refer(u: Uuid) -&gt; <span class="self">Self </span>{
-        PartialValue::Refer(u)
-    }
-
-    <span class="kw">pub fn </span>new_refer_r(u: <span class="kw-2">&amp;</span>Uuid) -&gt; <span class="self">Self </span>{
-        PartialValue::Refer(<span class="kw-2">*</span>u)
     }
 
     <span class="kw">pub fn </span>new_refer_s(us: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
@@ -2834,11 +2744,7 @@
         <span class="macro">matches!</span>(<span class="self">self</span>, Value::Iname(<span class="kw">_</span>))
     }
 
-    <span class="kw">pub fn </span>new_uuid(u: Uuid) -&gt; <span class="self">Self </span>{
-        Value::Uuid(u)
-    }
-
-    <span class="kw">pub fn </span>new_uuids(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
+    <span class="kw">pub fn </span>new_uuid_s(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
         Uuid::parse_str(s).map(Value::Uuid).ok()
     }
 
@@ -2882,14 +2788,6 @@
 
     <span class="kw">pub fn </span>is_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="macro">matches!</span>(<span class="self">self</span>, Value::Index(<span class="kw">_</span>))
-    }
-
-    <span class="kw">pub fn </span>new_refer(u: Uuid) -&gt; <span class="self">Self </span>{
-        Value::Refer(u)
-    }
-
-    <span class="kw">pub fn </span>new_refer_r(u: <span class="kw-2">&amp;</span>Uuid) -&gt; <span class="self">Self </span>{
-        Value::Refer(<span class="kw-2">*</span>u)
     }
 
     <span class="kw">pub fn </span>new_refer_s(us: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
@@ -3671,60 +3569,6 @@
         <span class="macro">assert!</span>(val2.is_some());
         <span class="macro">assert!</span>(val3.is_some());
     }
-
-    <span class="comment">/*
-    #[test]
-    fn test_schema_syntax_json_filter() {
-        let sa = SchemaAttribute {
-            name: String::from(&quot;acp_receiver&quot;),
-            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_RECEIVER)
-                .expect(&quot;unable to parse const uuid&quot;),
-            description: String::from(
-                &quot;Who the ACP applies to, constraining or allowing operations.&quot;,
-            ),
-            multivalue: false,
-            index: vec![IndexType::Equality, IndexType::SubString],
-            syntax: SyntaxType::JSON_FILTER,
-        };
-
-        // Outright wrong
-        let r1 = sa.validate_json_filter(&amp;String::from(&quot;Whargarble lol not a filter&quot;));
-        assert!(r1.is_err());
-        // Json error
-        let r2 = sa.validate_json_filter(&amp;String::from(
-            &quot;{\&quot;And\&quot;:[{\&quot;Eq\&quot;:[\&quot;a\&quot;,\&quot;a\&quot;]},\&quot;Self\&quot;,]}&quot;,
-        ));
-        assert!(r2.is_err());
-        // Invalid keyword
-        let r3 = sa.validate_json_filter(&amp;String::from(
-            &quot;{\&quot;And\&quot;:[{\&quot;Nalf\&quot;:[\&quot;a\&quot;,\&quot;a\&quot;]},\&quot;Self\&quot;]}&quot;,
-        ));
-        assert!(r3.is_err());
-        // valid
-        let r4 = sa.validate_json_filter(&amp;String::from(&quot;{\&quot;Or\&quot;:[{\&quot;Eq\&quot;:[\&quot;a\&quot;,\&quot;a\&quot;]}]}&quot;));
-        assert!(r4.is_ok());
-        // valid with self keyword
-        let r5 =
-            sa.validate_json_filter(&amp;String::from(&quot;{\&quot;And\&quot;:[{\&quot;Eq\&quot;:[\&quot;a\&quot;,\&quot;a\&quot;]},\&quot;Self\&quot;]}&quot;));
-        assert!(r5.is_ok());
-    }
-
-    #[test]
-    fn test_schema_normalise_uuid() {
-        let sa = SchemaAttribute {
-            name: String::from(&quot;uuid&quot;),
-            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UUID).expect(&quot;unable to parse const uuid&quot;),
-            description: String::from(&quot;The universal unique id of the object&quot;),
-            multivalue: false,
-            index: vec![IndexType::Equality],
-            syntax: SyntaxType::UUID,
-        };
-        let u1 = String::from(&quot;936DA01F9ABD4d9d80C702AF85C822A8&quot;);
-
-        let un1 = sa.normalise_value(&amp;u1);
-        assert_eq!(un1, &quot;936da01f-9abd-4d9d-80c7-02af85c822a8&quot;);
-    }
-    */
-</span>}
+}
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd_lib" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.0 (69f9c33d7 2022-12-12)" ></div></body></html>

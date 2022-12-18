@@ -1011,7 +1011,7 @@
         target_uuid: Uuid,
         qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
-        <span class="kw">let </span>filter_orig = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(target_uuid)))
+        <span class="kw">let </span>filter_orig = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(target_uuid)))
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)<span class="question-mark">?</span>;
         <span class="kw">let </span>filter = filter_orig.clone().into_ignore_hidden();
@@ -1373,7 +1373,7 @@
         filter: Filter&lt;FilterInvalid&gt;,
         qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
-        <span class="kw">let </span>f_uuid = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(target_uuid)));
+        <span class="kw">let </span>f_uuid = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(target_uuid)));
         <span class="comment">// Add any supplemental conditions we have.
         </span><span class="kw">let </span>f = Filter::join_parts_and(f_uuid, filter);
 
@@ -1424,7 +1424,7 @@
         qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="kw">let </span>ml = ModifyList::new_purge(attr);
-        <span class="kw">let </span>f_uuid = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(target_uuid)));
+        <span class="kw">let </span>f_uuid = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(target_uuid)));
         <span class="comment">// Add any supplemental conditions we have.
         </span><span class="kw">let </span>f = Filter::join_parts_and(f_uuid, filter);
 

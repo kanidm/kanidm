@@ -1115,7 +1115,7 @@
         // get the domain_info item
         </span><span class="kw">let </span>domain_entry = idms_prox_read
             .qs_read
-            .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_DOMAIN_INFO)<span class="question-mark">?</span>;
+            .internal_search_uuid(UUID_DOMAIN_INFO)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>domain_name = domain_entry
             .get_ava_single_iname(<span class="string">&quot;domain_name&quot;</span>)
@@ -1481,7 +1481,7 @@
         idms: <span class="kw-2">&amp;</span>IdmServer,
         server_op: ServerOps,
         uat: <span class="prelude-ty">Option</span>&lt;LdapBoundToken&gt;,
-        eventid: <span class="kw-2">&amp;</span>Uuid,
+        eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;LdapResponseState, OperationError&gt; {
         <span class="kw">match </span>server_op {
             ServerOps::SimpleBind(sbr) =&gt; <span class="self">self
@@ -1536,9 +1536,9 @@
                 <span class="prelude-val">Some</span>(u) =&gt; <span class="prelude-val">Ok</span>(LdapResponseState::Respond(
                     wr.gen_success(<span class="macro">format!</span>(<span class="string">&quot;u: {}&quot;</span>, u.spn).as_str()),
                 )),
-                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(LdapResponseState::Respond(wr.gen_operror(
-                    <span class="macro">format!</span>(<span class="string">&quot;Unbound Connection {:?}&quot;</span>, <span class="kw-2">&amp;</span>eventid).as_str(),
-                ))),
+                <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(LdapResponseState::Respond(
+                    wr.gen_operror(<span class="macro">format!</span>(<span class="string">&quot;Unbound Connection {}&quot;</span>, eventid).as_str()),
+                )),
             },
         } <span class="comment">// end match server op
     </span>}
@@ -1655,7 +1655,7 @@
                 };
                 <span class="macro">assert!</span>(idms_prox_write.qs_write.modify(<span class="kw-2">&amp;</span>me_posix).is_ok());
 
-                <span class="kw">let </span>pce = UnixPasswordChangeEvent::new_internal(<span class="kw-2">&amp;</span>UUID_ADMIN, TEST_PASSWORD);
+                <span class="kw">let </span>pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
                 <span class="macro">assert!</span>(idms_prox_write.set_unix_account_password(<span class="kw-2">&amp;</span>pce).is_ok());
                 <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
@@ -1821,7 +1821,7 @@
                         (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
                         (
                             <span class="string">&quot;uuid&quot;</span>,
-                            Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                            Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
                         ),
                         (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
                         (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
@@ -1975,7 +1975,7 @@
                         (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
                         (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;service_account&quot;</span>)),
                         (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
-                        (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(sa_uuid)),
+                        (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(sa_uuid)),
                         (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;service_permission_test&quot;</span>)),
                         (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;service_permission_test&quot;</span>))
                     );
@@ -2014,7 +2014,7 @@
                             )),
                             ModifyList::new_list(<span class="macro">vec!</span>[Modify::Present(
                                 AttrString::from(<span class="string">&quot;member&quot;</span>),
-                                Value::new_refer(sa_uuid),
+                                Value::Refer(sa_uuid),
                             )]),
                         )
                     };

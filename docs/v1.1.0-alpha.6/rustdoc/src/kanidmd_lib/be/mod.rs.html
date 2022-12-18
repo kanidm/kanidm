@@ -3161,8 +3161,6 @@
 <span id="3161">3161</span>
 <span id="3162">3162</span>
 <span id="3163">3163</span>
-<span id="3164">3164</span>
-<span id="3165">3165</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The backend. This contains the &quot;low level&quot; storage and query code, which is
 //! implemented as a json-like kv document database. This has no rules about content
 //! of the server, which are all enforced at higher levels. The role of the backend
@@ -4941,7 +4939,6 @@
     <span class="kw">use </span>std::time::Duration;
 
     <span class="kw">use </span>idlset::v2::IDLBitRange;
-    <span class="kw">use </span>uuid::Uuid;
 
     <span class="kw">use </span><span class="kw">super</span>::<span class="kw">super</span>::entry::{Entry, EntryInit, EntryNew};
     <span class="kw">use super</span>::{
@@ -5512,8 +5509,8 @@
             </span><span class="macro">assert_eq!</span>(uuid_p_idl, <span class="prelude-val">None</span>);
 
             <span class="comment">// Check name2uuid
-            </span><span class="kw">let </span>claire_uuid = Uuid::parse_str(<span class="string">&quot;bd651620-00dd-426b-aaa0-4494f7b7906f&quot;</span>).unwrap();
-            <span class="kw">let </span>william_uuid = Uuid::parse_str(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>).unwrap();
+            </span><span class="kw">let </span>claire_uuid = <span class="macro">uuid!</span>(<span class="string">&quot;bd651620-00dd-426b-aaa0-4494f7b7906f&quot;</span>);
+            <span class="kw">let </span>william_uuid = <span class="macro">uuid!</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>);
 
             <span class="macro">assert!</span>(be.name2uuid(<span class="string">&quot;claire&quot;</span>) == <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(claire_uuid)));
             <span class="macro">assert!</span>(be.name2uuid(<span class="string">&quot;william&quot;</span>) == <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(william_uuid)));
@@ -5557,7 +5554,7 @@
 
             <span class="macro">idl_state!</span>(be, <span class="string">&quot;uuid&quot;</span>, IndexType::Presence, <span class="string">&quot;_&quot;</span>, <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">1</span>]));
 
-            <span class="kw">let </span>william_uuid = Uuid::parse_str(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>).unwrap();
+            <span class="kw">let </span>william_uuid = <span class="macro">uuid!</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>);
             <span class="macro">assert!</span>(be.name2uuid(<span class="string">&quot;william&quot;</span>) == <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(william_uuid)));
             <span class="macro">assert!</span>(be.uuid2spn(william_uuid) == <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(Value::from(<span class="string">&quot;william&quot;</span>))));
             <span class="macro">assert!</span>(be.uuid2rdn(william_uuid) == <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="string">&quot;name=william&quot;</span>.to_string())));
@@ -5646,9 +5643,9 @@
 
             <span class="macro">idl_state!</span>(be, <span class="string">&quot;uuid&quot;</span>, IndexType::Presence, <span class="string">&quot;_&quot;</span>, <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">2</span>]));
 
-            <span class="kw">let </span>claire_uuid = Uuid::parse_str(<span class="string">&quot;bd651620-00dd-426b-aaa0-4494f7b7906f&quot;</span>).unwrap();
-            <span class="kw">let </span>william_uuid = Uuid::parse_str(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>).unwrap();
-            <span class="kw">let </span>lucy_uuid = Uuid::parse_str(<span class="string">&quot;7b23c99d-c06b-4a9a-a958-3afa56383e1d&quot;</span>).unwrap();
+            <span class="kw">let </span>claire_uuid = <span class="macro">uuid!</span>(<span class="string">&quot;bd651620-00dd-426b-aaa0-4494f7b7906f&quot;</span>);
+            <span class="kw">let </span>william_uuid = <span class="macro">uuid!</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>);
+            <span class="kw">let </span>lucy_uuid = <span class="macro">uuid!</span>(<span class="string">&quot;7b23c99d-c06b-4a9a-a958-3afa56383e1d&quot;</span>);
 
             <span class="macro">assert!</span>(be.name2uuid(<span class="string">&quot;claire&quot;</span>) == <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(claire_uuid)));
             <span class="kw">let </span>x = be.uuid2spn(claire_uuid);
@@ -5704,8 +5701,7 @@
 
             <span class="macro">idl_state!</span>(be, <span class="string">&quot;ta&quot;</span>, IndexType::Equality, <span class="string">&quot;test&quot;</span>, <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[]));
 
-            <span class="comment">// let claire_uuid = Uuid::parse_str(&quot;bd651620-00dd-426b-aaa0-4494f7b7906f&quot;).unwrap();
-            </span><span class="kw">let </span>william_uuid = Uuid::parse_str(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>).unwrap();
+            <span class="kw">let </span>william_uuid = <span class="macro">uuid!</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>);
             <span class="macro">assert!</span>(be.name2uuid(<span class="string">&quot;william&quot;</span>) == <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>));
             <span class="macro">assert!</span>(be.name2uuid(<span class="string">&quot;claire&quot;</span>) == <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(william_uuid)));
             <span class="macro">assert!</span>(be.uuid2spn(william_uuid) == <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(Value::new_iname(<span class="string">&quot;claire&quot;</span>))));
@@ -5759,8 +5755,8 @@
             );
             <span class="macro">idl_state!</span>(be, <span class="string">&quot;name&quot;</span>, IndexType::Equality, <span class="string">&quot;william&quot;</span>, <span class="prelude-val">Some</span>(Vec::new()));
 
-            <span class="kw">let </span>claire_uuid = Uuid::parse_str(<span class="string">&quot;04091a7a-6ce4-42d2-abf5-c2ce244ac9e8&quot;</span>).unwrap();
-            <span class="kw">let </span>william_uuid = Uuid::parse_str(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>).unwrap();
+            <span class="kw">let </span>claire_uuid = <span class="macro">uuid!</span>(<span class="string">&quot;04091a7a-6ce4-42d2-abf5-c2ce244ac9e8&quot;</span>);
+            <span class="kw">let </span>william_uuid = <span class="macro">uuid!</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>);
             <span class="macro">assert!</span>(be.name2uuid(<span class="string">&quot;william&quot;</span>) == <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>));
             <span class="macro">assert!</span>(be.name2uuid(<span class="string">&quot;claire&quot;</span>) == <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(claire_uuid)));
             <span class="macro">assert!</span>(be.uuid2spn(william_uuid) == <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>));

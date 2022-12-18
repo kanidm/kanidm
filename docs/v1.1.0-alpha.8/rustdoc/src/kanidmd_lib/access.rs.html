@@ -4496,8 +4496,8 @@
             <span class="macro">entry_init!</span>(
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
                 (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_account_1&quot;</span>)),
-                (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_ACCOUNT_1)),
-                (<span class="string">&quot;memberof&quot;</span>, Value::new_refer(UUID_TEST_GROUP_1))
+                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_ACCOUNT_1)),
+                (<span class="string">&quot;memberof&quot;</span>, Value::Refer(UUID_TEST_GROUP_1))
             )
             .into_sealed_committed()
         });
@@ -4505,8 +4505,8 @@
             <span class="macro">entry_init!</span>(
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
                 (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_account_1&quot;</span>)),
-                (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_ACCOUNT_2)),
-                (<span class="string">&quot;memberof&quot;</span>, Value::new_refer(UUID_TEST_GROUP_2))
+                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_ACCOUNT_2)),
+                (<span class="string">&quot;memberof&quot;</span>, Value::Refer(UUID_TEST_GROUP_2))
             )
             .into_sealed_committed()
         });
@@ -4599,11 +4599,11 @@
                 (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;acp_valid&quot;</span>)),
                 (
                     <span class="string">&quot;uuid&quot;</span>,
-                    Value::new_uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
+                    Value::Uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
                 ),
                 (
                     <span class="string">&quot;acp_receiver_group&quot;</span>,
-                    Value::new_refer(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
+                    Value::Refer(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
                 ),
                 (
                     <span class="string">&quot;acp_targetscope&quot;</span>,
@@ -4776,11 +4776,11 @@
                 (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;acp_valid&quot;</span>)),
                 (
                     <span class="string">&quot;uuid&quot;</span>,
-                    Value::new_uuids(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                    Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
                 ),
                 (
                     <span class="string">&quot;acp_receiver_group&quot;</span>,
-                    Value::Refer(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
+                    Value::Refer(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
                 ),
                 (
                     <span class="string">&quot;acp_targetscope&quot;</span>,
@@ -5483,7 +5483,7 @@
         <span class="kw">let </span>ev1 = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_ACCOUNT_1))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         <span class="kw">let </span>r1_set = <span class="macro">vec!</span>[ev1.clone()];
 
@@ -5491,7 +5491,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
             (<span class="string">&quot;notallowed&quot;</span>, Value::new_class(<span class="string">&quot;notallowed&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_ACCOUNT_1))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
 
         <span class="kw">let </span>r2_set = <span class="macro">vec!</span>[ev2.clone()];
@@ -5500,7 +5500,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;notallowed&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_ACCOUNT_1))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         <span class="kw">let </span>r3_set = <span class="macro">vec!</span>[ev3.clone()];
 
@@ -5508,7 +5508,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_ACCOUNT_1))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         <span class="kw">let </span>r4_set = <span class="macro">vec!</span>[ev4.clone()];
 
@@ -5569,7 +5569,7 @@
         <span class="kw">let </span>ev1 = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_ACCOUNT_1))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         <span class="kw">let </span>r1_set = <span class="macro">vec!</span>[ev1.clone()];
 

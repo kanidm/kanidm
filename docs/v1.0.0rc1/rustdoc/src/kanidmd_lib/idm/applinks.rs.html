@@ -311,7 +311,7 @@
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
                 (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testaccount&quot;</span>)),
-                (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(usr_uuid)),
+                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(usr_uuid)),
                 (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testaccount&quot;</span>)),
                 (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;Test Account&quot;</span>))
             );
@@ -319,7 +319,7 @@
             <span class="kw">let </span>e_grp = <span class="macro">entry_init!</span>(
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
-                (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(grp_uuid)),
+                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(grp_uuid)),
                 (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_oauth2_group&quot;</span>))
             );
 
@@ -332,7 +332,7 @@
 
             <span class="kw">let </span>ident = idms_prox_read
                 .qs_read
-                .internal_search_uuid(<span class="kw-2">&amp;</span>usr_uuid)
+                .internal_search_uuid(usr_uuid)
                 .map(Identity::from_impersonate_entry_readonly)
                 .expect(<span class="string">&quot;Failed to impersonate identity&quot;</span>);
 
@@ -358,7 +358,7 @@
 
             <span class="kw">let </span>ident = idms_prox_read
                 .qs_read
-                .internal_search_uuid(<span class="kw-2">&amp;</span>usr_uuid)
+                .internal_search_uuid(usr_uuid)
                 .map(Identity::from_impersonate_entry_readonly)
                 .expect(<span class="string">&quot;Failed to impersonate identity&quot;</span>);
 

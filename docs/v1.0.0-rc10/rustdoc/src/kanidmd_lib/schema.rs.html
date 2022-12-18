@@ -4346,37 +4346,37 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; SchemaTransaction <span class="kw">for </span>SchemaWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">fn </span>get_attributes_unique(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;AttrString&gt; {
-        <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self</span>.unique_cache)
+        <span class="kw-2">&amp;</span><span class="self">self</span>.unique_cache
     }
 
     <span class="kw">fn </span>get_reference_types(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashMap&lt;AttrString, SchemaAttribute&gt; {
-        <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self</span>.ref_cache)
+        <span class="kw-2">&amp;</span><span class="self">self</span>.ref_cache
     }
 
     <span class="kw">fn </span>get_classes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashMap&lt;AttrString, SchemaClass&gt; {
-        <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self</span>.classes)
+        <span class="kw-2">&amp;</span><span class="self">self</span>.classes
     }
 
     <span class="kw">fn </span>get_attributes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashMap&lt;AttrString, SchemaAttribute&gt; {
-        <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self</span>.attributes)
+        <span class="kw-2">&amp;</span><span class="self">self</span>.attributes
     }
 }
 
 <span class="kw">impl </span>SchemaTransaction <span class="kw">for </span>SchemaReadTransaction {
     <span class="kw">fn </span>get_attributes_unique(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;AttrString&gt; {
-        <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self</span>.unique_cache)
+        <span class="kw-2">&amp;</span><span class="self">self</span>.unique_cache
     }
 
     <span class="kw">fn </span>get_reference_types(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashMap&lt;AttrString, SchemaAttribute&gt; {
-        <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self</span>.ref_cache)
+        <span class="kw-2">&amp;</span><span class="self">self</span>.ref_cache
     }
 
     <span class="kw">fn </span>get_classes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashMap&lt;AttrString, SchemaClass&gt; {
-        <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self</span>.classes)
+        <span class="kw-2">&amp;</span><span class="self">self</span>.classes
     }
 
     <span class="kw">fn </span>get_attributes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashMap&lt;AttrString, SchemaAttribute&gt; {
-        <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self</span>.attributes)
+        <span class="kw-2">&amp;</span><span class="self">self</span>.attributes
     }
 }
 
@@ -5220,7 +5220,7 @@
         </span><span class="kw">let </span>e_account = <span class="kw">unsafe </span>{
             <span class="macro">entry_init!</span>(
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
-                (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(Uuid::new_v4()))
+                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(Uuid::new_v4()))
             )
             .into_invalid_new()
         };
@@ -5252,7 +5252,7 @@
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;service&quot;</span>)),
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
-                (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(Uuid::new_v4()))
+                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(Uuid::new_v4()))
             )
             .into_invalid_new()
         };
@@ -5269,7 +5269,7 @@
             <span class="macro">entry_init!</span>(
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;service&quot;</span>)),
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
-                (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(Uuid::new_v4()))
+                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(Uuid::new_v4()))
             )
             .into_invalid_new()
         };
@@ -5280,7 +5280,7 @@
             <span class="macro">entry_init!</span>(
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
-                (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(Uuid::new_v4()))
+                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(Uuid::new_v4()))
             )
             .into_invalid_new()
         };
@@ -5290,7 +5290,7 @@
         <span class="kw">let </span>e_person_valid = <span class="kw">unsafe </span>{
             <span class="macro">entry_init!</span>(
                 (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
-                (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(Uuid::new_v4()))
+                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(Uuid::new_v4()))
             )
             .into_invalid_new()
         };

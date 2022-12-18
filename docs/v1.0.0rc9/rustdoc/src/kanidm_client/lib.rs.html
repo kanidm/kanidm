@@ -1883,6 +1883,9 @@
 <span id="1883">1883</span>
 <span id="1884">1884</span>
 <span id="1885">1885</span>
+<span id="1886">1886</span>
+<span id="1887">1887</span>
+<span id="1888">1888</span>
 </pre><pre class="rust"><code><span class="attribute">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -2883,7 +2886,7 @@
 
     <span class="kw">pub async fn </span>auth_step_securitykey_complete(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        pkc: PublicKeyCredential,
+        pkc: Box&lt;PublicKeyCredential&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthResponse, ClientError&gt; {
         <span class="kw">let </span>auth_req = AuthRequest {
             step: AuthStep::Cred(AuthCredential::SecurityKey(pkc)),
@@ -2900,7 +2903,7 @@
 
     <span class="kw">pub async fn </span>auth_step_passkey_complete(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        pkc: PublicKeyCredential,
+        pkc: Box&lt;PublicKeyCredential&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthResponse, ClientError&gt; {
         <span class="kw">let </span>auth_req = AuthRequest {
             step: AuthStep::Cred(AuthCredential::Passkey(pkc)),
@@ -3096,7 +3099,10 @@
         }
     }
 
-    <span class="kw">pub async fn </span>auth_passkey_complete(<span class="kw-2">&amp;</span><span class="self">self</span>, pkc: PublicKeyCredential) -&gt; <span class="prelude-ty">Result</span>&lt;(), ClientError&gt; {
+    <span class="kw">pub async fn </span>auth_passkey_complete(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        pkc: Box&lt;PublicKeyCredential&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ClientError&gt; {
         <span class="kw">let </span>r = <span class="self">self</span>.auth_step_passkey_complete(pkc).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">match </span>r.state {
             AuthState::Success(_token) =&gt; <span class="prelude-val">Ok</span>(()),

@@ -675,6 +675,7 @@
 <span id="675">675</span>
 <span id="676">676</span>
 <span id="677">677</span>
+<span id="678">678</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 
 <span class="kw">use </span>compact_jwt::JwsSigner;
@@ -1348,7 +1349,8 @@
         DbValueSetV2::JwsKeyRs256(set) =&gt; ValueSetJwsKeyEs256::from_dbvs2(<span class="kw-2">&amp;</span>set),
         DbValueSetV2::UiHint(set) =&gt; ValueSetUiHint::from_dbvs2(set),
         DbValueSetV2::PhoneNumber(<span class="kw">_</span>, <span class="kw">_</span>) | DbValueSetV2::TrustedDeviceEnrollment(<span class="kw">_</span>) =&gt; {
-            <span class="macro">todo!</span>()
+            <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
+            <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
         }
     }
 }

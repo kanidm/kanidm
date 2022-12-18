@@ -567,30 +567,6 @@
 <span id="567">567</span>
 <span id="568">568</span>
 <span id="569">569</span>
-<span id="570">570</span>
-<span id="571">571</span>
-<span id="572">572</span>
-<span id="573">573</span>
-<span id="574">574</span>
-<span id="575">575</span>
-<span id="576">576</span>
-<span id="577">577</span>
-<span id="578">578</span>
-<span id="579">579</span>
-<span id="580">580</span>
-<span id="581">581</span>
-<span id="582">582</span>
-<span id="583">583</span>
-<span id="584">584</span>
-<span id="585">585</span>
-<span id="586">586</span>
-<span id="587">587</span>
-<span id="588">588</span>
-<span id="589">589</span>
-<span id="590">590</span>
-<span id="591">591</span>
-<span id="592">592</span>
-<span id="593">593</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This plugin maintains consistency of authenticated sessions on accounts.
 //!
 //! An example of this is that oauth2 sessions are child of user auth sessions,
@@ -635,7 +611,7 @@
 <span class="kw">impl </span>SessionConsistency {
     <span class="kw">fn </span>modify_inner&lt;T: Clone + std::fmt::Debug&gt;(
         qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
-        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, T&gt;&gt;,
+        cand: <span class="kw-2">&amp;mut </span>[Entry&lt;EntryInvalid, T&gt;],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="kw">let </span>curtime = qs.get_curtime();
         <span class="kw">let </span>curtime_odt = OffsetDateTime::unix_epoch() + curtime;
@@ -735,7 +711,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(tuuid)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(tuuid)),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
         );
@@ -745,7 +721,7 @@
 
         <span class="comment">// Create a fake session.
         </span><span class="kw">let </span>session_id = Uuid::new_v4();
-        <span class="kw">let </span>pv_session_id = PartialValue::new_refer(session_id);
+        <span class="kw">let </span>pv_session_id = PartialValue::Refer(session_id);
         <span class="kw">let </span>expiry = <span class="prelude-val">Some</span>(exp_curtime_odt);
         <span class="kw">let </span>issued_at = curtime_odt;
         <span class="kw">let </span>issued_by = IdentityId::User(tuuid);
@@ -771,15 +747,12 @@
         </span><span class="kw">let </span>modlist = ModifyList::new_append(<span class="string">&quot;user_auth_token_session&quot;</span>, session);
 
         server_txn
-            .internal_modify(
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(tuuid))),
-                <span class="kw-2">&amp;</span>modlist,
-            )
+            .internal_modify(<span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(tuuid))), <span class="kw-2">&amp;</span>modlist)
             .expect(<span class="string">&quot;Failed to modify user&quot;</span>);
 
         <span class="comment">// Still there
 
-        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(<span class="kw-2">&amp;</span>tuuid).expect(<span class="string">&quot;failed&quot;</span>);
+        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(tuuid).expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="macro">assert!</span>(entry.attribute_equality(<span class="string">&quot;user_auth_token_session&quot;</span>, <span class="kw-2">&amp;</span>pv_session_id));
 
@@ -791,14 +764,11 @@
             ModifyList::new_purge_and_set(<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;test person 1 change&quot;</span>));
 
         server_txn
-            .internal_modify(
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(tuuid))),
-                <span class="kw-2">&amp;</span>modlist,
-            )
+            .internal_modify(<span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(tuuid))), <span class="kw-2">&amp;</span>modlist)
             .expect(<span class="string">&quot;Failed to modify user&quot;</span>);
 
         <span class="comment">// Session gone.
-        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(<span class="kw-2">&amp;</span>tuuid).expect(<span class="string">&quot;failed&quot;</span>);
+        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(tuuid).expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="comment">// Note it&#39;s a not condition now.
         </span><span class="macro">assert!</span>(!entry.attribute_equality(<span class="string">&quot;user_auth_token_session&quot;</span>, <span class="kw-2">&amp;</span>pv_session_id));
@@ -827,7 +797,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(tuuid)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(tuuid)),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
         );
@@ -836,7 +806,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server_basic&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(rs_uuid)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(rs_uuid)),
             (<span class="string">&quot;oauth2_rs_name&quot;</span>, Value::new_iname(<span class="string">&quot;test_resource_server&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;test_resource_server&quot;</span>)),
             (
@@ -857,10 +827,10 @@
         <span class="comment">// Create a fake session and oauth2 session.
 
         </span><span class="kw">let </span>session_id = Uuid::new_v4();
-        <span class="kw">let </span>pv_session_id = PartialValue::new_refer(session_id);
+        <span class="kw">let </span>pv_session_id = PartialValue::Refer(session_id);
 
         <span class="kw">let </span>parent = Uuid::new_v4();
-        <span class="kw">let </span>pv_parent_id = PartialValue::new_refer(parent);
+        <span class="kw">let </span>pv_parent_id = PartialValue::Refer(parent);
         <span class="kw">let </span>expiry = <span class="prelude-val">Some</span>(exp_curtime_odt);
         <span class="kw">let </span>issued_at = curtime_odt;
         <span class="kw">let </span>issued_by = IdentityId::User(tuuid);
@@ -903,15 +873,12 @@
         ]);
 
         server_txn
-            .internal_modify(
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(tuuid))),
-                <span class="kw-2">&amp;</span>modlist,
-            )
+            .internal_modify(<span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(tuuid))), <span class="kw-2">&amp;</span>modlist)
             .expect(<span class="string">&quot;Failed to modify user&quot;</span>);
 
         <span class="comment">// Still there
 
-        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(<span class="kw-2">&amp;</span>tuuid).expect(<span class="string">&quot;failed&quot;</span>);
+        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(tuuid).expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="macro">assert!</span>(entry.attribute_equality(<span class="string">&quot;user_auth_token_session&quot;</span>, <span class="kw-2">&amp;</span>pv_parent_id));
         <span class="macro">assert!</span>(entry.attribute_equality(<span class="string">&quot;oauth2_session&quot;</span>, <span class="kw-2">&amp;</span>pv_session_id));
@@ -927,14 +894,11 @@
             ModifyList::new_purge_and_set(<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;test person 1 change&quot;</span>));
 
         server_txn
-            .internal_modify(
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(tuuid))),
-                <span class="kw-2">&amp;</span>modlist,
-            )
+            .internal_modify(<span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(tuuid))), <span class="kw-2">&amp;</span>modlist)
             .expect(<span class="string">&quot;Failed to modify user&quot;</span>);
 
         <span class="comment">// Session gone.
-        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(<span class="kw-2">&amp;</span>tuuid).expect(<span class="string">&quot;failed&quot;</span>);
+        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(tuuid).expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="comment">// Note the uat is still present
         </span><span class="macro">assert!</span>(entry.attribute_equality(<span class="string">&quot;user_auth_token_session&quot;</span>, <span class="kw-2">&amp;</span>pv_parent_id));
@@ -962,7 +926,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(tuuid)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(tuuid)),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
         );
@@ -971,7 +935,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server_basic&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(rs_uuid)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(rs_uuid)),
             (<span class="string">&quot;oauth2_rs_name&quot;</span>, Value::new_iname(<span class="string">&quot;test_resource_server&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;test_resource_server&quot;</span>)),
             (
@@ -992,10 +956,10 @@
         <span class="comment">// Create a fake session and oauth2 session.
 
         </span><span class="kw">let </span>session_id = Uuid::new_v4();
-        <span class="kw">let </span>pv_session_id = PartialValue::new_refer(session_id);
+        <span class="kw">let </span>pv_session_id = PartialValue::Refer(session_id);
 
         <span class="kw">let </span>parent = Uuid::new_v4();
-        <span class="kw">let </span>pv_parent_id = PartialValue::new_refer(parent);
+        <span class="kw">let </span>pv_parent_id = PartialValue::Refer(parent);
         <span class="kw">let </span>issued_at = curtime_odt;
         <span class="kw">let </span>issued_by = IdentityId::User(tuuid);
         <span class="kw">let </span>scope = AccessScope::IdentityOnly;
@@ -1037,15 +1001,12 @@
         ]);
 
         server_txn
-            .internal_modify(
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(tuuid))),
-                <span class="kw-2">&amp;</span>modlist,
-            )
+            .internal_modify(<span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(tuuid))), <span class="kw-2">&amp;</span>modlist)
             .expect(<span class="string">&quot;Failed to modify user&quot;</span>);
 
         <span class="comment">// Still there
 
-        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(<span class="kw-2">&amp;</span>tuuid).expect(<span class="string">&quot;failed&quot;</span>);
+        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(tuuid).expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="macro">assert!</span>(entry.attribute_equality(<span class="string">&quot;user_auth_token_session&quot;</span>, <span class="kw-2">&amp;</span>pv_parent_id));
         <span class="macro">assert!</span>(entry.attribute_equality(<span class="string">&quot;oauth2_session&quot;</span>, <span class="kw-2">&amp;</span>pv_session_id));
@@ -1058,14 +1019,11 @@
         </span><span class="kw">let </span>modlist = ModifyList::new_remove(<span class="string">&quot;user_auth_token_session&quot;</span>, pv_parent_id.clone());
 
         server_txn
-            .internal_modify(
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(tuuid))),
-                <span class="kw-2">&amp;</span>modlist,
-            )
+            .internal_modify(<span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(tuuid))), <span class="kw-2">&amp;</span>modlist)
             .expect(<span class="string">&quot;Failed to modify user&quot;</span>);
 
         <span class="comment">// Session gone.
-        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(<span class="kw-2">&amp;</span>tuuid).expect(<span class="string">&quot;failed&quot;</span>);
+        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(tuuid).expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="comment">// Note the uat is removed
         </span><span class="macro">assert!</span>(!entry.attribute_equality(<span class="string">&quot;user_auth_token_session&quot;</span>, <span class="kw-2">&amp;</span>pv_parent_id));
@@ -1096,7 +1054,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(tuuid)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(tuuid)),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
         );
@@ -1105,7 +1063,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server_basic&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(rs_uuid)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(rs_uuid)),
             (<span class="string">&quot;oauth2_rs_name&quot;</span>, Value::new_iname(<span class="string">&quot;test_resource_server&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;test_resource_server&quot;</span>)),
             (
@@ -1125,7 +1083,7 @@
 
         <span class="comment">// Create a fake session.
         </span><span class="kw">let </span>session_id = Uuid::new_v4();
-        <span class="kw">let </span>pv_session_id = PartialValue::new_refer(session_id);
+        <span class="kw">let </span>pv_session_id = PartialValue::Refer(session_id);
 
         <span class="kw">let </span>parent = Uuid::new_v4();
         <span class="kw">let </span>issued_at = curtime_odt;
@@ -1146,15 +1104,12 @@
         </span><span class="kw">let </span>modlist = ModifyList::new_append(<span class="string">&quot;oauth2_session&quot;</span>, session);
 
         server_txn
-            .internal_modify(
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(tuuid))),
-                <span class="kw-2">&amp;</span>modlist,
-            )
+            .internal_modify(<span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(tuuid))), <span class="kw-2">&amp;</span>modlist)
             .expect(<span class="string">&quot;Failed to modify user&quot;</span>);
 
         <span class="comment">// Still there
 
-        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(<span class="kw-2">&amp;</span>tuuid).expect(<span class="string">&quot;failed&quot;</span>);
+        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(tuuid).expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="macro">assert!</span>(entry.attribute_equality(<span class="string">&quot;oauth2_session&quot;</span>, <span class="kw-2">&amp;</span>pv_session_id));
 
@@ -1169,14 +1124,11 @@
             ModifyList::new_purge_and_set(<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;test person 1 change&quot;</span>));
 
         server_txn
-            .internal_modify(
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(tuuid))),
-                <span class="kw-2">&amp;</span>modlist,
-            )
+            .internal_modify(<span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(tuuid))), <span class="kw-2">&amp;</span>modlist)
             .expect(<span class="string">&quot;Failed to modify user&quot;</span>);
 
         <span class="comment">// Session gone.
-        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(<span class="kw-2">&amp;</span>tuuid).expect(<span class="string">&quot;failed&quot;</span>);
+        </span><span class="kw">let </span>entry = server_txn.internal_search_uuid(tuuid).expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="comment">// Note it&#39;s a not condition now.
         </span><span class="macro">assert!</span>(!entry.attribute_equality(<span class="string">&quot;oauth2_session&quot;</span>, <span class="kw-2">&amp;</span>pv_session_id));

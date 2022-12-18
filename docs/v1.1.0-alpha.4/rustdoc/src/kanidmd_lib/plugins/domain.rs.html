@@ -174,14 +174,14 @@
 <span class="kw">impl </span>Domain {
     <span class="kw">fn </span>modify_inner&lt;T: Clone + std::fmt::Debug&gt;(
         qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
-        cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, T&gt;&gt;,
+        cand: <span class="kw-2">&amp;mut </span>[Entry&lt;EntryInvalid, T&gt;],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         cand.iter_mut().try_for_each(|e| {
             <span class="kw">if </span>e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DOMAIN_INFO)
                 &amp;&amp; e.attribute_equality(<span class="string">&quot;uuid&quot;</span>, <span class="kw-2">&amp;</span>PVUUID_DOMAIN_INFO)
             {
                 <span class="comment">// We always set this, because the DB uuid is authorative.
-                </span><span class="kw">let </span>u = Value::new_uuid(qs.get_domain_uuid());
+                </span><span class="kw">let </span>u = Value::Uuid(qs.get_domain_uuid());
                 e.set_ava(<span class="string">&quot;domain_uuid&quot;</span>, once(u));
                 <span class="macro">trace!</span>(<span class="string">&quot;plugin_domain: Applying uuid transform&quot;</span>);
 
@@ -234,12 +234,12 @@
     </span><span class="kw">async fn </span>test_domain_generate_uuid(server: <span class="kw-2">&amp;</span>QueryServer) {
         <span class="kw">let </span>server_txn = server.write(duration_from_epoch_now()).<span class="kw">await</span>;
         <span class="kw">let </span>e_dom = server_txn
-            .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_DOMAIN_INFO)
+            .internal_search_uuid(UUID_DOMAIN_INFO)
             .expect(<span class="string">&quot;must not fail&quot;</span>);
 
         <span class="kw">let </span>u_dom = server_txn.get_domain_uuid();
 
-        <span class="macro">assert!</span>(e_dom.attribute_equality(<span class="string">&quot;domain_uuid&quot;</span>, <span class="kw-2">&amp;</span>PartialValue::new_uuid(u_dom)));
+        <span class="macro">assert!</span>(e_dom.attribute_equality(<span class="string">&quot;domain_uuid&quot;</span>, <span class="kw-2">&amp;</span>PartialValue::Uuid(u_dom)));
     }
 }
 </code></pre></div>

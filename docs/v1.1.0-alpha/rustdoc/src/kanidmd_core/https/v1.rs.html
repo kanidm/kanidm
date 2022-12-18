@@ -2168,7 +2168,7 @@
 }
 
 <span class="kw">pub async fn </span>domain_get(req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
-    <span class="kw">let </span>filter = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(UUID_DOMAIN_INFO)));
+    <span class="kw">let </span>filter = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(UUID_DOMAIN_INFO)));
     json_rest_event_get(req, filter, <span class="prelude-val">None</span>).<span class="kw">await
 </span>}
 
@@ -2189,7 +2189,7 @@
 </span>}
 
 <span class="kw">pub async fn </span>system_get(req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
-    <span class="kw">let </span>filter = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(UUID_SYSTEM_CONFIG)));
+    <span class="kw">let </span>filter = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(UUID_SYSTEM_CONFIG)));
     json_rest_event_get(req, filter, <span class="prelude-val">None</span>).<span class="kw">await
 </span>}
 

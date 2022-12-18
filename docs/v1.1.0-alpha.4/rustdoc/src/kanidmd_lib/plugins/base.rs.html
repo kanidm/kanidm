@@ -771,7 +771,7 @@
             </span><span class="kw">match </span>entry.get_ava_set(<span class="string">&quot;uuid&quot;</span>).map(|s| s.len()) {
                 <span class="prelude-val">None </span>=&gt; {
                     <span class="comment">// Generate
-                    </span><span class="kw">let </span>ava_uuid = Value::new_uuid(Uuid::new_v4());
+                    </span><span class="kw">let </span>ava_uuid = Value::Uuid(Uuid::new_v4());
                     <span class="macro">trace!</span>(<span class="string">&quot;Setting temporary UUID {:?} to entry&quot;</span>, ava_uuid);
                     entry.set_ava(<span class="string">&quot;uuid&quot;</span>, once(ava_uuid));
                 }
@@ -844,7 +844,7 @@
         </span><span class="kw">let </span>filt_in = <span class="macro">filter_all!</span>(FC::Or(
             cand_uuid
                 .into_iter()
-                .map(|u| FC::Eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(u)))
+                .map(|u| FC::Eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(u)))
                 .collect(),
         ));
 
@@ -976,14 +976,14 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;memberof&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_account_1&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;test_account_1&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_ACCOUNT)),
-            (<span class="string">&quot;memberof&quot;</span>, Value::new_refer(UUID_TEST_GROUP))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_ACCOUNT)),
+            (<span class="string">&quot;memberof&quot;</span>, Value::Refer(UUID_TEST_GROUP))
         );
         <span class="kw">pub static </span><span class="kw-2">ref </span>TEST_GROUP: EntryInitNew = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_group_a&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_GROUP)),
-            (<span class="string">&quot;member&quot;</span>, Value::new_refer(UUID_TEST_ACCOUNT))
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_GROUP)),
+            (<span class="string">&quot;member&quot;</span>, Value::Refer(UUID_TEST_ACCOUNT))
         );
         <span class="kw">pub static </span><span class="kw-2">ref </span>ALLOW_ALL: EntryInitNew = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
@@ -993,7 +993,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;access_control_delete&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;access_control_search&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;idm_admins_acp_allow_all_test&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TEST_ACP)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TEST_ACP)),
             (<span class="string">&quot;acp_receiver_group&quot;</span>, Value::Refer(UUID_TEST_GROUP)),
             (
                 <span class="string">&quot;acp_targetscope&quot;</span>,
@@ -1151,7 +1151,7 @@
                 <span class="kw">let </span>ue = cands.first().expect(<span class="string">&quot;No cand&quot;</span>);
                 <span class="macro">assert!</span>(ue.attribute_equality(
                     <span class="string">&quot;uuid&quot;</span>,
-                    <span class="kw-2">&amp;</span>PartialValue::new_uuids(<span class="string">&quot;79724141-3603-4060-b6bb-35c72772611d&quot;</span>).unwrap()
+                    <span class="kw-2">&amp;</span>PartialValue::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;79724141-3603-4060-b6bb-35c72772611d&quot;</span>))
                 ));
             }
         );
@@ -1317,7 +1317,7 @@
             <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup_a&quot;</span>))),
             ModifyList::new_list(<span class="macro">vec!</span>[Modify::Removed(
                 AttrString::from(<span class="string">&quot;uuid&quot;</span>),
-                PartialValue::new_uuids(<span class="string">&quot;f15a7219-1d15-44e3-a7b4-bec899c07788&quot;</span>).unwrap()
+                PartialValue::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;f15a7219-1d15-44e3-a7b4-bec899c07788&quot;</span>))
             )]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},

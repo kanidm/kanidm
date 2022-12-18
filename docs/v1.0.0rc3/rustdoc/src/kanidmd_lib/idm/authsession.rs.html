@@ -2223,6 +2223,18 @@
 <span id="2223">2223</span>
 <span id="2224">2224</span>
 <span id="2225">2225</span>
+<span id="2226">2226</span>
+<span id="2227">2227</span>
+<span id="2228">2228</span>
+<span id="2229">2229</span>
+<span id="2230">2230</span>
+<span id="2231">2231</span>
+<span id="2232">2232</span>
+<span id="2233">2233</span>
+<span id="2234">2234</span>
+<span id="2235">2235</span>
+<span id="2236">2236</span>
+<span id="2237">2237</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the logic to conduct an authentication of an account.
 //! Generally this has to process an authentication attempt, and validate each
 //! factor to assert that the user is legitimate. This also contains some
@@ -2770,6 +2782,9 @@
     Init(Vec&lt;CredHandler&gt;),
     <span class="comment">// Stop! Don&#39;t make this a vec - make the credhandler able to hold multiple
     // internal copies of it&#39;s type and check against them all.
+    //
+    // Clippy wants this to be boxxed, however match on box types is a pain / problematic,
+    // so I&#39;m not sure it can be done.
     </span>InProgress(CredHandler),
     Success,
     Denied(<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str),
@@ -3739,6 +3754,7 @@
 
             <span class="kw">let </span>resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[<span class="number">0</span>].clone(), chal)
+                .map(Box::new)
                 .expect(<span class="string">&quot;failed to use softtoken to authenticate&quot;</span>);
 
             <span class="kw">match </span>session.validate_creds(
@@ -3772,6 +3788,7 @@
             <span class="kw">let </span>resp = wa
                 <span class="comment">// HERE -&gt; we use inv_chal instead.
                 </span>.do_authentication(webauthn.get_allowed_origins()[<span class="number">0</span>].clone(), inv_chal)
+                .map(Box::new)
                 .expect(<span class="string">&quot;failed to use softtoken to authenticate&quot;</span>);
 
             <span class="kw">match </span>session.validate_creds(
@@ -3810,6 +3827,7 @@
             <span class="comment">// Create the response.
             </span><span class="kw">let </span>resp = inv_wa
                 .do_authentication(webauthn.get_allowed_origins()[<span class="number">0</span>].clone(), chal)
+                .map(Box::new)
                 .expect(<span class="string">&quot;Failed to use softtoken for response.&quot;</span>);
 
             <span class="kw">let </span>(<span class="kw-2">mut </span>session, _chal) = <span class="macro">start_webauthn_only_session!</span>(<span class="kw-2">&amp;mut </span>audit, account, <span class="kw-2">&amp;</span>webauthn);
@@ -3904,6 +3922,7 @@
             <span class="kw">let </span>resp = wa
                 <span class="comment">// HERE -&gt; we use inv_chal instead.
                 </span>.do_authentication(webauthn.get_allowed_origins()[<span class="number">0</span>].clone(), inv_chal)
+                .map(Box::new)
                 .expect(<span class="string">&quot;failed to use softtoken to authenticate&quot;</span>);
 
             <span class="kw">match </span>session.validate_creds(
@@ -3927,6 +3946,7 @@
 
             <span class="kw">let </span>resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[<span class="number">0</span>].clone(), chal)
+                .map(Box::new)
                 .expect(<span class="string">&quot;failed to use softtoken to authenticate&quot;</span>);
 
             <span class="kw">match </span>session.validate_creds(
@@ -3967,6 +3987,7 @@
 
             <span class="kw">let </span>resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[<span class="number">0</span>].clone(), chal)
+                .map(Box::new)
                 .expect(<span class="string">&quot;failed to use softtoken to authenticate&quot;</span>);
 
             <span class="kw">match </span>session.validate_creds(
@@ -4087,6 +4108,7 @@
             <span class="kw">let </span>resp = wa
                 <span class="comment">// HERE -&gt; we use inv_chal instead.
                 </span>.do_authentication(webauthn.get_allowed_origins()[<span class="number">0</span>].clone(), inv_chal)
+                .map(Box::new)
                 .expect(<span class="string">&quot;failed to use softtoken to authenticate&quot;</span>);
 
             <span class="kw">match </span>session.validate_creds(
@@ -4110,6 +4132,7 @@
 
             <span class="kw">let </span>resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[<span class="number">0</span>].clone(), chal)
+                .map(Box::new)
                 .expect(<span class="string">&quot;failed to use softtoken to authenticate&quot;</span>);
 
             <span class="kw">match </span>session.validate_creds(
@@ -4213,6 +4236,7 @@
 
             <span class="kw">let </span>resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[<span class="number">0</span>].clone(), chal)
+                .map(Box::new)
                 .expect(<span class="string">&quot;failed to use softtoken to authenticate&quot;</span>);
 
             <span class="kw">match </span>session.validate_creds(

@@ -363,7 +363,7 @@
             .modset
             .keys()
             .copied()
-            .map(|u| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(u)))
+            .map(|u| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(u)))
             .collect();
 
         <span class="kw">let </span>filter = <span class="macro">filter_all!</span>(f_or(filter_or))
@@ -610,10 +610,10 @@
 
         <span class="comment">// Now check them
         </span><span class="kw">let </span>ent_a = server_txn
-            .internal_search_uuid(<span class="kw-2">&amp;</span>uuid_a)
+            .internal_search_uuid(uuid_a)
             .expect(<span class="string">&quot;Failed to get entry.&quot;</span>);
         <span class="kw">let </span>ent_b = server_txn
-            .internal_search_uuid(<span class="kw-2">&amp;</span>uuid_b)
+            .internal_search_uuid(uuid_b)
             .expect(<span class="string">&quot;Failed to get entry.&quot;</span>);
 
         <span class="macro">assert!</span>(ent_a.get_ava_single_utf8(<span class="string">&quot;description&quot;</span>) == <span class="prelude-val">Some</span>(<span class="string">&quot;a&quot;</span>));

@@ -668,7 +668,7 @@
         (<span class="string">&quot;class&quot;</span>, CLASS_ACCOUNT.clone()),
         (<span class="string">&quot;class&quot;</span>, CLASS_SERVICE_ACCOUNT.clone()),
         (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;admin&quot;</span>)),
-        (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_ADMIN)),
+        (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_ADMIN)),
         (
             <span class="string">&quot;description&quot;</span>,
             Value::new_utf8s(<span class="string">&quot;Builtin System Admin account.&quot;</span>)
@@ -1130,7 +1130,7 @@
         ),
         (
             <span class="string">&quot;uuid&quot;</span>,
-            Value::new_uuid(UUID_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES)
+            Value::Uuid(UUID_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES)
         ),
         (
             <span class="string">&quot;description&quot;</span>,
@@ -1150,7 +1150,7 @@
         ),
         (
             <span class="string">&quot;uuid&quot;</span>,
-            Value::new_uuid(UUID_IDM_ACCOUNT_MAIL_READ_PRIV)
+            Value::Uuid(UUID_IDM_ACCOUNT_MAIL_READ_PRIV)
         ),
         (
             <span class="string">&quot;description&quot;</span>,
@@ -1238,7 +1238,7 @@
         (<span class="string">&quot;class&quot;</span>, CLASS_ACCOUNT.clone()),
         (<span class="string">&quot;class&quot;</span>, CLASS_SERVICE_ACCOUNT.clone()),
         (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;anonymous&quot;</span>)),
-        (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_ANONYMOUS)),
+        (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_ANONYMOUS)),
         (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;Anonymous access account.&quot;</span>)),
         (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;Anonymous&quot;</span>))
     );
@@ -1274,12 +1274,12 @@
     <span class="kw">pub static </span><span class="kw-2">ref </span>E_TESTPERSON_1: EntryInitNew = <span class="macro">entry_init!</span>(
         (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
         (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
-        (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TESTPERSON_1))
+        (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TESTPERSON_1))
     );
     <span class="kw">pub static </span><span class="kw-2">ref </span>E_TESTPERSON_2: EntryInitNew = <span class="macro">entry_init!</span>(
         (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
         (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson2&quot;</span>)),
-        (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(UUID_TESTPERSON_2))
+        (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_TESTPERSON_2))
     );
 }
 </code></pre></div>

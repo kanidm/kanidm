@@ -1341,6 +1341,7 @@
 <span id="1341">1341</span>
 <span id="1342">1342</span>
 <span id="1343">1343</span>
+<span id="1344">1344</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::constants::uuids::<span class="kw-2">*</span>;
 <span class="doccomment">///! Constant Entries for the IDM
 </span><span class="kw">use </span><span class="kw">crate</span>::constants::values::<span class="kw-2">*</span>;
@@ -1686,7 +1687,7 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         ),
         (
             <span class="string">&quot;uuid&quot;</span>,
-            Value::new_uuid(UUID_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1)
+            Value::Uuid(UUID_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1)
         ),
         (
             <span class="string">&quot;description&quot;</span>,
@@ -1700,7 +1701,8 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
         ),
         (
             <span class="string">&quot;acp_targetscope&quot;</span>,
-            Value::new_json_filter_s(<span class="string">&quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;</span>).expect(<span class="string">&quot;filter&quot;</span>)
+            <span class="attribute">#[allow(clippy::expect_used)]
+            </span>Value::new_json_filter_s(<span class="string">&quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}]}}]}&quot;</span>).expect(<span class="string">&quot;filter&quot;</span>)
         ),
         (<span class="string">&quot;acp_search_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;mail&quot;</span>))
     );

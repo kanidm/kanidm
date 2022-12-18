@@ -140,8 +140,6 @@
 <span id="140">140</span>
 <span id="141">141</span>
 <span id="142">142</span>
-<span id="143">143</span>
-<span id="144">144</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
 
 <span class="kw">use </span>kanidm_proto::v1::UiHint;
@@ -192,9 +190,7 @@
                 <span class="comment">// given a list of uuid, make a filter: even if this is empty, the be will
                 // just give and empty result set.
                 </span><span class="kw">let </span>f = <span class="macro">filter!</span>(f_or(
-                    riter
-                        .map(|u| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(u)))
-                        .collect()
+                    riter.map(|u| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(u))).collect()
                 ));
                 <span class="kw">let </span>ges: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro-nonterminal">$qs</span>.internal_search(f).map_err(|e| {
                     <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;internal search failed&quot;</span>);

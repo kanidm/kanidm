@@ -518,7 +518,7 @@
                 // Basically this says where name but also not self.
                 </span>f_and(<span class="macro">vec!</span>[
                     FC::Eq(attr, v.clone()),
-                    f_andnot(FC::Eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(<span class="kw-2">*</span>uuid))),
+                    f_andnot(FC::Eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(<span class="kw-2">*</span>uuid))),
                 ])
             })
             .collect()
@@ -553,7 +553,7 @@
                 // Basically this says where name but also not self.
                 </span>f_and(<span class="macro">vec!</span>[
                     FC::Eq(attr, v),
-                    f_andnot(FC::Eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(uuid))),
+                    f_andnot(FC::Eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(uuid))),
                 ])
             })
             .collect();

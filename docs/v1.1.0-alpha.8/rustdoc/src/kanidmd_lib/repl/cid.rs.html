@@ -149,15 +149,12 @@
 <span id="149">149</span>
 <span id="150">150</span>
 <span id="151">151</span>
-<span id="152">152</span>
-<span id="153">153</span>
-<span id="154">154</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt;
 <span class="kw">use </span>std::time::Duration;
 
+<span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>kanidm_proto::v1::OperationError;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>uuid::Uuid;
 
 <span class="attribute">#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq, PartialOrd, Ord, Hash)]
 </span><span class="kw">pub struct </span>Cid {
@@ -196,8 +193,8 @@
     <span class="attribute">#[cfg(test)]
     </span><span class="kw">pub unsafe fn </span>new_count(c: u64) -&gt; <span class="self">Self </span>{
         Cid {
-            d_uuid: Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>).unwrap(),
-            s_uuid: Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>).unwrap(),
+            d_uuid: <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>),
+            s_uuid: <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>),
             ts: Duration::new(c, <span class="number">0</span>),
         }
     }
@@ -216,10 +213,8 @@
         <span class="self">self</span>.ts
             .checked_sub(Duration::from_secs(secs))
             .map(|r| Cid {
-                d_uuid: Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>)
-                    .expect(<span class="string">&quot;Invalid compiled d_uuid&quot;</span>),
-                s_uuid: Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>)
-                    .expect(<span class="string">&quot;Invalid compiled s_uuid&quot;</span>),
+                d_uuid: <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>),
+                s_uuid: <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>),
                 ts: r,
             })
             .ok_or(OperationError::InvalidReplChangeId)
@@ -228,10 +223,9 @@
 
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
+    <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>std::cmp::Ordering;
     <span class="kw">use </span>std::time::Duration;
-
-    <span class="kw">use </span>uuid::Uuid;
 
     <span class="kw">use </span><span class="kw">crate</span>::repl::cid::Cid;
 
@@ -239,13 +233,13 @@
     </span><span class="kw">fn </span>test_cid_ordering() {
         <span class="comment">// Check diff ts
         </span><span class="kw">let </span>cid_a = Cid::new(
-            Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>).unwrap(),
-            Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>).unwrap(),
+            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
+            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
             Duration::new(<span class="number">5</span>, <span class="number">0</span>),
         );
         <span class="kw">let </span>cid_b = Cid::new(
-            Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>).unwrap(),
-            Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>).unwrap(),
+            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
+            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
             Duration::new(<span class="number">15</span>, <span class="number">0</span>),
         );
 
@@ -255,13 +249,13 @@
 
         <span class="comment">// check same ts diff d_uuid
         </span><span class="kw">let </span>cid_c = Cid::new(
-            Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>).unwrap(),
-            Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>).unwrap(),
+            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>),
+            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
             Duration::new(<span class="number">5</span>, <span class="number">0</span>),
         );
         <span class="kw">let </span>cid_d = Cid::new(
-            Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>).unwrap(),
-            Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>).unwrap(),
+            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
+            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
             Duration::new(<span class="number">5</span>, <span class="number">0</span>),
         );
 
@@ -271,13 +265,13 @@
 
         <span class="comment">// check same ts, d_uuid, diff s_uuid
         </span><span class="kw">let </span>cid_e = Cid::new(
-            Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>).unwrap(),
-            Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>).unwrap(),
+            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
+            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>),
             Duration::new(<span class="number">5</span>, <span class="number">0</span>),
         );
         <span class="kw">let </span>cid_f = Cid::new(
-            Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>).unwrap(),
-            Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>).unwrap(),
+            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
+            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
             Duration::new(<span class="number">5</span>, <span class="number">0</span>),
         );
 
@@ -288,7 +282,7 @@
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_cid_lamport() {
-        <span class="kw">let </span>d_uuid = Uuid::parse_str(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>).unwrap();
+        <span class="kw">let </span>d_uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>);
         <span class="kw">let </span>s_uuid = d_uuid.clone();
 
         <span class="kw">let </span>ts5 = Duration::new(<span class="number">5</span>, <span class="number">0</span>);

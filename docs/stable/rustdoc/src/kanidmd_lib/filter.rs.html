@@ -1970,10 +1970,6 @@
 <span id="1970">1970</span>
 <span id="1971">1971</span>
 <span id="1972">1972</span>
-<span id="1973">1973</span>
-<span id="1974">1974</span>
-<span id="1975">1975</span>
-<span id="1976">1976</span>
 </pre><pre class="rust"><code><span class="doccomment">//! [`Filter`]s are one of the three foundational concepts of the design in kanidm.
 //! They are used in nearly every aspect of the server to provide searching of
 //! datasets and assertion of entry properties.
@@ -2062,7 +2058,7 @@
 </span><span class="kw">pub fn </span>f_id(id: <span class="kw-2">&amp;</span>str) -&gt; FC&lt;<span class="lifetime">&#39;static</span>&gt; {
     <span class="kw">let </span>uf = Uuid::parse_str(id)
         .ok()
-        .map(|u| FC::Eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(u)));
+        .map(|u| FC::Eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(u)));
     <span class="kw">let </span>spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq(<span class="string">&quot;spn&quot;</span>, spn));
     <span class="kw">let </span>nf = FC::Eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(id));
     <span class="kw">let </span>f: Vec&lt;<span class="kw">_</span>&gt; = iter::once(uf)
@@ -3063,7 +3059,7 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
                     .get(<span class="kw-2">&amp;</span>idxkref <span class="kw">as </span><span class="kw-2">&amp;</span><span class="kw">dyn </span>IdxKeyToRef)
                     .copied()
                     .and_then(NonZeroU8::new);
-                FilterResolved::Eq(uuid_s, PartialValue::new_uuid(uuid), idx)
+                FilterResolved::Eq(uuid_s, PartialValue::Uuid(uuid), idx)
             }),
             FilterComp::Sub(a, v) =&gt; {
                 <span class="kw">let </span>idxkref = IdxKeyRef::new(<span class="kw-2">&amp;</span>a, <span class="kw-2">&amp;</span>IndexType::SubString);
@@ -3137,7 +3133,7 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
             FilterComp::SelfUuid =&gt; ev.get_uuid().map(|uuid| {
                 FilterResolved::Eq(
                     AttrString::from(<span class="string">&quot;uuid&quot;</span>),
-                    PartialValue::new_uuid(uuid),
+                    PartialValue::Uuid(uuid),
                     NonZeroU8::new(<span class="bool-val">true </span><span class="kw">as </span>u8),
                 )
             }),
@@ -3815,7 +3811,7 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson3&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
-                Value::new_uuids(<span class="string">&quot;9557f49c-97a5-4277-a9a5-097d17eb8317&quot;</span>).expect(<span class="string">&quot;uuid&quot;</span>)
+                Value::Uuid(<span class="macro">uuid!</span>(<span class="string">&quot;9557f49c-97a5-4277-a9a5-097d17eb8317&quot;</span>))
             ),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson3&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson3&quot;</span>))
@@ -3852,29 +3848,25 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
         <span class="macro">assert!</span>(r1 == <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[<span class="string">&quot;teststring&quot;</span>.to_string()]));
 
         <span class="comment">// Resolve UUID with matching spn
-        </span><span class="kw">let </span>t_uuid =
-            <span class="macro">vs_refer!</span>[Uuid::parse_str(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).unwrap()] <span class="kw">as _</span>;
+        </span><span class="kw">let </span>t_uuid = <span class="macro">vs_refer!</span>[<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>)] <span class="kw">as _</span>;
         <span class="kw">let </span>r_uuid = server_txn.resolve_valueset(<span class="kw-2">&amp;</span>t_uuid);
         <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, r_uuid);
         <span class="macro">assert!</span>(r_uuid == <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[<span class="string">&quot;testperson1@example.com&quot;</span>.to_string()]));
 
         <span class="comment">// Resolve UUID with matching name
-        </span><span class="kw">let </span>t_uuid =
-            <span class="macro">vs_refer!</span>[Uuid::parse_str(<span class="string">&quot;a67c0c71-0b35-4218-a6b0-22d23d131d27&quot;</span>).unwrap()] <span class="kw">as _</span>;
+        </span><span class="kw">let </span>t_uuid = <span class="macro">vs_refer!</span>[<span class="macro">uuid!</span>(<span class="string">&quot;a67c0c71-0b35-4218-a6b0-22d23d131d27&quot;</span>)] <span class="kw">as _</span>;
         <span class="kw">let </span>r_uuid = server_txn.resolve_valueset(<span class="kw-2">&amp;</span>t_uuid);
         <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, r_uuid);
         <span class="macro">assert!</span>(r_uuid == <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[<span class="string">&quot;testperson2&quot;</span>.to_string()]));
 
         <span class="comment">// Resolve UUID non-exist
-        </span><span class="kw">let </span>t_uuid_non =
-            <span class="macro">vs_refer!</span>[Uuid::parse_str(<span class="string">&quot;b83e98f0-3d2e-41d2-9796-d8d993289c86&quot;</span>).unwrap()] <span class="kw">as _</span>;
+        </span><span class="kw">let </span>t_uuid_non = <span class="macro">vs_refer!</span>[<span class="macro">uuid!</span>(<span class="string">&quot;b83e98f0-3d2e-41d2-9796-d8d993289c86&quot;</span>)] <span class="kw">as _</span>;
         <span class="kw">let </span>r_uuid_non = server_txn.resolve_valueset(<span class="kw-2">&amp;</span>t_uuid_non);
         <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, r_uuid_non);
         <span class="macro">assert!</span>(r_uuid_non == <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[<span class="string">&quot;b83e98f0-3d2e-41d2-9796-d8d993289c86&quot;</span>.to_string()]));
 
         <span class="comment">// Resolve UUID to tombstone/recycled (same an non-exst)
-        </span><span class="kw">let </span>t_uuid_ts =
-            <span class="macro">vs_refer!</span>[Uuid::parse_str(<span class="string">&quot;9557f49c-97a5-4277-a9a5-097d17eb8317&quot;</span>).unwrap()] <span class="kw">as _</span>;
+        </span><span class="kw">let </span>t_uuid_ts = <span class="macro">vs_refer!</span>[<span class="macro">uuid!</span>(<span class="string">&quot;9557f49c-97a5-4277-a9a5-097d17eb8317&quot;</span>)] <span class="kw">as _</span>;
         <span class="kw">let </span>r_uuid_ts = server_txn.resolve_valueset(<span class="kw-2">&amp;</span>t_uuid_ts);
         <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, r_uuid_ts);
         <span class="macro">assert!</span>(r_uuid_ts == <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[<span class="string">&quot;9557f49c-97a5-4277-a9a5-097d17eb8317&quot;</span>.to_string()]));

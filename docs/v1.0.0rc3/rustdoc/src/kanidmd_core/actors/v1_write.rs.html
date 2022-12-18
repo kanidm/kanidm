@@ -1590,7 +1590,7 @@
                 e
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>f_uuid = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(target_uuid)));
+        <span class="kw">let </span>f_uuid = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(target_uuid)));
         <span class="comment">// Add any supplemental conditions we have.
         </span><span class="kw">let </span>joined_filter = Filter::join_parts_and(f_uuid, filter);
 

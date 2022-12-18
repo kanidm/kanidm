@@ -1032,7 +1032,7 @@
             </span>b.iter().for_each(|(k, v)| {
                 <span class="kw">if </span>!<span class="self">self</span>.map.contains_key(k) {
                     <span class="self">self</span>.rs_filter.insert(v.rs_uuid);
-                    <span class="self">self</span>.map.insert(k.clone(), v.clone());
+                    <span class="self">self</span>.map.insert(<span class="kw-2">*</span>k, v.clone());
                 }
             });
             <span class="prelude-val">Ok</span>(())

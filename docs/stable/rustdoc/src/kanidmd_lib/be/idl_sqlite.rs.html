@@ -1730,7 +1730,7 @@
                 </span><span class="kw">for </span>id <span class="kw">in </span>idli {
                     <span class="kw">let </span>iid = i64::try_from(id).map_err(|<span class="kw">_</span>| OperationError::InvalidEntryId)<span class="question-mark">?</span>;
                     <span class="kw">let </span>id2entry_iter = stmt
-                        .query_map(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>iid], |row| {
+                        .query_map([<span class="kw-2">&amp;</span>iid], |row| {
                             <span class="prelude-val">Ok</span>(IdSqliteEntry {
                                 id: row.get(<span class="number">0</span>)<span class="question-mark">?</span>,
                                 data: row.get(<span class="number">1</span>)<span class="question-mark">?</span>,
@@ -2353,7 +2353,7 @@
 
         <span class="macro">debug_assert!</span>(iid &gt; <span class="number">0</span>);
 
-        stmt.execute(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>iid]).map(|<span class="kw">_</span>| ()).map_err(sqlite_error)
+        stmt.execute([<span class="kw-2">&amp;</span>iid]).map(|<span class="kw">_</span>| ()).map_err(sqlite_error)
     }
 
     <span class="kw">pub fn </span>write_idl(

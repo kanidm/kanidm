@@ -2778,7 +2778,7 @@
         target: Uuid,
         ident: <span class="kw-2">&amp;</span>Identity,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Account, OperationError&gt; {
-        <span class="kw">let </span>entry = <span class="self">self</span>.qs_write.internal_search_uuid(<span class="kw-2">&amp;</span>target)<span class="question-mark">?</span>;
+        <span class="kw">let </span>entry = <span class="self">self</span>.qs_write.internal_search_uuid(target)<span class="question-mark">?</span>;
 
         <span class="macro">security_info!</span>(
             %entry,
@@ -2961,7 +2961,7 @@
         <span class="self">self</span>.qs_write
             .internal_modify(
                 <span class="comment">// Filter as executed
-                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(account.uuid))),
+                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(account.uuid))),
                 <span class="kw-2">&amp;</span>modlist,
             )
             .map_err(|e| {
@@ -3135,7 +3135,7 @@
         <span class="self">self</span>.qs_write
             .internal_modify(
                 <span class="comment">// Filter as executed
-                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(account.uuid))),
+                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(account.uuid))),
                 <span class="kw-2">&amp;</span>modlist,
             )
             .map_err(|e| {
@@ -3249,7 +3249,7 @@
 
         // If an intent token was used, remove it&#39;s former value, and add it as consumed.
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(intent_token_id) = <span class="kw-2">&amp;</span>session.intent_token_id {
-            <span class="kw">let </span>entry = <span class="self">self</span>.qs_write.internal_search_uuid(<span class="kw-2">&amp;</span>session.account.uuid)<span class="question-mark">?</span>;
+            <span class="kw">let </span>entry = <span class="self">self</span>.qs_write.internal_search_uuid(session.account.uuid)<span class="question-mark">?</span>;
             <span class="kw">let </span>account = Account::try_from_entry_rw(entry.as_ref(), <span class="kw-2">&amp;mut </span><span class="self">self</span>.qs_write)<span class="question-mark">?</span>;
 
             <span class="kw">let </span>max_ttl = <span class="kw">match </span>account.credential_update_intent_tokens.get(intent_token_id) {
@@ -3316,7 +3316,7 @@
         <span class="self">self</span>.qs_write
             .internal_modify(
                 <span class="comment">// Filter as executed
-                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(session.account.uuid))),
+                </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(session.account.uuid))),
                 <span class="kw-2">&amp;</span>modlist,
             )
             .map_err(|e| {
@@ -3335,7 +3335,7 @@
 
         <span class="comment">// If an intent token was used, remove it&#39;s former value, and add it as VALID since we didn&#39;t commit.
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(intent_token_id) = <span class="kw-2">&amp;</span>session.intent_token_id {
-            <span class="kw">let </span>entry = <span class="self">self</span>.qs_write.internal_search_uuid(<span class="kw-2">&amp;</span>session.account.uuid)<span class="question-mark">?</span>;
+            <span class="kw">let </span>entry = <span class="self">self</span>.qs_write.internal_search_uuid(session.account.uuid)<span class="question-mark">?</span>;
             <span class="kw">let </span>account = Account::try_from_entry_rw(entry.as_ref(), <span class="kw-2">&amp;mut </span><span class="self">self</span>.qs_write)<span class="question-mark">?</span>;
 
             <span class="kw">let </span>max_ttl = <span class="kw">match </span>account.credential_update_intent_tokens.get(intent_token_id) {
@@ -3376,7 +3376,7 @@
             <span class="self">self</span>.qs_write
                 .internal_modify(
                     <span class="comment">// Filter as executed
-                    </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(session.account.uuid))),
+                    </span><span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(session.account.uuid))),
                     <span class="kw-2">&amp;</span>modlist,
                 )
                 .map_err(|e| {
@@ -4016,7 +4016,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;service_account&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;user_account_only&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(testaccount_uuid)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(testaccount_uuid)),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testaccount&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testaccount&quot;</span>))
         );
@@ -4026,7 +4026,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(TESTPERSON_UUID)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(TESTPERSON_UUID)),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))
         );
@@ -4037,17 +4037,17 @@
 
         <span class="kw">let </span>testaccount = idms_prox_write
             .qs_write
-            .internal_search_uuid(<span class="kw-2">&amp;</span>testaccount_uuid)
+            .internal_search_uuid(testaccount_uuid)
             .expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="kw">let </span>testperson = idms_prox_write
             .qs_write
-            .internal_search_uuid(<span class="kw-2">&amp;</span>TESTPERSON_UUID)
+            .internal_search_uuid(TESTPERSON_UUID)
             .expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="kw">let </span>idm_admin = idms_prox_write
             .qs_write
-            .internal_search_uuid(<span class="kw-2">&amp;</span>UUID_IDM_ADMIN)
+            .internal_search_uuid(UUID_IDM_ADMIN)
             .expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="comment">// user without permission - fail
@@ -4120,7 +4120,7 @@
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson&quot;</span>)),
-            (<span class="string">&quot;uuid&quot;</span>, Value::new_uuid(TESTPERSON_UUID)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(TESTPERSON_UUID)),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
             (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))
         );
@@ -4131,7 +4131,7 @@
 
         <span class="kw">let </span>testperson = idms_prox_write
             .qs_write
-            .internal_search_uuid(<span class="kw-2">&amp;</span>TESTPERSON_UUID)
+            .internal_search_uuid(TESTPERSON_UUID)
             .expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="kw">let </span>cur = idms_prox_write.init_credential_update(
@@ -4152,7 +4152,7 @@
 
         <span class="kw">let </span>testperson = idms_prox_write
             .qs_write
-            .internal_search_uuid(<span class="kw-2">&amp;</span>TESTPERSON_UUID)
+            .internal_search_uuid(TESTPERSON_UUID)
             .expect(<span class="string">&quot;failed&quot;</span>);
 
         <span class="kw">let </span>cur = idms_prox_write.init_credential_update(

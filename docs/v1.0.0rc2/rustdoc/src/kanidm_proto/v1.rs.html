@@ -1232,7 +1232,6 @@
 <span id="1232">1232</span>
 <span id="1233">1233</span>
 <span id="1234">1234</span>
-<span id="1235">1235</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 <span class="kw">use </span>std::fmt;
@@ -2097,10 +2096,10 @@ pub struct AccountOrgPersonExtend {
     Anonymous,
     Password(String),
     Totp(u32),
-    SecurityKey(PublicKeyCredential),
+    SecurityKey(Box&lt;PublicKeyCredential&gt;),
     BackupCode(String),
     <span class="comment">// Should this just be discoverable?
-    </span>Passkey(PublicKeyCredential),
+    </span>Passkey(Box&lt;PublicKeyCredential&gt;),
 }
 
 <span class="kw">impl </span>fmt::Debug <span class="kw">for </span>AuthCredential {
@@ -2155,18 +2154,17 @@ pub struct AccountOrgPersonExtend {
     <span class="comment">// name
     </span>Init(String),
     <span class="comment">// A new way to issue sessions. Doing this as a new init type
-    // to prevent breaking existing clients.
+    // to prevent breaking existing clients. Allows requesting of the type
+    // of session that will be issued at the end if successful.
     </span>Init2 {
         username: String,
         issue: AuthIssueSession,
     },
     <span class="comment">// We want to talk to you like this.
     </span>Begin(AuthMech),
-    <span class="comment">// Step
+    <span class="comment">// Provide a response to a challenge.
     </span>Cred(AuthCredential),
-    <span class="comment">// Should we have a &quot;finalise&quot; type to attempt to finish based on
-    // what we have given?
-</span>}
+}
 
 <span class="comment">// Request auth for identity X with roles Y?
 </span><span class="attribute">#[derive(Debug, Serialize, Deserialize)]

@@ -1603,14 +1603,14 @@
 
 <span class="kw">fn </span>do_memberof(
     qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
-    uuid: <span class="kw-2">&amp;</span>Uuid,
+    uuid: Uuid,
     tgte: <span class="kw-2">&amp;mut </span>EntryInvalidCommitted,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
     <span class="comment">//  search where we are member
     </span><span class="kw">let </span>groups = qs
         .internal_search(<span class="macro">filter!</span>(<span class="macro">f_and!</span>([
             f_eq(<span class="string">&quot;class&quot;</span>, PVCLASS_GROUP.clone()),
-            f_eq(<span class="string">&quot;member&quot;</span>, PartialValue::new_refer(<span class="kw-2">*</span>uuid))
+            f_eq(<span class="string">&quot;member&quot;</span>, PartialValue::Refer(uuid))
         ])))
         .map_err(|e| {
             <span class="macro">admin_error!</span>(<span class="string">&quot;internal search failure -&gt; {:?}&quot;</span>, e);
@@ -1698,7 +1698,7 @@
         </span><span class="kw">let </span>filt = <span class="macro">filter!</span>(FC::Or(
             group_affect
                 .drain(<span class="number">0</span>..)
-                .map(|u| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid(u)))
+                .map(|u| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(u)))
                 .collect()
         ));
 
@@ -1719,7 +1719,7 @@
 
             <span class="macro">trace!</span>(<span class="string">&quot;=&gt; processing group update -&gt; {:?}&quot;</span>, guuid);
 
-            do_memberof(qs, <span class="kw-2">&amp;</span>guuid, <span class="kw-2">&amp;mut </span>tgte)<span class="question-mark">?</span>;
+            do_memberof(qs, guuid, <span class="kw-2">&amp;mut </span>tgte)<span class="question-mark">?</span>;
 
             <span class="comment">// Did we change? Note we don&#39;t check if the class changed, only if mo changed.
             </span><span class="kw">if </span>pre.get_ava_set(<span class="string">&quot;memberof&quot;</span>) != tgte.get_ava_set(<span class="string">&quot;memberof&quot;</span>)
@@ -1765,7 +1765,7 @@
         .try_for_each(|(auuid, (pre, <span class="kw-2">mut </span>tgte))| {
             <span class="macro">trace!</span>(<span class="string">&quot;=&gt; processing affected uuid {:?}&quot;</span>, auuid);
             <span class="macro">debug_assert!</span>(!tgte.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_GROUP));
-            do_memberof(qs, <span class="kw-2">&amp;</span>auuid, <span class="kw-2">&amp;mut </span>tgte)<span class="question-mark">?</span>;
+            do_memberof(qs, auuid, <span class="kw-2">&amp;mut </span>tgte)<span class="question-mark">?</span>;
             <span class="comment">// Only write if a change occured.
             </span><span class="kw">if </span>pre.get_ava_set(<span class="string">&quot;memberof&quot;</span>) != tgte.get_ava_set(<span class="string">&quot;memberof&quot;</span>)
                 || pre.get_ava_set(<span class="string">&quot;directmemberof&quot;</span>) != tgte.get_ava_set(<span class="string">&quot;directmemberof&quot;</span>)
@@ -1878,7 +1878,7 @@
         </span><span class="kw">for </span>e <span class="kw">in </span>all_cand {
             <span class="kw">let </span>filt_in = <span class="macro">filter!</span>(<span class="macro">f_and!</span>([
                 f_eq(<span class="string">&quot;class&quot;</span>, PVCLASS_GROUP.clone()),
-                f_eq(<span class="string">&quot;member&quot;</span>, PartialValue::new_refer(e.get_uuid()))
+                f_eq(<span class="string">&quot;member&quot;</span>, PartialValue::Refer(e.get_uuid()))
             ]));
 
             <span class="kw">let </span>direct_memberof = <span class="kw">match </span>qs
@@ -2045,7 +2045,7 @@
             <span class="macro-nonterminal">$cand</span>:expr
         ) =&gt; {{
             <span class="kw">let </span>filt = <span class="macro">filter!</span>(<span class="macro">f_and!</span>([
-                f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuids(<span class="macro-nonterminal">$ea</span>).unwrap()),
+                f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="macro-nonterminal">$ea</span>).unwrap()),
                 f_eq(<span class="macro-nonterminal">$mo</span>, PartialValue::new_refer_s(<span class="macro-nonterminal">$eb</span>).unwrap())
             ]));
             <span class="kw">let </span>cands = <span class="macro-nonterminal">$qs</span>.internal_search(filt).expect(<span class="string">&quot;Internal search failure&quot;</span>);
@@ -2310,7 +2310,7 @@
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
             preload,
-            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuids(<span class="kw-2">&amp;</span>UUID_A).unwrap())),
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_A).unwrap())),
             ModifyList::new_list(<span class="macro">vec!</span>[Modify::Present(
                 AttrString::from(<span class="string">&quot;member&quot;</span>),
                 Value::new_refer_s(<span class="kw-2">&amp;</span>UUID_B).unwrap()
@@ -2346,7 +2346,7 @@
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
             preload,
-            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuids(<span class="kw-2">&amp;</span>UUID_A).unwrap())),
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_A).unwrap())),
             ModifyList::new_list(<span class="macro">vec!</span>[Modify::Present(
                 AttrString::from(<span class="string">&quot;member&quot;</span>),
                 Value::new_refer_s(<span class="kw-2">&amp;</span>UUID_B).unwrap()
@@ -2400,7 +2400,7 @@
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
             preload,
-            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuids(<span class="kw-2">&amp;</span>UUID_B).unwrap())),
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_B).unwrap())),
             ModifyList::new_list(<span class="macro">vec!</span>[Modify::Present(
                 AttrString::from(<span class="string">&quot;member&quot;</span>),
                 Value::new_refer_s(<span class="kw-2">&amp;</span>UUID_C).unwrap()
@@ -2457,7 +2457,7 @@
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
             preload,
-            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuids(<span class="kw-2">&amp;</span>UUID_C).unwrap())),
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_C).unwrap())),
             ModifyList::new_list(<span class="macro">vec!</span>[Modify::Present(
                 AttrString::from(<span class="string">&quot;member&quot;</span>),
                 Value::new_refer_s(<span class="kw-2">&amp;</span>UUID_A).unwrap()
@@ -2522,8 +2522,8 @@
             <span class="prelude-val">Ok</span>(()),
             preload,
             <span class="macro">filter!</span>(<span class="macro">f_or!</span>([
-                f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuids(<span class="kw-2">&amp;</span>UUID_C).unwrap()),
-                f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuids(<span class="kw-2">&amp;</span>UUID_D).unwrap()),
+                f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_C).unwrap()),
+                f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_D).unwrap()),
             ])),
             ModifyList::new_list(<span class="macro">vec!</span>[Modify::Present(
                 AttrString::from(<span class="string">&quot;member&quot;</span>),
@@ -2593,7 +2593,7 @@
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
             preload,
-            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuids(<span class="kw-2">&amp;</span>UUID_A).unwrap())),
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_A).unwrap())),
             ModifyList::new_list(<span class="macro">vec!</span>[Modify::Removed(
                 AttrString::from(<span class="string">&quot;member&quot;</span>),
                 PartialValue::new_refer_s(<span class="kw-2">&amp;</span>UUID_B).unwrap()
@@ -2632,7 +2632,7 @@
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
             preload,
-            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuids(<span class="kw-2">&amp;</span>UUID_A).unwrap())),
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_A).unwrap())),
             ModifyList::new_list(<span class="macro">vec!</span>[Modify::Removed(
                 AttrString::from(<span class="string">&quot;member&quot;</span>),
                 PartialValue::new_refer_s(<span class="kw-2">&amp;</span>UUID_B).unwrap()
@@ -2690,7 +2690,7 @@
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
             preload,
-            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuids(<span class="kw-2">&amp;</span>UUID_B).unwrap())),
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_B).unwrap())),
             ModifyList::new_list(<span class="macro">vec!</span>[Modify::Removed(
                 AttrString::from(<span class="string">&quot;member&quot;</span>),
                 PartialValue::new_refer_s(<span class="kw-2">&amp;</span>UUID_C).unwrap()
@@ -2758,7 +2758,7 @@
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
             preload,
-            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuids(<span class="kw-2">&amp;</span>UUID_C).unwrap())),
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_C).unwrap())),
             ModifyList::new_list(<span class="macro">vec!</span>[Modify::Removed(
                 AttrString::from(<span class="string">&quot;member&quot;</span>),
                 PartialValue::new_refer_s(<span class="kw-2">&amp;</span>UUID_A).unwrap()
@@ -2844,7 +2844,7 @@
         <span class="macro">run_modify_test!</span>(
             <span class="prelude-val">Ok</span>(()),
             preload,
-            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuids(<span class="kw-2">&amp;</span>UUID_C).unwrap())),
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_C).unwrap())),
             ModifyList::new_list(<span class="macro">vec!</span>[
                 Modify::Removed(
                     AttrString::from(<span class="string">&quot;member&quot;</span>),
@@ -2917,7 +2917,7 @@
         <span class="macro">run_delete_test!</span>(
             <span class="prelude-val">Ok</span>(()),
             preload,
-            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuids(<span class="kw-2">&amp;</span>UUID_A).unwrap())),
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_A).unwrap())),
             <span class="prelude-val">None</span>,
             |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
@@ -2951,7 +2951,7 @@
         <span class="macro">run_delete_test!</span>(
             <span class="prelude-val">Ok</span>(()),
             preload,
-            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuids(<span class="kw-2">&amp;</span>UUID_A).unwrap())),
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_A).unwrap())),
             <span class="prelude-val">None</span>,
             |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
@@ -2995,7 +2995,7 @@
         <span class="macro">run_delete_test!</span>(
             <span class="prelude-val">Ok</span>(()),
             preload,
-            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuids(<span class="kw-2">&amp;</span>UUID_B).unwrap())),
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_B).unwrap())),
             <span class="prelude-val">None</span>,
             |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
@@ -3048,7 +3048,7 @@
         <span class="macro">run_delete_test!</span>(
             <span class="prelude-val">Ok</span>(()),
             preload,
-            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuids(<span class="kw-2">&amp;</span>UUID_A).unwrap())),
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_A).unwrap())),
             <span class="prelude-val">None</span>,
             |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
@@ -3114,7 +3114,7 @@
         <span class="macro">run_delete_test!</span>(
             <span class="prelude-val">Ok</span>(()),
             preload,
-            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuids(<span class="kw-2">&amp;</span>UUID_B).unwrap())),
+            <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_B).unwrap())),
             <span class="prelude-val">None</span>,
             |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is

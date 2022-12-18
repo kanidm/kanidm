@@ -179,7 +179,7 @@
 
     <span class="kw">fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, pv: <span class="kw-2">&amp;</span>PartialValue) -&gt; bool {
         <span class="kw">match </span>pv {
-            PartialValue::UiHint(s) =&gt; <span class="self">self</span>.set.contains(<span class="kw-2">&amp;</span>s),
+            PartialValue::UiHint(s) =&gt; <span class="self">self</span>.set.contains(s),
             <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
         }
     }
@@ -217,11 +217,11 @@
     }
 
     <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
-        Box::new(<span class="self">self</span>.set.iter().copied().map(|i| PartialValue::UiHint(i)))
+        Box::new(<span class="self">self</span>.set.iter().copied().map(PartialValue::UiHint))
     }
 
     <span class="kw">fn </span>to_value_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Value&gt; + <span class="lifetime">&#39;_</span>&gt; {
-        Box::new(<span class="self">self</span>.set.iter().copied().map(|i| Value::UiHint(i)))
+        Box::new(<span class="self">self</span>.set.iter().copied().map(Value::UiHint))
     }
 
     <span class="kw">fn </span>equal(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>ValueSet) -&gt; bool {
