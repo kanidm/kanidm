@@ -26,7 +26,7 @@ lazy_static! {
         ("class", CLASS_ACCOUNT.clone()),
         ("class", CLASS_SERVICE_ACCOUNT.clone()),
         ("name", Value::new_iname("admin")),
-        ("uuid", Value::new_uuid(UUID_ADMIN)),
+        ("uuid", Value::Uuid(UUID_ADMIN)),
         (
             "description",
             Value::new_utf8s("Builtin System Admin account.")
@@ -488,7 +488,7 @@ lazy_static! {
         ),
         (
             "uuid",
-            Value::new_uuid(UUID_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES)
+            Value::Uuid(UUID_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES)
         ),
         (
             "description",
@@ -508,7 +508,7 @@ lazy_static! {
         ),
         (
             "uuid",
-            Value::new_uuid(UUID_IDM_ACCOUNT_MAIL_READ_PRIV)
+            Value::Uuid(UUID_IDM_ACCOUNT_MAIL_READ_PRIV)
         ),
         (
             "description",
@@ -596,7 +596,7 @@ lazy_static! {
         ("class", CLASS_ACCOUNT.clone()),
         ("class", CLASS_SERVICE_ACCOUNT.clone()),
         ("name", Value::new_iname("anonymous")),
-        ("uuid", Value::new_uuid(UUID_ANONYMOUS)),
+        ("uuid", Value::Uuid(UUID_ANONYMOUS)),
         ("description", Value::new_utf8s("Anonymous access account.")),
         ("displayname", Value::new_utf8s("Anonymous"))
     );
@@ -632,11 +632,11 @@ lazy_static! {
     pub static ref E_TESTPERSON_1: EntryInitNew = entry_init!(
         ("class", CLASS_OBJECT.clone()),
         ("name", Value::new_iname("testperson1")),
-        ("uuid", Value::new_uuid(UUID_TESTPERSON_1))
+        ("uuid", Value::Uuid(UUID_TESTPERSON_1))
     );
     pub static ref E_TESTPERSON_2: EntryInitNew = entry_init!(
         ("class", CLASS_OBJECT.clone()),
         ("name", Value::new_iname("testperson2")),
-        ("uuid", Value::new_uuid(UUID_TESTPERSON_2))
+        ("uuid", Value::Uuid(UUID_TESTPERSON_2))
     );
 }

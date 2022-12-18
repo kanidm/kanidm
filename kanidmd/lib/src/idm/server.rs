@@ -581,7 +581,7 @@ pub trait IdmServerTransaction<'a> {
         iat: i64,
         ct: Duration,
     ) -> Result<Option<Account>, OperationError> {
-        let entry = self.get_qs_txn().internal_search_uuid(&uuid).map_err(|e| {
+        let entry = self.get_qs_txn().internal_search_uuid(uuid).map_err(|e| {
             admin_error!(?e, "check_oauth2_account_uuid_valid failed");
             e
         })?;
@@ -644,7 +644,7 @@ pub trait IdmServerTransaction<'a> {
         // From a UAT, get the current identity and associated information.
         let entry = self
             .get_qs_txn()
-            .internal_search_uuid(&uat.uuid)
+            .internal_search_uuid(uat.uuid)
             .map_err(|e| {
                 admin_error!(?e, "from_ro_uat failed");
                 e
@@ -734,16 +734,16 @@ pub trait IdmServerTransaction<'a> {
             LdapSession::UnixBind(uuid) => {
                 let anon_entry = self
                     .get_qs_txn()
-                    .internal_search_uuid(&UUID_ANONYMOUS)
+                    .internal_search_uuid(UUID_ANONYMOUS)
                     .map_err(|e| {
                         admin_error!("Failed to validate ldap session -> {:?}", e);
                         e
                     })?;
 
-                let entry = if uuid == &UUID_ANONYMOUS {
+                let entry = if *uuid == UUID_ANONYMOUS {
                     anon_entry.clone()
                 } else {
-                    self.get_qs_txn().internal_search_uuid(uuid).map_err(|e| {
+                    self.get_qs_txn().internal_search_uuid(*uuid).map_err(|e| {
                         admin_error!("Failed to start auth ldap -> {:?}", e);
                         e
                     })?
@@ -773,7 +773,7 @@ pub trait IdmServerTransaction<'a> {
             LdapSession::ApiToken(apit) => {
                 let entry = self
                     .get_qs_txn()
-                    .internal_search_uuid(&apit.account_id)
+                    .internal_search_uuid(apit.account_id)
                     .map_err(|e| {
                         admin_error!("Failed to validate ldap session -> {:?}", e);
                         e
@@ -876,15 +876,15 @@ impl<'a> IdmServerTransaction<'a> for IdmServerAuthTransaction<'a> {
     }
 
     fn get_uat_validator_txn(&self) -> &JwsValidator {
-        &*self.uat_jwt_validator
+        &self.uat_jwt_validator
     }
 }
 
 impl<'a> IdmServerAuthTransaction<'a> {
     #[cfg(test)]
-    pub fn is_sessionid_present(&self, sessionid: &Uuid) -> bool {
+    pub fn is_sessionid_present(&self, sessionid: Uuid) -> bool {
         let session_read = self.sessions.read();
-        session_read.contains_key(sessionid)
+        session_read.contains_key(&sessionid)
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -932,7 +932,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 let euuid = self.qs_read.name_to_uuid(init.username.as_str())?;
 
                 // Get the first / single entry we expect here ....
-                let entry = self.qs_read.internal_search_uuid(&euuid)?;
+                let entry = self.qs_read.internal_search_uuid(euuid)?;
 
                 security_info!(
                     username = %init.username,
@@ -1150,7 +1150,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             &self.async_tx,
                             self.webauthn,
                             pw_badlist_cache,
-                            &*self.uat_jwt_signer,
+                            &self.uat_jwt_signer,
                         )
                         .map(|aus| {
                             // Inspect the result:
@@ -1190,7 +1190,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         // Get the entry/target we are working on.
         let account = self
             .qs_read
-            .internal_search_uuid(&uae.target)
+            .internal_search_uuid(uae.target)
             .and_then(|account_entry| {
                 UnixUserAccount::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read)
             })
@@ -1295,13 +1295,10 @@ impl<'a> IdmServerAuthTransaction<'a> {
         lae: &LdapAuthEvent,
         ct: Duration,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
-        let account_entry = self
-            .qs_read
-            .internal_search_uuid(&lae.target)
-            .map_err(|e| {
-                admin_error!("Failed to start auth ldap -> {:?}", e);
-                e
-            })?;
+        let account_entry = self.qs_read.internal_search_uuid(lae.target).map_err(|e| {
+            admin_error!("Failed to start auth ldap -> {:?}", e);
+            e
+        })?;
 
         // if anonymous
         if lae.target == UUID_ANONYMOUS {
@@ -1422,7 +1419,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
     }
 
     fn get_uat_validator_txn(&self) -> &JwsValidator {
-        &*self.uat_jwt_validator
+        &self.uat_jwt_validator
     }
 }
 
@@ -1434,7 +1431,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<RadiusAuthToken, OperationError> {
         let account = self
             .qs_read
-            .impersonate_search_ext_uuid(&rate.target, &rate.ident)
+            .impersonate_search_ext_uuid(rate.target, &rate.ident)
             .and_then(|account_entry| {
                 RadiusAccount::try_from_entry_reduced(&account_entry, &mut self.qs_read)
             })
@@ -1453,7 +1450,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<UnixUserToken, OperationError> {
         let account = self
             .qs_read
-            .impersonate_search_uuid(&uute.target, &uute.ident)
+            .impersonate_search_uuid(uute.target, &uute.ident)
             .and_then(|account_entry| {
                 UnixUserAccount::try_from_entry_ro(&account_entry, &mut self.qs_read)
             })
@@ -1471,7 +1468,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<UnixGroupToken, OperationError> {
         let group = self
             .qs_read
-            .impersonate_search_ext_uuid(&uute.target, &uute.ident)
+            .impersonate_search_ext_uuid(uute.target, &uute.ident)
             .and_then(|e| UnixGroup::try_from_entry_reduced(&e))
             .map_err(|e| {
                 admin_error!("Failed to start unix group token {:?}", e);
@@ -1486,7 +1483,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<CredentialStatus, OperationError> {
         let account = self
             .qs_read
-            .impersonate_search_ext_uuid(&cse.target, &cse.ident)
+            .impersonate_search_ext_uuid(cse.target, &cse.ident)
             .and_then(|account_entry| {
                 Account::try_from_entry_reduced(&account_entry, &mut self.qs_read)
             })
@@ -1504,7 +1501,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<BackupCodesView, OperationError> {
         let account = self
             .qs_read
-            .impersonate_search_ext_uuid(&rbce.target, &rbce.ident)
+            .impersonate_search_ext_uuid(rbce.target, &rbce.ident)
             .and_then(|account_entry| {
                 Account::try_from_entry_reduced(&account_entry, &mut self.qs_read)
             })
@@ -1599,7 +1596,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
     }
 
     fn get_uat_validator_txn(&self) -> &JwsValidator {
-        &*self.uat_jwt_validator
+        &self.uat_jwt_validator
     }
 }
 
@@ -1668,7 +1665,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
-    pub(crate) fn target_to_account(&mut self, target: &Uuid) -> Result<Account, OperationError> {
+    pub(crate) fn target_to_account(&mut self, target: Uuid) -> Result<Account, OperationError> {
         // Get the account
         let account = self
             .qs_write
@@ -1696,7 +1693,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         pce: &PasswordChangeEvent,
     ) -> Result<(), OperationError> {
-        let account = self.target_to_account(&pce.target)?;
+        let account = self.target_to_account(pce.target)?;
 
         // Get the modifications we *want* to perform.
         let modlist = account
@@ -1713,9 +1710,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .qs_write
             .impersonate_modify_gen_event(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(pce.target))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(pce.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(pce.target))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(pce.target))),
                 &modlist,
                 &pce.ident,
             )
@@ -1762,7 +1759,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Get the account
         let account = self
             .qs_write
-            .internal_search_uuid(&pce.target)
+            .internal_search_uuid(pce.target)
             .and_then(|account_entry| {
                 // Assert the account is unix and valid.
                 UnixUserAccount::try_from_entry_rw(&account_entry, &mut self.qs_write)
@@ -1792,9 +1789,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .qs_write
             .impersonate_modify_gen_event(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(pce.target))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(pce.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(pce.target))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(pce.target))),
                 &modlist,
                 &pce.ident,
             )
@@ -1842,7 +1839,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             e
         })?;
 
-        let account = self.target_to_account(&target)?;
+        let account = self.target_to_account(target)?;
 
         let cleartext = cleartext
             .map(|s| s.to_string())
@@ -1859,7 +1856,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .internal_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(target))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(target))),
                 &modlist,
             )
             .map_err(|e| {
@@ -1874,7 +1871,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         gpe: &GeneratePasswordEvent,
     ) -> Result<String, OperationError> {
-        let account = self.target_to_account(&gpe.target)?;
+        let account = self.target_to_account(gpe.target)?;
         // Ask if tis all good - this step checks pwpolicy and such
 
         // Generate a new random, long pw.
@@ -1898,9 +1895,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(gpe.target))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(gpe.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(gpe.target))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(gpe.target))),
                 &modlist,
                 // Provide the event to impersonate
                 &gpe.ident,
@@ -1937,9 +1934,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(gbe.target))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(gbe.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(gbe.target))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(gbe.target))),
                 &modlist,
                 // Provide the event to impersonate
                 &gbe.ident,
@@ -1966,9 +1963,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(account.uuid))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(account.uuid))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(account.uuid))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(account.uuid))),
                 &modlist,
                 &rte.ident,
             )
@@ -1984,7 +1981,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         rrse: &RegenerateRadiusSecretEvent,
     ) -> Result<String, OperationError> {
-        let account = self.target_to_account(&rrse.target)?;
+        let account = self.target_to_account(rrse.target)?;
 
         // Difference to the password above, this is intended to be read/copied
         // by a human wiath a keyboard in some cases.
@@ -2003,9 +2000,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(rrse.target))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(rrse.target))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(rrse.target))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(rrse.target))),
                 &modlist,
                 // Provide the event to impersonate
                 &rrse.ident,
@@ -2020,7 +2017,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     // -- delayed action processing --
     fn process_pwupgrade(&mut self, pwu: &PasswordUpgrade) -> Result<(), OperationError> {
         // get the account
-        let account = self.target_to_account(&pwu.target_uuid)?;
+        let account = self.target_to_account(pwu.target_uuid)?;
 
         info!(session_id = %pwu.target_uuid, "Processing password hash upgrade");
 
@@ -2037,7 +2034,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 })?;
 
             self.qs_write.internal_modify(
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(pwu.target_uuid))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(pwu.target_uuid))),
                 &modlist,
             )
         } else {
@@ -2051,7 +2048,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let account = self
             .qs_write
-            .internal_search_uuid(&pwu.target_uuid)
+            .internal_search_uuid(pwu.target_uuid)
             .and_then(|account_entry| {
                 UnixUserAccount::try_from_entry_rw(&account_entry, &mut self.qs_write)
             })
@@ -2071,7 +2068,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 })?;
 
             self.qs_write.internal_modify(
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(pwu.target_uuid))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(pwu.target_uuid))),
                 &modlist,
             )
         } else {
@@ -2085,7 +2082,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         info!(session_id = %wci.target_uuid, "Processing webauthn counter increment");
 
-        let mut account = self.target_to_account(&wci.target_uuid)?;
+        let mut account = self.target_to_account(wci.target_uuid)?;
 
         // Generate an optional mod and then attempt to apply it.
         let opt_modlist = account
@@ -2097,7 +2094,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         if let Some(modlist) = opt_modlist {
             self.qs_write.internal_modify(
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(wci.target_uuid))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(wci.target_uuid))),
                 &modlist,
             )
         } else {
@@ -2113,7 +2110,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         info!(session_id = %bcr.target_uuid, "Processing backup code removal");
 
-        let account = self.target_to_account(&bcr.target_uuid)?;
+        let account = self.target_to_account(bcr.target_uuid)?;
         // Generate an optional mod and then attempt to apply it.
         let modlist = account
             .invalidate_backup_code_mod(&bcr.code_to_remove)
@@ -2123,7 +2120,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })?;
 
         self.qs_write.internal_modify(
-            &filter_all!(f_eq("uuid", PartialValue::new_uuid(bcr.target_uuid))),
+            &filter_all!(f_eq("uuid", PartialValue::Uuid(bcr.target_uuid))),
             &modlist,
         )
     }
@@ -2157,7 +2154,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         self.qs_write
             .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::new_uuid(asr.target_uuid))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(asr.target_uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -2183,7 +2180,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ]);
 
         self.qs_write.internal_modify(
-            &filter_all!(f_eq("uuid", PartialValue::new_uuid(o2cg.target_uuid))),
+            &filter_all!(f_eq("uuid", PartialValue::Uuid(o2cg.target_uuid))),
             &modlist,
         )
     }
@@ -2209,7 +2206,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         self.qs_write
             .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::new_uuid(osr.target_uuid))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(osr.target_uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -2747,7 +2744,7 @@ mod tests {
     fn test_idm_simple_password_reset() {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+                let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
                 let mut idms_prox_write =
                     task::block_on(idms.proxy_write(duration_from_epoch_now()));
@@ -2762,7 +2759,7 @@ mod tests {
     fn test_idm_anonymous_set_password_denied() {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let pce = PasswordChangeEvent::new_internal(&UUID_ANONYMOUS, TEST_PASSWORD);
+                let pce = PasswordChangeEvent::new_internal(UUID_ANONYMOUS, TEST_PASSWORD);
 
                 let mut idms_prox_write =
                     task::block_on(idms.proxy_write(duration_from_epoch_now()));
@@ -2806,11 +2803,11 @@ mod tests {
                     .expect("Failed to reset radius credential 1");
 
                 // Try and set that as the main account password, should fail.
-                let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, r1.as_str());
+                let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, r1.as_str());
                 let e = idms_prox_write.set_account_password(&pce);
                 assert!(e.is_err());
 
-                let pce = UnixPasswordChangeEvent::new_internal(&UUID_ADMIN, r1.as_str());
+                let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, r1.as_str());
                 let e = idms_prox_write.set_unix_account_password(&pce);
                 assert!(e.is_err());
 
@@ -2851,23 +2848,23 @@ mod tests {
                 let mut idms_prox_write =
                     task::block_on(idms.proxy_write(duration_from_epoch_now()));
 
-                let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "password");
+                let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "password");
                 let e = idms_prox_write.set_account_password(&pce);
                 assert!(e.is_err());
 
                 // zxcvbn check
-                let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "password1234");
+                let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "password1234");
                 let e = idms_prox_write.set_account_password(&pce);
                 assert!(e.is_err());
 
                 // Check the "name" checking works too (I think admin may hit a common pw rule first)
-                let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "admin_nta");
+                let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "admin_nta");
                 let e = idms_prox_write.set_account_password(&pce);
                 assert!(e.is_err());
 
                 // Check that the demo badlist password is rejected.
                 let pce = PasswordChangeEvent::new_internal(
-                    &UUID_ADMIN,
+                    UUID_ADMIN,
                     "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1",
                 );
                 let e = idms_prox_write.set_account_password(&pce);
@@ -2886,7 +2883,7 @@ mod tests {
                     task::block_on(idms.proxy_write(duration_from_epoch_now()));
 
                 // Check that the badlist password inserted is rejected.
-                let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "bad@no3IBTyqHu$list");
+                let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "bad@no3IBTyqHu$list");
                 let e = idms_prox_write.set_account_password(&pce);
                 assert!(e.is_err());
 
@@ -2923,12 +2920,12 @@ mod tests {
                     ("name", Value::new_iname("testgroup")),
                     (
                         "uuid",
-                        Value::new_uuid(uuid::uuid!("01609135-a1c4-43d5-966b-a28227644445"))
+                        Value::Uuid(uuid::uuid!("01609135-a1c4-43d5-966b-a28227644445"))
                     ),
                     ("description", Value::new_utf8s("testgroup")),
                     (
                         "member",
-                        Value::new_refer(uuid::uuid!("00000000-0000-0000-0000-000000000000"))
+                        Value::Refer(uuid::uuid!("00000000-0000-0000-0000-000000000000"))
                     )
                 );
 
@@ -2940,10 +2937,9 @@ mod tests {
 
                 let mut idms_prox_read = task::block_on(idms.proxy_read());
 
-                let ugte = UnixGroupTokenEvent::new_internal(
-                    Uuid::parse_str("01609135-a1c4-43d5-966b-a28227644445")
-                        .expect("failed to parse uuid"),
-                );
+                let ugte = UnixGroupTokenEvent::new_internal(uuid!(
+                    "01609135-a1c4-43d5-966b-a28227644445"
+                ));
                 let tok_g = idms_prox_read
                     .get_unixgrouptoken(&ugte)
                     .expect("Failed to generate unix group token");
@@ -2964,10 +2960,9 @@ mod tests {
                 assert!(tok_r.valid == true);
 
                 // Show we can get the admin as a unix group token too
-                let ugte = UnixGroupTokenEvent::new_internal(
-                    Uuid::parse_str("00000000-0000-0000-0000-000000000000")
-                        .expect("failed to parse uuid"),
-                );
+                let ugte = UnixGroupTokenEvent::new_internal(uuid!(
+                    "00000000-0000-0000-0000-000000000000"
+                ));
                 let tok_g = idms_prox_read
                     .get_unixgrouptoken(&ugte)
                     .expect("Failed to generate unix group token");
@@ -2999,7 +2994,7 @@ mod tests {
                 };
                 assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
-                let pce = UnixPasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+                let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
                 assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
                 assert!(idms_prox_write.commit().is_ok());
@@ -3007,7 +3002,7 @@ mod tests {
                 let mut idms_auth = idms.auth();
                 // Check auth verification of the password
 
-                let uuae_good = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+                let uuae_good = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
                 let a1 = task::block_on(
                     idms_auth.auth_unix(&uuae_good, Duration::from_secs(TEST_CURRENT_TIME)),
                 );
@@ -3016,7 +3011,7 @@ mod tests {
                     _ => assert!(false),
                 };
                 // Check bad password
-                let uuae_bad = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD_INC);
+                let uuae_bad = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD_INC);
                 let a2 = task::block_on(
                     idms_auth.auth_unix(&uuae_bad, Duration::from_secs(TEST_CURRENT_TIME)),
                 );
@@ -3138,7 +3133,7 @@ mod tests {
                 assert!(idms_prox_write.commit().is_ok());
                 idms_delayed.check_is_empty_or_panic();
                 // Get the auth ready.
-                let uuae = UnixUserAuthEvent::new_internal(&UUID_ADMIN, "password");
+                let uuae = UnixUserAuthEvent::new_internal(UUID_ADMIN, "password");
                 let mut idms_auth = idms.auth();
                 let a1 = task::block_on(
                     idms_auth.auth_unix(&uuae, Duration::from_secs(TEST_CURRENT_TIME)),
@@ -3288,14 +3283,14 @@ mod tests {
                 };
                 assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
-                let pce = UnixPasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+                let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
                 assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
                 assert!(idms_prox_write.commit().is_ok());
 
                 // Now check auth when the time is too high or too low.
                 let mut idms_auth = idms.auth();
-                let uuae_good = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+                let uuae_good = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
                 let a1 = task::block_on(idms_auth.auth_unix(&uuae_good, time_low));
                 // Should this actually send an error with the details? Or just silently act as
@@ -3647,13 +3642,13 @@ mod tests {
                 };
                 assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
-                let pce = UnixPasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+                let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
                 assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
                 assert!(idms_prox_write.commit().is_ok());
 
                 let mut idms_auth = idms.auth();
-                let uuae_good = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
-                let uuae_bad = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD_INC);
+                let uuae_good = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
+                let uuae_bad = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD_INC);
 
                 let a2 = task::block_on(
                     idms_auth.auth_unix(&uuae_bad, Duration::from_secs(TEST_CURRENT_TIME)),
@@ -3738,7 +3733,7 @@ mod tests {
             let idms_prox_read = task::block_on(idms.proxy_read());
             let admin = idms_prox_read
                 .qs_read
-                .internal_search_uuid(&UUID_ADMIN)
+                .internal_search_uuid(UUID_ADMIN)
                 .expect("failed");
             let sessions = admin.get_ava_as_session_map("user_auth_token_session");
             assert!(sessions.is_none());
@@ -3761,7 +3756,7 @@ mod tests {
             let idms_prox_read = task::block_on(idms.proxy_read());
             let admin = idms_prox_read
                 .qs_read
-                .internal_search_uuid(&UUID_ADMIN)
+                .internal_search_uuid(UUID_ADMIN)
                 .expect("failed");
             let sessions = admin
                 .get_ava_as_session_map("user_auth_token_session")
@@ -3794,7 +3789,7 @@ mod tests {
             let idms_prox_read = task::block_on(idms.proxy_read());
             let admin = idms_prox_read
                 .qs_read
-                .internal_search_uuid(&UUID_ADMIN)
+                .internal_search_uuid(UUID_ADMIN)
                 .expect("failed");
             let sessions = admin
                 .get_ava_as_session_map("user_auth_token_session")
@@ -3897,7 +3892,7 @@ mod tests {
 
             // get an account.
             let account = idms_prox_write
-                .target_to_account(&UUID_ADMIN)
+                .target_to_account(UUID_ADMIN)
                 .expect("account must exist");
 
             // Create some fake UATs, then process them and see what claims fall out 🥳
@@ -4023,7 +4018,7 @@ mod tests {
                 let mut idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
                 let me_reset_tokens = unsafe {
                     ModifyEvent::new_internal_invalid(
-                        filter!(f_eq("uuid", PartialValue::new_uuid(UUID_DOMAIN_INFO))),
+                        filter!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO))),
                         ModifyList::new_list(vec![
                             Modify::Purged(AttrString::from("fernet_private_key_str")),
                             Modify::Purged(AttrString::from("es256_private_key_der")),
@@ -4070,7 +4065,7 @@ mod tests {
                 ("class", Value::new_class("account")),
                 ("class", Value::new_class("service_account")),
                 ("name", Value::new_iname("testaccount")),
-                ("uuid", Value::new_uuid(target_uuid)),
+                ("uuid", Value::Uuid(target_uuid)),
                 ("description", Value::new_utf8s("testaccount")),
                 ("displayname", Value::new_utf8s("Test Account"))
             );

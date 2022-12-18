@@ -1776,7 +1776,6 @@ mod tests {
     use std::time::Duration;
 
     use idlset::v2::IDLBitRange;
-    use uuid::Uuid;
 
     use super::super::entry::{Entry, EntryInit, EntryNew};
     use super::{
@@ -2347,8 +2346,8 @@ mod tests {
             assert_eq!(uuid_p_idl, None);
 
             // Check name2uuid
-            let claire_uuid = Uuid::parse_str("bd651620-00dd-426b-aaa0-4494f7b7906f").unwrap();
-            let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
+            let claire_uuid = uuid!("bd651620-00dd-426b-aaa0-4494f7b7906f");
+            let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
 
             assert!(be.name2uuid("claire") == Ok(Some(claire_uuid)));
             assert!(be.name2uuid("william") == Ok(Some(william_uuid)));
@@ -2392,7 +2391,7 @@ mod tests {
 
             idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![1]));
 
-            let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
+            let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
             assert!(be.name2uuid("william") == Ok(Some(william_uuid)));
             assert!(be.uuid2spn(william_uuid) == Ok(Some(Value::from("william"))));
             assert!(be.uuid2rdn(william_uuid) == Ok(Some("name=william".to_string())));
@@ -2481,9 +2480,9 @@ mod tests {
 
             idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![2]));
 
-            let claire_uuid = Uuid::parse_str("bd651620-00dd-426b-aaa0-4494f7b7906f").unwrap();
-            let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
-            let lucy_uuid = Uuid::parse_str("7b23c99d-c06b-4a9a-a958-3afa56383e1d").unwrap();
+            let claire_uuid = uuid!("bd651620-00dd-426b-aaa0-4494f7b7906f");
+            let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
+            let lucy_uuid = uuid!("7b23c99d-c06b-4a9a-a958-3afa56383e1d");
 
             assert!(be.name2uuid("claire") == Ok(Some(claire_uuid)));
             let x = be.uuid2spn(claire_uuid);
@@ -2539,8 +2538,7 @@ mod tests {
 
             idl_state!(be, "ta", IndexType::Equality, "test", Some(vec![]));
 
-            // let claire_uuid = Uuid::parse_str("bd651620-00dd-426b-aaa0-4494f7b7906f").unwrap();
-            let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
+            let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
             assert!(be.name2uuid("william") == Ok(None));
             assert!(be.name2uuid("claire") == Ok(Some(william_uuid)));
             assert!(be.uuid2spn(william_uuid) == Ok(Some(Value::new_iname("claire"))));
@@ -2594,8 +2592,8 @@ mod tests {
             );
             idl_state!(be, "name", IndexType::Equality, "william", Some(Vec::new()));
 
-            let claire_uuid = Uuid::parse_str("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8").unwrap();
-            let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
+            let claire_uuid = uuid!("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8");
+            let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
             assert!(be.name2uuid("william") == Ok(None));
             assert!(be.name2uuid("claire") == Ok(Some(claire_uuid)));
             assert!(be.uuid2spn(william_uuid) == Ok(None));

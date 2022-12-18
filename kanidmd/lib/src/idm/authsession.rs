@@ -545,6 +545,9 @@ enum AuthSessionState {
     Init(Vec<CredHandler>),
     // Stop! Don't make this a vec - make the credhandler able to hold multiple
     // internal copies of it's type and check against them all.
+    //
+    // Clippy wants this to be boxxed, however match on box types is a pain / problematic,
+    // so I'm not sure it can be done.
     InProgress(CredHandler),
     Success,
     Denied(&'static str),
@@ -1514,6 +1517,7 @@ mod tests {
 
             let resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
+                .map(Box::new)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1547,6 +1551,7 @@ mod tests {
             let resp = wa
                 // HERE -> we use inv_chal instead.
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), inv_chal)
+                .map(Box::new)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1585,6 +1590,7 @@ mod tests {
             // Create the response.
             let resp = inv_wa
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
+                .map(Box::new)
                 .expect("Failed to use softtoken for response.");
 
             let (mut session, _chal) = start_webauthn_only_session!(&mut audit, account, &webauthn);
@@ -1679,6 +1685,7 @@ mod tests {
             let resp = wa
                 // HERE -> we use inv_chal instead.
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), inv_chal)
+                .map(Box::new)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1702,6 +1709,7 @@ mod tests {
 
             let resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
+                .map(Box::new)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1742,6 +1750,7 @@ mod tests {
 
             let resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
+                .map(Box::new)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1862,6 +1871,7 @@ mod tests {
             let resp = wa
                 // HERE -> we use inv_chal instead.
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), inv_chal)
+                .map(Box::new)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1885,6 +1895,7 @@ mod tests {
 
             let resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
+                .map(Box::new)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
@@ -1988,6 +1999,7 @@ mod tests {
 
             let resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
+                .map(Box::new)
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(

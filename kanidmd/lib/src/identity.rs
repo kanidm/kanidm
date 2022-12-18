@@ -272,7 +272,7 @@ impl Identity {
             IdentType::Internal | IdentType::Synch(_) => false,
             IdentType::User(u) => u
                 .entry
-                .attribute_equality("memberof", &PartialValue::new_refer(group)),
+                .attribute_equality("memberof", &PartialValue::Refer(group)),
         }
     }
 

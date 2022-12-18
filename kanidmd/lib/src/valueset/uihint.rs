@@ -53,7 +53,7 @@ impl ValueSetT for ValueSetUiHint {
 
     fn contains(&self, pv: &PartialValue) -> bool {
         match pv {
-            PartialValue::UiHint(s) => self.set.contains(&s),
+            PartialValue::UiHint(s) => self.set.contains(s),
             _ => false,
         }
     }
@@ -91,11 +91,11 @@ impl ValueSetT for ValueSetUiHint {
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
-        Box::new(self.set.iter().copied().map(|i| PartialValue::UiHint(i)))
+        Box::new(self.set.iter().copied().map(PartialValue::UiHint))
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
-        Box::new(self.set.iter().copied().map(|i| Value::UiHint(i)))
+        Box::new(self.set.iter().copied().map(Value::UiHint))
     }
 
     fn equal(&self, other: &ValueSet) -> bool {

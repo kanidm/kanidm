@@ -86,7 +86,7 @@ pub fn f_self<'a>() -> FC<'a> {
 pub fn f_id(id: &str) -> FC<'static> {
     let uf = Uuid::parse_str(id)
         .ok()
-        .map(|u| FC::Eq("uuid", PartialValue::new_uuid(u)));
+        .map(|u| FC::Eq("uuid", PartialValue::Uuid(u)));
     let spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq("spn", spn));
     let nf = FC::Eq("name", PartialValue::new_iname(id));
     let f: Vec<_> = iter::once(uf)
@@ -1087,7 +1087,7 @@ impl FilterResolved {
                     .get(&idxkref as &dyn IdxKeyToRef)
                     .copied()
                     .and_then(NonZeroU8::new);
-                FilterResolved::Eq(uuid_s, PartialValue::new_uuid(uuid), idx)
+                FilterResolved::Eq(uuid_s, PartialValue::Uuid(uuid), idx)
             }),
             FilterComp::Sub(a, v) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
@@ -1161,7 +1161,7 @@ impl FilterResolved {
             FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
                 FilterResolved::Eq(
                     AttrString::from("uuid"),
-                    PartialValue::new_uuid(uuid),
+                    PartialValue::Uuid(uuid),
                     NonZeroU8::new(true as u8),
                 )
             }),
@@ -1839,7 +1839,7 @@ mod tests {
             ("name", Value::new_iname("testperson3")),
             (
                 "uuid",
-                Value::new_uuids("9557f49c-97a5-4277-a9a5-097d17eb8317").expect("uuid")
+                Value::Uuid(uuid!("9557f49c-97a5-4277-a9a5-097d17eb8317"))
             ),
             ("description", Value::new_utf8s("testperson3")),
             ("displayname", Value::new_utf8s("testperson3"))
@@ -1876,29 +1876,25 @@ mod tests {
         assert!(r1 == Ok(vec!["teststring".to_string()]));
 
         // Resolve UUID with matching spn
-        let t_uuid =
-            vs_refer![Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap()] as _;
+        let t_uuid = vs_refer![uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930")] as _;
         let r_uuid = server_txn.resolve_valueset(&t_uuid);
         debug!("{:?}", r_uuid);
         assert!(r_uuid == Ok(vec!["testperson1@example.com".to_string()]));
 
         // Resolve UUID with matching name
-        let t_uuid =
-            vs_refer![Uuid::parse_str("a67c0c71-0b35-4218-a6b0-22d23d131d27").unwrap()] as _;
+        let t_uuid = vs_refer![uuid!("a67c0c71-0b35-4218-a6b0-22d23d131d27")] as _;
         let r_uuid = server_txn.resolve_valueset(&t_uuid);
         debug!("{:?}", r_uuid);
         assert!(r_uuid == Ok(vec!["testperson2".to_string()]));
 
         // Resolve UUID non-exist
-        let t_uuid_non =
-            vs_refer![Uuid::parse_str("b83e98f0-3d2e-41d2-9796-d8d993289c86").unwrap()] as _;
+        let t_uuid_non = vs_refer![uuid!("b83e98f0-3d2e-41d2-9796-d8d993289c86")] as _;
         let r_uuid_non = server_txn.resolve_valueset(&t_uuid_non);
         debug!("{:?}", r_uuid_non);
         assert!(r_uuid_non == Ok(vec!["b83e98f0-3d2e-41d2-9796-d8d993289c86".to_string()]));
 
         // Resolve UUID to tombstone/recycled (same an non-exst)
-        let t_uuid_ts =
-            vs_refer![Uuid::parse_str("9557f49c-97a5-4277-a9a5-097d17eb8317").unwrap()] as _;
+        let t_uuid_ts = vs_refer![uuid!("9557f49c-97a5-4277-a9a5-097d17eb8317")] as _;
         let r_uuid_ts = server_txn.resolve_valueset(&t_uuid_ts);
         debug!("{:?}", r_uuid_ts);
         assert!(r_uuid_ts == Ok(vec!["9557f49c-97a5-4277-a9a5-097d17eb8317".to_string()]));

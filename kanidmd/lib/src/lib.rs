@@ -65,7 +65,7 @@ pub mod prelude {
     };
     pub use smartstring::alias::String as AttrString;
     pub use url::Url;
-    pub use uuid::Uuid;
+    pub use uuid::{uuid, Uuid};
 
     pub use crate::constants::*;
     pub use crate::entry::{

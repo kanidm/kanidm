@@ -370,11 +370,7 @@ macro_rules! try_from_account_group_e {
                 let f = filter!(f_and!([
                     f_eq("class", PVCLASS_POSIXGROUP.clone()),
                     f_eq("class", PVCLASS_GROUP.clone()),
-                    f_or(
-                        riter
-                            .map(|u| f_eq("uuid", PartialValue::new_uuid(u)))
-                            .collect()
-                    )
+                    f_or(riter.map(|u| f_eq("uuid", PartialValue::Uuid(u))).collect())
                 ]));
                 let ges: Vec<_> = $qs.internal_search(f)?;
                 let groups: Result<Vec<_>, _> = iter::once(Ok(upg))

@@ -36,7 +36,7 @@ impl SynchOpt {
             } => {
                 let client = copt.to_client().await;
                 match client
-                    .idm_sync_account_create(&account_id, description.as_deref())
+                    .idm_sync_account_create(account_id, description.as_deref())
                     .await
                 {
                     Ok(()) => println!("Success"),
@@ -50,7 +50,7 @@ impl SynchOpt {
             } => {
                 let client = copt.to_client().await;
                 match client
-                    .idm_sync_account_generate_token(&account_id, &label)
+                    .idm_sync_account_generate_token(account_id, label)
                     .await
                 {
                     Ok(token) => println!("token: {}", token),
@@ -59,14 +59,14 @@ impl SynchOpt {
             }
             SynchOpt::DestroyToken { account_id, copt } => {
                 let client = copt.to_client().await;
-                match client.idm_sync_account_destroy_token(&account_id).await {
+                match client.idm_sync_account_destroy_token(account_id).await {
                     Ok(()) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             SynchOpt::ForceRefresh { account_id, copt } => {
                 let client = copt.to_client().await;
-                match client.idm_sync_account_force_refresh(&account_id).await {
+                match client.idm_sync_account_force_refresh(account_id).await {
                     Ok(()) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }

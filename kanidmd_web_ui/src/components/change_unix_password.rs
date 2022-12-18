@@ -120,10 +120,9 @@ impl Component for ChangeUnixPassword {
                 true
             }
             Msg::PasswordCheck => {
-                let pw = utils::get_value_from_element_id("password_input")
-                    .unwrap_or_else(|| "".to_string());
-                let check = utils::get_value_from_element_id("password_repeat_input")
-                    .unwrap_or_else(|| "".to_string());
+                let pw = utils::get_value_from_element_id("password_input").unwrap_or_default();
+                let check =
+                    utils::get_value_from_element_id("password_repeat_input").unwrap_or_default();
 
                 if pw == check {
                     self.pw_check = PwCheck::Valid

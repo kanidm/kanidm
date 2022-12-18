@@ -133,7 +133,8 @@ impl Component for PasskeyModalApp {
         match msg {
             Msg::LabelCheck => {
                 let label = utils::get_value_from_element_id("passkey-label")
-                    .unwrap_or_else(|| "".to_string());
+                    // Default is empty string.
+                    .unwrap_or_default();
 
                 self.label_val = label;
             }

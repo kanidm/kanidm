@@ -189,7 +189,7 @@ impl SearchEvent {
         target_uuid: Uuid,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let filter_orig = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)))
+        let filter_orig = filter_all!(f_eq("uuid", PartialValue::Uuid(target_uuid)))
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
         let filter = filter_orig.clone().into_ignore_hidden();
@@ -551,7 +551,7 @@ impl ModifyEvent {
         filter: Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let f_uuid = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
+        let f_uuid = filter_all!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
         // Add any supplemental conditions we have.
         let f = Filter::join_parts_and(f_uuid, filter);
 
@@ -602,7 +602,7 @@ impl ModifyEvent {
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let ml = ModifyList::new_purge(attr);
-        let f_uuid = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
+        let f_uuid = filter_all!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
         // Add any supplemental conditions we have.
         let f = Filter::join_parts_and(f_uuid, filter);
 

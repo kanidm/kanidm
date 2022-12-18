@@ -423,24 +423,12 @@ impl PartialValue {
         matches!(self, PartialValue::Bool(_))
     }
 
-    pub fn new_uuid(u: Uuid) -> Self {
-        PartialValue::Uuid(u)
-    }
-
-    pub fn new_uuids(us: &str) -> Option<Self> {
+    pub fn new_uuid_s(us: &str) -> Option<Self> {
         Uuid::parse_str(us).map(PartialValue::Uuid).ok()
     }
 
     pub fn is_uuid(&self) -> bool {
         matches!(self, PartialValue::Uuid(_))
-    }
-
-    pub fn new_refer(u: Uuid) -> Self {
-        PartialValue::Refer(u)
-    }
-
-    pub fn new_refer_r(u: &Uuid) -> Self {
-        PartialValue::Refer(*u)
     }
 
     pub fn new_refer_s(us: &str) -> Option<Self> {
@@ -970,11 +958,7 @@ impl Value {
         matches!(self, Value::Iname(_))
     }
 
-    pub fn new_uuid(u: Uuid) -> Self {
-        Value::Uuid(u)
-    }
-
-    pub fn new_uuids(s: &str) -> Option<Self> {
+    pub fn new_uuid_s(s: &str) -> Option<Self> {
         Uuid::parse_str(s).map(Value::Uuid).ok()
     }
 
@@ -1018,14 +1002,6 @@ impl Value {
 
     pub fn is_index(&self) -> bool {
         matches!(self, Value::Index(_))
-    }
-
-    pub fn new_refer(u: Uuid) -> Self {
-        Value::Refer(u)
-    }
-
-    pub fn new_refer_r(u: &Uuid) -> Self {
-        Value::Refer(*u)
     }
 
     pub fn new_refer_s(us: &str) -> Option<Self> {
@@ -1807,58 +1783,4 @@ mod tests {
         assert!(val2.is_some());
         assert!(val3.is_some());
     }
-
-    /*
-    #[test]
-    fn test_schema_syntax_json_filter() {
-        let sa = SchemaAttribute {
-            name: String::from("acp_receiver"),
-            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_RECEIVER)
-                .expect("unable to parse const uuid"),
-            description: String::from(
-                "Who the ACP applies to, constraining or allowing operations.",
-            ),
-            multivalue: false,
-            index: vec![IndexType::Equality, IndexType::SubString],
-            syntax: SyntaxType::JSON_FILTER,
-        };
-
-        // Outright wrong
-        let r1 = sa.validate_json_filter(&String::from("Whargarble lol not a filter"));
-        assert!(r1.is_err());
-        // Json error
-        let r2 = sa.validate_json_filter(&String::from(
-            "{\"And\":[{\"Eq\":[\"a\",\"a\"]},\"Self\",]}",
-        ));
-        assert!(r2.is_err());
-        // Invalid keyword
-        let r3 = sa.validate_json_filter(&String::from(
-            "{\"And\":[{\"Nalf\":[\"a\",\"a\"]},\"Self\"]}",
-        ));
-        assert!(r3.is_err());
-        // valid
-        let r4 = sa.validate_json_filter(&String::from("{\"Or\":[{\"Eq\":[\"a\",\"a\"]}]}"));
-        assert!(r4.is_ok());
-        // valid with self keyword
-        let r5 =
-            sa.validate_json_filter(&String::from("{\"And\":[{\"Eq\":[\"a\",\"a\"]},\"Self\"]}"));
-        assert!(r5.is_ok());
-    }
-
-    #[test]
-    fn test_schema_normalise_uuid() {
-        let sa = SchemaAttribute {
-            name: String::from("uuid"),
-            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UUID).expect("unable to parse const uuid"),
-            description: String::from("The universal unique id of the object"),
-            multivalue: false,
-            index: vec![IndexType::Equality],
-            syntax: SyntaxType::UUID,
-        };
-        let u1 = String::from("936DA01F9ABD4d9d80C702AF85C822A8");
-
-        let un1 = sa.normalise_value(&u1);
-        assert_eq!(un1, "936da01f-9abd-4d9d-80c7-02af85c822a8");
-    }
-    */
 }

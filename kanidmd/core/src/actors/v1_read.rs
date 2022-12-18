@@ -1411,7 +1411,7 @@ impl QueryServerReadV1 {
         let res = match ServerOps::try_from(protomsg) {
             Ok(server_op) => self
                 .ldap
-                .do_op(&self.idms, server_op, uat, &eventid)
+                .do_op(&self.idms, server_op, uat, eventid)
                 .await
                 .unwrap_or_else(|e| {
                     admin_error!("do_op failed -> {:?}", e);

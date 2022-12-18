@@ -529,10 +529,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 )]);
 
                 self.qs_write
-                    .internal_modify(
-                        &filter!(f_eq("uuid", PartialValue::new_uuid(uuid))),
-                        &modlist,
-                    )
+                    .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(uuid))), &modlist)
                     .map_err(|e| {
                         admin_error!("Failed to modify - revoke oauth2 session {:?}", e);
                         Oauth2Error::ServerError(e)
@@ -997,7 +994,7 @@ impl Oauth2ResourceServersReadTransaction {
             self.check_oauth2_token_exchange_authorization_code(o2rs, token_req, ct, async_tx)
         } else {
             admin_warn!("Invalid oauth2 grant_type (should be 'authorization_code')");
-            return Err(Oauth2Error::InvalidRequest);
+            Err(Oauth2Error::InvalidRequest)
         }
     }
 
@@ -1422,7 +1419,7 @@ impl Oauth2ResourceServersReadTransaction {
                     iss,
                     sub: OidcSubject::U(uuid),
                     aud: client_id.to_string(),
-                    iat: iat,
+                    iat,
                     nbf: Some(nbf),
                     exp,
                     auth_time: None,
@@ -1435,7 +1432,7 @@ impl Oauth2ResourceServersReadTransaction {
                     s_claims: OidcClaims {
                         // Map from displayname
                         name: Some(account.displayname.clone()),
-                        scopes: scopes,
+                        scopes,
                         preferred_username,
                         email,
                         email_verified,
@@ -1552,7 +1549,7 @@ impl Oauth2ResourceServersReadTransaction {
 
 fn parse_basic_authz(client_authz: &str) -> Result<(String, String), Oauth2Error> {
     // Check the client_authz
-    let authz = base64::decode(&client_authz)
+    let authz = base64::decode(client_authz)
         .map_err(|_| {
             admin_error!("Basic authz invalid base64");
             Oauth2Error::AuthenticationRequired
@@ -1659,7 +1656,7 @@ mod tests {
             ("class", Value::new_class("object")),
             ("class", Value::new_class("oauth2_resource_server")),
             ("class", Value::new_class("oauth2_resource_server_basic")),
-            ("uuid", Value::new_uuid(uuid)),
+            ("uuid", Value::Uuid(uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
             (
@@ -1703,7 +1700,7 @@ mod tests {
 
         let entry = idms_prox_write
             .qs_write
-            .internal_search_uuid(&uuid)
+            .internal_search_uuid(uuid)
             .expect("Failed to retrieve oauth2 resource entry ");
         let secret = entry
             .get_ava_single_secret("oauth2_rs_basic_secret")
@@ -1712,7 +1709,7 @@ mod tests {
 
         // Setup the uat we'll be using.
         let account = idms_prox_write
-            .target_to_account(&UUID_ADMIN)
+            .target_to_account(UUID_ADMIN)
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
@@ -1739,7 +1736,7 @@ mod tests {
     ) -> (UserAuthToken, Identity) {
         let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
         let account = idms_prox_write
-            .target_to_account(&UUID_IDM_ADMIN)
+            .target_to_account(UUID_IDM_ADMIN)
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
@@ -2002,7 +1999,7 @@ mod tests {
             let (uat2, ident2) = {
                 let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 let account = idms_prox_write
-                    .target_to_account(&UUID_IDM_ADMIN)
+                    .target_to_account(UUID_IDM_ADMIN)
                     .expect("account must exist");
                 let session_id = uuid::Uuid::new_v4();
                 let uat2 = account
@@ -2596,7 +2593,7 @@ mod tests {
                 // Check it is now there
                 let entry = idms_prox_write
                     .qs_write
-                    .internal_search_uuid(&UUID_ADMIN)
+                    .internal_search_uuid(UUID_ADMIN)
                     .expect("failed");
                 let valid = entry
                     .get_ava_as_oauth2session_map("oauth2_session")
@@ -2619,7 +2616,7 @@ mod tests {
                 // integrity plugin.
                 let entry = idms_prox_write
                     .qs_write
-                    .internal_search_uuid(&UUID_ADMIN)
+                    .internal_search_uuid(UUID_ADMIN)
                     .expect("failed");
                 let valid = entry
                     .get_ava_as_oauth2session_map("oauth2_session")
@@ -2644,7 +2641,7 @@ mod tests {
             let (uat2, ident2) = {
                 let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 let account = idms_prox_write
-                    .target_to_account(&UUID_IDM_ADMIN)
+                    .target_to_account(UUID_IDM_ADMIN)
                     .expect("account must exist");
                 let session_id = uuid::Uuid::new_v4();
                 let uat2 = account

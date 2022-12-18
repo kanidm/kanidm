@@ -36,7 +36,7 @@ impl DynGroup {
         let filt = filter!(FC::Or(
             n_dyn_groups
                 .iter()
-                .map(|e| f_eq("uuid", PartialValue::new_uuid(e.get_uuid())))
+                .map(|e| f_eq("uuid", PartialValue::Uuid(e.get_uuid())))
                 .collect()
         ));
         let work_set = qs.internal_search_writeable(&filt)?;
@@ -178,14 +178,14 @@ impl DynGroup {
                 .collect();
 
             if !matches.is_empty() {
-                let filt = filter!(f_eq("uuid", PartialValue::new_uuid(*dg_uuid)));
+                let filt = filter!(f_eq("uuid", PartialValue::Uuid(*dg_uuid)));
                 let mut work_set = qs.internal_search_writeable(&filt)?;
 
                 if let Some((pre, mut d_group)) = work_set.pop() {
                     matches
                         .iter()
                         .copied()
-                        .for_each(|u| d_group.add_ava("member", Value::new_refer(u)));
+                        .for_each(|u| d_group.add_ava("member", Value::Refer(u)));
 
                     affected_uuids.extend(matches.into_iter());
                     affected_uuids.push(*dg_uuid);
@@ -303,13 +303,13 @@ impl DynGroup {
                 .collect();
 
             if !matches.is_empty() {
-                let filt = filter!(f_eq("uuid", PartialValue::new_uuid(*dg_uuid)));
+                let filt = filter!(f_eq("uuid", PartialValue::Uuid(*dg_uuid)));
                 let mut work_set = qs.internal_search_writeable(&filt)?;
 
                 if let Some((pre, mut d_group)) = work_set.pop() {
                     matches.iter().copied().for_each(|choice| match choice {
-                        Ok(u) => d_group.add_ava("member", Value::new_refer(u)),
-                        Err(u) => d_group.remove_ava("member", &PartialValue::new_refer(u)),
+                        Ok(u) => d_group.add_ava("member", Value::Refer(u)),
+                        Err(u) => d_group.remove_ava("member", &PartialValue::Refer(u)),
                     });
 
                     affected_uuids.extend(matches.into_iter().map(|choice| match choice {
@@ -369,7 +369,7 @@ mod tests {
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             ("class", Value::new_class("group")),
             ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::new_uuid(UUID_TEST_GROUP))
+            ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_group];
@@ -415,7 +415,7 @@ mod tests {
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             ("class", Value::new_class("group")),
             ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::new_uuid(UUID_TEST_GROUP))
+            ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn];
@@ -464,7 +464,7 @@ mod tests {
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             ("class", Value::new_class("group")),
             ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::new_uuid(UUID_TEST_GROUP))
+            ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn];
@@ -506,7 +506,7 @@ mod tests {
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             ("class", Value::new_class("group")),
             ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::new_uuid(UUID_TEST_GROUP))
+            ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![];
@@ -555,7 +555,7 @@ mod tests {
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             ("class", Value::new_class("group")),
             ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::new_uuid(UUID_TEST_GROUP))
+            ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -607,7 +607,7 @@ mod tests {
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             ("class", Value::new_class("group")),
             ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::new_uuid(UUID_TEST_GROUP))
+            ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -658,7 +658,7 @@ mod tests {
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             ("class", Value::new_class("group")),
             ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::new_uuid(UUID_TEST_GROUP))
+            ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -669,7 +669,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("test_dyngroup"))),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("member"),
-                Value::new_refer(UUID_ADMIN)
+                Value::Refer(UUID_ADMIN)
             )]),
             None,
             |_| {},
@@ -708,7 +708,7 @@ mod tests {
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             ("class", Value::new_class("group")),
             ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::new_uuid(UUID_TEST_GROUP))
+            ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -754,7 +754,7 @@ mod tests {
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             ("class", Value::new_class("group")),
             ("name", Value::new_iname("not_testgroup")),
-            ("uuid", Value::new_uuid(UUID_TEST_GROUP))
+            ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -803,7 +803,7 @@ mod tests {
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             ("class", Value::new_class("group")),
             ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::new_uuid(UUID_TEST_GROUP))
+            ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -848,7 +848,7 @@ mod tests {
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             ("class", Value::new_class("group")),
             ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::new_uuid(UUID_TEST_GROUP))
+            ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];
@@ -888,7 +888,7 @@ mod tests {
         let e_group: Entry<EntryInit, EntryNew> = entry_init!(
             ("class", Value::new_class("group")),
             ("name", Value::new_iname("testgroup")),
-            ("uuid", Value::new_uuid(UUID_TEST_GROUP))
+            ("uuid", Value::Uuid(UUID_TEST_GROUP))
         );
 
         let preload = vec![e_dyn, e_group];

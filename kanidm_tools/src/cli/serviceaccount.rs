@@ -107,7 +107,7 @@ impl ServiceAccountOpt {
                 } => {
                     let expiry_odt = if let Some(t) = expiry {
                         // Convert the time to local timezone.
-                        match OffsetDateTime::parse(&t, time::Format::Rfc3339).map(|odt| {
+                        match OffsetDateTime::parse(t, time::Format::Rfc3339).map(|odt| {
                             odt.to_offset(
                                 time::UtcOffset::try_current_local_offset()
                                     .unwrap_or(time::UtcOffset::UTC),

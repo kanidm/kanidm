@@ -549,7 +549,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Get the entry.
         let account_entry = self
             .qs_write
-            .internal_search_uuid(&target_uuid)
+            .internal_search_uuid(target_uuid)
             .map_err(|e| {
                 admin_error!("Failed to start service account into person -> {:?}", e);
                 e
@@ -596,9 +596,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .impersonate_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(target_uuid))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(target_uuid))),
                 // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid))),
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(target_uuid))),
                 &modlist,
                 // Provide the entry to impersonate
                 ident,
@@ -705,7 +705,7 @@ mod tests {
                 ("class", Value::new_class("account")),
                 ("class", Value::new_class("person")),
                 ("name", Value::new_iname("testaccount")),
-                ("uuid", Value::new_uuid(target_uuid)),
+                ("uuid", Value::Uuid(target_uuid)),
                 ("description", Value::new_utf8s("testaccount")),
                 ("displayname", Value::new_utf8s("Test Account"))
             );
@@ -714,7 +714,7 @@ mod tests {
             assert!(idms_prox_write.qs_write.create(&ce).is_ok());
 
             let account = idms_prox_write
-                .target_to_account(&target_uuid)
+                .target_to_account(target_uuid)
                 .expect("account must exist");
             let session_id = uuid::Uuid::new_v4();
             let uat = account
@@ -741,7 +741,7 @@ mod tests {
 
             // Check the ui hints are as expected.
             let account = idms_prox_write
-                .target_to_account(&target_uuid)
+                .target_to_account(target_uuid)
                 .expect("account must exist");
             let session_id = uuid::Uuid::new_v4();
             let uat = account
@@ -765,7 +765,7 @@ mod tests {
 
             // Check the ui hints are as expected.
             let account = idms_prox_write
-                .target_to_account(&target_uuid)
+                .target_to_account(target_uuid)
                 .expect("account must exist");
             let session_id = uuid::Uuid::new_v4();
             let uat = account

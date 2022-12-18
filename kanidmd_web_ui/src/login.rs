@@ -116,7 +116,7 @@ impl LoginApp {
                 .get("x-kanidm-auth-session-id")
                 .ok()
                 .flatten()
-                .unwrap_or_else(|| "".to_string());
+                .unwrap_or_default();
             let jsval = JsFuture::from(resp.json()?).await?;
             let state: AuthResponse = serde_wasm_bindgen::from_value(jsval)
                 .expect_throw("Invalid response type - auth_init::AuthResponse");
@@ -553,7 +553,7 @@ impl Component for LoginApp {
         // -- clear the bearer to prevent conflict
         models::clear_bearer_token();
         // Do we have a login hint?
-        let inputvalue = models::pop_login_hint().unwrap_or_else(|| "".to_string());
+        let inputvalue = models::pop_login_hint().unwrap_or_default();
 
         #[cfg(debug_assertions)]
         {
@@ -682,7 +682,7 @@ impl Component for LoginApp {
                 #[cfg(debug_assertions)]
                 console::debug!("At securitykey step".to_string());
                 let authreq = AuthRequest {
-                    step: AuthStep::Cred(AuthCredential::SecurityKey(resp)),
+                    step: AuthStep::Cred(AuthCredential::SecurityKey(Box::new(resp))),
                 };
                 let session_id = self.session_id.clone();
                 ctx.link().send_future(async {
@@ -698,7 +698,7 @@ impl Component for LoginApp {
                 #[cfg(debug_assertions)]
                 console::debug!("At passkey step".to_string());
                 let authreq = AuthRequest {
-                    step: AuthStep::Cred(AuthCredential::Passkey(resp)),
+                    step: AuthStep::Cred(AuthCredential::Passkey(Box::new(resp))),
                 };
                 let session_id = self.session_id.clone();
                 ctx.link().send_future(async {

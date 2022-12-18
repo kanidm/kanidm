@@ -343,7 +343,7 @@ lazy_static! {
         ),
         (
             "uuid",
-            Value::new_uuid(UUID_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1)
+            Value::Uuid(UUID_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1)
         ),
         (
             "description",
@@ -357,6 +357,7 @@ lazy_static! {
         ),
         (
             "acp_targetscope",
+            #[allow(clippy::expect_used)]
             Value::new_json_filter_s("{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}").expect("filter")
         ),
         ("acp_search_attr", Value::new_iutf8("mail"))

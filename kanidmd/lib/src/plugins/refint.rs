@@ -135,7 +135,7 @@ impl Plugin for ReferentialIntegrity {
                 .map(|e| e.get_uuid())
                 .flat_map(|u| ref_types.values().map(move |r_type| {
                     // For everything that references the uuid's in the deleted set.
-                    f_eq(r_type.name.as_str(), PartialValue::new_refer(u))
+                    f_eq(r_type.name.as_str(), PartialValue::Refer(u))
                 }))
                 .collect(),
         ));
@@ -144,7 +144,7 @@ impl Plugin for ReferentialIntegrity {
 
         let removed_ids: BTreeSet<_> = cand
             .iter()
-            .map(|e| PartialValue::new_refer(e.get_uuid()))
+            .map(|e| PartialValue::Refer(e.get_uuid()))
             .collect();
 
         let work_set = qs.internal_search_writeable(&filt)?;
@@ -230,7 +230,7 @@ impl ReferentialIntegrity {
         vsiter.try_for_each(|vs| {
             if let Some(uuid_iter) = vs.as_ref_uuid_iter() {
                 uuid_iter.for_each(|u| {
-                    i.push(PartialValue::new_uuid(u))
+                    i.push(PartialValue::Uuid(u))
                 });
                 Ok(())
             } else {
@@ -468,11 +468,11 @@ mod tests {
             ModifyList::new_list(vec![
                 Modify::Present(
                     AttrString::from("member"),
-                    Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
+                    Value::Refer(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
                 ),
                 Modify::Present(
                     AttrString::from("member"),
-                    Value::new_refer(UUID_DOES_NOT_EXIST)
+                    Value::Refer(UUID_DOES_NOT_EXIST)
                 ),
             ]),
             None,
@@ -724,7 +724,7 @@ mod tests {
             (
                 "oauth2_rs_scope_map",
                 Value::new_oauthscopemap(
-                    Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid"),
+                    uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                     btreeset!["read".to_string()]
                 )
                 .expect("Invalid scope")
@@ -736,7 +736,7 @@ mod tests {
             ("name", Value::new_iname("testgroup")),
             (
                 "uuid",
-                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
             ),
             ("description", Value::new_utf8s("testgroup"))
         );
@@ -779,7 +779,7 @@ mod tests {
             ("class", Value::new_class("person")),
             ("class", Value::new_class("account")),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::new_uuid(tuuid)),
+            ("uuid", Value::Uuid(tuuid)),
             ("description", Value::new_utf8s("testperson1")),
             ("displayname", Value::new_utf8s("testperson1"))
         );
@@ -788,7 +788,7 @@ mod tests {
             ("class", Value::new_class("object")),
             ("class", Value::new_class("oauth2_resource_server")),
             ("class", Value::new_class("oauth2_resource_server_basic")),
-            ("uuid", Value::new_uuid(rs_uuid)),
+            ("uuid", Value::Uuid(rs_uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
             (
@@ -809,10 +809,10 @@ mod tests {
         // Create a fake session and oauth2 session.
 
         let session_id = Uuid::new_v4();
-        let pv_session_id = PartialValue::new_refer(session_id);
+        let pv_session_id = PartialValue::Refer(session_id);
 
         let parent = Uuid::new_v4();
-        let pv_parent_id = PartialValue::new_refer(parent);
+        let pv_parent_id = PartialValue::Refer(parent);
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
         let scope = AccessScope::IdentityOnly;
@@ -854,15 +854,12 @@ mod tests {
         ]);
 
         server_txn
-            .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::new_uuid(tuuid))),
-                &modlist,
-            )
+            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
             .expect("Failed to modify user");
 
         // Still there
 
-        let entry = server_txn.internal_search_uuid(&tuuid).expect("failed");
+        let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
         assert!(entry.attribute_equality("user_auth_token_session", &pv_parent_id));
         assert!(entry.attribute_equality("oauth2_session", &pv_session_id));
 
@@ -870,7 +867,7 @@ mod tests {
         assert!(server_txn.internal_delete_uuid(rs_uuid).is_ok());
 
         // Oauth2 Session gone.
-        let entry = server_txn.internal_search_uuid(&tuuid).expect("failed");
+        let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         // Note the uat is present still.
         assert!(entry.attribute_equality("user_auth_token_session", &pv_parent_id));

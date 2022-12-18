@@ -47,7 +47,7 @@ impl Plugin for Base {
             match entry.get_ava_set("uuid").map(|s| s.len()) {
                 None => {
                     // Generate
-                    let ava_uuid = Value::new_uuid(Uuid::new_v4());
+                    let ava_uuid = Value::Uuid(Uuid::new_v4());
                     trace!("Setting temporary UUID {:?} to entry", ava_uuid);
                     entry.set_ava("uuid", once(ava_uuid));
                 }
@@ -120,7 +120,7 @@ impl Plugin for Base {
         let filt_in = filter_all!(FC::Or(
             cand_uuid
                 .into_iter()
-                .map(|u| FC::Eq("uuid", PartialValue::new_uuid(u)))
+                .map(|u| FC::Eq("uuid", PartialValue::Uuid(u)))
                 .collect(),
         ));
 
@@ -252,14 +252,14 @@ mod tests {
             ("class", Value::new_class("memberof")),
             ("name", Value::new_iname("test_account_1")),
             ("displayname", Value::new_utf8s("test_account_1")),
-            ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT)),
-            ("memberof", Value::new_refer(UUID_TEST_GROUP))
+            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT)),
+            ("memberof", Value::Refer(UUID_TEST_GROUP))
         );
         pub static ref TEST_GROUP: EntryInitNew = entry_init!(
             ("class", Value::new_class("group")),
             ("name", Value::new_iname("test_group_a")),
-            ("uuid", Value::new_uuid(UUID_TEST_GROUP)),
-            ("member", Value::new_refer(UUID_TEST_ACCOUNT))
+            ("uuid", Value::Uuid(UUID_TEST_GROUP)),
+            ("member", Value::Refer(UUID_TEST_ACCOUNT))
         );
         pub static ref ALLOW_ALL: EntryInitNew = entry_init!(
             ("class", Value::new_class("object")),
@@ -269,7 +269,7 @@ mod tests {
             ("class", Value::new_class("access_control_delete")),
             ("class", Value::new_class("access_control_search")),
             ("name", Value::new_iname("idm_admins_acp_allow_all_test")),
-            ("uuid", Value::new_uuid(UUID_TEST_ACP)),
+            ("uuid", Value::Uuid(UUID_TEST_ACP)),
             ("acp_receiver_group", Value::Refer(UUID_TEST_GROUP)),
             (
                 "acp_targetscope",
@@ -427,7 +427,7 @@ mod tests {
                 let ue = cands.first().expect("No cand");
                 assert!(ue.attribute_equality(
                     "uuid",
-                    &PartialValue::new_uuids("79724141-3603-4060-b6bb-35c72772611d").unwrap()
+                    &PartialValue::Uuid(uuid!("79724141-3603-4060-b6bb-35c72772611d"))
                 ));
             }
         );
@@ -593,7 +593,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Removed(
                 AttrString::from("uuid"),
-                PartialValue::new_uuids("f15a7219-1d15-44e3-a7b4-bec899c07788").unwrap()
+                PartialValue::Uuid(uuid!("f15a7219-1d15-44e3-a7b4-bec899c07788"))
             )]),
             None,
             |_| {},

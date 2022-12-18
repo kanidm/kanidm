@@ -270,7 +270,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         target: Uuid,
         ident: &Identity,
     ) -> Result<Account, OperationError> {
-        let entry = self.qs_write.internal_search_uuid(&target)?;
+        let entry = self.qs_write.internal_search_uuid(target)?;
 
         security_info!(
             %entry,
@@ -453,7 +453,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .internal_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(account.uuid))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(account.uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -627,7 +627,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .internal_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(account.uuid))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(account.uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -741,7 +741,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // If an intent token was used, remove it's former value, and add it as consumed.
         if let Some(intent_token_id) = &session.intent_token_id {
-            let entry = self.qs_write.internal_search_uuid(&session.account.uuid)?;
+            let entry = self.qs_write.internal_search_uuid(session.account.uuid)?;
             let account = Account::try_from_entry_rw(entry.as_ref(), &mut self.qs_write)?;
 
             let max_ttl = match account.credential_update_intent_tokens.get(intent_token_id) {
@@ -808,7 +808,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .internal_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuid(session.account.uuid))),
+                &filter!(f_eq("uuid", PartialValue::Uuid(session.account.uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -827,7 +827,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // If an intent token was used, remove it's former value, and add it as VALID since we didn't commit.
         if let Some(intent_token_id) = &session.intent_token_id {
-            let entry = self.qs_write.internal_search_uuid(&session.account.uuid)?;
+            let entry = self.qs_write.internal_search_uuid(session.account.uuid)?;
             let account = Account::try_from_entry_rw(entry.as_ref(), &mut self.qs_write)?;
 
             let max_ttl = match account.credential_update_intent_tokens.get(intent_token_id) {
@@ -868,7 +868,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             self.qs_write
                 .internal_modify(
                     // Filter as executed
-                    &filter!(f_eq("uuid", PartialValue::new_uuid(session.account.uuid))),
+                    &filter!(f_eq("uuid", PartialValue::Uuid(session.account.uuid))),
                     &modlist,
                 )
                 .map_err(|e| {
@@ -1508,7 +1508,7 @@ mod tests {
             ("class", Value::new_class("account")),
             ("class", Value::new_class("service_account")),
             ("name", Value::new_iname("user_account_only")),
-            ("uuid", Value::new_uuid(testaccount_uuid)),
+            ("uuid", Value::Uuid(testaccount_uuid)),
             ("description", Value::new_utf8s("testaccount")),
             ("displayname", Value::new_utf8s("testaccount"))
         );
@@ -1518,7 +1518,7 @@ mod tests {
             ("class", Value::new_class("account")),
             ("class", Value::new_class("person")),
             ("name", Value::new_iname("testperson")),
-            ("uuid", Value::new_uuid(TESTPERSON_UUID)),
+            ("uuid", Value::Uuid(TESTPERSON_UUID)),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson"))
         );
@@ -1529,17 +1529,17 @@ mod tests {
 
         let testaccount = idms_prox_write
             .qs_write
-            .internal_search_uuid(&testaccount_uuid)
+            .internal_search_uuid(testaccount_uuid)
             .expect("failed");
 
         let testperson = idms_prox_write
             .qs_write
-            .internal_search_uuid(&TESTPERSON_UUID)
+            .internal_search_uuid(TESTPERSON_UUID)
             .expect("failed");
 
         let idm_admin = idms_prox_write
             .qs_write
-            .internal_search_uuid(&UUID_IDM_ADMIN)
+            .internal_search_uuid(UUID_IDM_ADMIN)
             .expect("failed");
 
         // user without permission - fail
@@ -1612,7 +1612,7 @@ mod tests {
             ("class", Value::new_class("account")),
             ("class", Value::new_class("person")),
             ("name", Value::new_iname("testperson")),
-            ("uuid", Value::new_uuid(TESTPERSON_UUID)),
+            ("uuid", Value::Uuid(TESTPERSON_UUID)),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson"))
         );
@@ -1623,7 +1623,7 @@ mod tests {
 
         let testperson = idms_prox_write
             .qs_write
-            .internal_search_uuid(&TESTPERSON_UUID)
+            .internal_search_uuid(TESTPERSON_UUID)
             .expect("failed");
 
         let cur = idms_prox_write.init_credential_update(
@@ -1644,7 +1644,7 @@ mod tests {
 
         let testperson = idms_prox_write
             .qs_write
-            .internal_search_uuid(&TESTPERSON_UUID)
+            .internal_search_uuid(TESTPERSON_UUID)
             .expect("failed");
 
         let cur = idms_prox_write.init_credential_update(

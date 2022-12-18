@@ -52,14 +52,14 @@ impl Plugin for Domain {
 impl Domain {
     fn modify_inner<T: Clone + std::fmt::Debug>(
         qs: &mut QueryServerWriteTransaction,
-        cand: &mut Vec<Entry<EntryInvalid, T>>,
+        cand: &mut [Entry<EntryInvalid, T>],
     ) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
             if e.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
                 && e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)
             {
                 // We always set this, because the DB uuid is authorative.
-                let u = Value::new_uuid(qs.get_domain_uuid());
+                let u = Value::Uuid(qs.get_domain_uuid());
                 e.set_ava("domain_uuid", once(u));
                 trace!("plugin_domain: Applying uuid transform");
 
@@ -112,11 +112,11 @@ mod tests {
     async fn test_domain_generate_uuid(server: &QueryServer) {
         let server_txn = server.write(duration_from_epoch_now()).await;
         let e_dom = server_txn
-            .internal_search_uuid(&UUID_DOMAIN_INFO)
+            .internal_search_uuid(UUID_DOMAIN_INFO)
             .expect("must not fail");
 
         let u_dom = server_txn.get_domain_uuid();
 
-        assert!(e_dom.attribute_equality("domain_uuid", &PartialValue::new_uuid(u_dom)));
+        assert!(e_dom.attribute_equality("domain_uuid", &PartialValue::Uuid(u_dom)));
     }
 }

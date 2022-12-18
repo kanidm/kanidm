@@ -1696,37 +1696,37 @@ impl<'a> SchemaWriteTransaction<'a> {
 
 impl<'a> SchemaTransaction for SchemaWriteTransaction<'a> {
     fn get_attributes_unique(&self) -> &Vec<AttrString> {
-        &(*self.unique_cache)
+        &self.unique_cache
     }
 
     fn get_reference_types(&self) -> &HashMap<AttrString, SchemaAttribute> {
-        &(*self.ref_cache)
+        &self.ref_cache
     }
 
     fn get_classes(&self) -> &HashMap<AttrString, SchemaClass> {
-        &(*self.classes)
+        &self.classes
     }
 
     fn get_attributes(&self) -> &HashMap<AttrString, SchemaAttribute> {
-        &(*self.attributes)
+        &self.attributes
     }
 }
 
 impl SchemaTransaction for SchemaReadTransaction {
     fn get_attributes_unique(&self) -> &Vec<AttrString> {
-        &(*self.unique_cache)
+        &self.unique_cache
     }
 
     fn get_reference_types(&self) -> &HashMap<AttrString, SchemaAttribute> {
-        &(*self.ref_cache)
+        &self.ref_cache
     }
 
     fn get_classes(&self) -> &HashMap<AttrString, SchemaClass> {
-        &(*self.classes)
+        &self.classes
     }
 
     fn get_attributes(&self) -> &HashMap<AttrString, SchemaAttribute> {
-        &(*self.attributes)
+        &self.attributes
     }
 }
 
@@ -2570,7 +2570,7 @@ mod tests {
         let e_account = unsafe {
             entry_init!(
                 ("class", Value::new_class("account")),
-                ("uuid", Value::new_uuid(Uuid::new_v4()))
+                ("uuid", Value::Uuid(Uuid::new_v4()))
             )
             .into_invalid_new()
         };
@@ -2602,7 +2602,7 @@ mod tests {
                 ("class", Value::new_class("service")),
                 ("class", Value::new_class("account")),
                 ("class", Value::new_class("person")),
-                ("uuid", Value::new_uuid(Uuid::new_v4()))
+                ("uuid", Value::Uuid(Uuid::new_v4()))
             )
             .into_invalid_new()
         };
@@ -2619,7 +2619,7 @@ mod tests {
             entry_init!(
                 ("class", Value::new_class("service")),
                 ("class", Value::new_class("account")),
-                ("uuid", Value::new_uuid(Uuid::new_v4()))
+                ("uuid", Value::Uuid(Uuid::new_v4()))
             )
             .into_invalid_new()
         };
@@ -2630,7 +2630,7 @@ mod tests {
             entry_init!(
                 ("class", Value::new_class("person")),
                 ("class", Value::new_class("account")),
-                ("uuid", Value::new_uuid(Uuid::new_v4()))
+                ("uuid", Value::Uuid(Uuid::new_v4()))
             )
             .into_invalid_new()
         };
@@ -2640,7 +2640,7 @@ mod tests {
         let e_person_valid = unsafe {
             entry_init!(
                 ("class", Value::new_class("person")),
-                ("uuid", Value::new_uuid(Uuid::new_v4()))
+                ("uuid", Value::Uuid(Uuid::new_v4()))
             )
             .into_invalid_new()
         };

@@ -41,9 +41,7 @@ impl Plugin for JwsKeygen {
 }
 
 impl JwsKeygen {
-    fn modify_inner<T: Clone>(
-        cand: &mut Vec<Entry<EntryInvalid, T>>,
-    ) -> Result<(), OperationError> {
+    fn modify_inner<T: Clone>(cand: &mut [Entry<EntryInvalid, T>]) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
         if e.attribute_equality("class", &PVCLASS_OAUTH2_BASIC) {
             if !e.attribute_pres("oauth2_rs_basic_secret") {
@@ -68,25 +66,23 @@ impl JwsKeygen {
                 let v = Value::new_privatebinary(&der);
                 e.add_ava("es256_private_key_der", v);
             }
-            if e.get_ava_single_bool("oauth2_jwt_legacy_crypto_enable").unwrap_or(false) {
-                if !e.attribute_pres("rs256_private_key_der") {
-                    security_info!("regenerating oauth2 legacy rs256 private key");
-                    let der = JwsSigner::generate_legacy_rs256()
-                        .and_then(|jws| jws.private_key_to_der())
-                        .map_err(|e| {
-                            admin_error!(err = ?e, "Unable to generate Legacy RS256 JwsSigner private key");
-                            OperationError::CryptographyError
-                        })?;
-                    let v = Value::new_privatebinary(&der);
-                    e.add_ava("rs256_private_key_der", v);
-                }
+            if e.get_ava_single_bool("oauth2_jwt_legacy_crypto_enable").unwrap_or(false)
+                && !e.attribute_pres("rs256_private_key_der") {
+                security_info!("regenerating oauth2 legacy rs256 private key");
+                let der = JwsSigner::generate_legacy_rs256()
+                    .and_then(|jws| jws.private_key_to_der())
+                    .map_err(|e| {
+                        admin_error!(err = ?e, "Unable to generate Legacy RS256 JwsSigner private key");
+                        OperationError::CryptographyError
+                    })?;
+                let v = Value::new_privatebinary(&der);
+                e.add_ava("rs256_private_key_der", v);
             }
         }
 
-        if e.attribute_equality("class", &PVCLASS_SERVICE_ACCOUNT) ||
-           e.attribute_equality("class", &PVCLASS_SYNC_ACCOUNT)
-        {
-            if !e.attribute_pres("jws_es256_private_key") {
+        if (e.attribute_equality("class", &PVCLASS_SERVICE_ACCOUNT) ||
+            e.attribute_equality("class", &PVCLASS_SYNC_ACCOUNT)) &&
+            !e.attribute_pres("jws_es256_private_key") {
                 security_info!("regenerating jws es256 private key");
                 let jwssigner = JwsSigner::generate_es256()
                     .map_err(|e| {
@@ -95,7 +91,6 @@ impl JwsKeygen {
                     })?;
                 let v = Value::JwsKeyEs256(jwssigner);
                 e.add_ava("jws_es256_private_key", v);
-            }
         }
 
         Ok(())
@@ -116,7 +111,7 @@ mod tests {
             ("class", Value::new_class("object")),
             ("class", Value::new_class("oauth2_resource_server")),
             ("class", Value::new_class("oauth2_resource_server_basic")),
-            ("uuid", Value::new_uuid(uuid)),
+            ("uuid", Value::Uuid(uuid)),
             ("displayname", Value::new_utf8s("test_resource_server")),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             (
@@ -139,7 +134,7 @@ mod tests {
             None,
             |qs: &QueryServerWriteTransaction| {
                 let e = qs
-                    .internal_search_uuid(&uuid)
+                    .internal_search_uuid(uuid)
                     .expect("failed to get oauth2 config");
                 assert!(e.attribute_pres("oauth2_rs_basic_secret"));
                 assert!(e.attribute_pres("oauth2_rs_token_key"));
@@ -155,7 +150,7 @@ mod tests {
             ("class", Value::new_class("object")),
             ("class", Value::new_class("oauth2_resource_server")),
             ("class", Value::new_class("oauth2_resource_server_basic")),
-            ("uuid", Value::new_uuid(uuid)),
+            ("uuid", Value::Uuid(uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
             (
@@ -176,7 +171,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid(uuid))),
+            filter!(f_eq("uuid", PartialValue::Uuid(uuid))),
             ModifyList::new_list(vec![
                 Modify::Purged(AttrString::from("oauth2_rs_basic_secret"),),
                 Modify::Purged(AttrString::from("oauth2_rs_token_key"),)
@@ -185,7 +180,7 @@ mod tests {
             |_| {},
             |qs: &QueryServerWriteTransaction| {
                 let e = qs
-                    .internal_search_uuid(&uuid)
+                    .internal_search_uuid(uuid)
                     .expect("failed to get oauth2 config");
                 assert!(e.attribute_pres("oauth2_rs_basic_secret"));
                 assert!(e.attribute_pres("oauth2_rs_token_key"));

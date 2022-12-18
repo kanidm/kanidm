@@ -70,7 +70,7 @@ impl Plugin for GidNumber {
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        cand.iter_mut().try_for_each(|e| apply_gidnumber(e))
+        cand.iter_mut().try_for_each(apply_gidnumber)
     }
 
     #[instrument(level = "debug", name = "gidnumber_pre_modify", skip_all)]
@@ -79,7 +79,7 @@ impl Plugin for GidNumber {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        cand.iter_mut().try_for_each(|e| apply_gidnumber(e))
+        cand.iter_mut().try_for_each(apply_gidnumber)
     }
 
     #[instrument(level = "debug", name = "gidnumber_pre_batch_modify", skip_all)]
@@ -88,7 +88,7 @@ impl Plugin for GidNumber {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        cand.iter_mut().try_for_each(|e| apply_gidnumber(e))
+        cand.iter_mut().try_for_each(apply_gidnumber)
     }
 }
 
@@ -98,7 +98,7 @@ mod tests {
 
     fn check_gid(qs_write: &QueryServerWriteTransaction, uuid: &str, gid: u32) {
         let u = Uuid::parse_str(uuid).unwrap();
-        let e = qs_write.internal_search_uuid(&u).unwrap();
+        let e = qs_write.internal_search_uuid(u).unwrap();
         let gidnumber = e.get_ava_single("gidnumber").unwrap();
         let ex_gid = Value::new_uint32(gid);
         assert!(ex_gid == gidnumber);
@@ -112,7 +112,7 @@ mod tests {
             ("name", Value::new_iname("testperson")),
             (
                 "uuid",
-                Value::new_uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
+                Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson"))
@@ -144,7 +144,7 @@ mod tests {
             ("gidnumber", Value::Uint32(10001)),
             (
                 "uuid",
-                Value::new_uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
+                Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson"))
@@ -175,7 +175,7 @@ mod tests {
             ("name", Value::new_iname("testperson")),
             (
                 "uuid",
-                Value::new_uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
+                Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson"))
@@ -207,7 +207,7 @@ mod tests {
             ("name", Value::new_iname("testperson")),
             (
                 "uuid",
-                Value::new_uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
+                Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson"))
@@ -239,7 +239,7 @@ mod tests {
             ("name", Value::new_iname("testperson")),
             (
                 "uuid",
-                Value::new_uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
+                Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
             ),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson"))
@@ -273,7 +273,7 @@ mod tests {
             ("name", Value::new_iname("testperson")),
             (
                 "uuid",
-                Value::new_uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-000000000244"))
+                Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-000000000244"))
             ),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson"))

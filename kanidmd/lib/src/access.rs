@@ -1586,8 +1586,8 @@ mod tests {
             entry_init!(
                 ("class", Value::new_class("object")),
                 ("name", Value::new_iname("test_account_1")),
-                ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT_1)),
-                ("memberof", Value::new_refer(UUID_TEST_GROUP_1))
+                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1)),
+                ("memberof", Value::Refer(UUID_TEST_GROUP_1))
             )
             .into_sealed_committed()
         });
@@ -1595,8 +1595,8 @@ mod tests {
             entry_init!(
                 ("class", Value::new_class("object")),
                 ("name", Value::new_iname("test_account_1")),
-                ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT_2)),
-                ("memberof", Value::new_refer(UUID_TEST_GROUP_2))
+                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_2)),
+                ("memberof", Value::Refer(UUID_TEST_GROUP_2))
             )
             .into_sealed_committed()
         });
@@ -1689,11 +1689,11 @@ mod tests {
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
-                    Value::new_uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                    Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     "acp_receiver_group",
-                    Value::new_refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     "acp_targetscope",
@@ -1866,11 +1866,11 @@ mod tests {
                 ("name", Value::new_iname("acp_valid")),
                 (
                     "uuid",
-                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                    Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     "acp_receiver_group",
-                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                    Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
                 ),
                 (
                     "acp_targetscope",
@@ -2573,7 +2573,7 @@ mod tests {
         let ev1 = entry_init!(
             ("class", Value::new_class("account")),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT_1))
+            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r1_set = vec![ev1.clone()];
 
@@ -2581,7 +2581,7 @@ mod tests {
             ("class", Value::new_class("account")),
             ("notallowed", Value::new_class("notallowed")),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT_1))
+            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
 
         let r2_set = vec![ev2.clone()];
@@ -2590,7 +2590,7 @@ mod tests {
             ("class", Value::new_class("account")),
             ("class", Value::new_class("notallowed")),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT_1))
+            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r3_set = vec![ev3.clone()];
 
@@ -2598,7 +2598,7 @@ mod tests {
             ("class", Value::new_class("account")),
             ("class", Value::new_class("group")),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT_1))
+            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r4_set = vec![ev4.clone()];
 
@@ -2659,7 +2659,7 @@ mod tests {
         let ev1 = entry_init!(
             ("class", Value::new_class("account")),
             ("name", Value::new_iname("testperson1")),
-            ("uuid", Value::new_uuid(UUID_TEST_ACCOUNT_1))
+            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
         let r1_set = vec![ev1.clone()];
 

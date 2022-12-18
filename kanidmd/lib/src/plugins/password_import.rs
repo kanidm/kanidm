@@ -91,9 +91,7 @@ impl Plugin for PasswordImport {
 }
 
 impl PasswordImport {
-    fn modify_inner<T: Clone>(
-        cand: &mut Vec<Entry<EntryInvalid, T>>,
-    ) -> Result<(), OperationError> {
+    fn modify_inner<T: Clone>(cand: &mut [Entry<EntryInvalid, T>]) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
             // is there a password we are trying to import?
             let vs = match e.pop_ava("password_import") {
@@ -280,9 +278,7 @@ mod tests {
             |_| {},
             |qs: &QueryServerWriteTransaction| {
                 let e = qs
-                    .internal_search_uuid(
-                        &Uuid::parse_str("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap(),
-                    )
+                    .internal_search_uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
                     .expect("failed to get entry");
                 let c = e
                     .get_ava_single_credential("primary_credential")

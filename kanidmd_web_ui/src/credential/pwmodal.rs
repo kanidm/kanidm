@@ -136,10 +136,9 @@ impl Component for PwModalApp {
         console::debug!("pw modal::update");
         match msg {
             Msg::PasswordCheck => {
-                let pw =
-                    utils::get_value_from_element_id("password").unwrap_or_else(|| "".to_string());
-                let check = utils::get_value_from_element_id("password-check")
-                    .unwrap_or_else(|| "".to_string());
+                // default is empty string
+                let pw = utils::get_value_from_element_id("password").unwrap_or_default();
+                let check = utils::get_value_from_element_id("password-check").unwrap_or_default();
 
                 if pw == check {
                     self.pw_check = PwCheck::Valid
@@ -156,8 +155,8 @@ impl Component for PwModalApp {
             Msg::PasswordSubmit => {
                 self.state = PwState::Waiting;
 
-                let pw =
-                    utils::get_value_from_element_id("password").unwrap_or_else(|| "".to_string());
+                // default is empty string
+                let pw = utils::get_value_from_element_id("password").unwrap_or_default();
                 let token_c = ctx.props().token.clone();
 
                 ctx.link().send_future(async {
