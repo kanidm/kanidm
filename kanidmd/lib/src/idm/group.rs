@@ -85,7 +85,7 @@ impl Group {
 
     pub fn try_from_account_entry_ro(
         value: &Entry<EntrySealed, EntryCommitted>,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<Vec<Self>, OperationError> {
         try_from_account_e!(value, qs)
     }

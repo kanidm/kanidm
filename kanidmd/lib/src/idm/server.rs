@@ -580,7 +580,7 @@ pub trait IdmServerTransaction<'a> {
         parent_session_id: Uuid,
         iat: i64,
         ct: Duration,
-    ) -> Result<Option<Account>, OperationError> {
+    ) -> Result<Option<Arc<Entry<EntrySealed, EntryCommitted>>>, OperationError> {
         let entry = self.get_qs_txn().internal_search_uuid(uuid).map_err(|e| {
             admin_error!(?e, "check_oauth2_account_uuid_valid failed");
             e
@@ -620,7 +620,7 @@ pub trait IdmServerTransaction<'a> {
             security_info!("The token grace window is in effect. Assuming valid.");
         };
 
-        Account::try_from_entry_no_groups(entry.as_ref()).map(Some)
+        Ok(Some(entry))
     }
 
     /// For any event/operation to proceed, we need to attach an identity to the
@@ -1553,7 +1553,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         self.oauth2rs
-            .check_oauth2_token_exchange(client_authz, token_req, ct, &self.async_tx)
+            .check_oauth2_token_exchange(self, client_authz, token_req, ct, &self.async_tx)
     }
 
     pub fn check_oauth2_token_introspect(

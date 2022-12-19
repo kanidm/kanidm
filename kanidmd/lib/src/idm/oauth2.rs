@@ -34,6 +34,7 @@ use tracing::trace;
 use url::{Origin, Url};
 
 use crate::identity::IdentityId;
+use crate::idm::account::Account;
 use crate::idm::delayed::{DelayedAction, Oauth2ConsentGrant, Oauth2SessionRecord};
 use crate::idm::server::{
     IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
@@ -955,6 +956,7 @@ impl Oauth2ResourceServersReadTransaction {
 
     pub fn check_oauth2_token_exchange(
         &self,
+        idms: &IdmServerProxyReadTransaction<'_>,
         client_authz: Option<&str>,
         token_req: &AccessTokenRequest,
         ct: Duration,
@@ -991,7 +993,7 @@ impl Oauth2ResourceServersReadTransaction {
         // TODO: add refresh token grant type.
         //  If it's a refresh token grant, are the consent permissions the same?
         if token_req.grant_type == "authorization_code" {
-            self.check_oauth2_token_exchange_authorization_code(o2rs, token_req, ct, async_tx)
+            self.check_oauth2_token_exchange_authorization_code(idms, o2rs, token_req, ct, async_tx)
         } else {
             admin_warn!("Invalid oauth2 grant_type (should be 'authorization_code')");
             Err(Oauth2Error::InvalidRequest)
@@ -1000,6 +1002,7 @@ impl Oauth2ResourceServersReadTransaction {
 
     fn check_oauth2_token_exchange_authorization_code(
         &self,
+        idms: &IdmServerProxyReadTransaction<'_>,
         o2rs: &Oauth2RS,
         token_req: &AccessTokenRequest,
         ct: Duration,
@@ -1094,9 +1097,7 @@ impl Oauth2ResourceServersReadTransaction {
             Some(code_xchg.scopes.join(" "))
         };
 
-        let scope_set: BTreeSet<String> = code_xchg.scopes.iter().cloned().collect();
-
-        let id_token = if scope_set.contains("openid") {
+        let id_token = if code_xchg.scopes.contains(&"openid".to_string()) {
             // TODO: Scopes map to claims:
             //
             // * profile - (name, family\_name, given\_name, middle\_name, nickname, preferred\_username, profile, picture, website, gender, birthdate, zoneinfo, locale, and updated\_at)
@@ -1109,23 +1110,6 @@ impl Oauth2ResourceServersReadTransaction {
             // TODO: Can the user consent to which claims are released? Today as we don't support most
             // of them anyway, no, but in the future, we can stash these to the consent req.
 
-            admin_warn!("prefer_short_username: {:?}", o2rs.prefer_short_username);
-            let preferred_username = if o2rs.prefer_short_username {
-                Some(code_xchg.uat.name().to_string())
-            } else {
-                Some(code_xchg.uat.spn.clone())
-            };
-
-            let (email, email_verified) = if scope_set.contains("email") {
-                if let Some(mp) = code_xchg.uat.mail_primary {
-                    (Some(mp), Some(true))
-                } else {
-                    (None, None)
-                }
-            } else {
-                (None, None)
-            };
-
             // TODO: If max_age was requested in the request, we MUST provide auth_time.
 
             // amr == auth method
@@ -1135,6 +1119,19 @@ impl Oauth2ResourceServersReadTransaction {
             let exp = iat + (expires_in as i64);
 
             let iss = o2rs.iss.clone();
+
+            let entry = match idms.qs_read.internal_search_uuid(code_xchg.uat.uuid) {
+                Ok(entry) => entry,
+                Err(err) => return Err(Oauth2Error::ServerError(err)),
+            };
+
+            let account = match Account::try_from_entry_ro(&entry, &idms.qs_read) {
+                Ok(account) => account,
+                Err(err) => return Err(Oauth2Error::ServerError(err)),
+            };
+
+            let s_claims = s_claims_for_account(o2rs, &account, &code_xchg.scopes);
+            let extra_claims = extra_claims_for_account(&account, &code_xchg.scopes);
 
             let oidc = OidcToken {
                 iss,
@@ -1150,17 +1147,8 @@ impl Oauth2ResourceServersReadTransaction {
                 amr,
                 azp: Some(o2rs.name.clone()),
                 jti: None,
-                s_claims: OidcClaims {
-                    // Map from displayname
-                    name: Some(code_xchg.uat.displayname.clone()),
-                    // Map from spn
-                    scopes: code_xchg.scopes.clone(),
-                    email,
-                    email_verified,
-                    preferred_username,
-                    ..Default::default()
-                },
-                claims: Default::default(),
+                s_claims,
+                claims: extra_claims,
             };
 
             trace!(?oidc);
@@ -1290,15 +1278,20 @@ impl Oauth2ResourceServersReadTransaction {
                     .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|_| admin_error!("Account is not valid"));
 
-                let account = match valid {
-                    Ok(Some(account)) => account,
+                let entry = match valid {
+                    Ok(Some(entry)) => entry,
                     _ => {
                         security_info!(
                             ?uuid,
-                            "access token has account not valid, returning inactive"
+                            "access token has no account not valid, returning inactive"
                         );
                         return Ok(AccessTokenIntrospectResponse::inactive());
                     }
+                };
+
+                let account = match Account::try_from_entry_no_groups(&entry) {
+                    Ok(account) => account,
+                    Err(err) => return Err(Oauth2Error::ServerError(err)),
                 };
 
                 // ==== good to generate response ====
@@ -1382,8 +1375,8 @@ impl Oauth2ResourceServersReadTransaction {
                     .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|_| admin_error!("Account is not valid"));
 
-                let account = match valid {
-                    Ok(Some(account)) => account,
+                let entry = match valid {
+                    Ok(Some(entry)) => entry,
                     _ => {
                         security_info!(
                             ?uuid,
@@ -1393,25 +1386,17 @@ impl Oauth2ResourceServersReadTransaction {
                     }
                 };
 
-                let preferred_username = if o2rs.prefer_short_username {
-                    Some(account.name)
-                } else {
-                    Some(account.spn)
-                };
-
-                let (email, email_verified) = if scopes.contains(&"email".to_string()) {
-                    if let Some(mp) = account.mail_primary {
-                        (Some(mp), Some(true))
-                    } else {
-                        (None, None)
-                    }
-                } else {
-                    (None, None)
+                let account = match Account::try_from_entry_ro(&entry, &idms.qs_read) {
+                    Ok(account) => account,
+                    Err(err) => return Err(Oauth2Error::ServerError(err)),
                 };
 
                 let amr = Some(vec![auth_type.to_string()]);
 
                 let iss = o2rs.iss.clone();
+
+                let s_claims = s_claims_for_account(o2rs, &account, &scopes);
+                let extra_claims = extra_claims_for_account(&account, &scopes);
 
                 // ==== good to generate response ====
 
@@ -1429,16 +1414,8 @@ impl Oauth2ResourceServersReadTransaction {
                     amr,
                     azp: Some(client_id.to_string()),
                     jti: None,
-                    s_claims: OidcClaims {
-                        // Map from displayname
-                        name: Some(account.displayname.clone()),
-                        scopes,
-                        preferred_username,
-                        email,
-                        email_verified,
-                        ..Default::default()
-                    },
-                    claims: Default::default(),
+                    s_claims,
+                    claims: extra_claims,
                 })
             }
             // https://openid.net/specs/openid-connect-basic-1_0.html#UserInfoErrorResponse
@@ -1577,6 +1554,47 @@ fn parse_basic_authz(client_authz: &str) -> Result<(String, String), Oauth2Error
     Ok((client_id.to_string(), secret.to_string()))
 }
 
+fn s_claims_for_account(o2rs: &Oauth2RS, account: &Account, scopes: &[String]) -> OidcClaims {
+    let preferred_username = if o2rs.prefer_short_username {
+        Some(account.name.clone())
+    } else {
+        Some(account.spn.clone())
+    };
+
+    let (email, email_verified) = if scopes.contains(&"email".to_string()) {
+        if let Some(mp) = &account.mail_primary {
+            (Some(mp.clone()), Some(true))
+        } else {
+            (None, None)
+        }
+    } else {
+        (None, None)
+    };
+
+    OidcClaims {
+        // Map from displayname
+        name: Some(account.displayname.clone()),
+        scopes: scopes.to_vec(),
+        preferred_username,
+        email,
+        email_verified,
+        ..Default::default()
+    }
+}
+fn extra_claims_for_account(
+    account: &Account,
+    scopes: &[String],
+) -> BTreeMap<String, serde_json::Value> {
+    let mut extra_claims = BTreeMap::new();
+    if scopes.contains(&"groups".to_string()) {
+        extra_claims.insert(
+            "groups".to_string(),
+            account.groups.iter().map(|x| x.to_proto().uuid).collect(),
+        );
+    }
+    return extra_claims;
+}
+
 #[cfg(test)]
 mod tests {
     use std::convert::TryFrom;
@@ -1617,7 +1635,8 @@ mod tests {
             $ident:expr,
             $uat:expr,
             $ct:expr,
-            $code_challenge:expr
+            $code_challenge:expr,
+            $scope:expr
         ) => {{
             let auth_req = AuthorisationRequest {
                 response_type: "code".to_string(),
@@ -1628,7 +1647,7 @@ mod tests {
                     code_challenge_method: CodeChallengeMethod::S256,
                 }),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                scope: "openid".to_string(),
+                scope: $scope,
                 nonce: Some("abcdef".to_string()),
                 oidc_ext: Default::default(),
                 unknown_keys: Default::default(),
@@ -1666,7 +1685,7 @@ mod tests {
             // System admins
             (
                 "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["read".to_string()])
+                Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["groups".to_string()])
                     .expect("invalid oauthscope")
             ),
             (
@@ -1766,8 +1785,14 @@ mod tests {
                 // == Setup the authorisation request
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
-                let consent_request =
-                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+                let consent_request = good_authorisation_request!(
+                    idms_prox_read,
+                    &ident,
+                    &uat,
+                    ct,
+                    code_challenge,
+                    "openid".to_string()
+                );
 
                 // Should be in the consent phase;
                 let consent_token =
@@ -2020,8 +2045,14 @@ mod tests {
 
             let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
-            let consent_request =
-                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+            let consent_request = good_authorisation_request!(
+                idms_prox_read,
+                &ident,
+                &uat,
+                ct,
+                code_challenge,
+                "openid".to_string()
+            );
 
             let consent_token = if let AuthoriseResponse::ConsentRequested {
                 consent_token, ..
@@ -2093,8 +2124,14 @@ mod tests {
 
                 // == Setup the authorisation request
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
-                let consent_request =
-                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+                let consent_request = good_authorisation_request!(
+                    idms_prox_read,
+                    &ident,
+                    &uat,
+                    ct,
+                    code_challenge,
+                    "openid".to_string()
+                );
 
                 let consent_token =
                     if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
@@ -2255,8 +2292,14 @@ mod tests {
 
                 // == Setup the authorisation request
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
-                let consent_request =
-                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+                let consent_request = good_authorisation_request!(
+                    idms_prox_read,
+                    &ident,
+                    &uat,
+                    ct,
+                    code_challenge,
+                    "openid".to_string()
+                );
 
                 let consent_token =
                     if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
@@ -2364,8 +2407,14 @@ mod tests {
 
                 // == Setup the authorisation request
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
-                let consent_request =
-                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+                let consent_request = good_authorisation_request!(
+                    idms_prox_read,
+                    &ident,
+                    &uat,
+                    ct,
+                    code_challenge,
+                    "openid".to_string()
+                );
 
                 let consent_token =
                     if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
@@ -2539,8 +2588,14 @@ mod tests {
 
                 // == Setup the authorisation request
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
-                let consent_request =
-                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+                let consent_request = good_authorisation_request!(
+                    idms_prox_read,
+                    &ident,
+                    &uat,
+                    ct,
+                    code_challenge,
+                    "openid".to_string()
+                );
 
                 let consent_token =
                     if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
@@ -2663,8 +2718,14 @@ mod tests {
             let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
             // Check reject behaviour
-            let consent_request =
-                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+            let consent_request = good_authorisation_request!(
+                idms_prox_read,
+                &ident,
+                &uat,
+                ct,
+                code_challenge,
+                "openid".to_string()
+            );
 
             let consent_token = if let AuthoriseResponse::ConsentRequested {
                 consent_token, ..
@@ -2804,8 +2865,8 @@ mod tests {
             assert!(
                 discovery.scopes_supported
                     == Some(vec![
+                        "groups".to_string(),
                         "openid".to_string(),
-                        "read".to_string(),
                         "supplement".to_string(),
                     ])
             );
@@ -2870,8 +2931,14 @@ mod tests {
 
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
-                let consent_request =
-                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+                let consent_request = good_authorisation_request!(
+                    idms_prox_read,
+                    &ident,
+                    &uat,
+                    ct,
+                    code_challenge,
+                    "openid".to_string()
+                );
 
                 let consent_token =
                     if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
@@ -3002,8 +3069,14 @@ mod tests {
 
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
-                let consent_request =
-                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+                let consent_request = good_authorisation_request!(
+                    idms_prox_read,
+                    &ident,
+                    &uat,
+                    ct,
+                    code_challenge,
+                    "openid".to_string()
+                );
 
                 let consent_token =
                     if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
@@ -3078,6 +3151,116 @@ mod tests {
         )
     }
 
+    #[test]
+    fn test_idm_oauth2_openid_group_claims() {
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+                // we run the same test as test_idm_oauth2_openid_extensions()
+                // but change the preferred_username setting on the RS
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
+                let (secret, uat, ident, _) =
+                    setup_oauth2_resource_server(idms, ct, true, false, true);
+                let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
+
+                let idms_prox_read = task::block_on(idms.proxy_read());
+
+                let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+                let consent_request = good_authorisation_request!(
+                    idms_prox_read,
+                    &ident,
+                    &uat,
+                    ct,
+                    code_challenge,
+                    "openid groups".to_string()
+                );
+
+                let consent_token =
+                    if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
+                        consent_request
+                    {
+                        consent_token
+                    } else {
+                        unreachable!();
+                    };
+
+                // == Manually submit the consent token to the permit for the permit_success
+                let permit_success = idms_prox_read
+                    .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
+                    .expect("Failed to perform oauth2 permit");
+
+                // Assert that the consent was submitted
+                match idms_delayed.async_rx.blocking_recv() {
+                    Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
+                    _ => assert!(false),
+                }
+
+                // == Submit the token exchange code.
+                let token_req = AccessTokenRequest {
+                    grant_type: "authorization_code".to_string(),
+                    code: permit_success.code,
+                    redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                    client_id: None,
+                    client_secret: None,
+                    // From the first step.
+                    code_verifier,
+                };
+
+                let token_response = idms_prox_read
+                    .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+                    .expect("Failed to perform oauth2 token exchange");
+
+                // Assert that the session creation was submitted
+                match idms_delayed.async_rx.blocking_recv() {
+                    Some(DelayedAction::Oauth2SessionRecord(_)) => {}
+                    _ => assert!(false),
+                }
+
+                let id_token = token_response.id_token.expect("No id_token in response!");
+                let access_token = token_response.access_token;
+
+                let mut jwkset = idms_prox_read
+                    .oauth2_openid_publickey("test_resource_server")
+                    .expect("Failed to get public key");
+                let public_jwk = jwkset.keys.pop().expect("no such jwk");
+
+                let jws_validator =
+                    JwsValidator::try_from(&public_jwk).expect("failed to build validator");
+
+                let oidc_unverified =
+                    OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
+
+                let iat = ct.as_secs() as i64;
+
+                let oidc = oidc_unverified
+                    .validate(&jws_validator, iat)
+                    .expect("Failed to verify oidc");
+
+                // does our id_token contain the expected groups?
+                assert!(oidc.claims.contains_key(&"groups".to_string()));
+
+                assert!(oidc
+                    .claims
+                    .get(&"groups".to_string())
+                    .expect("unable to find key")
+                    .as_array()
+                    .unwrap()
+                    .contains(&serde_json::json!(STR_UUID_IDM_ALL_ACCOUNTS)));
+
+                // Do the id_token details line up to the userinfo?
+                let userinfo = idms_prox_read
+                    .oauth2_openid_userinfo("test_resource_server", &access_token, ct)
+                    .expect("failed to get userinfo");
+
+                // does the userinfo endpoint provide the same groups?
+                assert!(
+                    oidc.claims.get(&"groups".to_string())
+                        == userinfo.claims.get(&"groups".to_string())
+                );
+            }
+        )
+    }
+
     //  Check insecure pkce behaviour.
     #[test]
     fn test_idm_oauth2_insecure_pkce() {
@@ -3094,8 +3277,14 @@ mod tests {
             let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
             // Even in disable pkce mode, we will allow pkce
-            let _consent_request =
-                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+            let _consent_request = good_authorisation_request!(
+                idms_prox_read,
+                &ident,
+                &uat,
+                ct,
+                code_challenge,
+                "openid".to_string()
+            );
 
             // Check we allow none.
             let auth_req = AuthorisationRequest {
@@ -3155,8 +3344,14 @@ mod tests {
                 // Check that the id_token is signed with the correct key.
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
-                let consent_request =
-                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+                let consent_request = good_authorisation_request!(
+                    idms_prox_read,
+                    &ident,
+                    &uat,
+                    ct,
+                    code_challenge,
+                    "openid".to_string()
+                );
 
                 let consent_token =
                     if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
@@ -3231,8 +3426,14 @@ mod tests {
                 let idms_prox_read = task::block_on(idms.proxy_read());
 
                 let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
-                let consent_request =
-                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+                let consent_request = good_authorisation_request!(
+                    idms_prox_read,
+                    &ident,
+                    &uat,
+                    ct,
+                    code_challenge,
+                    "openid".to_string()
+                );
 
                 // Should be in the consent phase;
                 let consent_token =
@@ -3271,8 +3472,14 @@ mod tests {
                     .expect("Unable to process uat");
 
                 let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
-                let consent_request =
-                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+                let consent_request = good_authorisation_request!(
+                    idms_prox_read,
+                    &ident,
+                    &uat,
+                    ct,
+                    code_challenge,
+                    "openid".to_string()
+                );
 
                 // Should be in the consent phase;
                 let _permit_success =
@@ -3435,8 +3642,14 @@ mod tests {
                 let idms_prox_read = task::block_on(idms.proxy_read());
 
                 let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
-                let consent_request =
-                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+                let consent_request = good_authorisation_request!(
+                    idms_prox_read,
+                    &ident,
+                    &uat,
+                    ct,
+                    code_challenge,
+                    "openid".to_string()
+                );
 
                 // Should be in the consent phase;
                 let consent_token =
@@ -3635,8 +3848,14 @@ mod tests {
                 );
 
                 // This does have https
-                let consent_request =
-                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+                let consent_request = good_authorisation_request!(
+                    idms_prox_read,
+                    &ident,
+                    &uat,
+                    ct,
+                    code_challenge,
+                    "openid".to_string()
+                );
 
                 // Should be in the consent phase;
                 let consent_token =
