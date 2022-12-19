@@ -4665,7 +4665,7 @@
         parent_session_id: Uuid,
         iat: i64,
         ct: Duration,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Account&gt;, OperationError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Arc&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;&gt;, OperationError&gt; {
         <span class="kw">let </span>entry = <span class="self">self</span>.get_qs_txn().internal_search_uuid(uuid).map_err(|e| {
             <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;check_oauth2_account_uuid_valid failed&quot;</span>);
             e
@@ -4705,7 +4705,7 @@
             <span class="macro">security_info!</span>(<span class="string">&quot;The token grace window is in effect. Assuming valid.&quot;</span>);
         };
 
-        Account::try_from_entry_no_groups(entry.as_ref()).map(<span class="prelude-val">Some</span>)
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(entry))
     }
 
     <span class="doccomment">/// For any event/operation to proceed, we need to attach an identity to the
@@ -5638,7 +5638,7 @@
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AccessTokenResponse, Oauth2Error&gt; {
         <span class="self">self</span>.oauth2rs
-            .check_oauth2_token_exchange(client_authz, token_req, ct, <span class="kw-2">&amp;</span><span class="self">self</span>.async_tx)
+            .check_oauth2_token_exchange(<span class="self">self</span>, client_authz, token_req, ct, <span class="kw-2">&amp;</span><span class="self">self</span>.async_tx)
     }
 
     <span class="kw">pub fn </span>check_oauth2_token_introspect(
