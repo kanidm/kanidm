@@ -13,6 +13,7 @@ use crate::prelude::*;
 use crate::value::Session;
 
 use crate::schema::{SchemaClass, SchemaTransaction};
+use crate::access::AccessControlsTransaction;
 
 // Internals of a Scim Sync token
 
@@ -226,6 +227,268 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })
     }
 }
+
+
+pub struct ScimSyncFinaliseEvent {
+    pub ident: Identity,
+    pub target: Uuid,
+}
+
+impl<'a> IdmServerProxyWriteTransaction<'a> {
+    pub fn scim_sync_finalise(
+        &mut self,
+        sfe: &ScimSyncFinaliseEvent,
+    ) -> Result<(), OperationError> {
+        // Get the target and ensure it's really a sync account
+        let entry = self
+            .qs_write
+            .internal_search_uuid(sfe.target)
+            .map_err(|e| {
+                admin_error!(?e, "Failed to search sync account");
+                e
+            })?;
+
+        let sync_account = SyncAccount::try_from_entry_rw(&entry)
+            .map_err(|e| {
+                admin_error!(?e, "Failed to covert sync account");
+                e
+            })?;
+        let sync_uuid = sync_account.uuid;
+
+        // Do we have permission to delete it?
+        let effective_perms = self
+            .qs_write
+            .get_accesscontrols()
+            .effective_permission_check(
+                &sfe.ident,
+                Some(BTreeSet::default()),
+                &[entry],
+            )?;
+
+        let eperm = effective_perms.get(0).ok_or_else(|| {
+            admin_error!("Effective Permission check returned no results");
+            OperationError::InvalidState
+        })?;
+
+        if eperm.target != sync_account.uuid {
+            admin_error!("Effective Permission check target differs from requested entry uuid");
+            return Err(OperationError::InvalidEntryState);
+        }
+
+        // ⚠️  Assume that anything before this line is unauthorised, and after this line IS
+        // authorised!
+        //
+        // We do this check via effective permissions because a lot of the operations that
+        // follow will require permissions beyond what system admins have.
+
+        if !eperm.delete {
+            security_info!(
+                "Requestor {} does not have permission to delete sync account {}",
+                sfe.ident,
+                sync_account.name
+            );
+            return Err(OperationError::NotAuthorised);
+        }
+
+        // Referential integrity tries to assert that the reference to sync_parent_uuid is valid
+        // from within the recycle bin. To prevent this, we have to "finalise" first, transfer
+        // authority to kanidm, THEN we do the delete which breaks the reference requirement.
+        //
+        // Importantly, we have to do this for items that are in the recycle bin!
+
+        // First, get the set of uuids that exist. We need this so we have the set of uuids we'll
+        // be deleteing *at the end*.
+        let f_all_sync = filter_all!(f_and!([
+                f_eq("class", PVCLASS_SYNC_OBJECT.clone()),
+                f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
+            ]));
+
+        // TODO: This could benefit from a search that only grabs uuids?
+        let existing_entries = self
+            .qs_write
+            .internal_search(
+                f_all_sync.clone()
+            )
+            .map_err(|e| {
+                error!("Failed to determine existing entries set");
+                e
+            })?;
+
+        // This is the delete filter we need later.
+        let filter_or: Vec<_> = existing_entries.iter().map(|e| {
+            f_eq("uuid", PartialValue::Uuid(e.get_uuid()))
+        }).collect();
+
+            // We only need to delete the sync account itself.
+        let delete_filter = filter!(f_eq("uuid", PartialValue::Uuid(sync_uuid)));
+
+        if !filter_or.is_empty() {
+            // Now modify these to remove their sync related attributes.
+            let schema = self.qs_write.get_schema();
+            let sync_class = schema.get_classes().get("sync_object")
+                .ok_or_else(|| {
+                    error!("Failed to access sync_object class, schema corrupt");
+                    OperationError::InvalidState
+                })?;
+
+            let modlist = std::iter::once(
+                    Modify::Removed("class".into(), PartialValue::new_class("sync_object"))
+                ).chain(sync_class.may_iter().map(|aname| {
+                    Modify::Purged(aname.clone())
+                }))
+                .collect();
+
+            let mods = ModifyList::new_list(modlist);
+
+            self.qs_write.internal_modify(&f_all_sync, &mods)
+                .map_err(|e| {
+                    error!("Failed to modify sync objects to grant authority to kanidm");
+                    e
+                })?;
+        };
+
+        self.qs_write
+            .internal_delete(&delete_filter)
+            .map_err(|e| {
+                error!(?e, "Failed to terminate sync account");
+                e
+            })
+    }
+}
+
+
+pub struct ScimSyncTerminateEvent {
+    pub ident: Identity,
+    pub target: Uuid,
+}
+
+impl<'a> IdmServerProxyWriteTransaction<'a> {
+    pub fn scim_sync_terminate(
+        &mut self,
+        ste: &ScimSyncTerminateEvent,
+    ) -> Result<(), OperationError> {
+        // Get the target and ensure it's really a sync account
+        let entry = self
+            .qs_write
+            .internal_search_uuid(ste.target)
+            .map_err(|e| {
+                admin_error!(?e, "Failed to search sync account");
+                e
+            })?;
+
+        let sync_account = SyncAccount::try_from_entry_rw(&entry)
+            .map_err(|e| {
+                admin_error!(?e, "Failed to covert sync account");
+                e
+            })?;
+        let sync_uuid = sync_account.uuid;
+
+        // Do we have permission to delete it?
+        let effective_perms = self
+            .qs_write
+            .get_accesscontrols()
+            .effective_permission_check(
+                &ste.ident,
+                Some(BTreeSet::default()),
+                &[entry],
+            )?;
+
+        let eperm = effective_perms.get(0).ok_or_else(|| {
+            admin_error!("Effective Permission check returned no results");
+            OperationError::InvalidState
+        })?;
+
+        if eperm.target != sync_account.uuid {
+            admin_error!("Effective Permission check target differs from requested entry uuid");
+            return Err(OperationError::InvalidEntryState);
+        }
+
+        // ⚠️  Assume that anything before this line is unauthorised, and after this line IS
+        // authorised!
+        //
+        // We do this check via effective permissions because a lot of the operations that
+        // follow will require permissions beyond what system admins have.
+
+        if !eperm.delete {
+            security_info!(
+                "Requestor {} does not have permission to delete sync account {}",
+                ste.ident,
+                sync_account.name
+            );
+            return Err(OperationError::NotAuthorised);
+        }
+
+        // Referential integrity tries to assert that the reference to sync_parent_uuid is valid
+        // from within the recycle bin. To prevent this, we have to "finalise" first, transfer
+        // authority to kanidm, THEN we do the delete which breaks the reference requirement.
+        //
+        // Importantly, we have to do this for items that are in the recycle bin!
+
+        // First, get the set of uuids that exist. We need this so we have the set of uuids we'll
+        // be deleteing *at the end*.
+        let f_all_sync = filter_all!(f_and!([
+                f_eq("class", PVCLASS_SYNC_OBJECT.clone()),
+                f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
+            ]));
+
+        // TODO: This could benefit from a search that only grabs uuids?
+        let existing_entries = self
+            .qs_write
+            .internal_search(
+                f_all_sync.clone()
+            )
+            .map_err(|e| {
+                error!("Failed to determine existing entries set");
+                e
+            })?;
+
+        // This is the delete filter we need later.
+        let filter_or: Vec<_> = existing_entries.iter().map(|e| {
+            f_eq("uuid", PartialValue::Uuid(e.get_uuid()))
+        }).collect();
+
+        let delete_filter = if filter_or.is_empty() {
+            // We only need to delete the sync account itself.
+            filter!(f_eq("uuid", PartialValue::Uuid(sync_uuid)))
+        } else {
+            // Now modify these to remove their sync related attributes.
+            let schema = self.qs_write.get_schema();
+            let sync_class = schema.get_classes().get("sync_object")
+                .ok_or_else(|| {
+                    error!("Failed to access sync_object class, schema corrupt");
+                    OperationError::InvalidState
+                })?;
+
+            let modlist = std::iter::once(
+                    Modify::Removed("class".into(), PartialValue::new_class("sync_object"))
+                ).chain(sync_class.may_iter().map(|aname| {
+                    Modify::Purged(aname.clone())
+                }))
+                .collect();
+
+            let mods = ModifyList::new_list(modlist);
+
+            self.qs_write.internal_modify(&f_all_sync, &mods)
+                .map_err(|e| {
+                    error!("Failed to modify sync objects to grant authority to kanidm");
+                    e
+                })?;
+
+            filter!(f_or!([
+                f_eq("uuid", PartialValue::Uuid(sync_uuid)),
+                f_or(filter_or)
+            ]))
+        };
+
+        self.qs_write
+            .internal_delete(&delete_filter)
+            .map_err(|e| {
+                error!(?e, "Failed to terminate sync account");
+                e
+            })
+    }
+}
+
 
 pub struct ScimSyncUpdateEvent {
     pub ident: Identity,
@@ -991,7 +1254,7 @@ mod tests {
     use std::sync::Arc;
     use std::time::Duration;
 
-    use super::{GenerateScimSyncTokenEvent, ScimSyncToken, ScimSyncUpdateEvent};
+    use super::{GenerateScimSyncTokenEvent, ScimSyncToken, ScimSyncUpdateEvent, ScimSyncFinaliseEvent, ScimSyncTerminateEvent};
 
     use async_std::task;
 
@@ -2037,6 +2300,225 @@ mod tests {
 
             let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
             assert!(testuser_mo.contains(&testgroup.get_uuid()));
+
+            assert!(idms_prox_write.commit().is_ok());
+        })
+    }
+
+    #[test]
+    fn test_idm_scim_sync_finalise_1() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+            let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+            let sse = ScimSyncUpdateEvent { ident };
+
+            let changes =
+                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
+
+            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+            assert!(idms_prox_write.commit().is_ok());
+
+            // Finalise the sync account.
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+
+            let ident = idms_prox_write.qs_write.internal_search_uuid(UUID_ADMIN)
+                .map(
+                    Identity::from_impersonate_entry_readwrite
+                )
+                .expect("Failed to get admin");
+
+            let sfe = ScimSyncFinaliseEvent {
+                ident,
+                target: sync_uuid
+            };
+
+            idms_prox_write
+                .scim_sync_finalise(&sfe)
+                .expect("Failed to finalise sync account");
+
+            // Check that the entries still exists but now have no sync_object attached.
+            let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
+            assert!(!testgroup.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+
+            let testposix = get_single_entry("testposix", &mut idms_prox_write);
+            assert!(!testposix.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+
+            let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
+            assert!(!testexternal.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+
+            let testuser = get_single_entry("testuser", &mut idms_prox_write);
+            assert!(!testuser.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+
+            assert!(idms_prox_write.commit().is_ok());
+        })
+    }
+
+    #[test]
+    fn test_idm_scim_sync_finalise_2() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+            let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+            let sse = ScimSyncUpdateEvent { ident };
+
+            let changes =
+                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
+
+            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+            // The difference in this test is that the refresh deletes some entries
+            // so the recycle bin case needs to be handled.
+            let changes = serde_json::from_str(TEST_SYNC_SCIM_IPA_REFRESH_1)
+                .expect("failed to parse scim sync");
+
+            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+            assert!(idms_prox_write.commit().is_ok());
+
+            // Finalise the sync account.
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+
+            let ident = idms_prox_write.qs_write.internal_search_uuid(UUID_ADMIN)
+                .map(
+                    Identity::from_impersonate_entry_readwrite
+                )
+                .expect("Failed to get admin");
+
+            let sfe = ScimSyncFinaliseEvent {
+                ident,
+                target: sync_uuid
+            };
+
+            idms_prox_write
+                .scim_sync_finalise(&sfe)
+                .expect("Failed to finalise sync account");
+
+            // Check that the entries still exists but now have no sync_object attached.
+            let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
+            assert!(!testgroup.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+
+            let testuser = get_single_entry("testuser", &mut idms_prox_write);
+            assert!(!testuser.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+
+            for iname in ["testposix", "testexternal"] {
+                trace!(%iname);
+                assert!(idms_prox_write
+                    .qs_write
+                    .internal_search(filter!(f_eq("name", PartialValue::new_iname(iname))))
+                    .unwrap()
+                    .is_empty());
+            }
+
+            assert!(idms_prox_write.commit().is_ok());
+        })
+    }
+
+    #[test]
+    fn test_idm_scim_sync_terminate_1() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+            let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+            let sse = ScimSyncUpdateEvent { ident };
+
+            let changes =
+                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
+
+            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+            assert!(idms_prox_write.commit().is_ok());
+
+            // Terminate the sync account
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+
+            let ident = idms_prox_write.qs_write.internal_search_uuid(UUID_ADMIN)
+                .map(
+                    Identity::from_impersonate_entry_readwrite
+                )
+                .expect("Failed to get admin");
+
+            let sfe = ScimSyncTerminateEvent {
+                ident,
+                target: sync_uuid
+            };
+
+            idms_prox_write
+                .scim_sync_terminate(&sfe)
+                .expect("Failed to terminate sync account");
+
+            // Check that the entries no longer exist
+            for iname in ["testgroup", "testposix", "testexternal", "testuser"] {
+                trace!(%iname);
+                assert!(idms_prox_write
+                    .qs_write
+                    .internal_search(filter!(f_eq("name", PartialValue::new_iname(iname))))
+                    .unwrap()
+                    .is_empty());
+            }
+
+            assert!(idms_prox_write.commit().is_ok());
+        })
+    }
+
+    #[test]
+    fn test_idm_scim_sync_terminate_2() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+            let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+            let sse = ScimSyncUpdateEvent { ident };
+
+            let changes =
+                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
+
+            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+            // The difference in this test is that the refresh deletes some entries
+            // so the recycle bin case needs to be handled.
+            let changes = serde_json::from_str(TEST_SYNC_SCIM_IPA_REFRESH_1)
+                .expect("failed to parse scim sync");
+
+            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+            assert!(idms_prox_write.commit().is_ok());
+
+            // Terminate the sync account
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+
+            let ident = idms_prox_write.qs_write.internal_search_uuid(UUID_ADMIN)
+                .map(
+                    Identity::from_impersonate_entry_readwrite
+                )
+                .expect("Failed to get admin");
+
+            let sfe = ScimSyncTerminateEvent {
+                ident,
+                target: sync_uuid
+            };
+
+            idms_prox_write
+                .scim_sync_terminate(&sfe)
+                .expect("Failed to terminate sync account");
+
+            // Check that the entries no longer exist
+            for iname in ["testgroup", "testposix", "testexternal", "testuser"] {
+                trace!(%iname);
+                assert!(idms_prox_write
+                    .qs_write
+                    .internal_search(filter!(f_eq("name", PartialValue::new_iname(iname))))
+                    .unwrap()
+                    .is_empty());
+            }
 
             assert!(idms_prox_write.commit().is_ok());
         })

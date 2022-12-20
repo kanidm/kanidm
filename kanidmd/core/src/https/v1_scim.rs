@@ -5,7 +5,7 @@ use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
 
 use super::v1::{
-    json_rest_event_delete_id, json_rest_event_get, json_rest_event_get_id, json_rest_event_post,
+    json_rest_event_get, json_rest_event_get_id, json_rest_event_post,
 };
 
 pub async fn sync_account_get(req: tide::Request<AppState>) -> tide::Result {
@@ -21,11 +21,6 @@ pub async fn sync_account_post(req: tide::Request<AppState>) -> tide::Result {
 pub async fn sync_account_id_get(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("sync_account")));
     json_rest_event_get_id(req, filter, None).await
-}
-
-pub async fn sync_account_id_delete(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("sync_account")));
-    json_rest_event_delete_id(req, filter).await
 }
 
 pub async fn sync_account_id_patch(mut req: tide::Request<AppState>) -> tide::Result {
@@ -48,8 +43,7 @@ pub async fn sync_account_id_patch(mut req: tide::Request<AppState>) -> tide::Re
     to_tide_response(res, hvalue)
 }
 
-/*
-pub async fn sync_account_token_get(req: tide::Request<AppState>) -> tide::Result {
+pub async fn sync_account_id_get_finalise(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;
 
@@ -57,12 +51,25 @@ pub async fn sync_account_token_get(req: tide::Request<AppState>) -> tide::Resul
 
     let res = req
         .state()
-        .qe_r_ref
-        .handle_service_account_api_token_get(uat, uuid_or_name, eventid)
+        .qe_w_ref
+        .handle_sync_account_finalise(uat, uuid_or_name, eventid)
         .await;
     to_tide_response(res, hvalue)
 }
-*/
+
+pub async fn sync_account_id_get_terminate(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let uuid_or_name = req.get_url_param("id")?;
+
+    let (eventid, hvalue) = req.new_eventid();
+
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_sync_account_terminate(uat, uuid_or_name, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
 
 pub async fn sync_account_token_post(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
@@ -257,8 +264,15 @@ pub fn scim_route_setup(appserver: &mut tide::Route<'_, AppState>, routemap: &mu
     sync_account_route
         .at("/:id")
         .mapped_get(routemap, sync_account_id_get)
-        .mapped_patch(routemap, sync_account_id_patch)
-        .mapped_delete(routemap, sync_account_id_delete);
+        .mapped_patch(routemap, sync_account_id_patch);
+
+    sync_account_route
+        .at("/:id/_finalise")
+        .mapped_get(routemap, sync_account_id_get_finalise);
+
+    sync_account_route
+        .at("/:id/_terminate")
+        .mapped_get(routemap, sync_account_id_get_terminate);
 
     sync_account_route
         .at("/:id/_sync_token")

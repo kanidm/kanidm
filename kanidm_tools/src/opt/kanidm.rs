@@ -759,6 +759,7 @@ pub enum SynchOpt {
         #[clap(name = "description")]
         description: Option<String>,
     },
+    /// Generate a bearer token for an IDM sync account
     #[clap(name = "generate-token")]
     GenerateToken {
         #[clap()]
@@ -768,6 +769,7 @@ pub enum SynchOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
+    /// Destroy (revoke) the bearer token for an IDM sync account
     #[clap(name = "destroy-token")]
     DestroyToken {
         #[clap()]
@@ -784,7 +786,31 @@ pub enum SynchOpt {
         account_id: String,
         #[clap(flatten)]
         copt: CommonOpt,
-    }
+    },
+    /// Finalise and remove this sync account. This will transfer all synchronised entries into
+    /// the authority of Kanidm. This signals the end of a migration from an external IDM into
+    /// Kanidm. ⚠️  This action can NOT be undone. Once complete, it is most likely
+    /// that attempting to recreate a sync account from the same IDM will fail due to conflicting
+    /// entries that Kanidm now owns.
+    #[clap(name = "finalise")]
+    Finalise {
+        #[clap()]
+        account_id: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    /// Terminate and remove this sync account. This will DELETE all entries that were imported
+    /// from the external IDM source. ⚠️  This action can NOT be undone, and will require you to
+    /// recreate the sync account if you
+    /// wish to re-import data. Recreating the sync account may fail until the recycle bin and
+    /// and tombstones are purged.
+    #[clap(name = "terminate")]
+    Terminate {
+        #[clap()]
+        account_id: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -807,7 +833,8 @@ pub enum SystemOpt {
         #[clap(subcommand)]
         commands: DomainOpt,
     },
-    #[clap(name = "sync", hide = true)]
+    #[clap(name = "sync")]
+    /// Configure synchronisation from an external IDM system
     Synch {
         #[clap(subcommand)]
         commands: SynchOpt,

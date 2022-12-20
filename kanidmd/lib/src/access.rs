@@ -366,6 +366,7 @@ pub struct AccessEffectivePermission {
     // I don't think we need this? The ident is implied by the requestor.
     // ident: Uuid,
     pub target: Uuid,
+    pub delete: bool,
     pub search: BTreeSet<AttrString>,
     pub modify_pres: BTreeSet<AttrString>,
     pub modify_rem: BTreeSet<AttrString>,
@@ -538,41 +539,41 @@ pub trait AccessControlsTransaction<'a> {
 
         // For each entry
         let allowed_entries: Vec<Arc<EntrySealedCommitted>> =
-                    entries
-                                    .into_iter()
-                                    .filter(|e| {
-                                        // For each acp
-                                        let allowed_attrs: BTreeSet<&str> = related_acp
-                                            .iter()
-                                            .filter_map(|(acs, f_res)| {
-                                                // if it applies
-                                                if e.entry_match_no_index(f_res) {
-                                                    security_access!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry matches acs");
-                                                    // add search_attrs to allowed.
-                                                    Some(acs.attrs.iter().map(|s| s.as_str()))
-                                                } else {
-                                                    trace!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry DOES NOT match acs"); // should this be `security_access`?
-                                                    None
-                                                }
-                                            })
-                                            .flatten()
-                                            .collect();
+            entries
+                .into_iter()
+                .filter(|e| {
+                    // For each acp
+                    let allowed_attrs: BTreeSet<&str> = related_acp
+                        .iter()
+                        .filter_map(|(acs, f_res)| {
+                            // if it applies
+                            if e.entry_match_no_index(f_res) {
+                                security_access!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry matches acs");
+                                // add search_attrs to allowed.
+                                Some(acs.attrs.iter().map(|s| s.as_str()))
+                            } else {
+                                trace!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry DOES NOT match acs"); // should this be `security_access`?
+                                None
+                            }
+                        })
+                        .flatten()
+                        .collect();
 
-                                        security_access!(
-                                            requested = ?requested_attrs,
-                                            allows = ?allowed_attrs,
-                                            "attributes",
-                                        );
+                    security_access!(
+                        requested = ?requested_attrs,
+                        allows = ?allowed_attrs,
+                        "attributes",
+                    );
 
-                                        // is attr set a subset of allowed set?
-                                        // true -> entry is allowed in result set
-                                        // false -> the entry is not allowed to be searched by this entity, so is
-                                        //          excluded.
-                                        let decision = requested_attrs.is_subset(&allowed_attrs);
-                                        security_access!(?decision, "search attr decision");
-                                        decision
-                                    })
-                                    .collect();
+                    // is attr set a subset of allowed set?
+                    // true -> entry is allowed in result set
+                    // false -> the entry is not allowed to be searched by this entity, so is
+                    //          excluded.
+                    let decision = requested_attrs.is_subset(&allowed_attrs);
+                    security_access!(?decision, "search attr decision");
+                    decision
+                })
+                .collect();
 
         if allowed_entries.is_empty() {
             security_access!("denied ❌");
@@ -1104,6 +1105,44 @@ pub trait AccessControlsTransaction<'a> {
         Ok(r)
     }
 
+    #[instrument(level = "debug", name = "access::delete_related_acp", skip_all)]
+    fn delete_related_acp<'b>(
+        &'b self,
+        ident: &Identity,
+    ) -> Vec<(&'b AccessControlDelete, Filter<FilterValidResolved>)> {
+        // Some useful references we'll use for the remainder of the operation
+        let delete_state = self.get_delete();
+        let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
+
+        let related_acp: Vec<(&AccessControlDelete, _)> = delete_state
+            .iter()
+            .filter_map(|acs| {
+                if let Some(receiver) = acs.acp.receiver {
+                    if ident.is_memberof(receiver) {
+                        acs.acp
+                            .targetscope
+                            .resolve(ident, None, Some(acp_resolve_filter_cache))
+                            .map_err(|e| {
+                                admin_error!(
+                                    "A internal filter/event was passed for resolution!?!? {:?}",
+                                    e
+                                );
+                                e
+                            })
+                            .ok()
+                            .map(|f_res| (acs, f_res))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        related_acp
+    }
+
     #[instrument(level = "debug", name = "access::delete_allow_operation", skip_all)]
     fn delete_allow_operation(
         &self,
@@ -1134,36 +1173,8 @@ pub trait AccessControlsTransaction<'a> {
             }
         };
 
-        // Some useful references we'll use for the remainder of the operation
-        let delete_state = self.get_delete();
-        let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
-
         // Find the acps that relate to the caller.
-        let related_acp: Vec<(&AccessControlDelete, _)> = delete_state
-            .iter()
-            .filter_map(|acs| {
-                if let Some(receiver) = acs.acp.receiver {
-                    if de.ident.is_memberof(receiver) {
-                        acs.acp
-                            .targetscope
-                            .resolve(&de.ident, None, Some(acp_resolve_filter_cache))
-                            .map_err(|e| {
-                                admin_error!(
-                                    "A internal filter/event was passed for resolution!?!? {:?}",
-                                    e
-                                );
-                                e
-                            })
-                            .ok()
-                            .map(|f_res| (acs, f_res))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect();
+        let related_acp = self.delete_related_acp(&de.ident);
 
         /*
         related_acp.iter().for_each(|racp| {
@@ -1256,7 +1267,8 @@ pub trait AccessControlsTransaction<'a> {
 
         // == modify ==
 
-        let modify_related_acp: Vec<(&AccessControlModify, _)> = self.modify_related_acp(ident);
+        let modify_related_acp = self.modify_related_acp(ident);
+        let delete_related_acp = self.delete_related_acp(ident);
 
         /*
         modify_related_acp.iter().for_each(|(racp, _)| {
@@ -1323,8 +1335,23 @@ pub trait AccessControlsTransaction<'a> {
                     .flat_map(|acp| acp.classes.iter().cloned())
                     .collect();
 
+                // == delete ==
+                let delete = delete_related_acp.iter().any(|(acd, f_res)| {
+                    if e.entry_match_no_index(f_res) {
+                        security_access!(
+                            entry_uuid = ?e.get_uuid(),
+                            acs = %acd.acp.name,
+                            "entry matches acd"
+                        );
+                        true
+                    } else {
+                        false
+                    }
+                });
+
                 AccessEffectivePermission {
                     target: e.get_uuid(),
+                    delete,
                     search: search_effective,
                     modify_pres,
                     modify_rem,
@@ -2859,6 +2886,7 @@ mod tests {
             vec![],
             &r_set,
             vec![AccessEffectivePermission {
+                delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                 search: btreeset![AttrString::from("name")],
                 modify_pres: BTreeSet::new(),
@@ -2899,6 +2927,7 @@ mod tests {
             }],
             &r_set,
             vec![AccessEffectivePermission {
+                delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                 search: BTreeSet::new(),
                 modify_pres: btreeset![AttrString::from("name")],
