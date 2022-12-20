@@ -1,7 +1,9 @@
 use kanidmd_lib::prelude::*;
 
 use crate::{QueryServerReadV1, QueryServerWriteV1};
-use kanidmd_lib::idm::scim::{GenerateScimSyncTokenEvent, ScimSyncUpdateEvent, ScimSyncFinaliseEvent, ScimSyncTerminateEvent};
+use kanidmd_lib::idm::scim::{
+    GenerateScimSyncTokenEvent, ScimSyncFinaliseEvent, ScimSyncTerminateEvent, ScimSyncUpdateEvent,
+};
 use kanidmd_lib::idm::server::IdmServerTransaction;
 
 use kanidm_proto::scim_v1::{ScimSyncRequest, ScimSyncState};
@@ -108,10 +110,7 @@ impl QueryServerWriteV1 {
                 e
             })?;
 
-        let sfe = ScimSyncFinaliseEvent {
-            ident,
-            target
-        };
+        let sfe = ScimSyncFinaliseEvent { ident, target };
 
         idms_prox_write
             .scim_sync_finalise(&sfe)
@@ -146,10 +145,7 @@ impl QueryServerWriteV1 {
                 e
             })?;
 
-        let ste = ScimSyncTerminateEvent {
-            ident,
-            target
-        };
+        let ste = ScimSyncTerminateEvent { ident, target };
 
         idms_prox_write
             .scim_sync_terminate(&ste)

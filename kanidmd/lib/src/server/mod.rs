@@ -1810,13 +1810,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Did any of the candidates now become masked?
         if std::iter::zip(
-            pre_candidates.iter().map(|e|
-                e.mask_recycled_ts().is_none()
-            ),
-            candidates.iter().map(|e|
-                e.mask_recycled_ts().is_none()
-            )
-        ).any(|(a, b)| a != b) {
+            pre_candidates
+                .iter()
+                .map(|e| e.mask_recycled_ts().is_none()),
+            candidates.iter().map(|e| e.mask_recycled_ts().is_none()),
+        )
+        .any(|(a, b)| a != b)
+        {
             admin_warn!("Refusing to apply modifications that are attempting to bypass replication state machine.");
             return Err(OperationError::AccessDenied);
         }

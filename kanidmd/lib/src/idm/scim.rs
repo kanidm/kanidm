@@ -12,8 +12,8 @@ use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTrans
 use crate::prelude::*;
 use crate::value::Session;
 
-use crate::schema::{SchemaClass, SchemaTransaction};
 use crate::access::AccessControlsTransaction;
+use crate::schema::{SchemaClass, SchemaTransaction};
 
 // Internals of a Scim Sync token
 
@@ -228,7 +228,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 }
 
-
 pub struct ScimSyncFinaliseEvent {
     pub ident: Identity,
     pub target: Uuid,
@@ -248,22 +247,17 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
 
-        let sync_account = SyncAccount::try_from_entry_rw(&entry)
-            .map_err(|e| {
-                admin_error!(?e, "Failed to covert sync account");
-                e
-            })?;
+        let sync_account = SyncAccount::try_from_entry_rw(&entry).map_err(|e| {
+            admin_error!(?e, "Failed to covert sync account");
+            e
+        })?;
         let sync_uuid = sync_account.uuid;
 
         // Do we have permission to delete it?
         let effective_perms = self
             .qs_write
             .get_accesscontrols()
-            .effective_permission_check(
-                &sfe.ident,
-                Some(BTreeSet::default()),
-                &[entry],
-            )?;
+            .effective_permission_check(&sfe.ident, Some(BTreeSet::default()), &[entry])?;
 
         let eperm = effective_perms.get(0).ok_or_else(|| {
             admin_error!("Effective Permission check returned no results");
@@ -299,63 +293,63 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // First, get the set of uuids that exist. We need this so we have the set of uuids we'll
         // be deleteing *at the end*.
         let f_all_sync = filter_all!(f_and!([
-                f_eq("class", PVCLASS_SYNC_OBJECT.clone()),
-                f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
-            ]));
+            f_eq("class", PVCLASS_SYNC_OBJECT.clone()),
+            f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
+        ]));
 
         // TODO: This could benefit from a search that only grabs uuids?
         let existing_entries = self
             .qs_write
-            .internal_search(
-                f_all_sync.clone()
-            )
+            .internal_search(f_all_sync.clone())
             .map_err(|e| {
                 error!("Failed to determine existing entries set");
                 e
             })?;
 
         // This is the delete filter we need later.
-        let filter_or: Vec<_> = existing_entries.iter().map(|e| {
-            f_eq("uuid", PartialValue::Uuid(e.get_uuid()))
-        }).collect();
+        let filter_or: Vec<_> = existing_entries
+            .iter()
+            .map(|e| f_eq("uuid", PartialValue::Uuid(e.get_uuid())))
+            .collect();
 
-            // We only need to delete the sync account itself.
+        // We only need to delete the sync account itself.
         let delete_filter = filter!(f_eq("uuid", PartialValue::Uuid(sync_uuid)));
 
         if !filter_or.is_empty() {
             // Now modify these to remove their sync related attributes.
             let schema = self.qs_write.get_schema();
-            let sync_class = schema.get_classes().get("sync_object")
-                .ok_or_else(|| {
-                    error!("Failed to access sync_object class, schema corrupt");
-                    OperationError::InvalidState
-                })?;
+            let sync_class = schema.get_classes().get("sync_object").ok_or_else(|| {
+                error!("Failed to access sync_object class, schema corrupt");
+                OperationError::InvalidState
+            })?;
 
-            let modlist = std::iter::once(
-                    Modify::Removed("class".into(), PartialValue::new_class("sync_object"))
-                ).chain(sync_class.may_iter().map(|aname| {
-                    Modify::Purged(aname.clone())
-                }))
-                .collect();
+            let modlist = std::iter::once(Modify::Removed(
+                "class".into(),
+                PartialValue::new_class("sync_object"),
+            ))
+            .chain(
+                sync_class
+                    .may_iter()
+                    .map(|aname| Modify::Purged(aname.clone())),
+            )
+            .collect();
 
             let mods = ModifyList::new_list(modlist);
 
-            self.qs_write.internal_modify(&f_all_sync, &mods)
+            self.qs_write
+                .internal_modify(&f_all_sync, &mods)
                 .map_err(|e| {
                     error!("Failed to modify sync objects to grant authority to kanidm");
                     e
                 })?;
         };
 
-        self.qs_write
-            .internal_delete(&delete_filter)
-            .map_err(|e| {
-                error!(?e, "Failed to terminate sync account");
-                e
-            })
+        self.qs_write.internal_delete(&delete_filter).map_err(|e| {
+            error!(?e, "Failed to terminate sync account");
+            e
+        })
     }
 }
-
 
 pub struct ScimSyncTerminateEvent {
     pub ident: Identity,
@@ -376,22 +370,17 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
 
-        let sync_account = SyncAccount::try_from_entry_rw(&entry)
-            .map_err(|e| {
-                admin_error!(?e, "Failed to covert sync account");
-                e
-            })?;
+        let sync_account = SyncAccount::try_from_entry_rw(&entry).map_err(|e| {
+            admin_error!(?e, "Failed to covert sync account");
+            e
+        })?;
         let sync_uuid = sync_account.uuid;
 
         // Do we have permission to delete it?
         let effective_perms = self
             .qs_write
             .get_accesscontrols()
-            .effective_permission_check(
-                &ste.ident,
-                Some(BTreeSet::default()),
-                &[entry],
-            )?;
+            .effective_permission_check(&ste.ident, Some(BTreeSet::default()), &[entry])?;
 
         let eperm = effective_perms.get(0).ok_or_else(|| {
             admin_error!("Effective Permission check returned no results");
@@ -427,25 +416,24 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // First, get the set of uuids that exist. We need this so we have the set of uuids we'll
         // be deleteing *at the end*.
         let f_all_sync = filter_all!(f_and!([
-                f_eq("class", PVCLASS_SYNC_OBJECT.clone()),
-                f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
-            ]));
+            f_eq("class", PVCLASS_SYNC_OBJECT.clone()),
+            f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
+        ]));
 
         // TODO: This could benefit from a search that only grabs uuids?
         let existing_entries = self
             .qs_write
-            .internal_search(
-                f_all_sync.clone()
-            )
+            .internal_search(f_all_sync.clone())
             .map_err(|e| {
                 error!("Failed to determine existing entries set");
                 e
             })?;
 
         // This is the delete filter we need later.
-        let filter_or: Vec<_> = existing_entries.iter().map(|e| {
-            f_eq("uuid", PartialValue::Uuid(e.get_uuid()))
-        }).collect();
+        let filter_or: Vec<_> = existing_entries
+            .iter()
+            .map(|e| f_eq("uuid", PartialValue::Uuid(e.get_uuid())))
+            .collect();
 
         let delete_filter = if filter_or.is_empty() {
             // We only need to delete the sync account itself.
@@ -453,22 +441,26 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         } else {
             // Now modify these to remove their sync related attributes.
             let schema = self.qs_write.get_schema();
-            let sync_class = schema.get_classes().get("sync_object")
-                .ok_or_else(|| {
-                    error!("Failed to access sync_object class, schema corrupt");
-                    OperationError::InvalidState
-                })?;
+            let sync_class = schema.get_classes().get("sync_object").ok_or_else(|| {
+                error!("Failed to access sync_object class, schema corrupt");
+                OperationError::InvalidState
+            })?;
 
-            let modlist = std::iter::once(
-                    Modify::Removed("class".into(), PartialValue::new_class("sync_object"))
-                ).chain(sync_class.may_iter().map(|aname| {
-                    Modify::Purged(aname.clone())
-                }))
-                .collect();
+            let modlist = std::iter::once(Modify::Removed(
+                "class".into(),
+                PartialValue::new_class("sync_object"),
+            ))
+            .chain(
+                sync_class
+                    .may_iter()
+                    .map(|aname| Modify::Purged(aname.clone())),
+            )
+            .collect();
 
             let mods = ModifyList::new_list(modlist);
 
-            self.qs_write.internal_modify(&f_all_sync, &mods)
+            self.qs_write
+                .internal_modify(&f_all_sync, &mods)
                 .map_err(|e| {
                     error!("Failed to modify sync objects to grant authority to kanidm");
                     e
@@ -480,15 +472,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             ]))
         };
 
-        self.qs_write
-            .internal_delete(&delete_filter)
-            .map_err(|e| {
-                error!(?e, "Failed to terminate sync account");
-                e
-            })
+        self.qs_write.internal_delete(&delete_filter).map_err(|e| {
+            error!(?e, "Failed to terminate sync account");
+            e
+        })
     }
 }
-
 
 pub struct ScimSyncUpdateEvent {
     pub ident: Identity,
@@ -1254,7 +1243,10 @@ mod tests {
     use std::sync::Arc;
     use std::time::Duration;
 
-    use super::{GenerateScimSyncTokenEvent, ScimSyncToken, ScimSyncUpdateEvent, ScimSyncFinaliseEvent, ScimSyncTerminateEvent};
+    use super::{
+        GenerateScimSyncTokenEvent, ScimSyncFinaliseEvent, ScimSyncTerminateEvent, ScimSyncToken,
+        ScimSyncUpdateEvent,
+    };
 
     use async_std::task;
 
@@ -2325,15 +2317,15 @@ mod tests {
             // Finalise the sync account.
             let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
-            let ident = idms_prox_write.qs_write.internal_search_uuid(UUID_ADMIN)
-                .map(
-                    Identity::from_impersonate_entry_readwrite
-                )
+            let ident = idms_prox_write
+                .qs_write
+                .internal_search_uuid(UUID_ADMIN)
+                .map(Identity::from_impersonate_entry_readwrite)
                 .expect("Failed to get admin");
 
             let sfe = ScimSyncFinaliseEvent {
                 ident,
-                target: sync_uuid
+                target: sync_uuid,
             };
 
             idms_prox_write
@@ -2384,15 +2376,15 @@ mod tests {
             // Finalise the sync account.
             let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
-            let ident = idms_prox_write.qs_write.internal_search_uuid(UUID_ADMIN)
-                .map(
-                    Identity::from_impersonate_entry_readwrite
-                )
+            let ident = idms_prox_write
+                .qs_write
+                .internal_search_uuid(UUID_ADMIN)
+                .map(Identity::from_impersonate_entry_readwrite)
                 .expect("Failed to get admin");
 
             let sfe = ScimSyncFinaliseEvent {
                 ident,
-                target: sync_uuid
+                target: sync_uuid,
             };
 
             idms_prox_write
@@ -2439,15 +2431,15 @@ mod tests {
             // Terminate the sync account
             let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
-            let ident = idms_prox_write.qs_write.internal_search_uuid(UUID_ADMIN)
-                .map(
-                    Identity::from_impersonate_entry_readwrite
-                )
+            let ident = idms_prox_write
+                .qs_write
+                .internal_search_uuid(UUID_ADMIN)
+                .map(Identity::from_impersonate_entry_readwrite)
                 .expect("Failed to get admin");
 
             let sfe = ScimSyncTerminateEvent {
                 ident,
-                target: sync_uuid
+                target: sync_uuid,
             };
 
             idms_prox_write
@@ -2495,15 +2487,15 @@ mod tests {
             // Terminate the sync account
             let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
-            let ident = idms_prox_write.qs_write.internal_search_uuid(UUID_ADMIN)
-                .map(
-                    Identity::from_impersonate_entry_readwrite
-                )
+            let ident = idms_prox_write
+                .qs_write
+                .internal_search_uuid(UUID_ADMIN)
+                .map(Identity::from_impersonate_entry_readwrite)
                 .expect("Failed to get admin");
 
             let sfe = ScimSyncTerminateEvent {
                 ident,
-                target: sync_uuid
+                target: sync_uuid,
             };
 
             idms_prox_write

@@ -4,9 +4,7 @@ use kanidm_proto::scim_v1::ScimSyncRequest;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
 
-use super::v1::{
-    json_rest_event_get, json_rest_event_get_id, json_rest_event_post,
-};
+use super::v1::{json_rest_event_get, json_rest_event_get_id, json_rest_event_post};
 
 pub async fn sync_account_get(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("sync_account")));
