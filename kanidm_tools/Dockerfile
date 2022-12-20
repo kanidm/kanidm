@@ -48,11 +48,18 @@ fi
 WORKDIR /usr/src/kanidm/
 # build the CLI
 RUN if [ -z "${KANIDM_FEATURES}" ]; then \
-  cargo build -p kanidm_tools --bin kanidm ${KANIDM_BUILD_OPTIONS} \
+  cargo build --bin kanidm ${KANIDM_BUILD_OPTIONS} \
+    --target-dir="/usr/src/kanidm/target/" \
+    --release; \
+  cargo build --bin kanidm-ipa-sync ${KANIDM_BUILD_OPTIONS} \
     --target-dir="/usr/src/kanidm/target/" \
     --release; \
 else \
-  cargo build -p kanidm_tools --bin kanidm ${KANIDM_BUILD_OPTIONS} \
+  cargo build --bin kanidm ${KANIDM_BUILD_OPTIONS} \
+    --target-dir="/usr/src/kanidm/target/" \
+    --features="${KANIDM_FEATURES}" \
+    --release; \
+  cargo build --bin kanidm-ipa-sync ${KANIDM_BUILD_OPTIONS} \
     --target-dir="/usr/src/kanidm/target/" \
     --features="${KANIDM_FEATURES}" \
     --release; \
@@ -69,7 +76,9 @@ RUN zypper install -y timezone busybox-adduser && \
     zypper clean -a
 
 COPY --from=builder /usr/src/kanidm/target/release/kanidm /sbin/
+COPY --from=builder /usr/src/kanidm/target/release/kanidm-ipa-sync /sbin/
 RUN chmod +x /sbin/kanidm
+RUN chmod +x /sbin/kanidm-ipa-sync
 ENV RUST_BACKTRACE 1
 
 RUN adduser -D -H kanidm
