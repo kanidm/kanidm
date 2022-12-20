@@ -65,32 +65,53 @@ a new token and providing that to the sync tool will continue the sync process.
 
 ## Operating the Sync Tool
 
+The sync tool can now be run to replicate entries from the external IDM system into Kanidm.
+
 You should refer to the chapter for the specific external IDM system you are using for details on
 the sync tool configuration.
 
+The sync tool runs in batches, meaning that changes from the source IDM service will be delayed to
+appear into Kanidm. This is affected by how frequently you choose to run the sync tool.
+
+If the sync tool fails, you can investigate details in the Kanidmd server output.
+
+The sync tool can run "indefinetly" if you wish for Kanidm to always import data from the external
+source.
+
 ## Finalisting the Sync Account
 
+If you are performing a migration from an external IDM to Kanidm, when that migration is completed
+you can nominate that Kanidm now owns all of the imported data. This is achieved by finalising the
+sync account.
 
-
-{{#template  
+{{#template
     ../templates/kani-warning.md
     imagepath=../images
     title=Warning!
-    text=
+    text=You can not undo this operation. Once you have finalised an agreement, Kanidm owns all of the synchronised data, and you can not resume synchronisation.
 }}
 
+    kanidm system sync finalise <sync account name>
+    kanidm system sync finalise ipasync
+    # Do you want to continue? This operation can NOT be undone. [y/N]
 
-
+Once finalised, imported accounts can now be fully managed by Kanidm.
 
 ## Terminating the Sync Account
 
-{{#template  
+If you decide to cease importing accounts or need to remove all imported accounts from a sync
+account, you can choose to terminate the agreement removing all data that was imported.
+
+{{#template
     ../templates/kani-warning.md
     imagepath=../images
     title=Warning!
-    text=
+    text=You can not undo this operation. Once you have terminated an agreement, Kanidm deletes all of the synchronised data, and you can not resume synchronisation.
 }}
 
+    kanidm system sync terminate <sync account name>
+    kanidm system sync terminate ipasync
+    # Do you want to continue? This operation can NOT be undone. [y/N]
 
-
+Once terminated all imported data will be deleted by Kanidm.
 

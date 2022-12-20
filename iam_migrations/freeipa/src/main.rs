@@ -12,12 +12,16 @@
 #![allow(clippy::expect_used)]
 
 mod config;
+mod error;
 
 #[cfg(test)]
 mod tests;
 
 use crate::config::{Config, EntryConfig};
+use crate::error::SyncError;
+use chrono::Utc;
 use clap::Parser;
+use cron::Schedule;
 use std::collections::HashMap;
 use std::fs::metadata;
 use std::fs::File;
@@ -25,8 +29,17 @@ use std::io::Read;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use std::thread;
+use std::time::Duration;
+use tokio::io::AsyncWriteExt;
+use tokio::net::TcpListener;
 use tokio::runtime;
+use tokio::sync::broadcast;
+use tokio::time::sleep;
+
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
@@ -84,14 +97,182 @@ async fn driver_main(opt: Opt) {
         }
     };
 
-    // Do we need this?
-    // let cb = cb.connect_timeout(cfg.conn_timeout);
+    let expression = sync_config.schedule.as_deref().unwrap_or("0 */5 * * * * *");
 
+    let schedule = match Schedule::from_str(expression) {
+        Ok(s) => s,
+        Err(_) => {
+            error!("Failed to parse cron schedule expression");
+            return;
+        }
+    };
+
+    if opt.schedule {
+        let last_op_status = Arc::new(AtomicBool::new(true));
+        let (broadcast_tx, mut broadcast_rx) = broadcast::channel(4);
+
+        let last_op_status_c = last_op_status.clone();
+
+        // Can we setup the socket for status?
+
+        let status_handle = if let Some(sb) = sync_config.status_bind.as_deref() {
+            // Can we bind?
+            let listener = match TcpListener::bind(sb).await {
+                Ok(l) => l,
+                Err(e) => {
+                    error!(?e, "Failed to bind status socket");
+                    return;
+                }
+            };
+
+            info!("Status listener is started on {:?}", sb);
+            // Detach a status listener.
+            let status_rx = broadcast_tx.subscribe();
+            Some(tokio::spawn(async move {
+                status_task(listener, status_rx, last_op_status_c).await
+            }))
+        } else {
+            warn!("No status listener configured, this will prevent you monitoring the sync tool");
+            None
+        };
+
+        // main driver loop
+        let driver_handle = tokio::spawn(async move {
+            loop {
+                let now = Utc::now();
+                let next_time = match schedule.after(&now).next() {
+                    Some(v) => v,
+                    None => {
+                        error!("Failed to access any future scheduled events, terminating.");
+                        break;
+                    }
+                };
+
+                // If we don't do 1 + here we can trigger the event multiple times
+                // rapidly since we are in the same second.
+                let wait_seconds = 1 + (next_time - now).num_seconds() as u64;
+                info!("next sync on {}, wait_time = {}s", next_time, wait_seconds);
+
+                tokio::select! {
+                    _ = broadcast_rx.recv() => {
+                        // stop the event loop!
+                        break;
+                    }
+                    _ = sleep(Duration::from_secs(wait_seconds)) => {
+                        info!("starting sync ...");
+                        match run_sync(cb.clone(), &sync_config, &opt).await {
+                            Ok(_) => last_op_status.store(true, Ordering::Relaxed),
+                            Err(e) => {
+                                error!(?e, "sync completed with error");
+                                last_op_status.store(false, Ordering::Relaxed)
+                            }
+                        };
+                    }
+                }
+            }
+            info!("Stopped sync driver");
+        });
+
+        // Block on signals now.
+        loop {
+            tokio::select! {
+                Ok(()) = tokio::signal::ctrl_c() => {
+                    break
+                }
+                Some(()) = async move {
+                    let sigterm = tokio::signal::unix::SignalKind::terminate();
+                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                } => {
+                    break
+                }
+                Some(()) = async move {
+                    let sigterm = tokio::signal::unix::SignalKind::alarm();
+                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                } => {
+                    // Ignore
+                }
+                Some(()) = async move {
+                    let sigterm = tokio::signal::unix::SignalKind::hangup();
+                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                } => {
+                    // Ignore
+                }
+                Some(()) = async move {
+                    let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                } => {
+                    // Ignore
+                }
+                Some(()) = async move {
+                    let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                } => {
+                    // Ignore
+                }
+            }
+        }
+
+        broadcast_tx
+            .send(true)
+            .expect("Failed to trigger a clean shutdown!");
+
+        let _ = driver_handle.await;
+        if let Some(sh) = status_handle {
+            let _ = sh.await;
+        }
+    } else {
+        if let Err(e) = run_sync(cb, &sync_config, &opt).await {
+            error!(?e, "Sync completed with error");
+        };
+    }
+}
+
+async fn status_task(
+    listener: TcpListener,
+    mut status_rx: broadcast::Receiver<bool>,
+    last_op_status: Arc<AtomicBool>,
+) {
+    loop {
+        tokio::select! {
+            _ = status_rx.recv() => {
+                break;
+            }
+            maybe_sock = listener.accept() => {
+                let mut stream = match maybe_sock {
+                    Ok((sock, addr)) => {
+                        debug!("accept from {:?}", addr);
+                        sock
+                    }
+                    Err(e) => {
+                        error!(?e, "Failed to accept status connection");
+                        continue;
+                    }
+                };
+
+                let sr = if last_op_status.load(Ordering::Relaxed) {
+                     stream.write_all(b"Ok\n").await
+                } else {
+                     stream.write_all(b"Err\n").await
+                };
+                if let Err(e) = sr {
+                    error!(?e, "Failed to send status");
+                }
+            }
+        }
+    }
+    info!("Stopped status task");
+}
+
+async fn run_sync(
+    cb: KanidmClientBuilder,
+    sync_config: &Config,
+    opt: &Opt,
+) -> Result<(), SyncError> {
     let rsclient = match cb.build() {
         Ok(rsc) => rsc,
         Err(_e) => {
             error!("Failed to build async client");
-            return;
+            return Err(SyncError::ClientConfig);
         }
     };
 
@@ -99,7 +280,6 @@ async fn driver_main(opt: Opt) {
 
     // Preflight check.
     //  * can we connect to ipa?
-
     let mut ipa_client = match LdapClientBuilder::new(&sync_config.ipa_uri)
         .add_tls_ca(&sync_config.ipa_ca)
         .build()
@@ -108,7 +288,7 @@ async fn driver_main(opt: Opt) {
         Ok(lc) => lc,
         Err(e) => {
             error!(?e, "Failed to connect to freeipa");
-            return;
+            return Err(SyncError::LdapConn);
         }
     };
 
@@ -124,7 +304,7 @@ async fn driver_main(opt: Opt) {
         }
         Err(e) => {
             error!(?e, "Failed to bind (authenticate) to freeipa");
-            return;
+            return Err(SyncError::LdapAuth);
         }
     };
 
@@ -134,7 +314,7 @@ async fn driver_main(opt: Opt) {
         Ok(s) => s,
         Err(e) => {
             error!(?e, "Failed to access scim sync status");
-            return;
+            return Err(SyncError::SyncStatus);
         }
     };
 
@@ -184,13 +364,13 @@ async fn driver_main(opt: Opt) {
 
     debug!(ipa_sync_base_dn = ?sync_config.ipa_sync_base_dn, ?cookie, ?mode, ?filter);
     let sync_result = match ipa_client
-        .syncrepl(sync_config.ipa_sync_base_dn, filter, cookie, mode)
+        .syncrepl(sync_config.ipa_sync_base_dn.clone(), filter, cookie, mode)
         .await
     {
         Ok(results) => results,
         Err(e) => {
             error!(?e, "Failed to perform syncrepl from ipa");
-            return;
+            return Err(SyncError::LdapSyncrepl);
         }
     };
 
@@ -211,7 +391,7 @@ async fn driver_main(opt: Opt) {
     .await
     {
         Ok(ssr) => ssr,
-        Err(()) => return,
+        Err(()) => return Err(SyncError::Preprocess),
     };
 
     if opt.proto_dump {
@@ -220,17 +400,21 @@ async fn driver_main(opt: Opt) {
         if let Err(e) = serde_json::to_writer_pretty(stdout, &scim_sync_request) {
             error!(?e, "Failed to serialise scim sync request");
         };
+        Ok(())
     } else if opt.dry_run {
         info!("dry-run complete");
         info!("Success!");
+        Ok(())
     } else {
         if let Err(e) = rsclient.scim_v1_sync_update(&scim_sync_request).await {
             error!(
                 ?e,
                 "Failed to submit scim sync update - see the kanidmd server log for more details."
             );
+            Err(SyncError::SyncUpdate)
         } else {
             info!("Success!");
+            Ok(())
         }
     }
     // done!

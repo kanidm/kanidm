@@ -45,12 +45,13 @@ base64urlsafedata = "0.1.2"
 bytes = "^1.3.0"
 clap = { version = "^3.2", features = ["derive"] }
 clap_complete = "^3.2.5"
-# Forced by saffron
+# Forced by saffron/cron
 chrono = "^0.4.23"
 compact_jwt = "^0.2.3"
 # compact_jwt = { path = "../compact_jwt" }
 concread = "^0.4.0"
 # concread = { path = "../concread" }
+cron = "0.12.0"
 crossbeam = "0.8.1"
 criterion = "^0.4.0"
 csv = "1.1.6"

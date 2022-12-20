@@ -1,4 +1,4 @@
 dn: cn=Retro Changelog Plugin,cn=plugins,cn=config
 changetype: modify
 add: nsslapd-include-suffix
-nsslapd-include-suffix: dc=dev,dc=kanidm,dc=com
+nsslapd-include-suffix: dc=ipa,dc=dev,dc=kanidm,dc=com
