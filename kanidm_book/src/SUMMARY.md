@@ -31,6 +31,11 @@
 - [RADIUS](integrations/radius.md)
 - [LDAP](integrations/ldap.md)
 
+# Synchronisation
+
+- [Concepts](sync/concepts.md)
+- [FreeIPA](sync/freeipa.md)
+
 # Integration Examples
 
 - [Kubernetes Ingress](examples/k8s_ingress_example.md)

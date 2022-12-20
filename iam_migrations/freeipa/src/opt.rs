@@ -31,6 +31,11 @@ pub struct Opt {
     #[clap(short = 'n')]
     pub dry_run: bool,
 
+    /// Run in scheduled mode, where the sync tool will periodically attempt to sync between
+    /// FreeIPA and Kanidm.
+    #[clap(long = "schedule")]
+    pub schedule: bool,
+
     /// Skip the root user permission check.
     #[clap(short, long, hide = true)]
     pub skip_root_check: bool,

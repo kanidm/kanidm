@@ -1,4 +1,5 @@
 use crate::SynchOpt;
+use dialoguer::Confirm;
 
 impl SynchOpt {
     pub fn debug(&self) -> bool {
@@ -8,7 +9,9 @@ impl SynchOpt {
             SynchOpt::Create { copt, .. }
             | SynchOpt::GenerateToken { copt, .. }
             | SynchOpt::DestroyToken { copt, .. }
-            | SynchOpt::ForceRefresh { copt, .. } => copt.debug,
+            | SynchOpt::ForceRefresh { copt, .. }
+            | SynchOpt::Finalise { copt, .. }
+            | SynchOpt::Terminate { copt, .. } => copt.debug,
         }
     }
 
@@ -67,6 +70,40 @@ impl SynchOpt {
             SynchOpt::ForceRefresh { account_id, copt } => {
                 let client = copt.to_client().await;
                 match client.idm_sync_account_force_refresh(account_id).await {
+                    Ok(()) => println!("Success"),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
+            SynchOpt::Finalise { account_id, copt } => {
+                if !Confirm::new()
+                    .default(false)
+                    .with_prompt("Do you want to continue? This operation can NOT be undone.")
+                    .interact()
+                    .unwrap()
+                {
+                    info!("No changes were made");
+                    return;
+                }
+
+                let client = copt.to_client().await;
+                match client.idm_sync_account_finalise(account_id).await {
+                    Ok(()) => println!("Success"),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
+            SynchOpt::Terminate { account_id, copt } => {
+                if !Confirm::new()
+                    .default(false)
+                    .with_prompt("Do you want to continue? This operation can NOT be undone.")
+                    .interact()
+                    .unwrap()
+                {
+                    info!("No changes were made");
+                    return;
+                }
+
+                let client = copt.to_client().await;
+                match client.idm_sync_account_terminate(account_id).await {
                     Ok(()) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }

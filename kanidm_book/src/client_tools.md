@@ -1,8 +1,7 @@
 # Client tools
 
 To interact with Kanidm as an administrator, you'll need to use our command 
-line tools. If you haven't installed them yet, 
-[install them now](installing_client_tools.mdc).
+line tools. If you haven't installed them yet, [install them now](installing_client_tools.md).
 
 ## Kanidm configuration
 

@@ -1672,7 +1672,6 @@ impl<'a> SchemaWriteTransaction<'a> {
                 uuid: UUID_SCHEMA_CLASS_SYNC_OBJECT,
                 description: String::from("A class denoting that an entry is synchronised from an external source. This entry may not be modifiable."),
                 systemmust: vec![
-                    AttrString::from("uuid"),
                     AttrString::from("sync_parent_uuid")
                 ],
                 systemmay: vec![

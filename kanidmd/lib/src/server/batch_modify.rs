@@ -131,7 +131,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .collect::<Result<Vec<EntryInvalidCommitted>, _>>()?;
 
         // Did any of the candidates now become masked?
-        if candidates.iter().any(|e| e.mask_recycled_ts().is_none()) {
+        if std::iter::zip(
+            pre_candidates
+                .iter()
+                .map(|e| e.mask_recycled_ts().is_none()),
+            candidates.iter().map(|e| e.mask_recycled_ts().is_none()),
+        )
+        .any(|(a, b)| a != b)
+        {
             admin_warn!("Refusing to apply modifications that are attempting to bypass replication state machine.");
             return Err(OperationError::AccessDenied);
         }

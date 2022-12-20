@@ -63,4 +63,14 @@ impl KanidmClient {
         self.perform_patch_request(format!("/v1/sync_account/{}", id).as_str(), update_entry)
             .await
     }
+
+    pub async fn idm_sync_account_finalise(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_get_request(format!("/v1/sync_account/{}/_finalise", id).as_str())
+            .await
+    }
+
+    pub async fn idm_sync_account_terminate(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_get_request(format!("/v1/sync_account/{}/_terminate", id).as_str())
+            .await
+    }
 }
