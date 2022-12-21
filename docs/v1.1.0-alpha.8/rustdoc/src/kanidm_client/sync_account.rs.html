@@ -64,6 +64,16 @@
 <span id="64">64</span>
 <span id="65">65</span>
 <span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{ClientError, KanidmClient};
 <span class="kw">use </span>kanidm_proto::v1::Entry;
 <span class="kw">use </span>std::collections::BTreeMap;
@@ -127,6 +137,16 @@
             .insert(<span class="string">&quot;sync_cookie&quot;</span>.to_string(), Vec::with_capacity(<span class="number">0</span>));
 
         <span class="self">self</span>.perform_patch_request(<span class="macro">format!</span>(<span class="string">&quot;/v1/sync_account/{}&quot;</span>, id).as_str(), update_entry)
+            .<span class="kw">await
+    </span>}
+
+    <span class="kw">pub async fn </span>idm_sync_account_finalise(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), ClientError&gt; {
+        <span class="self">self</span>.perform_get_request(<span class="macro">format!</span>(<span class="string">&quot;/v1/sync_account/{}/_finalise&quot;</span>, id).as_str())
+            .<span class="kw">await
+    </span>}
+
+    <span class="kw">pub async fn </span>idm_sync_account_terminate(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), ClientError&gt; {
+        <span class="self">self</span>.perform_get_request(<span class="macro">format!</span>(<span class="string">&quot;/v1/sync_account/{}/_terminate&quot;</span>, id).as_str())
             .<span class="kw">await
     </span>}
 }

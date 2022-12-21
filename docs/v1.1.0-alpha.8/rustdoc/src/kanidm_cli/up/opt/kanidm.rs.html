@@ -875,6 +875,33 @@
 <span id="875">875</span>
 <span id="876">876</span>
 <span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
 </pre><pre class="rust"><code><span class="kw">use </span>clap::{Args, Subcommand};
 
 <span class="attribute">#[derive(Debug, Args)]
@@ -1636,7 +1663,8 @@
         <span class="attribute">#[clap(name = <span class="string">&quot;description&quot;</span>)]
         </span>description: <span class="prelude-ty">Option</span>&lt;String&gt;,
     },
-    <span class="attribute">#[clap(name = <span class="string">&quot;generate-token&quot;</span>)]
+    <span class="doccomment">/// Generate a bearer token for an IDM sync account
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;generate-token&quot;</span>)]
     </span>GenerateToken {
         <span class="attribute">#[clap()]
         </span>account_id: String,
@@ -1645,7 +1673,8 @@
         <span class="attribute">#[clap(flatten)]
         </span>copt: CommonOpt,
     },
-    <span class="attribute">#[clap(name = <span class="string">&quot;destroy-token&quot;</span>)]
+    <span class="doccomment">/// Destroy (revoke) the bearer token for an IDM sync account
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;destroy-token&quot;</span>)]
     </span>DestroyToken {
         <span class="attribute">#[clap()]
         </span>account_id: String,
@@ -1661,7 +1690,31 @@
         </span>account_id: String,
         <span class="attribute">#[clap(flatten)]
         </span>copt: CommonOpt,
-    }
+    },
+    <span class="doccomment">/// Finalise and remove this sync account. This will transfer all synchronised entries into
+    /// the authority of Kanidm. This signals the end of a migration from an external IDM into
+    /// Kanidm. ⚠️  This action can NOT be undone. Once complete, it is most likely
+    /// that attempting to recreate a sync account from the same IDM will fail due to conflicting
+    /// entries that Kanidm now owns.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;finalise&quot;</span>)]
+    </span>Finalise {
+        <span class="attribute">#[clap()]
+        </span>account_id: String,
+        <span class="attribute">#[clap(flatten)]
+        </span>copt: CommonOpt,
+    },
+    <span class="doccomment">/// Terminate and remove this sync account. This will DELETE all entries that were imported
+    /// from the external IDM source. ⚠️  This action can NOT be undone, and will require you to
+    /// recreate the sync account if you
+    /// wish to re-import data. Recreating the sync account may fail until the recycle bin and
+    /// and tombstones are purged.
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;terminate&quot;</span>)]
+    </span>Terminate {
+        <span class="attribute">#[clap()]
+        </span>account_id: String,
+        <span class="attribute">#[clap(flatten)]
+        </span>copt: CommonOpt,
+    },
 }
 
 <span class="attribute">#[derive(Debug, Subcommand)]
@@ -1684,7 +1737,8 @@
         <span class="attribute">#[clap(subcommand)]
         </span>commands: DomainOpt,
     },
-    <span class="attribute">#[clap(name = <span class="string">&quot;sync&quot;</span>, hide = <span class="bool-val">true</span>)]
+    <span class="attribute">#[clap(name = <span class="string">&quot;sync&quot;</span>)]
+    </span><span class="doccomment">/// Configure synchronisation from an external IDM system
     </span>Synch {
         <span class="attribute">#[clap(subcommand)]
         </span>commands: SynchOpt,

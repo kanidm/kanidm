@@ -2908,6 +2908,35 @@
 <span id="2908">2908</span>
 <span id="2909">2909</span>
 <span id="2910">2910</span>
+<span id="2911">2911</span>
+<span id="2912">2912</span>
+<span id="2913">2913</span>
+<span id="2914">2914</span>
+<span id="2915">2915</span>
+<span id="2916">2916</span>
+<span id="2917">2917</span>
+<span id="2918">2918</span>
+<span id="2919">2919</span>
+<span id="2920">2920</span>
+<span id="2921">2921</span>
+<span id="2922">2922</span>
+<span id="2923">2923</span>
+<span id="2924">2924</span>
+<span id="2925">2925</span>
+<span id="2926">2926</span>
+<span id="2927">2927</span>
+<span id="2928">2928</span>
+<span id="2929">2929</span>
+<span id="2930">2930</span>
+<span id="2931">2931</span>
+<span id="2932">2932</span>
+<span id="2933">2933</span>
+<span id="2934">2934</span>
+<span id="2935">2935</span>
+<span id="2936">2936</span>
+<span id="2937">2937</span>
+<span id="2938">2938</span>
+<span id="2939">2939</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Access Control Profiles
 //!
 //! This is a pretty important and security sensitive part of the code - it&#39;s
@@ -3276,6 +3305,7 @@
     <span class="comment">// I don&#39;t think we need this? The ident is implied by the requestor.
     // ident: Uuid,
     </span><span class="kw">pub </span>target: Uuid,
+    <span class="kw">pub </span>delete: bool,
     <span class="kw">pub </span>search: BTreeSet&lt;AttrString&gt;,
     <span class="kw">pub </span>modify_pres: BTreeSet&lt;AttrString&gt;,
     <span class="kw">pub </span>modify_rem: BTreeSet&lt;AttrString&gt;,
@@ -3448,41 +3478,41 @@
 
         <span class="comment">// For each entry
         </span><span class="kw">let </span>allowed_entries: Vec&lt;Arc&lt;EntrySealedCommitted&gt;&gt; =
-                    entries
-                                    .into_iter()
-                                    .filter(|e| {
-                                        <span class="comment">// For each acp
-                                        </span><span class="kw">let </span>allowed_attrs: BTreeSet&lt;<span class="kw-2">&amp;</span>str&gt; = related_acp
-                                            .iter()
-                                            .filter_map(|(acs, f_res)| {
-                                                <span class="comment">// if it applies
-                                                </span><span class="kw">if </span>e.entry_match_no_index(f_res) {
-                                                    <span class="macro">security_access!</span>(entry = <span class="question-mark">?</span>e.get_uuid(), acs = %acs.acp.name, <span class="string">&quot;entry matches acs&quot;</span>);
-                                                    <span class="comment">// add search_attrs to allowed.
-                                                    </span><span class="prelude-val">Some</span>(acs.attrs.iter().map(|s| s.as_str()))
-                                                } <span class="kw">else </span>{
-                                                    <span class="macro">trace!</span>(entry = <span class="question-mark">?</span>e.get_uuid(), acs = %acs.acp.name, <span class="string">&quot;entry DOES NOT match acs&quot;</span>); <span class="comment">// should this be `security_access`?
-                                                    </span><span class="prelude-val">None
-                                                </span>}
-                                            })
-                                            .flatten()
-                                            .collect();
+            entries
+                .into_iter()
+                .filter(|e| {
+                    <span class="comment">// For each acp
+                    </span><span class="kw">let </span>allowed_attrs: BTreeSet&lt;<span class="kw-2">&amp;</span>str&gt; = related_acp
+                        .iter()
+                        .filter_map(|(acs, f_res)| {
+                            <span class="comment">// if it applies
+                            </span><span class="kw">if </span>e.entry_match_no_index(f_res) {
+                                <span class="macro">security_access!</span>(entry = <span class="question-mark">?</span>e.get_uuid(), acs = %acs.acp.name, <span class="string">&quot;entry matches acs&quot;</span>);
+                                <span class="comment">// add search_attrs to allowed.
+                                </span><span class="prelude-val">Some</span>(acs.attrs.iter().map(|s| s.as_str()))
+                            } <span class="kw">else </span>{
+                                <span class="macro">trace!</span>(entry = <span class="question-mark">?</span>e.get_uuid(), acs = %acs.acp.name, <span class="string">&quot;entry DOES NOT match acs&quot;</span>); <span class="comment">// should this be `security_access`?
+                                </span><span class="prelude-val">None
+                            </span>}
+                        })
+                        .flatten()
+                        .collect();
 
-                                        <span class="macro">security_access!</span>(
-                                            requested = <span class="question-mark">?</span>requested_attrs,
-                                            allows = <span class="question-mark">?</span>allowed_attrs,
-                                            <span class="string">&quot;attributes&quot;</span>,
-                                        );
+                    <span class="macro">security_access!</span>(
+                        requested = <span class="question-mark">?</span>requested_attrs,
+                        allows = <span class="question-mark">?</span>allowed_attrs,
+                        <span class="string">&quot;attributes&quot;</span>,
+                    );
 
-                                        <span class="comment">// is attr set a subset of allowed set?
-                                        // true -&gt; entry is allowed in result set
-                                        // false -&gt; the entry is not allowed to be searched by this entity, so is
-                                        //          excluded.
-                                        </span><span class="kw">let </span>decision = requested_attrs.is_subset(<span class="kw-2">&amp;</span>allowed_attrs);
-                                        <span class="macro">security_access!</span>(<span class="question-mark">?</span>decision, <span class="string">&quot;search attr decision&quot;</span>);
-                                        decision
-                                    })
-                                    .collect();
+                    <span class="comment">// is attr set a subset of allowed set?
+                    // true -&gt; entry is allowed in result set
+                    // false -&gt; the entry is not allowed to be searched by this entity, so is
+                    //          excluded.
+                    </span><span class="kw">let </span>decision = requested_attrs.is_subset(<span class="kw-2">&amp;</span>allowed_attrs);
+                    <span class="macro">security_access!</span>(<span class="question-mark">?</span>decision, <span class="string">&quot;search attr decision&quot;</span>);
+                    decision
+                })
+                .collect();
 
         <span class="kw">if </span>allowed_entries.is_empty() {
             <span class="macro">security_access!</span>(<span class="string">&quot;denied ❌&quot;</span>);
@@ -4014,6 +4044,44 @@
         <span class="prelude-val">Ok</span>(r)
     }
 
+    <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;access::delete_related_acp&quot;</span>, skip_all)]
+    </span><span class="kw">fn </span>delete_related_acp&lt;<span class="lifetime">&#39;b</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><span class="self">self</span>,
+        ident: <span class="kw-2">&amp;</span>Identity,
+    ) -&gt; Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span>AccessControlDelete, Filter&lt;FilterValidResolved&gt;)&gt; {
+        <span class="comment">// Some useful references we&#39;ll use for the remainder of the operation
+        </span><span class="kw">let </span>delete_state = <span class="self">self</span>.get_delete();
+        <span class="kw">let </span>acp_resolve_filter_cache = <span class="self">self</span>.get_acp_resolve_filter_cache();
+
+        <span class="kw">let </span>related_acp: Vec&lt;(<span class="kw-2">&amp;</span>AccessControlDelete, <span class="kw">_</span>)&gt; = delete_state
+            .iter()
+            .filter_map(|acs| {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(receiver) = acs.acp.receiver {
+                    <span class="kw">if </span>ident.is_memberof(receiver) {
+                        acs.acp
+                            .targetscope
+                            .resolve(ident, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(acp_resolve_filter_cache))
+                            .map_err(|e| {
+                                <span class="macro">admin_error!</span>(
+                                    <span class="string">&quot;A internal filter/event was passed for resolution!?!? {:?}&quot;</span>,
+                                    e
+                                );
+                                e
+                            })
+                            .ok()
+                            .map(|f_res| (acs, f_res))
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">None
+                    </span>}
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
+            })
+            .collect();
+
+        related_acp
+    }
+
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;access::delete_allow_operation&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>delete_allow_operation(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -4044,36 +4112,8 @@
             </span>}
         };
 
-        <span class="comment">// Some useful references we&#39;ll use for the remainder of the operation
-        </span><span class="kw">let </span>delete_state = <span class="self">self</span>.get_delete();
-        <span class="kw">let </span>acp_resolve_filter_cache = <span class="self">self</span>.get_acp_resolve_filter_cache();
-
         <span class="comment">// Find the acps that relate to the caller.
-        </span><span class="kw">let </span>related_acp: Vec&lt;(<span class="kw-2">&amp;</span>AccessControlDelete, <span class="kw">_</span>)&gt; = delete_state
-            .iter()
-            .filter_map(|acs| {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(receiver) = acs.acp.receiver {
-                    <span class="kw">if </span>de.ident.is_memberof(receiver) {
-                        acs.acp
-                            .targetscope
-                            .resolve(<span class="kw-2">&amp;</span>de.ident, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(acp_resolve_filter_cache))
-                            .map_err(|e| {
-                                <span class="macro">admin_error!</span>(
-                                    <span class="string">&quot;A internal filter/event was passed for resolution!?!? {:?}&quot;</span>,
-                                    e
-                                );
-                                e
-                            })
-                            .ok()
-                            .map(|f_res| (acs, f_res))
-                    } <span class="kw">else </span>{
-                        <span class="prelude-val">None
-                    </span>}
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">None
-                </span>}
-            })
-            .collect();
+        </span><span class="kw">let </span>related_acp = <span class="self">self</span>.delete_related_acp(<span class="kw-2">&amp;</span>de.ident);
 
         <span class="comment">/*
         related_acp.iter().for_each(|racp| {
@@ -4166,7 +4206,8 @@
 
         // == modify ==
 
-        </span><span class="kw">let </span>modify_related_acp: Vec&lt;(<span class="kw-2">&amp;</span>AccessControlModify, <span class="kw">_</span>)&gt; = <span class="self">self</span>.modify_related_acp(ident);
+        </span><span class="kw">let </span>modify_related_acp = <span class="self">self</span>.modify_related_acp(ident);
+        <span class="kw">let </span>delete_related_acp = <span class="self">self</span>.delete_related_acp(ident);
 
         <span class="comment">/*
         modify_related_acp.iter().for_each(|(racp, _)| {
@@ -4233,8 +4274,23 @@
                     .flat_map(|acp| acp.classes.iter().cloned())
                     .collect();
 
+                <span class="comment">// == delete ==
+                </span><span class="kw">let </span>delete = delete_related_acp.iter().any(|(acd, f_res)| {
+                    <span class="kw">if </span>e.entry_match_no_index(f_res) {
+                        <span class="macro">security_access!</span>(
+                            entry_uuid = <span class="question-mark">?</span>e.get_uuid(),
+                            acs = %acd.acp.name,
+                            <span class="string">&quot;entry matches acd&quot;
+                        </span>);
+                        <span class="bool-val">true
+                    </span>} <span class="kw">else </span>{
+                        <span class="bool-val">false
+                    </span>}
+                });
+
                 AccessEffectivePermission {
                     target: e.get_uuid(),
+                    delete,
                     search: search_effective,
                     modify_pres,
                     modify_rem,
@@ -5769,6 +5825,7 @@
             <span class="macro">vec!</span>[],
             <span class="kw-2">&amp;</span>r_set,
             <span class="macro">vec!</span>[AccessEffectivePermission {
+                delete: <span class="bool-val">false</span>,
                 target: <span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>),
                 search: <span class="macro">btreeset!</span>[AttrString::from(<span class="string">&quot;name&quot;</span>)],
                 modify_pres: BTreeSet::new(),
@@ -5809,6 +5866,7 @@
             }],
             <span class="kw-2">&amp;</span>r_set,
             <span class="macro">vec!</span>[AccessEffectivePermission {
+                delete: <span class="bool-val">false</span>,
                 target: <span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>),
                 search: BTreeSet::new(),
                 modify_pres: <span class="macro">btreeset!</span>[AttrString::from(<span class="string">&quot;name&quot;</span>)],

@@ -266,15 +266,25 @@
 <span id="266">266</span>
 <span id="267">267</span>
 <span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::routemaps::{RouteMap, RouteMaps};
 <span class="kw">use super</span>::{to_tide_response, AppState, RequestExtensions};
 <span class="kw">use </span>kanidm_proto::scim_v1::ScimSyncRequest;
 <span class="kw">use </span>kanidm_proto::v1::Entry <span class="kw">as </span>ProtoEntry;
 <span class="kw">use </span>kanidmd_lib::prelude::<span class="kw-2">*</span>;
 
-<span class="kw">use </span><span class="kw">super</span>::v1::{
-    json_rest_event_delete_id, json_rest_event_get, json_rest_event_get_id, json_rest_event_post,
-};
+<span class="kw">use </span><span class="kw">super</span>::v1::{json_rest_event_get, json_rest_event_get_id, json_rest_event_post};
 
 <span class="kw">pub async fn </span>sync_account_get(req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
     <span class="kw">let </span>filter = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;class&quot;</span>, PartialValue::new_class(<span class="string">&quot;sync_account&quot;</span>)));
@@ -289,11 +299,6 @@
 <span class="kw">pub async fn </span>sync_account_id_get(req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
     <span class="kw">let </span>filter = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;class&quot;</span>, PartialValue::new_class(<span class="string">&quot;sync_account&quot;</span>)));
     json_rest_event_get_id(req, filter, <span class="prelude-val">None</span>).<span class="kw">await
-</span>}
-
-<span class="kw">pub async fn </span>sync_account_id_delete(req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
-    <span class="kw">let </span>filter = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;class&quot;</span>, PartialValue::new_class(<span class="string">&quot;sync_account&quot;</span>)));
-    json_rest_event_delete_id(req, filter).<span class="kw">await
 </span>}
 
 <span class="kw">pub async fn </span>sync_account_id_patch(<span class="kw-2">mut </span>req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
@@ -316,23 +321,35 @@
     to_tide_response(res, hvalue)
 }
 
-<span class="comment">/*
-pub async fn sync_account_token_get(req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param(&quot;id&quot;)?;
+<span class="kw">pub async fn </span>sync_account_id_get_finalise(req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
+    <span class="kw">let </span>uat = req.get_current_uat();
+    <span class="kw">let </span>uuid_or_name = req.get_url_param(<span class="string">&quot;id&quot;</span>)<span class="question-mark">?</span>;
 
-    let (eventid, hvalue) = req.new_eventid();
+    <span class="kw">let </span>(eventid, hvalue) = req.new_eventid();
 
-    let res = req
+    <span class="kw">let </span>res = req
         .state()
-        .qe_r_ref
-        .handle_service_account_api_token_get(uat, uuid_or_name, eventid)
-        .await;
+        .qe_w_ref
+        .handle_sync_account_finalise(uat, uuid_or_name, eventid)
+        .<span class="kw">await</span>;
     to_tide_response(res, hvalue)
 }
-*/
 
-</span><span class="kw">pub async fn </span>sync_account_token_post(<span class="kw-2">mut </span>req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
+<span class="kw">pub async fn </span>sync_account_id_get_terminate(req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
+    <span class="kw">let </span>uat = req.get_current_uat();
+    <span class="kw">let </span>uuid_or_name = req.get_url_param(<span class="string">&quot;id&quot;</span>)<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>(eventid, hvalue) = req.new_eventid();
+
+    <span class="kw">let </span>res = req
+        .state()
+        .qe_w_ref
+        .handle_sync_account_terminate(uat, uuid_or_name, eventid)
+        .<span class="kw">await</span>;
+    to_tide_response(res, hvalue)
+}
+
+<span class="kw">pub async fn </span>sync_account_token_post(<span class="kw-2">mut </span>req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
     <span class="kw">let </span>uat = req.get_current_uat();
     <span class="kw">let </span>uuid_or_name = req.get_url_param(<span class="string">&quot;id&quot;</span>)<span class="question-mark">?</span>;
 
@@ -525,8 +542,15 @@ pub async fn sync_account_token_get(req: tide::Request&lt;AppState&gt;) -&gt; ti
     sync_account_route
         .at(<span class="string">&quot;/:id&quot;</span>)
         .mapped_get(routemap, sync_account_id_get)
-        .mapped_patch(routemap, sync_account_id_patch)
-        .mapped_delete(routemap, sync_account_id_delete);
+        .mapped_patch(routemap, sync_account_id_patch);
+
+    sync_account_route
+        .at(<span class="string">&quot;/:id/_finalise&quot;</span>)
+        .mapped_get(routemap, sync_account_id_get_finalise);
+
+    sync_account_route
+        .at(<span class="string">&quot;/:id/_terminate&quot;</span>)
+        .mapped_get(routemap, sync_account_id_get_terminate);
 
     sync_account_route
         .at(<span class="string">&quot;/:id/_sync_token&quot;</span>)

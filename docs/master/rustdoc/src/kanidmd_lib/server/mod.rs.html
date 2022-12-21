@@ -4641,6 +4641,13 @@
 <span id="4641">4641</span>
 <span id="4642">4642</span>
 <span id="4643">4643</span>
+<span id="4644">4644</span>
+<span id="4645">4645</span>
+<span id="4646">4646</span>
+<span id="4647">4647</span>
+<span id="4648">4648</span>
+<span id="4649">4649</span>
+<span id="4650">4650</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
@@ -6452,7 +6459,14 @@
         <span class="macro">trace!</span>(<span class="string">&quot;modify: candidates -&gt; {:?}&quot;</span>, candidates);
 
         <span class="comment">// Did any of the candidates now become masked?
-        </span><span class="kw">if </span>candidates.iter().any(|e| e.mask_recycled_ts().is_none()) {
+        </span><span class="kw">if </span>std::iter::zip(
+            pre_candidates
+                .iter()
+                .map(|e| e.mask_recycled_ts().is_none()),
+            candidates.iter().map(|e| e.mask_recycled_ts().is_none()),
+        )
+        .any(|(a, b)| a != b)
+        {
             <span class="macro">admin_warn!</span>(<span class="string">&quot;Refusing to apply modifications that are attempting to bypass replication state machine.&quot;</span>);
             <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::AccessDenied);
         }

@@ -28,6 +28,8 @@
 <span id="28">28</span>
 <span id="29">29</span>
 <span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
 </pre><pre class="rust"><code><span class="kw">use </span>serde::Deserialize;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>url::Url;
@@ -36,6 +38,8 @@
 <span class="attribute">#[derive(Debug, Deserialize)]
 </span><span class="kw">pub struct </span>Config {
     <span class="kw">pub </span>sync_token: String,
+    <span class="kw">pub </span>schedule: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>status_bind: <span class="prelude-ty">Option</span>&lt;String&gt;,
     <span class="kw">pub </span>ipa_uri: Url,
     <span class="kw">pub </span>ipa_ca: String,
     <span class="kw">pub </span>ipa_sync_dn: String,

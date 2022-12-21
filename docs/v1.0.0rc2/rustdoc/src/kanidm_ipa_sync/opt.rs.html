@@ -35,6 +35,11 @@
 <span id="35">35</span>
 <span id="36">36</span>
 <span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
 </pre><pre class="rust"><code>
 
 <span class="kw">use </span>kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
@@ -67,6 +72,11 @@
     /// kanidm that would change state.
     </span><span class="attribute">#[clap(short = <span class="string">&#39;n&#39;</span>)]
     </span><span class="kw">pub </span>dry_run: bool,
+
+    <span class="doccomment">/// Run in scheduled mode, where the sync tool will periodically attempt to sync between
+    /// FreeIPA and Kanidm.
+    </span><span class="attribute">#[clap(long = <span class="string">&quot;schedule&quot;</span>)]
+    </span><span class="kw">pub </span>schedule: bool,
 
     <span class="doccomment">/// Skip the root user permission check.
     </span><span class="attribute">#[clap(short, long, hide = <span class="bool-val">true</span>)]

@@ -2647,7 +2647,6 @@
 <span id="2647">2647</span>
 <span id="2648">2648</span>
 <span id="2649">2649</span>
-<span id="2650">2650</span>
 </pre><pre class="rust"><code><span class="doccomment">//! [`Schema`] is one of the foundational concepts of the server. It provides a
 //! set of rules to enforce that [`Entries`] ava&#39;s must be compliant to, to be
 //! considered valid for commit to the database. This allows us to provide
@@ -4322,7 +4321,6 @@
                 uuid: UUID_SCHEMA_CLASS_SYNC_OBJECT,
                 description: String::from(<span class="string">&quot;A class denoting that an entry is synchronised from an external source. This entry may not be modifiable.&quot;</span>),
                 systemmust: <span class="macro">vec!</span>[
-                    AttrString::from(<span class="string">&quot;uuid&quot;</span>),
                     AttrString::from(<span class="string">&quot;sync_parent_uuid&quot;</span>)
                 ],
                 systemmay: <span class="macro">vec!</span>[
