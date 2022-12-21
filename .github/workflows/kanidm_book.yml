@@ -24,10 +24,19 @@ jobs:
             libsqlite3-dev libudev-dev \
             libpam0g-dev
 
+      - name: Setup deno
+        uses: denoland/setup-deno@v1 # Documentation: https://github.com/denoland/setup-deno
+        with:
+          deno-version: v1.x
+
+      - name: Test document formatting
+        run: |
+          make test/doc/format
+
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: 'latest'
+          mdbook-version: "latest"
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -46,7 +55,7 @@ jobs:
       - name: Install python 3.10
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: "3.10"
       - name: pykanidm docs
         run: |
           python -m pip install poetry
