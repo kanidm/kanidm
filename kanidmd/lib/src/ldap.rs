@@ -526,14 +526,20 @@ fn operationerr_to_ldapresultcode(e: OperationError) -> (LdapResultCode, String)
 #[inline]
 pub(crate) fn ldap_all_vattrs() -> Vec<String> {
     vec![
-        "entryuuid".to_string(),
-        "objectclass".to_string(),
-        "entrydn".to_string(),
+        "cn".to_string(),
         "email".to_string(),
         "emailaddress".to_string(),
+        "emailalternative".to_string(),
+        "emailprimary".to_string(),
+        "entrydn".to_string(),
+        "entryuuid".to_string(),
         "keys".to_string(),
+        "mail;alternative".to_string(),
+        "mailalternative".to_string(),
+        "mail;primary".to_string(),
+        "mailprimary".to_string(),
+        "objectclass".to_string(),
         "sshpublickey".to_string(),
-        "cn".to_string(),
         "uidnumber".to_string(),
     ]
 }
@@ -547,13 +553,19 @@ pub(crate) fn ldap_vattr_map(input: &str) -> &str {
     //
     //   LDAP NAME     KANI ATTR SOURCE NAME
     match input {
-        "entryuuid" => "uuid",
-        "objectclass" => "class",
+        "cn" => "name",
         "email" => "mail",
         "emailaddress" => "mail",
+        "emailalternative" => "mail",
+        "emailprimary" => "mail",
+        "entryuuid" => "uuid",
         "keys" => "ssh_publickey",
+        "mail;alternative" => "mail",
+        "mailalternative" => "mail",
+        "mail;primary" => "mail",
+        "mailprimary" => "mail",
+        "objectclass" => "class",
         "sshpublickey" => "ssh_publickey",
-        "cn" => "name",
         "uidnumber" => "gidnumber",
         a => a,
     }
