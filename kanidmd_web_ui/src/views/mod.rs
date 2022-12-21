@@ -237,6 +237,7 @@ impl ViewsApp {
         let current_user_uat = uat.clone();
 
         let ui_hint_experimental = uat.ui_hints.contains(&UiHint::ExperimentalFeatures);
+        let credential_update = uat.ui_hints.contains(&UiHint::CredentialUpdate);
 
         // WARN set dash-body against body here?
         html! {
@@ -269,12 +270,14 @@ impl ViewsApp {
                       </li>
                     }
 
-                    <li class="mb-1">
-                      <Link<ViewRoute> classes="nav-link" to={ViewRoute::Security}>
-                        <span data-feather="file"></span>
-                        { "Security" }
-                      </Link<ViewRoute>>
-                    </li>
+                    if credential_update {
+                      <li class="mb-1">
+                        <Link<ViewRoute> classes="nav-link" to={ViewRoute::Security}>
+                          <span data-feather="file"></span>
+                          { "Security" }
+                        </Link<ViewRoute>>
+                      </li>
+                    }
 
                     if ui_hint_experimental {
                       <li class="mb-1">
@@ -292,10 +295,10 @@ impl ViewsApp {
                         >{"Sign out"}</a>
                     </li>
                   </ul>
-                  <form class="d-flex">
-                    <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search" />
-                    <button class="btn btn-outline-light" type="submit">{"Search"}</button>
-                  </form>
+                  // <form class="d-flex">
+                  //   <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search" />
+                  //   <button class="btn btn-outline-light" type="submit">{"Search"}</button>
+                  // </form>
                 </div>
               </div>
             </nav>

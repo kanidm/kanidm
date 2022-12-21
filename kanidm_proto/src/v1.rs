@@ -327,12 +327,14 @@ impl fmt::Display for AuthType {
 pub enum UiHint {
     ExperimentalFeatures = 0,
     PosixAccount = 1,
+    CredentialUpdate = 2,
 }
 
 impl fmt::Display for UiHint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             UiHint::PosixAccount => write!(f, "PosixAccount"),
+            UiHint::CredentialUpdate => write!(f, "CredentialUpdate"),
             UiHint::ExperimentalFeatures => write!(f, "ExperimentalFeatures"),
         }
     }
@@ -343,6 +345,7 @@ impl FromStr for UiHint {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
+            "CredentialUpdate" => Ok(UiHint::CredentialUpdate),
             "PosixAccount" => Ok(UiHint::PosixAccount),
             "ExperimentalFeatures" => Ok(UiHint::ExperimentalFeatures),
             _ => Err(()),
