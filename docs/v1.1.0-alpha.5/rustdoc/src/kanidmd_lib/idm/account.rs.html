@@ -780,6 +780,13 @@
 <span id="780">780</span>
 <span id="781">781</span>
 <span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 <span class="kw">use </span>std::time::Duration;
 
@@ -880,6 +887,10 @@
             .flatten()
             .copied()
             .collect();
+
+        <span class="kw">if </span>!<span class="macro-nonterminal">$value</span>.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT) {
+            ui_hints.insert(UiHint::CredentialUpdate);
+        }
 
         <span class="kw">if </span><span class="macro-nonterminal">$value</span>.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_POSIXACCOUNT) {
             ui_hints.insert(UiHint::PosixAccount);
@@ -1504,7 +1515,8 @@
                 .expect(<span class="string">&quot;Unable to create uat&quot;</span>);
 
             <span class="comment">// Check the ui hints are as expected.
-            </span><span class="macro">assert!</span>(uat.ui_hints.is_empty());
+            </span><span class="macro">assert!</span>(uat.ui_hints.len() == <span class="number">1</span>);
+            <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::CredentialUpdate));
 
             <span class="comment">// Modify the user to be a posix account, ensure they get the hint.
             </span><span class="kw">let </span>me_posix = <span class="kw">unsafe </span>{
@@ -1530,8 +1542,9 @@
                 .to_userauthtoken(session_id, ct, AuthType::Passkey, <span class="prelude-val">None</span>)
                 .expect(<span class="string">&quot;Unable to create uat&quot;</span>);
 
-            <span class="macro">assert!</span>(uat.ui_hints.len() == <span class="number">1</span>);
+            <span class="macro">assert!</span>(uat.ui_hints.len() == <span class="number">2</span>);
             <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::PosixAccount));
+            <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::CredentialUpdate));
 
             <span class="comment">// Add a group with a ui hint, and then check they get the hint.
             </span><span class="kw">let </span>e = <span class="macro">entry_init!</span>(
@@ -1554,9 +1567,10 @@
                 .to_userauthtoken(session_id, ct, AuthType::Passkey, <span class="prelude-val">None</span>)
                 .expect(<span class="string">&quot;Unable to create uat&quot;</span>);
 
-            <span class="macro">assert!</span>(uat.ui_hints.len() == <span class="number">2</span>);
+            <span class="macro">assert!</span>(uat.ui_hints.len() == <span class="number">3</span>);
             <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::PosixAccount));
             <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::ExperimentalFeatures));
+            <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::CredentialUpdate));
 
             <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
         })

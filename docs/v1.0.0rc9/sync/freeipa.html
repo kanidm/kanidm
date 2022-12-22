@@ -183,7 +183,7 @@ ipa_ca = &quot;/path/to/kanidm-ipa-ca.pem&quot;
 # The DN of an account with content sync rights. By default cn=Directory Manager has
 # this access.
 ipa_sync_dn = &quot;cn=Directory Manager&quot;
-ipa_sync_pw = &quot;pi9aix6balaqu8Maerah&quot;
+ipa_sync_pw = &quot;directory manager password&quot;
 # The basedn to examine.
 ipa_sync_base_dn = &quot;dc=ipa,dc=dev,dc=kanidm,dc=com&quot;
 
@@ -199,16 +199,37 @@ exclude = true
 </code></pre>
 <p>This example is located in <a href="https://github.com/kanidm/kanidm/blob/master/examples/kanidm-ipa-sync">examples/kanidm-ipa-sync</a>.</p>
 <p>In addition to this, you must make some configuration changes to FreeIPA to enable synchronisation.</p>
-<p>You must modify the retro changelog plugin to include the full scope of the database suffix.</p>
+<p>You can find the name of your 389 Directory Server instance with:</p>
+<pre><code>dsconf --list
+</code></pre>
+<p>Using this you can show the current status of the retro changelog plugin to see if you need
+to change it's configuration.</p>
+<pre><code>dsconf &lt;instance name&gt; plugin retro-changelog show
+dsconf slapd-DEV-KANIDM-COM plugin retro-changelog show
+</code></pre>
+<p>You must modify the retro changelog plugin to include the full scope of the database suffix so that
+the sync tool can view the changes to the database. Currently dsconf can not modify the include-suffix
+so you must do this manually.</p>
+<p>You need to change the <code>nsslapd-include-suffix</code> to match your FreeIPA baseDN here. You can
+access the basedn with:</p>
+<pre><code>ldapsearch -H ldaps://&lt;IPA SERVER HOSTNAME/IP&gt; -x -b '' -s base namingContexts
+# namingContexts: dc=ipa,dc=dev,dc=kanidm,dc=com
+</code></pre>
+<p>You should ignore <code>cn=changelog</code> and <code>o=ipaca</code> as these are system internal namingContexts. You
+can then create an ldapmodify like the following.</p>
 <pre><code>dn: cn=Retro Changelog Plugin,cn=plugins,cn=config
 changetype: modify
-add: nsslapd-include-suffix
+replace: nsslapd-include-suffix
 nsslapd-include-suffix: dc=ipa,dc=dev,dc=kanidm,dc=com
 </code></pre>
-<p>You must then restart your FreeIPA server.</p>
+<p>And apply it with:</p>
+<pre><code>ldapmodify -f change.ldif -H ldaps://&lt;IPA SERVER HOSTNAME/IP&gt; -x -D 'cn=Directory Manager' -W
+# Enter LDAP Password:
+</code></pre>
+<p>You must then reboot your FreeIPA server.</p>
 <h2 id="running-the-sync-tool-manually"><a class="header" href="#running-the-sync-tool-manually">Running the Sync Tool Manually</a></h2>
 <p>You can perform a dry run with the sync tool manually to check your configurations are
-correct.</p>
+correct and that the tool can synchronise from FreeIPA.</p>
 <pre><code>kanidm-ipa-sync [-c /path/to/kanidm/config] -i /path/to/kanidm-ipa-sync -n
 kanidm-ipa-sync -i /etc/kanidm/ipa-sync -n
 </code></pre>
