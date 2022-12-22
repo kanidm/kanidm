@@ -27,18 +27,44 @@ This example is located in [examples/kanidm-ipa-sync](https://github.com/kanidm/
 
 In addition to this, you must make some configuration changes to FreeIPA to enable synchronisation.
 
-You must modify the retro changelog plugin to include the full scope of the database suffix.
+You can find the name of your 389 Directory Server instance with:
+
+    dsconf --list
+
+Using this you can show the current status of the retro changelog plugin to see if you need
+to change it's configuration.
+
+    dsconf <instance name> plugin retro-changelog show
+    dsconf slapd-DEV-KANIDM-COM plugin retro-changelog show
+
+You must modify the retro changelog plugin to include the full scope of the database suffix so that
+the sync tool can view the changes to the database. Currently dsconf can not modify the include-suffix
+so you must do this manually.
+
+You need to change the `nsslapd-include-suffix` to match your FreeIPA baseDN here. You can
+access the basedn with:
+
+    ldapsearch -H ldaps://<IPA SERVER HOSTNAME/IP> -x -b '' -s base namingContexts
+    # namingContexts: dc=ipa,dc=dev,dc=kanidm,dc=com
+
+You should ignore `cn=changelog` and `o=ipaca` as these are system internal namingContexts. You
+can then create an ldapmodify like the following.
 
 ```
 {{#rustdoc_include ../../../iam_migrations/freeipa/00config-mod.ldif}}
 ```
 
-You must then restart your FreeIPA server.
+And apply it with:
+
+    ldapmodify -f change.ldif -H ldaps://<IPA SERVER HOSTNAME/IP> -x -D 'cn=Directory Manager' -W
+    # Enter LDAP Password:
+
+You must then reboot your FreeIPA server.
 
 ## Running the Sync Tool Manually
 
 You can perform a dry run with the sync tool manually to check your configurations are
-correct.
+correct and that the tool can synchronise from FreeIPA.
 
     kanidm-ipa-sync [-c /path/to/kanidm/config] -i /path/to/kanidm-ipa-sync -n
     kanidm-ipa-sync -i /etc/kanidm/ipa-sync -n

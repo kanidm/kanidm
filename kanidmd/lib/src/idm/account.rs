@@ -99,6 +99,10 @@ macro_rules! try_from_entry {
             .copied()
             .collect();
 
+        if !$value.attribute_equality("class", &PVCLASS_SYNC_OBJECT) {
+            ui_hints.insert(UiHint::CredentialUpdate);
+        }
+
         if $value.attribute_equality("class", &PVCLASS_POSIXACCOUNT) {
             ui_hints.insert(UiHint::PosixAccount);
         }
@@ -722,7 +726,8 @@ mod tests {
                 .expect("Unable to create uat");
 
             // Check the ui hints are as expected.
-            assert!(uat.ui_hints.is_empty());
+            assert!(uat.ui_hints.len() == 1);
+            assert!(uat.ui_hints.contains(&UiHint::CredentialUpdate));
 
             // Modify the user to be a posix account, ensure they get the hint.
             let me_posix = unsafe {
@@ -748,8 +753,9 @@ mod tests {
                 .to_userauthtoken(session_id, ct, AuthType::Passkey, None)
                 .expect("Unable to create uat");
 
-            assert!(uat.ui_hints.len() == 1);
+            assert!(uat.ui_hints.len() == 2);
             assert!(uat.ui_hints.contains(&UiHint::PosixAccount));
+            assert!(uat.ui_hints.contains(&UiHint::CredentialUpdate));
 
             // Add a group with a ui hint, and then check they get the hint.
             let e = entry_init!(
@@ -772,9 +778,10 @@ mod tests {
                 .to_userauthtoken(session_id, ct, AuthType::Passkey, None)
                 .expect("Unable to create uat");
 
-            assert!(uat.ui_hints.len() == 2);
+            assert!(uat.ui_hints.len() == 3);
             assert!(uat.ui_hints.contains(&UiHint::PosixAccount));
             assert!(uat.ui_hints.contains(&UiHint::ExperimentalFeatures));
+            assert!(uat.ui_hints.contains(&UiHint::CredentialUpdate));
 
             assert!(idms_prox_write.commit().is_ok());
         })

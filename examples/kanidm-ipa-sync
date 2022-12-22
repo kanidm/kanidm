@@ -23,7 +23,7 @@ ipa_ca = "/path/to/kanidm-ipa-ca.pem"
 # The DN of an account with content sync rights. By default cn=Directory Manager has
 # this access.
 ipa_sync_dn = "cn=Directory Manager"
-ipa_sync_pw = "pi9aix6balaqu8Maerah"
+ipa_sync_pw = "directory manager password"
 # The basedn to examine.
 ipa_sync_base_dn = "dc=ipa,dc=dev,dc=kanidm,dc=com"
 
