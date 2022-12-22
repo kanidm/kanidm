@@ -319,7 +319,14 @@ impl ValueSetT for ValueSetEmailAddress {
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(self.set.iter().cloned())
+        Box::new(
+            std::iter::once(self.primary.clone()).chain(
+                self.set
+                    .iter()
+                    .filter(|mail| **mail != self.primary)
+                    .cloned(),
+            ),
+        )
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
