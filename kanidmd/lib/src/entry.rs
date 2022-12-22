@@ -1795,7 +1795,7 @@ impl Entry<EntryReduced, EntryCommitted> {
                         atype: "entrydn".to_string(),
                         vals: vec![dn.as_bytes().to_vec()],
                     }),
-                    "mail;primary" | "mailprimary" | "emailprimary" => {
+                    "mail;primary" | "emailprimary" => {
                         attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
                             atype: ldap_a.to_string(),
                             vals: pvs
@@ -1804,7 +1804,7 @@ impl Entry<EntryReduced, EntryCommitted> {
                                 .unwrap_or_default(),
                         })
                     }
-                    "mail;alternative" | "mailalternative" | "emailalternative" => {
+                    "mail;alternative" | "emailalternative" => {
                         attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
                             atype: ldap_a.to_string(),
                             vals: pvs
