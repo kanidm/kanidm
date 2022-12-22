@@ -1473,6 +1473,34 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
+            AttrString::from("mailprimary"),
+            SchemaAttribute {
+                name: AttrString::from("mailprimary"),
+                uuid: UUID_SCHEMA_ATTR_MAILPRIMARY,
+                description: String::from("An LDAP Compatible primary email"),
+                multivalue: false,
+                unique: false,
+                phantom: true,
+                sync_allowed: false,
+                index: vec![],
+                syntax: SyntaxType::EmailAddress,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("mailalternative"),
+            SchemaAttribute {
+                name: AttrString::from("mailalternative"),
+                uuid: UUID_SCHEMA_ATTR_MAILALTERNATIVE,
+                description: String::from("An LDAP Compatible alternative email"),
+                multivalue: false,
+                unique: false,
+                phantom: true,
+                sync_allowed: false,
+                index: vec![],
+                syntax: SyntaxType::EmailAddress,
+            },
+        );
+        self.attributes.insert(
             AttrString::from("uidnumber"),
             SchemaAttribute {
                 name: AttrString::from("uidnumber"),
