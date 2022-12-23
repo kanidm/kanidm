@@ -47,7 +47,7 @@ impl JavaScriptFile {
         self.hash
     }
 
-    /// returns a <script> HTML tag
+    /// returns a `<script>` HTML tag
     fn as_tag(self) -> String {
         let typeattr = match self.filetype {
             Some(val) => format!("type=\"{}\" ", val),
