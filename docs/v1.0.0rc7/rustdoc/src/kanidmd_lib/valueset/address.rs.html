@@ -451,6 +451,17 @@
 <span id="451">451</span>
 <span id="452">452</span>
 <span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
 
 <span class="kw">use </span>smolset::SmolSet;
@@ -772,7 +783,18 @@
     }
 
     <span class="kw">fn </span>to_proto_string_clone_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = String&gt; + <span class="lifetime">&#39;_</span>&gt; {
-        Box::new(<span class="self">self</span>.set.iter().cloned())
+        <span class="kw">if </span><span class="self">self</span>.primary.is_empty() {
+            Box::new(<span class="self">self</span>.set.iter().cloned())
+        } <span class="kw">else </span>{
+            Box::new(
+                std::iter::once(<span class="self">self</span>.primary.clone()).chain(
+                    <span class="self">self</span>.set
+                        .iter()
+                        .filter(|mail| <span class="kw-2">**</span>mail != <span class="self">self</span>.primary)
+                        .cloned(),
+                ),
+            )
+        }
     }
 
     <span class="kw">fn </span>to_db_valueset_v2(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DbValueSetV2 {

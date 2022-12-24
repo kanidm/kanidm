@@ -3031,6 +3031,24 @@
 <span id="3031">3031</span>
 <span id="3032">3032</span>
 <span id="3033">3033</span>
+<span id="3034">3034</span>
+<span id="3035">3035</span>
+<span id="3036">3036</span>
+<span id="3037">3037</span>
+<span id="3038">3038</span>
+<span id="3039">3039</span>
+<span id="3040">3040</span>
+<span id="3041">3041</span>
+<span id="3042">3042</span>
+<span id="3043">3043</span>
+<span id="3044">3044</span>
+<span id="3045">3045</span>
+<span id="3046">3046</span>
+<span id="3047">3047</span>
+<span id="3048">3048</span>
+<span id="3049">3049</span>
+<span id="3050">3050</span>
+<span id="3051">3051</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Entries are the base unit of object storage in the server. This is one of the three foundational
 //! concepts along with [`filter`]s and [`schema`] that everything else builds upon.
 //!
@@ -4828,6 +4846,24 @@
                         atype: <span class="string">&quot;entrydn&quot;</span>.to_string(),
                         vals: <span class="macro">vec!</span>[dn.as_bytes().to_vec()],
                     }),
+                    <span class="string">&quot;mail;primary&quot; </span>| <span class="string">&quot;emailprimary&quot; </span>=&gt; {
+                        attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
+                            atype: ldap_a.to_string(),
+                            vals: pvs
+                                .first()
+                                .map(|first| <span class="macro">vec!</span>[first.clone()])
+                                .unwrap_or_default(),
+                        })
+                    }
+                    <span class="string">&quot;mail;alternative&quot; </span>| <span class="string">&quot;emailalternative&quot; </span>=&gt; {
+                        attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
+                            atype: ldap_a.to_string(),
+                            vals: pvs
+                                .split_first()
+                                .map(|(<span class="kw">_</span>, rest)| rest.to_vec())
+                                .unwrap_or_default(),
+                        })
+                    }
                     <span class="kw">_ </span>=&gt; attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
                         atype: ldap_a.to_string(),
                         vals: pvs.clone(),

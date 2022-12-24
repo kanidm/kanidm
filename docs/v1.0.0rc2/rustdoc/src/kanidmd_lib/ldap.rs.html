@@ -1047,6 +1047,26 @@
 <span id="1047">1047</span>
 <span id="1048">1048</span>
 <span id="1049">1049</span>
+<span id="1050">1050</span>
+<span id="1051">1051</span>
+<span id="1052">1052</span>
+<span id="1053">1053</span>
+<span id="1054">1054</span>
+<span id="1055">1055</span>
+<span id="1056">1056</span>
+<span id="1057">1057</span>
+<span id="1058">1058</span>
+<span id="1059">1059</span>
+<span id="1060">1060</span>
+<span id="1061">1061</span>
+<span id="1062">1062</span>
+<span id="1063">1063</span>
+<span id="1064">1064</span>
+<span id="1065">1065</span>
+<span id="1066">1066</span>
+<span id="1067">1067</span>
+<span id="1068">1068</span>
+<span id="1069">1069</span>
 </pre><pre class="rust"><code><span class="doccomment">//! LDAP specific operations handling components. This is where LDAP operations
 //! are sent to for processing.
 
@@ -1575,14 +1595,18 @@
 <span class="attribute">#[inline]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>ldap_all_vattrs() -&gt; Vec&lt;String&gt; {
     <span class="macro">vec!</span>[
-        <span class="string">&quot;entryuuid&quot;</span>.to_string(),
-        <span class="string">&quot;objectclass&quot;</span>.to_string(),
-        <span class="string">&quot;entrydn&quot;</span>.to_string(),
+        <span class="string">&quot;cn&quot;</span>.to_string(),
         <span class="string">&quot;email&quot;</span>.to_string(),
         <span class="string">&quot;emailaddress&quot;</span>.to_string(),
+        <span class="string">&quot;emailalternative&quot;</span>.to_string(),
+        <span class="string">&quot;emailprimary&quot;</span>.to_string(),
+        <span class="string">&quot;entrydn&quot;</span>.to_string(),
+        <span class="string">&quot;entryuuid&quot;</span>.to_string(),
         <span class="string">&quot;keys&quot;</span>.to_string(),
+        <span class="string">&quot;mail;alternative&quot;</span>.to_string(),
+        <span class="string">&quot;mail;primary&quot;</span>.to_string(),
+        <span class="string">&quot;objectclass&quot;</span>.to_string(),
         <span class="string">&quot;sshpublickey&quot;</span>.to_string(),
-        <span class="string">&quot;cn&quot;</span>.to_string(),
         <span class="string">&quot;uidnumber&quot;</span>.to_string(),
     ]
 }
@@ -1596,13 +1620,17 @@
     //
     //   LDAP NAME     KANI ATTR SOURCE NAME
     </span><span class="kw">match </span>input {
-        <span class="string">&quot;entryuuid&quot; </span>=&gt; <span class="string">&quot;uuid&quot;</span>,
-        <span class="string">&quot;objectclass&quot; </span>=&gt; <span class="string">&quot;class&quot;</span>,
+        <span class="string">&quot;cn&quot; </span>=&gt; <span class="string">&quot;name&quot;</span>,
         <span class="string">&quot;email&quot; </span>=&gt; <span class="string">&quot;mail&quot;</span>,
         <span class="string">&quot;emailaddress&quot; </span>=&gt; <span class="string">&quot;mail&quot;</span>,
+        <span class="string">&quot;emailalternative&quot; </span>=&gt; <span class="string">&quot;mail&quot;</span>,
+        <span class="string">&quot;emailprimary&quot; </span>=&gt; <span class="string">&quot;mail&quot;</span>,
+        <span class="string">&quot;entryuuid&quot; </span>=&gt; <span class="string">&quot;uuid&quot;</span>,
         <span class="string">&quot;keys&quot; </span>=&gt; <span class="string">&quot;ssh_publickey&quot;</span>,
+        <span class="string">&quot;mail;alternative&quot; </span>=&gt; <span class="string">&quot;mail&quot;</span>,
+        <span class="string">&quot;mail;primary&quot; </span>=&gt; <span class="string">&quot;mail&quot;</span>,
+        <span class="string">&quot;objectclass&quot; </span>=&gt; <span class="string">&quot;class&quot;</span>,
         <span class="string">&quot;sshpublickey&quot; </span>=&gt; <span class="string">&quot;ssh_publickey&quot;</span>,
-        <span class="string">&quot;cn&quot; </span>=&gt; <span class="string">&quot;name&quot;</span>,
         <span class="string">&quot;uidnumber&quot; </span>=&gt; <span class="string">&quot;gidnumber&quot;</span>,
         a =&gt; a,
     }
@@ -1961,7 +1989,7 @@
                     base: <span class="string">&quot;dc=example,dc=com&quot;</span>.to_string(),
                     scope: LdapSearchScope::Subtree,
                     filter: LdapFilter::Equality(<span class="string">&quot;name&quot;</span>.to_string(), <span class="string">&quot;testperson1&quot;</span>.to_string()),
-                    attrs: <span class="macro">vec!</span>[<span class="string">&quot;name&quot;</span>.to_string(), <span class="string">&quot;mail&quot;</span>.to_string()],
+                    attrs: <span class="macro">vec!</span>[<span class="string">&quot;name&quot;</span>.to_string(), <span class="string">&quot;mail&quot;</span>.to_string(), <span class="string">&quot;mail;primary&quot;</span>.to_string(), <span class="string">&quot;mail;alternative&quot;</span>.to_string(), <span class="string">&quot;emailprimary&quot;</span>.to_string(), <span class="string">&quot;emailalternative&quot;</span>.to_string()],
                 };
 
                 <span class="kw">let </span>sa_uuid = <span class="macro">uuid::uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>);
@@ -1990,6 +2018,13 @@
                         (
                             <span class="string">&quot;mail&quot;</span>,
                             Value::EmailAddress(<span class="string">&quot;testperson1@example.com&quot;</span>.to_string(), <span class="bool-val">true</span>)
+                        ),
+                        (
+                            <span class="string">&quot;mail&quot;</span>,
+                            Value::EmailAddress(
+                                <span class="string">&quot;testperson1.alternative@example.com&quot;</span>.to_string(),
+                                <span class="bool-val">false
+                            </span>)
                         ),
                         (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
                         (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
@@ -2087,7 +2122,12 @@
                             lsre,
                             <span class="string">&quot;spn=testperson1@example.com,dc=example,dc=com&quot;</span>,
                             (<span class="string">&quot;name&quot;</span>, <span class="string">&quot;testperson1&quot;</span>),
-                            (<span class="string">&quot;mail&quot;</span>, <span class="string">&quot;testperson1@example.com&quot;</span>)
+                            (<span class="string">&quot;mail&quot;</span>, <span class="string">&quot;testperson1@example.com&quot;</span>),
+                            (<span class="string">&quot;mail&quot;</span>, <span class="string">&quot;testperson1.alternative@example.com&quot;</span>),
+                            (<span class="string">&quot;mail;primary&quot;</span>, <span class="string">&quot;testperson1@example.com&quot;</span>),
+                            (<span class="string">&quot;mail;alternative&quot;</span>, <span class="string">&quot;testperson1.alternative@example.com&quot;</span>),
+                            (<span class="string">&quot;emailprimary&quot;</span>, <span class="string">&quot;testperson1@example.com&quot;</span>),
+                            (<span class="string">&quot;emailalternative&quot;</span>, <span class="string">&quot;testperson1.alternative@example.com&quot;</span>)
                         );
                     }
                     <span class="kw">_ </span>=&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),

@@ -2647,6 +2647,34 @@
 <span id="2647">2647</span>
 <span id="2648">2648</span>
 <span id="2649">2649</span>
+<span id="2650">2650</span>
+<span id="2651">2651</span>
+<span id="2652">2652</span>
+<span id="2653">2653</span>
+<span id="2654">2654</span>
+<span id="2655">2655</span>
+<span id="2656">2656</span>
+<span id="2657">2657</span>
+<span id="2658">2658</span>
+<span id="2659">2659</span>
+<span id="2660">2660</span>
+<span id="2661">2661</span>
+<span id="2662">2662</span>
+<span id="2663">2663</span>
+<span id="2664">2664</span>
+<span id="2665">2665</span>
+<span id="2666">2666</span>
+<span id="2667">2667</span>
+<span id="2668">2668</span>
+<span id="2669">2669</span>
+<span id="2670">2670</span>
+<span id="2671">2671</span>
+<span id="2672">2672</span>
+<span id="2673">2673</span>
+<span id="2674">2674</span>
+<span id="2675">2675</span>
+<span id="2676">2676</span>
+<span id="2677">2677</span>
 </pre><pre class="rust"><code><span class="doccomment">//! [`Schema`] is one of the foundational concepts of the server. It provides a
 //! set of rules to enforce that [`Entries`] ava&#39;s must be compliant to, to be
 //! considered valid for commit to the database. This allows us to provide
@@ -4072,6 +4100,34 @@
                 uuid: UUID_SCHEMA_ATTR_EMAIL,
                 description: String::from(<span class="string">&quot;An LDAP Compatible email&quot;</span>),
                 multivalue: <span class="bool-val">true</span>,
+                unique: <span class="bool-val">false</span>,
+                phantom: <span class="bool-val">true</span>,
+                sync_allowed: <span class="bool-val">false</span>,
+                index: <span class="macro">vec!</span>[],
+                syntax: SyntaxType::EmailAddress,
+            },
+        );
+        <span class="self">self</span>.attributes.insert(
+            AttrString::from(<span class="string">&quot;emailprimary&quot;</span>),
+            SchemaAttribute {
+                name: AttrString::from(<span class="string">&quot;emailprimary&quot;</span>),
+                uuid: UUID_SCHEMA_ATTR_EMAILPRIMARY,
+                description: String::from(<span class="string">&quot;An LDAP Compatible primary email&quot;</span>),
+                multivalue: <span class="bool-val">false</span>,
+                unique: <span class="bool-val">false</span>,
+                phantom: <span class="bool-val">true</span>,
+                sync_allowed: <span class="bool-val">false</span>,
+                index: <span class="macro">vec!</span>[],
+                syntax: SyntaxType::EmailAddress,
+            },
+        );
+        <span class="self">self</span>.attributes.insert(
+            AttrString::from(<span class="string">&quot;emailalternative&quot;</span>),
+            SchemaAttribute {
+                name: AttrString::from(<span class="string">&quot;emailalternative&quot;</span>),
+                uuid: UUID_SCHEMA_ATTR_EMAILALTERNATIVE,
+                description: String::from(<span class="string">&quot;An LDAP Compatible alternative email&quot;</span>),
+                multivalue: <span class="bool-val">false</span>,
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">true</span>,
                 sync_allowed: <span class="bool-val">false</span>,
