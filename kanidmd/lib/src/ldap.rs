@@ -526,14 +526,18 @@ fn operationerr_to_ldapresultcode(e: OperationError) -> (LdapResultCode, String)
 #[inline]
 pub(crate) fn ldap_all_vattrs() -> Vec<String> {
     vec![
-        "entryuuid".to_string(),
-        "objectclass".to_string(),
-        "entrydn".to_string(),
+        "cn".to_string(),
         "email".to_string(),
         "emailaddress".to_string(),
+        "emailalternative".to_string(),
+        "emailprimary".to_string(),
+        "entrydn".to_string(),
+        "entryuuid".to_string(),
         "keys".to_string(),
+        "mail;alternative".to_string(),
+        "mail;primary".to_string(),
+        "objectclass".to_string(),
         "sshpublickey".to_string(),
-        "cn".to_string(),
         "uidnumber".to_string(),
     ]
 }
@@ -547,13 +551,17 @@ pub(crate) fn ldap_vattr_map(input: &str) -> &str {
     //
     //   LDAP NAME     KANI ATTR SOURCE NAME
     match input {
-        "entryuuid" => "uuid",
-        "objectclass" => "class",
+        "cn" => "name",
         "email" => "mail",
         "emailaddress" => "mail",
+        "emailalternative" => "mail",
+        "emailprimary" => "mail",
+        "entryuuid" => "uuid",
         "keys" => "ssh_publickey",
+        "mail;alternative" => "mail",
+        "mail;primary" => "mail",
+        "objectclass" => "class",
         "sshpublickey" => "ssh_publickey",
-        "cn" => "name",
         "uidnumber" => "gidnumber",
         a => a,
     }
@@ -912,7 +920,7 @@ mod tests {
                     base: "dc=example,dc=com".to_string(),
                     scope: LdapSearchScope::Subtree,
                     filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
-                    attrs: vec!["name".to_string(), "mail".to_string()],
+                    attrs: vec!["name".to_string(), "mail".to_string(), "mail;primary".to_string(), "mail;alternative".to_string(), "emailprimary".to_string(), "emailalternative".to_string()],
                 };
 
                 let sa_uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
@@ -941,6 +949,13 @@ mod tests {
                         (
                             "mail",
                             Value::EmailAddress("testperson1@example.com".to_string(), true)
+                        ),
+                        (
+                            "mail",
+                            Value::EmailAddress(
+                                "testperson1.alternative@example.com".to_string(),
+                                false
+                            )
                         ),
                         ("description", Value::new_utf8s("testperson1")),
                         ("displayname", Value::new_utf8s("testperson1")),
@@ -1038,7 +1053,12 @@ mod tests {
                             lsre,
                             "spn=testperson1@example.com,dc=example,dc=com",
                             ("name", "testperson1"),
-                            ("mail", "testperson1@example.com")
+                            ("mail", "testperson1@example.com"),
+                            ("mail", "testperson1.alternative@example.com"),
+                            ("mail;primary", "testperson1@example.com"),
+                            ("mail;alternative", "testperson1.alternative@example.com"),
+                            ("emailprimary", "testperson1@example.com"),
+                            ("emailalternative", "testperson1.alternative@example.com")
                         );
                     }
                     _ => assert!(false),

@@ -1795,6 +1795,24 @@ impl Entry<EntryReduced, EntryCommitted> {
                         atype: "entrydn".to_string(),
                         vals: vec![dn.as_bytes().to_vec()],
                     }),
+                    "mail;primary" | "emailprimary" => {
+                        attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
+                            atype: ldap_a.to_string(),
+                            vals: pvs
+                                .first()
+                                .map(|first| vec![first.clone()])
+                                .unwrap_or_default(),
+                        })
+                    }
+                    "mail;alternative" | "emailalternative" => {
+                        attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
+                            atype: ldap_a.to_string(),
+                            vals: pvs
+                                .split_first()
+                                .map(|(_, rest)| rest.to_vec())
+                                .unwrap_or_default(),
+                        })
+                    }
                     _ => attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
                         atype: ldap_a.to_string(),
                         vals: pvs.clone(),

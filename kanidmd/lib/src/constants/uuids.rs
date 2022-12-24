@@ -220,6 +220,9 @@ pub const UUID_SCHEMA_CLASS_SYNC_OBJECT: Uuid = uuid!("00000000-0000-0000-0000-f
 pub const UUID_SCHEMA_ATTR_SYNC_CLASS: Uuid = uuid!("00000000-0000-0000-0000-ffff00000124");
 pub const UUID_SCHEMA_ATTR_SYNC_ALLOWED: Uuid = uuid!("00000000-0000-0000-0000-ffff00000125");
 
+pub const UUID_SCHEMA_ATTR_EMAILPRIMARY: Uuid = uuid!("00000000-0000-0000-0000-ffff00000126");
+pub const UUID_SCHEMA_ATTR_EMAILALTERNATIVE: Uuid = uuid!("00000000-0000-0000-0000-ffff00000127");
+
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
 pub const UUID_SYSTEM_INFO: Uuid = uuid!("00000000-0000-0000-0000-ffffff000001");
