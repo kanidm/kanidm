@@ -37,7 +37,7 @@ wasm-bindgen-futures = { version = "^0.4.30" }
 wasm-bindgen-test = "0.3.33"
 url = "^2.3.1"
 yew = "^0.19.3"
-yew-agent = "^0.1.0"
+yew-agent = "^0.2.0"
 yew-router = "^0.16.0"
 
 
