@@ -12,7 +12,7 @@ cargo doc --document-private-items --open --no-deps
 
 ### Rust Documentation
 
-A list of links to the library documentation is at 
+A list of links to the library documentation is at
 [kanidm.com/documentation](https://kanidm.com/documentation/).
 
 ### Minimum Supported Rust Version
@@ -21,14 +21,13 @@ The MSRV is specified in the package `Cargo.toml` files.
 
 ### Build Profiles
 
-Setting different developer profiles while building is done by setting the 
-environment 
-variable `KANIDM_BUILD_PROFILE` to one of the bare filename of the TOML files in 
-`/profiles`. 
+Setting different developer profiles while building is done by setting the environment variable
+`KANIDM_BUILD_PROFILE` to one of the bare filename of the TOML files in `/profiles`.
 
-For example, this will set the CPU flags to "none" and the location for the Web UI files to `/usr/share/kanidm/ui/pkg`:
+For example, this will set the CPU flags to "none" and the location for the Web UI files to
+`/usr/share/kanidm/ui/pkg`:
 
-```shell
+```bash
 KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd
 ```
 
@@ -37,30 +36,37 @@ KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd
 #### MacOS
 
 You will need [rustup](https://rustup.rs/) to install a Rust toolchain.
-    
+
 #### SUSE
 
-You will need [rustup](https://rustup.rs/) to install a Rust toolchain. If 
-you're 
-using the Tumbleweed release, it's packaged in `zypper`.
+You will need [rustup](https://rustup.rs/) to install a Rust toolchain. If you're using the
+Tumbleweed release, it's packaged in `zypper`.
 
 You will also need some system libraries to build this:
 
-    libudev-devel sqlite3-devel libopenssl-devel
+```
+libudev-devel sqlite3-devel libopenssl-devel
+```
 
 #### Fedora
 
 You need to install the Rust toolchain packages:
 
-    rust cargo
+```bash
+rust cargo
+```
 
 You will also need some system libraries to build this:
 
-    systemd-devel sqlite-devel openssl-devel pam-devel
+```
+systemd-devel sqlite-devel openssl-devel pam-devel
+```
 
 Building the Web UI requires additional packages:
 
-    perl-FindBin perl-File-Compare rust-std-static-wasm32-unknown-unknown
+```
+perl-FindBin perl-File-Compare rust-std-static-wasm32-unknown-unknown
+```
 
 #### Ubuntu
 
@@ -68,9 +74,9 @@ You need [rustup](https://rustup.rs/) to install a Rust toolchain.
 
 You will also need some system libraries to build this, which can be installed by running:
 
-```shell
+```bash
 sudo apt-get install libsqlite3-dev libudev-dev libssl-dev pkg-config libpam0g-dev
-``` 
+```
 
 Tested with Ubuntu 20.04 and 22.04.
 
@@ -78,68 +84,72 @@ Tested with Ubuntu 20.04 and 22.04.
 
 You need [rustup](https://rustup.rs/) to install a Rust toolchain.
 
-An easy way to grab the dependencies is to install [vcpkg](https://vcpkg.io/en/getting-started.html).
+An easy way to grab the dependencies is to install
+[vcpkg](https://vcpkg.io/en/getting-started.html).
 
 This is how it works in the automated build:
 
 1. Enable use of installed packages for the user system-wide:
-```shell
+
+```bash
 vcpkg integrate install
 ```
-2. Install the openssl dependency, which compiles it from source. This downloads all sorts of dependencies, including perl for the build.
-```shell
+
+2. Install the openssl dependency, which compiles it from source. This downloads all sorts of
+   dependencies, including perl for the build.
+
+```bash
 vcpkg install openssl:x64-windows-static-md
 ```
 
-There's a powershell script in the root directory of the repository which, in concert with `openssl` will generate a config file and certs for testing.
+There's a powershell script in the root directory of the repository which, in concert with `openssl`
+will generate a config file and certs for testing.
 
 ### Get Involved
 
-To get started, you'll need to fork or branch, and we'll merge based on pull
-requests.
+To get started, you'll need to fork or branch, and we'll merge based on pull requests.
 
 If you are a contributor to the project, simply clone:
 
-```shell
+```bash
 git clone git@github.com:kanidm/kanidm.git
 ```
 
 If you are forking, then fork in GitHub and clone with:
 
-```shell
+```bash
 git clone https://github.com/kanidm/kanidm.git
 cd kanidm
 git remote add myfork git@github.com:<YOUR USERNAME>/kanidm.git
 ```
 
-Select an issue (always feel free to reach out to us for advice!), and create a 
-branch to start working:
+Select an issue (always feel free to reach out to us for advice!), and create a branch to start
+working:
 
-```shell
+```bash
 git branch <feature-branch-name>
 git checkout <feature-branch-name>
 cargo test
 ```
 
-When you are ready for review (even if the feature isn't complete and you just 
-want some advice):
+When you are ready for review (even if the feature isn't complete and you just want some advice):
 
 1. Run the test suite: `cargo test --workspace`
 2. Ensure rust formatting standards are followed: `cargo fmt --check`
-3. Try following the suggestions from clippy, after running `cargo clippy`. 
-    This is not a blocker on us accepting your code!
+3. Try following the suggestions from clippy, after running `cargo clippy`. This is not a blocker on
+   us accepting your code!
 4. Then commit your changes:
 
-```shell
+```bash
 git commit -m 'Commit message' change_file.rs ...
 git push <myfork/origin> <feature-branch-name>
 ```
 
-If you receive advice or make further changes, just keep commiting to the branch, 
-and pushing to your branch. When we are happy with the code, we'll merge in GitHub, 
-meaning you can now clean up your branch.
+If you receive advice or make further changes, just keep commiting to the branch, and pushing to
+your branch. When we are happy with the code, we'll merge in GitHub, meaning you can now clean up
+your branch.
 
-```
+```bash
 git checkout master
 git pull
 git branch -D <feature-branch-name>
@@ -149,94 +159,107 @@ git branch -D <feature-branch-name>
 
 If you are asked to rebase your change, follow these steps:
 
-```
+```bash
 git checkout master
 git pull
 git checkout <feature-branch-name>
 git rebase master
 ```
 
-Then be sure to fix any merge issues or other comments as they arise. If you 
-have issues, you can always stop and reset with:
+Then be sure to fix any merge issues or other comments as they arise. If you have issues, you can
+always stop and reset with:
 
-```
+```bash
 git rebase --abort
 ```
 
 ### Development Server Quickstart for Interactive Testing
 
-After getting the code, you will need a rust environment. Please investigate 
+After getting the code, you will need a rust environment. Please investigate
 [rustup](https://rustup.rs) for your platform to establish this.
 
-Once you have the source code, you need encryption certificates to use with the server, 
-because without certificates, authentication will fail. 
+Once you have the source code, you need encryption certificates to use with the server, because
+without certificates, authentication will fail.
 
-We recommend using [Let's Encrypt](https://letsencrypt.org), but if this is not 
-possible, please use our insecure certificate tool (`insecure_generate_tls.sh`). 
+We recommend using [Let's Encrypt](https://letsencrypt.org), but if this is not possible, please use
+our insecure certificate tool (`insecure_generate_tls.sh`).
 
-__NOTE:__ Windows developers can use `insecure_generate_tls.ps1`, which puts everything (including a templated confi gfile) in `$TEMP\kanidm`. Please adjust paths below to suit.
+**NOTE:** Windows developers can use `insecure_generate_tls.ps1`, which puts everything (including a
+templated confi gfile) in `$TEMP\kanidm`. Please adjust paths below to suit.
 
 The insecure certificate tool creates `/tmp/kanidm` and puts some self-signed certificates there.
 
-You can now build and run the server with the commands below. It will use a database 
-in `/tmp/kanidm.db`.
+You can now build and run the server with the commands below. It will use a database in
+`/tmp/kanidm.db`.
 
 Create the initial database and generate an `admin` username:
 
-    cargo run --bin kanidmd recover_account -c ./examples/insecure_server.toml admin
-    <snip>
-    Success - password reset to -> Et8QRJgQkMJu3v1AQxcbxRWW44qRUZPpr6BJ9fCGapAB9cT4
+```bash
+cargo run --bin kanidmd recover_account -c ./examples/insecure_server.toml admin
+<snip>
+Success - password reset to -> Et8QRJgQkMJu3v1AQxcbxRWW44qRUZPpr6BJ9fCGapAB9cT4
+```
 
 Record the password above, then run the server start command:
 
-    cd kanidmd/daemon
-    cargo run --bin kanidmd server -c ../../examples/insecure_server.toml
+```bash
+cd kanidmd/daemon
+cargo run --bin kanidmd server -c ../../examples/insecure_server.toml
+```
 
 (The server start command is also a script in `kanidmd/daemon/run_insecure_dev_server.sh`)
 
 In a new terminal, you can now build and run the client tools with:
 
-    cargo run --bin kanidm -- --help
-    cargo run --bin kanidm -- login -H https://localhost:8443 -D anonymous -C /tmp/kanidm/ca.pem
-    cargo run --bin kanidm -- self whoami -H https://localhost:8443 -D anonymous -C /tmp/kanidm/ca.pem
-    
-    cargo run --bin kanidm -- login -H https://localhost:8443 -D admin -C /tmp/kanidm/ca.pem
-    cargo run --bin kanidm -- self whoami -H https://localhost:8443 -D admin -C /tmp/kanidm/ca.pem
+```bash
+cargo run --bin kanidm -- --help
+cargo run --bin kanidm -- login -H https://localhost:8443 -D anonymous -C /tmp/kanidm/ca.pem
+cargo run --bin kanidm -- self whoami -H https://localhost:8443 -D anonymous -C /tmp/kanidm/ca.pem
+
+cargo run --bin kanidm -- login -H https://localhost:8443 -D admin -C /tmp/kanidm/ca.pem
+cargo run --bin kanidm -- self whoami -H https://localhost:8443 -D admin -C /tmp/kanidm/ca.pem
+```
 
 ### Raw actions
 
-The server has a low-level stateful API you can use for more complex or advanced tasks on large numbers
-of entries at once. Some examples are below, but generally we advise you to use the APIs or CLI tools. These are
-very handy to "unbreak" something if you make a mistake however!
+The server has a low-level stateful API you can use for more complex or advanced tasks on large
+numbers of entries at once. Some examples are below, but generally we advise you to use the APIs or
+CLI tools. These are very handy to "unbreak" something if you make a mistake however!
 
-    # Create from json (group or account)
-    kanidm raw create -H https://localhost:8443 -C ../insecure/ca.pem -D admin example.create.account.json
-    kanidm raw create  -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin example.create.group.json
+```bash
+# Create from json (group or account)
+kanidm raw create -H https://localhost:8443 -C ../insecure/ca.pem -D admin example.create.account.json
+kanidm raw create  -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin example.create.group.json
 
-    # Apply a json stateful modification to all entries matching a filter
-    kanidm raw modify -H https://localhost:8443 -C ../insecure/ca.pem -D admin '{"or": [ {"eq": ["name", "idm_person_account_create_priv"]}, {"eq": ["name", "idm_service_account_create_priv"]}, {"eq": ["name", "idm_account_write_priv"]}, {"eq": ["name", "idm_group_write_priv"]}, {"eq": ["name", "idm_people_write_priv"]}, {"eq": ["name", "idm_group_create_priv"]} ]}' example.modify.idm_admin.json
-    kanidm raw modify -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '{"eq": ["name", "idm_admins"]}' example.modify.idm_admin.json
+# Apply a json stateful modification to all entries matching a filter
+kanidm raw modify -H https://localhost:8443 -C ../insecure/ca.pem -D admin '{"or": [ {"eq": ["name", "idm_person_account_create_priv"]}, {"eq": ["name", "idm_service_account_create_priv"]}, {"eq": ["name", "idm_account_write_priv"]}, {"eq": ["name", "idm_group_write_priv"]}, {"eq": ["name", "idm_people_write_priv"]}, {"eq": ["name", "idm_group_create_priv"]} ]}' example.modify.idm_admin.json
+kanidm raw modify -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '{"eq": ["name", "idm_admins"]}' example.modify.idm_admin.json
 
-    # Search and show the database representations
-    kanidm raw search -H https://localhost:8443 -C ../insecure/ca.pem -D admin '{"eq": ["name", "idm_admin"]}'
+# Search and show the database representations
+kanidm raw search -H https://localhost:8443 -C ../insecure/ca.pem -D admin '{"eq": ["name", "idm_admin"]}'
 
-    # Delete all entries matching a filter
-    kanidm raw delete -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '{"eq": ["name", "test_account_delete_me"]}'
+# Delete all entries matching a filter
+kanidm raw delete -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '{"eq": ["name", "test_account_delete_me"]}'
+```
 
 ### Building the Web UI
 
-__NOTE:__ There is a pre-packaged version of the Web UI at `/kanidmd_web_ui/pkg/`, 
-which can be used directly. This means you don't need to build the Web UI yourself.
+**NOTE:** There is a pre-packaged version of the Web UI at `/kanidmd_web_ui/pkg/`, which can be used
+directly. This means you don't need to build the Web UI yourself.
 
-The Web UI uses Rust WebAssembly rather than Javascript. To build this you need 
-to set up the environment:
+The Web UI uses Rust WebAssembly rather than Javascript. To build this you need to set up the
+environment:
 
-    cargo install wasm-pack
+```bash
+cargo install wasm-pack
+```
 
 Then you are able to build the UI:
 
-    cd kanidmd_web_ui/
-    ./build_wasm_dev.sh
+```bash
+cd kanidmd_web_ui/
+./build_wasm_dev.sh
+```
 
 To build for release, run `build_wasm_release.sh`.
 
@@ -246,49 +269,53 @@ The "developer" profile for kanidmd will automatically use the pkg output in thi
 
 Build a container with the current branch using:
 
-    make <TARGET>
+```bash
+make <TARGET>
+```
 
 Check `make help` for a list of valid targets.
 
 The following environment variables control the build:
 
-|ENV variable|Definition|Default|
-|-|-|-|
-|`IMAGE_BASE`|Base location of the container image.|`kanidm`|
-|`IMAGE_VERSION`|Determines the container's tag.|None|
-|`CONTAINER_TOOL_ARGS`|Specify extra options for the container build tool.|None|
-|`IMAGE_ARCH`|Passed to `--platforms` when the container is built.|`linux/amd64,linux/arm64`|
-|`CONTAINER_BUILD_ARGS`|Override default ARG settings during the container build.|None|
-|`CONTAINER_TOOL`|Use an alternative container build tool.|`docker`|
-|`BOOK_VERSION`|Sets version used when building the documentation book.|`master`|
+| ENV variable           | Definition                                                | Default                   |
+| ---------------------- | --------------------------------------------------------- | ------------------------- |
+| `IMAGE_BASE`           | Base location of the container image.                     | `kanidm`                  |
+| `IMAGE_VERSION`        | Determines the container's tag.                           | None                      |
+| `CONTAINER_TOOL_ARGS`  | Specify extra options for the container build tool.       | None                      |
+| `IMAGE_ARCH`           | Passed to `--platforms` when the container is built.      | `linux/amd64,linux/arm64` |
+| `CONTAINER_BUILD_ARGS` | Override default ARG settings during the container build. | None                      |
+| `CONTAINER_TOOL`       | Use an alternative container build tool.                  | `docker`                  |
+| `BOOK_VERSION`         | Sets version used when building the documentation book.   | `master`                  |
 
 #### Container Build Examples
 
 Build a `kanidm` container using `podman`:
 
-    CONTAINER_TOOL=podman make build/kanidmd
+```bash
+CONTAINER_TOOL=podman make build/kanidmd
+```
 
 Build a `kanidm` container and use a redis build cache:
 
-    CONTAINER_BUILD_ARGS='--build-arg "SCCACHE_REDIS=redis://redis.dev.blackhats.net.au:6379"' make build/kanidmd
+```bash
+CONTAINER_BUILD_ARGS='--build-arg "SCCACHE_REDIS=redis://redis.dev.blackhats.net.au:6379"' make build/kanidmd
+```
 
 #### Automatically Built Containers
 
-To speed up testing across platforms, we're leveraging GitHub actions to build 
-containers for test use.
+To speed up testing across platforms, we're leveraging GitHub actions to build containers for test
+use.
 
-Whenever code is merged with the `master` branch of Kanidm, containers are automatically 
-built for `kanidmd` and `radius`. Sometimes they fail to build, but we'll try to 
-keep them avilable.
+Whenever code is merged with the `master` branch of Kanidm, containers are automatically built for
+`kanidmd` and `radius`. Sometimes they fail to build, but we'll try to keep them avilable.
 
-To find information on the packages, 
+To find information on the packages,
 [visit the Kanidm packages page](https://github.com/orgs/kanidm/packages?repo_name=kanidm).
 
-An example command for pulling and running the radius container is below. You'll 
-need to 
+An example command for pulling and running the radius container is below. You'll need to
 [authenticate with the GitHub container registry first](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-to-the-container-registry).
 
-```shell
+```bash
 docker pull ghcr.io/kanidm/radius:devel
 docker run --rm -it \
     -v $(pwd)/kanidm:/data/kanidm \
@@ -301,20 +328,20 @@ This assumes you have a `kanidm` client configuration file in the current workin
 
 You'll need `mdbook` to build the book:
 
-```shell
+```bash
 cargo install mdbook
 ```
 
 To build it:
 
-```shell
+```bash
 cd kanidm_book
 mdbook build
 ```
 
 Or to run a local webserver:
 
-```shell
+```bash
 cd kanidm_book
 mdbook serve
-````
+```

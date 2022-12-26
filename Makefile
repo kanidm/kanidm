@@ -3,6 +3,7 @@ IMAGE_VERSION ?= devel
 CONTAINER_TOOL_ARGS ?=
 IMAGE_ARCH ?= "linux/amd64,linux/arm64"
 CONTAINER_BUILD_ARGS ?=
+MARKDOWN_FORMAT_ARGS ?= --options-line-width=100
 # Example of using redis with sccache
 # --build-arg "SCCACHE_REDIS=redis://redis.dev.blackhats.net.au:6379"
 CONTAINER_TOOL ?= docker
@@ -139,12 +140,20 @@ test/pykanidm/mypy:
 test/pykanidm: ## run the test suite (mypy/pylint/pytest) for the kanidm python module
 test/pykanidm: test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/pylint
 
+.PHONY: test/doc/format
+test/doc/format: ## Format docs and the Kanidm book
+	find . -type f -name \*.md -exec deno fmt --check $(MARKDOWN_FORMAT_ARGS) "{}" +
+
 ########################################################################
 
 .PHONY: doc
 doc: ## Build the rust documentation locally
 doc:
 	cargo doc --document-private-items
+
+.PHONY: doc/format
+doc/format: ## Format docs and the Kanidm book
+	find . -type f -name \*.md -exec deno fmt $(MARKDOWN_FORMAT_ARGS) "{}" +
 
 .PHONY: book
 book: ## Build the Kanidm book
