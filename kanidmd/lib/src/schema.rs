@@ -2225,7 +2225,7 @@ mod tests {
                     "uuid",
                     Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
                 ),
-                ("class", Value::new_class("zzzzz"))
+                ("class", Value::new_class("zzzzzz"))
             )
             .into_invalid_new()
         };
