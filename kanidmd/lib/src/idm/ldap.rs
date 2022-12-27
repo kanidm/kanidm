@@ -584,9 +584,9 @@ mod tests {
     use ldap3_proto::proto::{LdapFilter, LdapOp, LdapSearchScope};
     use ldap3_proto::simple::*;
 
+    use super::{LdapServer, LdapSession};
     use crate::idm::event::UnixPasswordChangeEvent;
     use crate::idm::serviceaccount::GenerateApiTokenEvent;
-    use super::{LdapServer, LdapSession};
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
 

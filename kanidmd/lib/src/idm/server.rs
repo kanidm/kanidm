@@ -25,6 +25,7 @@ use url::Url;
 use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
 
 use super::event::ReadBackupCodeEvent;
+use super::ldap::{LdapBoundToken, LdapSession};
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLock;
 use crate::idm::account::Account;
@@ -53,7 +54,6 @@ use crate::idm::scim::{ScimSyncToken, SyncAccount};
 use crate::idm::serviceaccount::ServiceAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
-use super::ldap::{LdapBoundToken, LdapSession};
 use crate::prelude::*;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
 use crate::value::{Oauth2Session, Session};

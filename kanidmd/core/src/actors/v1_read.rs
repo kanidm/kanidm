@@ -25,6 +25,7 @@ use kanidmd_lib::{
         AuthEvent, AuthResult, CredentialStatusEvent, RadiusAuthTokenEvent, ReadBackupCodeEvent,
         UnixGroupTokenEvent, UnixUserAuthEvent, UnixUserTokenEvent,
     },
+    idm::ldap::{LdapBoundToken, LdapResponseState, LdapServer},
     idm::oauth2::{
         AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
         AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse,
@@ -32,7 +33,6 @@ use kanidmd_lib::{
     },
     idm::server::{IdmServer, IdmServerTransaction},
     idm::serviceaccount::ListApiTokenEvent,
-    idm::ldap::{LdapBoundToken, LdapResponseState, LdapServer},
 };
 
 // ===========================================================
