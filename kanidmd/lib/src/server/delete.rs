@@ -145,4 +145,111 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
         Ok(())
     }
+
+    pub fn internal_delete(
+        &mut self,
+        filter: &Filter<FilterInvalid>,
+    ) -> Result<(), OperationError> {
+        let f_valid = filter
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+        let de = DeleteEvent::new_internal(f_valid);
+        self.delete(&de)
+    }
+
+    pub fn internal_delete_uuid(&mut self, target_uuid: Uuid) -> Result<(), OperationError> {
+        let filter = filter!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
+        let f_valid = filter
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+        let de = DeleteEvent::new_internal(f_valid);
+        self.delete(&de)
+    }
+
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::prelude::*;
+
+    #[qs_test]
+    async fn test_delete(server: &QueryServer) {
+        // Create
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
+
+        let e1 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson1")),
+            (
+                "uuid",
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+            ),
+            ("description", Value::new_utf8s("testperson")),
+            ("displayname", Value::new_utf8s("testperson1"))
+        );
+
+        let e2 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson2")),
+            (
+                "uuid",
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
+            ),
+            ("description", Value::new_utf8s("testperson")),
+            ("displayname", Value::new_utf8s("testperson2"))
+        );
+
+        let e3 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson3")),
+            (
+                "uuid",
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63933"))
+            ),
+            ("description", Value::new_utf8s("testperson")),
+            ("displayname", Value::new_utf8s("testperson3"))
+        );
+
+        let ce = CreateEvent::new_internal(vec![e1.clone(), e2.clone(), e3.clone()]);
+
+        let cr = server_txn.create(&ce);
+        assert!(cr.is_ok());
+
+        // Delete filter is syntax invalid
+        let de_inv =
+            unsafe { DeleteEvent::new_internal_invalid(filter!(f_pres("nhtoaunaoehtnu"))) };
+        assert!(server_txn.delete(&de_inv).is_err());
+
+        // Delete deletes nothing
+        let de_empty = unsafe {
+            DeleteEvent::new_internal_invalid(filter!(f_eq(
+                "uuid",
+                PartialValue::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-000000000000"))
+            )))
+        };
+        assert!(server_txn.delete(&de_empty).is_err());
+
+        // Delete matches one
+        let de_sin = unsafe {
+            DeleteEvent::new_internal_invalid(filter!(f_eq(
+                "name",
+                PartialValue::new_iname("testperson3")
+            )))
+        };
+        assert!(server_txn.delete(&de_sin).is_ok());
+
+        // Delete matches many
+        let de_mult = unsafe {
+            DeleteEvent::new_internal_invalid(filter!(f_eq(
+                "description",
+                PartialValue::new_utf8s("testperson")
+            )))
+        };
+        assert!(server_txn.delete(&de_mult).is_ok());
+
+        assert!(server_txn.commit().is_ok());
+    }
 }

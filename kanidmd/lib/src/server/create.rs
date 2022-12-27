@@ -156,4 +156,68 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
         Ok(())
     }
+
+    pub fn internal_create(
+        &mut self,
+        entries: Vec<Entry<EntryInit, EntryNew>>,
+    ) -> Result<(), OperationError> {
+        let ce = CreateEvent::new_internal(entries);
+        self.create(&ce)
+    }
+
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+    use crate::prelude::*;
+
+    #[qs_test]
+    async fn test_create_user(server: &QueryServer) {
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let filt = filter!(f_eq("name", PartialValue::new_iname("testperson")));
+        let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
+
+        let se1 = unsafe { SearchEvent::new_impersonate_entry(admin.clone(), filt.clone()) };
+        let se2 = unsafe { SearchEvent::new_impersonate_entry(admin, filt) };
+
+        let mut e = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("class", Value::new_class("account")),
+            ("name", Value::new_iname("testperson")),
+            ("spn", Value::new_spn_str("testperson", "example.com")),
+            (
+                "uuid",
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+            ),
+            ("description", Value::new_utf8s("testperson")),
+            ("displayname", Value::new_utf8s("testperson"))
+        );
+
+        let ce = CreateEvent::new_internal(vec![e.clone()]);
+
+        let r1 = server_txn.search(&se1).expect("search failure");
+        assert!(r1.is_empty());
+
+        let cr = server_txn.create(&ce);
+        assert!(cr.is_ok());
+
+        let r2 = server_txn.search(&se2).expect("search failure");
+        debug!("--> {:?}", r2);
+        assert!(r2.len() == 1);
+
+        // We apply some member-of in the server now, so we add these before we seal.
+        e.add_ava("class", Value::new_class("memberof"));
+        e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_PERSONS));
+        e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_PERSONS));
+        e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));
+        e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));
+
+        let expected = unsafe { vec![Arc::new(e.into_sealed_committed())] };
+
+        assert_eq!(r2, expected);
+
+        assert!(server_txn.commit().is_ok());
+    }
 }

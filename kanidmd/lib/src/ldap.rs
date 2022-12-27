@@ -574,7 +574,7 @@ pub(crate) fn ldap_attr_filter_map(input: &str) -> AttrString {
 
 #[cfg(test)]
 mod tests {
-    // use crate::prelude::*;
+    use crate::prelude::*;
     use std::str::FromStr;
 
     use async_std::task;
@@ -584,7 +584,6 @@ mod tests {
     use ldap3_proto::proto::{LdapFilter, LdapOp, LdapSearchScope};
     use ldap3_proto::simple::*;
 
-    use crate::event::{CreateEvent, ModifyEvent};
     use crate::idm::event::UnixPasswordChangeEvent;
     use crate::idm::serviceaccount::GenerateApiTokenEvent;
     use crate::ldap::{LdapServer, LdapSession};

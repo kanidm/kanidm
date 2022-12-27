@@ -386,4 +386,390 @@ impl<'a> QueryServerWriteTransaction<'a> {
         trace!("Modify operation success");
         Ok(())
     }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn internal_modify(
+        &mut self,
+        filter: &Filter<FilterInvalid>,
+        modlist: &ModifyList<ModifyInvalid>,
+    ) -> Result<(), OperationError> {
+        let f_valid = filter
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+        let m_valid = modlist
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+        let me = ModifyEvent::new_internal(f_valid, m_valid);
+        self.modify(&me)
+    }
+
+    pub fn internal_modify_uuid(
+        &mut self,
+        target_uuid: Uuid,
+        modlist: &ModifyList<ModifyInvalid>,
+    ) -> Result<(), OperationError> {
+        let filter = filter!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
+        let f_valid = filter
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+        let m_valid = modlist
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+        let me = ModifyEvent::new_internal(f_valid, m_valid);
+        self.modify(&me)
+    }
+
+    pub fn impersonate_modify_valid(
+        &mut self,
+        f_valid: Filter<FilterValid>,
+        f_intent_valid: Filter<FilterValid>,
+        m_valid: ModifyList<ModifyValid>,
+        event: &Identity,
+    ) -> Result<(), OperationError> {
+        let me = ModifyEvent::new_impersonate(event, f_valid, f_intent_valid, m_valid);
+        self.modify(&me)
+    }
+
+    pub fn impersonate_modify(
+        &mut self,
+        filter: &Filter<FilterInvalid>,
+        filter_intent: &Filter<FilterInvalid>,
+        modlist: &ModifyList<ModifyInvalid>,
+        event: &Identity,
+    ) -> Result<(), OperationError> {
+        let f_valid = filter.validate(self.get_schema()).map_err(|e| {
+            admin_error!("filter Schema Invalid {:?}", e);
+            OperationError::SchemaViolation(e)
+        })?;
+        let f_intent_valid = filter_intent.validate(self.get_schema()).map_err(|e| {
+            admin_error!("f_intent Schema Invalid {:?}", e);
+            OperationError::SchemaViolation(e)
+        })?;
+        let m_valid = modlist.validate(self.get_schema()).map_err(|e| {
+            admin_error!("modlist Schema Invalid {:?}", e);
+            OperationError::SchemaViolation(e)
+        })?;
+        self.impersonate_modify_valid(f_valid, f_intent_valid, m_valid, event)
+    }
+
+    pub fn impersonate_modify_gen_event(
+        &mut self,
+        filter: &Filter<FilterInvalid>,
+        filter_intent: &Filter<FilterInvalid>,
+        modlist: &ModifyList<ModifyInvalid>,
+        event: &Identity,
+    ) -> Result<ModifyEvent, OperationError> {
+        let f_valid = filter.validate(self.get_schema()).map_err(|e| {
+            admin_error!("filter Schema Invalid {:?}", e);
+            OperationError::SchemaViolation(e)
+        })?;
+        let f_intent_valid = filter_intent.validate(self.get_schema()).map_err(|e| {
+            admin_error!("f_intent Schema Invalid {:?}", e);
+            OperationError::SchemaViolation(e)
+        })?;
+        let m_valid = modlist.validate(self.get_schema()).map_err(|e| {
+            admin_error!("modlist Schema Invalid {:?}", e);
+            OperationError::SchemaViolation(e)
+        })?;
+        Ok(ModifyEvent::new_impersonate(
+            event,
+            f_valid,
+            f_intent_valid,
+            m_valid,
+        ))
+    }
+
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::prelude::*;
+    use crate::credential::policy::CryptoPolicy;
+    use crate::credential::Credential;
+
+    #[qs_test]
+    async fn test_modify(server: &QueryServer) {
+        // Create an object
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
+
+        let e1 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson1")),
+            (
+                "uuid",
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+            ),
+            ("description", Value::new_utf8s("testperson1")),
+            ("displayname", Value::new_utf8s("testperson1"))
+        );
+
+        let e2 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson2")),
+            (
+                "uuid",
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
+            ),
+            ("description", Value::new_utf8s("testperson2")),
+            ("displayname", Value::new_utf8s("testperson2"))
+        );
+
+        let ce = CreateEvent::new_internal(vec![e1.clone(), e2.clone()]);
+
+        let cr = server_txn.create(&ce);
+        assert!(cr.is_ok());
+
+        // Empty Modlist (filter is valid)
+        let me_emp = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_pres("class")),
+                ModifyList::new_list(vec![]),
+            )
+        };
+        assert!(server_txn.modify(&me_emp) == Err(OperationError::EmptyRequest));
+
+        // Mod changes no objects
+        let me_nochg = unsafe {
+            ModifyEvent::new_impersonate_entry_ser(
+                JSON_ADMIN_V1,
+                filter!(f_eq("name", PartialValue::new_iname("flarbalgarble"))),
+                ModifyList::new_list(vec![Modify::Present(
+                    AttrString::from("description"),
+                    Value::from("anusaosu"),
+                )]),
+            )
+        };
+        assert!(server_txn.modify(&me_nochg) == Err(OperationError::NoMatchingEntries));
+
+        // Filter is invalid to schema - to check this due to changes in the way events are
+        // handled, we put this via the internal modify function to get the modlist
+        // checked for us. Normal server operation doesn't allow weird bypasses like
+        // this.
+        let r_inv_1 = server_txn.internal_modify(
+            &filter!(f_eq("tnanuanou", PartialValue::new_iname("Flarbalgarble"))),
+            &ModifyList::new_list(vec![Modify::Present(
+                AttrString::from("description"),
+                Value::from("anusaosu"),
+            )]),
+        );
+        assert!(
+            r_inv_1
+                == Err(OperationError::SchemaViolation(
+                    SchemaError::InvalidAttribute("tnanuanou".to_string())
+                ))
+        );
+
+        // Mod is invalid to schema
+        let me_inv_m = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_pres("class")),
+                ModifyList::new_list(vec![Modify::Present(
+                    AttrString::from("htnaonu"),
+                    Value::from("anusaosu"),
+                )]),
+            )
+        };
+        assert!(
+            server_txn.modify(&me_inv_m)
+                == Err(OperationError::SchemaViolation(
+                    SchemaError::InvalidAttribute("htnaonu".to_string())
+                ))
+        );
+
+        // Mod single object
+        let me_sin = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iname("testperson2"))),
+                ModifyList::new_list(vec![
+                    Modify::Purged(AttrString::from("description")),
+                    Modify::Present(AttrString::from("description"), Value::from("anusaosu")),
+                ]),
+            )
+        };
+        assert!(server_txn.modify(&me_sin).is_ok());
+
+        // Mod multiple object
+        let me_mult = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_or!([
+                    f_eq("name", PartialValue::new_iname("testperson1")),
+                    f_eq("name", PartialValue::new_iname("testperson2")),
+                ])),
+                ModifyList::new_list(vec![
+                    Modify::Purged(AttrString::from("description")),
+                    Modify::Present(AttrString::from("description"), Value::from("anusaosu")),
+                ]),
+            )
+        };
+        assert!(server_txn.modify(&me_mult).is_ok());
+
+        assert!(server_txn.commit().is_ok());
+    }
+
+    #[qs_test]
+    async fn test_modify_assert(server: &QueryServer) {
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
+
+        let t_uuid = Uuid::new_v4();
+        let r_uuid = Uuid::new_v4();
+
+        assert!(server_txn
+            .internal_create(vec![entry_init!(
+                ("class", Value::new_class("object")),
+                ("uuid", Value::Uuid(t_uuid))
+            ),])
+            .is_ok());
+
+        // This assertion will FAIL
+        assert!(matches!(
+            server_txn.internal_modify_uuid(
+                t_uuid,
+                &ModifyList::new_list(vec![
+                    m_assert("uuid", &PartialValue::Uuid(r_uuid)),
+                    m_pres("description", &Value::Utf8("test".into()))
+                ])
+            ),
+            Err(OperationError::ModifyAssertionFailed)
+        ));
+
+        // This assertion will PASS
+        assert!(server_txn
+            .internal_modify_uuid(
+                t_uuid,
+                &ModifyList::new_list(vec![
+                    m_assert("uuid", &PartialValue::Uuid(t_uuid)),
+                    m_pres("description", &Value::Utf8("test".into()))
+                ])
+            )
+            .is_ok());
+    }
+
+    #[qs_test]
+    async fn test_modify_invalid_class(server: &QueryServer) {
+        // Test modifying an entry and adding an extra class, that would cause the entry
+        // to no longer conform to schema.
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
+
+        let e1 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson1")),
+            (
+                "uuid",
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+            ),
+            ("description", Value::new_utf8s("testperson1")),
+            ("displayname", Value::new_utf8s("testperson1"))
+        );
+
+        let ce = CreateEvent::new_internal(vec![e1.clone()]);
+
+        let cr = server_txn.create(&ce);
+        assert!(cr.is_ok());
+
+        // Add class but no values
+        let me_sin = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                ModifyList::new_list(vec![Modify::Present(
+                    AttrString::from("class"),
+                    Value::new_class("system_info"),
+                )]),
+            )
+        };
+        assert!(server_txn.modify(&me_sin).is_err());
+
+        // Add multivalue where not valid
+        let me_sin = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                ModifyList::new_list(vec![Modify::Present(
+                    AttrString::from("name"),
+                    Value::new_iname("testpersonx"),
+                )]),
+            )
+        };
+        assert!(server_txn.modify(&me_sin).is_err());
+
+        // add class and valid values?
+        let me_sin = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                ModifyList::new_list(vec![
+                    Modify::Present(AttrString::from("class"), Value::new_class("system_info")),
+                    // Modify::Present("domain".to_string(), Value::new_iutf8("domain.name")),
+                    Modify::Present(AttrString::from("version"), Value::new_uint32(1)),
+                ]),
+            )
+        };
+        assert!(server_txn.modify(&me_sin).is_ok());
+
+        // Replace a value
+        let me_sin = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                ModifyList::new_list(vec![
+                    Modify::Purged(AttrString::from("name")),
+                    Modify::Present(AttrString::from("name"), Value::new_iname("testpersonx")),
+                ]),
+            )
+        };
+        assert!(server_txn.modify(&me_sin).is_ok());
+    }
+
+    #[qs_test]
+    async fn test_modify_password_only(server: &QueryServer) {
+        let e1 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("class", Value::new_class("account")),
+            ("name", Value::new_iname("testperson1")),
+            (
+                "uuid",
+                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+            ),
+            ("description", Value::new_utf8s("testperson1")),
+            ("displayname", Value::new_utf8s("testperson1"))
+        );
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        // Add the entry. Today we have no syntax to take simple str to a credential
+        // but honestly, that's probably okay :)
+        let ce = CreateEvent::new_internal(vec![e1]);
+        let cr = server_txn.create(&ce);
+        assert!(cr.is_ok());
+
+        // Build the credential.
+        let p = CryptoPolicy::minimum();
+        let cred = Credential::new_password_only(&p, "test_password").unwrap();
+        let v_cred = Value::new_credential("primary", cred);
+        assert!(v_cred.validate());
+
+        // now modify and provide a primary credential.
+        let me_inv_m = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                ModifyList::new_list(vec![Modify::Present(
+                    AttrString::from("primary_credential"),
+                    v_cred,
+                )]),
+            )
+        };
+        // go!
+        assert!(server_txn.modify(&me_inv_m).is_ok());
+
+        // assert it exists and the password checks out
+        let test_ent = server_txn
+            .internal_search_uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+            .expect("failed");
+        // get the primary ava
+        let cred_ref = test_ent
+            .get_ava_single_credential("primary_credential")
+            .expect("Failed");
+        // do a pw check.
+        assert!(cred_ref.verify_password("test_password").unwrap());
+    }
+
+
 }

@@ -1607,7 +1607,6 @@ mod tests {
     use kanidm_proto::v1::{AuthType, UserAuthToken};
     use openssl::sha;
 
-    use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
     use crate::idm::delayed::DelayedAction;
     use crate::idm::oauth2::{AuthoriseResponse, Oauth2Error};
     use crate::idm::server::{IdmServer, IdmServerTransaction};

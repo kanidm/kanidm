@@ -75,7 +75,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 #[cfg(test)]
 mod tests {
     // use crate::prelude::*;
-    use crate::event::{CreateEvent, ModifyEvent};
     use async_std::task;
     use kanidm_proto::internal::AppLink;
 

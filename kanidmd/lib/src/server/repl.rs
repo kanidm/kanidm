@@ -564,5 +564,287 @@ mod tests {
         assert!(server_txn.name_to_uuid("testperson1") == Ok(tuuid));
     }
 
+    #[qs_test]
+    async fn test_tombstone(server: &QueryServer) {
+        // First we setup some timestamps
+        let time_p1 = duration_from_epoch_now();
+        let time_p2 = time_p1 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
+        let time_p3 = time_p2 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
+
+        let mut server_txn = server.write(time_p1).await;
+        let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
+
+        let filt_i_ts = filter_all!(f_eq("class", PartialValue::new_class("tombstone")));
+
+        // Create fake external requests. Probably from admin later
+        // Should we do this with impersonate instead of using the external
+        let me_ts = unsafe {
+            ModifyEvent::new_impersonate_entry(
+                admin.clone(),
+                filt_i_ts.clone(),
+                ModifyList::new_list(vec![Modify::Present(
+                    AttrString::from("class"),
+                    Value::new_class("tombstone"),
+                )]),
+            )
+        };
+
+        let de_ts = unsafe { DeleteEvent::new_impersonate_entry(admin.clone(), filt_i_ts.clone()) };
+        let se_ts = unsafe { SearchEvent::new_ext_impersonate_entry(admin, filt_i_ts.clone()) };
+
+        // First, create an entry, then push it through the lifecycle.
+        let e_ts = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson1")),
+            (
+                "uuid",
+                Value::Uuid(uuid!("9557f49c-97a5-4277-a9a5-097d17eb8317"))
+            ),
+            ("description", Value::new_utf8s("testperson1")),
+            ("displayname", Value::new_utf8s("testperson1"))
+        );
+
+        let ce = CreateEvent::new_internal(vec![e_ts]);
+        let cr = server_txn.create(&ce);
+        assert!(cr.is_ok());
+
+        let de_sin = unsafe {
+            DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
+                "name",
+                PartialValue::new_iname("testperson1")
+            )])))
+        };
+        assert!(server_txn.delete(&de_sin).is_ok());
+
+        // Commit
+        assert!(server_txn.commit().is_ok());
+
+        // Now, establish enough time for the recycled items to be purged.
+        let mut server_txn = server.write(time_p2).await;
+        assert!(server_txn.purge_recycled().is_ok());
+
+        // Now test the tombstone properties.
+
+        // Can it be seen (external search)
+        let r1 = server_txn.search(&se_ts).expect("search failed");
+        assert!(r1.is_empty());
+
+        // Can it be deleted (external delete)
+        // Should be err-no candidates.
+        assert!(server_txn.delete(&de_ts).is_err());
+
+        // Can it be modified? (external modify)
+        // Should be err-no candidates
+        assert!(server_txn.modify(&me_ts).is_err());
+
+        // Can it be seen (internal search)
+        // Internal search should see it.
+        let r2 = server_txn
+            .internal_search(filt_i_ts.clone())
+            .expect("internal search failed");
+        assert!(r2.len() == 1);
+
+        // If we purge now, nothing happens, we aren't past the time window.
+        assert!(server_txn.purge_tombstones().is_ok());
+
+        let r3 = server_txn
+            .internal_search(filt_i_ts.clone())
+            .expect("internal search failed");
+        assert!(r3.len() == 1);
+
+        // Commit
+        assert!(server_txn.commit().is_ok());
+
+        // New txn, push the cid forward.
+        let server_txn = server.write(time_p3).await;
+
+        // Now purge
+        assert!(server_txn.purge_tombstones().is_ok());
+
+        // Assert it's gone
+        // Internal search should not see it.
+        let r4 = server_txn
+            .internal_search(filt_i_ts)
+            .expect("internal search failed");
+        assert!(r4.is_empty());
+
+        assert!(server_txn.commit().is_ok());
+    }
+
+
+    fn create_user(name: &str, uuid: &str) -> Entry<EntryInit, EntryNew> {
+        entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname(name)),
+            ("uuid", Value::new_uuid_s(uuid).expect("uuid")),
+            ("description", Value::new_utf8s("testperson-entry")),
+            ("displayname", Value::new_utf8s(name))
+        )
+    }
+
+    fn create_group(name: &str, uuid: &str, members: &[&str]) -> Entry<EntryInit, EntryNew> {
+        let mut e1 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("group")),
+            ("name", Value::new_iname(name)),
+            ("uuid", Value::new_uuid_s(uuid).expect("uuid")),
+            ("description", Value::new_utf8s("testgroup-entry"))
+        );
+        members
+            .iter()
+            .for_each(|m| e1.add_ava("member", Value::new_refer_s(m).unwrap()));
+        e1
+    }
+
+    fn check_entry_has_mo(qs: &QueryServerWriteTransaction, name: &str, mo: &str) -> bool {
+        let e = qs
+            .internal_search(filter!(f_eq("name", PartialValue::new_iname(name))))
+            .unwrap()
+            .pop()
+            .unwrap();
+
+        e.attribute_equality("memberof", &PartialValue::new_refer_s(mo).unwrap())
+    }
+
+    #[qs_test]
+    async fn test_revive_advanced_directmemberships(server: &QueryServer) {
+        // Create items
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
+
+        // Right need a user in a direct group.
+        let u1 = create_user("u1", "22b47373-d123-421f-859e-9ddd8ab14a2a");
+        let g1 = create_group(
+            "g1",
+            "cca2bbfc-5b43-43f3-be9e-f5b03b3defec",
+            &["22b47373-d123-421f-859e-9ddd8ab14a2a"],
+        );
+
+        // Need a user in A -> B -> User, such that A/B are re-adde as MO
+        let u2 = create_user("u2", "5c19a4a2-b9f0-4429-b130-5782de5fddda");
+        let g2a = create_group(
+            "g2a",
+            "e44cf9cd-9941-44cb-a02f-307b6e15ac54",
+            &["5c19a4a2-b9f0-4429-b130-5782de5fddda"],
+        );
+        let g2b = create_group(
+            "g2b",
+            "d3132e6e-18ce-4b87-bee1-1d25e4bfe96d",
+            &["e44cf9cd-9941-44cb-a02f-307b6e15ac54"],
+        );
+
+        // Need a user in a group that is recycled after, then revived at the same time.
+        let u3 = create_user("u3", "68467a41-6e8e-44d0-9214-a5164e75ca03");
+        let g3 = create_group(
+            "g3",
+            "36048117-e479-45ed-aeb5-611e8d83d5b1",
+            &["68467a41-6e8e-44d0-9214-a5164e75ca03"],
+        );
+
+        // A user in a group that is recycled, user is revived, THEN the group is. Group
+        // should be present in MO after the second revive.
+        let u4 = create_user("u4", "d696b10f-1729-4f1a-83d0-ca06525c2f59");
+        let g4 = create_group(
+            "g4",
+            "d5c59ac6-c533-4b00-989f-d0e183f07bab",
+            &["d696b10f-1729-4f1a-83d0-ca06525c2f59"],
+        );
+
+        let ce = CreateEvent::new_internal(vec![u1, g1, u2, g2a, g2b, u3, g3, u4, g4]);
+        let cr = server_txn.create(&ce);
+        assert!(cr.is_ok());
+
+        // Now recycle the needed entries.
+        let de = unsafe {
+            DeleteEvent::new_internal_invalid(filter!(f_or(vec![
+                f_eq("name", PartialValue::new_iname("u1")),
+                f_eq("name", PartialValue::new_iname("u2")),
+                f_eq("name", PartialValue::new_iname("u3")),
+                f_eq("name", PartialValue::new_iname("g3")),
+                f_eq("name", PartialValue::new_iname("u4")),
+                f_eq("name", PartialValue::new_iname("g4"))
+            ])))
+        };
+        assert!(server_txn.delete(&de).is_ok());
+
+        // Now revive and check each one, one at a time.
+        let rev1 = unsafe {
+            ReviveRecycledEvent::new_impersonate_entry(
+                admin.clone(),
+                filter_all!(f_eq("name", PartialValue::new_iname("u1"))),
+            )
+        };
+        assert!(server_txn.revive_recycled(&rev1).is_ok());
+        // check u1 contains MO ->
+        assert!(check_entry_has_mo(
+            &server_txn,
+            "u1",
+            "cca2bbfc-5b43-43f3-be9e-f5b03b3defec"
+        ));
+
+        // Revive u2 and check it has two mo.
+        let rev2 = unsafe {
+            ReviveRecycledEvent::new_impersonate_entry(
+                admin.clone(),
+                filter_all!(f_eq("name", PartialValue::new_iname("u2"))),
+            )
+        };
+        assert!(server_txn.revive_recycled(&rev2).is_ok());
+        assert!(check_entry_has_mo(
+            &server_txn,
+            "u2",
+            "e44cf9cd-9941-44cb-a02f-307b6e15ac54"
+        ));
+        assert!(check_entry_has_mo(
+            &server_txn,
+            "u2",
+            "d3132e6e-18ce-4b87-bee1-1d25e4bfe96d"
+        ));
+
+        // Revive u3 and g3 at the same time.
+        let rev3 = unsafe {
+            ReviveRecycledEvent::new_impersonate_entry(
+                admin.clone(),
+                filter_all!(f_or(vec![
+                    f_eq("name", PartialValue::new_iname("u3")),
+                    f_eq("name", PartialValue::new_iname("g3"))
+                ])),
+            )
+        };
+        assert!(server_txn.revive_recycled(&rev3).is_ok());
+        assert!(
+            check_entry_has_mo(&server_txn, "u3", "36048117-e479-45ed-aeb5-611e8d83d5b1") == false
+        );
+
+        // Revive u4, should NOT have the MO.
+        let rev4a = unsafe {
+            ReviveRecycledEvent::new_impersonate_entry(
+                admin.clone(),
+                filter_all!(f_eq("name", PartialValue::new_iname("u4"))),
+            )
+        };
+        assert!(server_txn.revive_recycled(&rev4a).is_ok());
+        assert!(
+            check_entry_has_mo(&server_txn, "u4", "d5c59ac6-c533-4b00-989f-d0e183f07bab") == false
+        );
+
+        // Now revive g4, should allow MO onto u4.
+        let rev4b = unsafe {
+            ReviveRecycledEvent::new_impersonate_entry(
+                admin,
+                filter_all!(f_eq("name", PartialValue::new_iname("g4"))),
+            )
+        };
+        assert!(server_txn.revive_recycled(&rev4b).is_ok());
+        assert!(
+            check_entry_has_mo(&server_txn, "u4", "d5c59ac6-c533-4b00-989f-d0e183f07bab") == false
+        );
+
+        assert!(server_txn.commit().is_ok());
+    }
+
+
 }
 

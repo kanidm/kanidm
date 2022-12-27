@@ -2318,7 +2318,6 @@ mod tests {
 
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::{Credential, Password};
-    use crate::event::{CreateEvent, ModifyEvent};
     use crate::idm::account::DestroySessionTokenEvent;
     use crate::idm::delayed::{AuthSessionRecord, DelayedAction};
     use crate::idm::event::{AuthEvent, AuthResult};

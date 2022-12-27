@@ -57,7 +57,7 @@ pub mod testkit;
 /// A prelude of imports that should be imported by all other Kanidm modules to
 /// help make imports cleaner.
 pub mod prelude {
-    pub use kanidm_proto::v1::{ConsistencyError, OperationError};
+    pub use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
     pub use sketching::{
         admin_debug, admin_error, admin_info, admin_warn, filter_error, filter_info, filter_trace,
         filter_warn, perf_trace, request_error, request_info, request_trace, request_warn,
@@ -74,9 +74,10 @@ pub mod prelude {
         EntryInvalidNew, EntryNew, EntryReduced, EntryReducedCommitted, EntrySealed,
         EntrySealedCommitted, EntrySealedNew, EntryTuple, EntryValid,
     };
+    pub use crate::event::{CreateEvent, ExistsEvent, SearchEvent, ModifyEvent, DeleteEvent};
     pub use crate::filter::{
         f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub, Filter,
-        FilterInvalid, FC,
+        FilterInvalid, FC, FilterValid
     };
     pub use crate::identity::{AccessScope, IdentType, Identity, IdentityId};
     pub use crate::idm::server::{IdmServer, IdmServerDelayed};

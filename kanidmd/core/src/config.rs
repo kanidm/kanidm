@@ -27,7 +27,7 @@ pub struct OnlineBackup {
 }
 
 fn default_online_backup_schedule() -> String {
-    "00 22 * * *".to_string()
+    "@daily".to_string()
 }
 
 fn default_online_backup_versions() -> usize {

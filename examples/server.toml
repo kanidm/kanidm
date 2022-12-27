@@ -65,13 +65,30 @@ origin = "https://idm.example.com:8443"
 #   Defaults to "WriteReplica".
 # role = "WriteReplica"
 #
+# This section if uncommented will enable online - automatic backups of your database.
 # [online_backup]
+#
 #   The path to the output folder for online backups
+#   Defaults to "" (no path set)
 # path = "/var/lib/kanidm/backups/"
-#   The schedule to run online backups - see https://crontab.guru/
-#   every day at 22:00 UTC (default)
-# schedule = "00 22 * * *"
-#    four times a day at 3 minutes past the hour, every 6th hours
-# schedule = "03 */6 * * *"
+#
+#   The schedule to run online backups. All times are interpretted in UTC.
+#   The format of the cron expression is:
+#
+#   sec  min   hour   day of month   month   day of week   year
+#
+#   - to run a 6:09 pm every day.
+#   "0    9    6      *              *       *             *   "
+#   "0 9 6 * * * *"
+#
+#   - to run at midnight daily
+#   @daily
+#
+#   - to run every hour
+#   @hourly
+#
+#   Defaults to "@daily"
+# schedule = "@daily"
 #   Number of backups to keep (default 7)
 # versions = 7
+
