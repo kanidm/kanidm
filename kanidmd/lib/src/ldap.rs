@@ -920,7 +920,14 @@ mod tests {
                     base: "dc=example,dc=com".to_string(),
                     scope: LdapSearchScope::Subtree,
                     filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
-                    attrs: vec!["name".to_string(), "mail".to_string(), "mail;primary".to_string(), "mail;alternative".to_string(), "emailprimary".to_string(), "emailalternative".to_string()],
+                    attrs: vec![
+                        "name".to_string(),
+                        "mail".to_string(),
+                        "mail;primary".to_string(),
+                        "mail;alternative".to_string(),
+                        "emailprimary".to_string(),
+                        "emailalternative".to_string(),
+                    ],
                 };
 
                 let sa_uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
