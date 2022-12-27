@@ -104,12 +104,12 @@ pub struct QueryServerWriteTransaction<'a> {
     // We store a set of flags that indicate we need a reload of
     // schema or acp, which is tested by checking the classes of the
     // changing content.
-    changed_schema: Cell<bool>,
-    changed_acp: Cell<bool>,
-    changed_oauth2: Cell<bool>,
-    changed_domain: Cell<bool>,
+    changed_schema: bool,
+    changed_acp: bool,
+    changed_oauth2: bool,
+    changed_domain: bool,
     // Store the list of changed uuids for other invalidation needs?
-    changed_uuid: Cell<HashSet<Uuid>>,
+    changed_uuid: HashSet<Uuid>,
     _db_ticket: SemaphorePermit<'a>,
     _write_ticket: SemaphorePermit<'a>,
     resolve_filter_cache: Cell<
@@ -998,11 +998,11 @@ impl QueryServer {
             be_txn,
             schema: schema_write,
             accesscontrols: self.accesscontrols.write(),
-            changed_schema: Cell::new(false),
-            changed_acp: Cell::new(false),
-            changed_oauth2: Cell::new(false),
-            changed_domain: Cell::new(false),
-            changed_uuid: Cell::new(HashSet::new()),
+            changed_schema: false,
+            changed_acp: false,
+            changed_oauth2: false,
+            changed_domain: false,
+            changed_uuid: HashSet::new(),
             _db_ticket: db_ticket,
             _write_ticket: write_ticket,
             resolve_filter_cache: Cell::new(self.resolve_filter_cache.read()),
@@ -1304,8 +1304,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.be_txn.reindex()
     }
 
-    fn force_schema_reload(&self) {
-        self.changed_schema.set(true);
+    fn force_schema_reload(&mut self) {
+        self.changed_schema = true;
     }
 
     #[instrument(level = "info", skip_all)]
@@ -1314,15 +1314,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn get_changed_uuids(&self) -> &HashSet<Uuid> {
-        unsafe { &(*self.changed_uuid.as_ptr()) }
+        &self.changed_uuid
     }
 
     pub fn get_changed_ouath2(&self) -> bool {
-        self.changed_oauth2.get()
+        self.changed_oauth2
     }
 
     pub fn get_changed_domain(&self) -> bool {
-        self.changed_domain.get()
+        self.changed_domain
     }
 
     fn set_phase(&mut self, phase: ServerPhase) {
@@ -1335,14 +1335,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // in an operation so we can check if we need to do the reload or not
         //
         // Reload the schema from qs.
-        if self.changed_schema.get() {
+        if self.changed_schema {
             self.reload_schema()?;
         }
         // Determine if we need to update access control profiles
         // based on any modifications that have occured.
         // IF SCHEMA CHANGED WE MUST ALSO RELOAD!!! IE if schema had an attr removed
         // that we rely on we MUST fail this here!!
-        if self.changed_schema.get() || self.changed_acp.get() {
+        if self.changed_schema || self.changed_acp {
             self.reload_accesscontrols()?;
         } else {
             // On a reload the cache is dropped, otherwise we tell accesscontrols
@@ -1351,7 +1351,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             //    .invalidate_related_cache(self.changed_uuid.into_inner().as_slice())
         }
 
-        if self.changed_domain.get() {
+        if self.changed_domain {
             self.reload_domain_info()?;
         }
 

@@ -661,8 +661,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug_assert!(res.is_ok());
         res?;
 
-        self.changed_schema.set(true);
-        self.changed_acp.set(true);
+        self.changed_schema = true;
+        self.changed_acp = true;
 
         Ok(())
     }

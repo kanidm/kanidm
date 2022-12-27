@@ -96,38 +96,30 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // We have finished all plugs and now have a successful operation - flag if
         // schema or acp requires reload.
-        if !self.changed_schema.get() {
-            self.changed_schema.set(del_cand.iter().any(|e| {
+        if !self.changed_schema {
+            self.changed_schema = del_cand.iter().any(|e| {
                 e.attribute_equality("class", &PVCLASS_CLASSTYPE)
                     || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
-            }))
+            });
         }
-        if !self.changed_acp.get() {
-            self.changed_acp.set(
-                del_cand
-                    .iter()
-                    .any(|e| e.attribute_equality("class", &PVCLASS_ACP)),
-            )
+        if !self.changed_acp {
+            self.changed_acp = del_cand
+                .iter()
+                .any(|e| e.attribute_equality("class", &PVCLASS_ACP));
         }
-        if !self.changed_oauth2.get() {
-            self.changed_oauth2.set(
-                del_cand
-                    .iter()
-                    .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS)),
-            )
+        if !self.changed_oauth2 {
+            self.changed_oauth2 = del_cand
+                .iter()
+                .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS));
         }
-        if !self.changed_domain.get() {
-            self.changed_domain.set(
-                del_cand
-                    .iter()
-                    .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)),
-            )
+        if !self.changed_domain {
+            self.changed_domain = del_cand
+                .iter()
+                .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO));
         }
 
-        let cu = self.changed_uuid.as_ptr();
-        unsafe {
-            (*cu).extend(del_cand.iter().map(|e| e.get_uuid()));
-        }
+        self.changed_uuid
+            .extend(del_cand.iter().map(|e| e.get_uuid()));
 
         trace!(
             schema_reload = ?self.changed_schema,

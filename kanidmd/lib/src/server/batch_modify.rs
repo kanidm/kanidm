@@ -181,51 +181,40 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // We have finished all plugs and now have a successful operation - flag if
         // schema or acp requires reload. Remember, this is a modify, so we need to check
         // pre and post cands.
-        if !self.changed_schema.get() {
-            self.changed_schema.set(
-                norm_cand
-                    .iter()
-                    .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                    .any(|e| {
-                        e.attribute_equality("class", &PVCLASS_CLASSTYPE)
-                            || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
-                    }),
-            )
+        if !self.changed_schema {
+            self.changed_schema = norm_cand
+                .iter()
+                .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|e| {
+                    e.attribute_equality("class", &PVCLASS_CLASSTYPE)
+                        || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
+                });
         }
-        if !self.changed_acp.get() {
-            self.changed_acp.set(
-                norm_cand
-                    .iter()
-                    .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                    .any(|e| e.attribute_equality("class", &PVCLASS_ACP)),
-            )
+        if !self.changed_acp {
+            self.changed_acp = norm_cand
+                .iter()
+                .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality("class", &PVCLASS_ACP));
         }
-        if !self.changed_oauth2.get() {
-            self.changed_oauth2.set(
-                norm_cand
-                    .iter()
-                    .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                    .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS)),
-            )
+        if !self.changed_oauth2 {
+            self.changed_oauth2 = norm_cand
+                .iter()
+                .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS));
         }
-        if !self.changed_domain.get() {
-            self.changed_domain.set(
-                norm_cand
-                    .iter()
-                    .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                    .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)),
-            )
+        if !self.changed_domain {
+            self.changed_domain = norm_cand
+                .iter()
+                .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO));
         }
 
-        let cu = self.changed_uuid.as_ptr();
-        unsafe {
-            (*cu).extend(
-                norm_cand
-                    .iter()
-                    .map(|e| e.get_uuid())
-                    .chain(pre_candidates.iter().map(|e| e.get_uuid())),
-            );
-        }
+        self.changed_uuid.extend(
+            norm_cand
+                .iter()
+                .map(|e| e.get_uuid())
+                .chain(pre_candidates.iter().map(|e| e.get_uuid())),
+        );
 
         trace!(
             schema_reload = ?self.changed_schema,
