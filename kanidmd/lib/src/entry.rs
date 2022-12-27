@@ -2298,7 +2298,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     /// Determine if this entry is recycled or a tombstone, and map that to "None". This allows
     /// filter_map to effectively remove entries that should not be considered as "alive".
-    pub(crate) fn mask_recycled_ts(&self) -> Option<&Self> {
+    pub fn mask_recycled_ts(&self) -> Option<&Self> {
         // Only when cls has ts/rc then None, else lways Some(self).
         match self.attrs.get("class") {
             Some(cls) => {
@@ -2316,7 +2316,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     /// Determine if this entry is recycled, and map that to "None". This allows
     /// filter_map to effectively remove entries that are recycled in some cases.
-    pub(crate) fn mask_recycled(&self) -> Option<&Self> {
+    pub fn mask_recycled(&self) -> Option<&Self> {
         // Only when cls has ts/rc then None, else lways Some(self).
         match self.attrs.get("class") {
             Some(cls) => {
@@ -2332,7 +2332,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     /// Determine if this entry is a tombstone, and map that to "None". This allows
     /// filter_map to effectively remove entries that are tombstones in some cases.
-    pub(crate) fn mask_tombstone(&self) -> Option<&Self> {
+    pub fn mask_tombstone(&self) -> Option<&Self> {
         // Only when cls has ts/rc then None, else lways Some(self).
         match self.attrs.get("class") {
             Some(cls) => {

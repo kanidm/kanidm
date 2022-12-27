@@ -64,6 +64,7 @@ pub mod prelude {
         security_access, security_critical, security_error, security_info, tagged_event, EventTag,
     };
     pub use smartstring::alias::String as AttrString;
+    pub use std::time::Duration;
     pub use url::Url;
     pub use uuid::{uuid, Uuid};
 
