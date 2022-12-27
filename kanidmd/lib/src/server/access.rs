@@ -29,7 +29,6 @@ use uuid::Uuid;
 use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced, EntrySealed};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
 use crate::filter::{Filter, FilterValid, FilterValidResolved};
-use crate::identity::{AccessScope, IdentType, IdentityId};
 use crate::modify::Modify;
 use crate::prelude::*;
 
@@ -1596,11 +1595,10 @@ mod tests {
 
     use uuid::uuid;
 
-    use crate::access::{
+    use super::{
         AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlProfile,
         AccessControlSearch, AccessControls, AccessControlsTransaction, AccessEffectivePermission,
     };
-    use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
     use crate::prelude::*;
 
     const UUID_TEST_ACCOUNT_1: Uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");

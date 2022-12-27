@@ -1,7 +1,5 @@
 use super::QueryServerWriteTransaction;
 use crate::prelude::*;
-// use std::collections::BTreeMap;
-use crate::access::AccessControlsTransaction;
 use crate::server::Plugins;
 use hashbrown::HashMap;
 

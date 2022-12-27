@@ -1,6 +1,5 @@
-
-use std::time::Duration;
 use kanidm_proto::v1::SchemaError;
+use std::time::Duration;
 
 use crate::prelude::*;
 
@@ -183,7 +182,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Err(OperationError::InvalidDbState)
         }
     }
-
 
     /// Migrate 2 to 3 changes the name, domain_name types from iutf8 to iname.
     #[instrument(level = "debug", skip_all)]
@@ -668,8 +666,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         Ok(())
     }
-
-
 }
 
 #[cfg(test)]
@@ -818,4 +814,3 @@ mod tests {
         assert!(server_txn.commit().is_ok());
     }
 }
-

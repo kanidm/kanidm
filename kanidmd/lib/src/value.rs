@@ -24,8 +24,8 @@ use webauthn_rs::prelude::{DeviceKey as DeviceKeyV4, Passkey as PasskeyV4};
 
 use crate::be::dbentry::DbIdentSpn;
 use crate::credential::Credential;
-use crate::identity::{AccessScope, IdentityId};
 use crate::repl::cid::Cid;
+use crate::server::identity::{AccessScope, IdentityId};
 
 lazy_static! {
     pub static ref SPN_RE: Regex = {

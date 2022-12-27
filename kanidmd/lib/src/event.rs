@@ -28,7 +28,6 @@ use uuid::Uuid;
 
 use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced};
 use crate::filter::{Filter, FilterInvalid, FilterValid};
-use crate::identity::Limits;
 use crate::modify::{ModifyInvalid, ModifyList, ModifyValid};
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;

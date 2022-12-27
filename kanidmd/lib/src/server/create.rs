@@ -1,4 +1,3 @@
-use crate::access::AccessControlsTransaction;
 use crate::prelude::*;
 use crate::server::CreateEvent;
 use crate::server::Plugins;
@@ -164,13 +163,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let ce = CreateEvent::new_internal(entries);
         self.create(&ce)
     }
-
 }
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
     use crate::prelude::*;
+    use std::sync::Arc;
 
     #[qs_test]
     async fn test_create_user(server: &QueryServer) {

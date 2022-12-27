@@ -1,10 +1,8 @@
-use hashbrown::HashMap;
-use crate::server::ModifyEvent;
-use crate::event::ReviveRecycledEvent;
 use super::modify::ModifyPartial;
-use crate::server::Plugins;
+use crate::event::ReviveRecycledEvent;
 use crate::prelude::*;
-use crate::access::AccessControlsTransaction;
+use crate::server::Plugins;
+use hashbrown::HashMap;
 
 impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
@@ -298,8 +296,8 @@ mod tests {
     use crate::prelude::*;
 
     use crate::event::{CreateEvent, DeleteEvent};
-    use crate::server::SearchEvent;
     use crate::server::ModifyEvent;
+    use crate::server::SearchEvent;
 
     use super::ReviveRecycledEvent;
 
@@ -672,7 +670,6 @@ mod tests {
         assert!(server_txn.commit().is_ok());
     }
 
-
     fn create_user(name: &str, uuid: &str) -> Entry<EntryInit, EntryNew> {
         entry_init!(
             ("class", Value::new_class("object")),
@@ -844,7 +841,4 @@ mod tests {
 
         assert!(server_txn.commit().is_ok());
     }
-
-
 }
-

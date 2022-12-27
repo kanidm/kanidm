@@ -47,7 +47,7 @@ use crate::be::dbvalue::DbValueSetV2;
 use crate::be::{IdxKey, IdxSlope};
 use crate::credential::Credential;
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
-use crate::ldap::ldap_vattr_map;
+use crate::idm::ldap::ldap_vattr_map;
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::prelude::*;
 use crate::repl::cid::Cid;

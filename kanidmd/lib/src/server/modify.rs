@@ -1,8 +1,5 @@
 use std::sync::Arc;
 
-use crate::access::AccessControlsTransaction;
-use crate::event::ModifyEvent;
-use crate::event::SearchEvent;
 use crate::plugins::Plugins;
 use crate::prelude::*;
 
@@ -478,14 +475,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
             m_valid,
         ))
     }
-
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::Credential;
+    use crate::prelude::*;
 
     #[qs_test]
     async fn test_modify(server: &QueryServer) {
@@ -770,6 +766,4 @@ mod tests {
         // do a pw check.
         assert!(cred_ref.verify_password("test_password").unwrap());
     }
-
-
 }

@@ -1,4 +1,3 @@
-use crate::access::AccessControlsTransaction;
 use crate::plugins::Plugins;
 use crate::prelude::*;
 use crate::server::DeleteEvent;
@@ -165,7 +164,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let de = DeleteEvent::new_internal(f_valid);
         self.delete(&de)
     }
-
 }
 
 #[cfg(test)]

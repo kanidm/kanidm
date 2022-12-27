@@ -12,7 +12,6 @@ use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTrans
 use crate::prelude::*;
 use crate::value::Session;
 
-use crate::access::AccessControlsTransaction;
 use crate::schema::{SchemaClass, SchemaTransaction};
 
 // Internals of a Scim Sync token

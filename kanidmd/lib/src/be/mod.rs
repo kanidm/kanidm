@@ -22,7 +22,6 @@ use uuid::Uuid;
 use crate::be::dbentry::{DbBackup, DbEntry};
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntrySealed};
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
-use crate::identity::Limits;
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::repl::ruv::{
@@ -48,6 +47,38 @@ pub use crate::be::idl_sqlite::FsType;
 // Currently disabled due to improvements in idlset for intersection handling.
 const FILTER_SEARCH_TEST_THRESHOLD: usize = 0;
 const FILTER_EXISTS_TEST_THRESHOLD: usize = 0;
+
+#[derive(Debug, Clone)]
+/// Limits on the resources a single event can consume. These are defined per-event
+/// as they are derived from the userAuthToken based on that individual session
+pub struct Limits {
+    pub unindexed_allow: bool,
+    pub search_max_results: usize,
+    pub search_max_filter_test: usize,
+    pub filter_max_elements: usize,
+}
+
+impl Default for Limits {
+    fn default() -> Self {
+        Limits {
+            unindexed_allow: false,
+            search_max_results: 128,
+            search_max_filter_test: 256,
+            filter_max_elements: 32,
+        }
+    }
+}
+
+impl Limits {
+    pub fn unlimited() -> Self {
+        Limits {
+            unindexed_allow: true,
+            search_max_results: usize::MAX,
+            search_max_filter_test: usize::MAX,
+            filter_max_elements: usize::MAX,
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum IdList {
@@ -1778,11 +1809,11 @@ mod tests {
     use idlset::v2::IDLBitRange;
 
     use super::super::entry::{Entry, EntryInit, EntryNew};
+    use super::Limits;
     use super::{
         Backend, BackendConfig, BackendTransaction, BackendWriteTransaction, DbBackup, IdList,
         IdxKey, OperationError,
     };
-    use crate::identity::Limits;
     use crate::prelude::*;
     use crate::repl::cid::Cid;
     use crate::value::{IndexType, PartialValue, Value};

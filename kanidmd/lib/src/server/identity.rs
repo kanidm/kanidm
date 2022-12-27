@@ -3,6 +3,7 @@
 //! and this provides the set of `Limits` to confine how many resources that the
 //! identity may consume during operations to prevent denial-of-service.
 
+use crate::be::Limits;
 use std::collections::BTreeSet;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -13,38 +14,6 @@ use kanidm_proto::v1::{ApiTokenPurpose, UatPurpose, UatPurposeStatus};
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
-
-#[derive(Debug, Clone)]
-/// Limits on the resources a single event can consume. These are defined per-event
-/// as they are derived from the userAuthToken based on that individual session
-pub struct Limits {
-    pub unindexed_allow: bool,
-    pub search_max_results: usize,
-    pub search_max_filter_test: usize,
-    pub filter_max_elements: usize,
-}
-
-impl Default for Limits {
-    fn default() -> Self {
-        Limits {
-            unindexed_allow: false,
-            search_max_results: 128,
-            search_max_filter_test: 256,
-            filter_max_elements: 32,
-        }
-    }
-}
-
-impl Limits {
-    pub fn unlimited() -> Self {
-        Limits {
-            unindexed_allow: true,
-            search_max_results: usize::MAX,
-            search_max_filter_test: usize::MAX,
-            filter_max_elements: usize::MAX,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AccessScope {

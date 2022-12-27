@@ -32,7 +32,7 @@ use kanidmd_lib::{
     },
     idm::server::{IdmServer, IdmServerTransaction},
     idm::serviceaccount::ListApiTokenEvent,
-    ldap::{LdapBoundToken, LdapResponseState, LdapServer},
+    idm::ldap::{LdapBoundToken, LdapResponseState, LdapServer},
 };
 
 // ===========================================================

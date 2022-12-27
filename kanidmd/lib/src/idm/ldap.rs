@@ -586,7 +586,7 @@ mod tests {
 
     use crate::idm::event::UnixPasswordChangeEvent;
     use crate::idm::serviceaccount::GenerateApiTokenEvent;
-    use crate::ldap::{LdapServer, LdapSession};
+    use super::{LdapServer, LdapSession};
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
 

@@ -16,15 +16,15 @@ use kanidm_proto::v1::{ConsistencyError, UiHint};
 use tokio::sync::{Semaphore, SemaphorePermit};
 use tracing::trace;
 
-use crate::access::{
+use self::access::{
     AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
     AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
     AccessControlsWriteTransaction,
 };
+
 use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 // We use so many, we just import them all ...
 use crate::filter::{Filter, FilterInvalid, FilterValid, FilterValidResolved};
-use crate::identity::IdentityId;
 use crate::plugins::dyngroup::{DynGroup, DynGroupCache};
 use crate::plugins::Plugins;
 use crate::repl::cid::Cid;
@@ -34,13 +34,14 @@ use crate::schema::{
 };
 use crate::valueset::uuid_to_proto_string;
 
+pub mod access;
 pub mod batch_modify;
 pub mod create;
 pub mod delete;
+pub mod identity;
 pub mod migrations;
 pub mod modify;
-pub mod repl;
-pub mod search;
+pub mod recycle;
 
 const RESOLVE_FILTER_CACHE_MAX: usize = 4096;
 const RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
@@ -1718,5 +1719,4 @@ mod tests {
         server_txn.commit().expect("should not fail");
         // Commit.
     }
-
 }
