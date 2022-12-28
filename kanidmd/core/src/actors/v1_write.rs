@@ -1419,7 +1419,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_purgetombstoneevent(&self, msg: PurgeTombstoneEvent) {
         trace!(?msg, "Begin purge tombstone event");
-        let idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
 
         let res = idms_prox_write
             .qs_write
@@ -1437,7 +1437,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_purgerecycledevent(&self, msg: PurgeRecycledEvent) {
         trace!(?msg, "Begin purge recycled event");
-        let idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let res = idms_prox_write
             .qs_write
             .purge_recycled()

@@ -152,9 +152,7 @@ impl DynGroup {
         // safe however because no element of the search or write process calls the dyngroup
         // cache excepting for this plugin within a single thread, meaning that stripping the
         // lifetime here is safe since we are the sole accessor.
-        let dyn_groups: &mut DynGroupCache = unsafe {
-            &mut *(qs.get_dyngroup_cache() as *mut _)
-        };
+        let dyn_groups: &mut DynGroupCache = unsafe { &mut *(qs.get_dyngroup_cache() as *mut _) };
 
         // For any other entries, check if they SHOULD trigger
         // a dyn group inclusion. We do this FIRST because the new
@@ -170,7 +168,9 @@ impl DynGroup {
             let dg_filter_valid = dg_filter
                 .validate(qs.get_schema())
                 .map_err(OperationError::SchemaViolation)
-                .and_then(|f| f.resolve(&ident_internal, None, Some(qs.get_resolve_filter_cache())))?;
+                .and_then(|f| {
+                    f.resolve(&ident_internal, None, Some(qs.get_resolve_filter_cache()))
+                })?;
 
             // Did any of our modified entries match our dyn group filter?
             let matches: Vec<_> = entries
@@ -263,9 +263,7 @@ impl DynGroup {
         // safe however because no element of the search or write process calls the dyngroup
         // cache excepting for this plugin within a single thread, meaning that stripping the
         // lifetime here is safe since we are the sole accessor.
-        let dyn_groups: &mut DynGroupCache = unsafe {
-            &mut *(qs.get_dyngroup_cache() as *mut _)
-        };
+        let dyn_groups: &mut DynGroupCache = unsafe { &mut *(qs.get_dyngroup_cache() as *mut _) };
 
         let mut pre_candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
         let mut candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
@@ -299,7 +297,9 @@ impl DynGroup {
             let dg_filter_valid = dg_filter
                 .validate(qs.get_schema())
                 .map_err(OperationError::SchemaViolation)
-                .and_then(|f| f.resolve(&ident_internal, None, Some(qs.get_resolve_filter_cache())))?;
+                .and_then(|f| {
+                    f.resolve(&ident_internal, None, Some(qs.get_resolve_filter_cache()))
+                })?;
 
             let matches: Vec<_> = pre_entries
                 .iter()

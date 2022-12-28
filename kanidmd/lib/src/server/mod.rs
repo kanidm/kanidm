@@ -181,7 +181,10 @@ pub trait QueryServerTransaction<'a> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    fn search(&mut self, se: &SearchEvent) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+    fn search(
+        &mut self,
+        se: &SearchEvent,
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         if se.ident.is_internal() {
             trace!(internal_filter = ?se.filter, "search");
         } else {

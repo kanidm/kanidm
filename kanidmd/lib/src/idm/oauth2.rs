@@ -29,7 +29,6 @@ use kanidm_proto::v1::{AuthType, UserAuthToken};
 use openssl::sha;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
-use tokio::sync::mpsc::UnboundedSender as Sender;
 use tracing::trace;
 use url::{Origin, Url};
 
@@ -539,7 +538,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 }
 
-impl Oauth2ResourceServersReadTransaction {
+impl<'a> IdmServerProxyReadTransaction<'a> {
     pub fn check_oauth2_authorisation(
         &self,
         ident: &Identity,
@@ -568,13 +567,18 @@ impl Oauth2ResourceServersReadTransaction {
          */
 
         //
-        let o2rs = self.inner.rs_set.get(&auth_req.client_id).ok_or_else(|| {
-            admin_warn!(
-                "Invalid oauth2 client_id ({}) Have you configured the oauth2 resource server?",
-                &auth_req.client_id
-            );
-            Oauth2Error::InvalidClientId
-        })?;
+        let o2rs = self
+            .oauth2rs
+            .inner
+            .rs_set
+            .get(&auth_req.client_id)
+            .ok_or_else(|| {
+                admin_warn!(
+                    "Invalid oauth2 client_id ({}) Have you configured the oauth2 resource server?",
+                    &auth_req.client_id
+                );
+                Oauth2Error::InvalidClientId
+            })?;
 
         // redirect_uri must be part of the client_id origin.
         if auth_req.redirect_uri.origin() != o2rs.origin {
@@ -807,6 +811,7 @@ impl Oauth2ResourceServersReadTransaction {
             })?;
 
             let consent_token = self
+                .oauth2rs
                 .inner
                 .fernet
                 .encrypt_at_time(&consent_data, ct.as_secs());
@@ -820,16 +825,16 @@ impl Oauth2ResourceServersReadTransaction {
         }
     }
 
-    pub(crate) fn check_oauth2_authorise_permit(
+    pub fn check_oauth2_authorise_permit(
         &self,
         ident: &Identity,
         uat: &UserAuthToken,
         consent_token: &str,
         ct: Duration,
-        async_tx: &Sender<DelayedAction>,
     ) -> Result<AuthorisePermitSuccess, OperationError> {
         // Decode the consent req with our system fernet key. Use a ttl of 5 minutes.
         let consent_req: ConsentToken = self
+            .oauth2rs
             .inner
             .fernet
             .decrypt_at_time(consent_token, Some(300), ct.as_secs())
@@ -858,6 +863,7 @@ impl Oauth2ResourceServersReadTransaction {
 
         // Get the resource server config based on this client_id.
         let o2rs = self
+            .oauth2rs
             .inner
             .rs_set
             .get(&consent_req.client_id)
@@ -886,7 +892,8 @@ impl Oauth2ResourceServersReadTransaction {
         // Everything is DONE! Now submit that it's all happy and the user consented correctly.
         // this will let them bypass consent steps in the future.
         // Submit that we consented to the delayed action queue
-        if async_tx
+        if self
+            .async_tx
             .send(DelayedAction::Oauth2ConsentGrant(Oauth2ConsentGrant {
                 target_uuid: uat.uuid,
                 oauth2_rs_uuid: o2rs.uuid,
@@ -913,6 +920,7 @@ impl Oauth2ResourceServersReadTransaction {
     ) -> Result<Url, OperationError> {
         // Decode the consent req with our system fernet key. Use a ttl of 5 minutes.
         let consent_req: ConsentToken = self
+            .oauth2rs
             .inner
             .fernet
             .decrypt_at_time(consent_token, Some(300), ct.as_secs())
@@ -941,6 +949,7 @@ impl Oauth2ResourceServersReadTransaction {
 
         // Get the resource server config based on this client_id.
         let _o2rs = self
+            .oauth2rs
             .inner
             .rs_set
             .get(&consent_req.client_id)
@@ -954,8 +963,7 @@ impl Oauth2ResourceServersReadTransaction {
     }
 
     pub fn check_oauth2_token_exchange(
-        &self,
-        idms: &mut IdmServerProxyReadTransaction<'_>,
+        &mut self,
         client_authz: Option<&str>,
         token_req: &AccessTokenRequest,
         ct: Duration,
@@ -974,11 +982,19 @@ impl Oauth2ResourceServersReadTransaction {
             }
         };
 
-        // Get the o2rs for the handle.
-        let o2rs = self.inner.rs_set.get(&client_id).ok_or_else(|| {
-            admin_warn!("Invalid oauth2 client_id");
-            Oauth2Error::AuthenticationRequired
-        })?;
+        // DANGER: Why do we have to do this? During the use of qs for internal search
+        // and other operations we need qs to be mut. But when we borrow oauth2rs here we
+        // cause multiple borrows to occur on struct members that freaks rust out. This *IS*
+        // safe however because no element of the search or write process calls the oauth2rs
+        // excepting for this idm layer within a single thread, meaning that stripping the
+        // lifetime here is safe since we are the sole accessor.
+        let o2rs: &Oauth2RS = unsafe {
+            let s = self.oauth2rs.inner.rs_set.get(&client_id).ok_or_else(|| {
+                admin_warn!("Invalid oauth2 client_id");
+                Oauth2Error::AuthenticationRequired
+            })?;
+            &*(s as *const _)
+        };
 
         // check the secret.
         if o2rs.authz_secret != secret {
@@ -991,7 +1007,7 @@ impl Oauth2ResourceServersReadTransaction {
         // TODO: add refresh token grant type.
         //  If it's a refresh token grant, are the consent permissions the same?
         if token_req.grant_type == "authorization_code" {
-            self.check_oauth2_token_exchange_authorization_code(idms, o2rs, token_req, ct)
+            self.check_oauth2_token_exchange_authorization_code(o2rs, token_req, ct)
         } else {
             admin_warn!("Invalid oauth2 grant_type (should be 'authorization_code')");
             Err(Oauth2Error::InvalidRequest)
@@ -999,8 +1015,7 @@ impl Oauth2ResourceServersReadTransaction {
     }
 
     fn check_oauth2_token_exchange_authorization_code(
-        &self,
-        idms: &mut IdmServerProxyReadTransaction<'_>,
+        &mut self,
         o2rs: &Oauth2RS,
         token_req: &AccessTokenRequest,
         ct: Duration,
@@ -1117,12 +1132,12 @@ impl Oauth2ResourceServersReadTransaction {
 
             let iss = o2rs.iss.clone();
 
-            let entry = match idms.qs_read.internal_search_uuid(code_xchg.uat.uuid) {
+            let entry = match self.qs_read.internal_search_uuid(code_xchg.uat.uuid) {
                 Ok(entry) => entry,
                 Err(err) => return Err(Oauth2Error::ServerError(err)),
             };
 
-            let account = match Account::try_from_entry_ro(&entry, &mut idms.qs_read) {
+            let account = match Account::try_from_entry_ro(&entry, &mut self.qs_read) {
                 Ok(account) => account,
                 Err(err) => return Err(Oauth2Error::ServerError(err)),
             };
@@ -1190,7 +1205,7 @@ impl Oauth2ResourceServersReadTransaction {
 
         let refresh_token = None;
 
-        idms.async_tx
+        self.async_tx
             .send(DelayedAction::Oauth2SessionRecord(Oauth2SessionRecord {
                 target_uuid: code_xchg.uat.uuid,
                 parent_session_id,
@@ -1215,8 +1230,7 @@ impl Oauth2ResourceServersReadTransaction {
     }
 
     pub fn check_oauth2_token_introspect(
-        &self,
-        idms: &mut IdmServerProxyReadTransaction<'_>,
+        &mut self,
         client_authz: &str,
         intr_req: &AccessTokenIntrospectRequest,
         ct: Duration,
@@ -1224,7 +1238,7 @@ impl Oauth2ResourceServersReadTransaction {
         let (client_id, secret) = parse_basic_authz(client_authz)?;
 
         // Get the o2rs for the handle.
-        let o2rs = self.inner.rs_set.get(&client_id).ok_or_else(|| {
+        let o2rs = self.oauth2rs.inner.rs_set.get(&client_id).ok_or_else(|| {
             admin_warn!("Invalid oauth2 client_id");
             Oauth2Error::AuthenticationRequired
         })?;
@@ -1271,7 +1285,7 @@ impl Oauth2ResourceServersReadTransaction {
                 let exp = iat + ((expiry - odt_ct).whole_seconds() as i64);
 
                 // Is the user expired, or the oauth2 session invalid?
-                let valid = idms
+                let valid = self
                     .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|_| admin_error!("Account is not valid"));
 
@@ -1321,17 +1335,25 @@ impl Oauth2ResourceServersReadTransaction {
 
     pub fn oauth2_openid_userinfo(
         &mut self,
-        idms: &mut IdmServerProxyReadTransaction<'_>,
         client_id: &str,
         client_authz: &str,
         ct: Duration,
     ) -> Result<OidcToken, Oauth2Error> {
-        let o2rs = self.inner.rs_set.get(client_id).ok_or_else(|| {
-            admin_warn!(
-                "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
-            );
-            Oauth2Error::InvalidClientId
-        })?;
+        // DANGER: Why do we have to do this? During the use of qs for internal search
+        // and other operations we need qs to be mut. But when we borrow oauth2rs here we
+        // cause multiple borrows to occur on struct members that freaks rust out. This *IS*
+        // safe however because no element of the search or write process calls the oauth2rs
+        // excepting for this idm layer within a single thread, meaning that stripping the
+        // lifetime here is safe since we are the sole accessor.
+        let o2rs: &Oauth2RS = unsafe {
+            let s = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
+                admin_warn!(
+                    "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
+                );
+                Oauth2Error::InvalidClientId
+            })?;
+            &*(s as *const _)
+        };
 
         let token: Oauth2TokenType = o2rs
             .token_fernet
@@ -1368,7 +1390,7 @@ impl Oauth2ResourceServersReadTransaction {
                 let exp = iat + ((expiry - odt_ct).whole_seconds() as i64);
 
                 // Is the user expired, or the oauth2 session invalid?
-                let valid = idms
+                let valid = self
                     .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|_| admin_error!("Account is not valid"));
 
@@ -1383,7 +1405,7 @@ impl Oauth2ResourceServersReadTransaction {
                     }
                 };
 
-                let account = match Account::try_from_entry_ro(&entry, &mut idms.qs_read) {
+                let account = match Account::try_from_entry_ro(&entry, &mut self.qs_read) {
                     Ok(account) => account,
                     Err(err) => return Err(Oauth2Error::ServerError(err)),
                 };
@@ -1424,7 +1446,7 @@ impl Oauth2ResourceServersReadTransaction {
         &self,
         client_id: &str,
     ) -> Result<OidcDiscoveryResponse, OperationError> {
-        let o2rs = self.inner.rs_set.get(client_id).ok_or_else(|| {
+        let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
             admin_warn!(
                 "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
             );
@@ -1504,7 +1526,7 @@ impl Oauth2ResourceServersReadTransaction {
     }
 
     pub fn oauth2_openid_publickey(&self, client_id: &str) -> Result<JwkKeySet, OperationError> {
-        let o2rs = self.inner.rs_set.get(client_id).ok_or_else(|| {
+        let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
             admin_warn!(
                 "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
             );

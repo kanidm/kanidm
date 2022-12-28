@@ -44,10 +44,8 @@ use crate::idm::event::{
     UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
 };
 use crate::idm::oauth2::{
-    AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-    AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse,
-    JwkKeySet, Oauth2Error, Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
-    Oauth2ResourceServersWriteTransaction, OidcDiscoveryResponse, OidcToken,
+    Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
+    Oauth2ResourceServersWriteTransaction,
 };
 use crate::idm::radius::RadiusAccount;
 use crate::idm::scim::{ScimSyncToken, SyncAccount};
@@ -116,7 +114,7 @@ pub struct IdmServerCredUpdateTransaction<'a> {
 pub struct IdmServerProxyReadTransaction<'a> {
     pub qs_read: QueryServerReadTransaction<'a>,
     uat_jwt_validator: CowCellReadTxn<JwsValidator>,
-    oauth2rs: Oauth2ResourceServersReadTransaction,
+    pub(crate) oauth2rs: Oauth2ResourceServersReadTransaction,
     pub(crate) async_tx: Sender<DelayedAction>,
 }
 
@@ -1510,80 +1508,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             })?;
 
         account.to_backupcodesview()
-    }
-
-    pub fn check_oauth2_authorisation(
-        &self,
-        ident: &Identity,
-        uat: &UserAuthToken,
-        auth_req: &AuthorisationRequest,
-        ct: Duration,
-    ) -> Result<AuthoriseResponse, Oauth2Error> {
-        self.oauth2rs
-            .check_oauth2_authorisation(ident, uat, auth_req, ct)
-    }
-
-    pub fn check_oauth2_authorise_permit(
-        &self,
-        ident: &Identity,
-        uat: &UserAuthToken,
-        consent_req: &str,
-        ct: Duration,
-    ) -> Result<AuthorisePermitSuccess, OperationError> {
-        self.oauth2rs
-            .check_oauth2_authorise_permit(ident, uat, consent_req, ct, &self.async_tx)
-    }
-
-    pub fn check_oauth2_authorise_reject(
-        &self,
-        ident: &Identity,
-        uat: &UserAuthToken,
-        consent_req: &str,
-        ct: Duration,
-    ) -> Result<Url, OperationError> {
-        self.oauth2rs
-            .check_oauth2_authorise_reject(ident, uat, consent_req, ct)
-    }
-
-    pub fn check_oauth2_token_exchange(
-        &mut self,
-        client_authz: Option<&str>,
-        token_req: &AccessTokenRequest,
-        ct: Duration,
-    ) -> Result<AccessTokenResponse, Oauth2Error> {
-        self.oauth2rs
-            .check_oauth2_token_exchange(self, client_authz, token_req, ct)
-    }
-
-    pub fn check_oauth2_token_introspect(
-        &mut self,
-        client_authz: &str,
-        intr_req: &AccessTokenIntrospectRequest,
-        ct: Duration,
-    ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
-        self.oauth2rs
-            .check_oauth2_token_introspect(self, client_authz, intr_req, ct)
-    }
-
-    pub fn oauth2_openid_userinfo(
-        &mut self,
-        client_id: &str,
-        client_authz: &str,
-        ct: Duration,
-    ) -> Result<OidcToken, Oauth2Error> {
-        self.oauth2rs
-            .oauth2_openid_userinfo(self, client_id, client_authz, ct)
-    }
-
-    pub fn oauth2_openid_discovery(
-        &self,
-        client_id: &str,
-    ) -> Result<OidcDiscoveryResponse, OperationError> {
-        self.oauth2rs.oauth2_openid_discovery(client_id)
-    }
-
-    pub fn oauth2_openid_publickey(&self, client_id: &str) -> Result<JwkKeySet, OperationError> {
-        self.oauth2rs.oauth2_openid_publickey(client_id)
     }
 }
 

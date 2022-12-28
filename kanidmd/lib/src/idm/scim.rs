@@ -1189,7 +1189,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 }
 
 impl<'a> IdmServerProxyReadTransaction<'a> {
-    pub fn scim_sync_get_state(&mut self, ident: &Identity) -> Result<ScimSyncState, OperationError> {
+    pub fn scim_sync_get_state(
+        &mut self,
+        ident: &Identity,
+    ) -> Result<ScimSyncState, OperationError> {
         // We must be *extra* careful in these functions since we do *internal* searches
         // which are *bypassing* normal access checks!
 
