@@ -276,7 +276,7 @@ mod tests {
             )]),
             None,
             |_| {},
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let e = qs
                     .internal_search_uuid(uuid!("d2b496bd-8493-47b7-8142-f568b5cf47ee"))
                     .expect("failed to get entry");

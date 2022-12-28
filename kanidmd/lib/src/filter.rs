@@ -25,8 +25,7 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::be::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxMeta, IdxSlope};
-use crate::identity::IdentityId;
-use crate::ldap::ldap_attr_filter_map;
+use crate::idm::ldap::ldap_attr_filter_map;
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use crate::value::{IndexType, PartialValue};
@@ -495,7 +494,7 @@ impl Filter<FilterInvalid> {
     pub fn from_ro(
         ev: &Identity,
         f: &ProtoFilter,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let depth = FILTER_DEPTH_MAX;
         let mut elems = ev.limits.filter_max_elements;
@@ -510,7 +509,7 @@ impl Filter<FilterInvalid> {
     pub fn from_rw(
         ev: &Identity,
         f: &ProtoFilter,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let depth = FILTER_DEPTH_MAX;
         let mut elems = ev.limits.filter_max_elements;
@@ -525,7 +524,7 @@ impl Filter<FilterInvalid> {
     pub fn from_ldap_ro(
         ev: &Identity,
         f: &LdapFilter,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let depth = FILTER_DEPTH_MAX;
         let mut elems = ev.limits.filter_max_elements;
@@ -725,7 +724,7 @@ impl FilterComp {
 
     fn from_ro(
         f: &ProtoFilter,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
         depth: usize,
         elems: &mut usize,
     ) -> Result<Self, OperationError> {
@@ -777,7 +776,7 @@ impl FilterComp {
 
     fn from_rw(
         f: &ProtoFilter,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         depth: usize,
         elems: &mut usize,
     ) -> Result<Self, OperationError> {
@@ -830,7 +829,7 @@ impl FilterComp {
 
     fn from_ldap_ro(
         f: &LdapFilter,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
         depth: usize,
         elems: &mut usize,
     ) -> Result<Self, OperationError> {
@@ -1561,15 +1560,14 @@ mod tests {
 
     #[test]
     fn test_lessthan_entry_filter() {
-        let e: Entry<EntrySealed, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
-            "attrs": {
-                "userid": ["william"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "gidnumber": ["1000"]
-            }
-        }"#,
+        let e = unsafe {
+            entry_init!(
+                ("userid", Value::new_iutf8("william")),
+                (
+                    "uuid",
+                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+                ),
+                ("gidnumber", Value::Uint32(1000))
             )
             .into_sealed_new()
         };
@@ -1586,15 +1584,14 @@ mod tests {
 
     #[test]
     fn test_or_entry_filter() {
-        let e: Entry<EntrySealed, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
-            "attrs": {
-                "userid": ["william"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "uidnumber": ["1000"]
-            }
-        }"#,
+        let e = unsafe {
+            entry_init!(
+                ("userid", Value::new_iutf8("william")),
+                (
+                    "uuid",
+                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+                ),
+                ("gidnumber", Value::Uint32(1000))
             )
             .into_sealed_new()
         };
@@ -1602,7 +1599,7 @@ mod tests {
         let f_t1a = unsafe {
             filter_resolved!(f_or!([
                 f_eq("userid", PartialValue::new_iutf8("william")),
-                f_eq("uidnumber", PartialValue::new_iutf8("1000")),
+                f_eq("gidnumber", PartialValue::Uint32(1000)),
             ]))
         };
         assert!(e.entry_match_no_index(&f_t1a));
@@ -1610,7 +1607,7 @@ mod tests {
         let f_t2a = unsafe {
             filter_resolved!(f_or!([
                 f_eq("userid", PartialValue::new_iutf8("william")),
-                f_eq("uidnumber", PartialValue::new_iutf8("1001")),
+                f_eq("gidnumber", PartialValue::Uint32(1000)),
             ]))
         };
         assert!(e.entry_match_no_index(&f_t2a));
@@ -1618,7 +1615,7 @@ mod tests {
         let f_t3a = unsafe {
             filter_resolved!(f_or!([
                 f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("uidnumber", PartialValue::new_iutf8("1000")),
+                f_eq("gidnumber", PartialValue::Uint32(1000)),
             ]))
         };
         assert!(e.entry_match_no_index(&f_t3a));
@@ -1626,7 +1623,7 @@ mod tests {
         let f_t4a = unsafe {
             filter_resolved!(f_or!([
                 f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("uidnumber", PartialValue::new_iutf8("1001")),
+                f_eq("gidnumber", PartialValue::Uint32(1001)),
             ]))
         };
         assert!(!e.entry_match_no_index(&f_t4a));
@@ -1634,15 +1631,14 @@ mod tests {
 
     #[test]
     fn test_and_entry_filter() {
-        let e: Entry<EntrySealed, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
-            "attrs": {
-                "userid": ["william"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "uidnumber": ["1000"]
-            }
-        }"#,
+        let e = unsafe {
+            entry_init!(
+                ("userid", Value::new_iutf8("william")),
+                (
+                    "uuid",
+                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+                ),
+                ("gidnumber", Value::Uint32(1000))
             )
             .into_sealed_new()
         };
@@ -1650,7 +1646,7 @@ mod tests {
         let f_t1a = unsafe {
             filter_resolved!(f_and!([
                 f_eq("userid", PartialValue::new_iutf8("william")),
-                f_eq("uidnumber", PartialValue::new_iutf8("1000")),
+                f_eq("gidnumber", PartialValue::Uint32(1000)),
             ]))
         };
         assert!(e.entry_match_no_index(&f_t1a));
@@ -1658,7 +1654,7 @@ mod tests {
         let f_t2a = unsafe {
             filter_resolved!(f_and!([
                 f_eq("userid", PartialValue::new_iutf8("william")),
-                f_eq("uidnumber", PartialValue::new_iutf8("1001")),
+                f_eq("gidnumber", PartialValue::Uint32(1001)),
             ]))
         };
         assert!(!e.entry_match_no_index(&f_t2a));
@@ -1666,7 +1662,7 @@ mod tests {
         let f_t3a = unsafe {
             filter_resolved!(f_and!([
                 f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("uidnumber", PartialValue::new_iutf8("1000")),
+                f_eq("gidnumber", PartialValue::Uint32(1000)),
             ]))
         };
         assert!(!e.entry_match_no_index(&f_t3a));
@@ -1674,7 +1670,7 @@ mod tests {
         let f_t4a = unsafe {
             filter_resolved!(f_and!([
                 f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("uidnumber", PartialValue::new_iutf8("1001")),
+                f_eq("gidnumber", PartialValue::Uint32(1001)),
             ]))
         };
         assert!(!e.entry_match_no_index(&f_t4a));
@@ -1682,15 +1678,14 @@ mod tests {
 
     #[test]
     fn test_not_entry_filter() {
-        let e1: Entry<EntrySealed, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
-            "attrs": {
-                "userid": ["william"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "uidnumber": ["1000"]
-            }
-        }"#,
+        let e1 = unsafe {
+            entry_init!(
+                ("userid", Value::new_iutf8("william")),
+                (
+                    "uuid",
+                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+                ),
+                ("gidnumber", Value::Uint32(1000))
             )
             .into_sealed_new()
         };
@@ -1707,64 +1702,60 @@ mod tests {
 
     #[test]
     fn test_nested_entry_filter() {
-        let e1: Entry<EntrySealed, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
-            "attrs": {
-                "class": ["person"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "uidnumber": ["1000"]
-            }
-        }"#,
+        let e1 = unsafe {
+            entry_init!(
+                ("class", CLASS_PERSON.clone()),
+                (
+                    "uuid",
+                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+                ),
+                ("gidnumber", Value::Uint32(1000))
             )
             .into_sealed_new()
         };
 
-        let e2: Entry<EntrySealed, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
-            "attrs": {
-                "class": ["person"],
-                "uuid": ["4b6228ab-1dbe-42a4-a9f5-f6368222438e"],
-                "uidnumber": ["1001"]
-            }
-        }"#,
+        let e2 = unsafe {
+            entry_init!(
+                ("class", CLASS_PERSON.clone()),
+                (
+                    "uuid",
+                    Value::Uuid(uuid::uuid!("4b6228ab-1dbe-42a4-a9f5-f6368222438e"))
+                ),
+                ("gidnumber", Value::Uint32(1001))
             )
             .into_sealed_new()
         };
 
-        let e3: Entry<EntrySealed, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
-            "attrs": {
-                "class": ["person"],
-                "uuid": ["7b23c99d-c06b-4a9a-a958-3afa56383e1d"],
-                "uidnumber": ["1002"]
-            }
-        }"#,
+        let e3 = unsafe {
+            entry_init!(
+                ("class", CLASS_PERSON.clone()),
+                (
+                    "uuid",
+                    Value::Uuid(uuid::uuid!("7b23c99d-c06b-4a9a-a958-3afa56383e1d"))
+                ),
+                ("gidnumber", Value::Uint32(1002))
             )
             .into_sealed_new()
         };
 
-        let e4: Entry<EntrySealed, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
-            "attrs": {
-                "class": ["group"],
-                "uuid": ["21d816b5-1f6a-4696-b7c1-6ed06d22ed81"],
-                "uidnumber": ["1000"]
-            }
-        }"#,
+        let e4 = unsafe {
+            entry_init!(
+                ("class", CLASS_GROUP.clone()),
+                (
+                    "uuid",
+                    Value::Uuid(uuid::uuid!("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"))
+                ),
+                ("gidnumber", Value::Uint32(1000))
             )
             .into_sealed_new()
         };
 
         let f_t1a = unsafe {
             filter_resolved!(f_and!([
-                f_eq("class", PartialValue::new_class("person")),
+                f_eq("class", PVCLASS_PERSON.clone()),
                 f_or!([
-                    f_eq("uidnumber", PartialValue::new_iutf8("1001")),
-                    f_eq("uidnumber", PartialValue::new_iutf8("1000"))
+                    f_eq("gidnumber", PartialValue::Uint32(1001)),
+                    f_eq("gidnumber", PartialValue::Uint32(1000))
                 ])
             ]))
         };
@@ -1809,33 +1800,36 @@ mod tests {
         let time_p3 = time_p2 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
 
         let mut server_txn = server.write(time_p1).await;
-        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-                "attrs": {
-                    "class": ["object", "person", "account"],
-                    "name": ["testperson1"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                    "description": ["testperson"],
-                    "displayname": ["testperson1"]
-                }
-            }"#,
+
+        let e1 = entry_init!(
+            ("class", CLASS_OBJECT.clone()),
+            ("class", CLASS_PERSON.clone()),
+            ("class", CLASS_ACCOUNT.clone()),
+            ("name", Value::new_iname("testperson1")),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+            ),
+            ("description", Value::new_utf8s("testperson1")),
+            ("displayname", Value::new_utf8s("testperson1"))
         );
-        let e2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-                "attrs": {
-                    "class": ["object", "person"],
-                    "name": ["testperson2"],
-                    "uuid": ["a67c0c71-0b35-4218-a6b0-22d23d131d27"],
-                    "description": ["testperson"],
-                    "displayname": ["testperson2"]
-                }
-            }"#,
+
+        let e2 = entry_init!(
+            ("class", CLASS_OBJECT.clone()),
+            ("class", CLASS_PERSON.clone()),
+            ("name", Value::new_iname("testperson2")),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("a67c0c71-0b35-4218-a6b0-22d23d131d27"))
+            ),
+            ("description", Value::new_utf8s("testperson2")),
+            ("displayname", Value::new_utf8s("testperson2"))
         );
 
         // We need to add these and then push through the state machine.
         let e_ts = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
+            ("class", CLASS_OBJECT.clone()),
+            ("class", CLASS_PERSON.clone()),
             ("name", Value::new_iname("testperson3")),
             (
                 "uuid",
@@ -1861,11 +1855,11 @@ mod tests {
         assert!(server_txn.commit().is_ok());
 
         // Now, establish enough time for the recycled items to be purged.
-        let server_txn = server.write(time_p2).await;
+        let mut server_txn = server.write(time_p2).await;
         assert!(server_txn.purge_recycled().is_ok());
         assert!(server_txn.commit().is_ok());
 
-        let server_txn = server.write(time_p3).await;
+        let mut server_txn = server.write(time_p3).await;
         assert!(server_txn.purge_tombstones().is_ok());
 
         // ===== ✅ now ready to test!
@@ -1902,7 +1896,7 @@ mod tests {
 
     #[qs_test]
     async fn test_filter_depth_limits(server: &QueryServer) {
-        let r_txn = server.read().await;
+        let mut r_txn = server.read().await;
 
         let mut inv_proto = ProtoFilter::Pres("class".to_string());
         for _i in 0..(FILTER_DEPTH_MAX + 1) {
@@ -1917,26 +1911,26 @@ mod tests {
         let ev = Identity::from_internal();
 
         // Test proto + read
-        let res = Filter::from_ro(&ev, &inv_proto, &r_txn);
+        let res = Filter::from_ro(&ev, &inv_proto, &mut r_txn);
         assert!(res == Err(OperationError::ResourceLimit));
 
         // ldap
-        let res = Filter::from_ldap_ro(&ev, &inv_ldap, &r_txn);
+        let res = Filter::from_ldap_ro(&ev, &inv_ldap, &mut r_txn);
         assert!(res == Err(OperationError::ResourceLimit));
 
         // Can only have one db conn at a time.
         std::mem::drop(r_txn);
 
         // proto + write
-        let wr_txn = server.write(duration_from_epoch_now()).await;
-        let res = Filter::from_rw(&ev, &inv_proto, &wr_txn);
+        let mut wr_txn = server.write(duration_from_epoch_now()).await;
+        let res = Filter::from_rw(&ev, &inv_proto, &mut wr_txn);
         assert!(res == Err(OperationError::ResourceLimit));
     }
 
     #[qs_test]
     async fn test_filter_max_element_limits(server: &QueryServer) {
         const LIMIT: usize = 4;
-        let r_txn = server.read().await;
+        let mut r_txn = server.read().await;
 
         let inv_proto = ProtoFilter::And(
             (0..(LIMIT * 2))
@@ -1954,19 +1948,19 @@ mod tests {
         ev.limits.filter_max_elements = LIMIT;
 
         // Test proto + read
-        let res = Filter::from_ro(&ev, &inv_proto, &r_txn);
+        let res = Filter::from_ro(&ev, &inv_proto, &mut r_txn);
         assert!(res == Err(OperationError::ResourceLimit));
 
         // ldap
-        let res = Filter::from_ldap_ro(&ev, &inv_ldap, &r_txn);
+        let res = Filter::from_ldap_ro(&ev, &inv_ldap, &mut r_txn);
         assert!(res == Err(OperationError::ResourceLimit));
 
         // Can only have one db conn at a time.
         std::mem::drop(r_txn);
 
         // proto + write
-        let wr_txn = server.write(duration_from_epoch_now()).await;
-        let res = Filter::from_rw(&ev, &inv_proto, &wr_txn);
+        let mut wr_txn = server.write(duration_from_epoch_now()).await;
+        let res = Filter::from_rw(&ev, &inv_proto, &mut wr_txn);
         assert!(res == Err(OperationError::ResourceLimit));
     }
 }

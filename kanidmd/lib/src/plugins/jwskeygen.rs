@@ -132,7 +132,7 @@ mod tests {
             preload,
             create,
             None,
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let e = qs
                     .internal_search_uuid(uuid)
                     .expect("failed to get oauth2 config");
@@ -178,7 +178,7 @@ mod tests {
             ]),
             None,
             |_| {},
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let e = qs
                     .internal_search_uuid(uuid)
                     .expect("failed to get oauth2 config");

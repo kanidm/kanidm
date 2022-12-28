@@ -15,7 +15,6 @@ use webauthn_rs::prelude::{
     RegisterPublicKeyCredential,
 };
 
-use crate::access::AccessControlsTransaction;
 use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
 use crate::credential::{BackupCodes, Credential};
 use crate::idm::account::Account;

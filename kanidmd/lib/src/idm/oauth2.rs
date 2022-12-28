@@ -29,11 +29,9 @@ use kanidm_proto::v1::{AuthType, UserAuthToken};
 use openssl::sha;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
-use tokio::sync::mpsc::UnboundedSender as Sender;
 use tracing::trace;
 use url::{Origin, Url};
 
-use crate::identity::IdentityId;
 use crate::idm::account::Account;
 use crate::idm::delayed::{DelayedAction, Oauth2ConsentGrant, Oauth2SessionRecord};
 use crate::idm::server::{
@@ -540,7 +538,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 }
 
-impl Oauth2ResourceServersReadTransaction {
+impl<'a> IdmServerProxyReadTransaction<'a> {
     pub fn check_oauth2_authorisation(
         &self,
         ident: &Identity,
@@ -569,13 +567,18 @@ impl Oauth2ResourceServersReadTransaction {
          */
 
         //
-        let o2rs = self.inner.rs_set.get(&auth_req.client_id).ok_or_else(|| {
-            admin_warn!(
-                "Invalid oauth2 client_id ({}) Have you configured the oauth2 resource server?",
-                &auth_req.client_id
-            );
-            Oauth2Error::InvalidClientId
-        })?;
+        let o2rs = self
+            .oauth2rs
+            .inner
+            .rs_set
+            .get(&auth_req.client_id)
+            .ok_or_else(|| {
+                admin_warn!(
+                    "Invalid oauth2 client_id ({}) Have you configured the oauth2 resource server?",
+                    &auth_req.client_id
+                );
+                Oauth2Error::InvalidClientId
+            })?;
 
         // redirect_uri must be part of the client_id origin.
         if auth_req.redirect_uri.origin() != o2rs.origin {
@@ -808,6 +811,7 @@ impl Oauth2ResourceServersReadTransaction {
             })?;
 
             let consent_token = self
+                .oauth2rs
                 .inner
                 .fernet
                 .encrypt_at_time(&consent_data, ct.as_secs());
@@ -821,16 +825,16 @@ impl Oauth2ResourceServersReadTransaction {
         }
     }
 
-    pub(crate) fn check_oauth2_authorise_permit(
+    pub fn check_oauth2_authorise_permit(
         &self,
         ident: &Identity,
         uat: &UserAuthToken,
         consent_token: &str,
         ct: Duration,
-        async_tx: &Sender<DelayedAction>,
     ) -> Result<AuthorisePermitSuccess, OperationError> {
         // Decode the consent req with our system fernet key. Use a ttl of 5 minutes.
         let consent_req: ConsentToken = self
+            .oauth2rs
             .inner
             .fernet
             .decrypt_at_time(consent_token, Some(300), ct.as_secs())
@@ -859,6 +863,7 @@ impl Oauth2ResourceServersReadTransaction {
 
         // Get the resource server config based on this client_id.
         let o2rs = self
+            .oauth2rs
             .inner
             .rs_set
             .get(&consent_req.client_id)
@@ -887,7 +892,8 @@ impl Oauth2ResourceServersReadTransaction {
         // Everything is DONE! Now submit that it's all happy and the user consented correctly.
         // this will let them bypass consent steps in the future.
         // Submit that we consented to the delayed action queue
-        if async_tx
+        if self
+            .async_tx
             .send(DelayedAction::Oauth2ConsentGrant(Oauth2ConsentGrant {
                 target_uuid: uat.uuid,
                 oauth2_rs_uuid: o2rs.uuid,
@@ -914,6 +920,7 @@ impl Oauth2ResourceServersReadTransaction {
     ) -> Result<Url, OperationError> {
         // Decode the consent req with our system fernet key. Use a ttl of 5 minutes.
         let consent_req: ConsentToken = self
+            .oauth2rs
             .inner
             .fernet
             .decrypt_at_time(consent_token, Some(300), ct.as_secs())
@@ -942,6 +949,7 @@ impl Oauth2ResourceServersReadTransaction {
 
         // Get the resource server config based on this client_id.
         let _o2rs = self
+            .oauth2rs
             .inner
             .rs_set
             .get(&consent_req.client_id)
@@ -955,12 +963,10 @@ impl Oauth2ResourceServersReadTransaction {
     }
 
     pub fn check_oauth2_token_exchange(
-        &self,
-        idms: &IdmServerProxyReadTransaction<'_>,
+        &mut self,
         client_authz: Option<&str>,
         token_req: &AccessTokenRequest,
         ct: Duration,
-        async_tx: &Sender<DelayedAction>,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         let (client_id, secret) = if let Some(client_authz) = client_authz {
             parse_basic_authz(client_authz)?
@@ -976,11 +982,19 @@ impl Oauth2ResourceServersReadTransaction {
             }
         };
 
-        // Get the o2rs for the handle.
-        let o2rs = self.inner.rs_set.get(&client_id).ok_or_else(|| {
-            admin_warn!("Invalid oauth2 client_id");
-            Oauth2Error::AuthenticationRequired
-        })?;
+        // DANGER: Why do we have to do this? During the use of qs for internal search
+        // and other operations we need qs to be mut. But when we borrow oauth2rs here we
+        // cause multiple borrows to occur on struct members that freaks rust out. This *IS*
+        // safe however because no element of the search or write process calls the oauth2rs
+        // excepting for this idm layer within a single thread, meaning that stripping the
+        // lifetime here is safe since we are the sole accessor.
+        let o2rs: &Oauth2RS = unsafe {
+            let s = self.oauth2rs.inner.rs_set.get(&client_id).ok_or_else(|| {
+                admin_warn!("Invalid oauth2 client_id");
+                Oauth2Error::AuthenticationRequired
+            })?;
+            &*(s as *const _)
+        };
 
         // check the secret.
         if o2rs.authz_secret != secret {
@@ -993,7 +1007,7 @@ impl Oauth2ResourceServersReadTransaction {
         // TODO: add refresh token grant type.
         //  If it's a refresh token grant, are the consent permissions the same?
         if token_req.grant_type == "authorization_code" {
-            self.check_oauth2_token_exchange_authorization_code(idms, o2rs, token_req, ct, async_tx)
+            self.check_oauth2_token_exchange_authorization_code(o2rs, token_req, ct)
         } else {
             admin_warn!("Invalid oauth2 grant_type (should be 'authorization_code')");
             Err(Oauth2Error::InvalidRequest)
@@ -1001,12 +1015,10 @@ impl Oauth2ResourceServersReadTransaction {
     }
 
     fn check_oauth2_token_exchange_authorization_code(
-        &self,
-        idms: &IdmServerProxyReadTransaction<'_>,
+        &mut self,
         o2rs: &Oauth2RS,
         token_req: &AccessTokenRequest,
         ct: Duration,
-        async_tx: &Sender<DelayedAction>,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         // Check the token_req is within the valid time, and correctly signed for
         // this client.
@@ -1120,12 +1132,12 @@ impl Oauth2ResourceServersReadTransaction {
 
             let iss = o2rs.iss.clone();
 
-            let entry = match idms.qs_read.internal_search_uuid(code_xchg.uat.uuid) {
+            let entry = match self.qs_read.internal_search_uuid(code_xchg.uat.uuid) {
                 Ok(entry) => entry,
                 Err(err) => return Err(Oauth2Error::ServerError(err)),
             };
 
-            let account = match Account::try_from_entry_ro(&entry, &idms.qs_read) {
+            let account = match Account::try_from_entry_ro(&entry, &mut self.qs_read) {
                 Ok(account) => account,
                 Err(err) => return Err(Oauth2Error::ServerError(err)),
             };
@@ -1193,7 +1205,7 @@ impl Oauth2ResourceServersReadTransaction {
 
         let refresh_token = None;
 
-        async_tx
+        self.async_tx
             .send(DelayedAction::Oauth2SessionRecord(Oauth2SessionRecord {
                 target_uuid: code_xchg.uat.uuid,
                 parent_session_id,
@@ -1218,8 +1230,7 @@ impl Oauth2ResourceServersReadTransaction {
     }
 
     pub fn check_oauth2_token_introspect(
-        &self,
-        idms: &IdmServerProxyReadTransaction<'_>,
+        &mut self,
         client_authz: &str,
         intr_req: &AccessTokenIntrospectRequest,
         ct: Duration,
@@ -1227,7 +1238,7 @@ impl Oauth2ResourceServersReadTransaction {
         let (client_id, secret) = parse_basic_authz(client_authz)?;
 
         // Get the o2rs for the handle.
-        let o2rs = self.inner.rs_set.get(&client_id).ok_or_else(|| {
+        let o2rs = self.oauth2rs.inner.rs_set.get(&client_id).ok_or_else(|| {
             admin_warn!("Invalid oauth2 client_id");
             Oauth2Error::AuthenticationRequired
         })?;
@@ -1271,10 +1282,10 @@ impl Oauth2ResourceServersReadTransaction {
                     security_info!(?uuid, "access token has expired, returning inactive");
                     return Ok(AccessTokenIntrospectResponse::inactive());
                 }
-                let exp = iat + ((expiry - odt_ct).whole_seconds() as i64);
+                let exp = iat + (expiry - odt_ct).whole_seconds();
 
                 // Is the user expired, or the oauth2 session invalid?
-                let valid = idms
+                let valid = self
                     .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|_| admin_error!("Account is not valid"));
 
@@ -1323,18 +1334,26 @@ impl Oauth2ResourceServersReadTransaction {
     }
 
     pub fn oauth2_openid_userinfo(
-        &self,
-        idms: &IdmServerProxyReadTransaction<'_>,
+        &mut self,
         client_id: &str,
         client_authz: &str,
         ct: Duration,
     ) -> Result<OidcToken, Oauth2Error> {
-        let o2rs = self.inner.rs_set.get(client_id).ok_or_else(|| {
-            admin_warn!(
-                "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
-            );
-            Oauth2Error::InvalidClientId
-        })?;
+        // DANGER: Why do we have to do this? During the use of qs for internal search
+        // and other operations we need qs to be mut. But when we borrow oauth2rs here we
+        // cause multiple borrows to occur on struct members that freaks rust out. This *IS*
+        // safe however because no element of the search or write process calls the oauth2rs
+        // excepting for this idm layer within a single thread, meaning that stripping the
+        // lifetime here is safe since we are the sole accessor.
+        let o2rs: &Oauth2RS = unsafe {
+            let s = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
+                admin_warn!(
+                    "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
+                );
+                Oauth2Error::InvalidClientId
+            })?;
+            &*(s as *const _)
+        };
 
         let token: Oauth2TokenType = o2rs
             .token_fernet
@@ -1368,10 +1387,10 @@ impl Oauth2ResourceServersReadTransaction {
                     security_info!(?uuid, "access token has expired, returning inactive");
                     return Err(Oauth2Error::InvalidToken);
                 }
-                let exp = iat + ((expiry - odt_ct).whole_seconds() as i64);
+                let exp = iat + (expiry - odt_ct).whole_seconds();
 
                 // Is the user expired, or the oauth2 session invalid?
-                let valid = idms
+                let valid = self
                     .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|_| admin_error!("Account is not valid"));
 
@@ -1386,7 +1405,7 @@ impl Oauth2ResourceServersReadTransaction {
                     }
                 };
 
-                let account = match Account::try_from_entry_ro(&entry, &idms.qs_read) {
+                let account = match Account::try_from_entry_ro(&entry, &mut self.qs_read) {
                     Ok(account) => account,
                     Err(err) => return Err(Oauth2Error::ServerError(err)),
                 };
@@ -1427,7 +1446,7 @@ impl Oauth2ResourceServersReadTransaction {
         &self,
         client_id: &str,
     ) -> Result<OidcDiscoveryResponse, OperationError> {
-        let o2rs = self.inner.rs_set.get(client_id).ok_or_else(|| {
+        let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
             admin_warn!(
                 "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
             );
@@ -1507,7 +1526,7 @@ impl Oauth2ResourceServersReadTransaction {
     }
 
     pub fn oauth2_openid_publickey(&self, client_id: &str) -> Result<JwkKeySet, OperationError> {
-        let o2rs = self.inner.rs_set.get(client_id).ok_or_else(|| {
+        let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
             admin_warn!(
                 "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
             );
@@ -1592,7 +1611,7 @@ fn extra_claims_for_account(
             account.groups.iter().map(|x| x.to_proto().uuid).collect(),
         );
     }
-    return extra_claims;
+    extra_claims
 }
 
 #[cfg(test)]
@@ -1607,7 +1626,6 @@ mod tests {
     use kanidm_proto::v1::{AuthType, UserAuthToken};
     use openssl::sha;
 
-    use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
     use crate::idm::delayed::DelayedAction;
     use crate::idm::oauth2::{AuthoriseResponse, Oauth2Error};
     use crate::idm::server::{IdmServer, IdmServerTransaction};
@@ -1778,7 +1796,7 @@ mod tests {
                 let (secret, uat, ident, _) =
                     setup_oauth2_resource_server(idms, ct, true, false, false);
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // Get an ident/uat for now.
 
@@ -2120,7 +2138,7 @@ mod tests {
                         + Duration::from_secs(TEST_CURRENT_TIME + UAT_EXPIRE - 1),
                 );
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // == Setup the authorisation request
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -2288,7 +2306,7 @@ mod tests {
                     setup_oauth2_resource_server(idms, ct, true, false, false);
                 let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // == Setup the authorisation request
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -2383,7 +2401,7 @@ mod tests {
 
                 // start a new read
                 // check again.
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
                 let intr_response = idms_prox_read
                     .check_oauth2_token_introspect(&client_authz.unwrap(), &intr_request, ct)
                     .expect("Failed to inspect token");
@@ -2403,7 +2421,7 @@ mod tests {
                     setup_oauth2_resource_server(idms, ct, true, false, false);
                 let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // == Setup the authorisation request
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -2466,7 +2484,7 @@ mod tests {
                 // Okay, now we have the token, we can check behaviours with the revoke interface.
 
                 // First, assert it is valid, similar to the introspect api.
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
                 let intr_request = AccessTokenIntrospectRequest {
                     token: oauth2_token.access_token.clone(),
                     token_type_hint: None,
@@ -2509,7 +2527,7 @@ mod tests {
                 assert!(idms_prox_write.commit().is_ok());
 
                 // Check our token is still valid.
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
                 let intr_response = idms_prox_read
                     .check_oauth2_token_introspect(
                         client_authz.as_deref().unwrap(),
@@ -2532,7 +2550,7 @@ mod tests {
                 assert!(idms_prox_write.commit().is_ok());
 
                 // Check it is still valid - this is because we are still in the GRACE window.
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
                 let intr_response = idms_prox_read
                     .check_oauth2_token_introspect(
                         client_authz.as_deref().unwrap(),
@@ -2548,7 +2566,7 @@ mod tests {
                 let ct = ct + GRACE_WINDOW;
 
                 // Assert it is now invalid.
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
                 let intr_response = idms_prox_read
                     .check_oauth2_token_introspect(
                         client_authz.as_deref().unwrap(),
@@ -2584,7 +2602,7 @@ mod tests {
                     setup_oauth2_resource_server(idms, ct, true, false, false);
                 let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // == Setup the authorisation request
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -2927,7 +2945,7 @@ mod tests {
                     setup_oauth2_resource_server(idms, ct, true, false, false);
                 let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
@@ -3065,7 +3083,7 @@ mod tests {
                     setup_oauth2_resource_server(idms, ct, true, false, true);
                 let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
@@ -3162,7 +3180,7 @@ mod tests {
                     setup_oauth2_resource_server(idms, ct, true, false, true);
                 let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
@@ -3312,7 +3330,7 @@ mod tests {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
                 let (secret, uat, ident, _) =
                     setup_oauth2_resource_server(idms, ct, false, true, false);
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
                 // The public key url should offer an rs key
                 // discovery should offer RS256
                 let discovery = idms_prox_read
@@ -3464,7 +3482,7 @@ mod tests {
                 assert!(idms_prox_write.commit().is_ok());
 
                 // == Now try the authorise again, should be in the permitted state.
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // We need to reload our identity
                 let ident = idms_prox_read
@@ -3516,7 +3534,7 @@ mod tests {
 
                 // And do the workflow once more to see if we need to consent again.
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // We need to reload our identity
                 let ident = idms_prox_read
@@ -3583,7 +3601,7 @@ mod tests {
 
                 // And do the workflow once more to see if we need to consent again.
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // We need to reload our identity
                 let ident = idms_prox_read
@@ -3736,7 +3754,7 @@ mod tests {
                 let (secret, uat, ident, _) =
                     setup_oauth2_resource_server(idms, ct, false, false, false);
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // Get an ident/uat for now.
 
@@ -3816,7 +3834,7 @@ mod tests {
                 let (secret, uat, ident, _) =
                     setup_oauth2_resource_server(idms, ct, false, false, false);
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // Get an ident/uat for now.
 

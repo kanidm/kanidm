@@ -25,9 +25,9 @@ use url::Url;
 use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
 
 use super::event::ReadBackupCodeEvent;
+use super::ldap::{LdapBoundToken, LdapSession};
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLock;
-use crate::identity::{AccessScope, IdentType, IdentUser, Limits};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
@@ -44,17 +44,14 @@ use crate::idm::event::{
     UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
 };
 use crate::idm::oauth2::{
-    AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-    AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse,
-    JwkKeySet, Oauth2Error, Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
-    Oauth2ResourceServersWriteTransaction, OidcDiscoveryResponse, OidcToken,
+    Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
+    Oauth2ResourceServersWriteTransaction,
 };
 use crate::idm::radius::RadiusAccount;
 use crate::idm::scim::{ScimSyncToken, SyncAccount};
 use crate::idm::serviceaccount::ServiceAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
-use crate::ldap::{LdapBoundToken, LdapSession};
 use crate::prelude::*;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
 use crate::value::{Oauth2Session, Session};
@@ -117,8 +114,8 @@ pub struct IdmServerCredUpdateTransaction<'a> {
 pub struct IdmServerProxyReadTransaction<'a> {
     pub qs_read: QueryServerReadTransaction<'a>,
     uat_jwt_validator: CowCellReadTxn<JwsValidator>,
-    oauth2rs: Oauth2ResourceServersReadTransaction,
-    async_tx: Sender<DelayedAction>,
+    pub(crate) oauth2rs: Oauth2ResourceServersReadTransaction,
+    pub(crate) async_tx: Sender<DelayedAction>,
 }
 
 pub struct IdmServerProxyWriteTransaction<'a> {
@@ -160,7 +157,7 @@ impl IdmServer {
 
         // Get the domain name, as the relying party id.
         let (rp_id, rp_name, fernet_private_key, es256_private_key, pw_badlist_set, oauth2rs_set) = {
-            let qs_read = task::block_on(qs.read());
+            let mut qs_read = task::block_on(qs.read());
             (
                 qs_read.get_domain_name().to_string(),
                 qs_read.get_domain_display_name().to_string(),
@@ -390,7 +387,7 @@ pub enum Token {
 pub trait IdmServerTransaction<'a> {
     type QsTransactionType: QueryServerTransaction<'a>;
 
-    fn get_qs_txn(&self) -> &Self::QsTransactionType;
+    fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType;
 
     fn get_uat_validator_txn(&self) -> &JwsValidator;
 
@@ -404,7 +401,7 @@ pub trait IdmServerTransaction<'a> {
     /// and validation method.
     #[instrument(level = "info", skip_all)]
     fn validate_and_parse_token_to_ident(
-        &self,
+        &mut self,
         token: Option<&str>,
         ct: Duration,
     ) -> Result<Identity, OperationError> {
@@ -416,7 +413,7 @@ pub trait IdmServerTransaction<'a> {
 
     #[instrument(level = "info", skip_all)]
     fn validate_and_parse_token_to_uat(
-        &self,
+        &mut self,
         token: Option<&str>,
         ct: Duration,
     ) -> Result<UserAuthToken, OperationError> {
@@ -430,7 +427,7 @@ pub trait IdmServerTransaction<'a> {
     }
 
     fn validate_and_parse_token_to_token(
-        &self,
+        &mut self,
         token: Option<&str>,
         ct: Duration,
     ) -> Result<Token, OperationError> {
@@ -574,7 +571,7 @@ pub trait IdmServerTransaction<'a> {
     }
 
     fn check_oauth2_account_uuid_valid(
-        &self,
+        &mut self,
         uuid: Uuid,
         session_id: Uuid,
         parent_session_id: Uuid,
@@ -637,7 +634,7 @@ pub trait IdmServerTransaction<'a> {
     /// relevant session information is injected.
     #[instrument(level = "debug", skip_all)]
     fn process_uat_to_identity(
-        &self,
+        &mut self,
         uat: &UserAuthToken,
         ct: Duration,
     ) -> Result<Identity, OperationError> {
@@ -701,7 +698,7 @@ pub trait IdmServerTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     fn process_apit_to_identity(
-        &self,
+        &mut self,
         apit: &ApiToken,
         entry: Arc<EntrySealedCommitted>,
         ct: Duration,
@@ -726,7 +723,7 @@ pub trait IdmServerTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     fn validate_ldap_session(
-        &self,
+        &mut self,
         session: &LdapSession,
         ct: Duration,
     ) -> Result<Identity, OperationError> {
@@ -786,7 +783,7 @@ pub trait IdmServerTransaction<'a> {
 
     #[instrument(level = "info", skip_all)]
     fn validate_and_parse_sync_token_to_ident(
-        &self,
+        &mut self,
         token: Option<&str>,
         ct: Duration,
     ) -> Result<Identity, OperationError> {
@@ -871,8 +868,8 @@ pub trait IdmServerTransaction<'a> {
 impl<'a> IdmServerTransaction<'a> for IdmServerAuthTransaction<'a> {
     type QsTransactionType = QueryServerReadTransaction<'a>;
 
-    fn get_qs_txn(&self) -> &Self::QsTransactionType {
-        &self.qs_read
+    fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType {
+        &mut self.qs_read
     }
 
     fn get_uat_validator_txn(&self) -> &JwsValidator {
@@ -1414,8 +1411,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
 impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
     type QsTransactionType = QueryServerReadTransaction<'a>;
 
-    fn get_qs_txn(&self) -> &Self::QsTransactionType {
-        &self.qs_read
+    fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType {
+        &mut self.qs_read
     }
 
     fn get_uat_validator_txn(&self) -> &JwsValidator {
@@ -1512,87 +1509,13 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         account.to_backupcodesview()
     }
-
-    pub fn check_oauth2_authorisation(
-        &self,
-        ident: &Identity,
-        uat: &UserAuthToken,
-        auth_req: &AuthorisationRequest,
-        ct: Duration,
-    ) -> Result<AuthoriseResponse, Oauth2Error> {
-        self.oauth2rs
-            .check_oauth2_authorisation(ident, uat, auth_req, ct)
-    }
-
-    pub fn check_oauth2_authorise_permit(
-        &self,
-        ident: &Identity,
-        uat: &UserAuthToken,
-        consent_req: &str,
-        ct: Duration,
-    ) -> Result<AuthorisePermitSuccess, OperationError> {
-        self.oauth2rs
-            .check_oauth2_authorise_permit(ident, uat, consent_req, ct, &self.async_tx)
-    }
-
-    pub fn check_oauth2_authorise_reject(
-        &self,
-        ident: &Identity,
-        uat: &UserAuthToken,
-        consent_req: &str,
-        ct: Duration,
-    ) -> Result<Url, OperationError> {
-        self.oauth2rs
-            .check_oauth2_authorise_reject(ident, uat, consent_req, ct)
-    }
-
-    pub fn check_oauth2_token_exchange(
-        &self,
-        client_authz: Option<&str>,
-        token_req: &AccessTokenRequest,
-        ct: Duration,
-    ) -> Result<AccessTokenResponse, Oauth2Error> {
-        self.oauth2rs
-            .check_oauth2_token_exchange(self, client_authz, token_req, ct, &self.async_tx)
-    }
-
-    pub fn check_oauth2_token_introspect(
-        &self,
-        client_authz: &str,
-        intr_req: &AccessTokenIntrospectRequest,
-        ct: Duration,
-    ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
-        self.oauth2rs
-            .check_oauth2_token_introspect(self, client_authz, intr_req, ct)
-    }
-
-    pub fn oauth2_openid_userinfo(
-        &self,
-        client_id: &str,
-        client_authz: &str,
-        ct: Duration,
-    ) -> Result<OidcToken, Oauth2Error> {
-        self.oauth2rs
-            .oauth2_openid_userinfo(self, client_id, client_authz, ct)
-    }
-
-    pub fn oauth2_openid_discovery(
-        &self,
-        client_id: &str,
-    ) -> Result<OidcDiscoveryResponse, OperationError> {
-        self.oauth2rs.oauth2_openid_discovery(client_id)
-    }
-
-    pub fn oauth2_openid_publickey(&self, client_id: &str) -> Result<JwkKeySet, OperationError> {
-        self.oauth2rs.oauth2_openid_publickey(client_id)
-    }
 }
 
 impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
     type QsTransactionType = QueryServerWriteTransaction<'a>;
 
-    fn get_qs_txn(&self) -> &Self::QsTransactionType {
-        &self.qs_write
+    fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType {
+        &mut self.qs_write
     }
 
     fn get_uat_validator_txn(&self) -> &JwsValidator {
@@ -2318,7 +2241,6 @@ mod tests {
 
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::{Credential, Password};
-    use crate::event::{CreateEvent, ModifyEvent};
     use crate::idm::account::DestroySessionTokenEvent;
     use crate::idm::delayed::{AuthSessionRecord, DelayedAction};
     use crate::idm::event::{AuthEvent, AuthResult};
@@ -3700,7 +3622,7 @@ mod tests {
                 assert!(Ok(true) == r);
                 idms_delayed.check_is_empty_or_panic();
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // Check it's valid.
                 idms_prox_read
@@ -3730,7 +3652,7 @@ mod tests {
             let session_b = Uuid::new_v4();
 
             // Assert no sessions present
-            let idms_prox_read = task::block_on(idms.proxy_read());
+            let mut idms_prox_read = task::block_on(idms.proxy_read());
             let admin = idms_prox_read
                 .qs_read
                 .internal_search_uuid(UUID_ADMIN)
@@ -3753,7 +3675,7 @@ mod tests {
             assert!(Ok(true) == r);
 
             // Check it was written, and check
-            let idms_prox_read = task::block_on(idms.proxy_read());
+            let mut idms_prox_read = task::block_on(idms.proxy_read());
             let admin = idms_prox_read
                 .qs_read
                 .internal_search_uuid(UUID_ADMIN)
@@ -3786,7 +3708,7 @@ mod tests {
             let r = task::block_on(idms.delayed_action(expiry_a, da));
             assert!(Ok(true) == r);
 
-            let idms_prox_read = task::block_on(idms.proxy_read());
+            let mut idms_prox_read = task::block_on(idms.proxy_read());
             let admin = idms_prox_read
                 .qs_read
                 .internal_search_uuid(UUID_ADMIN)
@@ -3842,7 +3764,7 @@ mod tests {
                     .expect("Embedded jwk not found");
                 let uat_inner = uat_inner.into_inner();
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // Check it's valid.
                 idms_prox_read
@@ -3864,7 +3786,7 @@ mod tests {
                 assert!(idms_prox_write.commit().is_ok());
 
                 // Now check again with the session destroyed.
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // Now, within gracewindow, it's still valid.
                 idms_prox_read
@@ -4001,7 +3923,7 @@ mod tests {
                 assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
                 idms_delayed.check_is_empty_or_panic();
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // Check it's valid.
                 idms_prox_read
@@ -4036,7 +3958,7 @@ mod tests {
                 assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
                 idms_delayed.check_is_empty_or_panic();
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
                 assert!(idms_prox_read
                     .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
                     .is_err());

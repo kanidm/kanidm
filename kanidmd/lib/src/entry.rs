@@ -47,7 +47,7 @@ use crate::be::dbvalue::DbValueSetV2;
 use crate::be::{IdxKey, IdxSlope};
 use crate::credential::Credential;
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
-use crate::ldap::ldap_vattr_map;
+use crate::idm::ldap::ldap_vattr_map;
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
@@ -279,7 +279,7 @@ impl Entry<EntryInit, EntryNew> {
     /// [`Entry`] type.
     pub fn from_proto_entry(
         e: &ProtoEntry,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         trace!("from_proto_entry");
         // Why not the trait? In the future we may want to extend
@@ -319,7 +319,7 @@ impl Entry<EntryInit, EntryNew> {
     #[instrument(level = "debug", skip_all)]
     pub fn from_proto_entry_str(
         es: &str,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         if cfg!(test) {
             if es.len() > 256 {
@@ -1725,7 +1725,7 @@ impl Entry<EntryReduced, EntryCommitted> {
     }
 
     /// Transform this reduced entry into a JSON protocol form that can be sent to clients.
-    pub fn to_pe(&self, qs: &QueryServerReadTransaction) -> Result<ProtoEntry, OperationError> {
+    pub fn to_pe(&self, qs: &mut QueryServerReadTransaction) -> Result<ProtoEntry, OperationError> {
         // Turn values -> Strings.
         let attrs: Result<_, _> = self
             .attrs
@@ -1738,7 +1738,7 @@ impl Entry<EntryReduced, EntryCommitted> {
     /// Transform this reduced entry into an LDAP form that can be sent to clients.
     pub fn to_ldap(
         &self,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
         basedn: &str,
         // Did the client request all attributes?
         all_attrs: bool,
@@ -2298,7 +2298,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     /// Determine if this entry is recycled or a tombstone, and map that to "None". This allows
     /// filter_map to effectively remove entries that should not be considered as "alive".
-    pub(crate) fn mask_recycled_ts(&self) -> Option<&Self> {
+    pub fn mask_recycled_ts(&self) -> Option<&Self> {
         // Only when cls has ts/rc then None, else lways Some(self).
         match self.attrs.get("class") {
             Some(cls) => {
@@ -2316,7 +2316,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     /// Determine if this entry is recycled, and map that to "None". This allows
     /// filter_map to effectively remove entries that are recycled in some cases.
-    pub(crate) fn mask_recycled(&self) -> Option<&Self> {
+    pub fn mask_recycled(&self) -> Option<&Self> {
         // Only when cls has ts/rc then None, else lways Some(self).
         match self.attrs.get("class") {
             Some(cls) => {
@@ -2332,7 +2332,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     /// Determine if this entry is a tombstone, and map that to "None". This allows
     /// filter_map to effectively remove entries that are tombstones in some cases.
-    pub(crate) fn mask_tombstone(&self) -> Option<&Self> {
+    pub fn mask_tombstone(&self) -> Option<&Self> {
         // Only when cls has ts/rc then None, else lways Some(self).
         match self.attrs.get("class") {
             Some(cls) => {

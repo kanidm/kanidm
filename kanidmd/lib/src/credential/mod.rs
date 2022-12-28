@@ -215,18 +215,16 @@ impl TryFrom<&str> for Password {
                 let c = cost.parse::<usize>().map_err(|_| ())?;
 
                 let s = ab64_to_b64!(salt);
-                let s =
-                    base64::decode_config(&s, base64::STANDARD.decode_allow_trailing_bits(true))
-                        .map_err(|e| {
-                            error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
-                        })?;
+                let s = base64::decode_config(s, base64::STANDARD.decode_allow_trailing_bits(true))
+                    .map_err(|e| {
+                        error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
+                    })?;
 
                 let h = ab64_to_b64!(hash);
-                let h =
-                    base64::decode_config(&h, base64::STANDARD.decode_allow_trailing_bits(true))
-                        .map_err(|e| {
-                            error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
-                        })?;
+                let h = base64::decode_config(h, base64::STANDARD.decode_allow_trailing_bits(true))
+                    .map_err(|e| {
+                        error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
+                    })?;
 
                 // This is just sha1 in a trenchcoat.
                 if value.strip_prefix("{PBKDF2}").is_some()

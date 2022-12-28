@@ -1,4 +1,4 @@
-use crate::identity::{AccessScope, IdentityId};
+use crate::prelude::*;
 use time::OffsetDateTime;
 use uuid::Uuid;
 use webauthn_rs::prelude::AuthenticationResult;

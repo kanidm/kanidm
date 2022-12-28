@@ -27,7 +27,7 @@ pub struct ReferentialIntegrity;
 
 impl ReferentialIntegrity {
     fn check_uuids_exist(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         inner: Vec<PartialValue>,
     ) -> Result<(), OperationError> {
         if inner.is_empty() {
@@ -316,7 +316,7 @@ mod tests {
             preload,
             create,
             None,
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
                         "name",
@@ -352,7 +352,7 @@ mod tests {
             preload,
             create,
             None,
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq("name", PartialValue::new_iname("testgroup"))))
                     .expect("Internal search failure");

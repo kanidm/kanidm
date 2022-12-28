@@ -2201,41 +2201,31 @@ mod tests {
         // We do
         let schema_outer = Schema::new().expect("failed to create schema");
         let schema = schema_outer.read();
-        let e_no_uuid: Entry<EntryInvalid, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
-            "attrs": {}
-        }"#,
-            )
-            .into_invalid_new()
-        };
+
+        let e_no_uuid = unsafe { entry_init!().into_invalid_new() };
 
         assert_eq!(
             e_no_uuid.validate(&schema),
             Err(SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
         );
 
-        let e_no_class: Entry<EntryInvalid, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
-            "attrs": {
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"]
-            }
-        }"#,
-            )
+        let e_no_class = unsafe {
+            entry_init!((
+                "uuid",
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ))
             .into_invalid_new()
         };
 
         assert_eq!(e_no_class.validate(&schema), Err(SchemaError::NoClassFound));
 
-        let e_bad_class: Entry<EntryInvalid, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
-            "attrs": {
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "class": ["zzzzzz"]
-            }
-        }"#,
+        let e_bad_class = unsafe {
+            entry_init!(
+                (
+                    "uuid",
+                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+                ),
+                ("class", Value::new_class("zzzzzz"))
             )
             .into_invalid_new()
         };
@@ -2244,38 +2234,37 @@ mod tests {
             Err(SchemaError::InvalidClass(vec!["zzzzzz".to_string()]))
         );
 
-        let e_attr_invalid: Entry<EntryInvalid, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
-            "attrs": {
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "class": ["object", "attributetype"]
-            }
-        }"#,
+        let e_attr_invalid = unsafe {
+            entry_init!(
+                (
+                    "uuid",
+                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+                ),
+                ("class", CLASS_OBJECT.clone()),
+                ("class", CLASS_ATTRIBUTETYPE.clone())
             )
             .into_invalid_new()
         };
-
         let res = e_attr_invalid.validate(&schema);
         assert!(match res {
             Err(SchemaError::MissingMustAttribute(_)) => true,
             _ => false,
         });
 
-        let e_attr_invalid_may: Entry<EntryInvalid, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
-            "attrs": {
-                "class": ["object", "attributetype"],
-                "attributename": ["testattr"],
-                "description": ["testattr"],
-                "multivalue": ["false"],
-                "unique": ["false"],
-                "syntax": ["UTF8STRING"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "zzzzz": ["zzzz"]
-            }
-        }"#,
+        let e_attr_invalid_may = unsafe {
+            entry_init!(
+                ("class", CLASS_OBJECT.clone()),
+                ("class", CLASS_ATTRIBUTETYPE.clone()),
+                ("attributename", Value::new_iutf8("testattr")),
+                ("description", Value::Utf8("testattr".to_string())),
+                ("multivalue", Value::Bool(false)),
+                ("unique", Value::Bool(false)),
+                ("syntax", Value::Syntax(SyntaxType::Utf8String)),
+                (
+                    "uuid",
+                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+                ),
+                ("zzzzz", Value::Utf8("zzzz".to_string()))
             )
             .into_invalid_new()
         };
@@ -2285,19 +2274,19 @@ mod tests {
             Err(SchemaError::AttributeNotValidForClass("zzzzz".to_string()))
         );
 
-        let e_attr_invalid_syn: Entry<EntryInvalid, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
-            "attrs": {
-                "class": ["object", "attributetype"],
-                "attributename": ["testattr"],
-                "description": ["testattr"],
-                "multivalue": ["zzzzz"],
-                "unique": ["false"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "syntax": ["UTF8STRING"]
-            }
-        }"#,
+        let e_attr_invalid_syn = unsafe {
+            entry_init!(
+                ("class", CLASS_OBJECT.clone()),
+                ("class", CLASS_ATTRIBUTETYPE.clone()),
+                ("attributename", Value::new_iutf8("testattr")),
+                ("description", Value::Utf8("testattr".to_string())),
+                ("multivalue", Value::Utf8("false".to_string())),
+                ("unique", Value::Bool(false)),
+                ("syntax", Value::Syntax(SyntaxType::Utf8String)),
+                (
+                    "uuid",
+                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+                )
             )
             .into_invalid_new()
         };
@@ -2310,38 +2299,38 @@ mod tests {
         );
 
         // You may not have the phantom.
-        let e_phantom: Entry<EntryInvalid, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
-            "attrs": {
-                "class": ["object", "attributetype"],
-                "attributename": ["testattr"],
-                "description": ["testattr"],
-                "multivalue": ["true"],
-                "unique": ["false"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "syntax": ["UTF8STRING"],
-                "password_import": ["password"]
-            }
-        }"#,
+        let e_phantom = unsafe {
+            entry_init!(
+                ("class", CLASS_OBJECT.clone()),
+                ("class", CLASS_ATTRIBUTETYPE.clone()),
+                ("attributename", Value::new_iutf8("testattr")),
+                ("description", Value::Utf8("testattr".to_string())),
+                ("multivalue", Value::Bool(false)),
+                ("unique", Value::Bool(false)),
+                ("syntax", Value::Syntax(SyntaxType::Utf8String)),
+                (
+                    "uuid",
+                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+                ),
+                ("password_import", Value::Utf8("password".to_string()))
             )
             .into_invalid_new()
         };
         assert!(e_phantom.validate(&schema).is_err());
 
-        let e_ok: Entry<EntryInvalid, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
-            "attrs": {
-                "class": ["object", "attributetype"],
-                "attributename": ["testattr"],
-                "description": ["testattr"],
-                "multivalue": ["true"],
-                "unique": ["false"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "syntax": ["UTF8STRING"]
-            }
-        }"#,
+        let e_ok = unsafe {
+            entry_init!(
+                ("class", CLASS_OBJECT.clone()),
+                ("class", CLASS_ATTRIBUTETYPE.clone()),
+                ("attributename", Value::new_iutf8("testattr")),
+                ("description", Value::Utf8("testattr".to_string())),
+                ("multivalue", Value::Bool(true)),
+                ("unique", Value::Bool(false)),
+                ("syntax", Value::Syntax(SyntaxType::Utf8String)),
+                (
+                    "uuid",
+                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+                )
             )
             .into_invalid_new()
         };

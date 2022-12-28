@@ -15,6 +15,7 @@ repository.workspace = true
 [dependencies]
 async-trait.workspace = true
 chrono.workspace = true
+cron.workspace = true
 compact_jwt.workspace = true
 futures-util.workspace = true
 http-types.workspace = true
@@ -25,7 +26,6 @@ libc.workspace = true
 openssl.workspace = true
 rand.workspace = true
 regex.workspace = true
-saffron.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 sketching.workspace = true

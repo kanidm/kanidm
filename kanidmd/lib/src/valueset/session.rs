@@ -6,7 +6,6 @@ use time::OffsetDateTime;
 use crate::be::dbvalue::{
     DbValueAccessScopeV1, DbValueIdentityId, DbValueOauth2Session, DbValueSession,
 };
-use crate::identity::{AccessScope, IdentityId};
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::value::{Oauth2Session, Session};

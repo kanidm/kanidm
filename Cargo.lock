@@ -2379,6 +2379,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "compact_jwt",
+ "cron",
  "futures-util",
  "http-types",
  "kanidm_proto",
@@ -2389,7 +2390,6 @@ dependencies = [
  "profiles",
  "rand 0.8.5",
  "regex",
- "saffron",
  "serde",
  "serde_json",
  "sketching",
@@ -3761,16 +3761,6 @@ name = "ryu"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4501abdff3ae82a1c1b477a17252eb69cee9e66eb915c1abaa4f44d873df9f09"
-
-[[package]]
-name = "saffron"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03fb9a628596fc7590eb7edbf7b0613287be78df107f5f97b118aad59fb2eea9"
-dependencies = [
- "chrono",
- "nom 5.1.2",
-]
 
 [[package]]
 name = "same-file"

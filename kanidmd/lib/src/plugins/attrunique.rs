@@ -54,7 +54,7 @@ fn get_cand_attr_set<VALID, STATE>(
 }
 
 fn enforce_unique<STATE>(
-    qs: &QueryServerWriteTransaction,
+    qs: &mut QueryServerWriteTransaction,
     cand: &[Entry<EntryInvalid, STATE>],
     attr: &str,
 ) -> Result<(), OperationError> {

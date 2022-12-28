@@ -82,7 +82,7 @@ impl QueryServerWriteV1 {
             target_uuid,
             proto_ml,
             filter,
-            &idms_prox_write.qs_write,
+            &mut idms_prox_write.qs_write,
         ) {
             Ok(m) => m,
             Err(e) => {
@@ -171,7 +171,7 @@ impl QueryServerWriteV1 {
                 e
             })?;
 
-        let crt = match CreateEvent::from_message(ident, &req, &idms_prox_write.qs_write) {
+        let crt = match CreateEvent::from_message(ident, &req, &mut idms_prox_write.qs_write) {
             Ok(c) => c,
             Err(e) => {
                 admin_warn!(err = ?e, "Failed to begin create");
@@ -207,7 +207,7 @@ impl QueryServerWriteV1 {
                 e
             })?;
 
-        let mdf = match ModifyEvent::from_message(ident, &req, &idms_prox_write.qs_write) {
+        let mdf = match ModifyEvent::from_message(ident, &req, &mut idms_prox_write.qs_write) {
             Ok(m) => m,
             Err(e) => {
                 admin_error!(err = ?e, "Failed to begin modify");
@@ -242,7 +242,7 @@ impl QueryServerWriteV1 {
                 admin_error!(err = ?e, "Invalid identity");
                 e
             })?;
-        let del = match DeleteEvent::from_message(ident, &req, &idms_prox_write.qs_write) {
+        let del = match DeleteEvent::from_message(ident, &req, &mut idms_prox_write.qs_write) {
             Ok(d) => d,
             Err(e) => {
                 admin_error!(err = ?e, "Failed to begin delete");
@@ -281,17 +281,22 @@ impl QueryServerWriteV1 {
             })?;
 
         // Transform the ProtoEntry to a Modlist
-        let modlist = ModifyList::from_patch(&update, &idms_prox_write.qs_write).map_err(|e| {
-            admin_error!(err = ?e, "Invalid Patch Request");
-            e
-        })?;
-
-        let mdf =
-            ModifyEvent::from_internal_parts(ident, &modlist, &filter, &idms_prox_write.qs_write)
-                .map_err(|e| {
-                admin_error!(err = ?e, "Failed to begin modify");
+        let modlist =
+            ModifyList::from_patch(&update, &mut idms_prox_write.qs_write).map_err(|e| {
+                admin_error!(err = ?e, "Invalid Patch Request");
                 e
             })?;
+
+        let mdf = ModifyEvent::from_internal_parts(
+            ident,
+            &modlist,
+            &filter,
+            &mut idms_prox_write.qs_write,
+        )
+        .map_err(|e| {
+            admin_error!(err = ?e, "Failed to begin modify");
+            e
+        })?;
 
         trace!(?mdf, "Begin modify event");
 
@@ -320,7 +325,7 @@ impl QueryServerWriteV1 {
                 admin_error!(err = ?e, "Invalid identity");
                 e
             })?;
-        let del = match DeleteEvent::from_parts(ident, &filter, &idms_prox_write.qs_write) {
+        let del = match DeleteEvent::from_parts(ident, &filter, &mut idms_prox_write.qs_write) {
             Ok(d) => d,
             Err(e) => {
                 admin_error!(err = ?e, "Failed to begin delete");
@@ -943,7 +948,7 @@ impl QueryServerWriteV1 {
             target_uuid,
             &proto_ml,
             filter,
-            &idms_prox_write.qs_write,
+            &mut idms_prox_write.qs_write,
         ) {
             Ok(m) => m,
             Err(e) => {
@@ -1419,7 +1424,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_purgetombstoneevent(&self, msg: PurgeTombstoneEvent) {
         trace!(?msg, "Begin purge tombstone event");
-        let idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
 
         let res = idms_prox_write
             .qs_write
@@ -1437,7 +1442,7 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_purgerecycledevent(&self, msg: PurgeRecycledEvent) {
         trace!(?msg, "Begin purge recycled event");
-        let idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
         let res = idms_prox_write
             .qs_write
             .purge_recycled()

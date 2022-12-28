@@ -13,3 +13,6 @@ log_level = "verbose"
 domain = "localhost"
 origin = "https://localhost:8443"
 
+[online_backup]
+path = "/tmp/kanidm/backups/"
+schedule = "@hourly"

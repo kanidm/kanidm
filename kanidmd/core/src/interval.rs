@@ -3,11 +3,10 @@
 
 use std::fs;
 use std::path::Path;
+use std::str::FromStr;
 
 use chrono::Utc;
-
-use saffron::parse::{CronExpr, English};
-use saffron::Cron;
+use cron::Schedule;
 
 use tokio::sync::broadcast;
 use tokio::time::{interval, sleep, Duration};
@@ -61,23 +60,22 @@ impl IntervalActor {
         mut rx: broadcast::Receiver<CoreAction>,
     ) -> Result<tokio::task::JoinHandle<()>, ()> {
         let outpath = cfg.path.to_owned();
-        let schedule = cfg.schedule.to_owned();
         let versions = cfg.versions;
 
         // Cron expression handling
-        let cron_expr = schedule.as_str().parse::<CronExpr>().map_err(|e| {
+        let cron_expr = Schedule::from_str(cfg.schedule.as_str()).map_err(|e| {
             error!("Online backup schedule parse error: {}", e);
+            error!("valid formats are:");
+            error!("sec  min   hour   day of month   month   day of week   year");
+            error!("@hourly | @daily | @weekly");
         })?;
 
-        info!(
-            "Online backup schedule parsed as: {}",
-            cron_expr.describe(English::default())
-        );
+        info!("Online backup schedule parsed as: {}", cron_expr);
 
-        if !Cron::new(cron_expr.clone()).any() {
+        if cron_expr.upcoming(Utc).next().is_none() {
             error!(
                 "Online backup schedule error: '{}' will not match any date.",
-                schedule
+                cron_expr
             );
             return Err(());
         }
@@ -106,11 +104,7 @@ impl IntervalActor {
         }
 
         let handle = tokio::spawn(async move {
-            let ct = Utc::now();
-            let cron = Cron::new(cron_expr.clone());
-
-            let cron_iter = cron.clone().iter_after(ct);
-            for next_time in cron_iter {
+            for next_time in cron_expr.upcoming(Utc) {
                 // We add 1 second to the `wait_time` in order to get "even" timestampes
                 // for example: 1 + 17:05:59Z --> 17:06:00Z
                 let wait_seconds = 1 + (next_time - Utc::now()).num_seconds() as u64;

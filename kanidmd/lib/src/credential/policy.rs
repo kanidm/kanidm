@@ -16,7 +16,7 @@ impl CryptoPolicy {
     }
 
     pub fn time_target(t: Duration) -> Self {
-        let r = match Password::bench_pbkdf2((PBKDF2_MIN_NIST_COST * 10) as usize) {
+        let r = match Password::bench_pbkdf2(PBKDF2_MIN_NIST_COST * 10) {
             Some(bt) => {
                 let ubt = bt.as_nanos() as usize;
 
@@ -33,12 +33,12 @@ impl CryptoPolicy {
                 // eprintln!("Maybe rounds -> {}", r);
 
                 if r < PBKDF2_MIN_NIST_COST {
-                    PBKDF2_MIN_NIST_COST as usize
+                    PBKDF2_MIN_NIST_COST
                 } else {
-                    r as usize
+                    r
                 }
             }
-            None => PBKDF2_MIN_NIST_COST as usize,
+            None => PBKDF2_MIN_NIST_COST,
         };
 
         CryptoPolicy { pbkdf2_cost: r }

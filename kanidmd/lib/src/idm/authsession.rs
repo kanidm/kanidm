@@ -24,7 +24,6 @@ use webauthn_rs::prelude::{
 
 use crate::credential::totp::Totp;
 use crate::credential::{BackupCodes, Credential, CredentialType, Password};
-use crate::identity::IdentityId;
 use crate::idm::account::Account;
 use crate::idm::delayed::{
     AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, WebauthnCounterIncrement,

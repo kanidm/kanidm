@@ -12,7 +12,6 @@ use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTrans
 use crate::prelude::*;
 use crate::value::Session;
 
-use crate::access::AccessControlsTransaction;
 use crate::schema::{SchemaClass, SchemaTransaction};
 
 // Internals of a Scim Sync token
@@ -778,7 +777,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 
     fn scim_attr_to_values(
-        &self,
+        &mut self,
         scim_attr_name: &str,
         scim_attr: &ScimAttr,
     ) -> Result<Vec<Value>, OperationError> {
@@ -888,7 +887,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 
     fn scim_entry_to_mod(
-        &self,
+        &mut self,
         scim_ent: &ScimEntry,
         sync_uuid: Uuid,
         sync_allow_class_set: &BTreeMap<String, SchemaClass>,
@@ -1190,7 +1189,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 }
 
 impl<'a> IdmServerProxyReadTransaction<'a> {
-    pub fn scim_sync_get_state(&self, ident: &Identity) -> Result<ScimSyncState, OperationError> {
+    pub fn scim_sync_get_state(
+        &mut self,
+        ident: &Identity,
+    ) -> Result<ScimSyncState, OperationError> {
         // We must be *extra* careful in these functions since we do *internal* searches
         // which are *bypassing* normal access checks!
 
@@ -1232,8 +1234,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::event::CreateEvent;
-    use crate::event::ModifyEvent;
     use crate::idm::server::{IdmServerProxyWriteTransaction, IdmServerTransaction};
     use crate::prelude::*;
     use base64urlsafedata::Base64UrlSafeData;
@@ -1292,7 +1292,7 @@ mod tests {
             assert!(idms_prox_write.commit().is_ok());
 
             // Do a get_state to get the current "state cookie" if any.
-            let idms_prox_read = task::block_on(idms.proxy_read());
+            let mut idms_prox_read = task::block_on(idms.proxy_read());
 
             let ident = idms_prox_read
                 .validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct)
@@ -1347,7 +1347,7 @@ mod tests {
             assert!(idms_prox_write.commit().is_ok());
 
             // -- Check the happy path.
-            let idms_prox_read = task::block_on(idms.proxy_read());
+            let mut idms_prox_read = task::block_on(idms.proxy_read());
             let ident = idms_prox_read
                 .validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct)
                 .expect("Failed to validate sync token");
@@ -1369,7 +1369,7 @@ mod tests {
             assert!(idms_prox_write.commit().is_ok());
 
             // Must fail
-            let idms_prox_read = task::block_on(idms.proxy_read());
+            let mut idms_prox_read = task::block_on(idms.proxy_read());
             let fail = idms_prox_read
                 .validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct);
             assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
@@ -1394,7 +1394,7 @@ mod tests {
             assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
             assert!(idms_prox_write.commit().is_ok());
 
-            let idms_prox_read = task::block_on(idms.proxy_read());
+            let mut idms_prox_read = task::block_on(idms.proxy_read());
             let fail = idms_prox_read
                 .validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct);
             assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
@@ -1667,7 +1667,7 @@ mod tests {
             .is_ok());
 
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let idms_prox_write = task::block_on(idms.proxy_write(ct));
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
             let ent = idms_prox_write
                 .qs_write

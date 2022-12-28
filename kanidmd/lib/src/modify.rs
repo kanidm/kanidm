@@ -57,7 +57,10 @@ pub fn m_assert(a: &str, v: &PartialValue) -> Modify {
 }
 
 impl Modify {
-    pub fn from(m: &ProtoModify, qs: &QueryServerWriteTransaction) -> Result<Self, OperationError> {
+    pub fn from(
+        m: &ProtoModify,
+        qs: &mut QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
         Ok(match m {
             ProtoModify::Present(a, v) => Modify::Present(a.into(), qs.clone_value(a, v)?),
             ProtoModify::Removed(a, v) => Modify::Removed(a.into(), qs.clone_partialvalue(a, v)?),
@@ -124,7 +127,7 @@ impl ModifyList<ModifyInvalid> {
 
     pub fn from(
         ml: &ProtoModifyList,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         // For each ProtoModify, do a from.
         let inner: Result<Vec<_>, _> = ml.mods.iter().map(|pm| Modify::from(pm, qs)).collect();
@@ -139,7 +142,7 @@ impl ModifyList<ModifyInvalid> {
 
     pub fn from_patch(
         pe: &ProtoEntry,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let mut mods = Vec::new();
 

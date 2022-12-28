@@ -61,7 +61,7 @@ pub struct LdapServer {
 impl LdapServer {
     pub fn new(idms: &IdmServer) -> Result<Self, OperationError> {
         // let ct = duration_from_epoch_now();
-        let idms_prox_read = task::block_on(idms.proxy_read());
+        let mut idms_prox_read = task::block_on(idms.proxy_read());
         // This is the rootdse path.
         // get the domain_info item
         let domain_entry = idms_prox_read
@@ -261,7 +261,7 @@ impl LdapServer {
             admin_info!(attr = ?k_attrs, "LDAP Search Request Mapped Attrs");
 
             let ct = duration_from_epoch_now();
-            let idm_read = idms.proxy_read().await;
+            let mut idm_read = idms.proxy_read().await;
             // Now start the txn - we need it for resolving filter components.
 
             // join the filter, with ext_filter
@@ -302,12 +302,16 @@ impl LdapServer {
                     admin_error!("Invalid identity: {:?}", e);
                     e
                 })?;
-            let se =
-                SearchEvent::new_ext_impersonate_uuid(&idm_read.qs_read, ident, &lfilter, k_attrs)
-                    .map_err(|e| {
-                        admin_error!("failed to create search event -> {:?}", e);
-                        e
-                    })?;
+            let se = SearchEvent::new_ext_impersonate_uuid(
+                &mut idm_read.qs_read,
+                ident,
+                &lfilter,
+                k_attrs,
+            )
+            .map_err(|e| {
+                admin_error!("failed to create search event -> {:?}", e);
+                e
+            })?;
 
             let res = idm_read.qs_read.search_ext(&se).map_err(|e| {
                 admin_error!("search failure {:?}", e);
@@ -320,9 +324,14 @@ impl LdapServer {
             let lres: Result<Vec<_>, _> = res
                 .into_iter()
                 .map(|e| {
-                    e.to_ldap(&idm_read.qs_read, self.basedn.as_str(), all_attrs, &l_attrs)
-                        // if okay, wrap in a ldap msg.
-                        .map(|r| sr.gen_result_entry(r))
+                    e.to_ldap(
+                        &mut idm_read.qs_read,
+                        self.basedn.as_str(),
+                        all_attrs,
+                        &l_attrs,
+                    )
+                    // if okay, wrap in a ldap msg.
+                    .map(|r| sr.gen_result_entry(r))
                 })
                 .chain(iter::once(Ok(sr.gen_success())))
                 .collect();
@@ -574,7 +583,7 @@ pub(crate) fn ldap_attr_filter_map(input: &str) -> AttrString {
 
 #[cfg(test)]
 mod tests {
-    // use crate::prelude::*;
+    use crate::prelude::*;
     use std::str::FromStr;
 
     use async_std::task;
@@ -584,10 +593,9 @@ mod tests {
     use ldap3_proto::proto::{LdapFilter, LdapOp, LdapSearchScope};
     use ldap3_proto::simple::*;
 
-    use crate::event::{CreateEvent, ModifyEvent};
+    use super::{LdapServer, LdapSession};
     use crate::idm::event::UnixPasswordChangeEvent;
     use crate::idm::serviceaccount::GenerateApiTokenEvent;
-    use crate::ldap::{LdapServer, LdapSession};
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
 
@@ -920,7 +928,14 @@ mod tests {
                     base: "dc=example,dc=com".to_string(),
                     scope: LdapSearchScope::Subtree,
                     filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
-                    attrs: vec!["name".to_string(), "mail".to_string(), "mail;primary".to_string(), "mail;alternative".to_string(), "emailprimary".to_string(), "emailalternative".to_string()],
+                    attrs: vec![
+                        "name".to_string(),
+                        "mail".to_string(),
+                        "mail;primary".to_string(),
+                        "mail;alternative".to_string(),
+                        "emailprimary".to_string(),
+                        "emailalternative".to_string(),
+                    ],
                 };
 
                 let sa_uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");

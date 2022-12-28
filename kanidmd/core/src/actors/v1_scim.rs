@@ -189,7 +189,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<ScimSyncState, OperationError> {
         let ct = duration_from_epoch_now();
-        let idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await;
 
         let ident = idms_prox_read.validate_and_parse_sync_token_to_ident(bearer.as_deref(), ct)?;
 

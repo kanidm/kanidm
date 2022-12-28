@@ -1,36 +1,29 @@
 //! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
-// This is really only used for long lived, high level types that need clone
-// that otherwise can't be cloned. Think Mutex.
-use std::cell::Cell;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::time::Duration;
+
+use crate::prelude::*;
 
 use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
 use concread::cowcell::*;
-use hashbrown::{HashMap, HashSet};
-use kanidm_proto::v1::{ConsistencyError, SchemaError, UiHint};
+use hashbrown::HashSet;
+use kanidm_proto::v1::{ConsistencyError, UiHint};
 use tokio::sync::{Semaphore, SemaphorePermit};
 use tracing::trace;
 
-use crate::access::{
+use self::access::{
     AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
     AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
     AccessControlsWriteTransaction,
 };
+
 use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 // We use so many, we just import them all ...
-use crate::event::{
-    CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent,
-};
 use crate::filter::{Filter, FilterInvalid, FilterValid, FilterValidResolved};
-use crate::identity::IdentityId;
-use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::dyngroup::{DynGroup, DynGroupCache};
 use crate::plugins::Plugins;
-use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::schema::{
     Schema, SchemaAttribute, SchemaClass, SchemaReadTransaction, SchemaTransaction,
@@ -38,11 +31,14 @@ use crate::schema::{
 };
 use crate::valueset::uuid_to_proto_string;
 
+pub mod access;
 pub mod batch_modify;
 pub mod create;
 pub mod delete;
+pub mod identity;
+pub mod migrations;
 pub mod modify;
-pub mod search;
+pub mod recycle;
 
 const RESOLVE_FILTER_CACHE_MAX: usize = 4096;
 const RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
@@ -84,9 +80,8 @@ pub struct QueryServerReadTransaction<'a> {
     schema: SchemaReadTransaction,
     accesscontrols: AccessControlsReadTransaction<'a>,
     _db_ticket: SemaphorePermit<'a>,
-    resolve_filter_cache: Cell<
+    resolve_filter_cache:
         ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
-    >,
 }
 
 unsafe impl<'a> Sync for QueryServerReadTransaction<'a> {}
@@ -105,29 +100,19 @@ pub struct QueryServerWriteTransaction<'a> {
     // We store a set of flags that indicate we need a reload of
     // schema or acp, which is tested by checking the classes of the
     // changing content.
-    changed_schema: Cell<bool>,
-    changed_acp: Cell<bool>,
-    changed_oauth2: Cell<bool>,
-    changed_domain: Cell<bool>,
+    changed_schema: bool,
+    changed_acp: bool,
+    changed_oauth2: bool,
+    changed_domain: bool,
     // Store the list of changed uuids for other invalidation needs?
-    changed_uuid: Cell<HashSet<Uuid>>,
+    changed_uuid: HashSet<Uuid>,
     _db_ticket: SemaphorePermit<'a>,
     _write_ticket: SemaphorePermit<'a>,
-    resolve_filter_cache: Cell<
+    resolve_filter_cache:
         ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
-    >,
-    dyngroup_cache: Cell<CowCellWriteTxn<'a, DynGroupCache>>,
+    dyngroup_cache: CowCellWriteTxn<'a, DynGroupCache>,
 }
 
-pub(crate) struct ModifyPartial<'a> {
-    norm_cand: Vec<Entry<EntrySealed, EntryCommitted>>,
-    pre_candidates: Vec<Arc<Entry<EntrySealed, EntryCommitted>>>,
-    me: &'a ModifyEvent,
-}
-
-// This is the core of the server. It implements all
-// the search and modify actions, applies access controls
-// and get's everything ready to push back to the fe code
 /// The `QueryServerTransaction` trait provides a set of common read only operations to be
 /// shared between [`QueryServerReadTransaction`] and [`QueryServerWriteTransaction`]s.
 ///
@@ -139,10 +124,10 @@ pub(crate) struct ModifyPartial<'a> {
 /// [`QueryServerWriteTransaction`]: struct.QueryServerWriteTransaction.html
 pub trait QueryServerTransaction<'a> {
     type BackendTransactionType: BackendTransaction;
-    fn get_be_txn(&self) -> &Self::BackendTransactionType;
+    fn get_be_txn(&mut self) -> &mut Self::BackendTransactionType;
 
     type SchemaTransactionType: SchemaTransaction;
-    fn get_schema(&self) -> &Self::SchemaTransactionType;
+    fn get_schema<'b>(&self) -> &'b Self::SchemaTransactionType;
 
     type AccessControlsTransactionType: AccessControlsTransaction<'a>;
     fn get_accesscontrols(&self) -> &Self::AccessControlsTransactionType;
@@ -153,10 +138,19 @@ pub trait QueryServerTransaction<'a> {
 
     fn get_domain_display_name(&self) -> &str;
 
-    #[allow(clippy::mut_from_ref)]
     fn get_resolve_filter_cache(
-        &self,
+        &mut self,
     ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>;
+
+    // Because of how borrowck in rust works, if we need to get two inner types we have to get them
+    // in a single fn.
+
+    fn get_resolve_filter_cache_and_be_txn(
+        &mut self,
+    ) -> (
+        &mut Self::BackendTransactionType,
+        &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+    );
 
     /// Conduct a search and apply access controls to yield a set of entries that
     /// have been reduced to the set of user visible avas. Note that if you provide
@@ -169,7 +163,7 @@ pub trait QueryServerTransaction<'a> {
     /// [`fn search`]: trait.QueryServerTransaction.html#method.search
     #[instrument(level = "debug", skip_all)]
     fn search_ext(
-        &self,
+        &mut self,
         se: &SearchEvent,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         /*
@@ -191,7 +185,10 @@ pub trait QueryServerTransaction<'a> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    fn search(&self, se: &SearchEvent) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+    fn search(
+        &mut self,
+        se: &SearchEvent,
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         if se.ident.is_internal() {
             trace!(internal_filter = ?se.filter, "search");
         } else {
@@ -208,9 +205,7 @@ pub trait QueryServerTransaction<'a> {
         //
         // NOTE: Filters are validated in event conversion.
 
-        let resolve_filter_cache = self.get_resolve_filter_cache();
-
-        let be_txn = self.get_be_txn();
+        let (be_txn, resolve_filter_cache) = self.get_resolve_filter_cache_and_be_txn();
         let idxmeta = be_txn.get_idxmeta_ref();
         // Now resolve all references and indexes.
         let vfr = se
@@ -245,11 +240,9 @@ pub trait QueryServerTransaction<'a> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    fn exists(&self, ee: &ExistsEvent) -> Result<bool, OperationError> {
-        let be_txn = self.get_be_txn();
+    fn exists(&mut self, ee: &ExistsEvent) -> Result<bool, OperationError> {
+        let (be_txn, resolve_filter_cache) = self.get_resolve_filter_cache_and_be_txn();
         let idxmeta = be_txn.get_idxmeta_ref();
-
-        let resolve_filter_cache = self.get_resolve_filter_cache();
 
         let vfr = ee
             .filter
@@ -261,13 +254,13 @@ pub trait QueryServerTransaction<'a> {
 
         let lims = ee.get_limits();
 
-        self.get_be_txn().exists(lims, &vfr).map_err(|e| {
+        be_txn.exists(lims, &vfr).map_err(|e| {
             admin_error!(?e, "backend failure");
             OperationError::Backend
         })
     }
 
-    fn name_to_uuid(&self, name: &str) -> Result<Uuid, OperationError> {
+    fn name_to_uuid(&mut self, name: &str) -> Result<Uuid, OperationError> {
         // Is it just a uuid?
         Uuid::parse_str(name).or_else(|_| {
             let lname = name.to_lowercase();
@@ -278,7 +271,10 @@ pub trait QueryServerTransaction<'a> {
     }
 
     // Similar to name, but where we lookup from external_id instead.
-    fn sync_external_id_to_uuid(&self, external_id: &str) -> Result<Option<Uuid>, OperationError> {
+    fn sync_external_id_to_uuid(
+        &mut self,
+        external_id: &str,
+    ) -> Result<Option<Uuid>, OperationError> {
         // Is it just a uuid?
         Uuid::parse_str(external_id).map(Some).or_else(|_| {
             let lname = external_id.to_lowercase();
@@ -286,7 +282,7 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    fn uuid_to_spn(&self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
+    fn uuid_to_spn(&mut self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
         let r = self.get_be_txn().uuid2spn(uuid)?;
 
         if let Some(ref n) = r {
@@ -298,7 +294,7 @@ pub trait QueryServerTransaction<'a> {
         Ok(r)
     }
 
-    fn uuid_to_rdn(&self, uuid: Uuid) -> Result<String, OperationError> {
+    fn uuid_to_rdn(&mut self, uuid: Uuid) -> Result<String, OperationError> {
         // If we have a some, pass it on, else unwrap into a default.
         self.get_be_txn()
             .uuid2rdn(uuid)
@@ -307,7 +303,7 @@ pub trait QueryServerTransaction<'a> {
 
     /// From internal, generate an "exists" event and dispatch
     #[instrument(level = "debug", skip_all)]
-    fn internal_exists(&self, filter: Filter<FilterInvalid>) -> Result<bool, OperationError> {
+    fn internal_exists(&mut self, filter: Filter<FilterInvalid>) -> Result<bool, OperationError> {
         // Check the filter
         let f_valid = filter
             .validate(self.get_schema())
@@ -320,7 +316,7 @@ pub trait QueryServerTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     fn internal_search(
-        &self,
+        &mut self,
         filter: Filter<FilterInvalid>,
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         let f_valid = filter
@@ -332,7 +328,7 @@ pub trait QueryServerTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     fn impersonate_search_valid(
-        &self,
+        &mut self,
         f_valid: Filter<FilterValid>,
         f_intent_valid: Filter<FilterValid>,
         event: &Identity,
@@ -343,7 +339,7 @@ pub trait QueryServerTransaction<'a> {
 
     /// Applies ACP to filter result entries.
     fn impersonate_search_ext_valid(
-        &self,
+        &mut self,
         f_valid: Filter<FilterValid>,
         f_intent_valid: Filter<FilterValid>,
         event: &Identity,
@@ -354,7 +350,7 @@ pub trait QueryServerTransaction<'a> {
 
     // Who they are will go here
     fn impersonate_search(
-        &self,
+        &mut self,
         filter: Filter<FilterInvalid>,
         filter_intent: Filter<FilterInvalid>,
         event: &Identity,
@@ -370,7 +366,7 @@ pub trait QueryServerTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     fn impersonate_search_ext(
-        &self,
+        &mut self,
         filter: Filter<FilterInvalid>,
         filter_intent: Filter<FilterInvalid>,
         event: &Identity,
@@ -388,7 +384,7 @@ pub trait QueryServerTransaction<'a> {
     /// server operations, especially in login and ACP checks.
     #[instrument(level = "debug", skip_all)]
     fn internal_search_uuid(
-        &self,
+        &mut self,
         uuid: Uuid,
     ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
         let filter = filter!(f_eq("uuid", PartialValue::Uuid(uuid)));
@@ -407,7 +403,7 @@ pub trait QueryServerTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     fn impersonate_search_ext_uuid(
-        &self,
+        &mut self,
         uuid: Uuid,
         event: &Identity,
     ) -> Result<Entry<EntryReduced, EntryCommitted>, OperationError> {
@@ -423,7 +419,7 @@ pub trait QueryServerTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     fn impersonate_search_uuid(
-        &self,
+        &mut self,
         uuid: Uuid,
         event: &Identity,
     ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
@@ -439,7 +435,7 @@ pub trait QueryServerTransaction<'a> {
 
     /// Do a schema aware conversion from a String:String to String:Value for modification
     /// present.
-    fn clone_value(&self, attr: &str, value: &str) -> Result<Value, OperationError> {
+    fn clone_value(&mut self, attr: &str, value: &str) -> Result<Value, OperationError> {
         let schema = self.get_schema();
 
         // Should this actually be a fn of Value - no - I think that introduces issues with the
@@ -513,7 +509,11 @@ pub trait QueryServerTransaction<'a> {
         }
     }
 
-    fn clone_partialvalue(&self, attr: &str, value: &str) -> Result<PartialValue, OperationError> {
+    fn clone_partialvalue(
+        &mut self,
+        attr: &str,
+        value: &str,
+    ) -> Result<PartialValue, OperationError> {
         let schema = self.get_schema();
 
         // Lookup the attr
@@ -613,7 +613,7 @@ pub trait QueryServerTransaction<'a> {
     }
 
     // In the opposite direction, we can resolve values for presentation
-    fn resolve_valueset(&self, value: &ValueSet) -> Result<Vec<String>, OperationError> {
+    fn resolve_valueset(&mut self, value: &ValueSet) -> Result<Vec<String>, OperationError> {
         if let Some(r_set) = value.as_refer_set() {
             let v: Result<Vec<_>, _> = r_set
                 .iter()
@@ -647,7 +647,7 @@ pub trait QueryServerTransaction<'a> {
     }
 
     fn resolve_valueset_ldap(
-        &self,
+        &mut self,
         value: &ValueSet,
         basedn: &str,
     ) -> Result<Vec<Vec<u8>>, OperationError> {
@@ -674,7 +674,7 @@ pub trait QueryServerTransaction<'a> {
     }
 
     /// Pull the domain name from the database
-    fn get_db_domain_name(&self) -> Result<String, OperationError> {
+    fn get_db_domain_name(&mut self) -> Result<String, OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 trace!(?e);
@@ -688,7 +688,7 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
-    fn get_domain_fernet_private_key(&self) -> Result<String, OperationError> {
+    fn get_domain_fernet_private_key(&mut self) -> Result<String, OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 e.get_ava_single_secret("fernet_private_key_str")
@@ -701,7 +701,7 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
-    fn get_domain_es256_private_key(&self) -> Result<Vec<u8>, OperationError> {
+    fn get_domain_es256_private_key(&mut self) -> Result<Vec<u8>, OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 e.get_ava_single_private_binary("es256_private_key_der")
@@ -715,7 +715,7 @@ pub trait QueryServerTransaction<'a> {
     }
 
     // This is a helper to get password badlist.
-    fn get_password_badlist(&self) -> Result<HashSet<String>, OperationError> {
+    fn get_password_badlist(&mut self) -> Result<HashSet<String>, OperationError> {
         self.internal_search_uuid(UUID_SYSTEM_CONFIG)
             .map(|e| match e.get_ava_iter_iutf8("badlist_password") {
                 Some(vs_str_iter) => vs_str_iter.map(str::to_string).collect::<HashSet<_>>(),
@@ -727,7 +727,7 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
-    fn get_oauth2rs_set(&self) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+    fn get_oauth2rs_set(&mut self) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         self.internal_search(filter!(f_eq("class", PVCLASS_OAUTH2_RS.clone(),)))
     }
 }
@@ -740,12 +740,18 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
     type BackendTransactionType = BackendReadTransaction<'a>;
     type SchemaTransactionType = SchemaReadTransaction;
 
-    fn get_be_txn(&self) -> &BackendReadTransaction<'a> {
-        &self.be_txn
+    fn get_be_txn(&mut self) -> &mut BackendReadTransaction<'a> {
+        &mut self.be_txn
     }
 
-    fn get_schema(&self) -> &SchemaReadTransaction {
-        &self.schema
+    fn get_schema<'b>(&self) -> &'b SchemaReadTransaction {
+        // Strip the lifetime here. Schema is a sub-component of the transaction and is
+        // *never* changed excepting in a write TXN, so we want to allow the schema to
+        // be borrowed while the rest of the read txn is under a mut.
+        unsafe {
+            let s = (&self.schema) as *const _;
+            &*s
+        }
     }
 
     fn get_accesscontrols(&self) -> &AccessControlsReadTransaction<'a> {
@@ -753,19 +759,19 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
     }
 
     fn get_resolve_filter_cache(
-        &self,
+        &mut self,
     ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>
     {
-        unsafe {
-            let mptr = self.resolve_filter_cache.as_ptr();
-            &mut (*mptr)
-                as &mut ARCacheReadTxn<
-                    'a,
-                    (IdentityId, Filter<FilterValid>),
-                    Filter<FilterValidResolved>,
-                    (),
-                >
-        }
+        &mut self.resolve_filter_cache
+    }
+
+    fn get_resolve_filter_cache_and_be_txn(
+        &mut self,
+    ) -> (
+        &mut BackendReadTransaction<'a>,
+        &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+    ) {
+        (&mut self.be_txn, &mut self.resolve_filter_cache)
     }
 
     fn get_domain_uuid(&self) -> Uuid {
@@ -847,12 +853,18 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
     type BackendTransactionType = BackendWriteTransaction<'a>;
     type SchemaTransactionType = SchemaWriteTransaction<'a>;
 
-    fn get_be_txn(&self) -> &BackendWriteTransaction<'a> {
-        &self.be_txn
+    fn get_be_txn(&mut self) -> &mut BackendWriteTransaction<'a> {
+        &mut self.be_txn
     }
 
-    fn get_schema(&self) -> &SchemaWriteTransaction<'a> {
-        &self.schema
+    fn get_schema<'b>(&self) -> &'b SchemaWriteTransaction<'a> {
+        // Strip the lifetime here. Schema is a sub-component of the transaction and is
+        // *never* changed excepting in a write TXN, so we want to allow the schema to
+        // be borrowed while the rest of the read txn is under a mut.
+        unsafe {
+            let s = (&self.schema) as *const _;
+            &*s
+        }
     }
 
     fn get_accesscontrols(&self) -> &AccessControlsWriteTransaction<'a> {
@@ -860,19 +872,19 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
     }
 
     fn get_resolve_filter_cache(
-        &self,
+        &mut self,
     ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>
     {
-        unsafe {
-            let mptr = self.resolve_filter_cache.as_ptr();
-            &mut (*mptr)
-                as &mut ARCacheReadTxn<
-                    'a,
-                    (IdentityId, Filter<FilterValid>),
-                    Filter<FilterValidResolved>,
-                    (),
-                >
-        }
+        &mut self.resolve_filter_cache
+    }
+
+    fn get_resolve_filter_cache_and_be_txn(
+        &mut self,
+    ) -> (
+        &mut BackendWriteTransaction<'a>,
+        &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+    ) {
+        (&mut self.be_txn, &mut self.resolve_filter_cache)
     }
 
     fn get_domain_uuid(&self) -> Uuid {
@@ -892,7 +904,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 impl QueryServer {
     pub fn new(be: Backend, schema: Schema, domain_name: String) -> Self {
         let (s_uuid, d_uuid) = {
-            let wr = be.write();
+            let mut wr = be.write();
             let res = (wr.get_db_s_uuid(), wr.get_db_d_uuid());
             #[allow(clippy::expect_used)]
             wr.commit()
@@ -927,7 +939,7 @@ impl QueryServer {
             d_info,
             be,
             schema: Arc::new(schema),
-            accesscontrols: Arc::new(AccessControls::new()),
+            accesscontrols: Arc::new(AccessControls::default()),
             db_tickets: Arc::new(Semaphore::new(pool_size as usize)),
             write_ticket: Arc::new(Semaphore::new(1)),
             resolve_filter_cache: Arc::new(
@@ -962,7 +974,7 @@ impl QueryServer {
             d_info: self.d_info.read(),
             accesscontrols: self.accesscontrols.read(),
             _db_ticket: db_ticket,
-            resolve_filter_cache: Cell::new(self.resolve_filter_cache.read()),
+            resolve_filter_cache: self.resolve_filter_cache.read(),
         }
     }
 
@@ -983,7 +995,7 @@ impl QueryServer {
             .expect("unable to aquire db_ticket for qsw");
 
         let schema_write = self.schema.write();
-        let be_txn = self.be.write();
+        let mut be_txn = self.be.write();
         let d_info = self.d_info.write();
         let phase = self.phase.write();
 
@@ -1008,129 +1020,16 @@ impl QueryServer {
             be_txn,
             schema: schema_write,
             accesscontrols: self.accesscontrols.write(),
-            changed_schema: Cell::new(false),
-            changed_acp: Cell::new(false),
-            changed_oauth2: Cell::new(false),
-            changed_domain: Cell::new(false),
-            changed_uuid: Cell::new(HashSet::new()),
+            changed_schema: false,
+            changed_acp: false,
+            changed_oauth2: false,
+            changed_domain: false,
+            changed_uuid: HashSet::new(),
             _db_ticket: db_ticket,
             _write_ticket: write_ticket,
-            resolve_filter_cache: Cell::new(self.resolve_filter_cache.read()),
-            dyngroup_cache: Cell::new(self.dyngroup_cache.write()),
+            resolve_filter_cache: self.resolve_filter_cache.read(),
+            dyngroup_cache: self.dyngroup_cache.write(),
         }
-    }
-
-    #[instrument(level = "info", name = "system_initialisation", skip_all)]
-    pub async fn initialise_helper(&self, ts: Duration) -> Result<(), OperationError> {
-        // Check our database version - attempt to do an initial indexing
-        // based on the in memory configuration
-        //
-        // If we ever change the core in memory schema, or the schema that we ship
-        // in fixtures, we have to bump these values. This is how we manage the
-        // first-run and upgrade reindexings.
-        //
-        // A major reason here to split to multiple transactions is to allow schema
-        // reloading to occur, which causes the idxmeta to update, and allows validation
-        // of the schema in the subsequent steps as we proceed.
-        let mut reindex_write_1 = self.write(ts).await;
-        reindex_write_1
-            .upgrade_reindex(SYSTEM_INDEX_VERSION)
-            .and_then(|_| reindex_write_1.commit())?;
-
-        // Because we init the schema here, and commit, this reloads meaning
-        // that the on-disk index meta has been loaded, so our subsequent
-        // migrations will be correctly indexed.
-        //
-        // Remember, that this would normally mean that it's possible for schema
-        // to be mis-indexed (IE we index the new schemas here before we read
-        // the schema to tell us what's indexed), but because we have the in
-        // mem schema that defines how schema is structuded, and this is all
-        // marked "system", then we won't have an issue here.
-        let mut ts_write_1 = self.write(ts).await;
-        ts_write_1
-            .initialise_schema_core()
-            .and_then(|_| ts_write_1.commit())?;
-
-        let mut ts_write_2 = self.write(ts).await;
-        ts_write_2
-            .initialise_schema_idm()
-            .and_then(|_| ts_write_2.commit())?;
-
-        // reindex and set to version + 1, this way when we bump the version
-        // we are essetially pushing this version id back up to step write_1
-        let mut reindex_write_2 = self.write(ts).await;
-        reindex_write_2
-            .upgrade_reindex(SYSTEM_INDEX_VERSION + 1)
-            .and_then(|_| reindex_write_2.commit())?;
-
-        // Force the schema to reload - this is so that any changes to index slope
-        // analysis are now reflected correctly.
-        //
-        // A side effect of these reloads is that other plugins or elements that reload
-        // on schema change are now setup.
-        let mut slope_reload = self.write(ts).await;
-        slope_reload.set_phase(ServerPhase::SchemaReady);
-        slope_reload.force_schema_reload();
-        slope_reload.commit()?;
-
-        // Now, based on the system version apply migrations. You may ask "should you not
-        // be doing migrations before indexes?". And this is a very good question! The issue
-        // is within a migration we must be able to search for content by pres index, and those
-        // rely on us being indexed! It *is* safe to index content even if the
-        // migration would cause a value type change (ie name changing from iutf8s to iname) because
-        // the indexing subsystem is schema/value agnostic - the fact the values still let their keys
-        // be extracted, means that the pres indexes will be valid even though the entries are pending
-        // migration. We must be sure to NOT use EQ/SUB indexes in the migration code however!
-        let mut migrate_txn = self.write(ts).await;
-        // If we are "in the process of being setup" this is 0, and the migrations will have no
-        // effect as ... there is nothing to migrate! It allows reset of the version to 0 to force
-        // db migrations to take place.
-        let system_info_version = match migrate_txn.internal_search_uuid(UUID_SYSTEM_INFO) {
-            Ok(e) => Ok(e.get_ava_single_uint32("version").unwrap_or(0)),
-            Err(OperationError::NoMatchingEntries) => Ok(0),
-            Err(r) => Err(r),
-        }?;
-        admin_debug!(?system_info_version);
-
-        if system_info_version < 3 {
-            migrate_txn.migrate_2_to_3()?;
-        }
-
-        if system_info_version < 4 {
-            migrate_txn.migrate_3_to_4()?;
-        }
-
-        if system_info_version < 5 {
-            migrate_txn.migrate_4_to_5()?;
-        }
-
-        if system_info_version < 6 {
-            migrate_txn.migrate_5_to_6()?;
-        }
-
-        if system_info_version < 7 {
-            migrate_txn.migrate_6_to_7()?;
-        }
-
-        if system_info_version < 8 {
-            migrate_txn.migrate_7_to_8()?;
-        }
-
-        if system_info_version < 9 {
-            migrate_txn.migrate_8_to_9()?;
-        }
-
-        migrate_txn.commit()?;
-        // Migrations complete. Init idm will now set the version as needed.
-
-        let mut ts_write_3 = self.write(ts).await;
-        ts_write_3.initialise_idm().and_then(|_| {
-            ts_write_3.set_phase(ServerPhase::Running);
-            ts_write_3.commit()
-        })?;
-        // TODO: work out if we've actually done any migrations before printing this
-        admin_debug!("Database version check and migrations success! ☀️  ");
-        Ok(())
     }
 
     pub async fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
@@ -1144,1713 +1043,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.curtime
     }
 
-    #[instrument(level = "debug", skip_all)]
-    pub fn create(&mut self, ce: &CreateEvent) -> Result<(), OperationError> {
-        // The create event is a raw, read only representation of the request
-        // that was made to us, including information about the identity
-        // performing the request.
-        if !ce.ident.is_internal() {
-            security_info!(name = %ce.ident, "create initiator");
-        }
-
-        if ce.entries.is_empty() {
-            request_error!("create: empty create request");
-            return Err(OperationError::EmptyRequest);
-        }
-
-        // TODO #67: Do we need limits on number of creates, or do we constraint
-        // based on request size in the frontend?
-
-        // Copy the entries to a writeable form, this involves assigning a
-        // change id so we can track what's happening.
-        let candidates: Vec<Entry<EntryInit, EntryNew>> = ce.entries.clone();
-
-        // Do we have rights to perform these creates?
-        // create_allow_operation
-        let access = self.get_accesscontrols();
-        let op_allow = access
-            .create_allow_operation(ce, &candidates)
-            .map_err(|e| {
-                admin_error!("Failed to check create access {:?}", e);
-                e
-            })?;
-        if !op_allow {
-            return Err(OperationError::AccessDenied);
-        }
-
-        // Before we assign replication metadata, we need to assert these entries
-        // are valid to create within the set of replication transitions. This
-        // means they *can not* be recycled or tombstones!
-        if candidates.iter().any(|e| e.mask_recycled_ts().is_none()) {
-            admin_warn!("Refusing to create invalid entries that are attempting to bypass replication state machine.");
-            return Err(OperationError::AccessDenied);
-        }
-
-        // Assign our replication metadata now, since we can proceed with this operation.
-        let mut candidates: Vec<Entry<EntryInvalid, EntryNew>> = candidates
-            .into_iter()
-            .map(|e| e.assign_cid(self.cid.clone(), &self.schema))
-            .collect();
-
-        // run any pre plugins, giving them the list of mutable candidates.
-        // pre-plugins are defined here in their correct order of calling!
-        // I have no intent to make these dynamic or configurable.
-
-        Plugins::run_pre_create_transform(self, &mut candidates, ce).map_err(|e| {
-            admin_error!("Create operation failed (pre_transform plugin), {:?}", e);
-            e
-        })?;
-
-        // NOTE: This is how you map from Vec<Result<T>> to Result<Vec<T>>
-        // remember, that you only get the first error and the iter terminates.
-
-        // eprintln!("{:?}", candidates);
-
-        // Now, normalise AND validate!
-
-        let res: Result<Vec<Entry<EntrySealed, EntryNew>>, OperationError> = candidates
-            .into_iter()
-            .map(|e| {
-                e.validate(&self.schema)
-                    .map_err(|e| {
-                        admin_error!("Schema Violation in create validate {:?}", e);
-                        OperationError::SchemaViolation(e)
-                    })
-                    .map(|e| {
-                        // Then seal the changes?
-                        e.seal(&self.schema)
-                    })
-            })
-            .collect();
-
-        let norm_cand: Vec<Entry<_, _>> = res?;
-
-        // Run any pre-create plugins now with schema validated entries.
-        // This is important for normalisation of certain types IE class
-        // or attributes for these checks.
-        Plugins::run_pre_create(self, &norm_cand, ce).map_err(|e| {
-            admin_error!("Create operation failed (plugin), {:?}", e);
-            e
-        })?;
-
-        // We may change from ce.entries later to something else?
-        let commit_cand = self.be_txn.create(&self.cid, norm_cand).map_err(|e| {
-            admin_error!("betxn create failure {:?}", e);
-            e
-        })?;
-
-        // Run any post plugins
-
-        Plugins::run_post_create(self, &commit_cand, ce).map_err(|e| {
-            admin_error!("Create operation failed (post plugin), {:?}", e);
-            e
-        })?;
-
-        // We have finished all plugs and now have a successful operation - flag if
-        // schema or acp requires reload.
-        if !self.changed_schema.get() {
-            self.changed_schema.set(commit_cand.iter().any(|e| {
-                e.attribute_equality("class", &PVCLASS_CLASSTYPE)
-                    || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
-            }))
-        }
-        if !self.changed_acp.get() {
-            self.changed_acp.set(
-                commit_cand
-                    .iter()
-                    .any(|e| e.attribute_equality("class", &PVCLASS_ACP)),
-            )
-        }
-        if !self.changed_oauth2.get() {
-            self.changed_oauth2.set(
-                commit_cand
-                    .iter()
-                    .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS)),
-            )
-        }
-        if !self.changed_domain.get() {
-            self.changed_domain.set(
-                commit_cand
-                    .iter()
-                    .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)),
-            )
-        }
-
-        let cu = self.changed_uuid.as_ptr();
-        unsafe {
-            (*cu).extend(commit_cand.iter().map(|e| e.get_uuid()));
-        }
-        trace!(
-            schema_reload = ?self.changed_schema,
-            acp_reload = ?self.changed_acp,
-            oauth2_reload = ?self.changed_oauth2,
-            domain_reload = ?self.changed_domain,
-        );
-
-        // We are complete, finalise logging and return
-
-        if ce.ident.is_internal() {
-            trace!("Create operation success");
-        } else {
-            admin_info!("Create operation success");
-        }
-        Ok(())
-    }
-
-    #[allow(clippy::cognitive_complexity)]
-    #[instrument(level = "debug", skip_all)]
-    pub fn delete(&mut self, de: &DeleteEvent) -> Result<(), OperationError> {
-        // Do you have access to view all the set members? Reduce based on your
-        // read permissions and attrs
-        // THIS IS PRETTY COMPLEX SEE THE DESIGN DOC
-        // In this case we need a search, but not INTERNAL to keep the same
-        // associated credentials.
-        // We only need to retrieve uuid though ...
-        if !de.ident.is_internal() {
-            security_info!(name = %de.ident, "delete initiator");
-        }
-
-        // Now, delete only what you can see
-        let pre_candidates = self
-            .impersonate_search_valid(de.filter.clone(), de.filter_orig.clone(), &de.ident)
-            .map_err(|e| {
-                admin_error!("delete: error in pre-candidate selection {:?}", e);
-                e
-            })?;
-
-        // Apply access controls to reduce the set if required.
-        // delete_allow_operation
-        let access = self.get_accesscontrols();
-        let op_allow = access
-            .delete_allow_operation(de, &pre_candidates)
-            .map_err(|e| {
-                admin_error!("Failed to check delete access {:?}", e);
-                e
-            })?;
-        if !op_allow {
-            return Err(OperationError::AccessDenied);
-        }
-
-        // Is the candidate set empty?
-        if pre_candidates.is_empty() {
-            request_error!(filter = ?de.filter, "delete: no candidates match filter");
-            return Err(OperationError::NoMatchingEntries);
-        };
-
-        if pre_candidates.iter().any(|e| e.mask_tombstone().is_none()) {
-            admin_warn!("Refusing to delete entries which may be an attempt to bypass replication state machine.");
-            return Err(OperationError::AccessDenied);
-        }
-
-        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
-            .iter()
-            // Invalidate and assign change id's
-            .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
-            .collect();
-
-        trace!(?candidates, "delete: candidates");
-
-        // Pre delete plugs
-        Plugins::run_pre_delete(self, &mut candidates, de).map_err(|e| {
-            admin_error!("Delete operation failed (plugin), {:?}", e);
-            e
-        })?;
-
-        trace!(?candidates, "delete: now marking candidates as recycled");
-
-        let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> = candidates
-            .into_iter()
-            .map(|e| {
-                e.to_recycled()
-                    .validate(&self.schema)
-                    .map_err(|e| {
-                        admin_error!(err = ?e, "Schema Violation in delete validate");
-                        OperationError::SchemaViolation(e)
-                    })
-                    // seal if it worked.
-                    .map(|e| e.seal(&self.schema))
-            })
-            .collect();
-
-        let del_cand: Vec<Entry<_, _>> = res?;
-
-        self.be_txn
-            .modify(&self.cid, &pre_candidates, &del_cand)
-            .map_err(|e| {
-                // be_txn is dropped, ie aborted here.
-                admin_error!("Delete operation failed (backend), {:?}", e);
-                e
-            })?;
-
-        // Post delete plugins
-        Plugins::run_post_delete(self, &del_cand, de).map_err(|e| {
-            admin_error!("Delete operation failed (plugin), {:?}", e);
-            e
-        })?;
-
-        // We have finished all plugs and now have a successful operation - flag if
-        // schema or acp requires reload.
-        if !self.changed_schema.get() {
-            self.changed_schema.set(del_cand.iter().any(|e| {
-                e.attribute_equality("class", &PVCLASS_CLASSTYPE)
-                    || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
-            }))
-        }
-        if !self.changed_acp.get() {
-            self.changed_acp.set(
-                del_cand
-                    .iter()
-                    .any(|e| e.attribute_equality("class", &PVCLASS_ACP)),
-            )
-        }
-        if !self.changed_oauth2.get() {
-            self.changed_oauth2.set(
-                del_cand
-                    .iter()
-                    .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS)),
-            )
-        }
-        if !self.changed_domain.get() {
-            self.changed_domain.set(
-                del_cand
-                    .iter()
-                    .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)),
-            )
-        }
-
-        let cu = self.changed_uuid.as_ptr();
-        unsafe {
-            (*cu).extend(del_cand.iter().map(|e| e.get_uuid()));
-        }
-
-        trace!(
-            schema_reload = ?self.changed_schema,
-            acp_reload = ?self.changed_acp,
-            oauth2_reload = ?self.changed_oauth2,
-            domain_reload = ?self.changed_domain,
-        );
-
-        // Send result
-        if de.ident.is_internal() {
-            trace!("Delete operation success");
-        } else {
-            admin_info!("Delete operation success");
-        }
-        Ok(())
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    pub fn purge_tombstones(&self) -> Result<(), OperationError> {
-        // purge everything that is a tombstone.
-        let cid = self.cid.sub_secs(CHANGELOG_MAX_AGE).map_err(|e| {
-            admin_error!("Unable to generate search cid {:?}", e);
-            e
-        })?;
-
-        // Delete them - this is a TRUE delete, no going back now!
-        self.be_txn
-            .reap_tombstones(&cid)
-            .map_err(|e| {
-                admin_error!(err = ?e, "Tombstone purge operation failed (backend)");
-                e
-            })
-            .map(|_| {
-                admin_info!("Tombstone purge operation success");
-            })
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    pub fn purge_recycled(&self) -> Result<(), OperationError> {
-        // Send everything that is recycled to tombstone
-        // Search all recycled
-        let cid = self.cid.sub_secs(RECYCLEBIN_MAX_AGE).map_err(|e| {
-            admin_error!(err = ?e, "Unable to generate search cid");
-            e
-        })?;
-        let rc = self.internal_search(filter_all!(f_and!([
-            f_eq("class", PVCLASS_RECYCLED.clone()),
-            f_lt("last_modified_cid", PartialValue::new_cid(cid)),
-        ])))?;
-
-        if rc.is_empty() {
-            admin_info!("No recycled present - purge operation success");
-            return Ok(());
-        }
-
-        // Modify them to strip all avas except uuid
-        let tombstone_cand: Result<Vec<_>, _> = rc
-            .iter()
-            .map(|e| {
-                e.to_tombstone(self.cid.clone())
-                    .validate(&self.schema)
-                    .map_err(|e| {
-                        admin_error!("Schema Violation in purge_recycled validate: {:?}", e);
-                        OperationError::SchemaViolation(e)
-                    })
-                    // seal if it worked.
-                    .map(|e| e.seal(&self.schema))
-            })
-            .collect();
-
-        let tombstone_cand = tombstone_cand?;
-
-        // Backend Modify
-        self.be_txn
-            .modify(&self.cid, &rc, &tombstone_cand)
-            .map_err(|e| {
-                admin_error!("Purge recycled operation failed (backend), {:?}", e);
-                e
-            })
-            .map(|_| {
-                admin_info!("Purge recycled operation success");
-            })
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    pub fn revive_recycled(&mut self, re: &ReviveRecycledEvent) -> Result<(), OperationError> {
-        // Revive an entry to live. This is a specialised function, and draws a lot of
-        // inspiration from modify.
-        //
-        // Access is granted by the ability to ability to search the class=recycled
-        // and the ability modify + remove that class from the object.
-        if !re.ident.is_internal() {
-            security_info!(name = %re.ident, "revive initiator");
-        }
-
-        // Get the list of pre_candidates, using impersonate search.
-        let pre_candidates =
-            self.impersonate_search_valid(re.filter.clone(), re.filter.clone(), &re.ident)?;
-
-        // Is the list empty?
-        if pre_candidates.is_empty() {
-            if re.ident.is_internal() {
-                trace!(
-                    "revive: no candidates match filter ... continuing {:?}",
-                    re.filter
-                );
-                return Ok(());
-            } else {
-                request_error!(
-                    "revive: no candidates match filter, failure {:?}",
-                    re.filter
-                );
-                return Err(OperationError::NoMatchingEntries);
-            }
-        };
-
-        trace!("revive: pre_candidates -> {:?}", pre_candidates);
-
-        // Check access against a "fake" modify.
-        let modlist = ModifyList::new_list(vec![Modify::Removed(
-            AttrString::from("class"),
-            PVCLASS_RECYCLED.clone(),
-        )]);
-
-        let m_valid = modlist.validate(self.get_schema()).map_err(|e| {
-            admin_error!("revive recycled modlist Schema Violation {:?}", e);
-            OperationError::SchemaViolation(e)
-        })?;
-
-        let me =
-            ModifyEvent::new_impersonate(&re.ident, re.filter.clone(), re.filter.clone(), m_valid);
-
-        let access = self.get_accesscontrols();
-        let op_allow = access
-            .modify_allow_operation(&me, &pre_candidates)
-            .map_err(|e| {
-                admin_error!("Unable to check modify access {:?}", e);
-                e
-            })?;
-        if !op_allow {
-            return Err(OperationError::AccessDenied);
-        }
-
-        // Are all of the entries actually recycled?
-        if pre_candidates.iter().all(|e| e.mask_recycled().is_some()) {
-            admin_warn!("Refusing to revive entries that are already live!");
-            return Err(OperationError::AccessDenied);
-        }
-
-        // Build the list of mods from directmo, to revive memberships.
-        let mut dm_mods: HashMap<Uuid, ModifyList<ModifyInvalid>> =
-            HashMap::with_capacity(pre_candidates.len());
-
-        for e in &pre_candidates {
-            // Get this entries uuid.
-            let u: Uuid = e.get_uuid();
-
-            if let Some(riter) = e.get_ava_as_refuuid("directmemberof") {
-                for g_uuid in riter {
-                    dm_mods
-                        .entry(g_uuid)
-                        .and_modify(|mlist| {
-                            let m = Modify::Present(AttrString::from("member"), Value::Refer(u));
-                            mlist.push_mod(m);
-                        })
-                        .or_insert({
-                            let m = Modify::Present(AttrString::from("member"), Value::Refer(u));
-                            ModifyList::new_list(vec![m])
-                        });
-                }
-            }
-        }
-
-        // clone the writeable entries.
-        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
-            .iter()
-            .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
-            // Mutate to apply the revive.
-            .map(|er| er.to_revived())
-            .collect();
-
-        // Are they all revived?
-        if candidates.iter().all(|e| e.mask_recycled().is_none()) {
-            admin_error!("Not all candidates were correctly revived, unable to proceed");
-            return Err(OperationError::InvalidEntryState);
-        }
-
-        // Do we need to apply pre-mod?
-        // Very likely, incase domain has renamed etc.
-        Plugins::run_pre_modify(self, &mut candidates, &me).map_err(|e| {
-            admin_error!("Revive operation failed (plugin), {:?}", e);
-            e
-        })?;
-
-        // Schema validate
-        let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> = candidates
-            .into_iter()
-            .map(|e| {
-                e.validate(&self.schema)
-                    .map_err(|e| {
-                        admin_error!("Schema Violation {:?}", e);
-                        OperationError::SchemaViolation(e)
-                    })
-                    .map(|e| e.seal(&self.schema))
-            })
-            .collect();
-
-        let norm_cand: Vec<Entry<_, _>> = res?;
-
-        // build the mod partial
-        let mp = ModifyPartial {
-            norm_cand,
-            pre_candidates,
-            me: &me,
-        };
-
-        // Call modify_apply
-        self.modify_apply(mp)?;
-
-        // If and only if that succeeds, apply the direct membership modifications
-        // if possible.
-        for (g, mods) in dm_mods {
-            // I think the filter/filter_all shouldn't matter here because the only
-            // valid direct memberships should be still valid/live references, as refint
-            // removes anything that was deleted even from recycled entries.
-            let f = filter_all!(f_eq("uuid", PartialValue::Uuid(g)));
-            self.internal_modify(&f, &mods)?;
-        }
-
-        Ok(())
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    pub fn revive_recycled_legacy(
-        &mut self,
-        re: &ReviveRecycledEvent,
-    ) -> Result<(), OperationError> {
-        // Revive an entry to live. This is a specialised function, and draws a lot of
-        // inspiration from modify.
-        //
-        //
-        // Access is granted by the ability to ability to search the class=recycled
-        // and the ability modify + remove that class from the object.
-
-        // create the modify for access testing.
-        // tl;dr, remove the class=recycled
-        let modlist = ModifyList::new_list(vec![Modify::Removed(
-            AttrString::from("class"),
-            PVCLASS_RECYCLED.clone(),
-        )]);
-
-        let m_valid = modlist.validate(self.get_schema()).map_err(|e| {
-            admin_error!(
-                "Schema Violation in revive recycled modlist validate: {:?}",
-                e
-            );
-            OperationError::SchemaViolation(e)
-        })?;
-
-        // Get the entries we are about to revive.
-        //    we make a set of per-entry mod lists. A list of lists even ...
-        let revive_cands =
-            self.impersonate_search_valid(re.filter.clone(), re.filter.clone(), &re.ident)?;
-
-        let mut dm_mods: HashMap<Uuid, ModifyList<ModifyInvalid>> =
-            HashMap::with_capacity(revive_cands.len());
-
-        for e in revive_cands {
-            // Get this entries uuid.
-            let u: Uuid = e.get_uuid();
-
-            if let Some(riter) = e.get_ava_as_refuuid("directmemberof") {
-                for g_uuid in riter {
-                    dm_mods
-                        .entry(g_uuid)
-                        .and_modify(|mlist| {
-                            let m = Modify::Present(AttrString::from("member"), Value::Refer(u));
-                            mlist.push_mod(m);
-                        })
-                        .or_insert({
-                            let m = Modify::Present(AttrString::from("member"), Value::Refer(u));
-                            ModifyList::new_list(vec![m])
-                        });
-                }
-            }
-        }
-
-        // Now impersonate the modify
-        self.impersonate_modify_valid(re.filter.clone(), re.filter.clone(), m_valid, &re.ident)?;
-        // If and only if that succeeds, apply the direct membership modifications
-        // if possible.
-        for (g, mods) in dm_mods {
-            // I think the filter/filter_all shouldn't matter here because the only
-            // valid direct memberships should be still valid/live references.
-            let f = filter_all!(f_eq("uuid", PartialValue::Uuid(g)));
-            self.internal_modify(&f, &mods)?;
-        }
-        Ok(())
-    }
-
-    /// Unsafety: This is unsafe because you need to be careful about how you handle and check
-    /// the Ok(None) case which occurs during internal operations, and that you DO NOT re-order
-    /// and call multiple pre-applies at the same time, else you can cause DB corruption.
-    #[instrument(level = "debug", skip_all)]
-    pub(crate) unsafe fn modify_pre_apply<'x>(
-        &mut self,
-        me: &'x ModifyEvent,
-    ) -> Result<Option<ModifyPartial<'x>>, OperationError> {
-        // Get the candidates.
-        // Modify applies a modlist to a filter, so we need to internal search
-        // then apply.
-        if !me.ident.is_internal() {
-            security_info!(name = %me.ident, "modify initiator");
-        }
-
-        // Validate input.
-
-        // Is the modlist non zero?
-        if me.modlist.is_empty() {
-            request_error!("modify: empty modify request");
-            return Err(OperationError::EmptyRequest);
-        }
-
-        // Is the modlist valid?
-        // This is now done in the event transform
-
-        // Is the filter invalid to schema?
-        // This is now done in the event transform
-
-        // This also checks access controls due to use of the impersonation.
-        let pre_candidates = self
-            .impersonate_search_valid(me.filter.clone(), me.filter_orig.clone(), &me.ident)
-            .map_err(|e| {
-                admin_error!("modify: error in pre-candidate selection {:?}", e);
-                e
-            })?;
-
-        if pre_candidates.is_empty() {
-            if me.ident.is_internal() {
-                trace!(
-                    "modify: no candidates match filter ... continuing {:?}",
-                    me.filter
-                );
-                return Ok(None);
-            } else {
-                request_error!(
-                    "modify: no candidates match filter, failure {:?}",
-                    me.filter
-                );
-                return Err(OperationError::NoMatchingEntries);
-            }
-        };
-
-        trace!("modify: pre_candidates -> {:?}", pre_candidates);
-        trace!("modify: modlist -> {:?}", me.modlist);
-
-        // Are we allowed to make the changes we want to?
-        // modify_allow_operation
-        let access = self.get_accesscontrols();
-        let op_allow = access
-            .modify_allow_operation(me, &pre_candidates)
-            .map_err(|e| {
-                admin_error!("Unable to check modify access {:?}", e);
-                e
-            })?;
-        if !op_allow {
-            return Err(OperationError::AccessDenied);
-        }
-
-        // Clone a set of writeables.
-        // Apply the modlist -> Remember, we have a set of origs
-        // and the new modified ents.
-        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
-            .iter()
-            .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
-            .collect();
-
-        candidates.iter_mut().try_for_each(|er| {
-            er.apply_modlist(&me.modlist).map_err(|e| {
-                error!("Modification failed for {:?}", er.get_uuid());
-                e
-            })
-        })?;
-
-        trace!("modify: candidates -> {:?}", candidates);
-
-        // Did any of the candidates now become masked?
-        if std::iter::zip(
-            pre_candidates
-                .iter()
-                .map(|e| e.mask_recycled_ts().is_none()),
-            candidates.iter().map(|e| e.mask_recycled_ts().is_none()),
-        )
-        .any(|(a, b)| a != b)
-        {
-            admin_warn!("Refusing to apply modifications that are attempting to bypass replication state machine.");
-            return Err(OperationError::AccessDenied);
-        }
-
-        // Pre mod plugins
-        // We should probably supply the pre-post cands here.
-        Plugins::run_pre_modify(self, &mut candidates, me).map_err(|e| {
-            admin_error!("Pre-Modify operation failed (plugin), {:?}", e);
-            e
-        })?;
-
-        // NOTE: There is a potential optimisation here, where if
-        // candidates == pre-candidates, then we don't need to store anything
-        // because we effectively just did an assert. However, like all
-        // optimisations, this could be premature - so we for now, just
-        // do the CORRECT thing and recommit as we may find later we always
-        // want to add CSN's or other.
-
-        let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> = candidates
-            .into_iter()
-            .map(|entry| {
-                entry
-                    .validate(&self.schema)
-                    .map_err(|e| {
-                        admin_error!("Schema Violation in validation of modify_pre_apply {:?}", e);
-                        OperationError::SchemaViolation(e)
-                    })
-                    .map(|entry| entry.seal(&self.schema))
-            })
-            .collect();
-
-        let norm_cand: Vec<Entry<_, _>> = res?;
-
-        Ok(Some(ModifyPartial {
-            norm_cand,
-            pre_candidates,
-            me,
-        }))
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    pub(crate) fn modify_apply(&mut self, mp: ModifyPartial<'_>) -> Result<(), OperationError> {
-        let ModifyPartial {
-            norm_cand,
-            pre_candidates,
-            me,
-        } = mp;
-
-        // Backend Modify
-        self.be_txn
-            .modify(&self.cid, &pre_candidates, &norm_cand)
-            .map_err(|e| {
-                admin_error!("Modify operation failed (backend), {:?}", e);
-                e
-            })?;
-
-        // Post Plugins
-        //
-        // memberOf actually wants the pre cand list and the norm_cand list to see what
-        // changed. Could be optimised, but this is correct still ...
-        Plugins::run_post_modify(self, &pre_candidates, &norm_cand, me).map_err(|e| {
-            admin_error!("Post-Modify operation failed (plugin), {:?}", e);
-            e
-        })?;
-
-        // We have finished all plugs and now have a successful operation - flag if
-        // schema or acp requires reload. Remember, this is a modify, so we need to check
-        // pre and post cands.
-        if !self.changed_schema.get() {
-            self.changed_schema.set(
-                norm_cand
-                    .iter()
-                    .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                    .any(|e| {
-                        e.attribute_equality("class", &PVCLASS_CLASSTYPE)
-                            || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
-                    }),
-            )
-        }
-        if !self.changed_acp.get() {
-            self.changed_acp.set(
-                norm_cand
-                    .iter()
-                    .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                    .any(|e| e.attribute_equality("class", &PVCLASS_ACP)),
-            )
-        }
-        if !self.changed_oauth2.get() {
-            self.changed_oauth2.set(
-                norm_cand
-                    .iter()
-                    .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                    .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS)),
-            )
-        }
-        if !self.changed_domain.get() {
-            self.changed_domain.set(
-                norm_cand
-                    .iter()
-                    .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                    .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)),
-            )
-        }
-
-        let cu = self.changed_uuid.as_ptr();
-        unsafe {
-            (*cu).extend(
-                norm_cand
-                    .iter()
-                    .map(|e| e.get_uuid())
-                    .chain(pre_candidates.iter().map(|e| e.get_uuid())),
-            );
-        }
-
-        trace!(
-            schema_reload = ?self.changed_schema,
-            acp_reload = ?self.changed_acp,
-            oauth2_reload = ?self.changed_oauth2,
-            domain_reload = ?self.changed_domain,
-        );
-
-        // return
-        if me.ident.is_internal() {
-            trace!("Modify operation success");
-        } else {
-            admin_info!("Modify operation success");
-        }
-        Ok(())
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    pub fn modify(&mut self, me: &ModifyEvent) -> Result<(), OperationError> {
-        let mp = unsafe { self.modify_pre_apply(me)? };
-        if let Some(mp) = mp {
-            self.modify_apply(mp)
-        } else {
-            // No action to apply, the pre-apply said nothing to be done.
-            Ok(())
-        }
-    }
-
-    /// Used in conjunction with internal_apply_writable, to get a pre/post
-    /// pair, where post is pre-configured with metadata to allow
-    /// modificiation before submit back to internal_apply_writable
-    #[instrument(level = "debug", skip_all)]
-    pub(crate) fn internal_search_writeable(
-        &self,
-        filter: &Filter<FilterInvalid>,
-    ) -> Result<Vec<EntryTuple>, OperationError> {
-        let f_valid = filter
-            .validate(self.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
-        let se = SearchEvent::new_internal(f_valid);
-        self.search(&se).map(|vs| {
-            vs.into_iter()
-                .map(|e| {
-                    let writeable = e.as_ref().clone().invalidate(self.cid.clone());
-                    (e, writeable)
-                })
-                .collect()
-        })
-    }
-
-    /// Allows writing batches of modified entries without going through
-    /// the modlist path. This allows more effecient batch transformations
-    /// such as memberof, but at the expense that YOU must guarantee you
-    /// uphold all other plugin and state rules that are important. You
-    /// probably want modify instead.
-    #[allow(clippy::needless_pass_by_value)]
-    #[instrument(level = "debug", skip_all)]
-    pub(crate) fn internal_apply_writable(
-        &self,
-        pre_candidates: Vec<Arc<EntrySealedCommitted>>,
-        candidates: Vec<Entry<EntryInvalid, EntryCommitted>>,
-    ) -> Result<(), OperationError> {
-        if pre_candidates.is_empty() && candidates.is_empty() {
-            // No action needed.
-            return Ok(());
-        }
-
-        if pre_candidates.len() != candidates.len() {
-            admin_error!("internal_apply_writable - cand lengths differ");
-            return Err(OperationError::InvalidRequestState);
-        }
-
-        let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> = candidates
-            .into_iter()
-            .map(|e| {
-                e.validate(&self.schema)
-                    .map_err(|e| {
-                        admin_error!(
-                            "Schema Violation in internal_apply_writable validate: {:?}",
-                            e
-                        );
-                        OperationError::SchemaViolation(e)
-                    })
-                    .map(|e| e.seal(&self.schema))
-            })
-            .collect();
-
-        let norm_cand: Vec<Entry<_, _>> = res?;
-
-        if cfg!(debug_assertions) {
-            pre_candidates
-                .iter()
-                .zip(norm_cand.iter())
-                .try_for_each(|(pre, post)| {
-                    if pre.get_uuid() == post.get_uuid() {
-                        Ok(())
-                    } else {
-                        admin_error!("modify - cand sets not correctly aligned");
-                        Err(OperationError::InvalidRequestState)
-                    }
-                })?;
-        }
-
-        // Backend Modify
-        self.be_txn
-            .modify(&self.cid, &pre_candidates, &norm_cand)
-            .map_err(|e| {
-                admin_error!("Modify operation failed (backend), {:?}", e);
-                e
-            })?;
-
-        if !self.changed_schema.get() {
-            self.changed_schema.set(
-                norm_cand
-                    .iter()
-                    .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                    .any(|e| {
-                        e.attribute_equality("class", &PVCLASS_CLASSTYPE)
-                            || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
-                    }),
-            )
-        }
-        if !self.changed_acp.get() {
-            self.changed_acp.set(
-                norm_cand
-                    .iter()
-                    .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                    .any(|e| e.attribute_equality("class", &PVCLASS_ACP)),
-            )
-        }
-        if !self.changed_oauth2.get() {
-            self.changed_oauth2.set(
-                norm_cand
-                    .iter()
-                    .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS)),
-            )
-        }
-        if !self.changed_domain.get() {
-            self.changed_domain.set(
-                norm_cand
-                    .iter()
-                    .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)),
-            )
-        }
-        let cu = self.changed_uuid.as_ptr();
-        unsafe {
-            (*cu).extend(
-                norm_cand
-                    .iter()
-                    .map(|e| e.get_uuid())
-                    .chain(pre_candidates.iter().map(|e| e.get_uuid())),
-            );
-        }
-        trace!(
-            schema_reload = ?self.changed_schema,
-            acp_reload = ?self.changed_acp,
-            oauth2_reload = ?self.changed_oauth2,
-            domain_reload = ?self.changed_domain,
-        );
-
-        trace!("Modify operation success");
-        Ok(())
-    }
-
-    #[allow(clippy::mut_from_ref)]
-    pub(crate) fn get_dyngroup_cache(&self) -> &mut DynGroupCache {
-        unsafe {
-            let mptr = self.dyngroup_cache.as_ptr();
-            (*mptr).get_mut()
-        }
-    }
-
-    /// Migrate 2 to 3 changes the name, domain_name types from iutf8 to iname.
-    #[instrument(level = "debug", skip_all)]
-    pub fn migrate_2_to_3(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 2 to 3 migration. THIS MAY TAKE A LONG TIME!");
-        // Get all entries where pres name or domain_name. INCLUDE TS + RECYCLE.
-
-        let filt = filter_all!(f_or!([f_pres("name"), f_pres("domain_name"),]));
-
-        let pre_candidates = self.internal_search(filt).map_err(|e| {
-            admin_error!(err = ?e, "migrate_2_to_3 internal search failure");
-            e
-        })?;
-
-        // If there is nothing, we donn't need to do anything.
-        if pre_candidates.is_empty() {
-            admin_info!("migrate_2_to_3 no entries to migrate, complete");
-            return Ok(());
-        }
-
-        // Change the value type.
-        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
-            .iter()
-            .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
-            .collect();
-
-        candidates.iter_mut().try_for_each(|er| {
-            let nvs = if let Some(vs) = er.get_ava_set("name") {
-                vs.migrate_iutf8_iname()?
-            } else {
-                None
-            };
-            if let Some(nvs) = nvs {
-                er.set_ava_set("name", nvs)
-            }
-
-            let nvs = if let Some(vs) = er.get_ava_set("domain_name") {
-                vs.migrate_iutf8_iname()?
-            } else {
-                None
-            };
-            if let Some(nvs) = nvs {
-                er.set_ava_set("domain_name", nvs)
-            }
-
-            Ok(())
-        })?;
-
-        // Schema check all.
-        let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, SchemaError> = candidates
-            .into_iter()
-            .map(|e| e.validate(&self.schema).map(|e| e.seal(&self.schema)))
-            .collect();
-
-        let norm_cand: Vec<Entry<_, _>> = match res {
-            Ok(v) => v,
-            Err(e) => {
-                admin_error!("migrate_2_to_3 schema error -> {:?}", e);
-                return Err(OperationError::SchemaViolation(e));
-            }
-        };
-
-        // Write them back.
-        self.be_txn
-            .modify(&self.cid, &pre_candidates, &norm_cand)
-            .map_err(|e| {
-                admin_error!("migrate_2_to_3 modification failure -> {:?}", e);
-                e
-            })
-        // Complete
-    }
-
-    /// Migrate 3 to 4 - this triggers a regen of the domains security token
-    /// as we previously did not have it in the entry.
-    #[instrument(level = "debug", skip_all)]
-    pub fn migrate_3_to_4(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 3 to 4 migration.");
-        let filter = filter!(f_eq("uuid", (*PVUUID_DOMAIN_INFO).clone()));
-        let modlist = ModifyList::new_purge("domain_token_key");
-        self.internal_modify(&filter, &modlist)
-        // Complete
-    }
-
-    /// Migrate 4 to 5 - this triggers a regen of all oauth2 RS es256 der keys
-    /// as we previously did not generate them on entry creation.
-    #[instrument(level = "debug", skip_all)]
-    pub fn migrate_4_to_5(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 4 to 5 migration.");
-        let filter = filter!(f_and!([
-            f_eq("class", (*PVCLASS_OAUTH2_RS).clone()),
-            f_andnot(f_pres("es256_private_key_der")),
-        ]));
-        let modlist = ModifyList::new_purge("es256_private_key_der");
-        self.internal_modify(&filter, &modlist)
-        // Complete
-    }
-
-    /// Migrate 5 to 6 - This updates the domain info item to reset the token
-    /// keys based on the new encryption types.
-    #[instrument(level = "debug", skip_all)]
-    pub fn migrate_5_to_6(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 5 to 6 migration.");
-        let filter = filter!(f_eq("uuid", (*PVUUID_DOMAIN_INFO).clone()));
-        let mut modlist = ModifyList::new_purge("domain_token_key");
-        // We need to also push the version here so that we pass schema.
-        modlist.push_mod(Modify::Present(
-            AttrString::from("version"),
-            Value::Uint32(0),
-        ));
-        self.internal_modify(&filter, &modlist)
-        // Complete
-    }
-
-    /// Migrate 6 to 7
-    ///
-    /// Modify accounts that are not persons, to be service accounts so that the extension
-    /// rules remain valid.
-    #[instrument(level = "debug", skip_all)]
-    pub fn migrate_6_to_7(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 6 to 7 migration.");
-        let filter = filter!(f_and!([
-            f_eq("class", (*PVCLASS_ACCOUNT).clone()),
-            f_andnot(f_eq("class", (*PVCLASS_PERSON).clone())),
-        ]));
-        let modlist = ModifyList::new_append("class", Value::new_class("service_account"));
-        self.internal_modify(&filter, &modlist)
-        // Complete
-    }
-
-    /// Migrate 7 to 8
-    ///
-    /// Touch all service accounts to trigger a regen of their es256 jws keys for api tokens
-    #[instrument(level = "debug", skip_all)]
-    pub fn migrate_7_to_8(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 7 to 8 migration.");
-        let filter = filter!(f_eq("class", (*PVCLASS_SERVICE_ACCOUNT).clone()));
-        let modlist = ModifyList::new_append("class", Value::new_class("service_account"));
-        self.internal_modify(&filter, &modlist)
-        // Complete
-    }
-
-    /// Migrate 8 to 9
-    ///
-    /// This migration updates properties of oauth2 relying server properties. First, it changes
-    /// the former basic value to a secret utf8string.
-    ///
-    /// The second change improves the current scope system to remove the implicit scope type.
-    #[instrument(level = "debug", skip_all)]
-    pub fn migrate_8_to_9(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 8 to 9 migration.");
-        let filt = filter_all!(f_or!([
-            f_eq("class", PVCLASS_OAUTH2_RS.clone()),
-            f_eq("class", PVCLASS_OAUTH2_BASIC.clone()),
-        ]));
-
-        let pre_candidates = self.internal_search(filt).map_err(|e| {
-            admin_error!(err = ?e, "migrate_8_to_9 internal search failure");
-            e
-        })?;
-
-        // If there is nothing, we donn't need to do anything.
-        if pre_candidates.is_empty() {
-            admin_info!("migrate_8_to_9 no entries to migrate, complete");
-            return Ok(());
-        }
-
-        // Change the value type.
-        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
-            .iter()
-            .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
-            .collect();
-
-        candidates.iter_mut().try_for_each(|er| {
-            // Migrate basic secrets if they exist.
-            let nvs = er
-                .get_ava_set("oauth2_rs_basic_secret")
-                .and_then(|vs| vs.as_utf8_iter())
-                .and_then(|vs_iter| {
-                    ValueSetSecret::from_iter(vs_iter.map(|s: &str| s.to_string()))
-                });
-            if let Some(nvs) = nvs {
-                er.set_ava_set("oauth2_rs_basic_secret", nvs)
-            }
-
-            // Migrate implicit scopes if they exist.
-            let nv = if let Some(vs) = er.get_ava_set("oauth2_rs_implicit_scopes") {
-                vs.as_oauthscope_set()
-                    .map(|v| Value::OauthScopeMap(UUID_IDM_ALL_PERSONS, v.clone()))
-            } else {
-                None
-            };
-
-            if let Some(nv) = nv {
-                er.add_ava("oauth2_rs_scope_map", nv)
-            }
-            er.purge_ava("oauth2_rs_implicit_scopes");
-
-            Ok(())
-        })?;
-
-        // Schema check all.
-        let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, SchemaError> = candidates
-            .into_iter()
-            .map(|e| e.validate(&self.schema).map(|e| e.seal(&self.schema)))
-            .collect();
-
-        let norm_cand: Vec<Entry<_, _>> = match res {
-            Ok(v) => v,
-            Err(e) => {
-                admin_error!("migrate_8_to_9 schema error -> {:?}", e);
-                return Err(OperationError::SchemaViolation(e));
-            }
-        };
-
-        // Write them back.
-        self.be_txn
-            .modify(&self.cid, &pre_candidates, &norm_cand)
-            .map_err(|e| {
-                admin_error!("migrate_8_to_9 modification failure -> {:?}", e);
-                e
-            })
-        // Complete
-    }
-
-    // These are where searches and other actions are actually implemented. This
-    // is the "internal" version, where we define the event as being internal
-    // only, allowing certain plugin by passes etc.
-
-    pub fn internal_create(
-        &mut self,
-        entries: Vec<Entry<EntryInit, EntryNew>>,
-    ) -> Result<(), OperationError> {
-        let ce = CreateEvent::new_internal(entries);
-        self.create(&ce)
-    }
-
-    pub fn internal_delete(
-        &mut self,
-        filter: &Filter<FilterInvalid>,
-    ) -> Result<(), OperationError> {
-        let f_valid = filter
-            .validate(self.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
-        let de = DeleteEvent::new_internal(f_valid);
-        self.delete(&de)
-    }
-
-    pub fn internal_delete_uuid(&mut self, target_uuid: Uuid) -> Result<(), OperationError> {
-        let filter = filter!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
-        let f_valid = filter
-            .validate(self.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
-        let de = DeleteEvent::new_internal(f_valid);
-        self.delete(&de)
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    pub fn internal_modify(
-        &mut self,
-        filter: &Filter<FilterInvalid>,
-        modlist: &ModifyList<ModifyInvalid>,
-    ) -> Result<(), OperationError> {
-        let f_valid = filter
-            .validate(self.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
-        let m_valid = modlist
-            .validate(self.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
-        let me = ModifyEvent::new_internal(f_valid, m_valid);
-        self.modify(&me)
-    }
-
-    pub fn internal_modify_uuid(
-        &mut self,
-        target_uuid: Uuid,
-        modlist: &ModifyList<ModifyInvalid>,
-    ) -> Result<(), OperationError> {
-        let filter = filter!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
-        let f_valid = filter
-            .validate(self.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
-        let m_valid = modlist
-            .validate(self.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
-        let me = ModifyEvent::new_internal(f_valid, m_valid);
-        self.modify(&me)
-    }
-
-    pub fn impersonate_modify_valid(
-        &mut self,
-        f_valid: Filter<FilterValid>,
-        f_intent_valid: Filter<FilterValid>,
-        m_valid: ModifyList<ModifyValid>,
-        event: &Identity,
-    ) -> Result<(), OperationError> {
-        let me = ModifyEvent::new_impersonate(event, f_valid, f_intent_valid, m_valid);
-        self.modify(&me)
-    }
-
-    pub fn impersonate_modify(
-        &mut self,
-        filter: &Filter<FilterInvalid>,
-        filter_intent: &Filter<FilterInvalid>,
-        modlist: &ModifyList<ModifyInvalid>,
-        event: &Identity,
-    ) -> Result<(), OperationError> {
-        let f_valid = filter.validate(self.get_schema()).map_err(|e| {
-            admin_error!("filter Schema Invalid {:?}", e);
-            OperationError::SchemaViolation(e)
-        })?;
-        let f_intent_valid = filter_intent.validate(self.get_schema()).map_err(|e| {
-            admin_error!("f_intent Schema Invalid {:?}", e);
-            OperationError::SchemaViolation(e)
-        })?;
-        let m_valid = modlist.validate(self.get_schema()).map_err(|e| {
-            admin_error!("modlist Schema Invalid {:?}", e);
-            OperationError::SchemaViolation(e)
-        })?;
-        self.impersonate_modify_valid(f_valid, f_intent_valid, m_valid, event)
-    }
-
-    pub fn impersonate_modify_gen_event(
-        &mut self,
-        filter: &Filter<FilterInvalid>,
-        filter_intent: &Filter<FilterInvalid>,
-        modlist: &ModifyList<ModifyInvalid>,
-        event: &Identity,
-    ) -> Result<ModifyEvent, OperationError> {
-        let f_valid = filter.validate(self.get_schema()).map_err(|e| {
-            admin_error!("filter Schema Invalid {:?}", e);
-            OperationError::SchemaViolation(e)
-        })?;
-        let f_intent_valid = filter_intent.validate(self.get_schema()).map_err(|e| {
-            admin_error!("f_intent Schema Invalid {:?}", e);
-            OperationError::SchemaViolation(e)
-        })?;
-        let m_valid = modlist.validate(self.get_schema()).map_err(|e| {
-            admin_error!("modlist Schema Invalid {:?}", e);
-            OperationError::SchemaViolation(e)
-        })?;
-        Ok(ModifyEvent::new_impersonate(
-            event,
-            f_valid,
-            f_intent_valid,
-            m_valid,
-        ))
-    }
-
-    // internal server operation types.
-    // These just wrap the fn create/search etc, but they allow
-    // creating the needed create event with the correct internal flags
-    // and markers. They act as though they have the highest level privilege
-    // IE there are no access control checks.
-
-    /*
-    pub fn internal_exists_or_create(
-        &self,
-        _e: Entry<EntryValid, EntryNew>,
-    ) -> Result<(), OperationError> {
-        // If the thing exists, stop.
-        // if not, create from Entry.
-        unimplemented!()
-    }
-    */
-
-    #[instrument(level = "debug", skip_all)]
-    pub fn internal_migrate_or_create_str(&mut self, e_str: &str) -> Result<(), OperationError> {
-        let res = Entry::from_proto_entry_str(e_str, self)
-            /*
-            .and_then(|e: Entry<EntryInvalid, EntryNew>| {
-                let schema = self.get_schema();
-                e.validate(schema).map_err(OperationError::SchemaViolation)
-            })
-            */
-            .and_then(|e: Entry<EntryInit, EntryNew>| self.internal_migrate_or_create(e));
-        trace!(?res);
-        debug_assert!(res.is_ok());
-        res
-    }
-
-    pub fn internal_migrate_or_create(
-        &mut self,
-        e: Entry<EntryInit, EntryNew>,
-    ) -> Result<(), OperationError> {
-        // if the thing exists, ensure the set of attributes on
-        // Entry A match and are present (but don't delete multivalue, or extended
-        // attributes in the situation.
-        // If not exist, create from Entry B
-        //
-        // This will extra classes an attributes alone!
-        //
-        // NOTE: gen modlist IS schema aware and will handle multivalue
-        // correctly!
-        trace!("internal_migrate_or_create operating on {:?}", e.get_uuid());
-
-        let filt = match e.filter_from_attrs(&[AttrString::from("uuid")]) {
-            Some(f) => f,
-            None => return Err(OperationError::FilterGeneration),
-        };
-
-        trace!("internal_migrate_or_create search {:?}", filt);
-
-        let results = self.internal_search(filt.clone())?;
-
-        if results.is_empty() {
-            // It does not exist. Create it.
-            self.internal_create(vec![e])
-        } else if results.len() == 1 {
-            // If the thing is subset, pass
-            match e.gen_modlist_assert(&self.schema) {
-                Ok(modlist) => {
-                    // Apply to &results[0]
-                    trace!("Generated modlist -> {:?}", modlist);
-                    self.internal_modify(&filt, &modlist)
-                }
-                Err(e) => Err(OperationError::SchemaViolation(e)),
-            }
-        } else {
-            admin_error!(
-                "Invalid Result Set - Expected One Entry for {:?} - {:?}",
-                filt,
-                results
-            );
-            Err(OperationError::InvalidDbState)
-        }
-    }
-
-    /*
-    pub fn internal_assert_or_create_str(
-        &mut self,
-        e_str: &str,
-    ) -> Result<(), OperationError> {
-        let res = audit_segment!( || Entry::from_proto_entry_str( e_str, self)
-            .and_then(
-                |e: Entry<EntryInit, EntryNew>| self.internal_assert_or_create( e)
-            ));
-        ltrace!( "internal_assert_or_create_str -> result {:?}", res);
-        debug_assert!(res.is_ok());
-        res
-    }
-
-    // Should this take a be_txn?
-    pub fn internal_assert_or_create(
-        &mut self,
-        e: Entry<EntryInit, EntryNew>,
-    ) -> Result<(), OperationError> {
-        // If exists, ensure the object is exactly as provided
-        // else, if not exists, create it. IE no extra or excess
-        // attributes and classes.
-
-        ltrace!(
-
-            "internal_assert_or_create operating on {:?}",
-            e.get_uuid()
-        );
-
-        // Create a filter from the entry for assertion.
-        let filt = match e.filter_from_attrs(&[String::from("uuid")]) {
-            Some(f) => f,
-            None => return Err(OperationError::FilterGeneration),
-        };
-
-        // Does it exist? we use search here, not exists, so that if the entry does exist
-        // we can compare it is identical, which avoids a delete/create cycle that would
-        // trigger csn/repl each time we start up.
-        match self.internal_search( filt.clone()) {
-            Ok(results) => {
-                if results.is_empty() {
-                    // It does not exist. Create it.
-                    self.internal_create( vec![e])
-                } else if results.len() == 1 {
-                    // it exists. To guarantee content exactly as is, we compare if it's identical.
-                    if !e.compare(&results[0]) {
-                        self.internal_delete( filt)
-                            .and_then(|_| self.internal_create( vec![e]))
-                    } else {
-                        // No action required
-                        Ok(())
-                    }
-                } else {
-                    Err(OperationError::InvalidDbState)
-                }
-            }
-            Err(er) => {
-                // An error occured. pass it back up.
-                Err(er)
-            }
-        }
-    }
-    */
-
-    #[instrument(level = "info", skip_all)]
-    pub fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
-        admin_debug!("initialise_schema_core -> start ...");
-        // Load in all the "core" schema, that we already have in "memory".
-        let entries = self.schema.to_entries();
-
-        // admin_debug!("Dumping schemas: {:?}", entries);
-
-        // internal_migrate_or_create.
-        let r: Result<_, _> = entries.into_iter().try_for_each(|e| {
-            trace!(?e, "init schema entry");
-            self.internal_migrate_or_create(e)
-        });
-        if r.is_ok() {
-            admin_debug!("initialise_schema_core -> Ok!");
-        } else {
-            admin_error!(?r, "initialise_schema_core -> Error");
-        }
-        // why do we have error handling if it's always supposed to be `Ok`?
-        debug_assert!(r.is_ok());
-        r
-    }
-
-    #[instrument(level = "info", skip_all)]
-    pub fn initialise_schema_idm(&mut self) -> Result<(), OperationError> {
-        admin_debug!("initialise_schema_idm -> start ...");
-        // List of IDM schemas to init.
-        let idm_schema: Vec<&str> = vec![
-            JSON_SCHEMA_ATTR_DISPLAYNAME,
-            JSON_SCHEMA_ATTR_LEGALNAME,
-            JSON_SCHEMA_ATTR_MAIL,
-            JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
-            JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL,
-            JSON_SCHEMA_ATTR_RADIUS_SECRET,
-            JSON_SCHEMA_ATTR_DOMAIN_NAME,
-            JSON_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME,
-            JSON_SCHEMA_ATTR_DOMAIN_UUID,
-            JSON_SCHEMA_ATTR_DOMAIN_SSID,
-            JSON_SCHEMA_ATTR_DOMAIN_TOKEN_KEY,
-            JSON_SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR,
-            JSON_SCHEMA_ATTR_GIDNUMBER,
-            JSON_SCHEMA_ATTR_BADLIST_PASSWORD,
-            JSON_SCHEMA_ATTR_LOGINSHELL,
-            JSON_SCHEMA_ATTR_UNIX_PASSWORD,
-            JSON_SCHEMA_ATTR_ACCOUNT_EXPIRE,
-            JSON_SCHEMA_ATTR_ACCOUNT_VALID_FROM,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_NAME,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY,
-            JSON_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER,
-            JSON_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE,
-            JSON_SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
-            JSON_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER,
-            JSON_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN,
-            JSON_SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP,
-            JSON_SCHEMA_ATTR_PASSKEYS,
-            JSON_SCHEMA_ATTR_DEVICEKEYS,
-            JSON_SCHEMA_ATTR_DYNGROUP_FILTER,
-            JSON_SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY,
-            JSON_SCHEMA_ATTR_API_TOKEN_SESSION,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP,
-            JSON_SCHEMA_ATTR_USER_AUTH_TOKEN_SESSION,
-            JSON_SCHEMA_ATTR_OAUTH2_SESSION,
-            JSON_SCHEMA_ATTR_NSUNIQUEID,
-            JSON_SCHEMA_ATTR_OAUTH2_PREFER_SHORT_USERNAME,
-            JSON_SCHEMA_ATTR_SYNC_TOKEN_SESSION,
-            JSON_SCHEMA_ATTR_SYNC_COOKIE,
-            JSON_SCHEMA_ATTR_GRANT_UI_HINT,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING,
-            JSON_SCHEMA_CLASS_PERSON,
-            JSON_SCHEMA_CLASS_ORGPERSON,
-            JSON_SCHEMA_CLASS_GROUP,
-            JSON_SCHEMA_CLASS_DYNGROUP,
-            JSON_SCHEMA_CLASS_ACCOUNT,
-            JSON_SCHEMA_CLASS_SERVICE_ACCOUNT,
-            JSON_SCHEMA_CLASS_DOMAIN_INFO,
-            JSON_SCHEMA_CLASS_POSIXACCOUNT,
-            JSON_SCHEMA_CLASS_POSIXGROUP,
-            JSON_SCHEMA_CLASS_SYSTEM_CONFIG,
-            JSON_SCHEMA_CLASS_OAUTH2_RS,
-            JSON_SCHEMA_CLASS_OAUTH2_RS_BASIC,
-            JSON_SCHEMA_CLASS_SYNC_ACCOUNT,
-        ];
-
-        let r = idm_schema
-            .iter()
-            // Each item individually logs it's result
-            .try_for_each(|e_str| self.internal_migrate_or_create_str(e_str));
-
-        if r.is_ok() {
-            admin_debug!("initialise_schema_idm -> Ok!");
-        } else {
-            admin_error!(res = ?r, "initialise_schema_idm -> Error");
-        }
-        debug_assert!(r.is_ok()); // why return a result if we assert it's `Ok`?
-
-        r
-    }
-
-    // This function is idempotent
-    #[instrument(level = "info", skip_all)]
-    pub fn initialise_idm(&mut self) -> Result<(), OperationError> {
-        // First, check the system_info object. This stores some server information
-        // and details. It's a pretty const thing. Also check anonymous, important to many
-        // concepts.
-        let res = self
-            .internal_migrate_or_create_str(JSON_SYSTEM_INFO_V1)
-            .and_then(|_| self.internal_migrate_or_create_str(JSON_DOMAIN_INFO_V1))
-            .and_then(|_| self.internal_migrate_or_create_str(JSON_SYSTEM_CONFIG_V1));
-        if res.is_err() {
-            admin_error!("initialise_idm p1 -> result {:?}", res);
-        }
-        debug_assert!(res.is_ok());
-        res?;
-
-        // The domain info now exists, we should be able to do these migrations as they will
-        // cause SPN regenerations to occur
-
-        // Check the admin object exists (migrations).
-        // Create the default idm_admin group.
-        let admin_entries = [
-            JSON_ANONYMOUS_V1,
-            JSON_ADMIN_V1,
-            JSON_IDM_ADMIN_V1,
-            JSON_IDM_ADMINS_V1,
-            JSON_SYSTEM_ADMINS_V1,
-        ];
-        let res: Result<(), _> = admin_entries
-            .iter()
-            // Each item individually logs it's result
-            .try_for_each(|e_str| self.internal_migrate_or_create_str(e_str));
-        if res.is_err() {
-            admin_error!("initialise_idm p2 -> result {:?}", res);
-        }
-        debug_assert!(res.is_ok());
-        res?;
-
-        // Create any system default schema entries.
-
-        // Create any system default access profile entries.
-        let idm_entries = [
-            // Builtin dyn groups,
-            JSON_IDM_ALL_PERSONS,
-            JSON_IDM_ALL_ACCOUNTS,
-            // Builtin groups
-            JSON_IDM_PEOPLE_MANAGE_PRIV_V1,
-            JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
-            JSON_IDM_PEOPLE_EXTEND_PRIV_V1,
-            JSON_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1,
-            JSON_IDM_PEOPLE_WRITE_PRIV_V1,
-            JSON_IDM_PEOPLE_READ_PRIV_V1,
-            JSON_IDM_HP_PEOPLE_EXTEND_PRIV_V1,
-            JSON_IDM_HP_PEOPLE_WRITE_PRIV_V1,
-            JSON_IDM_HP_PEOPLE_READ_PRIV_V1,
-            JSON_IDM_GROUP_MANAGE_PRIV_V1,
-            JSON_IDM_GROUP_WRITE_PRIV_V1,
-            JSON_IDM_GROUP_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACCOUNT_MANAGE_PRIV_V1,
-            JSON_IDM_ACCOUNT_WRITE_PRIV_V1,
-            JSON_IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACCOUNT_READ_PRIV_V1,
-            JSON_IDM_RADIUS_SECRET_WRITE_PRIV_V1,
-            JSON_IDM_RADIUS_SECRET_READ_PRIV_V1,
-            JSON_IDM_RADIUS_SERVERS_V1,
-            // Write deps on read, so write must be added first.
-            JSON_IDM_HP_ACCOUNT_MANAGE_PRIV_V1,
-            JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1,
-            JSON_IDM_HP_ACCOUNT_READ_PRIV_V1,
-            JSON_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_SCHEMA_MANAGE_PRIV_V1,
-            JSON_IDM_HP_GROUP_MANAGE_PRIV_V1,
-            JSON_IDM_HP_GROUP_WRITE_PRIV_V1,
-            JSON_IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACP_MANAGE_PRIV_V1,
-            JSON_DOMAIN_ADMINS,
-            JSON_IDM_HP_OAUTH2_MANAGE_PRIV_V1,
-            JSON_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
-            JSON_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
-            // All members must exist before we write HP
-            JSON_IDM_HIGH_PRIVILEGE_V1,
-            // Built in access controls.
-            JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1,
-            JSON_IDM_ADMINS_ACP_REVIVE_V1,
-            // JSON_IDM_ADMINS_ACP_MANAGE_V1,
-            JSON_IDM_ALL_ACP_READ_V1,
-            JSON_IDM_SELF_ACP_READ_V1,
-            JSON_IDM_SELF_ACP_WRITE_V1,
-            JSON_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_READ_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_GROUP_WRITE_PRIV_V1,
-            JSON_IDM_ACP_GROUP_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1,
-            JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1,
-            JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_RADIUS_SERVERS_V1,
-            JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1,
-            JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1,
-            JSON_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1,
-            JSON_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1,
-            JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1,
-            JSON_IDM_ACP_ACP_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1,
-            JSON_IDM_ACP_SYSTEM_CONFIG_PRIV_V1,
-            JSON_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_EXTEND_PRIV_V1,
-            JSON_IDM_ACP_HP_PEOPLE_READ_PRIV_V1,
-            JSON_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1,
-            JSON_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1,
-            JSON_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1,
-            JSON_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1,
-            JSON_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1,
-            JSON_IDM_ACP_OAUTH2_READ_PRIV_V1,
-            JSON_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1,
-        ];
-
-        let res: Result<(), _> = idm_entries
-            .iter()
-            .try_for_each(|e_str| self.internal_migrate_or_create_str(e_str));
-        if res.is_ok() {
-            admin_debug!("initialise_idm -> result Ok!");
-        } else {
-            admin_error!(?res, "initialise_idm p3 -> result");
-        }
-        debug_assert!(res.is_ok());
-        res?;
-
-        let idm_entries = [
-            E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES.clone(),
-            E_IDM_ACCOUNT_MAIL_READ_PRIV.clone(),
-            E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
-        ];
-
-        let res: Result<(), _> = idm_entries
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry));
-        if res.is_ok() {
-            admin_debug!("initialise_idm -> result Ok!");
-        } else {
-            admin_error!(?res, "initialise_idm p3 -> result");
-        }
-        debug_assert!(res.is_ok());
-        res?;
-
-        self.changed_schema.set(true);
-        self.changed_acp.set(true);
-
-        Ok(())
+    pub(crate) fn get_dyngroup_cache(&mut self) -> &mut DynGroupCache {
+        &mut self.dyngroup_cache
     }
 
     #[instrument(level = "debug", name = "reload_schema", skip(self))]
@@ -2911,6 +1105,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             admin_error!("Schema reload failed -> {:?}", valid_r);
             Err(OperationError::ConsistencyError(valid_r))
         }?;
+
+        // TODO: Clear the filter resolve cache.
+        // currently we can't do this because of the limits of types with arccache txns. The only
+        // thing this impacts is if something in indexed though, and the backend does handle
+        // incorrectly indexed items correctly.
 
         // Trigger reloads on services that require post-schema reloads.
         // Mainly this is plugins.
@@ -3045,7 +1244,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
-    fn get_db_domain_display_name(&self) -> Result<String, OperationError> {
+    fn get_db_domain_display_name(&mut self) -> Result<String, OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 trace!(?e);
@@ -3121,15 +1320,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.internal_modify(&filt, &modl)
     }
 
-    pub fn reindex(&self) -> Result<(), OperationError> {
+    pub fn reindex(&mut self) -> Result<(), OperationError> {
         // initiate a be reindex here. This could have been from first run checking
         // the versions, or it could just be from the cli where an admin needs to do an
         // indexing.
         self.be_txn.reindex()
     }
 
-    fn force_schema_reload(&self) {
-        self.changed_schema.set(true);
+    fn force_schema_reload(&mut self) {
+        self.changed_schema = true;
     }
 
     #[instrument(level = "info", skip_all)]
@@ -3138,15 +1337,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn get_changed_uuids(&self) -> &HashSet<Uuid> {
-        unsafe { &(*self.changed_uuid.as_ptr()) }
+        &self.changed_uuid
     }
 
     pub fn get_changed_ouath2(&self) -> bool {
-        self.changed_oauth2.get()
+        self.changed_oauth2
     }
 
     pub fn get_changed_domain(&self) -> bool {
-        self.changed_domain.get()
+        self.changed_domain
     }
 
     fn set_phase(&mut self, phase: ServerPhase) {
@@ -3159,14 +1358,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // in an operation so we can check if we need to do the reload or not
         //
         // Reload the schema from qs.
-        if self.changed_schema.get() {
+        if self.changed_schema {
             self.reload_schema()?;
         }
         // Determine if we need to update access control profiles
         // based on any modifications that have occured.
         // IF SCHEMA CHANGED WE MUST ALSO RELOAD!!! IE if schema had an attr removed
         // that we rely on we MUST fail this here!!
-        if self.changed_schema.get() || self.changed_acp.get() {
+        if self.changed_schema || self.changed_acp {
             self.reload_accesscontrols()?;
         } else {
             // On a reload the cache is dropped, otherwise we tell accesscontrols
@@ -3175,7 +1374,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             //    .invalidate_related_cache(self.changed_uuid.into_inner().as_slice())
         }
 
-        if self.changed_domain.get() {
+        if self.changed_domain {
             self.reload_domain_info()?;
         }
 
@@ -3183,7 +1382,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let QueryServerWriteTransaction {
             committed,
             phase,
-            be_txn,
+            mut be_txn,
             schema,
             d_info,
             accesscontrols,
@@ -3206,7 +1405,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .commit()
                 .map(|_| d_info.commit())
                 .map(|_| phase.commit())
-                .map(|_| dyngroup_cache.into_inner().commit())
+                .map(|_| dyngroup_cache.commit())
                 .and_then(|_| accesscontrols.commit())
                 .and_then(|_| be_txn.commit())
         } else {
@@ -3218,699 +1417,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-    use std::time::Duration;
 
-    use kanidm_proto::v1::SchemaError;
-
-    use crate::credential::policy::CryptoPolicy;
-    use crate::credential::Credential;
-    use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
     use crate::prelude::*;
-
-    #[qs_test]
-    async fn test_create_user(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-        let filt = filter!(f_eq("name", PartialValue::new_iname("testperson")));
-        let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
-
-        let se1 = unsafe { SearchEvent::new_impersonate_entry(admin.clone(), filt.clone()) };
-        let se2 = unsafe { SearchEvent::new_impersonate_entry(admin, filt) };
-
-        let mut e = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("class", Value::new_class("account")),
-            ("name", Value::new_iname("testperson")),
-            ("spn", Value::new_spn_str("testperson", "example.com")),
-            (
-                "uuid",
-                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
-            ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson"))
-        );
-
-        let ce = CreateEvent::new_internal(vec![e.clone()]);
-
-        let r1 = server_txn.search(&se1).expect("search failure");
-        assert!(r1.is_empty());
-
-        let cr = server_txn.create(&ce);
-        assert!(cr.is_ok());
-
-        let r2 = server_txn.search(&se2).expect("search failure");
-        debug!("--> {:?}", r2);
-        assert!(r2.len() == 1);
-
-        // We apply some member-of in the server now, so we add these before we seal.
-        e.add_ava("class", Value::new_class("memberof"));
-        e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_PERSONS));
-        e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_PERSONS));
-        e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));
-        e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));
-
-        let expected = unsafe { vec![Arc::new(e.into_sealed_committed())] };
-
-        assert_eq!(r2, expected);
-
-        assert!(server_txn.commit().is_ok());
-    }
-
-    #[qs_test]
-    async fn test_init_idempotent_schema_core(server: &QueryServer) {
-        {
-            // Setup and abort.
-            let mut server_txn = server.write(duration_from_epoch_now()).await;
-            assert!(server_txn.initialise_schema_core().is_ok());
-        }
-        {
-            let mut server_txn = server.write(duration_from_epoch_now()).await;
-            assert!(server_txn.initialise_schema_core().is_ok());
-            assert!(server_txn.initialise_schema_core().is_ok());
-            assert!(server_txn.commit().is_ok());
-        }
-        {
-            // Now do it again in a new txn, but abort
-            let mut server_txn = server.write(duration_from_epoch_now()).await;
-            assert!(server_txn.initialise_schema_core().is_ok());
-        }
-        {
-            // Now do it again in a new txn.
-            let mut server_txn = server.write(duration_from_epoch_now()).await;
-            assert!(server_txn.initialise_schema_core().is_ok());
-            assert!(server_txn.commit().is_ok());
-        }
-    }
-
-    #[qs_test]
-    async fn test_modify(server: &QueryServer) {
-        // Create an object
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-
-        let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson1")),
-            (
-                "uuid",
-                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
-            ),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
-        );
-
-        let e2 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson2")),
-            (
-                "uuid",
-                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
-            ),
-            ("description", Value::new_utf8s("testperson2")),
-            ("displayname", Value::new_utf8s("testperson2"))
-        );
-
-        let ce = CreateEvent::new_internal(vec![e1.clone(), e2.clone()]);
-
-        let cr = server_txn.create(&ce);
-        assert!(cr.is_ok());
-
-        // Empty Modlist (filter is valid)
-        let me_emp = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_pres("class")),
-                ModifyList::new_list(vec![]),
-            )
-        };
-        assert!(server_txn.modify(&me_emp) == Err(OperationError::EmptyRequest));
-
-        // Mod changes no objects
-        let me_nochg = unsafe {
-            ModifyEvent::new_impersonate_entry_ser(
-                JSON_ADMIN_V1,
-                filter!(f_eq("name", PartialValue::new_iname("flarbalgarble"))),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("description"),
-                    Value::from("anusaosu"),
-                )]),
-            )
-        };
-        assert!(server_txn.modify(&me_nochg) == Err(OperationError::NoMatchingEntries));
-
-        // Filter is invalid to schema - to check this due to changes in the way events are
-        // handled, we put this via the internal modify function to get the modlist
-        // checked for us. Normal server operation doesn't allow weird bypasses like
-        // this.
-        let r_inv_1 = server_txn.internal_modify(
-            &filter!(f_eq("tnanuanou", PartialValue::new_iname("Flarbalgarble"))),
-            &ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("description"),
-                Value::from("anusaosu"),
-            )]),
-        );
-        assert!(
-            r_inv_1
-                == Err(OperationError::SchemaViolation(
-                    SchemaError::InvalidAttribute("tnanuanou".to_string())
-                ))
-        );
-
-        // Mod is invalid to schema
-        let me_inv_m = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_pres("class")),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("htnaonu"),
-                    Value::from("anusaosu"),
-                )]),
-            )
-        };
-        assert!(
-            server_txn.modify(&me_inv_m)
-                == Err(OperationError::SchemaViolation(
-                    SchemaError::InvalidAttribute("htnaonu".to_string())
-                ))
-        );
-
-        // Mod single object
-        let me_sin = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("testperson2"))),
-                ModifyList::new_list(vec![
-                    Modify::Purged(AttrString::from("description")),
-                    Modify::Present(AttrString::from("description"), Value::from("anusaosu")),
-                ]),
-            )
-        };
-        assert!(server_txn.modify(&me_sin).is_ok());
-
-        // Mod multiple object
-        let me_mult = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_or!([
-                    f_eq("name", PartialValue::new_iname("testperson1")),
-                    f_eq("name", PartialValue::new_iname("testperson2")),
-                ])),
-                ModifyList::new_list(vec![
-                    Modify::Purged(AttrString::from("description")),
-                    Modify::Present(AttrString::from("description"), Value::from("anusaosu")),
-                ]),
-            )
-        };
-        assert!(server_txn.modify(&me_mult).is_ok());
-
-        assert!(server_txn.commit().is_ok());
-    }
-
-    #[qs_test]
-    async fn test_modify_assert(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-
-        let t_uuid = Uuid::new_v4();
-        let r_uuid = Uuid::new_v4();
-
-        assert!(server_txn
-            .internal_create(vec![entry_init!(
-                ("class", Value::new_class("object")),
-                ("uuid", Value::Uuid(t_uuid))
-            ),])
-            .is_ok());
-
-        // This assertion will FAIL
-        assert!(matches!(
-            server_txn.internal_modify_uuid(
-                t_uuid,
-                &ModifyList::new_list(vec![
-                    m_assert("uuid", &PartialValue::Uuid(r_uuid)),
-                    m_pres("description", &Value::Utf8("test".into()))
-                ])
-            ),
-            Err(OperationError::ModifyAssertionFailed)
-        ));
-
-        // This assertion will PASS
-        assert!(server_txn
-            .internal_modify_uuid(
-                t_uuid,
-                &ModifyList::new_list(vec![
-                    m_assert("uuid", &PartialValue::Uuid(t_uuid)),
-                    m_pres("description", &Value::Utf8("test".into()))
-                ])
-            )
-            .is_ok());
-    }
-
-    #[qs_test]
-    async fn test_modify_invalid_class(server: &QueryServer) {
-        // Test modifying an entry and adding an extra class, that would cause the entry
-        // to no longer conform to schema.
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-
-        let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson1")),
-            (
-                "uuid",
-                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
-            ),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
-        );
-
-        let ce = CreateEvent::new_internal(vec![e1.clone()]);
-
-        let cr = server_txn.create(&ce);
-        assert!(cr.is_ok());
-
-        // Add class but no values
-        let me_sin = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("class"),
-                    Value::new_class("system_info"),
-                )]),
-            )
-        };
-        assert!(server_txn.modify(&me_sin).is_err());
-
-        // Add multivalue where not valid
-        let me_sin = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("name"),
-                    Value::new_iname("testpersonx"),
-                )]),
-            )
-        };
-        assert!(server_txn.modify(&me_sin).is_err());
-
-        // add class and valid values?
-        let me_sin = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("class"), Value::new_class("system_info")),
-                    // Modify::Present("domain".to_string(), Value::new_iutf8("domain.name")),
-                    Modify::Present(AttrString::from("version"), Value::new_uint32(1)),
-                ]),
-            )
-        };
-        assert!(server_txn.modify(&me_sin).is_ok());
-
-        // Replace a value
-        let me_sin = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                ModifyList::new_list(vec![
-                    Modify::Purged(AttrString::from("name")),
-                    Modify::Present(AttrString::from("name"), Value::new_iname("testpersonx")),
-                ]),
-            )
-        };
-        assert!(server_txn.modify(&me_sin).is_ok());
-    }
-
-    #[qs_test]
-    async fn test_delete(server: &QueryServer) {
-        // Create
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-
-        let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson1")),
-            (
-                "uuid",
-                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
-            ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson1"))
-        );
-
-        let e2 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson2")),
-            (
-                "uuid",
-                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
-            ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson2"))
-        );
-
-        let e3 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson3")),
-            (
-                "uuid",
-                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63933"))
-            ),
-            ("description", Value::new_utf8s("testperson")),
-            ("displayname", Value::new_utf8s("testperson3"))
-        );
-
-        let ce = CreateEvent::new_internal(vec![e1.clone(), e2.clone(), e3.clone()]);
-
-        let cr = server_txn.create(&ce);
-        assert!(cr.is_ok());
-
-        // Delete filter is syntax invalid
-        let de_inv =
-            unsafe { DeleteEvent::new_internal_invalid(filter!(f_pres("nhtoaunaoehtnu"))) };
-        assert!(server_txn.delete(&de_inv).is_err());
-
-        // Delete deletes nothing
-        let de_empty = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "uuid",
-                PartialValue::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-000000000000"))
-            )))
-        };
-        assert!(server_txn.delete(&de_empty).is_err());
-
-        // Delete matches one
-        let de_sin = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "name",
-                PartialValue::new_iname("testperson3")
-            )))
-        };
-        assert!(server_txn.delete(&de_sin).is_ok());
-
-        // Delete matches many
-        let de_mult = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "description",
-                PartialValue::new_utf8s("testperson")
-            )))
-        };
-        assert!(server_txn.delete(&de_mult).is_ok());
-
-        assert!(server_txn.commit().is_ok());
-    }
-
-    #[qs_test]
-    async fn test_tombstone(server: &QueryServer) {
-        // First we setup some timestamps
-        let time_p1 = duration_from_epoch_now();
-        let time_p2 = time_p1 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
-        let time_p3 = time_p2 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
-
-        let mut server_txn = server.write(time_p1).await;
-        let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
-
-        let filt_i_ts = filter_all!(f_eq("class", PartialValue::new_class("tombstone")));
-
-        // Create fake external requests. Probably from admin later
-        // Should we do this with impersonate instead of using the external
-        let me_ts = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                admin.clone(),
-                filt_i_ts.clone(),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("class"),
-                    Value::new_class("tombstone"),
-                )]),
-            )
-        };
-
-        let de_ts = unsafe { DeleteEvent::new_impersonate_entry(admin.clone(), filt_i_ts.clone()) };
-        let se_ts = unsafe { SearchEvent::new_ext_impersonate_entry(admin, filt_i_ts.clone()) };
-
-        // First, create an entry, then push it through the lifecycle.
-        let e_ts = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson1")),
-            (
-                "uuid",
-                Value::Uuid(uuid!("9557f49c-97a5-4277-a9a5-097d17eb8317"))
-            ),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
-        );
-
-        let ce = CreateEvent::new_internal(vec![e_ts]);
-        let cr = server_txn.create(&ce);
-        assert!(cr.is_ok());
-
-        let de_sin = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
-                "name",
-                PartialValue::new_iname("testperson1")
-            )])))
-        };
-        assert!(server_txn.delete(&de_sin).is_ok());
-
-        // Commit
-        assert!(server_txn.commit().is_ok());
-
-        // Now, establish enough time for the recycled items to be purged.
-        let mut server_txn = server.write(time_p2).await;
-        assert!(server_txn.purge_recycled().is_ok());
-
-        // Now test the tombstone properties.
-
-        // Can it be seen (external search)
-        let r1 = server_txn.search(&se_ts).expect("search failed");
-        assert!(r1.is_empty());
-
-        // Can it be deleted (external delete)
-        // Should be err-no candidates.
-        assert!(server_txn.delete(&de_ts).is_err());
-
-        // Can it be modified? (external modify)
-        // Should be err-no candidates
-        assert!(server_txn.modify(&me_ts).is_err());
-
-        // Can it be seen (internal search)
-        // Internal search should see it.
-        let r2 = server_txn
-            .internal_search(filt_i_ts.clone())
-            .expect("internal search failed");
-        assert!(r2.len() == 1);
-
-        // If we purge now, nothing happens, we aren't past the time window.
-        assert!(server_txn.purge_tombstones().is_ok());
-
-        let r3 = server_txn
-            .internal_search(filt_i_ts.clone())
-            .expect("internal search failed");
-        assert!(r3.len() == 1);
-
-        // Commit
-        assert!(server_txn.commit().is_ok());
-
-        // New txn, push the cid forward.
-        let server_txn = server.write(time_p3).await;
-
-        // Now purge
-        assert!(server_txn.purge_tombstones().is_ok());
-
-        // Assert it's gone
-        // Internal search should not see it.
-        let r4 = server_txn
-            .internal_search(filt_i_ts)
-            .expect("internal search failed");
-        assert!(r4.is_empty());
-
-        assert!(server_txn.commit().is_ok());
-    }
-
-    #[qs_test]
-    async fn test_recycle_simple(server: &QueryServer) {
-        // First we setup some timestamps
-        let time_p1 = duration_from_epoch_now();
-        let time_p2 = time_p1 + Duration::from_secs(RECYCLEBIN_MAX_AGE * 2);
-
-        let mut server_txn = server.write(time_p1).await;
-        let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
-
-        let filt_i_rc = filter_all!(f_eq("class", PartialValue::new_class("recycled")));
-
-        let filt_i_ts = filter_all!(f_eq("class", PartialValue::new_class("tombstone")));
-
-        let filt_i_per = filter_all!(f_eq("class", PartialValue::new_class("person")));
-
-        // Create fake external requests. Probably from admin later
-        let me_rc = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                admin.clone(),
-                filt_i_rc.clone(),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("class"),
-                    Value::new_class("recycled"),
-                )]),
-            )
-        };
-
-        let de_rc = unsafe { DeleteEvent::new_impersonate_entry(admin.clone(), filt_i_rc.clone()) };
-
-        let se_rc =
-            unsafe { SearchEvent::new_ext_impersonate_entry(admin.clone(), filt_i_rc.clone()) };
-
-        let sre_rc =
-            unsafe { SearchEvent::new_rec_impersonate_entry(admin.clone(), filt_i_rc.clone()) };
-
-        let rre_rc = unsafe {
-            ReviveRecycledEvent::new_impersonate_entry(
-                admin,
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
-
-        // Create some recycled objects
-        let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson1")),
-            (
-                "uuid",
-                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
-            ),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
-        );
-
-        let e2 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson2")),
-            (
-                "uuid",
-                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63932"))
-            ),
-            ("description", Value::new_utf8s("testperson2")),
-            ("displayname", Value::new_utf8s("testperson2"))
-        );
-
-        let ce = CreateEvent::new_internal(vec![e1, e2]);
-        let cr = server_txn.create(&ce);
-        assert!(cr.is_ok());
-
-        // Now we immediately delete these to force them to the correct state.
-        let de_sin = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_or!([
-                f_eq("name", PartialValue::new_iname("testperson1")),
-                f_eq("name", PartialValue::new_iname("testperson2")),
-            ])))
-        };
-        assert!(server_txn.delete(&de_sin).is_ok());
-
-        // Can it be seen (external search)
-        let r1 = server_txn.search(&se_rc).expect("search failed");
-        assert!(r1.is_empty());
-
-        // Can it be deleted (external delete)
-        // Should be err-no candidates.
-        assert!(server_txn.delete(&de_rc).is_err());
-
-        // Can it be modified? (external modify)
-        // Should be err-no candidates
-        assert!(server_txn.modify(&me_rc).is_err());
-
-        // Can in be seen by special search? (external recycle search)
-        let r2 = server_txn.search(&sre_rc).expect("search failed");
-        assert!(r2.len() == 2);
-
-        // Can it be seen (internal search)
-        // Internal search should see it.
-        let r2 = server_txn
-            .internal_search(filt_i_rc.clone())
-            .expect("internal search failed");
-        assert!(r2.len() == 2);
-
-        // There are now two paths forward
-        //  revival or purge!
-        assert!(server_txn.revive_recycled(&rre_rc).is_ok());
-
-        // Not enough time has passed, won't have an effect for purge to TS
-        assert!(server_txn.purge_recycled().is_ok());
-        let r3 = server_txn
-            .internal_search(filt_i_rc.clone())
-            .expect("internal search failed");
-        assert!(r3.len() == 1);
-
-        // Commit
-        assert!(server_txn.commit().is_ok());
-
-        // Now, establish enough time for the recycled items to be purged.
-        let server_txn = server.write(time_p2).await;
-
-        //  purge to tombstone, now that time has passed.
-        assert!(server_txn.purge_recycled().is_ok());
-
-        // Should be no recycled objects.
-        let r4 = server_txn
-            .internal_search(filt_i_rc.clone())
-            .expect("internal search failed");
-        assert!(r4.is_empty());
-
-        // There should be one tombstone
-        let r5 = server_txn
-            .internal_search(filt_i_ts.clone())
-            .expect("internal search failed");
-        assert!(r5.len() == 1);
-
-        // There should be one entry
-        let r6 = server_txn
-            .internal_search(filt_i_per.clone())
-            .expect("internal search failed");
-        assert!(r6.len() == 1);
-
-        assert!(server_txn.commit().is_ok());
-    }
-
-    // The delete test above should be unaffected by recycle anyway
-    #[qs_test]
-    async fn test_qs_recycle_advanced(server: &QueryServer) {
-        // Create items
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-        let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
-
-        let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname("testperson1")),
-            (
-                "uuid",
-                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
-            ),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
-        );
-        let ce = CreateEvent::new_internal(vec![e1]);
-
-        let cr = server_txn.create(&ce);
-        assert!(cr.is_ok());
-        // Delete and ensure they became recycled.
-        let de_sin = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "name",
-                PartialValue::new_iname("testperson1")
-            )))
-        };
-        assert!(server_txn.delete(&de_sin).is_ok());
-        // Can in be seen by special search? (external recycle search)
-        let filt_rc = filter_all!(f_eq("class", PartialValue::new_class("recycled")));
-        let sre_rc = unsafe { SearchEvent::new_rec_impersonate_entry(admin, filt_rc.clone()) };
-        let r2 = server_txn.search(&sre_rc).expect("search failed");
-        assert!(r2.len() == 1);
-
-        // Create dup uuid (rej)
-        // After a delete -> recycle, create duplicate name etc.
-        let cr = server_txn.create(&ce);
-        assert!(cr.is_err());
-
-        assert!(server_txn.commit().is_ok());
-    }
 
     #[qs_test]
     async fn test_name_to_uuid(server: &QueryServer) {
@@ -4034,79 +1542,6 @@ mod tests {
         // Uuid is not syntax normalised (but exists)
         let r4 = server_txn.uuid_to_rdn(uuid!("CC8E95B4-C24F-4D68-BA54-8BED76F63930"));
         assert!(r4.unwrap() == "spn=testperson1@example.com");
-    }
-
-    #[qs_test]
-    async fn test_uuid_to_star_recycle(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-
-        let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("class", Value::new_class("account")),
-            ("name", Value::new_iname("testperson1")),
-            (
-                "uuid",
-                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
-            ),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
-        );
-
-        let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
-
-        let ce = CreateEvent::new_internal(vec![e1]);
-        let cr = server_txn.create(&ce);
-        assert!(cr.is_ok());
-
-        assert!(server_txn.uuid_to_rdn(tuuid) == Ok("spn=testperson1@example.com".to_string()));
-
-        assert!(
-            server_txn.uuid_to_spn(tuuid)
-                == Ok(Some(Value::new_spn_str("testperson1", "example.com")))
-        );
-
-        assert!(server_txn.name_to_uuid("testperson1") == Ok(tuuid));
-
-        // delete
-        let de_sin = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "name",
-                PartialValue::new_iname("testperson1")
-            )))
-        };
-        assert!(server_txn.delete(&de_sin).is_ok());
-
-        // all should fail
-        assert!(
-            server_txn.uuid_to_rdn(tuuid)
-                == Ok("uuid=cc8e95b4-c24f-4d68-ba54-8bed76f63930".to_string())
-        );
-
-        assert!(server_txn.uuid_to_spn(tuuid) == Ok(None));
-
-        assert!(server_txn.name_to_uuid("testperson1").is_err());
-
-        // revive
-        let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
-        let rre_rc = unsafe {
-            ReviveRecycledEvent::new_impersonate_entry(
-                admin,
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
-        assert!(server_txn.revive_recycled(&rre_rc).is_ok());
-
-        // all checks pass
-
-        assert!(server_txn.uuid_to_rdn(tuuid) == Ok("spn=testperson1@example.com".to_string()));
-
-        assert!(
-            server_txn.uuid_to_spn(tuuid)
-                == Ok(Some(Value::new_spn_str("testperson1", "example.com")))
-        );
-
-        assert!(server_txn.name_to_uuid("testperson1") == Ok(tuuid));
     }
 
     #[qs_test]
@@ -4306,345 +1741,5 @@ mod tests {
 
         server_txn.commit().expect("should not fail");
         // Commit.
-    }
-
-    #[qs_test]
-    async fn test_modify_password_only(server: &QueryServer) {
-        let e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("class", Value::new_class("account")),
-            ("name", Value::new_iname("testperson1")),
-            (
-                "uuid",
-                Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
-            ),
-            ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
-        );
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-        // Add the entry. Today we have no syntax to take simple str to a credential
-        // but honestly, that's probably okay :)
-        let ce = CreateEvent::new_internal(vec![e1]);
-        let cr = server_txn.create(&ce);
-        assert!(cr.is_ok());
-
-        // Build the credential.
-        let p = CryptoPolicy::minimum();
-        let cred = Credential::new_password_only(&p, "test_password").unwrap();
-        let v_cred = Value::new_credential("primary", cred);
-        assert!(v_cred.validate());
-
-        // now modify and provide a primary credential.
-        let me_inv_m = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("primary_credential"),
-                    v_cred,
-                )]),
-            )
-        };
-        // go!
-        assert!(server_txn.modify(&me_inv_m).is_ok());
-
-        // assert it exists and the password checks out
-        let test_ent = server_txn
-            .internal_search_uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
-            .expect("failed");
-        // get the primary ava
-        let cred_ref = test_ent
-            .get_ava_single_credential("primary_credential")
-            .expect("Failed");
-        // do a pw check.
-        assert!(cred_ref.verify_password("test_password").unwrap());
-    }
-
-    fn create_user(name: &str, uuid: &str) -> Entry<EntryInit, EntryNew> {
-        entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("person")),
-            ("name", Value::new_iname(name)),
-            ("uuid", Value::new_uuid_s(uuid).expect("uuid")),
-            ("description", Value::new_utf8s("testperson-entry")),
-            ("displayname", Value::new_utf8s(name))
-        )
-    }
-
-    fn create_group(name: &str, uuid: &str, members: &[&str]) -> Entry<EntryInit, EntryNew> {
-        let mut e1 = entry_init!(
-            ("class", Value::new_class("object")),
-            ("class", Value::new_class("group")),
-            ("name", Value::new_iname(name)),
-            ("uuid", Value::new_uuid_s(uuid).expect("uuid")),
-            ("description", Value::new_utf8s("testgroup-entry"))
-        );
-        members
-            .iter()
-            .for_each(|m| e1.add_ava("member", Value::new_refer_s(m).unwrap()));
-        e1
-    }
-
-    fn check_entry_has_mo(qs: &QueryServerWriteTransaction, name: &str, mo: &str) -> bool {
-        let e = qs
-            .internal_search(filter!(f_eq("name", PartialValue::new_iname(name))))
-            .unwrap()
-            .pop()
-            .unwrap();
-
-        e.attribute_equality("memberof", &PartialValue::new_refer_s(mo).unwrap())
-    }
-
-    #[qs_test]
-    async fn test_revive_advanced_directmemberships(server: &QueryServer) {
-        // Create items
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-        let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
-
-        // Right need a user in a direct group.
-        let u1 = create_user("u1", "22b47373-d123-421f-859e-9ddd8ab14a2a");
-        let g1 = create_group(
-            "g1",
-            "cca2bbfc-5b43-43f3-be9e-f5b03b3defec",
-            &["22b47373-d123-421f-859e-9ddd8ab14a2a"],
-        );
-
-        // Need a user in A -> B -> User, such that A/B are re-adde as MO
-        let u2 = create_user("u2", "5c19a4a2-b9f0-4429-b130-5782de5fddda");
-        let g2a = create_group(
-            "g2a",
-            "e44cf9cd-9941-44cb-a02f-307b6e15ac54",
-            &["5c19a4a2-b9f0-4429-b130-5782de5fddda"],
-        );
-        let g2b = create_group(
-            "g2b",
-            "d3132e6e-18ce-4b87-bee1-1d25e4bfe96d",
-            &["e44cf9cd-9941-44cb-a02f-307b6e15ac54"],
-        );
-
-        // Need a user in a group that is recycled after, then revived at the same time.
-        let u3 = create_user("u3", "68467a41-6e8e-44d0-9214-a5164e75ca03");
-        let g3 = create_group(
-            "g3",
-            "36048117-e479-45ed-aeb5-611e8d83d5b1",
-            &["68467a41-6e8e-44d0-9214-a5164e75ca03"],
-        );
-
-        // A user in a group that is recycled, user is revived, THEN the group is. Group
-        // should be present in MO after the second revive.
-        let u4 = create_user("u4", "d696b10f-1729-4f1a-83d0-ca06525c2f59");
-        let g4 = create_group(
-            "g4",
-            "d5c59ac6-c533-4b00-989f-d0e183f07bab",
-            &["d696b10f-1729-4f1a-83d0-ca06525c2f59"],
-        );
-
-        let ce = CreateEvent::new_internal(vec![u1, g1, u2, g2a, g2b, u3, g3, u4, g4]);
-        let cr = server_txn.create(&ce);
-        assert!(cr.is_ok());
-
-        // Now recycle the needed entries.
-        let de = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_or(vec![
-                f_eq("name", PartialValue::new_iname("u1")),
-                f_eq("name", PartialValue::new_iname("u2")),
-                f_eq("name", PartialValue::new_iname("u3")),
-                f_eq("name", PartialValue::new_iname("g3")),
-                f_eq("name", PartialValue::new_iname("u4")),
-                f_eq("name", PartialValue::new_iname("g4"))
-            ])))
-        };
-        assert!(server_txn.delete(&de).is_ok());
-
-        // Now revive and check each one, one at a time.
-        let rev1 = unsafe {
-            ReviveRecycledEvent::new_impersonate_entry(
-                admin.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("u1"))),
-            )
-        };
-        assert!(server_txn.revive_recycled(&rev1).is_ok());
-        // check u1 contains MO ->
-        assert!(check_entry_has_mo(
-            &server_txn,
-            "u1",
-            "cca2bbfc-5b43-43f3-be9e-f5b03b3defec"
-        ));
-
-        // Revive u2 and check it has two mo.
-        let rev2 = unsafe {
-            ReviveRecycledEvent::new_impersonate_entry(
-                admin.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("u2"))),
-            )
-        };
-        assert!(server_txn.revive_recycled(&rev2).is_ok());
-        assert!(check_entry_has_mo(
-            &server_txn,
-            "u2",
-            "e44cf9cd-9941-44cb-a02f-307b6e15ac54"
-        ));
-        assert!(check_entry_has_mo(
-            &server_txn,
-            "u2",
-            "d3132e6e-18ce-4b87-bee1-1d25e4bfe96d"
-        ));
-
-        // Revive u3 and g3 at the same time.
-        let rev3 = unsafe {
-            ReviveRecycledEvent::new_impersonate_entry(
-                admin.clone(),
-                filter_all!(f_or(vec![
-                    f_eq("name", PartialValue::new_iname("u3")),
-                    f_eq("name", PartialValue::new_iname("g3"))
-                ])),
-            )
-        };
-        assert!(server_txn.revive_recycled(&rev3).is_ok());
-        assert!(
-            check_entry_has_mo(&server_txn, "u3", "36048117-e479-45ed-aeb5-611e8d83d5b1") == false
-        );
-
-        // Revive u4, should NOT have the MO.
-        let rev4a = unsafe {
-            ReviveRecycledEvent::new_impersonate_entry(
-                admin.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("u4"))),
-            )
-        };
-        assert!(server_txn.revive_recycled(&rev4a).is_ok());
-        assert!(
-            check_entry_has_mo(&server_txn, "u4", "d5c59ac6-c533-4b00-989f-d0e183f07bab") == false
-        );
-
-        // Now revive g4, should allow MO onto u4.
-        let rev4b = unsafe {
-            ReviveRecycledEvent::new_impersonate_entry(
-                admin,
-                filter_all!(f_eq("name", PartialValue::new_iname("g4"))),
-            )
-        };
-        assert!(server_txn.revive_recycled(&rev4b).is_ok());
-        assert!(
-            check_entry_has_mo(&server_txn, "u4", "d5c59ac6-c533-4b00-989f-d0e183f07bab") == false
-        );
-
-        assert!(server_txn.commit().is_ok());
-    }
-
-    #[qs_test_no_init]
-    async fn test_qs_upgrade_entry_attrs(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-        assert!(server_txn.upgrade_reindex(SYSTEM_INDEX_VERSION).is_ok());
-        assert!(server_txn.commit().is_ok());
-
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-        server_txn.initialise_schema_core().unwrap();
-        server_txn.initialise_schema_idm().unwrap();
-        assert!(server_txn.commit().is_ok());
-
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-        assert!(server_txn.upgrade_reindex(SYSTEM_INDEX_VERSION + 1).is_ok());
-        assert!(server_txn.commit().is_ok());
-
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-        assert!(server_txn
-            .internal_migrate_or_create_str(JSON_SYSTEM_INFO_V1)
-            .is_ok());
-        assert!(server_txn
-            .internal_migrate_or_create_str(JSON_DOMAIN_INFO_V1)
-            .is_ok());
-        assert!(server_txn
-            .internal_migrate_or_create_str(JSON_SYSTEM_CONFIG_V1)
-            .is_ok());
-        assert!(server_txn.commit().is_ok());
-
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-        // ++ Mod the schema to set name to the old string type
-        let me_syn = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_or!([
-                    f_eq("attributename", PartialValue::new_iutf8("name")),
-                    f_eq("attributename", PartialValue::new_iutf8("domain_name")),
-                ])),
-                ModifyList::new_purge_and_set(
-                    "syntax",
-                    Value::new_syntaxs("UTF8STRING_INSENSITIVE").unwrap(),
-                ),
-            )
-        };
-        assert!(server_txn.modify(&me_syn).is_ok());
-        assert!(server_txn.commit().is_ok());
-
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-        // ++ Mod domain name and name to be the old type.
-        let me_dn = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO))),
-                ModifyList::new_list(vec![
-                    Modify::Purged(AttrString::from("name")),
-                    Modify::Purged(AttrString::from("domain_name")),
-                    Modify::Present(AttrString::from("name"), Value::new_iutf8("domain_local")),
-                    Modify::Present(
-                        AttrString::from("domain_name"),
-                        Value::new_iutf8("example.com"),
-                    ),
-                ]),
-            )
-        };
-        assert!(server_txn.modify(&me_dn).is_ok());
-
-        // Now, both the types are invalid.
-
-        // WARNING! We can't commit here because this triggers domain_reload which will fail
-        // due to incorrect syntax of the domain name! Run the migration in the same txn!
-        // Trigger a schema reload.
-        assert!(server_txn.reload_schema().is_ok());
-
-        // We can't just re-run the migrate here because name takes it's definition from
-        // in memory, and we can't re-run the initial memory gen. So we just fix it to match
-        // what the migrate "would do".
-        let me_syn = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_or!([
-                    f_eq("attributename", PartialValue::new_iutf8("name")),
-                    f_eq("attributename", PartialValue::new_iutf8("domain_name")),
-                ])),
-                ModifyList::new_purge_and_set(
-                    "syntax",
-                    Value::new_syntaxs("UTF8STRING_INAME").unwrap(),
-                ),
-            )
-        };
-        assert!(server_txn.modify(&me_syn).is_ok());
-
-        // WARNING! We can't commit here because this triggers domain_reload which will fail
-        // due to incorrect syntax of the domain name! Run the migration in the same txn!
-        // Trigger a schema reload.
-        assert!(server_txn.reload_schema().is_ok());
-
-        // ++ Run the upgrade for X to Y
-        assert!(server_txn.migrate_2_to_3().is_ok());
-
-        assert!(server_txn.commit().is_ok());
-
-        // Assert that it migrated and worked as expected.
-        let server_txn = server.write(duration_from_epoch_now()).await;
-        let domain = server_txn
-            .internal_search_uuid(UUID_DOMAIN_INFO)
-            .expect("failed");
-        // ++ assert all names are iname
-        assert!(
-            domain.get_ava_set("name").expect("no name?").syntax() == SyntaxType::Utf8StringIname
-        );
-        // ++ assert all domain/domain_name are iname
-        assert!(
-            domain
-                .get_ava_set("domain_name")
-                .expect("no domain_name?")
-                .syntax()
-                == SyntaxType::Utf8StringIname
-        );
-        assert!(server_txn.commit().is_ok());
     }
 }

@@ -310,7 +310,7 @@ pub fn doit(input: &Path, output: &Path) {
     });
 
     // now collect these into the set of connections containing their operations.
-    let connections: Vec<_> = connections.into_iter().map(|(_, v)| v).collect();
+    let connections: Vec<_> = connections.into_values().collect();
 
     // Now from the set of connections, we need to know what access may or may not
     // be required.
