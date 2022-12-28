@@ -24,15 +24,6 @@ jobs:
             libsqlite3-dev libudev-dev \
             libpam0g-dev
 
-      - name: Setup deno
-        uses: denoland/setup-deno@v1 # Documentation: https://github.com/denoland/setup-deno
-        with:
-          deno-version: v1.x
-
-      - name: Test document formatting
-        run: |
-          make test/doc/format
-
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
         with:
