@@ -190,13 +190,12 @@
 <span id="190">190</span>
 <span id="191">191</span>
 <span id="192">192</span>
-<span id="193">193</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::idm::server::IdmServerProxyReadTransaction;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>kanidm_proto::internal::AppLink;
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; IdmServerProxyReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
-    <span class="kw">pub fn </span>list_applinks(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <span class="kw-2">&amp;</span>Identity) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;AppLink&gt;, OperationError&gt; {
+    <span class="kw">pub fn </span>list_applinks(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ident: <span class="kw-2">&amp;</span>Identity) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;AppLink&gt;, OperationError&gt; {
         <span class="comment">// From the member-of of the ident.
         </span><span class="kw">let </span>ident_mo = <span class="kw">match </span>ident.get_memberof() {
             <span class="prelude-val">Some</span>(mo) =&gt; mo,
@@ -268,8 +267,7 @@
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="comment">// use crate::prelude::*;
-    </span><span class="kw">use </span><span class="kw">crate</span>::event::{CreateEvent, ModifyEvent};
-    <span class="kw">use </span>async_std::task;
+    </span><span class="kw">use </span>async_std::task;
     <span class="kw">use </span>kanidm_proto::internal::AppLink;
 
     <span class="attribute">#[test]
@@ -328,7 +326,7 @@
             <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
             <span class="comment">// Now do an applink query, they will not be there.
-            </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
             <span class="kw">let </span>ident = idms_prox_read
                 .qs_read
@@ -354,7 +352,7 @@
             <span class="macro">assert!</span>(idms_prox_write.qs_write.modify(<span class="kw-2">&amp;</span>me_inv_m).is_ok());
             <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
-            <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
             <span class="kw">let </span>ident = idms_prox_read
                 .qs_read

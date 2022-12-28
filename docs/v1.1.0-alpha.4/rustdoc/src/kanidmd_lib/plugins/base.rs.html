@@ -1049,7 +1049,7 @@
             preload,
             create,
             <span class="prelude-val">None</span>,
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="kw">let </span>cands = qs
                     .internal_search(<span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testperson&quot;</span>))))
                     .expect(<span class="string">&quot;Internal search failure&quot;</span>);
@@ -1144,7 +1144,7 @@
             preload,
             create,
             <span class="prelude-val">None</span>,
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="kw">let </span>cands = qs
                     .internal_search(<span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testperson&quot;</span>))))
                     .expect(<span class="string">&quot;Internal search failure&quot;</span>);

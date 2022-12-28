@@ -256,6 +256,9 @@
 <span id="256">256</span>
 <span id="257">257</span>
 <span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Modification expressions and validation. This is how `ModifyEvents` store and
 //! express the series of Modifications that should be applied. These are expressed
 //! as &quot;states&quot; on what attribute-values should appear as within the `Entry`
@@ -315,7 +318,10 @@
 }
 
 <span class="kw">impl </span>Modify {
-    <span class="kw">pub fn </span>from(m: <span class="kw-2">&amp;</span>ProtoModify, qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+    <span class="kw">pub fn </span>from(
+        m: <span class="kw-2">&amp;</span>ProtoModify,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="prelude-val">Ok</span>(<span class="kw">match </span>m {
             ProtoModify::Present(a, v) =&gt; Modify::Present(a.into(), qs.clone_value(a, v)<span class="question-mark">?</span>),
             ProtoModify::Removed(a, v) =&gt; Modify::Removed(a.into(), qs.clone_partialvalue(a, v)<span class="question-mark">?</span>),
@@ -382,7 +388,7 @@
 
     <span class="kw">pub fn </span>from(
         ml: <span class="kw-2">&amp;</span>ProtoModifyList,
-        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="comment">// For each ProtoModify, do a from.
         </span><span class="kw">let </span>inner: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = ml.mods.iter().map(|pm| Modify::from(pm, qs)).collect();
@@ -397,7 +403,7 @@
 
     <span class="kw">pub fn </span>from_patch(
         pe: <span class="kw-2">&amp;</span>ProtoEntry,
-        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>mods = Vec::new();
 

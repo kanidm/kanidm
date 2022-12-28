@@ -3899,6 +3899,24 @@
 <span id="3899">3899</span>
 <span id="3900">3900</span>
 <span id="3901">3901</span>
+<span id="3902">3902</span>
+<span id="3903">3903</span>
+<span id="3904">3904</span>
+<span id="3905">3905</span>
+<span id="3906">3906</span>
+<span id="3907">3907</span>
+<span id="3908">3908</span>
+<span id="3909">3909</span>
+<span id="3910">3910</span>
+<span id="3911">3911</span>
+<span id="3912">3912</span>
+<span id="3913">3913</span>
+<span id="3914">3914</span>
+<span id="3915">3915</span>
+<span id="3916">3916</span>
+<span id="3917">3917</span>
+<span id="3918">3918</span>
+<span id="3919">3919</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations
 //!
 //! This contains the in memory and loaded set of active oauth2 resource server
@@ -3930,11 +3948,9 @@
 <span class="kw">use </span>openssl::sha;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>time::OffsetDateTime;
-<span class="kw">use </span>tokio::sync::mpsc::UnboundedSender <span class="kw">as </span>Sender;
 <span class="kw">use </span>tracing::trace;
 <span class="kw">use </span>url::{Origin, Url};
 
-<span class="kw">use </span><span class="kw">crate</span>::identity::IdentityId;
 <span class="kw">use </span><span class="kw">crate</span>::idm::account::Account;
 <span class="kw">use </span><span class="kw">crate</span>::idm::delayed::{DelayedAction, Oauth2ConsentGrant, Oauth2SessionRecord};
 <span class="kw">use </span><span class="kw">crate</span>::idm::server::{
@@ -4441,7 +4457,7 @@
     }
 }
 
-<span class="kw">impl </span>Oauth2ResourceServersReadTransaction {
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; IdmServerProxyReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">pub fn </span>check_oauth2_authorisation(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         ident: <span class="kw-2">&amp;</span>Identity,
@@ -4470,13 +4486,18 @@
          */
 
         //
-        </span><span class="kw">let </span>o2rs = <span class="self">self</span>.inner.rs_set.get(<span class="kw-2">&amp;</span>auth_req.client_id).ok_or_else(|| {
-            <span class="macro">admin_warn!</span>(
-                <span class="string">&quot;Invalid oauth2 client_id ({}) Have you configured the oauth2 resource server?&quot;</span>,
-                <span class="kw-2">&amp;</span>auth_req.client_id
-            );
-            Oauth2Error::InvalidClientId
-        })<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>o2rs = <span class="self">self
+            </span>.oauth2rs
+            .inner
+            .rs_set
+            .get(<span class="kw-2">&amp;</span>auth_req.client_id)
+            .ok_or_else(|| {
+                <span class="macro">admin_warn!</span>(
+                    <span class="string">&quot;Invalid oauth2 client_id ({}) Have you configured the oauth2 resource server?&quot;</span>,
+                    <span class="kw-2">&amp;</span>auth_req.client_id
+                );
+                Oauth2Error::InvalidClientId
+            })<span class="question-mark">?</span>;
 
         <span class="comment">// redirect_uri must be part of the client_id origin.
         </span><span class="kw">if </span>auth_req.redirect_uri.origin() != o2rs.origin {
@@ -4709,7 +4730,8 @@
             })<span class="question-mark">?</span>;
 
             <span class="kw">let </span>consent_token = <span class="self">self
-                </span>.inner
+                </span>.oauth2rs
+                .inner
                 .fernet
                 .encrypt_at_time(<span class="kw-2">&amp;</span>consent_data, ct.as_secs());
 
@@ -4722,17 +4744,17 @@
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>check_oauth2_authorise_permit(
+    <span class="kw">pub fn </span>check_oauth2_authorise_permit(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         ident: <span class="kw-2">&amp;</span>Identity,
         uat: <span class="kw-2">&amp;</span>UserAuthToken,
         consent_token: <span class="kw-2">&amp;</span>str,
         ct: Duration,
-        async_tx: <span class="kw-2">&amp;</span>Sender&lt;DelayedAction&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthorisePermitSuccess, OperationError&gt; {
         <span class="comment">// Decode the consent req with our system fernet key. Use a ttl of 5 minutes.
         </span><span class="kw">let </span>consent_req: ConsentToken = <span class="self">self
-            </span>.inner
+            </span>.oauth2rs
+            .inner
             .fernet
             .decrypt_at_time(consent_token, <span class="prelude-val">Some</span>(<span class="number">300</span>), ct.as_secs())
             .map_err(|<span class="kw">_</span>| {
@@ -4760,7 +4782,8 @@
 
         <span class="comment">// Get the resource server config based on this client_id.
         </span><span class="kw">let </span>o2rs = <span class="self">self
-            </span>.inner
+            </span>.oauth2rs
+            .inner
             .rs_set
             .get(<span class="kw-2">&amp;</span>consent_req.client_id)
             .ok_or_else(|| {
@@ -4788,7 +4811,8 @@
         <span class="comment">// Everything is DONE! Now submit that it&#39;s all happy and the user consented correctly.
         // this will let them bypass consent steps in the future.
         // Submit that we consented to the delayed action queue
-        </span><span class="kw">if </span>async_tx
+        </span><span class="kw">if </span><span class="self">self
+            </span>.async_tx
             .send(DelayedAction::Oauth2ConsentGrant(Oauth2ConsentGrant {
                 target_uuid: uat.uuid,
                 oauth2_rs_uuid: o2rs.uuid,
@@ -4815,7 +4839,8 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Url, OperationError&gt; {
         <span class="comment">// Decode the consent req with our system fernet key. Use a ttl of 5 minutes.
         </span><span class="kw">let </span>consent_req: ConsentToken = <span class="self">self
-            </span>.inner
+            </span>.oauth2rs
+            .inner
             .fernet
             .decrypt_at_time(consent_token, <span class="prelude-val">Some</span>(<span class="number">300</span>), ct.as_secs())
             .map_err(|<span class="kw">_</span>| {
@@ -4843,7 +4868,8 @@
 
         <span class="comment">// Get the resource server config based on this client_id.
         </span><span class="kw">let </span>_o2rs = <span class="self">self
-            </span>.inner
+            </span>.oauth2rs
+            .inner
             .rs_set
             .get(<span class="kw-2">&amp;</span>consent_req.client_id)
             .ok_or_else(|| {
@@ -4856,12 +4882,10 @@
     }
 
     <span class="kw">pub fn </span>check_oauth2_token_exchange(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        idms: <span class="kw-2">&amp;</span>IdmServerProxyReadTransaction&lt;<span class="lifetime">&#39;_</span>&gt;,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         client_authz: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
         token_req: <span class="kw-2">&amp;</span>AccessTokenRequest,
         ct: Duration,
-        async_tx: <span class="kw-2">&amp;</span>Sender&lt;DelayedAction&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AccessTokenResponse, Oauth2Error&gt; {
         <span class="kw">let </span>(client_id, secret) = <span class="kw">if let </span><span class="prelude-val">Some</span>(client_authz) = client_authz {
             parse_basic_authz(client_authz)<span class="question-mark">?
@@ -4877,11 +4901,19 @@
             }
         };
 
-        <span class="comment">// Get the o2rs for the handle.
-        </span><span class="kw">let </span>o2rs = <span class="self">self</span>.inner.rs_set.get(<span class="kw-2">&amp;</span>client_id).ok_or_else(|| {
-            <span class="macro">admin_warn!</span>(<span class="string">&quot;Invalid oauth2 client_id&quot;</span>);
-            Oauth2Error::AuthenticationRequired
-        })<span class="question-mark">?</span>;
+        <span class="comment">// DANGER: Why do we have to do this? During the use of qs for internal search
+        // and other operations we need qs to be mut. But when we borrow oauth2rs here we
+        // cause multiple borrows to occur on struct members that freaks rust out. This *IS*
+        // safe however because no element of the search or write process calls the oauth2rs
+        // excepting for this idm layer within a single thread, meaning that stripping the
+        // lifetime here is safe since we are the sole accessor.
+        </span><span class="kw">let </span>o2rs: <span class="kw-2">&amp;</span>Oauth2RS = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>s = <span class="self">self</span>.oauth2rs.inner.rs_set.get(<span class="kw-2">&amp;</span>client_id).ok_or_else(|| {
+                <span class="macro">admin_warn!</span>(<span class="string">&quot;Invalid oauth2 client_id&quot;</span>);
+                Oauth2Error::AuthenticationRequired
+            })<span class="question-mark">?</span>;
+            <span class="kw-2">&amp;*</span>(s <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">_</span>)
+        };
 
         <span class="comment">// check the secret.
         </span><span class="kw">if </span>o2rs.authz_secret != secret {
@@ -4894,7 +4926,7 @@
         // TODO: add refresh token grant type.
         //  If it&#39;s a refresh token grant, are the consent permissions the same?
         </span><span class="kw">if </span>token_req.grant_type == <span class="string">&quot;authorization_code&quot; </span>{
-            <span class="self">self</span>.check_oauth2_token_exchange_authorization_code(idms, o2rs, token_req, ct, async_tx)
+            <span class="self">self</span>.check_oauth2_token_exchange_authorization_code(o2rs, token_req, ct)
         } <span class="kw">else </span>{
             <span class="macro">admin_warn!</span>(<span class="string">&quot;Invalid oauth2 grant_type (should be &#39;authorization_code&#39;)&quot;</span>);
             <span class="prelude-val">Err</span>(Oauth2Error::InvalidRequest)
@@ -4902,12 +4934,10 @@
     }
 
     <span class="kw">fn </span>check_oauth2_token_exchange_authorization_code(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        idms: <span class="kw-2">&amp;</span>IdmServerProxyReadTransaction&lt;<span class="lifetime">&#39;_</span>&gt;,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         o2rs: <span class="kw-2">&amp;</span>Oauth2RS,
         token_req: <span class="kw-2">&amp;</span>AccessTokenRequest,
         ct: Duration,
-        async_tx: <span class="kw-2">&amp;</span>Sender&lt;DelayedAction&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AccessTokenResponse, Oauth2Error&gt; {
         <span class="comment">// Check the token_req is within the valid time, and correctly signed for
         // this client.
@@ -5021,12 +5051,12 @@
 
             <span class="kw">let </span>iss = o2rs.iss.clone();
 
-            <span class="kw">let </span>entry = <span class="kw">match </span>idms.qs_read.internal_search_uuid(code_xchg.uat.uuid) {
+            <span class="kw">let </span>entry = <span class="kw">match </span><span class="self">self</span>.qs_read.internal_search_uuid(code_xchg.uat.uuid) {
                 <span class="prelude-val">Ok</span>(entry) =&gt; entry,
                 <span class="prelude-val">Err</span>(err) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Oauth2Error::ServerError(err)),
             };
 
-            <span class="kw">let </span>account = <span class="kw">match </span>Account::try_from_entry_ro(<span class="kw-2">&amp;</span>entry, <span class="kw-2">&amp;</span>idms.qs_read) {
+            <span class="kw">let </span>account = <span class="kw">match </span>Account::try_from_entry_ro(<span class="kw-2">&amp;</span>entry, <span class="kw-2">&amp;mut </span><span class="self">self</span>.qs_read) {
                 <span class="prelude-val">Ok</span>(account) =&gt; account,
                 <span class="prelude-val">Err</span>(err) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Oauth2Error::ServerError(err)),
             };
@@ -5094,7 +5124,7 @@
 
         <span class="kw">let </span>refresh_token = <span class="prelude-val">None</span>;
 
-        async_tx
+        <span class="self">self</span>.async_tx
             .send(DelayedAction::Oauth2SessionRecord(Oauth2SessionRecord {
                 target_uuid: code_xchg.uat.uuid,
                 parent_session_id,
@@ -5119,8 +5149,7 @@
     }
 
     <span class="kw">pub fn </span>check_oauth2_token_introspect(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        idms: <span class="kw-2">&amp;</span>IdmServerProxyReadTransaction&lt;<span class="lifetime">&#39;_</span>&gt;,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         client_authz: <span class="kw-2">&amp;</span>str,
         intr_req: <span class="kw-2">&amp;</span>AccessTokenIntrospectRequest,
         ct: Duration,
@@ -5128,7 +5157,7 @@
         <span class="kw">let </span>(client_id, secret) = parse_basic_authz(client_authz)<span class="question-mark">?</span>;
 
         <span class="comment">// Get the o2rs for the handle.
-        </span><span class="kw">let </span>o2rs = <span class="self">self</span>.inner.rs_set.get(<span class="kw-2">&amp;</span>client_id).ok_or_else(|| {
+        </span><span class="kw">let </span>o2rs = <span class="self">self</span>.oauth2rs.inner.rs_set.get(<span class="kw-2">&amp;</span>client_id).ok_or_else(|| {
             <span class="macro">admin_warn!</span>(<span class="string">&quot;Invalid oauth2 client_id&quot;</span>);
             Oauth2Error::AuthenticationRequired
         })<span class="question-mark">?</span>;
@@ -5172,11 +5201,11 @@
                     <span class="macro">security_info!</span>(<span class="question-mark">?</span>uuid, <span class="string">&quot;access token has expired, returning inactive&quot;</span>);
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(AccessTokenIntrospectResponse::inactive());
                 }
-                <span class="kw">let </span>exp = iat + ((expiry - odt_ct).whole_seconds() <span class="kw">as </span>i64);
+                <span class="kw">let </span>exp = iat + (expiry - odt_ct).whole_seconds();
 
                 <span class="comment">// Is the user expired, or the oauth2 session invalid?
-                </span><span class="kw">let </span>valid = idms
-                    .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
+                </span><span class="kw">let </span>valid = <span class="self">self
+                    </span>.check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|<span class="kw">_</span>| <span class="macro">admin_error!</span>(<span class="string">&quot;Account is not valid&quot;</span>));
 
                 <span class="kw">let </span>entry = <span class="kw">match </span>valid {
@@ -5224,18 +5253,26 @@
     }
 
     <span class="kw">pub fn </span>oauth2_openid_userinfo(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        idms: <span class="kw-2">&amp;</span>IdmServerProxyReadTransaction&lt;<span class="lifetime">&#39;_</span>&gt;,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         client_id: <span class="kw-2">&amp;</span>str,
         client_authz: <span class="kw-2">&amp;</span>str,
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;OidcToken, Oauth2Error&gt; {
-        <span class="kw">let </span>o2rs = <span class="self">self</span>.inner.rs_set.get(client_id).ok_or_else(|| {
-            <span class="macro">admin_warn!</span>(
-                <span class="string">&quot;Invalid oauth2 client_id (have you configured the oauth2 resource server?)&quot;
-            </span>);
-            Oauth2Error::InvalidClientId
-        })<span class="question-mark">?</span>;
+        <span class="comment">// DANGER: Why do we have to do this? During the use of qs for internal search
+        // and other operations we need qs to be mut. But when we borrow oauth2rs here we
+        // cause multiple borrows to occur on struct members that freaks rust out. This *IS*
+        // safe however because no element of the search or write process calls the oauth2rs
+        // excepting for this idm layer within a single thread, meaning that stripping the
+        // lifetime here is safe since we are the sole accessor.
+        </span><span class="kw">let </span>o2rs: <span class="kw-2">&amp;</span>Oauth2RS = <span class="kw">unsafe </span>{
+            <span class="kw">let </span>s = <span class="self">self</span>.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
+                <span class="macro">admin_warn!</span>(
+                    <span class="string">&quot;Invalid oauth2 client_id (have you configured the oauth2 resource server?)&quot;
+                </span>);
+                Oauth2Error::InvalidClientId
+            })<span class="question-mark">?</span>;
+            <span class="kw-2">&amp;*</span>(s <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">_</span>)
+        };
 
         <span class="kw">let </span>token: Oauth2TokenType = o2rs
             .token_fernet
@@ -5269,11 +5306,11 @@
                     <span class="macro">security_info!</span>(<span class="question-mark">?</span>uuid, <span class="string">&quot;access token has expired, returning inactive&quot;</span>);
                     <span class="kw">return </span><span class="prelude-val">Err</span>(Oauth2Error::InvalidToken);
                 }
-                <span class="kw">let </span>exp = iat + ((expiry - odt_ct).whole_seconds() <span class="kw">as </span>i64);
+                <span class="kw">let </span>exp = iat + (expiry - odt_ct).whole_seconds();
 
                 <span class="comment">// Is the user expired, or the oauth2 session invalid?
-                </span><span class="kw">let </span>valid = idms
-                    .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
+                </span><span class="kw">let </span>valid = <span class="self">self
+                    </span>.check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|<span class="kw">_</span>| <span class="macro">admin_error!</span>(<span class="string">&quot;Account is not valid&quot;</span>));
 
                 <span class="kw">let </span>entry = <span class="kw">match </span>valid {
@@ -5287,7 +5324,7 @@
                     }
                 };
 
-                <span class="kw">let </span>account = <span class="kw">match </span>Account::try_from_entry_ro(<span class="kw-2">&amp;</span>entry, <span class="kw-2">&amp;</span>idms.qs_read) {
+                <span class="kw">let </span>account = <span class="kw">match </span>Account::try_from_entry_ro(<span class="kw-2">&amp;</span>entry, <span class="kw-2">&amp;mut </span><span class="self">self</span>.qs_read) {
                     <span class="prelude-val">Ok</span>(account) =&gt; account,
                     <span class="prelude-val">Err</span>(err) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Oauth2Error::ServerError(err)),
                 };
@@ -5328,7 +5365,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         client_id: <span class="kw-2">&amp;</span>str,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;OidcDiscoveryResponse, OperationError&gt; {
-        <span class="kw">let </span>o2rs = <span class="self">self</span>.inner.rs_set.get(client_id).ok_or_else(|| {
+        <span class="kw">let </span>o2rs = <span class="self">self</span>.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
             <span class="macro">admin_warn!</span>(
                 <span class="string">&quot;Invalid oauth2 client_id (have you configured the oauth2 resource server?)&quot;
             </span>);
@@ -5408,7 +5445,7 @@
     }
 
     <span class="kw">pub fn </span>oauth2_openid_publickey(<span class="kw-2">&amp;</span><span class="self">self</span>, client_id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;JwkKeySet, OperationError&gt; {
-        <span class="kw">let </span>o2rs = <span class="self">self</span>.inner.rs_set.get(client_id).ok_or_else(|| {
+        <span class="kw">let </span>o2rs = <span class="self">self</span>.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
             <span class="macro">admin_warn!</span>(
                 <span class="string">&quot;Invalid oauth2 client_id (have you configured the oauth2 resource server?)&quot;
             </span>);
@@ -5493,7 +5530,7 @@
             account.groups.iter().map(|x| x.to_proto().uuid).collect(),
         );
     }
-    <span class="kw">return </span>extra_claims;
+    extra_claims
 }
 
 <span class="attribute">#[cfg(test)]
@@ -5508,7 +5545,6 @@
     <span class="kw">use </span>kanidm_proto::v1::{AuthType, UserAuthToken};
     <span class="kw">use </span>openssl::sha;
 
-    <span class="kw">use </span><span class="kw">crate</span>::event::{CreateEvent, DeleteEvent, ModifyEvent};
     <span class="kw">use </span><span class="kw">crate</span>::idm::delayed::DelayedAction;
     <span class="kw">use </span><span class="kw">crate</span>::idm::oauth2::{AuthoriseResponse, Oauth2Error};
     <span class="kw">use </span><span class="kw">crate</span>::idm::server::{IdmServer, IdmServerTransaction};
@@ -5679,7 +5715,7 @@
                 <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
                     setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
 
-                <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
                 <span class="comment">// Get an ident/uat for now.
 
@@ -6021,7 +6057,7 @@
                         + Duration::from_secs(TEST_CURRENT_TIME + UAT_EXPIRE - <span class="number">1</span>),
                 );
 
-                <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
                 <span class="comment">// == Setup the authorisation request
                 </span><span class="kw">let </span>(code_verifier, code_challenge) = <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
@@ -6189,7 +6225,7 @@
                     setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
                 <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
 
-                <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
                 <span class="comment">// == Setup the authorisation request
                 </span><span class="kw">let </span>(code_verifier, code_challenge) = <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
@@ -6284,7 +6320,7 @@
 
                 <span class="comment">// start a new read
                 // check again.
-                </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
                 <span class="kw">let </span>intr_response = idms_prox_read
                     .check_oauth2_token_introspect(<span class="kw-2">&amp;</span>client_authz.unwrap(), <span class="kw-2">&amp;</span>intr_request, ct)
                     .expect(<span class="string">&quot;Failed to inspect token&quot;</span>);
@@ -6304,7 +6340,7 @@
                     setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
                 <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
 
-                <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
                 <span class="comment">// == Setup the authorisation request
                 </span><span class="kw">let </span>(code_verifier, code_challenge) = <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
@@ -6367,7 +6403,7 @@
                 <span class="comment">// Okay, now we have the token, we can check behaviours with the revoke interface.
 
                 // First, assert it is valid, similar to the introspect api.
-                </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
                 <span class="kw">let </span>intr_request = AccessTokenIntrospectRequest {
                     token: oauth2_token.access_token.clone(),
                     token_type_hint: <span class="prelude-val">None</span>,
@@ -6410,7 +6446,7 @@
                 <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
                 <span class="comment">// Check our token is still valid.
-                </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
                 <span class="kw">let </span>intr_response = idms_prox_read
                     .check_oauth2_token_introspect(
                         client_authz.as_deref().unwrap(),
@@ -6433,7 +6469,7 @@
                 <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
                 <span class="comment">// Check it is still valid - this is because we are still in the GRACE window.
-                </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
                 <span class="kw">let </span>intr_response = idms_prox_read
                     .check_oauth2_token_introspect(
                         client_authz.as_deref().unwrap(),
@@ -6449,7 +6485,7 @@
                 </span><span class="kw">let </span>ct = ct + GRACE_WINDOW;
 
                 <span class="comment">// Assert it is now invalid.
-                </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
                 <span class="kw">let </span>intr_response = idms_prox_read
                     .check_oauth2_token_introspect(
                         client_authz.as_deref().unwrap(),
@@ -6485,7 +6521,7 @@
                     setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
                 <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
 
-                <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
                 <span class="comment">// == Setup the authorisation request
                 </span><span class="kw">let </span>(code_verifier, code_challenge) = <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
@@ -6828,7 +6864,7 @@
                     setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
                 <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
 
-                <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
                 <span class="kw">let </span>(code_verifier, code_challenge) = <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
 
@@ -6966,7 +7002,7 @@
                     setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>);
                 <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
 
-                <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
                 <span class="kw">let </span>(code_verifier, code_challenge) = <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
 
@@ -7063,7 +7099,7 @@
                     setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>);
                 <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
 
-                <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
                 <span class="kw">let </span>(code_verifier, code_challenge) = <span class="macro">create_code_verifier!</span>(<span class="string">&quot;Whar Garble&quot;</span>);
 
@@ -7213,7 +7249,7 @@
                 <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
                 <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
                     setup_oauth2_resource_server(idms, ct, <span class="bool-val">false</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>);
-                <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
                 <span class="comment">// The public key url should offer an rs key
                 // discovery should offer RS256
                 </span><span class="kw">let </span>discovery = idms_prox_read
@@ -7365,7 +7401,7 @@
                 <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
                 <span class="comment">// == Now try the authorise again, should be in the permitted state.
-                </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
                 <span class="comment">// We need to reload our identity
                 </span><span class="kw">let </span>ident = idms_prox_read
@@ -7417,7 +7453,7 @@
 
                 <span class="comment">// And do the workflow once more to see if we need to consent again.
 
-                </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
                 <span class="comment">// We need to reload our identity
                 </span><span class="kw">let </span>ident = idms_prox_read
@@ -7484,7 +7520,7 @@
 
                 <span class="comment">// And do the workflow once more to see if we need to consent again.
 
-                </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
                 <span class="comment">// We need to reload our identity
                 </span><span class="kw">let </span>ident = idms_prox_read
@@ -7637,7 +7673,7 @@
                 </span><span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
                     setup_oauth2_resource_server(idms, ct, <span class="bool-val">false</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
 
-                <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
                 <span class="comment">// Get an ident/uat for now.
 
@@ -7717,7 +7753,7 @@
                 </span><span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
                     setup_oauth2_resource_server(idms, ct, <span class="bool-val">false</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
 
-                <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
                 <span class="comment">// Get an ident/uat for now.
 

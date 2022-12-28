@@ -3161,14 +3161,17 @@
 <span id="3161">3161</span>
 <span id="3162">3162</span>
 <span id="3163">3163</span>
+<span id="3164">3164</span>
+<span id="3165">3165</span>
+<span id="3166">3166</span>
+<span id="3167">3167</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The backend. This contains the &quot;low level&quot; storage and query code, which is
 //! implemented as a json-like kv document database. This has no rules about content
 //! of the server, which are all enforced at higher levels. The role of the backend
 //! is to persist content safely to disk, load that content, and execute queries
 //! utilising indexes in the most effective way possible.
 
-</span><span class="kw">use </span>std::cell::UnsafeCell;
-<span class="kw">use </span>std::fs;
+</span><span class="kw">use </span>std::fs;
 <span class="kw">use </span>std::ops::DerefMut;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::time::Duration;
@@ -3185,7 +3188,6 @@
 <span class="kw">use </span><span class="kw">crate</span>::be::dbentry::{DbBackup, DbEntry};
 <span class="kw">use </span><span class="kw">crate</span>::entry::{Entry, EntryCommitted, EntryNew, EntrySealed};
 <span class="kw">use </span><span class="kw">crate</span>::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
-<span class="kw">use </span><span class="kw">crate</span>::identity::Limits;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::repl::cid::Cid;
 <span class="kw">use </span><span class="kw">crate</span>::repl::ruv::{
@@ -3211,6 +3213,38 @@
 <span class="comment">// Currently disabled due to improvements in idlset for intersection handling.
 </span><span class="kw">const </span>FILTER_SEARCH_TEST_THRESHOLD: usize = <span class="number">0</span>;
 <span class="kw">const </span>FILTER_EXISTS_TEST_THRESHOLD: usize = <span class="number">0</span>;
+
+<span class="attribute">#[derive(Debug, Clone)]
+</span><span class="doccomment">/// Limits on the resources a single event can consume. These are defined per-event
+/// as they are derived from the userAuthToken based on that individual session
+</span><span class="kw">pub struct </span>Limits {
+    <span class="kw">pub </span>unindexed_allow: bool,
+    <span class="kw">pub </span>search_max_results: usize,
+    <span class="kw">pub </span>search_max_filter_test: usize,
+    <span class="kw">pub </span>filter_max_elements: usize,
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>Limits {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        Limits {
+            unindexed_allow: <span class="bool-val">false</span>,
+            search_max_results: <span class="number">128</span>,
+            search_max_filter_test: <span class="number">256</span>,
+            filter_max_elements: <span class="number">32</span>,
+        }
+    }
+}
+
+<span class="kw">impl </span>Limits {
+    <span class="kw">pub fn </span>unlimited() -&gt; <span class="self">Self </span>{
+        Limits {
+            unindexed_allow: <span class="bool-val">true</span>,
+            search_max_results: usize::MAX,
+            search_max_filter_test: usize::MAX,
+            filter_max_elements: usize::MAX,
+        }
+    }
+}
 
 <span class="attribute">#[derive(Debug, Clone)]
 </span><span class="kw">pub enum </span>IdList {
@@ -3283,9 +3317,9 @@
 }
 
 <span class="kw">pub struct </span>BackendReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
-    idlayer: UnsafeCell&lt;IdlArcSqliteReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt;&gt;,
+    idlayer: IdlArcSqliteReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
     idxmeta: CowCellReadTxn&lt;IdxMeta&gt;,
-    ruv: UnsafeCell&lt;ReplicationUpdateVectorReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt;&gt;,
+    ruv: ReplicationUpdateVectorReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
 }
 
 <span class="kw">unsafe impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; Sync <span class="kw">for </span>BackendReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {}
@@ -3293,9 +3327,9 @@
 <span class="kw">unsafe impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; Send <span class="kw">for </span>BackendReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {}
 
 <span class="kw">pub struct </span>BackendWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
-    idlayer: UnsafeCell&lt;IdlArcSqliteWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;&gt;,
+    idlayer: IdlArcSqliteWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
     idxmeta: CowCellReadTxn&lt;IdxMeta&gt;,
-    ruv: UnsafeCell&lt;ReplicationUpdateVectorWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;&gt;,
+    ruv: ReplicationUpdateVectorWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
     idxmeta_wr: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, IdxMeta&gt;,
 }
 
@@ -3323,12 +3357,10 @@
 
 <span class="kw">pub trait </span>BackendTransaction {
     <span class="kw">type </span>IdlLayerType: IdlArcSqliteTransaction;
-    <span class="attribute">#[allow(clippy::mut_from_ref)]
-    </span><span class="kw">fn </span>get_idlayer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::IdlLayerType;
+    <span class="kw">fn </span>get_idlayer(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::IdlLayerType;
 
     <span class="kw">type </span>RuvType: ReplicationUpdateVectorTransaction;
-    <span class="attribute">#[allow(clippy::mut_from_ref)]
-    </span><span class="kw">fn </span>get_ruv(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::RuvType;
+    <span class="kw">fn </span>get_ruv(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::RuvType;
 
     <span class="kw">fn </span>get_idxmeta_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>IdxMeta;
 
@@ -3337,7 +3369,7 @@
     </span><span class="attribute">#[allow(clippy::cognitive_complexity)]
     #[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;be::filter2idl&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>filter2idl(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         filt: <span class="kw-2">&amp;</span>FilterResolved,
         thres: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(IdList, FilterPlan), OperationError&gt; {
@@ -3697,7 +3729,7 @@
 
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;be::search&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>search(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         erl: <span class="kw-2">&amp;</span>Limits,
         filt: <span class="kw-2">&amp;</span>Filter&lt;FilterValidResolved&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Arc&lt;EntrySealedCommitted&gt;&gt;, OperationError&gt; {
@@ -3792,7 +3824,7 @@
     /// refint and attr uniqueness.
     </span><span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;be::exists&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>exists(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         erl: <span class="kw-2">&amp;</span>Limits,
         filt: <span class="kw-2">&amp;</span>Filter&lt;FilterValidResolved&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, OperationError&gt; {
@@ -3851,12 +3883,12 @@
         } <span class="comment">// end match idl
     </span>}
 
-    <span class="kw">fn </span>verify(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="prelude-ty">Result</span>&lt;(), ConsistencyError&gt;&gt; {
+    <span class="kw">fn </span>verify(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Vec&lt;<span class="prelude-ty">Result</span>&lt;(), ConsistencyError&gt;&gt; {
         <span class="self">self</span>.get_idlayer().verify()
     }
 
     <span class="kw">fn </span>verify_entry_index(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         e: <span class="kw-2">&amp;</span>Entry&lt;EntrySealed, EntryCommitted&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsistencyError&gt; {
         <span class="comment">// First, check our references in name2uuid, uuid2spn and uuid2rdn
@@ -3929,7 +3961,7 @@
         </span><span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>verify_indexes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="prelude-ty">Result</span>&lt;(), ConsistencyError&gt;&gt; {
+    <span class="kw">fn </span>verify_indexes(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Vec&lt;<span class="prelude-ty">Result</span>&lt;(), ConsistencyError&gt;&gt; {
         <span class="kw">let </span>idl = IdList::AllIds;
         <span class="kw">let </span>entries = <span class="kw">match </span><span class="self">self</span>.get_idlayer().get_identry(<span class="kw-2">&amp;</span>idl) {
             <span class="prelude-val">Ok</span>(s) =&gt; s,
@@ -3948,7 +3980,7 @@
         }
     }
 
-    <span class="kw">fn </span>verify_ruv(<span class="kw-2">&amp;</span><span class="self">self</span>, results: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="prelude-ty">Result</span>&lt;(), ConsistencyError&gt;&gt;) {
+    <span class="kw">fn </span>verify_ruv(<span class="kw-2">&amp;mut </span><span class="self">self</span>, results: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="prelude-ty">Result</span>&lt;(), ConsistencyError&gt;&gt;) {
         <span class="comment">// The way we verify this is building a whole second RUV and then comparing it.
         </span><span class="kw">let </span>idl = IdList::AllIds;
         <span class="kw">let </span>entries = <span class="kw">match </span><span class="self">self</span>.get_idlayer().get_identry(<span class="kw-2">&amp;</span>idl) {
@@ -3963,7 +3995,7 @@
         <span class="self">self</span>.get_ruv().verify(<span class="kw-2">&amp;</span>entries, results);
     }
 
-    <span class="kw">fn </span>backup(<span class="kw-2">&amp;</span><span class="self">self</span>, dst_path: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+    <span class="kw">fn </span>backup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, dst_path: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="comment">// load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
         </span><span class="kw">let </span>idl = IdList::AllIds;
@@ -4010,19 +4042,19 @@
             })
     }
 
-    <span class="kw">fn </span>name2uuid(<span class="kw-2">&amp;</span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
+    <span class="kw">fn </span>name2uuid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
         <span class="self">self</span>.get_idlayer().name2uuid(name)
     }
 
-    <span class="kw">fn </span>externalid2uuid(<span class="kw-2">&amp;</span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
+    <span class="kw">fn </span>externalid2uuid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
         <span class="self">self</span>.get_idlayer().externalid2uuid(name)
     }
 
-    <span class="kw">fn </span>uuid2spn(<span class="kw-2">&amp;</span><span class="self">self</span>, uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Value&gt;, OperationError&gt; {
+    <span class="kw">fn </span>uuid2spn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Value&gt;, OperationError&gt; {
         <span class="self">self</span>.get_idlayer().uuid2spn(uuid)
     }
 
-    <span class="kw">fn </span>uuid2rdn(<span class="kw-2">&amp;</span><span class="self">self</span>, uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;String&gt;, OperationError&gt; {
+    <span class="kw">fn </span>uuid2rdn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, uuid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;String&gt;, OperationError&gt; {
         <span class="self">self</span>.get_idlayer().uuid2rdn(uuid)
     }
 }
@@ -4031,25 +4063,12 @@
     <span class="kw">type </span>IdlLayerType = IdlArcSqliteReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt;;
     <span class="kw">type </span>RuvType = ReplicationUpdateVectorReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt;;
 
-    <span class="attribute">#[allow(clippy::mut_from_ref)]
-    </span><span class="kw">fn </span>get_idlayer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>IdlArcSqliteReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
-        <span class="comment">// OKAY here be the cursed thing. We know that in our application
-        // that during a transaction, that we are the only holder of the
-        // idlayer, so we KNOW it can be mut, and we know every thing it
-        // returns is a copy anyway. But if we permeate that mut up, it prevents
-        // reference holding of read-only structures in loops, which was forcing
-        // a lot of clones.
-        //
-        // Instead we make everything immutable, and use interior mutability
-        // to the idlayer here since we know and can assert it is correct
-        // that during this inner mutable phase, that nothing will be
-        // conflicting during this cache operation.
-        </span><span class="kw">unsafe </span>{ <span class="kw-2">&amp;mut </span>(<span class="kw-2">*</span><span class="self">self</span>.idlayer.get()) }
+    <span class="kw">fn </span>get_idlayer(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>IdlArcSqliteReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.idlayer
     }
 
-    <span class="attribute">#[allow(clippy::mut_from_ref)]
-    </span><span class="kw">fn </span>get_ruv(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>ReplicationUpdateVectorReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
-        <span class="kw">unsafe </span>{ <span class="kw-2">&amp;mut </span>(<span class="kw-2">*</span><span class="self">self</span>.ruv.get()) }
+    <span class="kw">fn </span>get_ruv(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>ReplicationUpdateVectorReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.ruv
     }
 
     <span class="kw">fn </span>get_idxmeta_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>IdxMeta {
@@ -4058,22 +4077,22 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; BackendReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
-    <span class="kw">pub fn </span>list_indexes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;String&gt;, OperationError&gt; {
+    <span class="kw">pub fn </span>list_indexes(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;String&gt;, OperationError&gt; {
         <span class="self">self</span>.get_idlayer().list_idxs()
     }
 
-    <span class="kw">pub fn </span>list_id2entry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(u64, String)&gt;, OperationError&gt; {
+    <span class="kw">pub fn </span>list_id2entry(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(u64, String)&gt;, OperationError&gt; {
         <span class="self">self</span>.get_idlayer().list_id2entry()
     }
 
     <span class="kw">pub fn </span>list_index_content(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         index_name: <span class="kw-2">&amp;</span>str,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(String, IDLBitRange)&gt;, OperationError&gt; {
         <span class="self">self</span>.get_idlayer().list_index_content(index_name)
     }
 
-    <span class="kw">pub fn </span>get_id2entry(<span class="kw-2">&amp;</span><span class="self">self</span>, id: u64) -&gt; <span class="prelude-ty">Result</span>&lt;(u64, String), OperationError&gt; {
+    <span class="kw">pub fn </span>get_id2entry(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: u64) -&gt; <span class="prelude-ty">Result</span>&lt;(u64, String), OperationError&gt; {
         <span class="self">self</span>.get_idlayer().get_id2entry(id)
     }
 }
@@ -4082,14 +4101,12 @@
     <span class="kw">type </span>IdlLayerType = IdlArcSqliteWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;;
     <span class="kw">type </span>RuvType = ReplicationUpdateVectorWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;;
 
-    <span class="attribute">#[allow(clippy::mut_from_ref)]
-    </span><span class="kw">fn </span>get_idlayer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>IdlArcSqliteWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
-        <span class="kw">unsafe </span>{ <span class="kw-2">&amp;mut </span>(<span class="kw-2">*</span><span class="self">self</span>.idlayer.get()) }
+    <span class="kw">fn </span>get_idlayer(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>IdlArcSqliteWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.idlayer
     }
 
-    <span class="attribute">#[allow(clippy::mut_from_ref)]
-    </span><span class="kw">fn </span>get_ruv(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>ReplicationUpdateVectorWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
-        <span class="kw">unsafe </span>{ <span class="kw-2">&amp;mut </span>(<span class="kw-2">*</span><span class="self">self</span>.ruv.get()) }
+    <span class="kw">fn </span>get_ruv(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>ReplicationUpdateVectorWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.ruv
     }
 
     <span class="kw">fn </span>get_idxmeta_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>IdxMeta {
@@ -4100,7 +4117,7 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; BackendWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;be::create&quot;</span>, skip_all)]
     </span><span class="kw">pub fn </span>create(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         cid: <span class="kw-2">&amp;</span>Cid,
         entries: Vec&lt;Entry&lt;EntrySealed, EntryNew&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Entry&lt;EntrySealed, EntryCommitted&gt;&gt;, OperationError&gt; {
@@ -4122,10 +4139,9 @@
             }
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>idlayer = <span class="self">self</span>.get_idlayer();
         <span class="comment">// Now, assign id&#39;s to all the new entries.
 
-        </span><span class="kw">let </span><span class="kw-2">mut </span>id_max = idlayer.get_id2entry_max_id()<span class="question-mark">?</span>;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>id_max = <span class="self">self</span>.idlayer.get_id2entry_max_id()<span class="question-mark">?</span>;
         <span class="kw">let </span>c_entries: Vec&lt;<span class="kw">_</span>&gt; = entries
             .into_iter()
             .map(|e| {
@@ -4140,9 +4156,9 @@
 
         <span class="self">self</span>.get_ruv().insert_change(cid, ruv_idl)<span class="question-mark">?</span>;
 
-        idlayer.write_identries(c_entries.iter())<span class="question-mark">?</span>;
+        <span class="self">self</span>.idlayer.write_identries(c_entries.iter())<span class="question-mark">?</span>;
 
-        idlayer.set_id2entry_max_id(id_max);
+        <span class="self">self</span>.idlayer.set_id2entry_max_id(id_max);
 
         <span class="comment">// Now update the indexes as required.
         </span><span class="kw">for </span>e <span class="kw">in </span>c_entries.iter() {
@@ -4154,7 +4170,7 @@
 
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;be::modify&quot;</span>, skip_all)]
     </span><span class="kw">pub fn </span>modify(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         cid: <span class="kw-2">&amp;</span>Cid,
         pre_entries: <span class="kw-2">&amp;</span>[Arc&lt;EntrySealedCommitted&gt;],
         post_entries: <span class="kw-2">&amp;</span>[EntrySealedCommitted],
@@ -4194,7 +4210,7 @@
     }
 
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;be::reap_tombstones&quot;</span>, skip_all)]
-    </span><span class="kw">pub fn </span>reap_tombstones(<span class="kw-2">&amp;</span><span class="self">self</span>, cid: <span class="kw-2">&amp;</span>Cid) -&gt; <span class="prelude-ty">Result</span>&lt;usize, OperationError&gt; {
+    </span><span class="kw">pub fn </span>reap_tombstones(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cid: <span class="kw-2">&amp;</span>Cid) -&gt; <span class="prelude-ty">Result</span>&lt;usize, OperationError&gt; {
         <span class="comment">// We plan to clear the RUV up to this cid. So we need to build an IDL
         // of all the entries we need to examine.
         </span><span class="kw">let </span>idl = <span class="self">self</span>.get_ruv().trim_up_to(cid).map_err(|e| {
@@ -4305,7 +4321,7 @@
     // TODO: Can this be improved?
     </span><span class="attribute">#[allow(clippy::cognitive_complexity)]
     </span><span class="kw">fn </span>entry_index(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         pre: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Entry&lt;EntrySealed, EntryCommitted&gt;&gt;,
         post: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Entry&lt;EntrySealed, EntryCommitted&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
@@ -4338,9 +4354,7 @@
         // and can trigger correct actions.
         //
 
-        </span><span class="kw">let </span>idlayer = <span class="self">self</span>.get_idlayer();
-
-        <span class="kw">let </span>mask_pre = pre.and_then(|e| e.mask_recycled_ts());
+        </span><span class="kw">let </span>mask_pre = pre.and_then(|e| e.mask_recycled_ts());
         <span class="kw">let </span>mask_pre = <span class="kw">if </span>!uuid_same {
             <span class="comment">// Okay, so if the uuids are different this is probably from
             // a replication conflict.  We can&#39;t just use the normal none/some
@@ -4367,23 +4381,23 @@
 
             <span class="comment">// Write the changes out to the backend
             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(rem) = n2u_rem {
-                idlayer.write_name2uuid_rem(rem)<span class="question-mark">?
+                <span class="self">self</span>.idlayer.write_name2uuid_rem(rem)<span class="question-mark">?
             </span>}
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>(rem) = eid2u_rem {
-                idlayer.write_externalid2uuid_rem(rem)<span class="question-mark">?
+                <span class="self">self</span>.idlayer.write_externalid2uuid_rem(rem)<span class="question-mark">?
             </span>}
 
             <span class="kw">match </span>u2s_act {
                 <span class="prelude-val">None </span>=&gt; {}
-                <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(k)) =&gt; idlayer.write_uuid2spn(uuid, <span class="prelude-val">Some</span>(k))<span class="question-mark">?</span>,
-                <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(<span class="kw">_</span>)) =&gt; idlayer.write_uuid2spn(uuid, <span class="prelude-val">None</span>)<span class="question-mark">?</span>,
+                <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(k)) =&gt; <span class="self">self</span>.idlayer.write_uuid2spn(uuid, <span class="prelude-val">Some</span>(k))<span class="question-mark">?</span>,
+                <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(<span class="kw">_</span>)) =&gt; <span class="self">self</span>.idlayer.write_uuid2spn(uuid, <span class="prelude-val">None</span>)<span class="question-mark">?</span>,
             }
 
             <span class="kw">match </span>u2r_act {
                 <span class="prelude-val">None </span>=&gt; {}
-                <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(k)) =&gt; idlayer.write_uuid2rdn(uuid, <span class="prelude-val">Some</span>(k))<span class="question-mark">?</span>,
-                <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(<span class="kw">_</span>)) =&gt; idlayer.write_uuid2rdn(uuid, <span class="prelude-val">None</span>)<span class="question-mark">?</span>,
+                <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(k)) =&gt; <span class="self">self</span>.idlayer.write_uuid2rdn(uuid, <span class="prelude-val">Some</span>(k))<span class="question-mark">?</span>,
+                <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(<span class="kw">_</span>)) =&gt; <span class="self">self</span>.idlayer.write_uuid2rdn(uuid, <span class="prelude-val">None</span>)<span class="question-mark">?</span>,
             }
             <span class="comment">// Return none, mask_pre is now completed.
             </span><span class="prelude-val">None
@@ -4410,29 +4424,29 @@
 
         <span class="comment">// Write the changes out to the backend
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(add) = n2u_add {
-            idlayer.write_name2uuid_add(e_uuid, add)<span class="question-mark">?
+            <span class="self">self</span>.idlayer.write_name2uuid_add(e_uuid, add)<span class="question-mark">?
         </span>}
         <span class="kw">if let </span><span class="prelude-val">Some</span>(rem) = n2u_rem {
-            idlayer.write_name2uuid_rem(rem)<span class="question-mark">?
+            <span class="self">self</span>.idlayer.write_name2uuid_rem(rem)<span class="question-mark">?
         </span>}
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(add) = eid2u_add {
-            idlayer.write_externalid2uuid_add(e_uuid, add)<span class="question-mark">?
+            <span class="self">self</span>.idlayer.write_externalid2uuid_add(e_uuid, add)<span class="question-mark">?
         </span>}
         <span class="kw">if let </span><span class="prelude-val">Some</span>(rem) = eid2u_rem {
-            idlayer.write_externalid2uuid_rem(rem)<span class="question-mark">?
+            <span class="self">self</span>.idlayer.write_externalid2uuid_rem(rem)<span class="question-mark">?
         </span>}
 
         <span class="kw">match </span>u2s_act {
             <span class="prelude-val">None </span>=&gt; {}
-            <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(k)) =&gt; idlayer.write_uuid2spn(e_uuid, <span class="prelude-val">Some</span>(k))<span class="question-mark">?</span>,
-            <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(<span class="kw">_</span>)) =&gt; idlayer.write_uuid2spn(e_uuid, <span class="prelude-val">None</span>)<span class="question-mark">?</span>,
+            <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(k)) =&gt; <span class="self">self</span>.idlayer.write_uuid2spn(e_uuid, <span class="prelude-val">Some</span>(k))<span class="question-mark">?</span>,
+            <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(<span class="kw">_</span>)) =&gt; <span class="self">self</span>.idlayer.write_uuid2spn(e_uuid, <span class="prelude-val">None</span>)<span class="question-mark">?</span>,
         }
 
         <span class="kw">match </span>u2r_act {
             <span class="prelude-val">None </span>=&gt; {}
-            <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(k)) =&gt; idlayer.write_uuid2rdn(e_uuid, <span class="prelude-val">Some</span>(k))<span class="question-mark">?</span>,
-            <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(<span class="kw">_</span>)) =&gt; idlayer.write_uuid2rdn(e_uuid, <span class="prelude-val">None</span>)<span class="question-mark">?</span>,
+            <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(k)) =&gt; <span class="self">self</span>.idlayer.write_uuid2rdn(e_uuid, <span class="prelude-val">Some</span>(k))<span class="question-mark">?</span>,
+            <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(<span class="kw">_</span>)) =&gt; <span class="self">self</span>.idlayer.write_uuid2rdn(e_uuid, <span class="prelude-val">None</span>)<span class="question-mark">?</span>,
         }
 
         <span class="comment">// Extremely Cursed - Okay, we know that self.idxmeta will NOT be changed
@@ -4450,10 +4464,10 @@
                 <span class="kw">match </span>act {
                     <span class="prelude-val">Ok</span>((attr, itype, idx_key)) =&gt; {
                         <span class="macro">trace!</span>(<span class="string">&quot;Adding {:?} idx -&gt; {:?}: {:?}&quot;</span>, itype, attr, idx_key);
-                        <span class="kw">match </span>idlayer.get_idl(attr, itype, <span class="kw-2">&amp;</span>idx_key)<span class="question-mark">? </span>{
+                        <span class="kw">match </span><span class="self">self</span>.idlayer.get_idl(attr, itype, <span class="kw-2">&amp;</span>idx_key)<span class="question-mark">? </span>{
                             <span class="prelude-val">Some</span>(<span class="kw-2">mut </span>idl) =&gt; {
                                 idl.insert_id(e_id);
-                                idlayer.write_idl(attr, itype, <span class="kw-2">&amp;</span>idx_key, <span class="kw-2">&amp;</span>idl)
+                                <span class="self">self</span>.idlayer.write_idl(attr, itype, <span class="kw-2">&amp;</span>idx_key, <span class="kw-2">&amp;</span>idl)
                             }
                             <span class="prelude-val">None </span>=&gt; {
                                 <span class="macro">warn!</span>(
@@ -4466,10 +4480,10 @@
                     }
                     <span class="prelude-val">Err</span>((attr, itype, idx_key)) =&gt; {
                         <span class="macro">trace!</span>(<span class="string">&quot;Removing {:?} idx -&gt; {:?}: {:?}&quot;</span>, itype, attr, idx_key);
-                        <span class="kw">match </span>idlayer.get_idl(attr, itype, <span class="kw-2">&amp;</span>idx_key)<span class="question-mark">? </span>{
+                        <span class="kw">match </span><span class="self">self</span>.idlayer.get_idl(attr, itype, <span class="kw-2">&amp;</span>idx_key)<span class="question-mark">? </span>{
                             <span class="prelude-val">Some</span>(<span class="kw-2">mut </span>idl) =&gt; {
                                 idl.remove_id(e_id);
-                                idlayer.write_idl(attr, itype, <span class="kw-2">&amp;</span>idx_key, <span class="kw-2">&amp;</span>idl)
+                                <span class="self">self</span>.idlayer.write_idl(attr, itype, <span class="kw-2">&amp;</span>idx_key, <span class="kw-2">&amp;</span>idl)
                             }
                             <span class="prelude-val">None </span>=&gt; {
                                 <span class="macro">warn!</span>(
@@ -4486,7 +4500,7 @@
     </span>}
 
     <span class="attribute">#[allow(dead_code)]
-    </span><span class="kw">fn </span>missing_idxs(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(AttrString, IndexType)&gt;, OperationError&gt; {
+    </span><span class="kw">fn </span>missing_idxs(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;(AttrString, IndexType)&gt;, OperationError&gt; {
         <span class="kw">let </span>idx_table_list = <span class="self">self</span>.get_idlayer().list_idxs()<span class="question-mark">?</span>;
 
         <span class="comment">// Turn the vec to a real set
@@ -4511,28 +4525,27 @@
         <span class="prelude-val">Ok</span>(missing)
     }
 
-    <span class="kw">fn </span>create_idxs(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="kw">let </span>idlayer = <span class="self">self</span>.get_idlayer();
+    <span class="kw">fn </span>create_idxs(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="comment">// Create name2uuid and uuid2name
         </span><span class="macro">trace!</span>(<span class="string">&quot;Creating index -&gt; name2uuid&quot;</span>);
-        idlayer.create_name2uuid()<span class="question-mark">?</span>;
+        <span class="self">self</span>.idlayer.create_name2uuid()<span class="question-mark">?</span>;
 
         <span class="macro">trace!</span>(<span class="string">&quot;Creating index -&gt; externalid2uuid&quot;</span>);
-        idlayer.create_externalid2uuid()<span class="question-mark">?</span>;
+        <span class="self">self</span>.idlayer.create_externalid2uuid()<span class="question-mark">?</span>;
 
         <span class="macro">trace!</span>(<span class="string">&quot;Creating index -&gt; uuid2spn&quot;</span>);
-        idlayer.create_uuid2spn()<span class="question-mark">?</span>;
+        <span class="self">self</span>.idlayer.create_uuid2spn()<span class="question-mark">?</span>;
 
         <span class="macro">trace!</span>(<span class="string">&quot;Creating index -&gt; uuid2rdn&quot;</span>);
-        idlayer.create_uuid2rdn()<span class="question-mark">?</span>;
+        <span class="self">self</span>.idlayer.create_uuid2rdn()<span class="question-mark">?</span>;
 
         <span class="self">self</span>.idxmeta
             .idxkeys
             .keys()
-            .try_for_each(|ikey| idlayer.create_idx(<span class="kw-2">&amp;</span>ikey.attr, ikey.itype))
+            .try_for_each(|ikey| <span class="self">self</span>.idlayer.create_idx(<span class="kw-2">&amp;</span>ikey.attr, ikey.itype))
     }
 
-    <span class="kw">pub fn </span>upgrade_reindex(<span class="kw-2">&amp;</span><span class="self">self</span>, v: i64) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+    <span class="kw">pub fn </span>upgrade_reindex(<span class="kw-2">&amp;mut </span><span class="self">self</span>, v: i64) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="kw">let </span>dbv = <span class="self">self</span>.get_db_index_version();
         <span class="macro">admin_debug!</span>(<span class="question-mark">?</span>dbv, <span class="question-mark">?</span>v, <span class="string">&quot;upgrade_reindex&quot;</span>);
         <span class="kw">if </span>dbv &lt; v {
@@ -4547,10 +4560,9 @@
         }
     }
 
-    <span class="kw">pub fn </span>reindex(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="kw">let </span>idlayer = <span class="self">self</span>.get_idlayer();
+    <span class="kw">pub fn </span>reindex(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="comment">// Purge the idxs
-        </span><span class="kw">unsafe </span>{ idlayer.purge_idxs()<span class="question-mark">? </span>};
+        </span><span class="kw">unsafe </span>{ <span class="self">self</span>.idlayer.purge_idxs()<span class="question-mark">? </span>};
 
         <span class="comment">// Using the index metadata on the txn, create all our idx tables
         </span><span class="self">self</span>.create_idxs()<span class="question-mark">?</span>;
@@ -4559,7 +4571,7 @@
         // Future idea: Do this in batches of X amount to limit memory
         // consumption.
         </span><span class="kw">let </span>idl = IdList::AllIds;
-        <span class="kw">let </span>entries = idlayer.get_identry(<span class="kw-2">&amp;</span>idl).map_err(|e| {
+        <span class="kw">let </span>entries = <span class="self">self</span>.idlayer.get_identry(<span class="kw-2">&amp;</span>idl).map_err(|e| {
             <span class="macro">admin_error!</span>(err = <span class="question-mark">?</span>e, <span class="string">&quot;get_identry failure&quot;</span>);
             e
         })<span class="question-mark">?</span>;
@@ -4583,10 +4595,10 @@
             })<span class="question-mark">?</span>;
         <span class="macro">limmediate_warning!</span>(<span class="string">&quot; reindexed {} entries ✅\n&quot;</span>, count);
         <span class="macro">limmediate_warning!</span>(<span class="string">&quot;Optimising Indexes ... &quot;</span>);
-        idlayer.optimise_dirty_idls();
+        <span class="self">self</span>.idlayer.optimise_dirty_idls();
         <span class="macro">limmediate_warning!</span>(<span class="string">&quot;done ✅\n&quot;</span>);
         <span class="macro">limmediate_warning!</span>(<span class="string">&quot;Calculating Index Optimisation Slopes ... &quot;</span>);
-        idlayer.analyse_idx_slopes().map_err(|e| {
+        <span class="self">self</span>.idlayer.analyse_idx_slopes().map_err(|e| {
             <span class="macro">admin_error!</span>(err = <span class="question-mark">?</span>e, <span class="string">&quot;index optimisation failed&quot;</span>);
             e
         })<span class="question-mark">?</span>;
@@ -4595,13 +4607,13 @@
     }
 
     <span class="attribute">#[cfg(test)]
-    </span><span class="kw">pub fn </span>purge_idxs(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+    </span><span class="kw">pub fn </span>purge_idxs(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="kw">unsafe </span>{ <span class="self">self</span>.get_idlayer().purge_idxs() }
     }
 
     <span class="attribute">#[cfg(test)]
     </span><span class="kw">pub fn </span>load_test_idl(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         attr: <span class="kw-2">&amp;</span>String,
         itype: IndexType,
         idx_key: <span class="kw-2">&amp;</span>String,
@@ -4609,11 +4621,11 @@
         <span class="self">self</span>.get_idlayer().get_idl(attr, itype, idx_key)
     }
 
-    <span class="kw">fn </span>is_idx_slopeyness_generated(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;bool, OperationError&gt; {
+    <span class="kw">fn </span>is_idx_slopeyness_generated(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;bool, OperationError&gt; {
         <span class="self">self</span>.get_idlayer().is_idx_slopeyness_generated()
     }
 
-    <span class="kw">fn </span>get_idx_slope(<span class="kw-2">&amp;</span><span class="self">self</span>, ikey: <span class="kw-2">&amp;</span>IdxKey) -&gt; <span class="prelude-ty">Result</span>&lt;IdxSlope, OperationError&gt; {
+    <span class="kw">fn </span>get_idx_slope(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ikey: <span class="kw-2">&amp;</span>IdxKey) -&gt; <span class="prelude-ty">Result</span>&lt;IdxSlope, OperationError&gt; {
         <span class="comment">// Do we have the slopeyness?
         </span><span class="kw">let </span>slope = <span class="self">self
             </span>.get_idlayer()
@@ -4623,7 +4635,7 @@
         <span class="prelude-val">Ok</span>(slope)
     }
 
-    <span class="kw">pub fn </span>restore(<span class="kw-2">&amp;</span><span class="self">self</span>, src_path: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+    <span class="kw">pub fn </span>restore(<span class="kw-2">&amp;mut </span><span class="self">self</span>, src_path: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="kw">let </span>idlayer = <span class="self">self</span>.get_idlayer();
         <span class="comment">// load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
@@ -4723,24 +4735,20 @@
             idxmeta_wr,
         } = <span class="self">self</span>;
 
-        <span class="comment">// Unwrap the Cell we have finished with it.
-        </span><span class="kw">let </span>idlayer = idlayer.into_inner();
-        <span class="kw">let </span>ruv = ruv.into_inner();
-
         idlayer.commit().map(|()| {
             ruv.commit();
             idxmeta_wr.commit();
         })
     }
 
-    <span class="kw">fn </span>reset_db_s_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Uuid, OperationError&gt; {
+    <span class="kw">fn </span>reset_db_s_uuid(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Uuid, OperationError&gt; {
         <span class="comment">// The value is missing. Generate a new one and store it.
         </span><span class="kw">let </span>nsid = Uuid::new_v4();
         <span class="self">self</span>.get_idlayer().write_db_s_uuid(nsid)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(nsid)
     }
 
-    <span class="kw">pub fn </span>get_db_s_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Uuid {
+    <span class="kw">pub fn </span>get_db_s_uuid(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Uuid {
         <span class="attribute">#[allow(clippy::expect_used)]
         </span><span class="kw">match </span><span class="self">self
             </span>.get_idlayer()
@@ -4754,14 +4762,14 @@
 
     <span class="doccomment">/// This generates a new domain UUID and stores it into the database,
     /// returning the new UUID
-    </span><span class="kw">fn </span>reset_db_d_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Uuid, OperationError&gt; {
+    </span><span class="kw">fn </span>reset_db_d_uuid(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Uuid, OperationError&gt; {
         <span class="kw">let </span>nsid = Uuid::new_v4();
         <span class="self">self</span>.get_idlayer().write_db_d_uuid(nsid)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(nsid)
     }
 
     <span class="doccomment">/// This pulls the domain UUID from the database
-    </span><span class="kw">pub fn </span>get_db_d_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Uuid {
+    </span><span class="kw">pub fn </span>get_db_d_uuid(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Uuid {
         <span class="attribute">#[allow(clippy::expect_used)]
         </span><span class="kw">match </span><span class="self">self
             </span>.get_idlayer()
@@ -4773,11 +4781,11 @@
         }
     }
 
-    <span class="kw">pub fn </span>set_db_ts_max(<span class="kw-2">&amp;</span><span class="self">self</span>, ts: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+    <span class="kw">pub fn </span>set_db_ts_max(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ts: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="self">self</span>.get_idlayer().set_db_ts_max(ts)
     }
 
-    <span class="kw">pub fn </span>get_db_ts_max(<span class="kw-2">&amp;</span><span class="self">self</span>, ts: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;Duration, OperationError&gt; {
+    <span class="kw">pub fn </span>get_db_ts_max(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ts: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;Duration, OperationError&gt; {
         <span class="comment">// if none, return ts. If found, return it.
         </span><span class="kw">match </span><span class="self">self</span>.get_idlayer().get_db_ts_max()<span class="question-mark">? </span>{
             <span class="prelude-val">Some</span>(dts) =&gt; <span class="prelude-val">Ok</span>(dts),
@@ -4785,11 +4793,11 @@
         }
     }
 
-    <span class="kw">fn </span>get_db_index_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; i64 {
+    <span class="kw">fn </span>get_db_index_version(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; i64 {
         <span class="self">self</span>.get_idlayer().get_db_index_version()
     }
 
-    <span class="kw">fn </span>set_db_index_version(<span class="kw-2">&amp;</span><span class="self">self</span>, v: i64) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+    <span class="kw">fn </span>set_db_index_version(<span class="kw-2">&amp;mut </span><span class="self">self</span>, v: i64) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="self">self</span>.get_idlayer().set_db_index_version(v)
     }
 }
@@ -4893,24 +4901,24 @@
 
     <span class="kw">pub fn </span>read(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BackendReadTransaction {
         BackendReadTransaction {
-            idlayer: UnsafeCell::new(<span class="self">self</span>.idlayer.read()),
+            idlayer: <span class="self">self</span>.idlayer.read(),
             idxmeta: <span class="self">self</span>.idxmeta.read(),
-            ruv: UnsafeCell::new(<span class="self">self</span>.ruv.read()),
+            ruv: <span class="self">self</span>.ruv.read(),
         }
     }
 
     <span class="kw">pub fn </span>write(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BackendWriteTransaction {
         BackendWriteTransaction {
-            idlayer: UnsafeCell::new(<span class="self">self</span>.idlayer.write()),
+            idlayer: <span class="self">self</span>.idlayer.write(),
             idxmeta: <span class="self">self</span>.idxmeta.read(),
-            ruv: UnsafeCell::new(<span class="self">self</span>.ruv.write()),
+            ruv: <span class="self">self</span>.ruv.write(),
             idxmeta_wr: <span class="self">self</span>.idxmeta.write(),
         }
     }
 
     <span class="comment">// Should this actually call the idlayer directly?
     </span><span class="kw">pub fn </span>reset_db_s_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Uuid {
-        <span class="kw">let </span>wr = <span class="self">self</span>.write();
+        <span class="kw">let </span><span class="kw-2">mut </span>wr = <span class="self">self</span>.write();
         <span class="attribute">#[allow(clippy::expect_used)]
         </span><span class="kw">let </span>sid = wr
             .reset_db_s_uuid()
@@ -4941,11 +4949,11 @@
     <span class="kw">use </span>idlset::v2::IDLBitRange;
 
     <span class="kw">use </span><span class="kw">super</span>::<span class="kw">super</span>::entry::{Entry, EntryInit, EntryNew};
+    <span class="kw">use </span><span class="kw">super</span>::Limits;
     <span class="kw">use super</span>::{
         Backend, BackendConfig, BackendTransaction, BackendWriteTransaction, DbBackup, IdList,
         IdxKey, OperationError,
     };
-    <span class="kw">use </span><span class="kw">crate</span>::identity::Limits;
     <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span><span class="kw">crate</span>::repl::cid::Cid;
     <span class="kw">use </span><span class="kw">crate</span>::value::{IndexType, PartialValue, Value};

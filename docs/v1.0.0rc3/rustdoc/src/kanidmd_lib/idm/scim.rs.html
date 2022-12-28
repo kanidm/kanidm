@@ -2680,7 +2680,6 @@
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::value::Session;
 
-<span class="kw">use </span><span class="kw">crate</span>::access::AccessControlsTransaction;
 <span class="kw">use </span><span class="kw">crate</span>::schema::{SchemaClass, SchemaTransaction};
 
 <span class="comment">// Internals of a Scim Sync token
@@ -3446,7 +3445,7 @@
     }
 
     <span class="kw">fn </span>scim_attr_to_values(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         scim_attr_name: <span class="kw-2">&amp;</span>str,
         scim_attr: <span class="kw-2">&amp;</span>ScimAttr,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Value&gt;, OperationError&gt; {
@@ -3556,7 +3555,7 @@
     }
 
     <span class="kw">fn </span>scim_entry_to_mod(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         scim_ent: <span class="kw-2">&amp;</span>ScimEntry,
         sync_uuid: Uuid,
         sync_allow_class_set: <span class="kw-2">&amp;</span>BTreeMap&lt;String, SchemaClass&gt;,
@@ -3858,7 +3857,10 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; IdmServerProxyReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
-    <span class="kw">pub fn </span>scim_sync_get_state(<span class="kw-2">&amp;</span><span class="self">self</span>, ident: <span class="kw-2">&amp;</span>Identity) -&gt; <span class="prelude-ty">Result</span>&lt;ScimSyncState, OperationError&gt; {
+    <span class="kw">pub fn </span>scim_sync_get_state(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        ident: <span class="kw-2">&amp;</span>Identity,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ScimSyncState, OperationError&gt; {
         <span class="comment">// We must be *extra* careful in these functions since we do *internal* searches
         // which are *bypassing* normal access checks!
 
@@ -3900,8 +3902,6 @@
 
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
-    <span class="kw">use </span><span class="kw">crate</span>::event::CreateEvent;
-    <span class="kw">use </span><span class="kw">crate</span>::event::ModifyEvent;
     <span class="kw">use </span><span class="kw">crate</span>::idm::server::{IdmServerProxyWriteTransaction, IdmServerTransaction};
     <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>base64urlsafedata::Base64UrlSafeData;
@@ -3960,7 +3960,7 @@
             <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
             <span class="comment">// Do a get_state to get the current &quot;state cookie&quot; if any.
-            </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
             <span class="kw">let </span>ident = idms_prox_read
                 .validate_and_parse_sync_token_to_ident(<span class="prelude-val">Some</span>(sync_token.as_str()), ct)
@@ -4015,7 +4015,7 @@
             <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
             <span class="comment">// -- Check the happy path.
-            </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
             <span class="kw">let </span>ident = idms_prox_read
                 .validate_and_parse_sync_token_to_ident(<span class="prelude-val">Some</span>(sync_token.as_str()), ct)
                 .expect(<span class="string">&quot;Failed to validate sync token&quot;</span>);
@@ -4037,7 +4037,7 @@
             <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
             <span class="comment">// Must fail
-            </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
             <span class="kw">let </span>fail = idms_prox_read
                 .validate_and_parse_sync_token_to_ident(<span class="prelude-val">Some</span>(sync_token.as_str()), ct);
             <span class="macro">assert!</span>(<span class="macro">matches!</span>(fail, <span class="prelude-val">Err</span>(OperationError::NotAuthenticated)));
@@ -4062,7 +4062,7 @@
             <span class="macro">assert!</span>(idms_prox_write.qs_write.modify(<span class="kw-2">&amp;</span>me_inv_m).is_ok());
             <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
-            <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
             <span class="kw">let </span>fail = idms_prox_read
                 .validate_and_parse_sync_token_to_ident(<span class="prelude-val">Some</span>(sync_token.as_str()), ct);
             <span class="macro">assert!</span>(<span class="macro">matches!</span>(fail, <span class="prelude-val">Err</span>(OperationError::NotAuthenticated)));
@@ -4335,7 +4335,7 @@
             .is_ok());
 
             <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
+            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
 
             <span class="kw">let </span>ent = idms_prox_write
                 .qs_write

@@ -303,23 +303,8 @@
 <span id="303">303</span>
 <span id="304">304</span>
 <span id="305">305</span>
-<span id="306">306</span>
-<span id="307">307</span>
-<span id="308">308</span>
-<span id="309">309</span>
-<span id="310">310</span>
-<span id="311">311</span>
-<span id="312">312</span>
-<span id="313">313</span>
-<span id="314">314</span>
-<span id="315">315</span>
-<span id="316">316</span>
-<span id="317">317</span>
-<span id="318">318</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::QueryServerWriteTransaction;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
-<span class="comment">// use std::collections::BTreeMap;
-</span><span class="kw">use </span><span class="kw">crate</span>::access::AccessControlsTransaction;
 <span class="kw">use </span><span class="kw">crate</span>::server::Plugins;
 <span class="kw">use </span>hashbrown::HashMap;
 
@@ -501,51 +486,40 @@
         <span class="comment">// We have finished all plugs and now have a successful operation - flag if
         // schema or acp requires reload. Remember, this is a modify, so we need to check
         // pre and post cands.
-        </span><span class="kw">if </span>!<span class="self">self</span>.changed_schema.get() {
-            <span class="self">self</span>.changed_schema.set(
-                norm_cand
-                    .iter()
-                    .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                    .any(|e| {
-                        e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_CLASSTYPE)
-                            || e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_ATTRIBUTETYPE)
-                    }),
-            )
+        </span><span class="kw">if </span>!<span class="self">self</span>.changed_schema {
+            <span class="self">self</span>.changed_schema = norm_cand
+                .iter()
+                .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|e| {
+                    e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_CLASSTYPE)
+                        || e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_ATTRIBUTETYPE)
+                });
         }
-        <span class="kw">if </span>!<span class="self">self</span>.changed_acp.get() {
-            <span class="self">self</span>.changed_acp.set(
-                norm_cand
-                    .iter()
-                    .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                    .any(|e| e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_ACP)),
-            )
+        <span class="kw">if </span>!<span class="self">self</span>.changed_acp {
+            <span class="self">self</span>.changed_acp = norm_cand
+                .iter()
+                .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_ACP));
         }
-        <span class="kw">if </span>!<span class="self">self</span>.changed_oauth2.get() {
-            <span class="self">self</span>.changed_oauth2.set(
-                norm_cand
-                    .iter()
-                    .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                    .any(|e| e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_OAUTH2_RS)),
-            )
+        <span class="kw">if </span>!<span class="self">self</span>.changed_oauth2 {
+            <span class="self">self</span>.changed_oauth2 = norm_cand
+                .iter()
+                .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_OAUTH2_RS));
         }
-        <span class="kw">if </span>!<span class="self">self</span>.changed_domain.get() {
-            <span class="self">self</span>.changed_domain.set(
-                norm_cand
-                    .iter()
-                    .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                    .any(|e| e.attribute_equality(<span class="string">&quot;uuid&quot;</span>, <span class="kw-2">&amp;</span>PVUUID_DOMAIN_INFO)),
-            )
+        <span class="kw">if </span>!<span class="self">self</span>.changed_domain {
+            <span class="self">self</span>.changed_domain = norm_cand
+                .iter()
+                .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality(<span class="string">&quot;uuid&quot;</span>, <span class="kw-2">&amp;</span>PVUUID_DOMAIN_INFO));
         }
 
-        <span class="kw">let </span>cu = <span class="self">self</span>.changed_uuid.as_ptr();
-        <span class="kw">unsafe </span>{
-            (<span class="kw-2">*</span>cu).extend(
-                norm_cand
-                    .iter()
-                    .map(|e| e.get_uuid())
-                    .chain(pre_candidates.iter().map(|e| e.get_uuid())),
-            );
-        }
+        <span class="self">self</span>.changed_uuid.extend(
+            norm_cand
+                .iter()
+                .map(|e| e.get_uuid())
+                .chain(pre_candidates.iter().map(|e| e.get_uuid())),
+        );
 
         <span class="macro">trace!</span>(
             schema_reload = <span class="question-mark">?</span><span class="self">self</span>.changed_schema,

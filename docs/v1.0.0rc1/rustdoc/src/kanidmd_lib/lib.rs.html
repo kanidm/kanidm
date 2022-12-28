@@ -98,6 +98,7 @@
 <span id="98">98</span>
 <span id="99">99</span>
 <span id="100">100</span>
+<span id="101">101</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The Kanidmd server library. This implements all of the internal components of the server
 //! which is used to process authentication, store identities and enforce access controls.
 
@@ -138,15 +139,12 @@
 <span class="kw">pub mod </span>entry;
 <span class="kw">pub mod </span>event;
 <span class="kw">pub mod </span>filter;
-<span class="kw">pub mod </span>identity;
-<span class="kw">pub mod </span>ldap;
 <span class="kw">pub mod </span>modify;
 <span class="kw">pub mod </span>utils;
 <span class="kw">pub mod </span>value;
 <span class="kw">pub mod </span>valueset;
 <span class="attribute">#[macro_use]
 </span><span class="kw">mod </span>plugins;
-<span class="kw">mod </span>access;
 <span class="kw">pub mod </span>idm;
 <span class="kw">mod </span>repl;
 <span class="kw">pub mod </span>schema;
@@ -157,32 +155,36 @@
 <span class="doccomment">/// A prelude of imports that should be imported by all other Kanidm modules to
 /// help make imports cleaner.
 </span><span class="kw">pub mod </span>prelude {
-    <span class="kw">pub use </span>kanidm_proto::v1::{ConsistencyError, OperationError};
+    <span class="kw">pub use </span>kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
     <span class="kw">pub use </span>sketching::{
         admin_debug, admin_error, admin_info, admin_warn, filter_error, filter_info, filter_trace,
         filter_warn, perf_trace, request_error, request_info, request_trace, request_warn,
         security_access, security_critical, security_error, security_info, tagged_event, EventTag,
     };
     <span class="kw">pub use </span>smartstring::alias::String <span class="kw">as </span>AttrString;
+    <span class="kw">pub use </span>std::time::Duration;
     <span class="kw">pub use </span>url::Url;
     <span class="kw">pub use </span>uuid::{uuid, Uuid};
 
+    <span class="kw">pub use </span><span class="kw">crate</span>::be::Limits;
     <span class="kw">pub use </span><span class="kw">crate</span>::constants::<span class="kw-2">*</span>;
     <span class="kw">pub use </span><span class="kw">crate</span>::entry::{
         Entry, EntryCommitted, EntryInit, EntryInitNew, EntryInvalid, EntryInvalidCommitted,
         EntryInvalidNew, EntryNew, EntryReduced, EntryReducedCommitted, EntrySealed,
         EntrySealedCommitted, EntrySealedNew, EntryTuple, EntryValid,
     };
+    <span class="kw">pub use </span><span class="kw">crate</span>::event::{CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, SearchEvent};
     <span class="kw">pub use </span><span class="kw">crate</span>::filter::{
         f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub, Filter,
-        FilterInvalid, FC,
+        FilterInvalid, FilterValid, FC,
     };
-    <span class="kw">pub use </span><span class="kw">crate</span>::identity::{AccessScope, IdentType, Identity, IdentityId};
     <span class="kw">pub use </span><span class="kw">crate</span>::idm::server::{IdmServer, IdmServerDelayed};
     <span class="kw">pub use </span><span class="kw">crate</span>::modify::{
         m_assert, m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList, ModifyValid,
     };
+    <span class="kw">pub use </span><span class="kw">crate</span>::server::access::AccessControlsTransaction;
     <span class="kw">pub use </span><span class="kw">crate</span>::server::batch_modify::BatchModifyEvent;
+    <span class="kw">pub use </span><span class="kw">crate</span>::server::identity::{AccessScope, IdentType, IdentUser, Identity, IdentityId};
     <span class="kw">pub use </span><span class="kw">crate</span>::server::{
         QueryServer, QueryServerReadTransaction, QueryServerTransaction,
         QueryServerWriteTransaction,

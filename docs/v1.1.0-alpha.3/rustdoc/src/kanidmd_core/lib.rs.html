@@ -867,8 +867,8 @@
 <span class="kw">use </span>kanidm_proto::messages::{AccountChangeMessage, MessageStatus};
 <span class="kw">use </span>kanidm_proto::v1::OperationError;
 <span class="kw">use </span>kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction, FsType};
+<span class="kw">use </span>kanidmd_lib::idm::ldap::LdapServer;
 <span class="kw">use </span>kanidmd_lib::idm::server::{IdmServer, IdmServerDelayed};
-<span class="kw">use </span>kanidmd_lib::ldap::LdapServer;
 <span class="kw">use </span>kanidmd_lib::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>kanidmd_lib::schema::Schema;
 <span class="kw">use </span>kanidmd_lib::status::StatusActor;
@@ -1000,7 +1000,7 @@
 
 <span class="kw">pub fn </span>dbscan_list_indexes_core(config: <span class="kw-2">&amp;</span>Configuration) {
     <span class="kw">let </span>be = <span class="macro">dbscan_setup_be!</span>(config);
-    <span class="kw">let </span>be_rotxn = be.read();
+    <span class="kw">let </span><span class="kw-2">mut </span>be_rotxn = be.read();
 
     <span class="kw">match </span>be_rotxn.list_indexes() {
         <span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>idx_list) =&gt; {
@@ -1017,7 +1017,7 @@
 
 <span class="kw">pub fn </span>dbscan_list_id2entry_core(config: <span class="kw-2">&amp;</span>Configuration) {
     <span class="kw">let </span>be = <span class="macro">dbscan_setup_be!</span>(config);
-    <span class="kw">let </span>be_rotxn = be.read();
+    <span class="kw">let </span><span class="kw-2">mut </span>be_rotxn = be.read();
 
     <span class="kw">match </span>be_rotxn.list_id2entry() {
         <span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>id_list) =&gt; {
@@ -1039,7 +1039,7 @@
 
 <span class="kw">pub fn </span>dbscan_list_index_core(config: <span class="kw-2">&amp;</span>Configuration, index_name: <span class="kw-2">&amp;</span>str) {
     <span class="kw">let </span>be = <span class="macro">dbscan_setup_be!</span>(config);
-    <span class="kw">let </span>be_rotxn = be.read();
+    <span class="kw">let </span><span class="kw-2">mut </span>be_rotxn = be.read();
 
     <span class="kw">match </span>be_rotxn.list_index_content(index_name) {
         <span class="prelude-val">Ok</span>(<span class="kw-2">mut </span>idx_list) =&gt; {
@@ -1056,7 +1056,7 @@
 
 <span class="kw">pub fn </span>dbscan_get_id2entry_core(config: <span class="kw-2">&amp;</span>Configuration, id: u64) {
     <span class="kw">let </span>be = <span class="macro">dbscan_setup_be!</span>(config);
-    <span class="kw">let </span>be_rotxn = be.read();
+    <span class="kw">let </span><span class="kw-2">mut </span>be_rotxn = be.read();
 
     <span class="kw">match </span>be_rotxn.get_id2entry(id) {
         <span class="prelude-val">Ok</span>((id, value)) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{:&gt;8}: {}&quot;</span>, id, value),
@@ -1083,7 +1083,7 @@
         }
     };
 
-    <span class="kw">let </span>be_ro_txn = be.read();
+    <span class="kw">let </span><span class="kw-2">mut </span>be_ro_txn = be.read();
     <span class="kw">let </span>r = be_ro_txn.backup(dst_path);
     <span class="kw">match </span>r {
         <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">info!</span>(<span class="string">&quot;Backup success!&quot;</span>),
@@ -1115,7 +1115,7 @@
         }
     };
 
-    <span class="kw">let </span>be_wr_txn = be.write();
+    <span class="kw">let </span><span class="kw-2">mut </span>be_wr_txn = be.write();
     <span class="kw">let </span>r = be_wr_txn.restore(dst_path).and_then(|<span class="kw">_</span>| be_wr_txn.commit());
 
     <span class="kw">if </span>r.is_err() {
@@ -1137,7 +1137,7 @@
 
     <span class="macro">info!</span>(<span class="string">&quot;Start reindex phase ...&quot;</span>);
 
-    <span class="kw">let </span>qs_write = qs.write(duration_from_epoch_now()).<span class="kw">await</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>qs_write = qs.write(duration_from_epoch_now()).<span class="kw">await</span>;
     <span class="kw">let </span>r = qs_write.reindex().and_then(|<span class="kw">_</span>| qs_write.commit());
 
     <span class="kw">match </span>r {
@@ -1171,7 +1171,7 @@
     };
 
     <span class="comment">// Reindex only the core schema attributes to bootstrap the process.
-    </span><span class="kw">let </span>be_wr_txn = be.write();
+    </span><span class="kw">let </span><span class="kw-2">mut </span>be_wr_txn = be.write();
     <span class="kw">let </span>r = be_wr_txn.reindex().and_then(|<span class="kw">_</span>| be_wr_txn.commit());
 
     <span class="comment">// Now that&#39;s done, setup a minimal qs and reindex from that.
@@ -1194,7 +1194,7 @@
 
     <span class="macro">eprintln!</span>(<span class="string">&quot;Start Index Phase 2 ...&quot;</span>);
 
-    <span class="kw">let </span>qs_write = qs.write(duration_from_epoch_now()).<span class="kw">await</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>qs_write = qs.write(duration_from_epoch_now()).<span class="kw">await</span>;
     <span class="kw">let </span>r = qs_write.reindex().and_then(|<span class="kw">_</span>| qs_write.commit());
 
     <span class="kw">match </span>r {

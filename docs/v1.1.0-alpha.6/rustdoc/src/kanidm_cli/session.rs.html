@@ -789,7 +789,7 @@
 
                 <span class="attribute">#[allow(clippy::expect_used)]
                 </span>mechs
-                    .get(selection <span class="kw">as </span>usize)
+                    .get(selection)
                     .expect(<span class="string">&quot;can not fail - bounds already checked.&quot;</span>)
             }
         };
@@ -830,7 +830,7 @@
 
                     <span class="attribute">#[allow(clippy::expect_used)]
                     </span>allowed
-                        .get(selection <span class="kw">as </span>usize)
+                        .get(selection)
                         .expect(<span class="string">&quot;can not fail - bounds already checked.&quot;</span>)
                 }
             };

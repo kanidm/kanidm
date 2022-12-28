@@ -486,7 +486,7 @@
 }
 
 <span class="kw">fn </span>enforce_unique&lt;STATE&gt;(
-    qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+    qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
     cand: <span class="kw-2">&amp;</span>[Entry&lt;EntryInvalid, STATE&gt;],
     attr: <span class="kw-2">&amp;</span>str,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {

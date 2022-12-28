@@ -906,7 +906,7 @@
 
 <span class="kw">impl </span>ReferentialIntegrity {
     <span class="kw">fn </span>check_uuids_exist(
-        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         inner: Vec&lt;PartialValue&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="kw">if </span>inner.is_empty() {
@@ -1195,7 +1195,7 @@
             preload,
             create,
             <span class="prelude-val">None</span>,
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="kw">let </span>cands = qs
                     .internal_search(<span class="macro">filter!</span>(f_eq(
                         <span class="string">&quot;name&quot;</span>,
@@ -1231,7 +1231,7 @@
             preload,
             create,
             <span class="prelude-val">None</span>,
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="kw">let </span>cands = qs
                     .internal_search(<span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup&quot;</span>))))
                     .expect(<span class="string">&quot;Internal search failure&quot;</span>);

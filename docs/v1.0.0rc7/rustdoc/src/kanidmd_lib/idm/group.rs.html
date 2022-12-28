@@ -227,7 +227,7 @@
 
     <span class="kw">pub fn </span>try_from_account_entry_ro(
         value: <span class="kw-2">&amp;</span>Entry&lt;EntrySealed, EntryCommitted&gt;,
-        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="self">Self</span>&gt;, OperationError&gt; {
         <span class="macro">try_from_account_e!</span>(value, qs)
     }

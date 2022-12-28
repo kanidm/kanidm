@@ -786,7 +786,6 @@
 <span id="786">786</span>
 <span id="787">787</span>
 <span id="788">788</span>
-<span id="789">789</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 <span class="kw">use </span>std::time::Duration;
 
@@ -949,7 +948,7 @@
     <span class="attribute">#[instrument(level = <span class="string">&quot;trace&quot;</span>, skip_all)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_entry_ro(
         value: <span class="kw-2">&amp;</span>Entry&lt;EntrySealed, EntryCommitted&gt;,
-        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="kw">let </span>groups = Group::try_from_account_entry_ro(value, qs)<span class="question-mark">?</span>;
         <span class="macro">try_from_entry!</span>(value, groups)
@@ -1412,7 +1411,7 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; IdmServerProxyReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">pub fn </span>account_list_user_auth_tokens(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         lte: <span class="kw-2">&amp;</span>ListUserAuthTokenEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;UatStatus&gt;, OperationError&gt; {
         <span class="comment">// Make an event from the request
@@ -1469,7 +1468,6 @@
 
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
-    <span class="kw">use </span><span class="kw">crate</span>::event::{CreateEvent, ModifyEvent};
     <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>async_std::task;
     <span class="kw">use </span>kanidm_proto::v1::{AuthType, UiHint};

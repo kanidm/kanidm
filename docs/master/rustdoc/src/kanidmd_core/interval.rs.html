@@ -139,22 +139,15 @@
 <span id="139">139</span>
 <span id="140">140</span>
 <span id="141">141</span>
-<span id="142">142</span>
-<span id="143">143</span>
-<span id="144">144</span>
-<span id="145">145</span>
-<span id="146">146</span>
-<span id="147">147</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This contains scheduled tasks/interval tasks that are run inside of the server on a schedule
 //! as background operations.
 
 </span><span class="kw">use </span>std::fs;
 <span class="kw">use </span>std::path::Path;
+<span class="kw">use </span>std::str::FromStr;
 
 <span class="kw">use </span>chrono::Utc;
-
-<span class="kw">use </span>saffron::parse::{CronExpr, English};
-<span class="kw">use </span>saffron::Cron;
+<span class="kw">use </span>cron::Schedule;
 
 <span class="kw">use </span>tokio::sync::broadcast;
 <span class="kw">use </span>tokio::time::{interval, sleep, Duration};
@@ -208,23 +201,22 @@
         <span class="kw-2">mut </span>rx: broadcast::Receiver&lt;CoreAction&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;tokio::task::JoinHandle&lt;()&gt;, ()&gt; {
         <span class="kw">let </span>outpath = cfg.path.to_owned();
-        <span class="kw">let </span>schedule = cfg.schedule.to_owned();
         <span class="kw">let </span>versions = cfg.versions;
 
         <span class="comment">// Cron expression handling
-        </span><span class="kw">let </span>cron_expr = schedule.as_str().parse::&lt;CronExpr&gt;().map_err(|e| {
+        </span><span class="kw">let </span>cron_expr = Schedule::from_str(cfg.schedule.as_str()).map_err(|e| {
             <span class="macro">error!</span>(<span class="string">&quot;Online backup schedule parse error: {}&quot;</span>, e);
+            <span class="macro">error!</span>(<span class="string">&quot;valid formats are:&quot;</span>);
+            <span class="macro">error!</span>(<span class="string">&quot;sec  min   hour   day of month   month   day of week   year&quot;</span>);
+            <span class="macro">error!</span>(<span class="string">&quot;@hourly | @daily | @weekly&quot;</span>);
         })<span class="question-mark">?</span>;
 
-        <span class="macro">info!</span>(
-            <span class="string">&quot;Online backup schedule parsed as: {}&quot;</span>,
-            cron_expr.describe(English::default())
-        );
+        <span class="macro">info!</span>(<span class="string">&quot;Online backup schedule parsed as: {}&quot;</span>, cron_expr);
 
-        <span class="kw">if </span>!Cron::new(cron_expr.clone()).any() {
+        <span class="kw">if </span>cron_expr.upcoming(Utc).next().is_none() {
             <span class="macro">error!</span>(
                 <span class="string">&quot;Online backup schedule error: &#39;{}&#39; will not match any date.&quot;</span>,
-                schedule
+                cron_expr
             );
             <span class="kw">return </span><span class="prelude-val">Err</span>(());
         }
@@ -253,11 +245,7 @@
         }
 
         <span class="kw">let </span>handle = tokio::spawn(<span class="kw">async move </span>{
-            <span class="kw">let </span>ct = Utc::now();
-            <span class="kw">let </span>cron = Cron::new(cron_expr.clone());
-
-            <span class="kw">let </span>cron_iter = cron.clone().iter_after(ct);
-            <span class="kw">for </span>next_time <span class="kw">in </span>cron_iter {
+            <span class="kw">for </span>next_time <span class="kw">in </span>cron_expr.upcoming(Utc) {
                 <span class="comment">// We add 1 second to the `wait_time` in order to get &quot;even&quot; timestampes
                 // for example: 1 + 17:05:59Z --&gt; 17:06:00Z
                 </span><span class="kw">let </span>wait_seconds = <span class="number">1 </span>+ (next_time - Utc::now()).num_seconds() <span class="kw">as </span>u64;

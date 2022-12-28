@@ -1428,6 +1428,11 @@
 <span id="1428">1428</span>
 <span id="1429">1429</span>
 <span id="1430">1430</span>
+<span id="1431">1431</span>
+<span id="1432">1432</span>
+<span id="1433">1433</span>
+<span id="1434">1434</span>
+<span id="1435">1435</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::TryFrom;
 <span class="kw">use </span>std::fs;
 <span class="kw">use </span>std::path::{Path, PathBuf};
@@ -1455,6 +1460,7 @@
         AuthEvent, AuthResult, CredentialStatusEvent, RadiusAuthTokenEvent, ReadBackupCodeEvent,
         UnixGroupTokenEvent, UnixUserAuthEvent, UnixUserTokenEvent,
     },
+    idm::ldap::{LdapBoundToken, LdapResponseState, LdapServer},
     idm::oauth2::{
         AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
         AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse,
@@ -1462,7 +1468,6 @@
     },
     idm::server::{IdmServer, IdmServerTransaction},
     idm::serviceaccount::ListApiTokenEvent,
-    ldap::{LdapBoundToken, LdapResponseState, LdapServer},
 };
 
 <span class="comment">// ===========================================================
@@ -1508,7 +1513,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;SearchResponse, OperationError&gt; {
         <span class="comment">// Begin a read
         </span><span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         <span class="kw">let </span>ident = idms_prox_read
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -1518,7 +1523,7 @@
 
         <span class="comment">// Make an event from the request
         </span><span class="kw">let </span>search =
-            SearchEvent::from_message(ident, <span class="kw-2">&amp;</span>req, <span class="kw-2">&amp;</span>idms_prox_read.qs_read).map_err(|e| {
+            SearchEvent::from_message(ident, <span class="kw-2">&amp;</span>req, <span class="kw-2">&amp;mut </span>idms_prox_read.qs_read).map_err(|e| {
                 <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Failed to begin search&quot;</span>);
                 e
             })<span class="question-mark">?</span>;
@@ -1527,7 +1532,7 @@
 
         <span class="kw">let </span>entries = idms_prox_read.qs_read.search_ext(<span class="kw-2">&amp;</span>search)<span class="question-mark">?</span>;
 
-        SearchResult::new(<span class="kw-2">&amp;</span>idms_prox_read.qs_read, <span class="kw-2">&amp;</span>entries).map(SearchResult::response)
+        SearchResult::new(<span class="kw-2">&amp;mut </span>idms_prox_read.qs_read, <span class="kw-2">&amp;</span>entries).map(SearchResult::response)
     }
 
     <span class="attribute">#[instrument(
@@ -1604,7 +1609,7 @@
 
         <span class="comment">// Scope to limit the read txn.
         </span>{
-            <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
             idms_prox_read
                 .qs_read
                 .get_be_txn()
@@ -1717,7 +1722,7 @@
         <span class="comment">// TODO #62: Move this to IdmServer!!!
         // Begin a read
         </span><span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         <span class="comment">// Make an event from the whoami request. This will process the event and
         // generate a selfuuid search.
         //
@@ -1744,7 +1749,7 @@
 
         <span class="kw">match </span>entries.pop() {
             <span class="prelude-val">Some</span>(e) <span class="kw">if </span>entries.is_empty() =&gt; {
-                WhoamiResult::new(<span class="kw-2">&amp;</span>idms_prox_read.qs_read, <span class="kw-2">&amp;</span>e).map(WhoamiResult::response)
+                WhoamiResult::new(<span class="kw-2">&amp;mut </span>idms_prox_read.qs_read, <span class="kw-2">&amp;</span>e).map(WhoamiResult::response)
             }
             <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(OperationError::InvalidState), <span class="comment">/* Somehow matched multiple entries... */
             </span><span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(OperationError::NoMatchingEntries),
@@ -1763,7 +1768,7 @@
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;UserAuthToken, OperationError&gt; {
         <span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         <span class="comment">// Make an event from the whoami request. This will process the event and
         // generate a selfuuid search.
         //
@@ -1792,7 +1797,7 @@
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;ProtoEntry&gt;, OperationError&gt; {
         <span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         <span class="kw">let </span>ident = idms_prox_read
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -1804,7 +1809,7 @@
             ident,
             <span class="kw-2">&amp;</span>filter,
             attrs.as_deref(),
-            <span class="kw-2">&amp;</span>idms_prox_read.qs_read,
+            <span class="kw-2">&amp;mut </span>idms_prox_read.qs_read,
         ) {
             <span class="prelude-val">Ok</span>(s) =&gt; s,
             <span class="prelude-val">Err</span>(e) =&gt; {
@@ -1816,7 +1821,7 @@
         <span class="macro">trace!</span>(<span class="question-mark">?</span>srch, <span class="string">&quot;Begin event&quot;</span>);
 
         <span class="kw">match </span>idms_prox_read.qs_read.search_ext(<span class="kw-2">&amp;</span>srch) {
-            <span class="prelude-val">Ok</span>(entries) =&gt; SearchResult::new(<span class="kw-2">&amp;</span>idms_prox_read.qs_read, <span class="kw-2">&amp;</span>entries)
+            <span class="prelude-val">Ok</span>(entries) =&gt; SearchResult::new(<span class="kw-2">&amp;mut </span>idms_prox_read.qs_read, <span class="kw-2">&amp;</span>entries)
                 .map(|ok_sr| ok_sr.into_proto_array()),
             <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
         }
@@ -1835,7 +1840,7 @@
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;ProtoEntry&gt;, OperationError&gt; {
         <span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
 
         <span class="kw">let </span>ident = idms_prox_read
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
@@ -1860,7 +1865,7 @@
         <span class="macro">trace!</span>(<span class="question-mark">?</span>srch, <span class="string">&quot;Begin event&quot;</span>);
 
         <span class="kw">match </span>idms_prox_read.qs_read.search_ext(<span class="kw-2">&amp;</span>srch) {
-            <span class="prelude-val">Ok</span>(entries) =&gt; SearchResult::new(<span class="kw-2">&amp;</span>idms_prox_read.qs_read, <span class="kw-2">&amp;</span>entries)
+            <span class="prelude-val">Ok</span>(entries) =&gt; SearchResult::new(<span class="kw-2">&amp;mut </span>idms_prox_read.qs_read, <span class="kw-2">&amp;</span>entries)
                 .map(|ok_sr| ok_sr.into_proto_array()),
             <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
         }
@@ -1878,7 +1883,7 @@
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;String&gt;, OperationError&gt; {
         <span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         <span class="kw">let </span>ident = idms_prox_read
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -2078,7 +2083,7 @@
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;String&gt;, OperationError&gt; {
         <span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         <span class="kw">let </span>ident = idms_prox_read
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -2141,7 +2146,7 @@
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;String&gt;, OperationError&gt; {
         <span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         <span class="kw">let </span>ident = idms_prox_read
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -2205,7 +2210,7 @@
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;ApiToken&gt;, OperationError&gt; {
         <span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         <span class="kw">let </span>ident = idms_prox_read
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -2237,7 +2242,7 @@
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;UatStatus&gt;, OperationError&gt; {
         <span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         <span class="kw">let </span>ident = idms_prox_read
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -2571,7 +2576,7 @@
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;String&gt;, OperationError&gt; {
         <span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         <span class="kw">let </span>ident = idms_prox_read
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -2580,15 +2585,18 @@
             })<span class="question-mark">?</span>;
 
         <span class="comment">// Make an event from the request
-        </span><span class="kw">let </span>srch =
-            <span class="kw">match </span>SearchEvent::from_internal_message(ident, <span class="kw-2">&amp;</span>filter, <span class="prelude-val">None</span>, <span class="kw-2">&amp;</span>idms_prox_read.qs_read)
-            {
-                <span class="prelude-val">Ok</span>(s) =&gt; s,
-                <span class="prelude-val">Err</span>(e) =&gt; {
-                    <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to begin oauth2 basic secret read: {:?}&quot;</span>, e);
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(e);
-                }
-            };
+        </span><span class="kw">let </span>srch = <span class="kw">match </span>SearchEvent::from_internal_message(
+            ident,
+            <span class="kw-2">&amp;</span>filter,
+            <span class="prelude-val">None</span>,
+            <span class="kw-2">&amp;mut </span>idms_prox_read.qs_read,
+        ) {
+            <span class="prelude-val">Ok</span>(s) =&gt; s,
+            <span class="prelude-val">Err</span>(e) =&gt; {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to begin oauth2 basic secret read: {:?}&quot;</span>, e);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(e);
+            }
+        };
 
         <span class="macro">trace!</span>(<span class="question-mark">?</span>srch, <span class="string">&quot;Begin event&quot;</span>);
 
@@ -2621,7 +2629,7 @@
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthoriseResponse, Oauth2Error&gt; {
         <span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         <span class="kw">let </span>(ident, uat) = idms_prox_read
             .validate_and_parse_uat(uat.as_deref(), ct)
             .and_then(|uat| {
@@ -2650,7 +2658,7 @@
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthorisePermitSuccess, OperationError&gt; {
         <span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         <span class="kw">let </span>(ident, uat) = idms_prox_read
             .validate_and_parse_uat(uat.as_deref(), ct)
             .and_then(|uat| {
@@ -2678,7 +2686,7 @@
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Url, OperationError&gt; {
         <span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         <span class="kw">let </span>(ident, uat) = idms_prox_read
             .validate_and_parse_uat(uat.as_deref(), ct)
             .and_then(|uat| {
@@ -2706,7 +2714,7 @@
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AccessTokenResponse, Oauth2Error&gt; {
         <span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         <span class="comment">// Now we can send to the idm server for authorisation checking.
         </span>idms_prox_read.check_oauth2_token_exchange(client_authz.as_deref(), <span class="kw-2">&amp;</span>token_req, ct)
     }
@@ -2723,7 +2731,7 @@
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AccessTokenIntrospectResponse, Oauth2Error&gt; {
         <span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         <span class="comment">// Now we can send to the idm server for introspection checking.
         </span>idms_prox_read.check_oauth2_token_introspect(<span class="kw-2">&amp;</span>client_authz, <span class="kw-2">&amp;</span>intr_req, ct)
     }
@@ -2740,7 +2748,7 @@
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;OidcToken, Oauth2Error&gt; {
         <span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         idms_prox_read.oauth2_openid_userinfo(<span class="kw-2">&amp;</span>client_id, <span class="kw-2">&amp;</span>client_authz, ct)
     }
 
@@ -2783,7 +2791,7 @@
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;AppLink&gt;, OperationError&gt; {
         <span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         <span class="kw">let </span>ident = idms_prox_read
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
             .map_err(|e| {
@@ -2816,10 +2824,12 @@
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="kw">let </span>ct = duration_from_epoch_now();
-        <span class="kw">let </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
 
-        idms_prox_read
+        <span class="comment">// parse_token_to_ident
+        </span>idms_prox_read
             .validate_and_parse_uat(uat.as_deref(), ct)
+            .and_then(|uat| idms_prox_read.process_uat_to_identity(<span class="kw-2">&amp;</span>uat, ct))
             .map(|<span class="kw">_</span>| ())
             .map_err(|e| {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid token: {:?}&quot;</span>, e);

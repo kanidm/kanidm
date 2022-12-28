@@ -1964,12 +1964,6 @@
 <span id="1964">1964</span>
 <span id="1965">1965</span>
 <span id="1966">1966</span>
-<span id="1967">1967</span>
-<span id="1968">1968</span>
-<span id="1969">1969</span>
-<span id="1970">1970</span>
-<span id="1971">1971</span>
-<span id="1972">1972</span>
 </pre><pre class="rust"><code><span class="doccomment">//! [`Filter`]s are one of the three foundational concepts of the design in kanidm.
 //! They are used in nearly every aspect of the server to provide searching of
 //! datasets and assertion of entry properties.
@@ -1997,8 +1991,7 @@
 <span class="kw">use </span>uuid::Uuid;
 
 <span class="kw">use </span><span class="kw">crate</span>::be::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxMeta, IdxSlope};
-<span class="kw">use </span><span class="kw">crate</span>::identity::IdentityId;
-<span class="kw">use </span><span class="kw">crate</span>::ldap::ldap_attr_filter_map;
+<span class="kw">use </span><span class="kw">crate</span>::idm::ldap::ldap_attr_filter_map;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::schema::SchemaTransaction;
 <span class="kw">use </span><span class="kw">crate</span>::value::{IndexType, PartialValue};
@@ -2467,7 +2460,7 @@
     </span><span class="kw">pub fn </span>from_ro(
         ev: <span class="kw-2">&amp;</span>Identity,
         f: <span class="kw-2">&amp;</span>ProtoFilter,
-        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="kw">let </span>depth = FILTER_DEPTH_MAX;
         <span class="kw">let </span><span class="kw-2">mut </span>elems = ev.limits.filter_max_elements;
@@ -2482,7 +2475,7 @@
     </span><span class="kw">pub fn </span>from_rw(
         ev: <span class="kw-2">&amp;</span>Identity,
         f: <span class="kw-2">&amp;</span>ProtoFilter,
-        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="kw">let </span>depth = FILTER_DEPTH_MAX;
         <span class="kw">let </span><span class="kw-2">mut </span>elems = ev.limits.filter_max_elements;
@@ -2497,7 +2490,7 @@
     </span><span class="kw">pub fn </span>from_ldap_ro(
         ev: <span class="kw-2">&amp;</span>Identity,
         f: <span class="kw-2">&amp;</span>LdapFilter,
-        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="kw">let </span>depth = FILTER_DEPTH_MAX;
         <span class="kw">let </span><span class="kw-2">mut </span>elems = ev.limits.filter_max_elements;
@@ -2697,7 +2690,7 @@
 
     <span class="kw">fn </span>from_ro(
         f: <span class="kw-2">&amp;</span>ProtoFilter,
-        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
         depth: usize,
         elems: <span class="kw-2">&amp;mut </span>usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
@@ -2749,7 +2742,7 @@
 
     <span class="kw">fn </span>from_rw(
         f: <span class="kw-2">&amp;</span>ProtoFilter,
-        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         depth: usize,
         elems: <span class="kw-2">&amp;mut </span>usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
@@ -2802,7 +2795,7 @@
 
     <span class="kw">fn </span>from_ldap_ro(
         f: <span class="kw-2">&amp;</span>LdapFilter,
-        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
         depth: usize,
         elems: <span class="kw-2">&amp;mut </span>usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
@@ -3533,15 +3526,14 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_lessthan_entry_filter() {
-        <span class="kw">let </span>e: Entry&lt;EntrySealed, EntryNew&gt; = <span class="kw">unsafe </span>{
-            Entry::unsafe_from_entry_str(
-                <span class="string">r#&quot;{
-            &quot;attrs&quot;: {
-                &quot;userid&quot;: [&quot;william&quot;],
-                &quot;uuid&quot;: [&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;],
-                &quot;gidnumber&quot;: [&quot;1000&quot;]
-            }
-        }&quot;#</span>,
+        <span class="kw">let </span>e = <span class="kw">unsafe </span>{
+            <span class="macro">entry_init!</span>(
+                (<span class="string">&quot;userid&quot;</span>, Value::new_iutf8(<span class="string">&quot;william&quot;</span>)),
+                (
+                    <span class="string">&quot;uuid&quot;</span>,
+                    Value::Uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>))
+                ),
+                (<span class="string">&quot;gidnumber&quot;</span>, Value::Uint32(<span class="number">1000</span>))
             )
             .into_sealed_new()
         };
@@ -3558,15 +3550,14 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_or_entry_filter() {
-        <span class="kw">let </span>e: Entry&lt;EntrySealed, EntryNew&gt; = <span class="kw">unsafe </span>{
-            Entry::unsafe_from_entry_str(
-                <span class="string">r#&quot;{
-            &quot;attrs&quot;: {
-                &quot;userid&quot;: [&quot;william&quot;],
-                &quot;uuid&quot;: [&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;],
-                &quot;uidnumber&quot;: [&quot;1000&quot;]
-            }
-        }&quot;#</span>,
+        <span class="kw">let </span>e = <span class="kw">unsafe </span>{
+            <span class="macro">entry_init!</span>(
+                (<span class="string">&quot;userid&quot;</span>, Value::new_iutf8(<span class="string">&quot;william&quot;</span>)),
+                (
+                    <span class="string">&quot;uuid&quot;</span>,
+                    Value::Uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>))
+                ),
+                (<span class="string">&quot;gidnumber&quot;</span>, Value::Uint32(<span class="number">1000</span>))
             )
             .into_sealed_new()
         };
@@ -3574,7 +3565,7 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
         <span class="kw">let </span>f_t1a = <span class="kw">unsafe </span>{
             <span class="macro">filter_resolved!</span>(<span class="macro">f_or!</span>([
                 f_eq(<span class="string">&quot;userid&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;william&quot;</span>)),
-                f_eq(<span class="string">&quot;uidnumber&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;1000&quot;</span>)),
+                f_eq(<span class="string">&quot;gidnumber&quot;</span>, PartialValue::Uint32(<span class="number">1000</span>)),
             ]))
         };
         <span class="macro">assert!</span>(e.entry_match_no_index(<span class="kw-2">&amp;</span>f_t1a));
@@ -3582,7 +3573,7 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
         <span class="kw">let </span>f_t2a = <span class="kw">unsafe </span>{
             <span class="macro">filter_resolved!</span>(<span class="macro">f_or!</span>([
                 f_eq(<span class="string">&quot;userid&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;william&quot;</span>)),
-                f_eq(<span class="string">&quot;uidnumber&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;1001&quot;</span>)),
+                f_eq(<span class="string">&quot;gidnumber&quot;</span>, PartialValue::Uint32(<span class="number">1000</span>)),
             ]))
         };
         <span class="macro">assert!</span>(e.entry_match_no_index(<span class="kw-2">&amp;</span>f_t2a));
@@ -3590,7 +3581,7 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
         <span class="kw">let </span>f_t3a = <span class="kw">unsafe </span>{
             <span class="macro">filter_resolved!</span>(<span class="macro">f_or!</span>([
                 f_eq(<span class="string">&quot;userid&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;alice&quot;</span>)),
-                f_eq(<span class="string">&quot;uidnumber&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;1000&quot;</span>)),
+                f_eq(<span class="string">&quot;gidnumber&quot;</span>, PartialValue::Uint32(<span class="number">1000</span>)),
             ]))
         };
         <span class="macro">assert!</span>(e.entry_match_no_index(<span class="kw-2">&amp;</span>f_t3a));
@@ -3598,7 +3589,7 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
         <span class="kw">let </span>f_t4a = <span class="kw">unsafe </span>{
             <span class="macro">filter_resolved!</span>(<span class="macro">f_or!</span>([
                 f_eq(<span class="string">&quot;userid&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;alice&quot;</span>)),
-                f_eq(<span class="string">&quot;uidnumber&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;1001&quot;</span>)),
+                f_eq(<span class="string">&quot;gidnumber&quot;</span>, PartialValue::Uint32(<span class="number">1001</span>)),
             ]))
         };
         <span class="macro">assert!</span>(!e.entry_match_no_index(<span class="kw-2">&amp;</span>f_t4a));
@@ -3606,15 +3597,14 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_and_entry_filter() {
-        <span class="kw">let </span>e: Entry&lt;EntrySealed, EntryNew&gt; = <span class="kw">unsafe </span>{
-            Entry::unsafe_from_entry_str(
-                <span class="string">r#&quot;{
-            &quot;attrs&quot;: {
-                &quot;userid&quot;: [&quot;william&quot;],
-                &quot;uuid&quot;: [&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;],
-                &quot;uidnumber&quot;: [&quot;1000&quot;]
-            }
-        }&quot;#</span>,
+        <span class="kw">let </span>e = <span class="kw">unsafe </span>{
+            <span class="macro">entry_init!</span>(
+                (<span class="string">&quot;userid&quot;</span>, Value::new_iutf8(<span class="string">&quot;william&quot;</span>)),
+                (
+                    <span class="string">&quot;uuid&quot;</span>,
+                    Value::Uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>))
+                ),
+                (<span class="string">&quot;gidnumber&quot;</span>, Value::Uint32(<span class="number">1000</span>))
             )
             .into_sealed_new()
         };
@@ -3622,7 +3612,7 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
         <span class="kw">let </span>f_t1a = <span class="kw">unsafe </span>{
             <span class="macro">filter_resolved!</span>(<span class="macro">f_and!</span>([
                 f_eq(<span class="string">&quot;userid&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;william&quot;</span>)),
-                f_eq(<span class="string">&quot;uidnumber&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;1000&quot;</span>)),
+                f_eq(<span class="string">&quot;gidnumber&quot;</span>, PartialValue::Uint32(<span class="number">1000</span>)),
             ]))
         };
         <span class="macro">assert!</span>(e.entry_match_no_index(<span class="kw-2">&amp;</span>f_t1a));
@@ -3630,7 +3620,7 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
         <span class="kw">let </span>f_t2a = <span class="kw">unsafe </span>{
             <span class="macro">filter_resolved!</span>(<span class="macro">f_and!</span>([
                 f_eq(<span class="string">&quot;userid&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;william&quot;</span>)),
-                f_eq(<span class="string">&quot;uidnumber&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;1001&quot;</span>)),
+                f_eq(<span class="string">&quot;gidnumber&quot;</span>, PartialValue::Uint32(<span class="number">1001</span>)),
             ]))
         };
         <span class="macro">assert!</span>(!e.entry_match_no_index(<span class="kw-2">&amp;</span>f_t2a));
@@ -3638,7 +3628,7 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
         <span class="kw">let </span>f_t3a = <span class="kw">unsafe </span>{
             <span class="macro">filter_resolved!</span>(<span class="macro">f_and!</span>([
                 f_eq(<span class="string">&quot;userid&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;alice&quot;</span>)),
-                f_eq(<span class="string">&quot;uidnumber&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;1000&quot;</span>)),
+                f_eq(<span class="string">&quot;gidnumber&quot;</span>, PartialValue::Uint32(<span class="number">1000</span>)),
             ]))
         };
         <span class="macro">assert!</span>(!e.entry_match_no_index(<span class="kw-2">&amp;</span>f_t3a));
@@ -3646,7 +3636,7 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
         <span class="kw">let </span>f_t4a = <span class="kw">unsafe </span>{
             <span class="macro">filter_resolved!</span>(<span class="macro">f_and!</span>([
                 f_eq(<span class="string">&quot;userid&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;alice&quot;</span>)),
-                f_eq(<span class="string">&quot;uidnumber&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;1001&quot;</span>)),
+                f_eq(<span class="string">&quot;gidnumber&quot;</span>, PartialValue::Uint32(<span class="number">1001</span>)),
             ]))
         };
         <span class="macro">assert!</span>(!e.entry_match_no_index(<span class="kw-2">&amp;</span>f_t4a));
@@ -3654,15 +3644,14 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_not_entry_filter() {
-        <span class="kw">let </span>e1: Entry&lt;EntrySealed, EntryNew&gt; = <span class="kw">unsafe </span>{
-            Entry::unsafe_from_entry_str(
-                <span class="string">r#&quot;{
-            &quot;attrs&quot;: {
-                &quot;userid&quot;: [&quot;william&quot;],
-                &quot;uuid&quot;: [&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;],
-                &quot;uidnumber&quot;: [&quot;1000&quot;]
-            }
-        }&quot;#</span>,
+        <span class="kw">let </span>e1 = <span class="kw">unsafe </span>{
+            <span class="macro">entry_init!</span>(
+                (<span class="string">&quot;userid&quot;</span>, Value::new_iutf8(<span class="string">&quot;william&quot;</span>)),
+                (
+                    <span class="string">&quot;uuid&quot;</span>,
+                    Value::Uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>))
+                ),
+                (<span class="string">&quot;gidnumber&quot;</span>, Value::Uint32(<span class="number">1000</span>))
             )
             .into_sealed_new()
         };
@@ -3679,64 +3668,60 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
 
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_nested_entry_filter() {
-        <span class="kw">let </span>e1: Entry&lt;EntrySealed, EntryNew&gt; = <span class="kw">unsafe </span>{
-            Entry::unsafe_from_entry_str(
-                <span class="string">r#&quot;{
-            &quot;attrs&quot;: {
-                &quot;class&quot;: [&quot;person&quot;],
-                &quot;uuid&quot;: [&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;],
-                &quot;uidnumber&quot;: [&quot;1000&quot;]
-            }
-        }&quot;#</span>,
+        <span class="kw">let </span>e1 = <span class="kw">unsafe </span>{
+            <span class="macro">entry_init!</span>(
+                (<span class="string">&quot;class&quot;</span>, CLASS_PERSON.clone()),
+                (
+                    <span class="string">&quot;uuid&quot;</span>,
+                    Value::Uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>))
+                ),
+                (<span class="string">&quot;gidnumber&quot;</span>, Value::Uint32(<span class="number">1000</span>))
             )
             .into_sealed_new()
         };
 
-        <span class="kw">let </span>e2: Entry&lt;EntrySealed, EntryNew&gt; = <span class="kw">unsafe </span>{
-            Entry::unsafe_from_entry_str(
-                <span class="string">r#&quot;{
-            &quot;attrs&quot;: {
-                &quot;class&quot;: [&quot;person&quot;],
-                &quot;uuid&quot;: [&quot;4b6228ab-1dbe-42a4-a9f5-f6368222438e&quot;],
-                &quot;uidnumber&quot;: [&quot;1001&quot;]
-            }
-        }&quot;#</span>,
+        <span class="kw">let </span>e2 = <span class="kw">unsafe </span>{
+            <span class="macro">entry_init!</span>(
+                (<span class="string">&quot;class&quot;</span>, CLASS_PERSON.clone()),
+                (
+                    <span class="string">&quot;uuid&quot;</span>,
+                    Value::Uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;4b6228ab-1dbe-42a4-a9f5-f6368222438e&quot;</span>))
+                ),
+                (<span class="string">&quot;gidnumber&quot;</span>, Value::Uint32(<span class="number">1001</span>))
             )
             .into_sealed_new()
         };
 
-        <span class="kw">let </span>e3: Entry&lt;EntrySealed, EntryNew&gt; = <span class="kw">unsafe </span>{
-            Entry::unsafe_from_entry_str(
-                <span class="string">r#&quot;{
-            &quot;attrs&quot;: {
-                &quot;class&quot;: [&quot;person&quot;],
-                &quot;uuid&quot;: [&quot;7b23c99d-c06b-4a9a-a958-3afa56383e1d&quot;],
-                &quot;uidnumber&quot;: [&quot;1002&quot;]
-            }
-        }&quot;#</span>,
+        <span class="kw">let </span>e3 = <span class="kw">unsafe </span>{
+            <span class="macro">entry_init!</span>(
+                (<span class="string">&quot;class&quot;</span>, CLASS_PERSON.clone()),
+                (
+                    <span class="string">&quot;uuid&quot;</span>,
+                    Value::Uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;7b23c99d-c06b-4a9a-a958-3afa56383e1d&quot;</span>))
+                ),
+                (<span class="string">&quot;gidnumber&quot;</span>, Value::Uint32(<span class="number">1002</span>))
             )
             .into_sealed_new()
         };
 
-        <span class="kw">let </span>e4: Entry&lt;EntrySealed, EntryNew&gt; = <span class="kw">unsafe </span>{
-            Entry::unsafe_from_entry_str(
-                <span class="string">r#&quot;{
-            &quot;attrs&quot;: {
-                &quot;class&quot;: [&quot;group&quot;],
-                &quot;uuid&quot;: [&quot;21d816b5-1f6a-4696-b7c1-6ed06d22ed81&quot;],
-                &quot;uidnumber&quot;: [&quot;1000&quot;]
-            }
-        }&quot;#</span>,
+        <span class="kw">let </span>e4 = <span class="kw">unsafe </span>{
+            <span class="macro">entry_init!</span>(
+                (<span class="string">&quot;class&quot;</span>, CLASS_GROUP.clone()),
+                (
+                    <span class="string">&quot;uuid&quot;</span>,
+                    Value::Uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;21d816b5-1f6a-4696-b7c1-6ed06d22ed81&quot;</span>))
+                ),
+                (<span class="string">&quot;gidnumber&quot;</span>, Value::Uint32(<span class="number">1000</span>))
             )
             .into_sealed_new()
         };
 
         <span class="kw">let </span>f_t1a = <span class="kw">unsafe </span>{
             <span class="macro">filter_resolved!</span>(<span class="macro">f_and!</span>([
-                f_eq(<span class="string">&quot;class&quot;</span>, PartialValue::new_class(<span class="string">&quot;person&quot;</span>)),
+                f_eq(<span class="string">&quot;class&quot;</span>, PVCLASS_PERSON.clone()),
                 <span class="macro">f_or!</span>([
-                    f_eq(<span class="string">&quot;uidnumber&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;1001&quot;</span>)),
-                    f_eq(<span class="string">&quot;uidnumber&quot;</span>, PartialValue::new_iutf8(<span class="string">&quot;1000&quot;</span>))
+                    f_eq(<span class="string">&quot;gidnumber&quot;</span>, PartialValue::Uint32(<span class="number">1001</span>)),
+                    f_eq(<span class="string">&quot;gidnumber&quot;</span>, PartialValue::Uint32(<span class="number">1000</span>))
                 ])
             ]))
         };
@@ -3781,33 +3766,36 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
         <span class="kw">let </span>time_p3 = time_p2 + Duration::from_secs(CHANGELOG_MAX_AGE * <span class="number">2</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>server_txn = server.write(time_p1).<span class="kw">await</span>;
-        <span class="kw">let </span>e1: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
-            <span class="string">r#&quot;{
-                &quot;attrs&quot;: {
-                    &quot;class&quot;: [&quot;object&quot;, &quot;person&quot;, &quot;account&quot;],
-                    &quot;name&quot;: [&quot;testperson1&quot;],
-                    &quot;uuid&quot;: [&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;],
-                    &quot;description&quot;: [&quot;testperson&quot;],
-                    &quot;displayname&quot;: [&quot;testperson1&quot;]
-                }
-            }&quot;#</span>,
+
+        <span class="kw">let </span>e1 = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
+            (<span class="string">&quot;class&quot;</span>, CLASS_PERSON.clone()),
+            (<span class="string">&quot;class&quot;</span>, CLASS_ACCOUNT.clone()),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
+            (
+                <span class="string">&quot;uuid&quot;</span>,
+                Value::Uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))
+            ),
+            (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
         );
-        <span class="kw">let </span>e2: Entry&lt;EntryInit, EntryNew&gt; = Entry::unsafe_from_entry_str(
-            <span class="string">r#&quot;{
-                &quot;attrs&quot;: {
-                    &quot;class&quot;: [&quot;object&quot;, &quot;person&quot;],
-                    &quot;name&quot;: [&quot;testperson2&quot;],
-                    &quot;uuid&quot;: [&quot;a67c0c71-0b35-4218-a6b0-22d23d131d27&quot;],
-                    &quot;description&quot;: [&quot;testperson&quot;],
-                    &quot;displayname&quot;: [&quot;testperson2&quot;]
-                }
-            }&quot;#</span>,
+
+        <span class="kw">let </span>e2 = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
+            (<span class="string">&quot;class&quot;</span>, CLASS_PERSON.clone()),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson2&quot;</span>)),
+            (
+                <span class="string">&quot;uuid&quot;</span>,
+                Value::Uuid(<span class="macro">uuid::uuid!</span>(<span class="string">&quot;a67c0c71-0b35-4218-a6b0-22d23d131d27&quot;</span>))
+            ),
+            (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson2&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson2&quot;</span>))
         );
 
         <span class="comment">// We need to add these and then push through the state machine.
         </span><span class="kw">let </span>e_ts = <span class="macro">entry_init!</span>(
-            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
-            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
+            (<span class="string">&quot;class&quot;</span>, CLASS_PERSON.clone()),
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson3&quot;</span>)),
             (
                 <span class="string">&quot;uuid&quot;</span>,
@@ -3833,11 +3821,11 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
         </span><span class="macro">assert!</span>(server_txn.commit().is_ok());
 
         <span class="comment">// Now, establish enough time for the recycled items to be purged.
-        </span><span class="kw">let </span>server_txn = server.write(time_p2).<span class="kw">await</span>;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>server_txn = server.write(time_p2).<span class="kw">await</span>;
         <span class="macro">assert!</span>(server_txn.purge_recycled().is_ok());
         <span class="macro">assert!</span>(server_txn.commit().is_ok());
 
-        <span class="kw">let </span>server_txn = server.write(time_p3).<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>server_txn = server.write(time_p3).<span class="kw">await</span>;
         <span class="macro">assert!</span>(server_txn.purge_tombstones().is_ok());
 
         <span class="comment">// ===== ✅ now ready to test!
@@ -3874,7 +3862,7 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
 
     <span class="attribute">#[qs_test]
     </span><span class="kw">async fn </span>test_filter_depth_limits(server: <span class="kw-2">&amp;</span>QueryServer) {
-        <span class="kw">let </span>r_txn = server.read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>r_txn = server.read().<span class="kw">await</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>inv_proto = ProtoFilter::Pres(<span class="string">&quot;class&quot;</span>.to_string());
         <span class="kw">for </span>_i <span class="kw">in </span><span class="number">0</span>..(FILTER_DEPTH_MAX + <span class="number">1</span>) {
@@ -3889,26 +3877,26 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
         <span class="kw">let </span>ev = Identity::from_internal();
 
         <span class="comment">// Test proto + read
-        </span><span class="kw">let </span>res = Filter::from_ro(<span class="kw-2">&amp;</span>ev, <span class="kw-2">&amp;</span>inv_proto, <span class="kw-2">&amp;</span>r_txn);
+        </span><span class="kw">let </span>res = Filter::from_ro(<span class="kw-2">&amp;</span>ev, <span class="kw-2">&amp;</span>inv_proto, <span class="kw-2">&amp;mut </span>r_txn);
         <span class="macro">assert!</span>(res == <span class="prelude-val">Err</span>(OperationError::ResourceLimit));
 
         <span class="comment">// ldap
-        </span><span class="kw">let </span>res = Filter::from_ldap_ro(<span class="kw-2">&amp;</span>ev, <span class="kw-2">&amp;</span>inv_ldap, <span class="kw-2">&amp;</span>r_txn);
+        </span><span class="kw">let </span>res = Filter::from_ldap_ro(<span class="kw-2">&amp;</span>ev, <span class="kw-2">&amp;</span>inv_ldap, <span class="kw-2">&amp;mut </span>r_txn);
         <span class="macro">assert!</span>(res == <span class="prelude-val">Err</span>(OperationError::ResourceLimit));
 
         <span class="comment">// Can only have one db conn at a time.
         </span>std::mem::drop(r_txn);
 
         <span class="comment">// proto + write
-        </span><span class="kw">let </span>wr_txn = server.write(duration_from_epoch_now()).<span class="kw">await</span>;
-        <span class="kw">let </span>res = Filter::from_rw(<span class="kw-2">&amp;</span>ev, <span class="kw-2">&amp;</span>inv_proto, <span class="kw-2">&amp;</span>wr_txn);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>wr_txn = server.write(duration_from_epoch_now()).<span class="kw">await</span>;
+        <span class="kw">let </span>res = Filter::from_rw(<span class="kw-2">&amp;</span>ev, <span class="kw-2">&amp;</span>inv_proto, <span class="kw-2">&amp;mut </span>wr_txn);
         <span class="macro">assert!</span>(res == <span class="prelude-val">Err</span>(OperationError::ResourceLimit));
     }
 
     <span class="attribute">#[qs_test]
     </span><span class="kw">async fn </span>test_filter_max_element_limits(server: <span class="kw-2">&amp;</span>QueryServer) {
         <span class="kw">const </span>LIMIT: usize = <span class="number">4</span>;
-        <span class="kw">let </span>r_txn = server.read().<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>r_txn = server.read().<span class="kw">await</span>;
 
         <span class="kw">let </span>inv_proto = ProtoFilter::And(
             (<span class="number">0</span>..(LIMIT * <span class="number">2</span>))
@@ -3926,19 +3914,19 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
         ev.limits.filter_max_elements = LIMIT;
 
         <span class="comment">// Test proto + read
-        </span><span class="kw">let </span>res = Filter::from_ro(<span class="kw-2">&amp;</span>ev, <span class="kw-2">&amp;</span>inv_proto, <span class="kw-2">&amp;</span>r_txn);
+        </span><span class="kw">let </span>res = Filter::from_ro(<span class="kw-2">&amp;</span>ev, <span class="kw-2">&amp;</span>inv_proto, <span class="kw-2">&amp;mut </span>r_txn);
         <span class="macro">assert!</span>(res == <span class="prelude-val">Err</span>(OperationError::ResourceLimit));
 
         <span class="comment">// ldap
-        </span><span class="kw">let </span>res = Filter::from_ldap_ro(<span class="kw-2">&amp;</span>ev, <span class="kw-2">&amp;</span>inv_ldap, <span class="kw-2">&amp;</span>r_txn);
+        </span><span class="kw">let </span>res = Filter::from_ldap_ro(<span class="kw-2">&amp;</span>ev, <span class="kw-2">&amp;</span>inv_ldap, <span class="kw-2">&amp;mut </span>r_txn);
         <span class="macro">assert!</span>(res == <span class="prelude-val">Err</span>(OperationError::ResourceLimit));
 
         <span class="comment">// Can only have one db conn at a time.
         </span>std::mem::drop(r_txn);
 
         <span class="comment">// proto + write
-        </span><span class="kw">let </span>wr_txn = server.write(duration_from_epoch_now()).<span class="kw">await</span>;
-        <span class="kw">let </span>res = Filter::from_rw(<span class="kw-2">&amp;</span>ev, <span class="kw-2">&amp;</span>inv_proto, <span class="kw-2">&amp;</span>wr_txn);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>wr_txn = server.write(duration_from_epoch_now()).<span class="kw">await</span>;
+        <span class="kw">let </span>res = Filter::from_rw(<span class="kw-2">&amp;</span>ev, <span class="kw-2">&amp;</span>inv_proto, <span class="kw-2">&amp;mut </span>wr_txn);
         <span class="macro">assert!</span>(res == <span class="prelude-val">Err</span>(OperationError::ResourceLimit));
     }
 }

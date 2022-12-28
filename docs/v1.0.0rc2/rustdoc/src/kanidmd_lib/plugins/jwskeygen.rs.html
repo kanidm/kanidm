@@ -325,7 +325,7 @@
             preload,
             create,
             <span class="prelude-val">None</span>,
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="kw">let </span>e = qs
                     .internal_search_uuid(uuid)
                     .expect(<span class="string">&quot;failed to get oauth2 config&quot;</span>);
@@ -371,7 +371,7 @@
             ]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="kw">let </span>e = qs
                     .internal_search_uuid(uuid)
                     .expect(<span class="string">&quot;failed to get oauth2 config&quot;</span>);

@@ -2234,7 +2234,6 @@
 <span id="2234">2234</span>
 <span id="2235">2235</span>
 <span id="2236">2236</span>
-<span id="2237">2237</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the logic to conduct an authentication of an account.
 //! Generally this has to process an authentication attempt, and validate each
 //! factor to assert that the user is legitimate. This also contains some
@@ -2261,7 +2260,6 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::credential::totp::Totp;
 <span class="kw">use </span><span class="kw">crate</span>::credential::{BackupCodes, Credential, CredentialType, Password};
-<span class="kw">use </span><span class="kw">crate</span>::identity::IdentityId;
 <span class="kw">use </span><span class="kw">crate</span>::idm::account::Account;
 <span class="kw">use </span><span class="kw">crate</span>::idm::delayed::{
     AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, WebauthnCounterIncrement,

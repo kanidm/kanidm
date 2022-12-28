@@ -1602,7 +1602,7 @@
 <span class="kw">pub struct </span>MemberOf;
 
 <span class="kw">fn </span>do_memberof(
-    qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+    qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
     uuid: Uuid,
     tgte: <span class="kw-2">&amp;mut </span>EntryInvalidCommitted,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
@@ -2110,7 +2110,7 @@
             preload,
             create,
             <span class="prelude-val">None</span>,
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_memberof!</span>(qs, UUID_B, UUID_A);
@@ -2141,7 +2141,7 @@
             preload,
             create,
             <span class="prelude-val">None</span>,
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_not_memberof!</span>(qs, UUID_A, UUID_A);
@@ -2193,7 +2193,7 @@
             preload,
             create,
             <span class="prelude-val">None</span>,
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_memberof!</span>(qs, UUID_A, UUID_A);
@@ -2251,7 +2251,7 @@
             preload,
             create,
             <span class="prelude-val">None</span>,
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_memberof!</span>(qs, UUID_A, UUID_A);
@@ -2317,7 +2317,7 @@
             )]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_memberof!</span>(qs, UUID_B, UUID_A);
@@ -2353,7 +2353,7 @@
             )]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_not_memberof!</span>(qs, UUID_A, UUID_A);
@@ -2407,7 +2407,7 @@
             )]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_not_memberof!</span>(qs, UUID_A, UUID_A);
@@ -2464,7 +2464,7 @@
             )]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_memberof!</span>(qs, UUID_A, UUID_A);
@@ -2531,7 +2531,7 @@
             )]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_memberof!</span>(qs, UUID_A, UUID_A);
@@ -2600,7 +2600,7 @@
             )]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_not_memberof!</span>(qs, UUID_B, UUID_A);
@@ -2639,7 +2639,7 @@
             )]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_not_memberof!</span>(qs, UUID_A, UUID_A);
@@ -2697,7 +2697,7 @@
             )]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_not_memberof!</span>(qs, UUID_A, UUID_A);
@@ -2765,7 +2765,7 @@
             )]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_not_memberof!</span>(qs, UUID_A, UUID_A);
@@ -2857,7 +2857,7 @@
             ]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_not_memberof!</span>(qs, UUID_A, UUID_A);
@@ -2919,7 +2919,7 @@
             preload,
             <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_A).unwrap())),
             <span class="prelude-val">None</span>,
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_not_memberof!</span>(qs, UUID_B, UUID_A);
@@ -2953,7 +2953,7 @@
             preload,
             <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_A).unwrap())),
             <span class="prelude-val">None</span>,
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_not_memberof!</span>(qs, UUID_B, UUID_A);
@@ -2997,7 +2997,7 @@
             preload,
             <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_B).unwrap())),
             <span class="prelude-val">None</span>,
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_not_memberof!</span>(qs, UUID_A, UUID_A);
@@ -3050,7 +3050,7 @@
             preload,
             <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_A).unwrap())),
             <span class="prelude-val">None</span>,
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_not_memberof!</span>(qs, UUID_B, UUID_A);
@@ -3116,7 +3116,7 @@
             preload,
             <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::new_uuid_s(<span class="kw-2">&amp;</span>UUID_B).unwrap())),
             <span class="prelude-val">None</span>,
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">//                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 </span><span class="macro">assert_not_memberof!</span>(qs, UUID_A, UUID_B);

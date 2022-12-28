@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["AccessControlCreate",""],["AccessControlDelete",""],["AccessControlModify",""],["AccessControlSearch",""],["AccessControls",""],["AccessControlsReadTransaction",""],["AccessControlsWriteTransaction",""],["AccessEffectivePermission",""]],"trait":[["AccessControlsTransaction",""]]};

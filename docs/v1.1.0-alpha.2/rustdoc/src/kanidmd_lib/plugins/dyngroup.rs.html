@@ -910,6 +910,22 @@
 <span id="910">910</span>
 <span id="911">911</span>
 <span id="912">912</span>
+<span id="913">913</span>
+<span id="914">914</span>
+<span id="915">915</span>
+<span id="916">916</span>
+<span id="917">917</span>
+<span id="918">918</span>
+<span id="919">919</span>
+<span id="920">920</span>
+<span id="921">921</span>
+<span id="922">922</span>
+<span id="923">923</span>
+<span id="924">924</span>
+<span id="925">925</span>
+<span id="926">926</span>
+<span id="927">927</span>
+<span id="928">928</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::sync::Arc;
 
@@ -928,7 +944,7 @@
 <span class="kw">impl </span>DynGroup {
     <span class="attribute">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">fn </span>apply_dyngroup_change(
-        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         ident: <span class="kw-2">&amp;</span>Identity,
         pre_candidates: <span class="kw-2">&amp;mut </span>Vec&lt;Arc&lt;EntrySealedCommitted&gt;&gt;,
         candidates: <span class="kw-2">&amp;mut </span>Vec&lt;EntryInvalidCommitted&gt;,
@@ -1005,7 +1021,7 @@
     }
 
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;dyngroup_reload&quot;</span>, skip(qs))]
-    </span><span class="kw">pub fn </span>reload(qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+    </span><span class="kw">pub fn </span>reload(qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="kw">let </span>ident_internal = Identity::from_internal();
         <span class="comment">// Internal search all our definitions.
         </span><span class="kw">let </span>filt = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;class&quot;</span>, PVCLASS_DYNGROUP.clone()));
@@ -1014,9 +1030,7 @@
             e
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>dyn_groups = qs.get_dyngroup_cache();
-
-        dyn_groups.insts.clear();
+        <span class="kw">let </span><span class="kw-2">mut </span>reload_groups = BTreeMap::default();
 
         <span class="kw">for </span>nd_group <span class="kw">in </span>entries.into_iter() {
             <span class="kw">let </span>scope_f: ProtoFilter = nd_group
@@ -1034,11 +1048,14 @@
 
             <span class="kw">let </span>uuid = nd_group.get_uuid();
 
-            <span class="kw">if </span>dyn_groups.insts.insert(uuid, scope_i).is_some() {
+            <span class="kw">if </span>reload_groups.insert(uuid, scope_i).is_some() {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;dyngroup cache uuid conflict {}&quot;</span>, uuid);
                 <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidState);
             }
         }
+
+        <span class="kw">let </span>dyn_groups = qs.get_dyngroup_cache();
+        std::mem::swap(<span class="kw-2">&amp;mut </span>reload_groups, <span class="kw-2">&amp;mut </span>dyn_groups.insts);
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -1057,28 +1074,34 @@
             .iter()
             .partition(|entry| entry.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DYNGROUP));
 
-        <span class="kw">let </span>dyn_groups = qs.get_dyngroup_cache();
+        <span class="comment">// DANGER: Why do we have to do this? During the use of qs for internal search
+        // and other operations we need qs to be mut. But when we borrow dyn groups here we
+        // cause multiple borrows to occur on struct members that freaks rust out. This *IS*
+        // safe however because no element of the search or write process calls the dyngroup
+        // cache excepting for this plugin within a single thread, meaning that stripping the
+        // lifetime here is safe since we are the sole accessor.
+        </span><span class="kw">let </span>dyn_groups: <span class="kw-2">&amp;mut </span>DynGroupCache = <span class="kw">unsafe </span>{ <span class="kw-2">&amp;mut *</span>(qs.get_dyngroup_cache() <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_</span>) };
 
         <span class="comment">// For any other entries, check if they SHOULD trigger
         // a dyn group inclusion. We do this FIRST because the new
         // dyn groups will see the created entries on an internal search
         // so we don&#39;t need to reference them.
 
-        //
-        </span><span class="kw">let </span>resolve_filter_cache = qs.get_resolve_filter_cache();
-
-        <span class="kw">let </span><span class="kw-2">mut </span>pre_candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
+        </span><span class="kw">let </span><span class="kw-2">mut </span>pre_candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
         <span class="kw">let </span><span class="kw-2">mut </span>candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
 
-        <span class="macro">trace!</span>(<span class="question-mark">?</span>dyn_groups.insts);
-
+        <span class="comment">// Apply existing dyn_groups to entries.
+        </span><span class="macro">trace!</span>(<span class="question-mark">?</span>dyn_groups.insts);
         <span class="kw">for </span>(dg_uuid, dg_filter) <span class="kw">in </span>dyn_groups.insts.iter() {
             <span class="kw">let </span>dg_filter_valid = dg_filter
                 .validate(qs.get_schema())
                 .map_err(OperationError::SchemaViolation)
-                .and_then(|f| f.resolve(<span class="kw-2">&amp;</span>ident_internal, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(resolve_filter_cache)))<span class="question-mark">?</span>;
+                .and_then(|f| {
+                    f.resolve(<span class="kw-2">&amp;</span>ident_internal, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(qs.get_resolve_filter_cache()))
+                })<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>matches: Vec&lt;<span class="kw">_</span>&gt; = entries
+            <span class="comment">// Did any of our modified entries match our dyn group filter?
+            </span><span class="kw">let </span>matches: Vec&lt;<span class="kw">_</span>&gt; = entries
                 .iter()
                 .filter_map(|e| {
                     <span class="kw">if </span>e.entry_match_no_index(<span class="kw-2">&amp;</span>dg_filter_valid) {
@@ -1089,7 +1112,9 @@
                 })
                 .collect();
 
-            <span class="kw">if </span>!matches.is_empty() {
+            <span class="comment">// If any of them did, we retrieve the dyngroup and setup to write the new
+            // members to it.
+            </span><span class="kw">if </span>!matches.is_empty() {
                 <span class="kw">let </span>filt = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(<span class="kw-2">*</span>dg_uuid)));
                 <span class="kw">let </span><span class="kw-2">mut </span>work_set = qs.internal_search_writeable(<span class="kw-2">&amp;</span>filt)<span class="question-mark">?</span>;
 
@@ -1150,7 +1175,6 @@
         <span class="kw">let </span><span class="kw-2">mut </span>affected_uuids = Vec::with_capacity(cand.len());
 
         <span class="kw">let </span>ident_internal = Identity::from_internal();
-        <span class="kw">let </span>resolve_filter_cache = qs.get_resolve_filter_cache();
 
         <span class="comment">// Probably should be filter here instead.
         </span><span class="kw">let </span>(<span class="kw">_</span>, pre_entries): (Vec&lt;<span class="kw-2">&amp;</span>Arc&lt;Entry&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;&gt;, Vec&lt;<span class="kw">_</span>&gt;) = pre_cand
@@ -1161,7 +1185,13 @@
             .iter()
             .partition(|entry| entry.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DYNGROUP));
 
-        <span class="kw">let </span>dyn_groups = qs.get_dyngroup_cache();
+        <span class="comment">// DANGER: Why do we have to do this? During the use of qs for internal search
+        // and other operations we need qs to be mut. But when we borrow dyn groups here we
+        // cause multiple borrows to occur on struct members that freaks rust out. This *IS*
+        // safe however because no element of the search or write process calls the dyngroup
+        // cache excepting for this plugin within a single thread, meaning that stripping the
+        // lifetime here is safe since we are the sole accessor.
+        </span><span class="kw">let </span>dyn_groups: <span class="kw-2">&amp;mut </span>DynGroupCache = <span class="kw">unsafe </span>{ <span class="kw-2">&amp;mut *</span>(qs.get_dyngroup_cache() <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_</span>) };
 
         <span class="kw">let </span><span class="kw-2">mut </span>pre_candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
         <span class="kw">let </span><span class="kw-2">mut </span>candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
@@ -1195,7 +1225,9 @@
             <span class="kw">let </span>dg_filter_valid = dg_filter
                 .validate(qs.get_schema())
                 .map_err(OperationError::SchemaViolation)
-                .and_then(|f| f.resolve(<span class="kw-2">&amp;</span>ident_internal, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(resolve_filter_cache)))<span class="question-mark">?</span>;
+                .and_then(|f| {
+                    f.resolve(<span class="kw-2">&amp;</span>ident_internal, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(qs.get_resolve_filter_cache()))
+                })<span class="question-mark">?</span>;
 
             <span class="kw">let </span>matches: Vec&lt;<span class="kw">_</span>&gt; = pre_entries
                 .iter()
@@ -1293,7 +1325,7 @@
             create,
             <span class="prelude-val">None</span>,
             <span class="comment">// Need to validate it did things
-            </span>|qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            </span>|qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="kw">let </span>cands = qs
                     .internal_search(<span class="macro">filter!</span>(f_eq(
                         <span class="string">&quot;name&quot;</span>,
@@ -1339,7 +1371,7 @@
             create,
             <span class="prelude-val">None</span>,
             <span class="comment">// Need to validate it did things
-            </span>|qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            </span>|qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="kw">let </span>cands = qs
                     .internal_search(<span class="macro">filter!</span>(f_eq(
                         <span class="string">&quot;name&quot;</span>,
@@ -1388,7 +1420,7 @@
             create,
             <span class="prelude-val">None</span>,
             <span class="comment">// Need to validate it did things
-            </span>|qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            </span>|qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="kw">let </span>cands = qs
                     .internal_search(<span class="macro">filter!</span>(f_eq(
                         <span class="string">&quot;name&quot;</span>,
@@ -1430,7 +1462,7 @@
             create,
             <span class="prelude-val">None</span>,
             <span class="comment">// Need to validate it did things
-            </span>|qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            </span>|qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="kw">let </span>cands = qs
                     .internal_search(<span class="macro">filter!</span>(f_eq(
                         <span class="string">&quot;name&quot;</span>,
@@ -1485,7 +1517,7 @@
             ]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="kw">let </span>cands = qs
                     .internal_search(<span class="macro">filter!</span>(f_eq(
                         <span class="string">&quot;name&quot;</span>,
@@ -1540,7 +1572,7 @@
             ]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="kw">let </span>cands = qs
                     .internal_search(<span class="macro">filter!</span>(f_eq(
                         <span class="string">&quot;name&quot;</span>,
@@ -1585,7 +1617,7 @@
             )]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="kw">let </span>cands = qs
                     .internal_search(<span class="macro">filter!</span>(f_eq(
                         <span class="string">&quot;name&quot;</span>,
@@ -1632,7 +1664,7 @@
             ModifyList::new_list(<span class="macro">vec!</span>[Modify::Purged(AttrString::from(<span class="string">&quot;member&quot;</span>),)]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="kw">let </span>cands = qs
                     .internal_search(<span class="macro">filter!</span>(f_eq(
                         <span class="string">&quot;name&quot;</span>,
@@ -1681,7 +1713,7 @@
             ]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="kw">let </span>cands = qs
                     .internal_search(<span class="macro">filter!</span>(f_eq(
                         <span class="string">&quot;name&quot;</span>,
@@ -1730,7 +1762,7 @@
             ]),
             <span class="prelude-val">None</span>,
             |<span class="kw">_</span>| {},
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="kw">let </span>cands = qs
                     .internal_search(<span class="macro">filter!</span>(f_eq(
                         <span class="string">&quot;name&quot;</span>,
@@ -1770,7 +1802,7 @@
             preload,
             <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup&quot;</span>))),
             <span class="prelude-val">None</span>,
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="kw">let </span>cands = qs
                     .internal_search(<span class="macro">filter!</span>(f_eq(
                         <span class="string">&quot;name&quot;</span>,
@@ -1810,7 +1842,7 @@
             preload,
             <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;test_dyngroup&quot;</span>))),
             <span class="prelude-val">None</span>,
-            |qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction| {
+            |qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction| {
                 <span class="comment">// Note we check memberof is empty here!
                 </span><span class="kw">let </span>cands = qs
                     .internal_search(<span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup&quot;</span>))))

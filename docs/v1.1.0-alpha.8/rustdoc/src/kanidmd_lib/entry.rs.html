@@ -3098,7 +3098,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::be::{IdxKey, IdxSlope};
 <span class="kw">use </span><span class="kw">crate</span>::credential::Credential;
 <span class="kw">use </span><span class="kw">crate</span>::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
-<span class="kw">use </span><span class="kw">crate</span>::ldap::ldap_vattr_map;
+<span class="kw">use </span><span class="kw">crate</span>::idm::ldap::ldap_vattr_map;
 <span class="kw">use </span><span class="kw">crate</span>::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::repl::cid::Cid;
@@ -3330,7 +3330,7 @@
     /// [`Entry`] type.
     </span><span class="kw">pub fn </span>from_proto_entry(
         e: <span class="kw-2">&amp;</span>ProtoEntry,
-        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="macro">trace!</span>(<span class="string">&quot;from_proto_entry&quot;</span>);
         <span class="comment">// Why not the trait? In the future we may want to extend
@@ -3370,7 +3370,7 @@
     </span><span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip_all)]
     </span><span class="kw">pub fn </span>from_proto_entry_str(
         es: <span class="kw-2">&amp;</span>str,
-        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="kw">if </span><span class="macro">cfg!</span>(test) {
             <span class="kw">if </span>es.len() &gt; <span class="number">256 </span>{
@@ -4776,7 +4776,7 @@
     }
 
     <span class="doccomment">/// Transform this reduced entry into a JSON protocol form that can be sent to clients.
-    </span><span class="kw">pub fn </span>to_pe(<span class="kw-2">&amp;</span><span class="self">self</span>, qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction) -&gt; <span class="prelude-ty">Result</span>&lt;ProtoEntry, OperationError&gt; {
+    </span><span class="kw">pub fn </span>to_pe(<span class="kw-2">&amp;</span><span class="self">self</span>, qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction) -&gt; <span class="prelude-ty">Result</span>&lt;ProtoEntry, OperationError&gt; {
         <span class="comment">// Turn values -&gt; Strings.
         </span><span class="kw">let </span>attrs: <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = <span class="self">self
             </span>.attrs
@@ -4789,7 +4789,7 @@
     <span class="doccomment">/// Transform this reduced entry into an LDAP form that can be sent to clients.
     </span><span class="kw">pub fn </span>to_ldap(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
         basedn: <span class="kw-2">&amp;</span>str,
         <span class="comment">// Did the client request all attributes?
         </span>all_attrs: bool,
@@ -5349,7 +5349,7 @@
 
     <span class="doccomment">/// Determine if this entry is recycled or a tombstone, and map that to &quot;None&quot;. This allows
     /// filter_map to effectively remove entries that should not be considered as &quot;alive&quot;.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>mask_recycled_ts(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>&gt; {
+    </span><span class="kw">pub fn </span>mask_recycled_ts(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>&gt; {
         <span class="comment">// Only when cls has ts/rc then None, else lways Some(self).
         </span><span class="kw">match </span><span class="self">self</span>.attrs.get(<span class="string">&quot;class&quot;</span>) {
             <span class="prelude-val">Some</span>(cls) =&gt; {
@@ -5367,7 +5367,7 @@
 
     <span class="doccomment">/// Determine if this entry is recycled, and map that to &quot;None&quot;. This allows
     /// filter_map to effectively remove entries that are recycled in some cases.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>mask_recycled(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>&gt; {
+    </span><span class="kw">pub fn </span>mask_recycled(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>&gt; {
         <span class="comment">// Only when cls has ts/rc then None, else lways Some(self).
         </span><span class="kw">match </span><span class="self">self</span>.attrs.get(<span class="string">&quot;class&quot;</span>) {
             <span class="prelude-val">Some</span>(cls) =&gt; {
@@ -5383,7 +5383,7 @@
 
     <span class="doccomment">/// Determine if this entry is a tombstone, and map that to &quot;None&quot;. This allows
     /// filter_map to effectively remove entries that are tombstones in some cases.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>mask_tombstone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>&gt; {
+    </span><span class="kw">pub fn </span>mask_tombstone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>&gt; {
         <span class="comment">// Only when cls has ts/rc then None, else lways Some(self).
         </span><span class="kw">match </span><span class="self">self</span>.attrs.get(<span class="string">&quot;class&quot;</span>) {
             <span class="prelude-val">Some</span>(cls) =&gt; {

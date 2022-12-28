@@ -819,7 +819,6 @@
 <span id="819">819</span>
 <span id="820">820</span>
 <span id="821">821</span>
-<span id="822">822</span>
 </pre><pre class="rust"><code><span class="doccomment">//! An `event` is a self contained module of data, that contains all of the
 //! required information for any operation to proceed. While there are many
 //! types of potential events, they all eventually lower to one of:
@@ -850,7 +849,6 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced};
 <span class="kw">use </span><span class="kw">crate</span>::filter::{Filter, FilterInvalid, FilterValid};
-<span class="kw">use </span><span class="kw">crate</span>::identity::Limits;
 <span class="kw">use </span><span class="kw">crate</span>::modify::{ModifyInvalid, ModifyList, ModifyValid};
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::schema::SchemaTransaction;
@@ -863,7 +861,7 @@
 
 <span class="kw">impl </span>SearchResult {
     <span class="kw">pub fn </span>new(
-        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
         entries: <span class="kw-2">&amp;</span>[Entry&lt;EntryReduced, EntryCommitted&gt;],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="kw">let </span>entries: <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = entries
@@ -905,7 +903,7 @@
     <span class="kw">pub fn </span>from_message(
         ident: Identity,
         req: <span class="kw-2">&amp;</span>SearchRequest,
-        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="kw">let </span>f = Filter::from_ro(<span class="kw-2">&amp;</span>ident, <span class="kw-2">&amp;</span>req.filter, qs)<span class="question-mark">?</span>;
         <span class="comment">// We do need to do this twice to account for the ignore_hidden
@@ -928,7 +926,7 @@
         ident: Identity,
         filter: <span class="kw-2">&amp;</span>Filter&lt;FilterInvalid&gt;,
         attrs: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[String]&gt;,
-        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="kw">let </span>r_attrs: <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;AttrString&gt;&gt; = attrs.map(|vs| {
             vs.iter()
@@ -1102,7 +1100,7 @@
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_ext_impersonate_uuid(
-        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
         ident: Identity,
         lf: <span class="kw-2">&amp;</span>LdapFilter,
         attrs: <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;AttrString&gt;&gt;,
@@ -1162,7 +1160,7 @@
     <span class="kw">pub fn </span>from_message(
         ident: Identity,
         req: <span class="kw-2">&amp;</span>CreateRequest,
-        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="kw">let </span>rentries: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = req
             .entries
@@ -1252,7 +1250,7 @@
     <span class="kw">pub fn </span>from_message(
         ident: Identity,
         req: <span class="kw-2">&amp;</span>DeleteRequest,
-        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="kw">let </span>f = Filter::from_rw(<span class="kw-2">&amp;</span>ident, <span class="kw-2">&amp;</span>req.filter, qs)<span class="question-mark">?</span>;
         <span class="kw">let </span>filter_orig = f
@@ -1269,7 +1267,7 @@
     <span class="kw">pub fn </span>from_parts(
         ident: Identity,
         f: <span class="kw-2">&amp;</span>Filter&lt;FilterInvalid&gt;,
-        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="kw">let </span>filter_orig = f
             .validate(qs.get_schema())
@@ -1347,7 +1345,7 @@
     <span class="kw">pub fn </span>from_message(
         ident: Identity,
         req: <span class="kw-2">&amp;</span>ModifyRequest,
-        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="kw">let </span>f = Filter::from_rw(<span class="kw-2">&amp;</span>ident, <span class="kw-2">&amp;</span>req.filter, qs)<span class="question-mark">?</span>;
         <span class="kw">let </span>m = ModifyList::from(<span class="kw-2">&amp;</span>req.modlist, qs)<span class="question-mark">?</span>;
@@ -1371,7 +1369,7 @@
         target_uuid: Uuid,
         proto_ml: <span class="kw-2">&amp;</span>ProtoModifyList,
         filter: Filter&lt;FilterInvalid&gt;,
-        qs: <span class="kw-2">&amp;</span>QueryServerWriteTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="kw">let </span>f_uuid = <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(target_uuid)));
         <span class="comment">// Add any supplemental conditions we have.
@@ -1529,7 +1527,7 @@
 
 <span class="kw">impl </span>WhoamiResult {
     <span class="kw">pub fn </span>new(
-        qs: <span class="kw-2">&amp;</span>QueryServerReadTransaction,
+        qs: <span class="kw-2">&amp;mut </span>QueryServerReadTransaction,
         e: <span class="kw-2">&amp;</span>Entry&lt;EntryReduced, EntryCommitted&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
         <span class="prelude-val">Ok</span>(WhoamiResult {

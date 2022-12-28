@@ -434,7 +434,7 @@
         // so we should be able to verify that *those* spns validate to the trusted domain info
         // we have been sent also. It&#39;s not up to use to generate those though ...
 
-        </span><span class="kw">let </span>domain_name = qs.get_domain_name();
+        </span><span class="kw">let </span>domain_name = qs.get_domain_name().to_string();
 
         <span class="kw">let </span>filt_in = <span class="macro">filter!</span>(<span class="macro">f_or!</span>([
             f_eq(<span class="string">&quot;class&quot;</span>, PVCLASS_GROUP.clone()),
@@ -452,7 +452,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>r = Vec::new();
 
         <span class="kw">for </span>e <span class="kw">in </span>all_cand {
-            <span class="kw">let </span>g_spn = <span class="kw">match </span>e.generate_spn(domain_name) {
+            <span class="kw">let </span>g_spn = <span class="kw">match </span>e.generate_spn(<span class="kw-2">&amp;</span>domain_name) {
                 <span class="prelude-val">Some</span>(s) =&gt; s,
                 <span class="prelude-val">None </span>=&gt; {
                     <span class="macro">admin_error!</span>(

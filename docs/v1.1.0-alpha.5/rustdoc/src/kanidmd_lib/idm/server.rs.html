@@ -4005,84 +4005,6 @@
 <span id="4005">4005</span>
 <span id="4006">4006</span>
 <span id="4007">4007</span>
-<span id="4008">4008</span>
-<span id="4009">4009</span>
-<span id="4010">4010</span>
-<span id="4011">4011</span>
-<span id="4012">4012</span>
-<span id="4013">4013</span>
-<span id="4014">4014</span>
-<span id="4015">4015</span>
-<span id="4016">4016</span>
-<span id="4017">4017</span>
-<span id="4018">4018</span>
-<span id="4019">4019</span>
-<span id="4020">4020</span>
-<span id="4021">4021</span>
-<span id="4022">4022</span>
-<span id="4023">4023</span>
-<span id="4024">4024</span>
-<span id="4025">4025</span>
-<span id="4026">4026</span>
-<span id="4027">4027</span>
-<span id="4028">4028</span>
-<span id="4029">4029</span>
-<span id="4030">4030</span>
-<span id="4031">4031</span>
-<span id="4032">4032</span>
-<span id="4033">4033</span>
-<span id="4034">4034</span>
-<span id="4035">4035</span>
-<span id="4036">4036</span>
-<span id="4037">4037</span>
-<span id="4038">4038</span>
-<span id="4039">4039</span>
-<span id="4040">4040</span>
-<span id="4041">4041</span>
-<span id="4042">4042</span>
-<span id="4043">4043</span>
-<span id="4044">4044</span>
-<span id="4045">4045</span>
-<span id="4046">4046</span>
-<span id="4047">4047</span>
-<span id="4048">4048</span>
-<span id="4049">4049</span>
-<span id="4050">4050</span>
-<span id="4051">4051</span>
-<span id="4052">4052</span>
-<span id="4053">4053</span>
-<span id="4054">4054</span>
-<span id="4055">4055</span>
-<span id="4056">4056</span>
-<span id="4057">4057</span>
-<span id="4058">4058</span>
-<span id="4059">4059</span>
-<span id="4060">4060</span>
-<span id="4061">4061</span>
-<span id="4062">4062</span>
-<span id="4063">4063</span>
-<span id="4064">4064</span>
-<span id="4065">4065</span>
-<span id="4066">4066</span>
-<span id="4067">4067</span>
-<span id="4068">4068</span>
-<span id="4069">4069</span>
-<span id="4070">4070</span>
-<span id="4071">4071</span>
-<span id="4072">4072</span>
-<span id="4073">4073</span>
-<span id="4074">4074</span>
-<span id="4075">4075</span>
-<span id="4076">4076</span>
-<span id="4077">4077</span>
-<span id="4078">4078</span>
-<span id="4079">4079</span>
-<span id="4080">4080</span>
-<span id="4081">4081</span>
-<span id="4082">4082</span>
-<span id="4083">4083</span>
-<span id="4084">4084</span>
-<span id="4085">4085</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::TryFrom;
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::sync::Arc;
@@ -4110,9 +4032,9 @@
 <span class="kw">use </span>webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
 
 <span class="kw">use </span><span class="kw">super</span>::event::ReadBackupCodeEvent;
+<span class="kw">use </span><span class="kw">super</span>::ldap::{LdapBoundToken, LdapSession};
 <span class="kw">use </span><span class="kw">crate</span>::credential::policy::CryptoPolicy;
 <span class="kw">use </span><span class="kw">crate</span>::credential::softlock::CredSoftLock;
-<span class="kw">use </span><span class="kw">crate</span>::identity::{AccessScope, IdentType, IdentUser, Limits};
 <span class="kw">use </span><span class="kw">crate</span>::idm::account::Account;
 <span class="kw">use </span><span class="kw">crate</span>::idm::authsession::AuthSession;
 <span class="kw">use </span><span class="kw">crate</span>::idm::credupdatesession::CredentialUpdateSessionMutex;
@@ -4129,17 +4051,14 @@
     UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
 };
 <span class="kw">use </span><span class="kw">crate</span>::idm::oauth2::{
-    AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-    AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse,
-    JwkKeySet, Oauth2Error, Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
-    Oauth2ResourceServersWriteTransaction, OidcDiscoveryResponse, OidcToken,
+    Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
+    Oauth2ResourceServersWriteTransaction,
 };
 <span class="kw">use </span><span class="kw">crate</span>::idm::radius::RadiusAccount;
 <span class="kw">use </span><span class="kw">crate</span>::idm::scim::{ScimSyncToken, SyncAccount};
 <span class="kw">use </span><span class="kw">crate</span>::idm::serviceaccount::ServiceAccount;
 <span class="kw">use </span><span class="kw">crate</span>::idm::unix::{UnixGroup, UnixUserAccount};
 <span class="kw">use </span><span class="kw">crate</span>::idm::AuthState;
-<span class="kw">use </span><span class="kw">crate</span>::ldap::{LdapBoundToken, LdapSession};
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
 <span class="kw">use </span><span class="kw">crate</span>::value::{Oauth2Session, Session};
@@ -4202,8 +4121,8 @@
 </span><span class="kw">pub struct </span>IdmServerProxyReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">pub </span>qs_read: QueryServerReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
     uat_jwt_validator: CowCellReadTxn&lt;JwsValidator&gt;,
-    oauth2rs: Oauth2ResourceServersReadTransaction,
-    async_tx: Sender&lt;DelayedAction&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) oauth2rs: Oauth2ResourceServersReadTransaction,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) async_tx: Sender&lt;DelayedAction&gt;,
 }
 
 <span class="kw">pub struct </span>IdmServerProxyWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
@@ -4245,7 +4164,7 @@
 
         <span class="comment">// Get the domain name, as the relying party id.
         </span><span class="kw">let </span>(rp_id, rp_name, fernet_private_key, es256_private_key, pw_badlist_set, oauth2rs_set) = {
-            <span class="kw">let </span>qs_read = task::block_on(qs.read());
+            <span class="kw">let </span><span class="kw-2">mut </span>qs_read = task::block_on(qs.read());
             (
                 qs_read.get_domain_name().to_string(),
                 qs_read.get_domain_display_name().to_string(),
@@ -4475,7 +4394,7 @@
 <span class="kw">pub trait </span>IdmServerTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">type </span>QsTransactionType: QueryServerTransaction&lt;<span class="lifetime">&#39;a</span>&gt;;
 
-    <span class="kw">fn </span>get_qs_txn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::QsTransactionType;
+    <span class="kw">fn </span>get_qs_txn(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::QsTransactionType;
 
     <span class="kw">fn </span>get_uat_validator_txn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>JwsValidator;
 
@@ -4489,7 +4408,7 @@
     /// and validation method.
     </span><span class="attribute">#[instrument(level = <span class="string">&quot;info&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>validate_and_parse_token_to_ident(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         token: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Identity, OperationError&gt; {
@@ -4501,7 +4420,7 @@
 
     <span class="attribute">#[instrument(level = <span class="string">&quot;info&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>validate_and_parse_token_to_uat(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         token: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;UserAuthToken, OperationError&gt; {
@@ -4515,7 +4434,7 @@
     }
 
     <span class="kw">fn </span>validate_and_parse_token_to_token(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         token: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Token, OperationError&gt; {
@@ -4659,7 +4578,7 @@
     }
 
     <span class="kw">fn </span>check_oauth2_account_uuid_valid(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         uuid: Uuid,
         session_id: Uuid,
         parent_session_id: Uuid,
@@ -4722,7 +4641,7 @@
     /// relevant session information is injected.
     </span><span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>process_uat_to_identity(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         uat: <span class="kw-2">&amp;</span>UserAuthToken,
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Identity, OperationError&gt; {
@@ -4786,7 +4705,7 @@
 
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>process_apit_to_identity(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         apit: <span class="kw-2">&amp;</span>ApiToken,
         entry: Arc&lt;EntrySealedCommitted&gt;,
         ct: Duration,
@@ -4811,7 +4730,7 @@
 
     <span class="attribute">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>validate_ldap_session(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         session: <span class="kw-2">&amp;</span>LdapSession,
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Identity, OperationError&gt; {
@@ -4871,7 +4790,7 @@
 
     <span class="attribute">#[instrument(level = <span class="string">&quot;info&quot;</span>, skip_all)]
     </span><span class="kw">fn </span>validate_and_parse_sync_token_to_ident(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         token: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Identity, OperationError&gt; {
@@ -4956,8 +4875,8 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; IdmServerTransaction&lt;<span class="lifetime">&#39;a</span>&gt; <span class="kw">for </span>IdmServerAuthTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">type </span>QsTransactionType = QueryServerReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt;;
 
-    <span class="kw">fn </span>get_qs_txn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::QsTransactionType {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.qs_read
+    <span class="kw">fn </span>get_qs_txn(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::QsTransactionType {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.qs_read
     }
 
     <span class="kw">fn </span>get_uat_validator_txn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>JwsValidator {
@@ -5499,8 +5418,8 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; IdmServerTransaction&lt;<span class="lifetime">&#39;a</span>&gt; <span class="kw">for </span>IdmServerProxyReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">type </span>QsTransactionType = QueryServerReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt;;
 
-    <span class="kw">fn </span>get_qs_txn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::QsTransactionType {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.qs_read
+    <span class="kw">fn </span>get_qs_txn(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::QsTransactionType {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.qs_read
     }
 
     <span class="kw">fn </span>get_uat_validator_txn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>JwsValidator {
@@ -5597,87 +5516,13 @@
 
         account.to_backupcodesview()
     }
-
-    <span class="kw">pub fn </span>check_oauth2_authorisation(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        ident: <span class="kw-2">&amp;</span>Identity,
-        uat: <span class="kw-2">&amp;</span>UserAuthToken,
-        auth_req: <span class="kw-2">&amp;</span>AuthorisationRequest,
-        ct: Duration,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthoriseResponse, Oauth2Error&gt; {
-        <span class="self">self</span>.oauth2rs
-            .check_oauth2_authorisation(ident, uat, auth_req, ct)
-    }
-
-    <span class="kw">pub fn </span>check_oauth2_authorise_permit(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        ident: <span class="kw-2">&amp;</span>Identity,
-        uat: <span class="kw-2">&amp;</span>UserAuthToken,
-        consent_req: <span class="kw-2">&amp;</span>str,
-        ct: Duration,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthorisePermitSuccess, OperationError&gt; {
-        <span class="self">self</span>.oauth2rs
-            .check_oauth2_authorise_permit(ident, uat, consent_req, ct, <span class="kw-2">&amp;</span><span class="self">self</span>.async_tx)
-    }
-
-    <span class="kw">pub fn </span>check_oauth2_authorise_reject(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        ident: <span class="kw-2">&amp;</span>Identity,
-        uat: <span class="kw-2">&amp;</span>UserAuthToken,
-        consent_req: <span class="kw-2">&amp;</span>str,
-        ct: Duration,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Url, OperationError&gt; {
-        <span class="self">self</span>.oauth2rs
-            .check_oauth2_authorise_reject(ident, uat, consent_req, ct)
-    }
-
-    <span class="kw">pub fn </span>check_oauth2_token_exchange(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        client_authz: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
-        token_req: <span class="kw-2">&amp;</span>AccessTokenRequest,
-        ct: Duration,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;AccessTokenResponse, Oauth2Error&gt; {
-        <span class="self">self</span>.oauth2rs
-            .check_oauth2_token_exchange(<span class="self">self</span>, client_authz, token_req, ct, <span class="kw-2">&amp;</span><span class="self">self</span>.async_tx)
-    }
-
-    <span class="kw">pub fn </span>check_oauth2_token_introspect(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        client_authz: <span class="kw-2">&amp;</span>str,
-        intr_req: <span class="kw-2">&amp;</span>AccessTokenIntrospectRequest,
-        ct: Duration,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;AccessTokenIntrospectResponse, Oauth2Error&gt; {
-        <span class="self">self</span>.oauth2rs
-            .check_oauth2_token_introspect(<span class="self">self</span>, client_authz, intr_req, ct)
-    }
-
-    <span class="kw">pub fn </span>oauth2_openid_userinfo(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        client_id: <span class="kw-2">&amp;</span>str,
-        client_authz: <span class="kw-2">&amp;</span>str,
-        ct: Duration,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;OidcToken, Oauth2Error&gt; {
-        <span class="self">self</span>.oauth2rs
-            .oauth2_openid_userinfo(<span class="self">self</span>, client_id, client_authz, ct)
-    }
-
-    <span class="kw">pub fn </span>oauth2_openid_discovery(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        client_id: <span class="kw-2">&amp;</span>str,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;OidcDiscoveryResponse, OperationError&gt; {
-        <span class="self">self</span>.oauth2rs.oauth2_openid_discovery(client_id)
-    }
-
-    <span class="kw">pub fn </span>oauth2_openid_publickey(<span class="kw-2">&amp;</span><span class="self">self</span>, client_id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;JwkKeySet, OperationError&gt; {
-        <span class="self">self</span>.oauth2rs.oauth2_openid_publickey(client_id)
-    }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; IdmServerTransaction&lt;<span class="lifetime">&#39;a</span>&gt; <span class="kw">for </span>IdmServerProxyWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">type </span>QsTransactionType = QueryServerWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;;
 
-    <span class="kw">fn </span>get_qs_txn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::QsTransactionType {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.qs_write
+    <span class="kw">fn </span>get_qs_txn(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::QsTransactionType {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.qs_write
     }
 
     <span class="kw">fn </span>get_uat_validator_txn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>JwsValidator {
@@ -6403,7 +6248,6 @@
 
     <span class="kw">use </span><span class="kw">crate</span>::credential::policy::CryptoPolicy;
     <span class="kw">use </span><span class="kw">crate</span>::credential::{Credential, Password};
-    <span class="kw">use </span><span class="kw">crate</span>::event::{CreateEvent, ModifyEvent};
     <span class="kw">use </span><span class="kw">crate</span>::idm::account::DestroySessionTokenEvent;
     <span class="kw">use </span><span class="kw">crate</span>::idm::delayed::{AuthSessionRecord, DelayedAction};
     <span class="kw">use </span><span class="kw">crate</span>::idm::event::{AuthEvent, AuthResult};
@@ -7785,7 +7629,7 @@
                 <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) == r);
                 idms_delayed.check_is_empty_or_panic();
 
-                <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
                 <span class="comment">// Check it&#39;s valid.
                 </span>idms_prox_read
@@ -7815,7 +7659,7 @@
             <span class="kw">let </span>session_b = Uuid::new_v4();
 
             <span class="comment">// Assert no sessions present
-            </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
             <span class="kw">let </span>admin = idms_prox_read
                 .qs_read
                 .internal_search_uuid(UUID_ADMIN)
@@ -7838,7 +7682,7 @@
             <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) == r);
 
             <span class="comment">// Check it was written, and check
-            </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
             <span class="kw">let </span>admin = idms_prox_read
                 .qs_read
                 .internal_search_uuid(UUID_ADMIN)
@@ -7871,7 +7715,7 @@
             </span><span class="kw">let </span>r = task::block_on(idms.delayed_action(expiry_a, da));
             <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) == r);
 
-            <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
             <span class="kw">let </span>admin = idms_prox_read
                 .qs_read
                 .internal_search_uuid(UUID_ADMIN)
@@ -7927,7 +7771,7 @@
                     .expect(<span class="string">&quot;Embedded jwk not found&quot;</span>);
                 <span class="kw">let </span>uat_inner = uat_inner.into_inner();
 
-                <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
                 <span class="comment">// Check it&#39;s valid.
                 </span>idms_prox_read
@@ -7949,7 +7793,7 @@
                 <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
                 <span class="comment">// Now check again with the session destroyed.
-                </span><span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
                 <span class="comment">// Now, within gracewindow, it&#39;s still valid.
                 </span>idms_prox_read
@@ -8086,7 +7930,7 @@
                 <span class="macro">assert!</span>(<span class="macro">matches!</span>(da, DelayedAction::AuthSessionRecord(<span class="kw">_</span>)));
                 idms_delayed.check_is_empty_or_panic();
 
-                <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
                 <span class="comment">// Check it&#39;s valid.
                 </span>idms_prox_read
@@ -8121,7 +7965,7 @@
                 <span class="macro">assert!</span>(<span class="macro">matches!</span>(da, DelayedAction::AuthSessionRecord(<span class="kw">_</span>)));
                 idms_delayed.check_is_empty_or_panic();
 
-                <span class="kw">let </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
                 <span class="macro">assert!</span>(idms_prox_read
                     .validate_and_parse_token_to_ident(<span class="prelude-val">Some</span>(token.as_str()), ct)
                     .is_err());

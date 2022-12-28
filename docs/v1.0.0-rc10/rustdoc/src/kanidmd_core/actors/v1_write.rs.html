@@ -1463,6 +1463,11 @@
 <span id="1463">1463</span>
 <span id="1464">1464</span>
 <span id="1465">1465</span>
+<span id="1466">1466</span>
+<span id="1467">1467</span>
+<span id="1468">1468</span>
+<span id="1469">1469</span>
+<span id="1470">1470</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::iter;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::time::Duration;
@@ -1547,7 +1552,7 @@
             target_uuid,
             proto_ml,
             filter,
-            <span class="kw-2">&amp;</span>idms_prox_write.qs_write,
+            <span class="kw-2">&amp;mut </span>idms_prox_write.qs_write,
         ) {
             <span class="prelude-val">Ok</span>(m) =&gt; m,
             <span class="prelude-val">Err</span>(e) =&gt; {
@@ -1636,7 +1641,7 @@
                 e
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>crt = <span class="kw">match </span>CreateEvent::from_message(ident, <span class="kw-2">&amp;</span>req, <span class="kw-2">&amp;</span>idms_prox_write.qs_write) {
+        <span class="kw">let </span>crt = <span class="kw">match </span>CreateEvent::from_message(ident, <span class="kw-2">&amp;</span>req, <span class="kw-2">&amp;mut </span>idms_prox_write.qs_write) {
             <span class="prelude-val">Ok</span>(c) =&gt; c,
             <span class="prelude-val">Err</span>(e) =&gt; {
                 <span class="macro">admin_warn!</span>(err = <span class="question-mark">?</span>e, <span class="string">&quot;Failed to begin create&quot;</span>);
@@ -1672,7 +1677,7 @@
                 e
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>mdf = <span class="kw">match </span>ModifyEvent::from_message(ident, <span class="kw-2">&amp;</span>req, <span class="kw-2">&amp;</span>idms_prox_write.qs_write) {
+        <span class="kw">let </span>mdf = <span class="kw">match </span>ModifyEvent::from_message(ident, <span class="kw-2">&amp;</span>req, <span class="kw-2">&amp;mut </span>idms_prox_write.qs_write) {
             <span class="prelude-val">Ok</span>(m) =&gt; m,
             <span class="prelude-val">Err</span>(e) =&gt; {
                 <span class="macro">admin_error!</span>(err = <span class="question-mark">?</span>e, <span class="string">&quot;Failed to begin modify&quot;</span>);
@@ -1707,7 +1712,7 @@
                 <span class="macro">admin_error!</span>(err = <span class="question-mark">?</span>e, <span class="string">&quot;Invalid identity&quot;</span>);
                 e
             })<span class="question-mark">?</span>;
-        <span class="kw">let </span>del = <span class="kw">match </span>DeleteEvent::from_message(ident, <span class="kw-2">&amp;</span>req, <span class="kw-2">&amp;</span>idms_prox_write.qs_write) {
+        <span class="kw">let </span>del = <span class="kw">match </span>DeleteEvent::from_message(ident, <span class="kw-2">&amp;</span>req, <span class="kw-2">&amp;mut </span>idms_prox_write.qs_write) {
             <span class="prelude-val">Ok</span>(d) =&gt; d,
             <span class="prelude-val">Err</span>(e) =&gt; {
                 <span class="macro">admin_error!</span>(err = <span class="question-mark">?</span>e, <span class="string">&quot;Failed to begin delete&quot;</span>);
@@ -1746,17 +1751,22 @@
             })<span class="question-mark">?</span>;
 
         <span class="comment">// Transform the ProtoEntry to a Modlist
-        </span><span class="kw">let </span>modlist = ModifyList::from_patch(<span class="kw-2">&amp;</span>update, <span class="kw-2">&amp;</span>idms_prox_write.qs_write).map_err(|e| {
-            <span class="macro">admin_error!</span>(err = <span class="question-mark">?</span>e, <span class="string">&quot;Invalid Patch Request&quot;</span>);
-            e
-        })<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>mdf =
-            ModifyEvent::from_internal_parts(ident, <span class="kw-2">&amp;</span>modlist, <span class="kw-2">&amp;</span>filter, <span class="kw-2">&amp;</span>idms_prox_write.qs_write)
-                .map_err(|e| {
-                <span class="macro">admin_error!</span>(err = <span class="question-mark">?</span>e, <span class="string">&quot;Failed to begin modify&quot;</span>);
+        </span><span class="kw">let </span>modlist =
+            ModifyList::from_patch(<span class="kw-2">&amp;</span>update, <span class="kw-2">&amp;mut </span>idms_prox_write.qs_write).map_err(|e| {
+                <span class="macro">admin_error!</span>(err = <span class="question-mark">?</span>e, <span class="string">&quot;Invalid Patch Request&quot;</span>);
                 e
             })<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>mdf = ModifyEvent::from_internal_parts(
+            ident,
+            <span class="kw-2">&amp;</span>modlist,
+            <span class="kw-2">&amp;</span>filter,
+            <span class="kw-2">&amp;mut </span>idms_prox_write.qs_write,
+        )
+        .map_err(|e| {
+            <span class="macro">admin_error!</span>(err = <span class="question-mark">?</span>e, <span class="string">&quot;Failed to begin modify&quot;</span>);
+            e
+        })<span class="question-mark">?</span>;
 
         <span class="macro">trace!</span>(<span class="question-mark">?</span>mdf, <span class="string">&quot;Begin modify event&quot;</span>);
 
@@ -1785,7 +1795,7 @@
                 <span class="macro">admin_error!</span>(err = <span class="question-mark">?</span>e, <span class="string">&quot;Invalid identity&quot;</span>);
                 e
             })<span class="question-mark">?</span>;
-        <span class="kw">let </span>del = <span class="kw">match </span>DeleteEvent::from_parts(ident, <span class="kw-2">&amp;</span>filter, <span class="kw-2">&amp;</span>idms_prox_write.qs_write) {
+        <span class="kw">let </span>del = <span class="kw">match </span>DeleteEvent::from_parts(ident, <span class="kw-2">&amp;</span>filter, <span class="kw-2">&amp;mut </span>idms_prox_write.qs_write) {
             <span class="prelude-val">Ok</span>(d) =&gt; d,
             <span class="prelude-val">Err</span>(e) =&gt; {
                 <span class="macro">admin_error!</span>(err = <span class="question-mark">?</span>e, <span class="string">&quot;Failed to begin delete&quot;</span>);
@@ -2408,7 +2418,7 @@
             target_uuid,
             <span class="kw-2">&amp;</span>proto_ml,
             filter,
-            <span class="kw-2">&amp;</span>idms_prox_write.qs_write,
+            <span class="kw-2">&amp;mut </span>idms_prox_write.qs_write,
         ) {
             <span class="prelude-val">Ok</span>(m) =&gt; m,
             <span class="prelude-val">Err</span>(e) =&gt; {
@@ -2884,7 +2894,7 @@
     )]
     </span><span class="kw">pub async fn </span>handle_purgetombstoneevent(<span class="kw-2">&amp;</span><span class="self">self</span>, msg: PurgeTombstoneEvent) {
         <span class="macro">trace!</span>(<span class="question-mark">?</span>msg, <span class="string">&quot;Begin purge tombstone event&quot;</span>);
-        <span class="kw">let </span>idms_prox_write = <span class="self">self</span>.idms.proxy_write(duration_from_epoch_now()).<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = <span class="self">self</span>.idms.proxy_write(duration_from_epoch_now()).<span class="kw">await</span>;
 
         <span class="kw">let </span>res = idms_prox_write
             .qs_write
@@ -2902,7 +2912,7 @@
     )]
     </span><span class="kw">pub async fn </span>handle_purgerecycledevent(<span class="kw-2">&amp;</span><span class="self">self</span>, msg: PurgeRecycledEvent) {
         <span class="macro">trace!</span>(<span class="question-mark">?</span>msg, <span class="string">&quot;Begin purge recycled event&quot;</span>);
-        <span class="kw">let </span>idms_prox_write = <span class="self">self</span>.idms.proxy_write(duration_from_epoch_now()).<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = <span class="self">self</span>.idms.proxy_write(duration_from_epoch_now()).<span class="kw">await</span>;
         <span class="kw">let </span>res = idms_prox_write
             .qs_write
             .purge_recycled()
