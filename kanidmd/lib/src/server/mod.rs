@@ -904,7 +904,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 impl QueryServer {
     pub fn new(be: Backend, schema: Schema, domain_name: String) -> Self {
         let (s_uuid, d_uuid) = {
-            let wr = be.write();
+            let mut wr = be.write();
             let res = (wr.get_db_s_uuid(), wr.get_db_d_uuid());
             #[allow(clippy::expect_used)]
             wr.commit()
@@ -995,7 +995,7 @@ impl QueryServer {
             .expect("unable to aquire db_ticket for qsw");
 
         let schema_write = self.schema.write();
-        let be_txn = self.be.write();
+        let mut be_txn = self.be.write();
         let d_info = self.d_info.write();
         let phase = self.phase.write();
 
@@ -1320,7 +1320,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.internal_modify(&filt, &modl)
     }
 
-    pub fn reindex(&self) -> Result<(), OperationError> {
+    pub fn reindex(&mut self) -> Result<(), OperationError> {
         // initiate a be reindex here. This could have been from first run checking
         // the versions, or it could just be from the cli where an admin needs to do an
         // indexing.
@@ -1382,7 +1382,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let QueryServerWriteTransaction {
             committed,
             phase,
-            be_txn,
+            mut be_txn,
             schema,
             d_info,
             accesscontrols,
