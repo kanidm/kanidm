@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 git config --global pull.ff only
 DOCS_DIR="/tmp/kanidm_docs"
 
@@ -19,6 +21,8 @@ function build_version() {
     cargo doc --quiet --no-deps
     echo "Moving book to ${DOCS_DIR}/${BOOK_VERSION}/"
     mv ./kanidm_book/book/ "${DOCS_DIR}/${BOOK_VERSION}/"
+    echo "Cleaning out rustdoc dir..."
+    rm -rf "${DOCS_DIR}/${BOOK_VERSION}/rustdoc/"
 	echo "Moving rustdoc to ${DOCS_DIR}/${BOOK_VERSION}/rustdoc/"
     mkdir -p "${DOCS_DIR}/${BOOK_VERSION}/rustdoc/"
     mv ./target/doc/* "${DOCS_DIR}/${BOOK_VERSION}/rustdoc/"
@@ -61,5 +65,6 @@ cat >> "${DOCS_DIR}/index.html" <<-'EOM'
 EOM
 ls -la "${DOCS_DIR}"
 
+rm -rf ./docs/
 mv "${DOCS_DIR}" ./docs/
 ln -s "${LATEST}" ./docs/stable

@@ -6,10 +6,11 @@ authentication for many years, with almost every application in the world being 
 bind to LDAP. As many organisations still rely on LDAP, Kanidm can host a read-only LDAP interface
 for these legacy applications.
 
-{{#template\
-../templates/kani-warning.md imagepath=../images title=Warning! text=The LDAP server in Kanidm is
-not a fully RFC-compliant LDAP server. This is intentional, as Kanidm wants to cover the common use
-cases - simple bind and search. }}
+{{#template ../templates/kani-warning.md
+imagepath=../images
+title=Warning!
+text=The LDAP server in Kanidm is not a fully RFC-compliant LDAP server. This is intentional, as Kanidm wants to cover the common use cases - simple bind and search.
+}}
 
 ## What is LDAP
 
@@ -187,7 +188,7 @@ ldapsearch -H ldap://127.0.0.1:3389 -b 'dc=example,dc=com' -x '(name=test1)'
 
 All give the same error:
 
-```
+```bash
 ldap_sasl_bind(SIMPLE): Can't contact LDAP server (-1)
 ```
 

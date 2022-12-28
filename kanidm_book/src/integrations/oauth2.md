@@ -129,10 +129,11 @@ kanidm system oauth2 update_scope_map <name> <kanidm_group_name> [scopes]...
 kanidm system oauth2 update_scope_map nextcloud nextcloud_admins admin
 ```
 
-{{#template ../templates/kani-warning.md imagepath=../images title=WARNING text=If you are creating
-an OpenID Connect (OIDC) resource server you
-<b>MUST</b> provide a scope map named <code>openid</code>. Without this, OpenID clients <b>WILL NOT
-WORK</b> }}
+{{#template ../templates/kani-warning.md
+imagepath=../images
+title=WARNING
+text=If you are creating an OpenID Connect (OIDC) resource server you <b>MUST</b> provide a scope map named <code>openid</code>. Without this, OpenID clients <b>WILL NOT WORK</b>!
+}}
 
 > **HINT** OpenID connect allows a number of scopes that affect the content of the resulting
 > authorisation token. If one of the following scopes are requested by the OpenID client, then the
@@ -194,9 +195,10 @@ Not all resource servers support modern standards like PKCE or ECDSA. In these s
 necessary to disable these on a per-resource server basis. Disabling these on one resource server
 will not affect others.
 
-{{#template ../templates/kani-warning.md imagepath=../images title=WARNING text=Changing these
-settings MAY have serious consequences on the security of your resource server. You should avoid
-changing these if at all possible! }}
+{{#template ../templates/kani-warning.md
+imagepath=../images
+title=WARNING text=Changing these settings MAY have serious consequences on the security of your resource server. You should avoid changing these if at all possible!
+}}
 
 To disable PKCE for a resource server:
 
@@ -217,7 +219,7 @@ kanidm system oauth2 warning_enable_legacy_crypto <resource server name>
 Add the following to a `mod_auth_openidc.conf`. It should be included in a `mods_enabled` folder or
 with an appropriate include.
 
-```
+```conf
 OIDCRedirectURI /protected/redirect_uri
 OIDCCryptoPassphrase <random password here>
 OIDCProviderMetadataURL https://kanidm.example.com/oauth2/openid/<resource server name>/.well-known/openid-configuration
@@ -264,7 +266,7 @@ You may optionally choose to add:
 
 If you forget this, you may see the following error in logs:
 
-```
+```bash
 Host 172.24.11.129 was not connected to because it violates local access rules
 ```
 
@@ -292,7 +294,7 @@ Velociraptor supports OIDC. To configure it select "Authenticate with SSO" then 
 interactive configuration generator. Alternately, you can set the following keys in
 server.config.yaml:
 
-```
+```yaml
 GUI:
   authenticator:
     type: OIDC
@@ -309,7 +311,7 @@ kanidm system oauth2 warning_insecure_client_disable_pkce <resource server name>
 
 Initial users are mapped via their email in the Velociraptor server.config.yaml config:
 
-```
+```yaml
 GUI:
   initial_users:
   - name: <email address>

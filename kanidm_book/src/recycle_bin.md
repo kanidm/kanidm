@@ -3,10 +3,11 @@
 The recycle bin is a storage of deleted entries from the server. This allows recovery from mistakes
 for a period of time.
 
-{{#template\
-templates/kani-warning.md imagepath=images title=Warning! text=The recycle bin is a best effort -
-when recovering in some cases not everything can be "put back" the way it was. Be sure to check your
-entries are valid once they have been revived. }}
+{{#template templates/kani-warning.md
+imagepath=images
+title=Warning!
+text=The recycle bin is a best effort - when recovering in some cases not everything can be "put back" the way it was. Be sure to check your entries are valid once they have been revived.
+}}
 
 ## Where is the Recycle Bin?
 
@@ -51,7 +52,7 @@ such as the oauth2 scope map type.
 
 An example of this data loss is the following steps:
 
-```
+```bash
 add user1
 add group1
 add user1 as member of group1
@@ -64,7 +65,7 @@ revive group1
 In this series of steps, due to the way that referential integrity is implemented, the membership of
 user1 in group1 would be lost in this process. To explain why:
 
-```
+```bash
 add user1
 add group1
 add user1 as member of group1 // refint between the two established, and memberof added

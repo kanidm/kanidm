@@ -53,10 +53,11 @@ kanidm system sync generate-token ipasync mylabel
 token: eyJhbGci...
 ```
 
-{{#template\
-../templates/kani-warning.md imagepath=../images title=Warning! text=The sync account token has a
-high level of privilege, able to create new accounts and groups. It should be treated carefully as a
-result! }}
+{{#template ../templates/kani-warning.md
+imagepath=../images
+title=Warning!
+text=The sync account token has a high level of privilege, able to create new accounts and groups. It should be treated carefully as a result!
+}}
 
 If you need to revoke the token, you can do so with:
 
@@ -89,9 +90,11 @@ If you are performing a migration from an external IDM to Kanidm, when that migr
 you can nominate that Kanidm now owns all of the imported data. This is achieved by finalising the
 sync account.
 
-{{#template ../templates/kani-warning.md imagepath=../images title=Warning! text=You can not undo
-this operation. Once you have finalised an agreement, Kanidm owns all of the synchronised data, and
-you can not resume synchronisation. }}
+{{#template ../templates/kani-warning.md
+imagepath=../images
+title=Warning!
+text=You can not undo this operation. Once you have finalised an agreement, Kanidm owns all of the synchronised data, and you can not resume synchronisation.
+}}
 
 ```bash
 kanidm system sync finalise <sync account name>
@@ -106,9 +109,11 @@ Once finalised, imported accounts can now be fully managed by Kanidm.
 If you decide to cease importing accounts or need to remove all imported accounts from a sync
 account, you can choose to terminate the agreement removing all data that was imported.
 
-{{#template ../templates/kani-warning.md imagepath=../images title=Warning! text=You can not undo
-this operation. Once you have terminated an agreement, Kanidm deletes all of the synchronised data,
-and you can not resume synchronisation. }}
+{{#template ../templates/kani-warning.md
+imagepath=../images
+title=Warning!
+text=You can not undo this operation. Once you have terminated an agreement, Kanidm deletes all of the synchronised data, and you can not resume synchronisation.
+}}
 
 ```bash
 kanidm system sync terminate <sync account name>

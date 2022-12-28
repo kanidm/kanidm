@@ -36,12 +36,12 @@ report issues, we will make every effort to help resolve them.
 
 ## System Requirements
 
-#### CPU
+### CPU
 
 If you are using the x86\_64 cpu-optimised version, you must have a CPU that is from 2013 or newer
 (Haswell, Ryzen). The following instruction flags are used.
 
-```
+```asm
 cmov, cx8, fxsr, mmx, sse, sse2, cx16, sahf, popcnt, sse3, sse4.1, sse4.2, avx, avx2,
 bmi, bmi2, f16c, fma, lzcnt, movbe, xsave
 ```
@@ -54,12 +54,15 @@ In this case, you should use the standard server:latest image.
 In the future we may apply a baseline of flags as a requirement for x86\_64 for the server:latest
 image. These flags will be:
 
-```
+```asm
 cmov, cx8, fxsr, mmx, sse, sse2
 ```
 
-{{#template templates/kani-alert.md imagepath=images title=Tip text=You can check your cpu flags on
-Linux with the command `lscpu` }}
+{{#template templates/kani-alert.md
+imagepath=images
+title=Tip
+text=You can check your cpu flags on Linux with the command `lscpu`
+}}
 
 #### Memory
 
@@ -91,7 +94,7 @@ critical element of ensuring a secure system.
 The key.pem should be a single PEM private key, with no encryption. The file content should be
 similar to:
 
-```
+```bash
 -----BEGIN RSA PRIVATE KEY-----
 MII...<base64>
 -----END RSA PRIVATE KEY-----
@@ -101,7 +104,7 @@ The chain.pem is a series of PEM formatted certificates. The leaf certificate, o
 that matches the private key should be the first certificate in the file. This should be followed by
 the series of intermediates, and the final certificate should be the CA root. For example:
 
-```
+```bash
 -----BEGIN CERTIFICATE-----
 <leaf certificate>
 -----END CERTIFICATE-----
