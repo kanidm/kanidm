@@ -88,7 +88,7 @@ impl QueryServerReadV1 {
 
         // Make an event from the request
         let search =
-            SearchEvent::from_message(ident, &req, &idms_prox_read.qs_read).map_err(|e| {
+            SearchEvent::from_message(ident, &req, &mut idms_prox_read.qs_read).map_err(|e| {
                 admin_error!(?e, "Failed to begin search");
                 e
             })?;
@@ -97,7 +97,7 @@ impl QueryServerReadV1 {
 
         let entries = idms_prox_read.qs_read.search_ext(&search)?;
 
-        SearchResult::new(&idms_prox_read.qs_read, &entries).map(SearchResult::response)
+        SearchResult::new(&mut idms_prox_read.qs_read, &entries).map(SearchResult::response)
     }
 
     #[instrument(
@@ -174,7 +174,7 @@ impl QueryServerReadV1 {
 
         // Scope to limit the read txn.
         {
-            let idms_prox_read = self.idms.proxy_read().await;
+            let mut idms_prox_read = self.idms.proxy_read().await;
             idms_prox_read
                 .qs_read
                 .get_be_txn()
@@ -314,7 +314,7 @@ impl QueryServerReadV1 {
 
         match entries.pop() {
             Some(e) if entries.is_empty() => {
-                WhoamiResult::new(&idms_prox_read.qs_read, &e).map(WhoamiResult::response)
+                WhoamiResult::new(&mut idms_prox_read.qs_read, &e).map(WhoamiResult::response)
             }
             Some(_) => Err(OperationError::InvalidState), /* Somehow matched multiple entries... */
             _ => Err(OperationError::NoMatchingEntries),
@@ -374,7 +374,7 @@ impl QueryServerReadV1 {
             ident,
             &filter,
             attrs.as_deref(),
-            &idms_prox_read.qs_read,
+            &mut idms_prox_read.qs_read,
         ) {
             Ok(s) => s,
             Err(e) => {
@@ -386,7 +386,7 @@ impl QueryServerReadV1 {
         trace!(?srch, "Begin event");
 
         match idms_prox_read.qs_read.search_ext(&srch) {
-            Ok(entries) => SearchResult::new(&idms_prox_read.qs_read, &entries)
+            Ok(entries) => SearchResult::new(&mut idms_prox_read.qs_read, &entries)
                 .map(|ok_sr| ok_sr.into_proto_array()),
             Err(e) => Err(e),
         }
@@ -430,7 +430,7 @@ impl QueryServerReadV1 {
         trace!(?srch, "Begin event");
 
         match idms_prox_read.qs_read.search_ext(&srch) {
-            Ok(entries) => SearchResult::new(&idms_prox_read.qs_read, &entries)
+            Ok(entries) => SearchResult::new(&mut idms_prox_read.qs_read, &entries)
                 .map(|ok_sr| ok_sr.into_proto_array()),
             Err(e) => Err(e),
         }
@@ -1150,15 +1150,18 @@ impl QueryServerReadV1 {
             })?;
 
         // Make an event from the request
-        let srch =
-            match SearchEvent::from_internal_message(ident, &filter, None, &idms_prox_read.qs_read)
-            {
-                Ok(s) => s,
-                Err(e) => {
-                    admin_error!("Failed to begin oauth2 basic secret read: {:?}", e);
-                    return Err(e);
-                }
-            };
+        let srch = match SearchEvent::from_internal_message(
+            ident,
+            &filter,
+            None,
+            &mut idms_prox_read.qs_read,
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                admin_error!("Failed to begin oauth2 basic secret read: {:?}", e);
+                return Err(e);
+            }
+        };
 
         trace!(?srch, "Begin event");
 

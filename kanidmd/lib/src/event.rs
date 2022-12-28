@@ -40,7 +40,7 @@ pub struct SearchResult {
 
 impl SearchResult {
     pub fn new(
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
         entries: &[Entry<EntryReduced, EntryCommitted>],
     ) -> Result<Self, OperationError> {
         let entries: Result<_, _> = entries
@@ -82,7 +82,7 @@ impl SearchEvent {
     pub fn from_message(
         ident: Identity,
         req: &SearchRequest,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let f = Filter::from_ro(&ident, &req.filter, qs)?;
         // We do need to do this twice to account for the ignore_hidden
@@ -105,7 +105,7 @@ impl SearchEvent {
         ident: Identity,
         filter: &Filter<FilterInvalid>,
         attrs: Option<&[String]>,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let r_attrs: Option<BTreeSet<AttrString>> = attrs.map(|vs| {
             vs.iter()
@@ -279,7 +279,7 @@ impl SearchEvent {
     }
 
     pub(crate) fn new_ext_impersonate_uuid(
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
         ident: Identity,
         lf: &LdapFilter,
         attrs: Option<BTreeSet<AttrString>>,
@@ -339,7 +339,7 @@ impl CreateEvent {
     pub fn from_message(
         ident: Identity,
         req: &CreateRequest,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let rentries: Result<Vec<_>, _> = req
             .entries
@@ -429,7 +429,7 @@ impl DeleteEvent {
     pub fn from_message(
         ident: Identity,
         req: &DeleteRequest,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let f = Filter::from_rw(&ident, &req.filter, qs)?;
         let filter_orig = f
@@ -446,7 +446,7 @@ impl DeleteEvent {
     pub fn from_parts(
         ident: Identity,
         f: &Filter<FilterInvalid>,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let filter_orig = f
             .validate(qs.get_schema())
@@ -524,7 +524,7 @@ impl ModifyEvent {
     pub fn from_message(
         ident: Identity,
         req: &ModifyRequest,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let f = Filter::from_rw(&ident, &req.filter, qs)?;
         let m = ModifyList::from(&req.modlist, qs)?;
@@ -548,7 +548,7 @@ impl ModifyEvent {
         target_uuid: Uuid,
         proto_ml: &ProtoModifyList,
         filter: Filter<FilterInvalid>,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let f_uuid = filter_all!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
         // Add any supplemental conditions we have.
@@ -706,7 +706,7 @@ pub struct WhoamiResult {
 
 impl WhoamiResult {
     pub fn new(
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
         e: &Entry<EntryReduced, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         Ok(WhoamiResult {

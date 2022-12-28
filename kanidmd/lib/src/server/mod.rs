@@ -124,7 +124,7 @@ pub struct QueryServerWriteTransaction<'a> {
 /// [`QueryServerWriteTransaction`]: struct.QueryServerWriteTransaction.html
 pub trait QueryServerTransaction<'a> {
     type BackendTransactionType: BackendTransaction;
-    fn get_be_txn(&self) -> &Self::BackendTransactionType;
+    fn get_be_txn(&mut self) -> &mut Self::BackendTransactionType;
 
     type SchemaTransactionType: SchemaTransaction;
     fn get_schema<'b>(&self) -> &'b Self::SchemaTransactionType;
@@ -260,7 +260,7 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    fn name_to_uuid(&self, name: &str) -> Result<Uuid, OperationError> {
+    fn name_to_uuid(&mut self, name: &str) -> Result<Uuid, OperationError> {
         // Is it just a uuid?
         Uuid::parse_str(name).or_else(|_| {
             let lname = name.to_lowercase();
@@ -271,7 +271,10 @@ pub trait QueryServerTransaction<'a> {
     }
 
     // Similar to name, but where we lookup from external_id instead.
-    fn sync_external_id_to_uuid(&self, external_id: &str) -> Result<Option<Uuid>, OperationError> {
+    fn sync_external_id_to_uuid(
+        &mut self,
+        external_id: &str,
+    ) -> Result<Option<Uuid>, OperationError> {
         // Is it just a uuid?
         Uuid::parse_str(external_id).map(Some).or_else(|_| {
             let lname = external_id.to_lowercase();
@@ -279,7 +282,7 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    fn uuid_to_spn(&self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
+    fn uuid_to_spn(&mut self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
         let r = self.get_be_txn().uuid2spn(uuid)?;
 
         if let Some(ref n) = r {
@@ -291,7 +294,7 @@ pub trait QueryServerTransaction<'a> {
         Ok(r)
     }
 
-    fn uuid_to_rdn(&self, uuid: Uuid) -> Result<String, OperationError> {
+    fn uuid_to_rdn(&mut self, uuid: Uuid) -> Result<String, OperationError> {
         // If we have a some, pass it on, else unwrap into a default.
         self.get_be_txn()
             .uuid2rdn(uuid)
@@ -432,7 +435,7 @@ pub trait QueryServerTransaction<'a> {
 
     /// Do a schema aware conversion from a String:String to String:Value for modification
     /// present.
-    fn clone_value(&self, attr: &str, value: &str) -> Result<Value, OperationError> {
+    fn clone_value(&mut self, attr: &str, value: &str) -> Result<Value, OperationError> {
         let schema = self.get_schema();
 
         // Should this actually be a fn of Value - no - I think that introduces issues with the
@@ -506,7 +509,11 @@ pub trait QueryServerTransaction<'a> {
         }
     }
 
-    fn clone_partialvalue(&self, attr: &str, value: &str) -> Result<PartialValue, OperationError> {
+    fn clone_partialvalue(
+        &mut self,
+        attr: &str,
+        value: &str,
+    ) -> Result<PartialValue, OperationError> {
         let schema = self.get_schema();
 
         // Lookup the attr
@@ -606,7 +613,7 @@ pub trait QueryServerTransaction<'a> {
     }
 
     // In the opposite direction, we can resolve values for presentation
-    fn resolve_valueset(&self, value: &ValueSet) -> Result<Vec<String>, OperationError> {
+    fn resolve_valueset(&mut self, value: &ValueSet) -> Result<Vec<String>, OperationError> {
         if let Some(r_set) = value.as_refer_set() {
             let v: Result<Vec<_>, _> = r_set
                 .iter()
@@ -640,7 +647,7 @@ pub trait QueryServerTransaction<'a> {
     }
 
     fn resolve_valueset_ldap(
-        &self,
+        &mut self,
         value: &ValueSet,
         basedn: &str,
     ) -> Result<Vec<Vec<u8>>, OperationError> {
@@ -733,8 +740,8 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
     type BackendTransactionType = BackendReadTransaction<'a>;
     type SchemaTransactionType = SchemaReadTransaction;
 
-    fn get_be_txn(&self) -> &BackendReadTransaction<'a> {
-        &self.be_txn
+    fn get_be_txn(&mut self) -> &mut BackendReadTransaction<'a> {
+        &mut self.be_txn
     }
 
     fn get_schema<'b>(&self) -> &'b SchemaReadTransaction {
@@ -846,8 +853,8 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
     type BackendTransactionType = BackendWriteTransaction<'a>;
     type SchemaTransactionType = SchemaWriteTransaction<'a>;
 
-    fn get_be_txn(&self) -> &BackendWriteTransaction<'a> {
-        &self.be_txn
+    fn get_be_txn(&mut self) -> &mut BackendWriteTransaction<'a> {
+        &mut self.be_txn
     }
 
     fn get_schema<'b>(&self) -> &'b SchemaWriteTransaction<'a> {

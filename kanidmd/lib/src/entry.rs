@@ -279,7 +279,7 @@ impl Entry<EntryInit, EntryNew> {
     /// [`Entry`] type.
     pub fn from_proto_entry(
         e: &ProtoEntry,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         trace!("from_proto_entry");
         // Why not the trait? In the future we may want to extend
@@ -319,7 +319,7 @@ impl Entry<EntryInit, EntryNew> {
     #[instrument(level = "debug", skip_all)]
     pub fn from_proto_entry_str(
         es: &str,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         if cfg!(test) {
             if es.len() > 256 {
@@ -1725,7 +1725,7 @@ impl Entry<EntryReduced, EntryCommitted> {
     }
 
     /// Transform this reduced entry into a JSON protocol form that can be sent to clients.
-    pub fn to_pe(&self, qs: &QueryServerReadTransaction) -> Result<ProtoEntry, OperationError> {
+    pub fn to_pe(&self, qs: &mut QueryServerReadTransaction) -> Result<ProtoEntry, OperationError> {
         // Turn values -> Strings.
         let attrs: Result<_, _> = self
             .attrs
@@ -1738,7 +1738,7 @@ impl Entry<EntryReduced, EntryCommitted> {
     /// Transform this reduced entry into an LDAP form that can be sent to clients.
     pub fn to_ldap(
         &self,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
         basedn: &str,
         // Did the client request all attributes?
         all_attrs: bool,

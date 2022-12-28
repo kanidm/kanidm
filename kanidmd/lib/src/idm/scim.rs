@@ -777,7 +777,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 
     fn scim_attr_to_values(
-        &self,
+        &mut self,
         scim_attr_name: &str,
         scim_attr: &ScimAttr,
     ) -> Result<Vec<Value>, OperationError> {
@@ -887,7 +887,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 
     fn scim_entry_to_mod(
-        &self,
+        &mut self,
         scim_ent: &ScimEntry,
         sync_uuid: Uuid,
         sync_allow_class_set: &BTreeMap<String, SchemaClass>,

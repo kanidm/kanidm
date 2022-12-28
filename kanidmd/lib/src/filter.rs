@@ -494,7 +494,7 @@ impl Filter<FilterInvalid> {
     pub fn from_ro(
         ev: &Identity,
         f: &ProtoFilter,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let depth = FILTER_DEPTH_MAX;
         let mut elems = ev.limits.filter_max_elements;
@@ -509,7 +509,7 @@ impl Filter<FilterInvalid> {
     pub fn from_rw(
         ev: &Identity,
         f: &ProtoFilter,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let depth = FILTER_DEPTH_MAX;
         let mut elems = ev.limits.filter_max_elements;
@@ -524,7 +524,7 @@ impl Filter<FilterInvalid> {
     pub fn from_ldap_ro(
         ev: &Identity,
         f: &LdapFilter,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let depth = FILTER_DEPTH_MAX;
         let mut elems = ev.limits.filter_max_elements;
@@ -724,7 +724,7 @@ impl FilterComp {
 
     fn from_ro(
         f: &ProtoFilter,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
         depth: usize,
         elems: &mut usize,
     ) -> Result<Self, OperationError> {
@@ -776,7 +776,7 @@ impl FilterComp {
 
     fn from_rw(
         f: &ProtoFilter,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         depth: usize,
         elems: &mut usize,
     ) -> Result<Self, OperationError> {
@@ -829,7 +829,7 @@ impl FilterComp {
 
     fn from_ldap_ro(
         f: &LdapFilter,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
         depth: usize,
         elems: &mut usize,
     ) -> Result<Self, OperationError> {
@@ -1896,7 +1896,7 @@ mod tests {
 
     #[qs_test]
     async fn test_filter_depth_limits(server: &QueryServer) {
-        let r_txn = server.read().await;
+        let mut r_txn = server.read().await;
 
         let mut inv_proto = ProtoFilter::Pres("class".to_string());
         for _i in 0..(FILTER_DEPTH_MAX + 1) {
@@ -1911,26 +1911,26 @@ mod tests {
         let ev = Identity::from_internal();
 
         // Test proto + read
-        let res = Filter::from_ro(&ev, &inv_proto, &r_txn);
+        let res = Filter::from_ro(&ev, &inv_proto, &mut r_txn);
         assert!(res == Err(OperationError::ResourceLimit));
 
         // ldap
-        let res = Filter::from_ldap_ro(&ev, &inv_ldap, &r_txn);
+        let res = Filter::from_ldap_ro(&ev, &inv_ldap, &mut r_txn);
         assert!(res == Err(OperationError::ResourceLimit));
 
         // Can only have one db conn at a time.
         std::mem::drop(r_txn);
 
         // proto + write
-        let wr_txn = server.write(duration_from_epoch_now()).await;
-        let res = Filter::from_rw(&ev, &inv_proto, &wr_txn);
+        let mut wr_txn = server.write(duration_from_epoch_now()).await;
+        let res = Filter::from_rw(&ev, &inv_proto, &mut wr_txn);
         assert!(res == Err(OperationError::ResourceLimit));
     }
 
     #[qs_test]
     async fn test_filter_max_element_limits(server: &QueryServer) {
         const LIMIT: usize = 4;
-        let r_txn = server.read().await;
+        let mut r_txn = server.read().await;
 
         let inv_proto = ProtoFilter::And(
             (0..(LIMIT * 2))
@@ -1948,19 +1948,19 @@ mod tests {
         ev.limits.filter_max_elements = LIMIT;
 
         // Test proto + read
-        let res = Filter::from_ro(&ev, &inv_proto, &r_txn);
+        let res = Filter::from_ro(&ev, &inv_proto, &mut r_txn);
         assert!(res == Err(OperationError::ResourceLimit));
 
         // ldap
-        let res = Filter::from_ldap_ro(&ev, &inv_ldap, &r_txn);
+        let res = Filter::from_ldap_ro(&ev, &inv_ldap, &mut r_txn);
         assert!(res == Err(OperationError::ResourceLimit));
 
         // Can only have one db conn at a time.
         std::mem::drop(r_txn);
 
         // proto + write
-        let wr_txn = server.write(duration_from_epoch_now()).await;
-        let res = Filter::from_rw(&ev, &inv_proto, &wr_txn);
+        let mut wr_txn = server.write(duration_from_epoch_now()).await;
+        let res = Filter::from_rw(&ev, &inv_proto, &mut wr_txn);
         assert!(res == Err(OperationError::ResourceLimit));
     }
 }

@@ -302,12 +302,16 @@ impl LdapServer {
                     admin_error!("Invalid identity: {:?}", e);
                     e
                 })?;
-            let se =
-                SearchEvent::new_ext_impersonate_uuid(&idm_read.qs_read, ident, &lfilter, k_attrs)
-                    .map_err(|e| {
-                        admin_error!("failed to create search event -> {:?}", e);
-                        e
-                    })?;
+            let se = SearchEvent::new_ext_impersonate_uuid(
+                &mut idm_read.qs_read,
+                ident,
+                &lfilter,
+                k_attrs,
+            )
+            .map_err(|e| {
+                admin_error!("failed to create search event -> {:?}", e);
+                e
+            })?;
 
             let res = idm_read.qs_read.search_ext(&se).map_err(|e| {
                 admin_error!("search failure {:?}", e);
@@ -320,9 +324,14 @@ impl LdapServer {
             let lres: Result<Vec<_>, _> = res
                 .into_iter()
                 .map(|e| {
-                    e.to_ldap(&idm_read.qs_read, self.basedn.as_str(), all_attrs, &l_attrs)
-                        // if okay, wrap in a ldap msg.
-                        .map(|r| sr.gen_result_entry(r))
+                    e.to_ldap(
+                        &mut idm_read.qs_read,
+                        self.basedn.as_str(),
+                        all_attrs,
+                        &l_attrs,
+                    )
+                    // if okay, wrap in a ldap msg.
+                    .map(|r| sr.gen_result_entry(r))
                 })
                 .chain(iter::once(Ok(sr.gen_success())))
                 .collect();
