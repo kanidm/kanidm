@@ -1282,7 +1282,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     security_info!(?uuid, "access token has expired, returning inactive");
                     return Ok(AccessTokenIntrospectResponse::inactive());
                 }
-                let exp = iat + ((expiry - odt_ct).whole_seconds() as i64);
+                let exp = iat + (expiry - odt_ct).whole_seconds();
 
                 // Is the user expired, or the oauth2 session invalid?
                 let valid = self
@@ -1387,7 +1387,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     security_info!(?uuid, "access token has expired, returning inactive");
                     return Err(Oauth2Error::InvalidToken);
                 }
-                let exp = iat + ((expiry - odt_ct).whole_seconds() as i64);
+                let exp = iat + (expiry - odt_ct).whole_seconds();
 
                 // Is the user expired, or the oauth2 session invalid?
                 let valid = self
@@ -1611,7 +1611,7 @@ fn extra_claims_for_account(
             account.groups.iter().map(|x| x.to_proto().uuid).collect(),
         );
     }
-    return extra_claims;
+    extra_claims
 }
 
 #[cfg(test)]

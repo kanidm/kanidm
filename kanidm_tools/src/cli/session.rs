@@ -265,7 +265,7 @@ impl LoginOpt {
 
                 #[allow(clippy::expect_used)]
                 mechs
-                    .get(selection as usize)
+                    .get(selection)
                     .expect("can not fail - bounds already checked.")
             }
         };
@@ -306,7 +306,7 @@ impl LoginOpt {
 
                     #[allow(clippy::expect_used)]
                     allowed
-                        .get(selection as usize)
+                        .get(selection)
                         .expect("can not fail - bounds already checked.")
                 }
             };

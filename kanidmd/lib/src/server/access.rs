@@ -1546,9 +1546,9 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
 // ACP transaction operations
 // =========================================================================
 
-impl AccessControls {
+impl Default for AccessControls {
     #![allow(clippy::expect_used)]
-    pub fn new() -> Self {
+    fn default() -> Self {
         AccessControls {
             inner: CowCell::new(AccessControlsInner {
                 acps_search: Vec::new(),
@@ -1565,7 +1565,9 @@ impl AccessControls {
                 .expect("Failed to construct acp_resolve_filter_cache"),
         }
     }
+}
 
+impl AccessControls {
     pub fn try_quiesce(&self) {
         self.acp_resolve_filter_cache.try_quiesce();
     }
@@ -2053,7 +2055,7 @@ mod tests {
             $entries:expr,
             $expect:expr
         ) => {{
-            let ac = AccessControls::new();
+            let ac = AccessControls::default();
             let mut acw = ac.write();
             acw.update_search($controls).expect("Failed to update");
             let acw = acw;
@@ -2075,7 +2077,7 @@ mod tests {
             $entries:expr,
             $expect:expr
         ) => {{
-            let ac = AccessControls::new();
+            let ac = AccessControls::default();
             let mut acw = ac.write();
             acw.update_search($controls).expect("Failed to update");
             let acw = acw;
@@ -2360,7 +2362,7 @@ mod tests {
             $entries:expr,
             $expect:expr
         ) => {{
-            let ac = AccessControls::new();
+            let ac = AccessControls::default();
             let mut acw = ac.write();
             acw.update_modify($controls).expect("Failed to update");
             let acw = acw;
@@ -2577,7 +2579,7 @@ mod tests {
             $entries:expr,
             $expect:expr
         ) => {{
-            let ac = AccessControls::new();
+            let ac = AccessControls::default();
             let mut acw = ac.write();
             acw.update_create($controls).expect("Failed to update");
             let acw = acw;
@@ -2735,7 +2737,7 @@ mod tests {
             $entries:expr,
             $expect:expr
         ) => {{
-            let ac = AccessControls::new();
+            let ac = AccessControls::default();
             let mut acw = ac.write();
             acw.update_delete($controls).expect("Failed to update");
             let acw = acw;
@@ -2836,7 +2838,7 @@ mod tests {
             $entries:expr,
             $expect:expr
         ) => {{
-            let ac = AccessControls::new();
+            let ac = AccessControls::default();
             let mut acw = ac.write();
             acw.update_search($search_controls)
                 .expect("Failed to update");

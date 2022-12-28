@@ -939,7 +939,7 @@ impl QueryServer {
             d_info,
             be,
             schema: Arc::new(schema),
-            accesscontrols: Arc::new(AccessControls::new()),
+            accesscontrols: Arc::new(AccessControls::default()),
             db_tickets: Arc::new(Semaphore::new(pool_size as usize)),
             write_ticket: Arc::new(Semaphore::new(1)),
             resolve_filter_cache: Arc::new(
