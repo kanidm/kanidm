@@ -1389,10 +1389,12 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
-        let idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await;
 
+        // parse_token_to_ident
         idms_prox_read
             .validate_and_parse_uat(uat.as_deref(), ct)
+            .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
             .map(|_| ())
             .map_err(|e| {
                 admin_error!("Invalid token: {:?}", e);
