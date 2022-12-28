@@ -1,9 +1,6 @@
 //! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
-// This is really only used for long lived, high level types that need clone
-// that otherwise can't be cloned. Think Mutex.
-use std::cell::Cell;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -83,9 +80,8 @@ pub struct QueryServerReadTransaction<'a> {
     schema: SchemaReadTransaction,
     accesscontrols: AccessControlsReadTransaction<'a>,
     _db_ticket: SemaphorePermit<'a>,
-    resolve_filter_cache: Cell<
+    resolve_filter_cache:
         ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
-    >,
 }
 
 unsafe impl<'a> Sync for QueryServerReadTransaction<'a> {}
@@ -112,10 +108,9 @@ pub struct QueryServerWriteTransaction<'a> {
     changed_uuid: HashSet<Uuid>,
     _db_ticket: SemaphorePermit<'a>,
     _write_ticket: SemaphorePermit<'a>,
-    resolve_filter_cache: Cell<
+    resolve_filter_cache:
         ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
-    >,
-    dyngroup_cache: Cell<CowCellWriteTxn<'a, DynGroupCache>>,
+    dyngroup_cache: CowCellWriteTxn<'a, DynGroupCache>,
 }
 
 /// The `QueryServerTransaction` trait provides a set of common read only operations to be
@@ -143,10 +138,19 @@ pub trait QueryServerTransaction<'a> {
 
     fn get_domain_display_name(&self) -> &str;
 
-    #[allow(clippy::mut_from_ref)]
     fn get_resolve_filter_cache(
-        &self,
+        &mut self,
     ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>;
+
+    // Because of how borrowck in rust works, if we need to get two inner types we have to get them
+    // in a single fn.
+
+    fn get_resolve_filter_cache_and_be_txn(
+        &mut self,
+    ) -> (
+        &mut Self::BackendTransactionType,
+        &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+    );
 
     /// Conduct a search and apply access controls to yield a set of entries that
     /// have been reduced to the set of user visible avas. Note that if you provide
@@ -201,9 +205,7 @@ pub trait QueryServerTransaction<'a> {
         //
         // NOTE: Filters are validated in event conversion.
 
-        let resolve_filter_cache = self.get_resolve_filter_cache();
-
-        let be_txn = self.get_be_txn();
+        let (be_txn, resolve_filter_cache) = self.get_resolve_filter_cache_and_be_txn();
         let idxmeta = be_txn.get_idxmeta_ref();
         // Now resolve all references and indexes.
         let vfr = se
@@ -238,11 +240,9 @@ pub trait QueryServerTransaction<'a> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    fn exists(&self, ee: &ExistsEvent) -> Result<bool, OperationError> {
-        let be_txn = self.get_be_txn();
+    fn exists(&mut self, ee: &ExistsEvent) -> Result<bool, OperationError> {
+        let (be_txn, resolve_filter_cache) = self.get_resolve_filter_cache_and_be_txn();
         let idxmeta = be_txn.get_idxmeta_ref();
-
-        let resolve_filter_cache = self.get_resolve_filter_cache();
 
         let vfr = ee
             .filter
@@ -254,7 +254,7 @@ pub trait QueryServerTransaction<'a> {
 
         let lims = ee.get_limits();
 
-        self.get_be_txn().exists(lims, &vfr).map_err(|e| {
+        be_txn.exists(lims, &vfr).map_err(|e| {
             admin_error!(?e, "backend failure");
             OperationError::Backend
         })
@@ -752,19 +752,19 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
     }
 
     fn get_resolve_filter_cache(
-        &self,
+        &mut self,
     ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>
     {
-        unsafe {
-            let mptr = self.resolve_filter_cache.as_ptr();
-            &mut (*mptr)
-                as &mut ARCacheReadTxn<
-                    'a,
-                    (IdentityId, Filter<FilterValid>),
-                    Filter<FilterValidResolved>,
-                    (),
-                >
-        }
+        &mut self.resolve_filter_cache
+    }
+
+    fn get_resolve_filter_cache_and_be_txn(
+        &mut self,
+    ) -> (
+        &mut BackendReadTransaction<'a>,
+        &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+    ) {
+        (&mut self.be_txn, &mut self.resolve_filter_cache)
     }
 
     fn get_domain_uuid(&self) -> Uuid {
@@ -865,19 +865,19 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
     }
 
     fn get_resolve_filter_cache(
-        &self,
+        &mut self,
     ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>
     {
-        unsafe {
-            let mptr = self.resolve_filter_cache.as_ptr();
-            &mut (*mptr)
-                as &mut ARCacheReadTxn<
-                    'a,
-                    (IdentityId, Filter<FilterValid>),
-                    Filter<FilterValidResolved>,
-                    (),
-                >
-        }
+        &mut self.resolve_filter_cache
+    }
+
+    fn get_resolve_filter_cache_and_be_txn(
+        &mut self,
+    ) -> (
+        &mut BackendWriteTransaction<'a>,
+        &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+    ) {
+        (&mut self.be_txn, &mut self.resolve_filter_cache)
     }
 
     fn get_domain_uuid(&self) -> Uuid {
@@ -967,7 +967,7 @@ impl QueryServer {
             d_info: self.d_info.read(),
             accesscontrols: self.accesscontrols.read(),
             _db_ticket: db_ticket,
-            resolve_filter_cache: Cell::new(self.resolve_filter_cache.read()),
+            resolve_filter_cache: self.resolve_filter_cache.read(),
         }
     }
 
@@ -1020,8 +1020,8 @@ impl QueryServer {
             changed_uuid: HashSet::new(),
             _db_ticket: db_ticket,
             _write_ticket: write_ticket,
-            resolve_filter_cache: Cell::new(self.resolve_filter_cache.read()),
-            dyngroup_cache: Cell::new(self.dyngroup_cache.write()),
+            resolve_filter_cache: self.resolve_filter_cache.read(),
+            dyngroup_cache: self.dyngroup_cache.write(),
         }
     }
 
@@ -1037,10 +1037,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub(crate) fn get_dyngroup_cache(&mut self) -> &mut DynGroupCache {
-        unsafe {
-            let mptr = self.dyngroup_cache.as_ptr();
-            (*mptr).get_mut()
-        }
+        &mut self.dyngroup_cache
     }
 
     #[instrument(level = "debug", name = "reload_schema", skip(self))]
@@ -1401,7 +1398,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .commit()
                 .map(|_| d_info.commit())
                 .map(|_| phase.commit())
-                .map(|_| dyngroup_cache.into_inner().commit())
+                .map(|_| dyngroup_cache.commit())
                 .and_then(|_| accesscontrols.commit())
                 .and_then(|_| be_txn.commit())
         } else {
