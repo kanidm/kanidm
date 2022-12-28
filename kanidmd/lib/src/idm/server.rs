@@ -117,7 +117,7 @@ pub struct IdmServerProxyReadTransaction<'a> {
     pub qs_read: QueryServerReadTransaction<'a>,
     uat_jwt_validator: CowCellReadTxn<JwsValidator>,
     oauth2rs: Oauth2ResourceServersReadTransaction,
-    async_tx: Sender<DelayedAction>,
+    pub(crate) async_tx: Sender<DelayedAction>,
 }
 
 pub struct IdmServerProxyWriteTransaction<'a> {
@@ -159,7 +159,7 @@ impl IdmServer {
 
         // Get the domain name, as the relying party id.
         let (rp_id, rp_name, fernet_private_key, es256_private_key, pw_badlist_set, oauth2rs_set) = {
-            let qs_read = task::block_on(qs.read());
+            let mut qs_read = task::block_on(qs.read());
             (
                 qs_read.get_domain_name().to_string(),
                 qs_read.get_domain_display_name().to_string(),
@@ -389,7 +389,7 @@ pub enum Token {
 pub trait IdmServerTransaction<'a> {
     type QsTransactionType: QueryServerTransaction<'a>;
 
-    fn get_qs_txn(&self) -> &Self::QsTransactionType;
+    fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType;
 
     fn get_uat_validator_txn(&self) -> &JwsValidator;
 
@@ -403,7 +403,7 @@ pub trait IdmServerTransaction<'a> {
     /// and validation method.
     #[instrument(level = "info", skip_all)]
     fn validate_and_parse_token_to_ident(
-        &self,
+        &mut self,
         token: Option<&str>,
         ct: Duration,
     ) -> Result<Identity, OperationError> {
@@ -415,7 +415,7 @@ pub trait IdmServerTransaction<'a> {
 
     #[instrument(level = "info", skip_all)]
     fn validate_and_parse_token_to_uat(
-        &self,
+        &mut self,
         token: Option<&str>,
         ct: Duration,
     ) -> Result<UserAuthToken, OperationError> {
@@ -429,7 +429,7 @@ pub trait IdmServerTransaction<'a> {
     }
 
     fn validate_and_parse_token_to_token(
-        &self,
+        &mut self,
         token: Option<&str>,
         ct: Duration,
     ) -> Result<Token, OperationError> {
@@ -573,7 +573,7 @@ pub trait IdmServerTransaction<'a> {
     }
 
     fn check_oauth2_account_uuid_valid(
-        &self,
+        &mut self,
         uuid: Uuid,
         session_id: Uuid,
         parent_session_id: Uuid,
@@ -636,7 +636,7 @@ pub trait IdmServerTransaction<'a> {
     /// relevant session information is injected.
     #[instrument(level = "debug", skip_all)]
     fn process_uat_to_identity(
-        &self,
+        &mut self,
         uat: &UserAuthToken,
         ct: Duration,
     ) -> Result<Identity, OperationError> {
@@ -700,7 +700,7 @@ pub trait IdmServerTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     fn process_apit_to_identity(
-        &self,
+        &mut self,
         apit: &ApiToken,
         entry: Arc<EntrySealedCommitted>,
         ct: Duration,
@@ -725,7 +725,7 @@ pub trait IdmServerTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     fn validate_ldap_session(
-        &self,
+        &mut self,
         session: &LdapSession,
         ct: Duration,
     ) -> Result<Identity, OperationError> {
@@ -785,7 +785,7 @@ pub trait IdmServerTransaction<'a> {
 
     #[instrument(level = "info", skip_all)]
     fn validate_and_parse_sync_token_to_ident(
-        &self,
+        &mut self,
         token: Option<&str>,
         ct: Duration,
     ) -> Result<Identity, OperationError> {
@@ -870,8 +870,8 @@ pub trait IdmServerTransaction<'a> {
 impl<'a> IdmServerTransaction<'a> for IdmServerAuthTransaction<'a> {
     type QsTransactionType = QueryServerReadTransaction<'a>;
 
-    fn get_qs_txn(&self) -> &Self::QsTransactionType {
-        &self.qs_read
+    fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType {
+        &mut self.qs_read
     }
 
     fn get_uat_validator_txn(&self) -> &JwsValidator {
@@ -1413,8 +1413,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
 impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
     type QsTransactionType = QueryServerReadTransaction<'a>;
 
-    fn get_qs_txn(&self) -> &Self::QsTransactionType {
-        &self.qs_read
+    fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType {
+        &mut self.qs_read
     }
 
     fn get_uat_validator_txn(&self) -> &JwsValidator {
@@ -1546,17 +1546,17 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     }
 
     pub fn check_oauth2_token_exchange(
-        &self,
+        &mut self,
         client_authz: Option<&str>,
         token_req: &AccessTokenRequest,
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         self.oauth2rs
-            .check_oauth2_token_exchange(self, client_authz, token_req, ct, &self.async_tx)
+            .check_oauth2_token_exchange(self, client_authz, token_req, ct)
     }
 
     pub fn check_oauth2_token_introspect(
-        &self,
+        &mut self,
         client_authz: &str,
         intr_req: &AccessTokenIntrospectRequest,
         ct: Duration,
@@ -1566,7 +1566,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     }
 
     pub fn oauth2_openid_userinfo(
-        &self,
+        &mut self,
         client_id: &str,
         client_authz: &str,
         ct: Duration,
@@ -1590,8 +1590,8 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
     type QsTransactionType = QueryServerWriteTransaction<'a>;
 
-    fn get_qs_txn(&self) -> &Self::QsTransactionType {
-        &self.qs_write
+    fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType {
+        &mut self.qs_write
     }
 
     fn get_uat_validator_txn(&self) -> &JwsValidator {
@@ -3698,7 +3698,7 @@ mod tests {
                 assert!(Ok(true) == r);
                 idms_delayed.check_is_empty_or_panic();
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // Check it's valid.
                 idms_prox_read
@@ -3728,7 +3728,7 @@ mod tests {
             let session_b = Uuid::new_v4();
 
             // Assert no sessions present
-            let idms_prox_read = task::block_on(idms.proxy_read());
+            let mut idms_prox_read = task::block_on(idms.proxy_read());
             let admin = idms_prox_read
                 .qs_read
                 .internal_search_uuid(UUID_ADMIN)
@@ -3751,7 +3751,7 @@ mod tests {
             assert!(Ok(true) == r);
 
             // Check it was written, and check
-            let idms_prox_read = task::block_on(idms.proxy_read());
+            let mut idms_prox_read = task::block_on(idms.proxy_read());
             let admin = idms_prox_read
                 .qs_read
                 .internal_search_uuid(UUID_ADMIN)
@@ -3784,7 +3784,7 @@ mod tests {
             let r = task::block_on(idms.delayed_action(expiry_a, da));
             assert!(Ok(true) == r);
 
-            let idms_prox_read = task::block_on(idms.proxy_read());
+            let mut idms_prox_read = task::block_on(idms.proxy_read());
             let admin = idms_prox_read
                 .qs_read
                 .internal_search_uuid(UUID_ADMIN)
@@ -3840,7 +3840,7 @@ mod tests {
                     .expect("Embedded jwk not found");
                 let uat_inner = uat_inner.into_inner();
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // Check it's valid.
                 idms_prox_read
@@ -3862,7 +3862,7 @@ mod tests {
                 assert!(idms_prox_write.commit().is_ok());
 
                 // Now check again with the session destroyed.
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // Now, within gracewindow, it's still valid.
                 idms_prox_read
@@ -3999,7 +3999,7 @@ mod tests {
                 assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
                 idms_delayed.check_is_empty_or_panic();
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
 
                 // Check it's valid.
                 idms_prox_read
@@ -4034,7 +4034,7 @@ mod tests {
                 assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
                 idms_delayed.check_is_empty_or_panic();
 
-                let idms_prox_read = task::block_on(idms.proxy_read());
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
                 assert!(idms_prox_read
                     .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
                     .is_err());

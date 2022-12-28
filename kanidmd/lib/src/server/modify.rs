@@ -242,7 +242,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// modificiation before submit back to internal_apply_writable
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn internal_search_writeable(
-        &self,
+        &mut self,
         filter: &Filter<FilterInvalid>,
     ) -> Result<Vec<EntryTuple>, OperationError> {
         let f_valid = filter

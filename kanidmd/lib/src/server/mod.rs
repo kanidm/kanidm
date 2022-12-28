@@ -132,7 +132,7 @@ pub trait QueryServerTransaction<'a> {
     fn get_be_txn(&self) -> &Self::BackendTransactionType;
 
     type SchemaTransactionType: SchemaTransaction;
-    fn get_schema(&self) -> &Self::SchemaTransactionType;
+    fn get_schema<'b>(&self) -> &'b Self::SchemaTransactionType;
 
     type AccessControlsTransactionType: AccessControlsTransaction<'a>;
     fn get_accesscontrols(&self) -> &Self::AccessControlsTransactionType;
@@ -159,7 +159,7 @@ pub trait QueryServerTransaction<'a> {
     /// [`fn search`]: trait.QueryServerTransaction.html#method.search
     #[instrument(level = "debug", skip_all)]
     fn search_ext(
-        &self,
+        &mut self,
         se: &SearchEvent,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         /*
@@ -181,7 +181,7 @@ pub trait QueryServerTransaction<'a> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    fn search(&self, se: &SearchEvent) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+    fn search(&mut self, se: &SearchEvent) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         if se.ident.is_internal() {
             trace!(internal_filter = ?se.filter, "search");
         } else {
@@ -297,7 +297,7 @@ pub trait QueryServerTransaction<'a> {
 
     /// From internal, generate an "exists" event and dispatch
     #[instrument(level = "debug", skip_all)]
-    fn internal_exists(&self, filter: Filter<FilterInvalid>) -> Result<bool, OperationError> {
+    fn internal_exists(&mut self, filter: Filter<FilterInvalid>) -> Result<bool, OperationError> {
         // Check the filter
         let f_valid = filter
             .validate(self.get_schema())
@@ -310,7 +310,7 @@ pub trait QueryServerTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     fn internal_search(
-        &self,
+        &mut self,
         filter: Filter<FilterInvalid>,
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         let f_valid = filter
@@ -322,7 +322,7 @@ pub trait QueryServerTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     fn impersonate_search_valid(
-        &self,
+        &mut self,
         f_valid: Filter<FilterValid>,
         f_intent_valid: Filter<FilterValid>,
         event: &Identity,
@@ -333,7 +333,7 @@ pub trait QueryServerTransaction<'a> {
 
     /// Applies ACP to filter result entries.
     fn impersonate_search_ext_valid(
-        &self,
+        &mut self,
         f_valid: Filter<FilterValid>,
         f_intent_valid: Filter<FilterValid>,
         event: &Identity,
@@ -344,7 +344,7 @@ pub trait QueryServerTransaction<'a> {
 
     // Who they are will go here
     fn impersonate_search(
-        &self,
+        &mut self,
         filter: Filter<FilterInvalid>,
         filter_intent: Filter<FilterInvalid>,
         event: &Identity,
@@ -360,7 +360,7 @@ pub trait QueryServerTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     fn impersonate_search_ext(
-        &self,
+        &mut self,
         filter: Filter<FilterInvalid>,
         filter_intent: Filter<FilterInvalid>,
         event: &Identity,
@@ -378,7 +378,7 @@ pub trait QueryServerTransaction<'a> {
     /// server operations, especially in login and ACP checks.
     #[instrument(level = "debug", skip_all)]
     fn internal_search_uuid(
-        &self,
+        &mut self,
         uuid: Uuid,
     ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
         let filter = filter!(f_eq("uuid", PartialValue::Uuid(uuid)));
@@ -397,7 +397,7 @@ pub trait QueryServerTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     fn impersonate_search_ext_uuid(
-        &self,
+        &mut self,
         uuid: Uuid,
         event: &Identity,
     ) -> Result<Entry<EntryReduced, EntryCommitted>, OperationError> {
@@ -413,7 +413,7 @@ pub trait QueryServerTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     fn impersonate_search_uuid(
-        &self,
+        &mut self,
         uuid: Uuid,
         event: &Identity,
     ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
@@ -664,7 +664,7 @@ pub trait QueryServerTransaction<'a> {
     }
 
     /// Pull the domain name from the database
-    fn get_db_domain_name(&self) -> Result<String, OperationError> {
+    fn get_db_domain_name(&mut self) -> Result<String, OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 trace!(?e);
@@ -678,7 +678,7 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
-    fn get_domain_fernet_private_key(&self) -> Result<String, OperationError> {
+    fn get_domain_fernet_private_key(&mut self) -> Result<String, OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 e.get_ava_single_secret("fernet_private_key_str")
@@ -691,7 +691,7 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
-    fn get_domain_es256_private_key(&self) -> Result<Vec<u8>, OperationError> {
+    fn get_domain_es256_private_key(&mut self) -> Result<Vec<u8>, OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 e.get_ava_single_private_binary("es256_private_key_der")
@@ -705,7 +705,7 @@ pub trait QueryServerTransaction<'a> {
     }
 
     // This is a helper to get password badlist.
-    fn get_password_badlist(&self) -> Result<HashSet<String>, OperationError> {
+    fn get_password_badlist(&mut self) -> Result<HashSet<String>, OperationError> {
         self.internal_search_uuid(UUID_SYSTEM_CONFIG)
             .map(|e| match e.get_ava_iter_iutf8("badlist_password") {
                 Some(vs_str_iter) => vs_str_iter.map(str::to_string).collect::<HashSet<_>>(),
@@ -717,7 +717,7 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
-    fn get_oauth2rs_set(&self) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+    fn get_oauth2rs_set(&mut self) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         self.internal_search(filter!(f_eq("class", PVCLASS_OAUTH2_RS.clone(),)))
     }
 }
@@ -734,8 +734,14 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         &self.be_txn
     }
 
-    fn get_schema(&self) -> &SchemaReadTransaction {
-        &self.schema
+    fn get_schema<'b>(&self) -> &'b SchemaReadTransaction {
+        // Strip the lifetime here. Schema is a sub-component of the transaction and is
+        // *never* changed excepting in a write TXN, so we want to allow the schema to
+        // be borrowed while the rest of the read txn is under a mut.
+        unsafe {
+            let s = (&self.schema) as *const _;
+            &*s
+        }
     }
 
     fn get_accesscontrols(&self) -> &AccessControlsReadTransaction<'a> {
@@ -841,8 +847,14 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
         &self.be_txn
     }
 
-    fn get_schema(&self) -> &SchemaWriteTransaction<'a> {
-        &self.schema
+    fn get_schema<'b>(&self) -> &'b SchemaWriteTransaction<'a> {
+        // Strip the lifetime here. Schema is a sub-component of the transaction and is
+        // *never* changed excepting in a write TXN, so we want to allow the schema to
+        // be borrowed while the rest of the read txn is under a mut.
+        unsafe {
+            let s = (&self.schema) as *const _;
+            &*s
+        }
     }
 
     fn get_accesscontrols(&self) -> &AccessControlsWriteTransaction<'a> {
@@ -1021,8 +1033,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.curtime
     }
 
-    #[allow(clippy::mut_from_ref)]
-    pub(crate) fn get_dyngroup_cache(&self) -> &mut DynGroupCache {
+    pub(crate) fn get_dyngroup_cache(&mut self) -> &mut DynGroupCache {
         unsafe {
             let mptr = self.dyngroup_cache.as_ptr();
             (*mptr).get_mut()
@@ -1087,6 +1098,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             admin_error!("Schema reload failed -> {:?}", valid_r);
             Err(OperationError::ConsistencyError(valid_r))
         }?;
+
+        // TODO: Clear the filter resolve cache.
+        // currently we can't do this because of the limits of types with arccache txns. The only
+        // thing this impacts is if something in indexed though, and the backend does handle
+        // incorrectly indexed items correctly.
 
         // Trigger reloads on services that require post-schema reloads.
         // Mainly this is plugins.
@@ -1221,7 +1237,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
-    fn get_db_domain_display_name(&self) -> Result<String, OperationError> {
+    fn get_db_domain_display_name(&mut self) -> Result<String, OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 trace!(?e);

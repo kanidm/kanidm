@@ -795,7 +795,7 @@ mod tests {
         assert!(server_txn.commit().is_ok());
 
         // Assert that it migrated and worked as expected.
-        let server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
         let domain = server_txn
             .internal_search_uuid(UUID_DOMAIN_INFO)
             .expect("failed");

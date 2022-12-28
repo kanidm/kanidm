@@ -6,7 +6,7 @@ use hashbrown::HashMap;
 
 impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
-    pub fn purge_tombstones(&self) -> Result<(), OperationError> {
+    pub fn purge_tombstones(&mut self) -> Result<(), OperationError> {
         // purge everything that is a tombstone.
         let cid = self.cid.sub_secs(CHANGELOG_MAX_AGE).map_err(|e| {
             admin_error!("Unable to generate search cid {:?}", e);
@@ -26,7 +26,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn purge_recycled(&self) -> Result<(), OperationError> {
+    pub fn purge_recycled(&mut self) -> Result<(), OperationError> {
         // Send everything that is recycled to tombstone
         // Search all recycled
         let cid = self.cid.sub_secs(RECYCLEBIN_MAX_AGE).map_err(|e| {
@@ -419,7 +419,7 @@ mod tests {
         assert!(server_txn.commit().is_ok());
 
         // Now, establish enough time for the recycled items to be purged.
-        let server_txn = server.write(time_p2).await;
+        let mut server_txn = server.write(time_p2).await;
 
         //  purge to tombstone, now that time has passed.
         assert!(server_txn.purge_recycled().is_ok());
@@ -655,7 +655,7 @@ mod tests {
         assert!(server_txn.commit().is_ok());
 
         // New txn, push the cid forward.
-        let server_txn = server.write(time_p3).await;
+        let mut server_txn = server.write(time_p3).await;
 
         // Now purge
         assert!(server_txn.purge_tombstones().is_ok());
@@ -695,7 +695,7 @@ mod tests {
         e1
     }
 
-    fn check_entry_has_mo(qs: &QueryServerWriteTransaction, name: &str, mo: &str) -> bool {
+    fn check_entry_has_mo(qs: &mut QueryServerWriteTransaction, name: &str, mo: &str) -> bool {
         let e = qs
             .internal_search(filter!(f_eq("name", PartialValue::new_iname(name))))
             .unwrap()
@@ -776,7 +776,7 @@ mod tests {
         assert!(server_txn.revive_recycled(&rev1).is_ok());
         // check u1 contains MO ->
         assert!(check_entry_has_mo(
-            &server_txn,
+            &mut server_txn,
             "u1",
             "cca2bbfc-5b43-43f3-be9e-f5b03b3defec"
         ));
@@ -790,12 +790,12 @@ mod tests {
         };
         assert!(server_txn.revive_recycled(&rev2).is_ok());
         assert!(check_entry_has_mo(
-            &server_txn,
+            &mut server_txn,
             "u2",
             "e44cf9cd-9941-44cb-a02f-307b6e15ac54"
         ));
         assert!(check_entry_has_mo(
-            &server_txn,
+            &mut server_txn,
             "u2",
             "d3132e6e-18ce-4b87-bee1-1d25e4bfe96d"
         ));
@@ -812,7 +812,7 @@ mod tests {
         };
         assert!(server_txn.revive_recycled(&rev3).is_ok());
         assert!(
-            check_entry_has_mo(&server_txn, "u3", "36048117-e479-45ed-aeb5-611e8d83d5b1") == false
+            check_entry_has_mo(&mut server_txn, "u3", "36048117-e479-45ed-aeb5-611e8d83d5b1") == false
         );
 
         // Revive u4, should NOT have the MO.
@@ -824,7 +824,7 @@ mod tests {
         };
         assert!(server_txn.revive_recycled(&rev4a).is_ok());
         assert!(
-            check_entry_has_mo(&server_txn, "u4", "d5c59ac6-c533-4b00-989f-d0e183f07bab") == false
+            check_entry_has_mo(&mut server_txn, "u4", "d5c59ac6-c533-4b00-989f-d0e183f07bab") == false
         );
 
         // Now revive g4, should allow MO onto u4.
@@ -836,7 +836,7 @@ mod tests {
         };
         assert!(server_txn.revive_recycled(&rev4b).is_ok());
         assert!(
-            check_entry_has_mo(&server_txn, "u4", "d5c59ac6-c533-4b00-989f-d0e183f07bab") == false
+            check_entry_has_mo(&mut server_txn, "u4", "d5c59ac6-c533-4b00-989f-d0e183f07bab") == false
         );
 
         assert!(server_txn.commit().is_ok());

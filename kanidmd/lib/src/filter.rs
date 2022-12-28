@@ -1855,11 +1855,11 @@ mod tests {
         assert!(server_txn.commit().is_ok());
 
         // Now, establish enough time for the recycled items to be purged.
-        let server_txn = server.write(time_p2).await;
+        let mut server_txn = server.write(time_p2).await;
         assert!(server_txn.purge_recycled().is_ok());
         assert!(server_txn.commit().is_ok());
 
-        let server_txn = server.write(time_p3).await;
+        let mut server_txn = server.write(time_p3).await;
         assert!(server_txn.purge_tombstones().is_ok());
 
         // ===== ✅ now ready to test!

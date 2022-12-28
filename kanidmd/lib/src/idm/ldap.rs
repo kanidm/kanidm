@@ -61,7 +61,7 @@ pub struct LdapServer {
 impl LdapServer {
     pub fn new(idms: &IdmServer) -> Result<Self, OperationError> {
         // let ct = duration_from_epoch_now();
-        let idms_prox_read = task::block_on(idms.proxy_read());
+        let mut idms_prox_read = task::block_on(idms.proxy_read());
         // This is the rootdse path.
         // get the domain_info item
         let domain_entry = idms_prox_read
@@ -261,7 +261,7 @@ impl LdapServer {
             admin_info!(attr = ?k_attrs, "LDAP Search Request Mapped Attrs");
 
             let ct = duration_from_epoch_now();
-            let idm_read = idms.proxy_read().await;
+            let mut idm_read = idms.proxy_read().await;
             // Now start the txn - we need it for resolving filter components.
 
             // join the filter, with ext_filter

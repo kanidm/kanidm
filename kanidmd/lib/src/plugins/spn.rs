@@ -78,7 +78,7 @@ impl Plugin for Spn {
         // so we should be able to verify that *those* spns validate to the trusted domain info
         // we have been sent also. It's not up to use to generate those though ...
 
-        let domain_name = qs.get_domain_name();
+        let domain_name = qs.get_domain_name().to_string();
 
         let filt_in = filter!(f_or!([
             f_eq("class", PVCLASS_GROUP.clone()),
@@ -96,7 +96,7 @@ impl Plugin for Spn {
         let mut r = Vec::new();
 
         for e in all_cand {
-            let g_spn = match e.generate_spn(domain_name) {
+            let g_spn = match e.generate_spn(&domain_name) {
                 Some(s) => s,
                 None => {
                     admin_error!(

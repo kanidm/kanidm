@@ -308,7 +308,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
 impl<'a> IdmServerProxyReadTransaction<'a> {
     pub fn service_account_list_api_token(
-        &self,
+        &mut self,
         lte: &ListApiTokenEvent,
     ) -> Result<Vec<ApiToken>, OperationError> {
         // Make an event from the request

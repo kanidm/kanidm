@@ -325,7 +325,7 @@ mod tests {
             preload,
             create,
             None,
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq("name", PartialValue::new_iname("testperson"))))
                     .expect("Internal search failure");
@@ -420,7 +420,7 @@ mod tests {
             preload,
             create,
             None,
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq("name", PartialValue::new_iname("testperson"))))
                     .expect("Internal search failure");

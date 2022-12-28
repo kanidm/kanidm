@@ -160,7 +160,7 @@ impl Account {
     #[instrument(level = "trace", skip_all)]
     pub(crate) fn try_from_entry_ro(
         value: &Entry<EntrySealed, EntryCommitted>,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let groups = Group::try_from_account_entry_ro(value, qs)?;
         try_from_entry!(value, groups)
@@ -623,7 +623,7 @@ pub struct ListUserAuthTokenEvent {
 
 impl<'a> IdmServerProxyReadTransaction<'a> {
     pub fn account_list_user_auth_tokens(
-        &self,
+        &mut self,
         lte: &ListUserAuthTokenEvent,
     ) -> Result<Vec<UatStatus>, OperationError> {
         // Make an event from the request

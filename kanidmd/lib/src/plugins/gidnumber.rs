@@ -96,7 +96,7 @@ impl Plugin for GidNumber {
 mod tests {
     use crate::prelude::*;
 
-    fn check_gid(qs_write: &QueryServerWriteTransaction, uuid: &str, gid: u32) {
+    fn check_gid(qs_write: &mut QueryServerWriteTransaction, uuid: &str, gid: u32) {
         let u = Uuid::parse_str(uuid).unwrap();
         let e = qs_write.internal_search_uuid(u).unwrap();
         let gidnumber = e.get_ava_single("gidnumber").unwrap();
@@ -126,7 +126,7 @@ mod tests {
             preload,
             create,
             None,
-            |qs_write: &QueryServerWriteTransaction| check_gid(
+            |qs_write: &mut QueryServerWriteTransaction| check_gid(
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
                 0x997ef244
@@ -158,7 +158,7 @@ mod tests {
             preload,
             create,
             None,
-            |qs_write: &QueryServerWriteTransaction| check_gid(
+            |qs_write: &mut QueryServerWriteTransaction| check_gid(
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
                 10001
@@ -190,7 +190,7 @@ mod tests {
             modlist!([m_pres("class", &Value::new_class("posixgroup"))]),
             None,
             |_| {},
-            |qs_write: &QueryServerWriteTransaction| check_gid(
+            |qs_write: &mut QueryServerWriteTransaction| check_gid(
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
                 0x997ef244
@@ -222,7 +222,7 @@ mod tests {
             modlist!([m_purge("gidnumber")]),
             None,
             |_| {},
-            |qs_write: &QueryServerWriteTransaction| check_gid(
+            |qs_write: &mut QueryServerWriteTransaction| check_gid(
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
                 0x997ef244
@@ -257,7 +257,7 @@ mod tests {
             ]),
             None,
             |_| {},
-            |qs_write: &QueryServerWriteTransaction| check_gid(
+            |qs_write: &mut QueryServerWriteTransaction| check_gid(
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
                 2000

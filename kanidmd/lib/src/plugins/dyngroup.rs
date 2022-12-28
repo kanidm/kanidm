@@ -16,7 +16,7 @@ pub struct DynGroup;
 impl DynGroup {
     #[allow(clippy::too_many_arguments)]
     fn apply_dyngroup_change(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         ident: &Identity,
         pre_candidates: &mut Vec<Arc<EntrySealedCommitted>>,
         candidates: &mut Vec<EntryInvalidCommitted>,
@@ -93,7 +93,7 @@ impl DynGroup {
     }
 
     #[instrument(level = "debug", name = "dyngroup_reload", skip(qs))]
-    pub fn reload(qs: &QueryServerWriteTransaction) -> Result<(), OperationError> {
+    pub fn reload(qs: &mut QueryServerWriteTransaction) -> Result<(), OperationError> {
         let ident_internal = Identity::from_internal();
         // Internal search all our definitions.
         let filt = filter!(f_eq("class", PVCLASS_DYNGROUP.clone()));
@@ -102,9 +102,7 @@ impl DynGroup {
             e
         })?;
 
-        let dyn_groups = qs.get_dyngroup_cache();
-
-        dyn_groups.insts.clear();
+        let mut reload_groups = BTreeMap::default();
 
         for nd_group in entries.into_iter() {
             let scope_f: ProtoFilter = nd_group
@@ -122,11 +120,14 @@ impl DynGroup {
 
             let uuid = nd_group.get_uuid();
 
-            if dyn_groups.insts.insert(uuid, scope_i).is_some() {
+            if reload_groups.insert(uuid, scope_i).is_some() {
                 admin_error!("dyngroup cache uuid conflict {}", uuid);
                 return Err(OperationError::InvalidState);
             }
         }
+
+        let dyn_groups = qs.get_dyngroup_cache();
+        std::mem::swap(&mut reload_groups, &mut dyn_groups.insts);
 
         Ok(())
     }
@@ -145,27 +146,33 @@ impl DynGroup {
             .iter()
             .partition(|entry| entry.attribute_equality("class", &PVCLASS_DYNGROUP));
 
-        let dyn_groups = qs.get_dyngroup_cache();
+        // DANGER: Why do we have to do this? During the use of qs for internal search
+        // and other operations we need qs to be mut. But when we borrow dyn groups here we
+        // cause multiple borrows to occur on struct members that freaks rust out. This *IS*
+        // safe however because no element of the search or write process calls the dyngroup
+        // cache excepting for this plugin within a single thread, meaning that stripping the
+        // lifetime here is safe since we are the sole accessor.
+        let dyn_groups: &mut DynGroupCache = unsafe {
+            &mut *(qs.get_dyngroup_cache() as *mut _)
+        };
 
         // For any other entries, check if they SHOULD trigger
         // a dyn group inclusion. We do this FIRST because the new
         // dyn groups will see the created entries on an internal search
         // so we don't need to reference them.
 
-        //
-        let resolve_filter_cache = qs.get_resolve_filter_cache();
-
         let mut pre_candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
         let mut candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
 
+        // Apply existing dyn_groups to entries.
         trace!(?dyn_groups.insts);
-
         for (dg_uuid, dg_filter) in dyn_groups.insts.iter() {
             let dg_filter_valid = dg_filter
                 .validate(qs.get_schema())
                 .map_err(OperationError::SchemaViolation)
-                .and_then(|f| f.resolve(&ident_internal, None, Some(resolve_filter_cache)))?;
+                .and_then(|f| f.resolve(&ident_internal, None, Some(qs.get_resolve_filter_cache())))?;
 
+            // Did any of our modified entries match our dyn group filter?
             let matches: Vec<_> = entries
                 .iter()
                 .filter_map(|e| {
@@ -177,6 +184,8 @@ impl DynGroup {
                 })
                 .collect();
 
+            // If any of them did, we retrieve the dyngroup and setup to write the new
+            // members to it.
             if !matches.is_empty() {
                 let filt = filter!(f_eq("uuid", PartialValue::Uuid(*dg_uuid)));
                 let mut work_set = qs.internal_search_writeable(&filt)?;
@@ -238,7 +247,6 @@ impl DynGroup {
         let mut affected_uuids = Vec::with_capacity(cand.len());
 
         let ident_internal = Identity::from_internal();
-        let resolve_filter_cache = qs.get_resolve_filter_cache();
 
         // Probably should be filter here instead.
         let (_, pre_entries): (Vec<&Arc<Entry<_, _>>>, Vec<_>) = pre_cand
@@ -249,7 +257,15 @@ impl DynGroup {
             .iter()
             .partition(|entry| entry.attribute_equality("class", &PVCLASS_DYNGROUP));
 
-        let dyn_groups = qs.get_dyngroup_cache();
+        // DANGER: Why do we have to do this? During the use of qs for internal search
+        // and other operations we need qs to be mut. But when we borrow dyn groups here we
+        // cause multiple borrows to occur on struct members that freaks rust out. This *IS*
+        // safe however because no element of the search or write process calls the dyngroup
+        // cache excepting for this plugin within a single thread, meaning that stripping the
+        // lifetime here is safe since we are the sole accessor.
+        let dyn_groups: &mut DynGroupCache = unsafe {
+            &mut *(qs.get_dyngroup_cache() as *mut _)
+        };
 
         let mut pre_candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
         let mut candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
@@ -283,7 +299,7 @@ impl DynGroup {
             let dg_filter_valid = dg_filter
                 .validate(qs.get_schema())
                 .map_err(OperationError::SchemaViolation)
-                .and_then(|f| f.resolve(&ident_internal, None, Some(resolve_filter_cache)))?;
+                .and_then(|f| f.resolve(&ident_internal, None, Some(qs.get_resolve_filter_cache())))?;
 
             let matches: Vec<_> = pre_entries
                 .iter()
@@ -381,7 +397,7 @@ mod tests {
             create,
             None,
             // Need to validate it did things
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
                         "name",
@@ -427,7 +443,7 @@ mod tests {
             create,
             None,
             // Need to validate it did things
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
                         "name",
@@ -476,7 +492,7 @@ mod tests {
             create,
             None,
             // Need to validate it did things
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
                         "name",
@@ -518,7 +534,7 @@ mod tests {
             create,
             None,
             // Need to validate it did things
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
                         "name",
@@ -573,7 +589,7 @@ mod tests {
             ]),
             None,
             |_| {},
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
                         "name",
@@ -628,7 +644,7 @@ mod tests {
             ]),
             None,
             |_| {},
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
                         "name",
@@ -673,7 +689,7 @@ mod tests {
             )]),
             None,
             |_| {},
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
                         "name",
@@ -720,7 +736,7 @@ mod tests {
             ModifyList::new_list(vec![Modify::Purged(AttrString::from("member"),)]),
             None,
             |_| {},
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
                         "name",
@@ -769,7 +785,7 @@ mod tests {
             ]),
             None,
             |_| {},
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
                         "name",
@@ -818,7 +834,7 @@ mod tests {
             ]),
             None,
             |_| {},
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
                         "name",
@@ -858,7 +874,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup"))),
             None,
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
                         "name",
@@ -898,7 +914,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("test_dyngroup"))),
             None,
-            |qs: &QueryServerWriteTransaction| {
+            |qs: &mut QueryServerWriteTransaction| {
                 // Note we check memberof is empty here!
                 let cands = qs
                     .internal_search(filter!(f_eq("name", PartialValue::new_iname("testgroup"))))

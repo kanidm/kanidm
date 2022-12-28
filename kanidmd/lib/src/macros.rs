@@ -146,7 +146,7 @@ macro_rules! run_create_test {
             let r = qs_write.create(&ce);
             trace!("test result: {:?}", r);
             assert!(r == $expect);
-            $check(&qs_write);
+            $check(&mut qs_write);
             match r {
                 Ok(_) => {
                     qs_write.commit().expect("commit failure!");
@@ -199,7 +199,7 @@ macro_rules! run_modify_test {
         {
             let mut qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
             let r = qs_write.modify(&me);
-            $check(&qs_write);
+            $check(&mut qs_write);
             trace!("test result: {:?}", r);
             assert!(r == $expect);
             match r {

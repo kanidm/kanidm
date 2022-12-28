@@ -3,7 +3,7 @@ use crate::prelude::*;
 use kanidm_proto::internal::AppLink;
 
 impl<'a> IdmServerProxyReadTransaction<'a> {
-    pub fn list_applinks(&self, ident: &Identity) -> Result<Vec<AppLink>, OperationError> {
+    pub fn list_applinks(&mut self, ident: &Identity) -> Result<Vec<AppLink>, OperationError> {
         // From the member-of of the ident.
         let ident_mo = match ident.get_memberof() {
             Some(mo) => mo,
@@ -134,7 +134,7 @@ mod tests {
             assert!(idms_prox_write.commit().is_ok());
 
             // Now do an applink query, they will not be there.
-            let idms_prox_read = task::block_on(idms.proxy_read());
+            let mut idms_prox_read = task::block_on(idms.proxy_read());
 
             let ident = idms_prox_read
                 .qs_read
@@ -160,7 +160,7 @@ mod tests {
             assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
             assert!(idms_prox_write.commit().is_ok());
 
-            let idms_prox_read = task::block_on(idms.proxy_read());
+            let mut idms_prox_read = task::block_on(idms.proxy_read());
 
             let ident = idms_prox_read
                 .qs_read
