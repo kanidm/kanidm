@@ -14,6 +14,8 @@ if [ "${GITHUB_ACTIONS}" ]; then
     git config user.name "Kanidm Github Actions Runner"
 fi
 
+git fetch --all
+
 function build_version() {
     BOOK_VERSION=$1
     echo "Book version: ${BOOK_VERSION}"
@@ -21,7 +23,6 @@ function build_version() {
 
     if [ "$(git branch --show-current)" != "${BOOK_VERSION}" ]; then
         git switch -c "${BOOK_VERSION}" || git switch "${BOOK_VERSION}"
-        git pull --no-rebase --no-ff origin "${BOOK_VERSION}"
     fi
     echo "Running mdbook build"
 	mdbook build kanidm_book
