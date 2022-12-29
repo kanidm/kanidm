@@ -8,6 +8,12 @@ DOCS_DIR="/tmp/kanidm_docs"
 echo "DOCS DIR: ${DOCS_DIR}"
 echo "PWD: $(pwd)"
 
+if [ "${GITHUB_ACTIONS}" ]; then
+    echo "Running in Github Actions"
+    git config user.email "kanidm@kanidm.com"
+    git config user.name "Kanidm Github Actions Runner"
+fi
+
 function build_version() {
     BOOK_VERSION=$1
     echo "Book version: ${BOOK_VERSION}"
