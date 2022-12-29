@@ -12,11 +12,15 @@ You need a configuration file in the volume named `server.toml`. (Within the con
 This example is located in
 [examples/server_container.toml](https://github.com/kanidm/kanidm/blob/master/examples/server_container.toml).
 
+<!-- deno-fmt-ignore-start -->
+
 {{#template templates/kani-warning.md
 imagepath=images
 title=Warning!
 text=You MUST set the `domain` name correctly, aligned with your `origin`, else the server may refuse to start or some features (e.g. webauthn, oauth) may not work correctly!
 }}
+
+<!-- deno-fmt-ignore-end -->
 
 ## Check the configuration is valid
 

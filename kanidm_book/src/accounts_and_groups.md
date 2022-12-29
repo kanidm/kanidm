@@ -51,11 +51,15 @@ sensitive data), group management, and more.
 By default the `admin` and `idm_admin` accounts have no password, and can not be accessed. They need
 to be "recovered" from the server that is running the kanidmd server.
 
+<!-- deno-fmt-ignore-start -->
+
 {{#template templates/kani-warning.md
 imagepath=images
 title=Warning!
 text=The server must not be running at this point, as it requires exclusive access to the database.
 }}
+
+<!-- deno-fmt-ignore-end -->
 
 ```shell
 kanidmd recover_account admin -c /etc/kanidm/server.toml
@@ -130,11 +134,15 @@ these attributes.
 kanidm person update demo_user --legalname "initial name" --mail "initial@email.address"
 ```
 
+<!-- deno-fmt-ignore-start -->
+
 {{#template templates/kani-warning.md
 imagepath=images
 title=Warning!
 text=Persons may change their own displayname, name, and legal name at any time. You MUST NOT use these values as primary keys in external systems. You MUST use the `uuid` attribute present on all entries as an external primary key.
 }}
+
+<!-- deno-fmt-ignore-end -->
 
 ## Resetting Person Account Credentials
 
@@ -229,10 +237,14 @@ ldapwhoami -H ldaps://idm.example.com -x -D "dn=token" -w "..."
 
 ## Resetting Service Account Credentials (Deprecated)
 
+<!-- deno-fmt-ignore-start -->
+
 {{#template templates/kani-warning.md
 imagepath=images
 text=Api Tokens are a better method to manage credentials for service accounts, and passwords may be removed in the future!
 }}
+
+<!-- deno-fmt-ignore-end -->
 
 Service accounts can not have their credentials interactively updated in the same manner as persons.
 Service accounts may only have server side generated high entropy passwords.

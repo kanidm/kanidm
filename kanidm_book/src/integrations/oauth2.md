@@ -129,11 +129,15 @@ kanidm system oauth2 update_scope_map <name> <kanidm_group_name> [scopes]...
 kanidm system oauth2 update_scope_map nextcloud nextcloud_admins admin
 ```
 
+<!-- deno-fmt-ignore-start -->
+
 {{#template ../templates/kani-warning.md
 imagepath=../images
 title=WARNING
 text=If you are creating an OpenID Connect (OIDC) resource server you <b>MUST</b> provide a scope map named <code>openid</code>. Without this, OpenID clients <b>WILL NOT WORK</b>!
 }}
+
+<!-- deno-fmt-ignore-end -->
 
 > **HINT** OpenID connect allows a number of scopes that affect the content of the resulting
 > authorisation token. If one of the following scopes are requested by the OpenID client, then the
@@ -195,10 +199,14 @@ Not all resource servers support modern standards like PKCE or ECDSA. In these s
 necessary to disable these on a per-resource server basis. Disabling these on one resource server
 will not affect others.
 
+<!-- deno-fmt-ignore-start -->
+
 {{#template ../templates/kani-warning.md
 imagepath=../images
 title=WARNING text=Changing these settings MAY have serious consequences on the security of your resource server. You should avoid changing these if at all possible!
 }}
+
+<!-- deno-fmt-ignore-end -->
 
 To disable PKCE for a resource server:
 

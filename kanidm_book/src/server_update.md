@@ -25,11 +25,15 @@ See [backup and restore](backup_restore.md)
 
 ## Update your Instance
 
+<!-- deno-fmt-ignore-start -->
+
 {{#template templates/kani-warning.md
 imagepath=images
 title=WARNING
 text=It is not always guaranteed that downgrades are possible. It is critical you know how to backup and restore before you proceed with this step.
 }}
+
+<!-- deno-fmt-ignore-end -->
 
 Docker updates by deleting and recreating the instance. All that needs to be preserved in your
 storage volume.

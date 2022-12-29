@@ -13,8 +13,10 @@ function build_version() {
     echo "Book version: ${BOOK_VERSION}"
     echo "<li><a href=\"/kanidm/${BOOK_VERSION}\">${BOOK_VERSION}</a></li>" >> "${DOCS_DIR}/index.html"
 
-    git switch -c "${BOOK_VERSION}" || git switch "${BOOK_VERSION}"
-	git pull origin "${BOOK_VERSION}"
+    if [ "$(git branch --show-current)" != "${BOOK_VERSION}" ]; then
+        git switch -c "${BOOK_VERSION}" || git switch "${BOOK_VERSION}"
+        git pull origin "${BOOK_VERSION}"
+    fi
     echo "Running mdbook build"
 	mdbook build kanidm_book
     echo "Running cargo doc"

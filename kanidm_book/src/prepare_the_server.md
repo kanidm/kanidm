@@ -58,11 +58,15 @@ image. These flags will be:
 cmov, cx8, fxsr, mmx, sse, sse2
 ```
 
+<!-- deno-fmt-ignore-start -->
+
 {{#template templates/kani-alert.md
 imagepath=images
 title=Tip
 text=You can check your cpu flags on Linux with the command `lscpu`
 }}
+
+<!-- deno-fmt-ignore-end -->
 
 #### Memory
 

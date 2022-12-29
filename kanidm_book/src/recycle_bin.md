@@ -3,11 +3,15 @@
 The recycle bin is a storage of deleted entries from the server. This allows recovery from mistakes
 for a period of time.
 
+<!-- deno-fmt-ignore-start -->
+
 {{#template templates/kani-warning.md
 imagepath=images
 title=Warning!
 text=The recycle bin is a best effort - when recovering in some cases not everything can be "put back" the way it was. Be sure to check your entries are valid once they have been revived.
 }}
+
+<!-- deno-fmt-ignore-end -->
 
 ## Where is the Recycle Bin?
 
