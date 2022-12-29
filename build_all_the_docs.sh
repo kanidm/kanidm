@@ -15,7 +15,7 @@ function build_version() {
 
     if [ "$(git branch --show-current)" != "${BOOK_VERSION}" ]; then
         git switch -c "${BOOK_VERSION}" || git switch "${BOOK_VERSION}"
-        git pull --no-ff origin "${BOOK_VERSION}"
+        git pull --no-rebase --no-ff origin "${BOOK_VERSION}"
     fi
     echo "Running mdbook build"
 	mdbook build kanidm_book
