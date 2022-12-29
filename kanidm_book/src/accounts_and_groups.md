@@ -51,8 +51,15 @@ sensitive data), group management, and more.
 By default the `admin` and `idm_admin` accounts have no password, and can not be accessed. They need
 to be "recovered" from the server that is running the kanidmd server.
 
-{{#template templates/kani-warning.md imagepath=images title=Warning! text=The server must not be
-running at this point, as it requires exclusive access to the database. }}
+<!-- deno-fmt-ignore-start -->
+
+{{#template templates/kani-warning.md
+imagepath=images
+title=Warning!
+text=The server must not be running at this point, as it requires exclusive access to the database.
+}}
+
+<!-- deno-fmt-ignore-end -->
 
 ```shell
 kanidmd recover_account admin -c /etc/kanidm/server.toml
@@ -127,10 +134,15 @@ these attributes.
 kanidm person update demo_user --legalname "initial name" --mail "initial@email.address"
 ```
 
-{{#template templates/kani-warning.md imagepath=images title=Warning! text=Persons may change their
-own displayname, name, and legal name at any time. You MUST NOT use these values as primary keys in
-external systems. You MUST use the `uuid` attribute present on all entries as an external primary
-key. }}
+<!-- deno-fmt-ignore-start -->
+
+{{#template templates/kani-warning.md
+imagepath=images
+title=Warning!
+text=Persons may change their own displayname, name, and legal name at any time. You MUST NOT use these values as primary keys in external systems. You MUST use the `uuid` attribute present on all entries as an external primary key.
+}}
+
+<!-- deno-fmt-ignore-end -->
 
 ## Resetting Person Account Credentials
 
@@ -225,8 +237,14 @@ ldapwhoami -H ldaps://idm.example.com -x -D "dn=token" -w "..."
 
 ## Resetting Service Account Credentials (Deprecated)
 
-{{#template templates/kani-warning.md imagepath=images text=Api Tokens are a better method to manage
-credentials for service accounts, and passwords may be removed in the future! }}
+<!-- deno-fmt-ignore-start -->
+
+{{#template templates/kani-warning.md
+imagepath=images
+text=Api Tokens are a better method to manage credentials for service accounts, and passwords may be removed in the future!
+}}
+
+<!-- deno-fmt-ignore-end -->
 
 Service accounts can not have their credentials interactively updated in the same manner as persons.
 Service accounts may only have server side generated high entropy passwords.
@@ -262,9 +280,11 @@ Kanidm supports accounts that are only able to authenticate between a pair of da
 
 This can be displayed with:
 
-    kanidm person validity show demo_user --name idm_admin
-    valid after: 2020-09-25T21:22:04+10:00
-    expire: 2020-09-25T01:22:04+10:00
+```bash
+kanidm person validity show demo_user --name idm_admin
+valid after: 2020-09-25T21:22:04+10:00
+expire: 2020-09-25T01:22:04+10:00
+```
 
 These datetimes are stored in the server as UTC, but presented according to your local system time
 to aid correct understanding of when the events will occur.
@@ -276,7 +296,7 @@ You may set these time and date values in any timezone you wish (such as your lo
 the server will transform these to UTC. These time values are in iso8601 format, and you should
 specify this as:
 
-```
+```shell
 YYYY-MM-DDThh:mm:ssZ+-hh:mm
 Year-Month-Day T hour:minutes:seconds Z +- timezone offset
 ```
@@ -304,7 +324,7 @@ kanidm person validity expire_at demo_user never|clear --name idm_admin
 To "lock" an account, you can set the expire_at value to the past, or unix epoch. Even in the
 situation where the "valid from" is _after_ the expire_at, the expire_at will be respected.
 
-```
+```bash
 kanidm person validity expire_at demo_user 1970-01-01T00:00:00+00:00 --name idm_admin
 ```
 
@@ -317,7 +337,7 @@ By default, Kanidm allows an account to change some attributes, but not their ma
 Adding the user to the `idm_people_self_write_mail` group, as shown below, allows the user to edit
 their own mail.
 
-```
+```bash
 kanidm group add_members idm_people_self_write_mail_priv demo_user --name idm_admin
 ```
 

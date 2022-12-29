@@ -4,9 +4,15 @@ Through out this book, Kanidm will make reference to a "domain name". This is yo
 name that you intend to use for Kanidm. Choosing this domain name however is not simple as there are
 a number of considerations you need to be careful of.
 
-{{#template templates/kani-warning.md imagepath=images/ title=Take note! text=Incorrect choice of
-the domain name may have security impacts on your Kanidm instance, not limited to credential
-phishing, theft, session leaks and more. It is critical you follow the advice in this chapter. }}
+<!-- deno-fmt-ignore-start -->
+
+{{#template templates/kani-warning.md
+imagepath=images/
+title=Take note!
+text=Incorrect choice of the domain name may have security impacts on your Kanidm instance, not limited to credential phishing, theft, session leaks and more. It is critical you follow the advice in this chapter.
+}}
+
+<!-- deno-fmt-ignore-end -->
 
 ## Considerations
 
@@ -45,7 +51,7 @@ some phishing scenarioes.
 Consider we own `kanidm.com`. If we were to run geographical instances, and have testing
 environments the following domain and hostnames could be used.
 
-_production_
+#### Production Domain Name
 
 - origin: `https://idm.kanidm.com`
 - domain name: `idm.kanidm.com`
@@ -56,7 +62,7 @@ still works with webauthn and cookies which are transferable between instances.
 
 It is critical no other hosts are registered under this domain name.
 
-_testing_
+#### Testing Domain Name
 
 - origin: `https://idm.dev.kanidm.com`
 - domain name: `idm.dev.kanidm.com`
@@ -77,12 +83,12 @@ access the cookies issued by `kanidm.com`, effectively leaking them to all other
 
 Second instance overlap:
 
-_production_
+#### Production
 
 - origin: `https://idm.kanidm.com`
 - domain name: `idm.kanidm.com`
 
-_testing_
+#### Testing
 
 - origin: `https://dev.idm.kanidm.com`
 - domain name: `dev.idm.kanidm.com`

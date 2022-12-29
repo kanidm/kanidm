@@ -10,8 +10,15 @@ The intent of the Kanidm project is to:
 - Make system, network, application and web authentication easy and accessible.
 - Secure and reliable by default, aiming for the highest levels of quality.
 
-{{#template templates/kani-warning.md imagepath=images title=NOTICE text=Kanidm is still a work in
-progress. Many features will evolve and change over time which may not be suitable for all users. }}
+<!-- deno-fmt-ignore-start -->
+
+{{#template templates/kani-warning.md
+imagepath=images
+title=NOTICE
+text=Kanidm is still a work in progress. Many features will evolve and change over time which may not be suitable for all users.
+}}
+
+<!-- deno-fmt-ignore-end -->
 
 ## Why do I want Kanidm?
 

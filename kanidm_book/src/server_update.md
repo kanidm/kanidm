@@ -1,6 +1,6 @@
-## Updating the Server
+# Updating the Server
 
-### Preserving the Previous Image
+## Preserving the Previous Image
 
 You may wish to preserve the previous image before updating. This is useful if an issue is
 encountered in upgrades.
@@ -10,7 +10,7 @@ docker tag kanidm/server:latest kanidm/server:<DATE>
 docker tag kanidm/server:latest kanidm/server:2022-10-24
 ```
 
-### Update your Image
+## Update your Image
 
 Pull the latest version of Kanidm that matches your CPU profile
 
@@ -19,15 +19,21 @@ docker pull kanidm/server:latest
 docker pull kanidm/server:x86_64_latest
 ```
 
-### Perform a backup
+## Perform a backup
 
 See [backup and restore](backup_restore.md)
 
-### Update your Instance
+## Update your Instance
 
-{{#template templates/kani-warning.md imagepath=images title=WARNING text=It is not always
-guaranteed that downgrades are possible. It is critical you know how to backup and restore before
-you proceed with this step. }}
+<!-- deno-fmt-ignore-start -->
+
+{{#template templates/kani-warning.md
+imagepath=images
+title=WARNING
+text=It is not always guaranteed that downgrades are possible. It is critical you know how to backup and restore before you proceed with this step.
+}}
+
+<!-- deno-fmt-ignore-end -->
 
 Docker updates by deleting and recreating the instance. All that needs to be preserved in your
 storage volume.

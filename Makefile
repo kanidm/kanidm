@@ -160,6 +160,7 @@ book: ## Build the Kanidm book
 book:
 	cargo doc --no-deps
 	mdbook build kanidm_book
+	rm -rf ./docs/
 	mv ./kanidm_book/book/ ./docs/
 	mkdir -p ./docs/rustdoc/${BOOK_VERSION}
 	mv ./target/doc/* ./docs/rustdoc/${BOOK_VERSION}/
@@ -172,6 +173,7 @@ book_versioned:
 	git pull origin "${BOOK_VERSION}"
 	cargo doc --no-deps --quiet
 	mdbook build kanidm_book
+	rm -rf ./docs/
 	mkdir -p ./docs
 	mv ./kanidm_book/book/ ./docs/${BOOK_VERSION}/
 	mkdir -p ./docs/${BOOK_VERSION}/rustdoc/
