@@ -1,7 +1,6 @@
 # Kanidm
 
 - [Introduction to Kanidm](intro.md)
-- [Frequently Asked Questions](frequently_asked_questions.md)
 - [Installing the Server](installing_the_server.md)
   - [Choosing a Domain Name](choosing_a_domain_name.md)
   - [Preparing for your Deployment](prepare_the_server.md)
@@ -10,6 +9,9 @@
   - [Platform Security Hardening](security_hardening.md)
 - [Client Tools](client_tools.md)
   - [Installing client tools](installing_client_tools.md)
+
+# Administration
+
 - [Administration](administrivia.md)
   - [Accounts and Groups](accounts_and_groups.md)
   - [Backup and Restore](backup_restore.md)
@@ -20,8 +22,10 @@
   - [POSIX Accounts and Groups](posix_accounts.md)
   - [SSH Key Distribution](ssh_key_dist.md)
   - [The Recycle Bin](recycle_bin.md)
-  - [Why TLS?](why_tls.md)
 - [Troubleshooting](troubleshooting.md)
+
+- [Frequently Asked Questions](frequently_asked_questions.md)
+
 - [Glossary of Technical Terms](glossary.md)
 
 # Services
