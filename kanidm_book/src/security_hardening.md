@@ -134,7 +134,7 @@ You should allocate unique UID and GID numbers for the service to run as on your
 this example we use `1000:1000`
 
 You will need to adjust the permissions on the `/data` volume to ensure that the process can manage
-the files. Kanidm requires the ability to write to the `/data` directory to create the sqlite files.
+the files. Kanidm requires the ability to write to the `/data` directory to create the database files.
 This UID/GID number should match the above. You could consider the following changes to help isolate
 these changes:
 

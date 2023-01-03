@@ -41,12 +41,14 @@ docker start <container name>
 
 ## Method 3 - Manual Database Copy
 
-This is a simple backup of the data volume.
+This is a simple backup of the data volume containing the database files. Ensure you copy the whole
+folder, rather than individual files in the volume!
 
 ```bash
 docker stop <container name>
 # Backup your docker's volume folder
+# cp -a /path/to/my/volume /path/to/my/backup-volume
 docker start <container name>
 ```
 
-Restoration is the reverse process.
+Restoration is the reverse process where you copy the entire folder back into place.

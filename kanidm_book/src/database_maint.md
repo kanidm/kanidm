@@ -33,9 +33,9 @@ Generally, reindexing is a rare action and should not normally be required.
 
 ## Vacuum
 
-[Vacuuming](https://www.sqlite.org/lang_vacuum.html) is the process of reclaiming un-used pages from
-the sqlite freelists, as well as performing some data reordering tasks that may make some queries
-more efficient . It is recommended that you vacuum after a reindex is performed or when you wish to
+Vacuuming is the process of reclaiming un-used pages from
+the database freelists, as well as performing some data reordering tasks that may make some queries
+more efficient. It is recommended that you vacuum after a reindex is performed or when you wish to
 reclaim space in the database file.
 
 Vacuum is also able to change the pagesize of the database. After changing `db_fs_type` (which

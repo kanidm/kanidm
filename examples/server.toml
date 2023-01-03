@@ -9,14 +9,14 @@ bindaddress = "[::]:443"
 #   The path to the kanidm database.
 db_path = "/var/lib/kanidm/kanidm.db"
 #
-#   If you have a known filesystem, kanidm can tune sqlite to match. Valid choices are:
+#   If you have a known filesystem, kanidm can tune database operations to match. Valid choices are:
 #   [zfs, other]
 #   If you are unsure about this leave it as the default (other). After changing this
 #   value you must run a vacuum task.
 #   - zfs:
-#     * sets sqlite pagesize to 64k. You must set recordsize=64k on the zfs filesystem.
+#     * sets database pagesize to 64k. You must set recordsize=64k on the zfs filesystem.
 #   - other:
-#     * sets sqlite pagesize to 4k, matching most filesystems block sizes.
+#     * sets database pagesize to 4k, matching most filesystems block sizes.
 # db_fs_type = "zfs"
 #
 #   The number of entries to store in the in-memory cache. Minimum value is 256. If unset
