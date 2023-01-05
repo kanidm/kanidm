@@ -134,7 +134,7 @@ impl Component for TotpModalApp {
         }
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         #[cfg(debug_assertions)]
         console::debug!("totp modal::change");
         false
@@ -383,7 +383,7 @@ impl Component for TotpModalApp {
                         TotpValue::Secret(secret)  => {
                     html! {
                         <form class="row g-3 needs-validation" novalidate=true
-                        onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                        onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                             e.prevent_default();
                             Msg::TotpSubmit
                         } ) }

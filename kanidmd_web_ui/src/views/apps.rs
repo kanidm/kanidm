@@ -56,7 +56,7 @@ impl Component for AppsApp {
         AppsApp { state }
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         #[cfg(debug_assertions)]
         console::debug!("views::apps::changed");
         false

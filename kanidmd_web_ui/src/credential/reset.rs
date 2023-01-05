@@ -18,6 +18,7 @@ use super::pwmodal::PwModalApp;
 use super::totpmodal::TotpModalApp;
 use crate::error::*;
 use crate::{models, utils};
+use std::rc::Rc;
 
 #[derive(PartialEq, Eq, Properties)]
 pub struct ModalProps {
@@ -141,15 +142,23 @@ impl Component for CredentialResetApp {
             },
         };
 
-        let eventbus = EventBus::bridge(ctx.link().callback(|req| match req {
-            EventBusMsg::UpdateStatus { status } => Msg::UpdateSession { status },
-            EventBusMsg::Error { emsg, kopid } => Msg::Error { emsg, kopid },
-        }));
+        let cb = {
+            let link = ctx.link().clone();
+            move |emsg| {
+                let msg = match emsg {
+                    EventBusMsg::UpdateStatus { status } => Msg::UpdateSession { status },
+                    EventBusMsg::Error { emsg, kopid } => Msg::Error { emsg, kopid },
+                };
+                link.send_message(msg);
+            }
+        };
+
+        let eventbus = EventBus::bridge(Rc::new(cb));
 
         CredentialResetApp { state, eventbus }
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         #[cfg(debug_assertions)]
         console::debug!("credential::reset::change");
         false
@@ -218,7 +227,11 @@ impl Component for CredentialResetApp {
                 let loc = models::pop_return_location();
                 #[cfg(debug_assertions)]
                 console::debug!(format!("Going to -> {:?}", loc));
-                loc.goto(&ctx.link().history().expect_throw("failed to read history"));
+                loc.goto(
+                    &ctx.link()
+                        .navigator()
+                        .expect_throw("failed to read history"),
+                );
 
                 None
             }
@@ -273,7 +286,7 @@ impl CredentialResetApp {
                 // <h3>{ "idm.example.com" } </h3>
             </center>
             <form
-                  onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                  onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                       console::debug!("credential::reset::view_token_input -> TokenInput - prevent_default()");
                       e.prevent_default();
 

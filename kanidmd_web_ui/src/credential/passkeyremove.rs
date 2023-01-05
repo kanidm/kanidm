@@ -139,7 +139,7 @@ impl Component for PasskeyRemoveModalApp {
         }
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         #[cfg(debug_assertions)]
         console::debug!("passkey remove modal::change");
         false

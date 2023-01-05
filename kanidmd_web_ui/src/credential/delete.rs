@@ -95,7 +95,7 @@ impl Component for DeleteApp {
         DeleteApp { state: State::Init }
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         #[cfg(debug_assertions)]
         console::debug!("delete modal::change");
         false

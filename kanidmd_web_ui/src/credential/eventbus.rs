@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use kanidm_proto::v1::CUStatus;
 use serde::{Deserialize, Serialize};
-use yew_agent::{Agent, AgentLink, Context, HandlerId};
+use yew_agent::{HandlerId, Public, Worker, WorkerLink};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
@@ -12,17 +12,17 @@ pub enum EventBusMsg {
 }
 
 pub struct EventBus {
-    link: AgentLink<EventBus>,
+    link: WorkerLink<EventBus>,
     subscribers: HashSet<HandlerId>,
 }
 
-impl Agent for EventBus {
+impl Worker for EventBus {
     type Input = EventBusMsg;
     type Message = ();
     type Output = EventBusMsg;
-    type Reach = Context<Self>;
+    type Reach = Public<Self>;
 
-    fn create(link: AgentLink<Self>) -> Self {
+    fn create(link: WorkerLink<Self>) -> Self {
         Self {
             link,
             subscribers: HashSet::new(),

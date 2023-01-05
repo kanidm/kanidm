@@ -125,7 +125,7 @@ impl Component for PwModalApp {
         }
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         #[cfg(debug_assertions)]
         console::debug!("pw modal::change");
         false
@@ -254,7 +254,7 @@ impl Component for PwModalApp {
                   </div>
                   <div class="modal-body">
                     <form class="row g-3 needs-validation" novalidate=true
-                        onsubmit={ ctx.link().callback(move |e: FocusEvent| {
+                        onsubmit={ ctx.link().callback(move |e: SubmitEvent| {
                             console::debug!("pw modal::on form submit prevent default");
                             e.prevent_default();
                             if submit_enabled {

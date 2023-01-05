@@ -123,7 +123,7 @@ impl Component for PasskeyModalApp {
         }
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         console::debug!("passkey modal::change");
         false
     }
@@ -308,7 +308,7 @@ impl Component for PasskeyModalApp {
                 html! {
                     <>
                     <form class="row needs-validation" novalidate=true
-                        onsubmit={ ctx.link().callback(move |e: FocusEvent| {
+                        onsubmit={ ctx.link().callback(move |e: SubmitEvent| {
                             #[cfg(debug_assertions)]
                             console::debug!("passkey modal::on form submit prevent default");
                             e.prevent_default();

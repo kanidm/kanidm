@@ -30,7 +30,7 @@ mod components;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub fn run_app() -> Result<(), JsValue> {
-    yew::start_app::<manager::ManagerApp>();
+    yew::Renderer::<manager::ManagerApp>::new().render();
     #[cfg(debug_assertions)]
     gloo::console::debug!(kanidm_proto::utils::get_version("kanidmd_web_ui"));
     Ok(())

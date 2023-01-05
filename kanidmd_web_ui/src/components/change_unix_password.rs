@@ -25,7 +25,6 @@ pub struct ChangeUnixPassword {
 #[derive(Debug, Default)]
 struct FormValues {
     password_input: String,
-    password_repeat_input: String,
 }
 
 impl From<FormData> for FormValues {
@@ -36,10 +35,6 @@ impl From<FormData> for FormValues {
                 .get("password_input")
                 .as_string()
                 .expect_throw("Failed to pull the password input field"),
-            password_repeat_input: data
-                .get("password_repeat_input")
-                .as_string()
-                .expect_throw("Failed to pull the password_repeat input field"),
         }
     }
 }
@@ -87,16 +82,6 @@ impl Component for ChangeUnixPassword {
         match msg {
             Msg::Submit(data) => {
                 let fd: FormValues = data.into();
-                if fd.password_input != fd.password_repeat_input {
-                    return self.update(
-                        ctx,
-                        Msg::Error {
-                            emsg: "Password fields did not match".to_string(),
-                            kopid: None,
-                        },
-                    );
-                }
-
                 let id = ctx.props().uat.uuid;
 
                 ctx.link().send_future(async move {
@@ -174,7 +159,7 @@ impl Component for ChangeUnixPassword {
               <div class="modal-dialog" role="document">
                   <form
                       onsubmit={
-                        ctx.link().callback(|e: FocusEvent| {
+                        ctx.link().callback(|e: SubmitEvent| {
                           e.prevent_default();
                           #[allow(clippy::expect_used)]
                           let form = e.target().and_then(|t| t.dyn_into::<HtmlFormElement>().ok()).expect("Failed to pull the form data from the browser");
@@ -246,7 +231,7 @@ impl Component for ChangeUnixPassword {
         }
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         false
     }
 

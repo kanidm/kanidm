@@ -58,7 +58,7 @@ impl Component for SecurityApp {
         SecurityApp { state: State::Init }
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         #[cfg(debug_assertions)]
         console::debug!("views::security::changed");
         true
@@ -91,9 +91,9 @@ impl Component for SecurityApp {
                 models::push_return_location(models::Location::Views(ViewRoute::Security));
 
                 ctx.link()
-                    .history()
+                    .navigator()
                     .expect_throw("failed to read history")
-                    .push(Route::CredentialReset);
+                    .push(&Route::CredentialReset);
                 // No need to redraw, or reset state, since this redirect will destroy
                 // the state.
                 false
