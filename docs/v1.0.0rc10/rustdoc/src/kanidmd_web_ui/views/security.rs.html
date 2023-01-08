@@ -264,7 +264,7 @@
         SecurityApp { state: State::Init }
     }
 
-    <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; bool {
+    <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, _props: <span class="kw-2">&amp;</span><span class="self">Self</span>::Properties) -&gt; bool {
         <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;views::security::changed&quot;</span>);
         <span class="bool-val">true
@@ -297,9 +297,9 @@
                 models::push_return_location(models::Location::Views(ViewRoute::Security));
 
                 ctx.link()
-                    .history()
+                    .navigator()
                     .expect_throw(<span class="string">&quot;failed to read history&quot;</span>)
-                    .push(Route::CredentialReset);
+                    .push(<span class="kw-2">&amp;</span>Route::CredentialReset);
                 <span class="comment">// No need to redraw, or reset state, since this redirect will destroy
                 // the state.
                 </span><span class="bool-val">false

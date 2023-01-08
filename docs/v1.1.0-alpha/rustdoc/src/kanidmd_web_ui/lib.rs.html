@@ -67,7 +67,7 @@
 
 <span class="attribute">#[cfg_attr(target_arch = <span class="string">&quot;wasm32&quot;</span>, wasm_bindgen)]
 </span><span class="kw">pub fn </span>run_app() -&gt; <span class="prelude-ty">Result</span>&lt;(), JsValue&gt; {
-    yew::start_app::&lt;manager::ManagerApp&gt;();
+    yew::Renderer::&lt;manager::ManagerApp&gt;::new().render();
     <span class="attribute">#[cfg(debug_assertions)]
     </span><span class="macro">gloo::console::debug!</span>(kanidm_proto::utils::get_version(<span class="string">&quot;kanidmd_web_ui&quot;</span>));
     <span class="prelude-val">Ok</span>(())

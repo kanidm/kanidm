@@ -975,6 +975,10 @@
 <span id="975">975</span>
 <span id="976">976</span>
 <span id="977">977</span>
+<span id="978">978</span>
+<span id="979">979</span>
+<span id="980">980</span>
+<span id="981">981</span>
 </pre><pre class="rust"><code><span class="comment">// use anyhow::Error;
 </span><span class="kw">use </span>gloo::console;
 <span class="kw">use </span>kanidm_proto::v1::{
@@ -1229,7 +1233,7 @@
                     &lt;div class=<span class="string">&quot;container&quot;</span>&gt;
                         &lt;label <span class="kw">for</span>=<span class="string">&quot;username&quot; </span>class=<span class="string">&quot;form-label&quot;</span>&gt;{ <span class="string">&quot;Username&quot; </span>}&lt;/label&gt;
                         &lt;form
-                        onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                        onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                             <span class="attribute">#[cfg(debug_assertions)]
                             </span><span class="macro">console::debug!</span>(<span class="string">&quot;login::view_state -&gt; Init - prevent_default()&quot;</span>.to_string());
                             e.prevent_default();
@@ -1304,7 +1308,7 @@
                     &lt;div class=<span class="string">&quot;container&quot;</span>&gt;
                         &lt;label <span class="kw">for</span>=<span class="string">&quot;password&quot; </span>class=<span class="string">&quot;form-label&quot;</span>&gt;{ <span class="string">&quot;Password&quot; </span>}&lt;/label&gt;
                         &lt;form
-                            onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                            onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                                 <span class="macro">console::debug!</span>(<span class="string">&quot;login::view_state -&gt; Password - prevent_default()&quot;</span>.to_string());
                                 e.prevent_default();
                                 LoginAppMsg::PasswordSubmit
@@ -1339,7 +1343,7 @@
                         {<span class="string">&quot;Backup Code&quot;</span>}
                         &lt;/label&gt;
                         &lt;form
-                            onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                            onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                                 <span class="macro">console::debug!</span>(<span class="string">&quot;login::view_state -&gt; BackupCode - prevent_default()&quot;</span>.to_string());
                                 e.prevent_default();
                                 LoginAppMsg::BackupCodeSubmit
@@ -1371,7 +1375,7 @@
                     &lt;div class=<span class="string">&quot;container&quot;</span>&gt;
                         &lt;label <span class="kw">for</span>=<span class="string">&quot;totp&quot; </span>class=<span class="string">&quot;form-label&quot;</span>&gt;{<span class="string">&quot;TOTP&quot;</span>}&lt;/label&gt;
                         &lt;form
-                            onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                            onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                                 <span class="macro">console::debug!</span>(<span class="string">&quot;login::view_state -&gt; Totp - prevent_default()&quot;</span>.to_string());
                                 e.prevent_default();
                                 LoginAppMsg::TotpSubmit
@@ -1486,7 +1490,11 @@
                 <span class="comment">// redirect
                 </span><span class="attribute">#[cfg(debug_assertions)]
                 </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;authenticated, try going to -&gt; {:?}&quot;</span>, loc));
-                loc.goto(<span class="kw-2">&amp;</span>ctx.link().history().expect_throw(<span class="string">&quot;failed to read history&quot;</span>));
+                loc.goto(
+                    <span class="kw-2">&amp;</span>ctx.link()
+                        .navigator()
+                        .expect_throw(<span class="string">&quot;failed to read history&quot;</span>),
+                );
                 <span class="macro">html! </span>{
                     &lt;div class=<span class="string">&quot;alert alert-success&quot;</span>&gt;
                         &lt;h3&gt;{ <span class="string">&quot;Login Success 🎉&quot; </span>}&lt;/h3&gt;
@@ -1558,7 +1566,7 @@
         }
     }
 
-    <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; bool {
+    <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, _props: <span class="kw-2">&amp;</span><span class="self">Self</span>::Properties) -&gt; bool {
         <span class="bool-val">false
     </span>}
 

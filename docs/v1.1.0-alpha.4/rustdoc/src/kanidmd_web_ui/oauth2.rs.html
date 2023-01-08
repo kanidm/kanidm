@@ -810,7 +810,7 @@
         }
     }
 
-    <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; bool {
+    <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, _props: <span class="kw-2">&amp;</span><span class="self">Self</span>::Properties) -&gt; bool {
         <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;oauth2::change&quot;</span>);
         <span class="bool-val">false
@@ -829,9 +829,9 @@
                 models::push_return_location(models::Location::Manager(Route::Oauth2));
 
                 ctx.link()
-                    .history()
+                    .navigator()
                     .expect_throw(<span class="string">&quot;failed to read history&quot;</span>)
-                    .push(Route::Login);
+                    .push(<span class="kw-2">&amp;</span>Route::Login);
                 <span class="comment">// Don&#39;t need to redraw as we are yolo-ing out.
                 </span><span class="bool-val">false
             </span>}
@@ -949,7 +949,7 @@
 
                 </span><span class="macro">html! </span>{
                     &lt;form
-                      onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                      onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                           <span class="macro">console::debug!</span>(<span class="string">&quot;oauth2::view -&gt; LoginRequired - prevent_default()&quot;</span>);
                           e.prevent_default();
                           Oauth2Msg::LoginProceed
@@ -999,7 +999,7 @@
                 </span><span class="kw">let </span>app_name = client_name.clone();
                 <span class="macro">html! </span>{
                       &lt;form
-                        onsubmit={ ctx.link().callback(<span class="kw">move </span>|e: FocusEvent| {
+                        onsubmit={ ctx.link().callback(<span class="kw">move </span>|e: SubmitEvent| {
                             <span class="macro">console::debug!</span>(<span class="string">&quot;oauth2::view -&gt; Consent - prevent_default()&quot;</span>);
                             e.prevent_default();
                             Oauth2Msg::ConsentGranted(client_name.to_string())

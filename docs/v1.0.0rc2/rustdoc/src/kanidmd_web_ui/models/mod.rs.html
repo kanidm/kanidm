@@ -98,7 +98,7 @@
 <span class="kw">use </span>kanidm_proto::v1::{CUSessionToken, CUStatus};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>wasm_bindgen::UnwrapThrowExt;
-<span class="kw">use </span>yew_router::prelude::{AnyHistory, History};
+<span class="kw">use </span>yew_router::navigator::Navigator;
 
 <span class="kw">use </span><span class="kw">crate</span>::manager::Route;
 <span class="kw">use </span><span class="kw">crate</span>::views::ViewRoute;
@@ -114,10 +114,10 @@
 }
 
 <span class="kw">impl </span>Location {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>goto(<span class="self">self</span>, history: <span class="kw-2">&amp;</span>AnyHistory) {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>goto(<span class="self">self</span>, navigator: <span class="kw-2">&amp;</span>Navigator) {
         <span class="kw">match </span><span class="self">self </span>{
-            Location::Manager(r) =&gt; history.push(r),
-            Location::Views(r) =&gt; history.push(r),
+            Location::Manager(r) =&gt; navigator.push(<span class="kw-2">&amp;</span>r),
+            Location::Views(r) =&gt; navigator.push(<span class="kw-2">&amp;</span>r),
         }
     }
 }

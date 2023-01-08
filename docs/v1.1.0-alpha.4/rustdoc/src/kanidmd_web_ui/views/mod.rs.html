@@ -477,9 +477,6 @@
 <span id="477">477</span>
 <span id="478">478</span>
 <span id="479">479</span>
-<span id="480">480</span>
-<span id="481">481</span>
-<span id="482">482</span>
 </pre><pre class="rust"><code><span class="kw">use </span>gloo::console;
 <span class="kw">use </span>kanidm_proto::v1::{UiHint, UserAuthToken};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -607,7 +604,7 @@
         ViewsApp { state }
     }
 
-    <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; bool {
+    <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, _props: <span class="kw-2">&amp;</span><span class="self">Self</span>::Properties) -&gt; bool {
         <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;views::changed&quot;</span>);
         <span class="bool-val">false
@@ -661,20 +658,16 @@
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.state {
             State::LoginRequired =&gt; {
                 <span class="comment">// Where are we?
-                </span><span class="kw">let </span>loc = ctx
-                    .link()
-                    .history()
-                    .expect_throw(<span class="string">&quot;failed to read history&quot;</span>)
-                    .location()
-                    .route()
-                    .expect_throw(<span class="string">&quot;invalid route&quot;</span>);
+                </span><span class="kw">let </span>maybe_loc: <span class="prelude-ty">Option</span>&lt;ViewRoute&gt; = ctx.link().route();
 
-                models::push_return_location(models::Location::Views(loc));
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(loc) = maybe_loc {
+                    models::push_return_location(models::Location::Views(loc));
+                }
 
                 ctx.link()
-                    .history()
+                    .navigator()
                     .expect_throw(<span class="string">&quot;failed to read history&quot;</span>)
-                    .push(Route::Login);
+                    .push(<span class="kw-2">&amp;</span>Route::Login);
                 <span class="macro">html! </span>{ &lt;div&gt;&lt;/div&gt; }
             }
             State::LoggingOut | State::Verifying =&gt; {
@@ -808,11 +801,11 @@
           &lt;/div&gt;
         &lt;/div&gt;
         &lt;main class=<span class="string">&quot;p-3 x-auto&quot;</span>&gt;
-              &lt;Switch&lt;ViewRoute&gt; render={ Switch::render(<span class="kw">move </span>|route: <span class="kw-2">&amp;</span>ViewRoute| {
+              &lt;Switch&lt;ViewRoute&gt; render={ <span class="kw">move </span>|route: ViewRoute| {
                     <span class="comment">// safety - can&#39;t panic because to get to this location we MUST be authenticated!
                     </span><span class="kw">match </span>route {
                         ViewRoute::Admin =&gt; <span class="macro">html!</span>{
-                            &lt;Switch&lt;AdminRoute&gt; render={ Switch::render(admin_routes) } /&gt;
+                            &lt;Switch&lt;AdminRoute&gt; render={ admin_routes } /&gt;
                         },
                         <span class="attribute">#[allow(clippy::let_unit_value)]
                         </span>ViewRoute::Apps =&gt; <span class="macro">html! </span>{ &lt;AppsApp /&gt; },
@@ -822,7 +815,8 @@
                             &lt;Redirect&lt;Route&gt; to={Route::NotFound}/&gt;
                         },
                     }
-              })} /&gt;
+              }
+            } /&gt;
         &lt;/main&gt;
         &lt;/&gt;
           }
@@ -931,7 +925,7 @@
     }
 }
 
-<span class="kw">fn </span>admin_routes(route: <span class="kw-2">&amp;</span>AdminRoute) -&gt; Html {
+<span class="kw">fn </span>admin_routes(route: AdminRoute) -&gt; Html {
     <span class="kw">match </span>route {
         AdminRoute::AdminMenu =&gt; <span class="macro">html! </span>{
           &lt;admin_menu::AdminMenu /&gt;

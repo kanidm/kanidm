@@ -255,7 +255,7 @@
         AppsApp { state }
     }
 
-    <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; bool {
+    <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, _props: <span class="kw-2">&amp;</span><span class="self">Self</span>::Properties) -&gt; bool {
         <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;views::apps::changed&quot;</span>);
         <span class="bool-val">false

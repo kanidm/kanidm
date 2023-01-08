@@ -167,14 +167,14 @@
 
 <span class="attribute">#[function_component(Landing)]
 </span><span class="kw">fn </span>landing() -&gt; Html {
-    <span class="comment">// Do this to allow use_history to work because lol.
-    </span>use_history()
+    <span class="comment">// Do this to allow use_navigator to work because lol.
+    </span>yew_router::hooks::use_navigator()
         .expect_throw(<span class="string">&quot;Unable to access history&quot;</span>)
-        .push(ViewRoute::Apps);
+        .push(<span class="kw-2">&amp;</span>ViewRoute::Apps);
     <span class="macro">html! </span>{ &lt;main&gt;&lt;/main&gt; }
 }
 
-<span class="kw">fn </span>switch(route: <span class="kw-2">&amp;</span>Route) -&gt; Html {
+<span class="kw">fn </span>switch(route: Route) -&gt; Html {
     <span class="attribute">#[cfg(debug_assertions)]
     </span><span class="macro">console::debug!</span>(<span class="string">&quot;manager::switch&quot;</span>);
     <span class="kw">match </span>route {
@@ -223,7 +223,7 @@
         ManagerApp {}
     }
 
-    <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; bool {
+    <span class="kw">fn </span>changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, _props: <span class="kw-2">&amp;</span><span class="self">Self</span>::Properties) -&gt; bool {
         <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;manager::change&quot;</span>);
         <span class="bool-val">false
@@ -245,7 +245,7 @@
     <span class="kw">fn </span>view(<span class="kw-2">&amp;</span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; Html {
         <span class="macro">html! </span>{
             &lt;BrowserRouter&gt;
-                &lt;Switch&lt;Route&gt; render={ Switch::render(switch) } /&gt;
+                &lt;Switch&lt;Route&gt; render={ switch } /&gt;
             &lt;/BrowserRouter&gt;
         }
     }
