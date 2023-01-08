@@ -7,29 +7,37 @@ use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
-use yew_agent::{Bridge, Bridged};
 use yew_router::prelude::*;
 
 use super::delete::DeleteApp;
-use super::eventbus::{EventBus, EventBusMsg};
 use super::passkey::PasskeyModalApp;
 use super::passkeyremove::PasskeyRemoveModalApp;
 use super::pwmodal::PwModalApp;
 use super::totpmodal::TotpModalApp;
 use crate::error::*;
 use crate::{models, utils};
-use std::rc::Rc;
 
-#[derive(PartialEq, Eq, Properties)]
-pub struct ModalProps {
-    pub token: CUSessionToken,
+// use std::rc::Rc;
+
+#[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
+pub enum EventBusMsg {
+    UpdateStatus { status: CUStatus },
+    Error { emsg: String, kopid: Option<String> },
 }
 
-#[derive(PartialEq, Eq, Properties)]
+#[derive(PartialEq, Properties)]
+pub struct ModalProps {
+    pub token: CUSessionToken,
+    pub cb: Callback<EventBusMsg>,
+}
+
+#[derive(PartialEq, Properties)]
 pub struct PasskeyRemoveModalProps {
     pub token: CUSessionToken,
     pub tag: String,
     pub uuid: Uuid,
+    pub cb: Callback<EventBusMsg>,
 }
 
 pub enum Msg {
@@ -81,9 +89,7 @@ enum State {
 
 pub struct CredentialResetApp {
     state: State,
-    // TODO: I'm sure past-William had a plan for this 🚌
-    #[allow(dead_code)]
-    eventbus: Box<dyn Bridge<EventBus>>,
+    cb: Callback<EventBusMsg>,
 }
 
 impl Component for CredentialResetApp {
@@ -142,7 +148,7 @@ impl Component for CredentialResetApp {
             },
         };
 
-        let cb = {
+        let cb = Callback::from({
             let link = ctx.link().clone();
             move |emsg| {
                 let msg = match emsg {
@@ -151,11 +157,9 @@ impl Component for CredentialResetApp {
                 };
                 link.send_message(msg);
             }
-        };
+        });
 
-        let eventbus = EventBus::bridge(Rc::new(cb));
-
-        CredentialResetApp { state, eventbus }
+        CredentialResetApp { state, cb }
     }
 
     fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
@@ -335,6 +339,7 @@ impl CredentialResetApp {
 
         let displayname = status.displayname.clone();
         let spn = status.spn.clone();
+        let cb = self.cb.clone();
 
         let can_commit = status.can_commit;
 
@@ -442,7 +447,7 @@ impl CredentialResetApp {
             <>
                 { for status.passkeys.iter()
                     .map(|detail|
-                        html! { <PasskeyRemoveModalApp token={ token.clone() } tag={ detail.tag.clone() } uuid={ detail.uuid } /> }
+                        html! { <PasskeyRemoveModalApp token={ token.clone() } tag={ detail.tag.clone() } uuid={ detail.uuid } cb={ cb.clone() } /> }
                     )
                 }
             </>
@@ -503,13 +508,13 @@ impl CredentialResetApp {
               </div>
             </main>
 
-            <PasskeyModalApp token={ token.clone() } />
+            <PasskeyModalApp token={ token.clone() } cb={ cb.clone() } />
 
-            <PwModalApp token={ token.clone() } />
+            <PwModalApp token={ token.clone() } cb={ cb.clone() } />
 
-            <TotpModalApp token={ token.clone() }/>
+            <TotpModalApp token={ token.clone() } cb={ cb.clone() }/>
 
-            <DeleteApp token= { token.clone() }/>
+            <DeleteApp token= { token.clone() } cb={ cb.clone() }/>
 
             { passkey_modals_html }
 

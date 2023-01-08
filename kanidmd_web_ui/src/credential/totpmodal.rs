@@ -7,10 +7,8 @@ use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Node, Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
-use yew_agent::Dispatched;
 
-use super::eventbus::{EventBus, EventBusMsg};
-use super::reset::ModalProps;
+use super::reset::{EventBusMsg, ModalProps};
 use crate::error::*;
 use crate::utils;
 
@@ -67,7 +65,11 @@ impl TotpModalApp {
         self.secret = TotpValue::Init;
     }
 
-    async fn submit_totp_update(token: CUSessionToken, req: CURequest) -> Result<Msg, FetchError> {
+    async fn submit_totp_update(
+        token: CUSessionToken,
+        req: CURequest,
+        cb: Callback<EventBusMsg>,
+    ) -> Result<Msg, FetchError> {
         let req_jsvalue = serde_json::to_string(&(req, token))
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise pw curequest");
@@ -97,7 +99,7 @@ impl TotpModalApp {
             let status: CUStatus =
                 serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
 
-            EventBus::dispatcher().send(EventBusMsg::UpdateStatus {
+            cb.emit(EventBusMsg::UpdateStatus {
                 status: status.clone(),
             });
 
@@ -144,12 +146,13 @@ impl Component for TotpModalApp {
         #[cfg(debug_assertions)]
         console::debug!("totp modal::update");
         let token_c = ctx.props().token.clone();
+        let cb = ctx.props().cb.clone();
         match msg {
             Msg::TotpCancel => {
                 // Cancel the totp req!
                 // Should end up with a success?
                 ctx.link().send_future(async {
-                    match Self::submit_totp_update(token_c, CURequest::CancelMFAReg).await {
+                    match Self::submit_totp_update(token_c, CURequest::CancelMFAReg, cb).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
@@ -165,7 +168,7 @@ impl Component for TotpModalApp {
                 match totp.trim().parse::<u32>() {
                     Ok(totp) => {
                         ctx.link().send_future(async move {
-                            match Self::submit_totp_update(token_c, CURequest::TotpVerify(totp))
+                            match Self::submit_totp_update(token_c, CURequest::TotpVerify(totp), cb)
                                 .await
                             {
                                 Ok(v) => v,
@@ -182,10 +185,8 @@ impl Component for TotpModalApp {
             }
             Msg::TotpGenerate => {
                 // SEND OFF A REQUEST TO GET THE TOTP STRING
-                let token_c = ctx.props().token.clone();
-
                 ctx.link().send_future(async {
-                    match Self::submit_totp_update(token_c, CURequest::TotpGenerate).await {
+                    match Self::submit_totp_update(token_c, CURequest::TotpGenerate, cb).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
@@ -215,7 +216,7 @@ impl Component for TotpModalApp {
             }
             Msg::TotpAcceptSha1 => {
                 ctx.link().send_future(async {
-                    match Self::submit_totp_update(token_c, CURequest::TotpAcceptSha1).await {
+                    match Self::submit_totp_update(token_c, CURequest::TotpAcceptSha1, cb).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
@@ -229,7 +230,7 @@ impl Component for TotpModalApp {
             }
             Msg::Error { emsg, kopid } => {
                 // Submit the error to the parent.
-                EventBus::dispatcher().send(EventBusMsg::Error { emsg, kopid });
+                cb.emit(EventBusMsg::Error { emsg, kopid });
                 self.reset_and_hide();
             }
         };

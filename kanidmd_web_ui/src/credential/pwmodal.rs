@@ -4,10 +4,8 @@ use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
-use yew_agent::Dispatched;
 
-use super::eventbus::{EventBus, EventBusMsg};
-use super::reset::ModalProps;
+use super::reset::{EventBusMsg, ModalProps};
 use crate::error::*;
 use crate::utils;
 
@@ -134,6 +132,7 @@ impl Component for PwModalApp {
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         #[cfg(debug_assertions)]
         console::debug!("pw modal::update");
+        let cb = ctx.props().cb.clone();
         match msg {
             Msg::PasswordCheck => {
                 // default is empty string
@@ -169,12 +168,12 @@ impl Component for PwModalApp {
             Msg::PasswordResponseQuality { feedback } => self.state = PwState::Feedback(feedback),
             Msg::PasswordResponseSuccess { status } => {
                 // Submit the update to the parent
-                EventBus::dispatcher().send(EventBusMsg::UpdateStatus { status });
+                cb.emit(EventBusMsg::UpdateStatus { status });
                 self.reset_and_hide();
             }
             Msg::Error { emsg, kopid } => {
                 // Submit the error to the parent.
-                EventBus::dispatcher().send(EventBusMsg::Error { emsg, kopid });
+                cb.emit(EventBusMsg::Error { emsg, kopid });
                 self.reset_and_hide();
             }
         };

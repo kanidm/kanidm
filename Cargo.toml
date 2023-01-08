@@ -171,7 +171,6 @@ whoami = "^1.3.0"
 walkdir = "2"
 
 yew = "^0.20.0"
-yew-agent = "^0.2.0"
 yew-router = "^0.17.0"
 zxcvbn = "^2.2.1"
 

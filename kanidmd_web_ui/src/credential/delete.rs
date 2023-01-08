@@ -5,10 +5,8 @@ use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
-use yew_agent::Dispatched;
 
-use super::eventbus::{EventBus, EventBusMsg};
-use super::reset::ModalProps;
+use super::reset::{EventBusMsg, ModalProps};
 use crate::error::*;
 use crate::utils;
 
@@ -43,7 +41,11 @@ impl DeleteApp {
         self.state = State::Init;
     }
 
-    async fn submit_update(token: CUSessionToken, req: CURequest) -> Result<Msg, FetchError> {
+    async fn submit_update(
+        token: CUSessionToken,
+        req: CURequest,
+        cb: Callback<EventBusMsg>,
+    ) -> Result<Msg, FetchError> {
         let req_jsvalue = serde_json::to_string(&(req, token))
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise pw curequest");
@@ -73,7 +75,7 @@ impl DeleteApp {
             let status: CUStatus =
                 serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
 
-            EventBus::dispatcher().send(EventBusMsg::UpdateStatus { status });
+            cb.emit(EventBusMsg::UpdateStatus { status });
 
             Ok(Msg::Success)
         } else {
@@ -105,13 +107,14 @@ impl Component for DeleteApp {
         #[cfg(debug_assertions)]
         console::debug!("delete modal::update");
         let token_c = ctx.props().token.clone();
+        let cb = ctx.props().cb.clone();
         match msg {
             Msg::Cancel => {
                 self.reset_and_hide();
             }
             Msg::Submit => {
                 ctx.link().send_future(async {
-                    match Self::submit_update(token_c, CURequest::PrimaryRemove).await {
+                    match Self::submit_update(token_c, CURequest::PrimaryRemove, cb).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
@@ -124,7 +127,7 @@ impl Component for DeleteApp {
             }
             Msg::Error { emsg, kopid } => {
                 // Submit the error to the parent.
-                EventBus::dispatcher().send(EventBusMsg::Error { emsg, kopid });
+                cb.emit(EventBusMsg::Error { emsg, kopid });
                 self.reset_and_hide();
             }
         };

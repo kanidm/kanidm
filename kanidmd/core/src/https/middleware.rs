@@ -196,8 +196,8 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
                 // we need unsafe-eval because of WASM things
                 format!("script-src 'self' {} 'unsafe-eval'", hashes.join(" ")).as_str(),
                 "form-action https: 'self'", // to allow for OAuth posts
-                // now using workers in latest yew.
-                // "worker-src 'none'",
+                // we are not currently using workers so it can be blocked
+                "worker-src 'none'",
                 // TODO: Content-Security-Policy-Report-Only https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy-Report-Only
                 // "report-to 'none'", // unsupported by a lot of things still, but mozilla's saying report-uri is deprecated?
                 "report-uri 'none'",

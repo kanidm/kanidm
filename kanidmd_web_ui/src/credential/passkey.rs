@@ -5,10 +5,8 @@ use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
-use yew_agent::Dispatched;
 
-use super::eventbus::{EventBus, EventBusMsg};
-use super::reset::ModalProps;
+use super::reset::{EventBusMsg, ModalProps};
 use crate::error::*;
 use crate::utils;
 
@@ -57,6 +55,7 @@ impl PasskeyModalApp {
     async fn submit_passkey_update(
         token: CUSessionToken,
         req: CURequest,
+        cb: Callback<EventBusMsg>,
     ) -> Result<Msg, FetchError> {
         let req_jsvalue = serde_json::to_string(&(req, token))
             .map(|s| JsValue::from(&s))
@@ -87,7 +86,7 @@ impl PasskeyModalApp {
             let status: CUStatus =
                 serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
 
-            EventBus::dispatcher().send(EventBusMsg::UpdateStatus {
+            cb.emit(EventBusMsg::UpdateStatus {
                 status: status.clone(),
             });
 
@@ -130,6 +129,7 @@ impl Component for PasskeyModalApp {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         console::debug!("passkey modal::update");
+        let cb = ctx.props().cb.clone();
         match msg {
             Msg::LabelCheck => {
                 let label = utils::get_value_from_element_id("passkey-label")
@@ -149,6 +149,7 @@ impl Component for PasskeyModalApp {
                         match Self::submit_passkey_update(
                             token_c,
                             CURequest::PasskeyFinish(label, rpkc),
+                            cb,
                         )
                         .await
                         {
@@ -169,7 +170,7 @@ impl Component for PasskeyModalApp {
                 let token_c = ctx.props().token.clone();
 
                 ctx.link().send_future(async {
-                    match Self::submit_passkey_update(token_c, CURequest::PasskeyInit).await {
+                    match Self::submit_passkey_update(token_c, CURequest::PasskeyInit, cb).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
@@ -227,7 +228,7 @@ impl Component for PasskeyModalApp {
                 let token_c = ctx.props().token.clone();
 
                 ctx.link().send_future(async {
-                    match Self::submit_passkey_update(token_c, CURequest::CancelMFAReg).await {
+                    match Self::submit_passkey_update(token_c, CURequest::CancelMFAReg, cb).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
@@ -237,7 +238,7 @@ impl Component for PasskeyModalApp {
             }
             Msg::Error { emsg, kopid } => {
                 // Submit the error to the parent.
-                EventBus::dispatcher().send(EventBusMsg::Error { emsg, kopid });
+                cb.emit(EventBusMsg::Error { emsg, kopid });
                 self.reset_and_hide();
             }
         };
