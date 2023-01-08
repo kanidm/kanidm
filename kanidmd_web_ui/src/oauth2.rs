@@ -270,7 +270,7 @@ impl Component for Oauth2App {
         }
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         #[cfg(debug_assertions)]
         console::debug!("oauth2::change");
         false
@@ -289,9 +289,9 @@ impl Component for Oauth2App {
                 models::push_return_location(models::Location::Manager(Route::Oauth2));
 
                 ctx.link()
-                    .history()
+                    .navigator()
                     .expect_throw("failed to read history")
-                    .push(Route::Login);
+                    .push(&Route::Login);
                 // Don't need to redraw as we are yolo-ing out.
                 false
             }
@@ -409,7 +409,7 @@ impl Component for Oauth2App {
 
                 html! {
                     <form
-                      onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                      onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                           console::debug!("oauth2::view -> LoginRequired - prevent_default()");
                           e.prevent_default();
                           Oauth2Msg::LoginProceed
@@ -459,7 +459,7 @@ impl Component for Oauth2App {
                 let app_name = client_name.clone();
                 html! {
                       <form
-                        onsubmit={ ctx.link().callback(move |e: FocusEvent| {
+                        onsubmit={ ctx.link().callback(move |e: SubmitEvent| {
                             console::debug!("oauth2::view -> Consent - prevent_default()");
                             e.prevent_default();
                             Oauth2Msg::ConsentGranted(client_name.to_string())

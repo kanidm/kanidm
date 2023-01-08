@@ -252,7 +252,7 @@ impl LoginApp {
                     <div class="container">
                         <label for="username" class="form-label">{ "Username" }</label>
                         <form
-                        onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                        onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                             #[cfg(debug_assertions)]
                             console::debug!("login::view_state -> Init - prevent_default()".to_string());
                             e.prevent_default();
@@ -327,7 +327,7 @@ impl LoginApp {
                     <div class="container">
                         <label for="password" class="form-label">{ "Password" }</label>
                         <form
-                            onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                            onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                                 console::debug!("login::view_state -> Password - prevent_default()".to_string());
                                 e.prevent_default();
                                 LoginAppMsg::PasswordSubmit
@@ -362,7 +362,7 @@ impl LoginApp {
                         {"Backup Code"}
                         </label>
                         <form
-                            onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                            onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                                 console::debug!("login::view_state -> BackupCode - prevent_default()".to_string());
                                 e.prevent_default();
                                 LoginAppMsg::BackupCodeSubmit
@@ -394,7 +394,7 @@ impl LoginApp {
                     <div class="container">
                         <label for="totp" class="form-label">{"TOTP"}</label>
                         <form
-                            onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                            onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                                 console::debug!("login::view_state -> Totp - prevent_default()".to_string());
                                 e.prevent_default();
                                 LoginAppMsg::TotpSubmit
@@ -509,7 +509,11 @@ impl LoginApp {
                 // redirect
                 #[cfg(debug_assertions)]
                 console::debug!(format!("authenticated, try going to -> {:?}", loc));
-                loc.goto(&ctx.link().history().expect_throw("failed to read history"));
+                loc.goto(
+                    &ctx.link()
+                        .navigator()
+                        .expect_throw("failed to read history"),
+                );
                 html! {
                     <div class="alert alert-success">
                         <h3>{ "Login Success 🎉" }</h3>
@@ -581,7 +585,7 @@ impl Component for LoginApp {
         }
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         false
     }
 

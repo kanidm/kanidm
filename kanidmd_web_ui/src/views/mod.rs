@@ -125,7 +125,7 @@ impl Component for ViewsApp {
         ViewsApp { state }
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         #[cfg(debug_assertions)]
         console::debug!("views::changed");
         false
@@ -179,20 +179,16 @@ impl Component for ViewsApp {
         match &self.state {
             State::LoginRequired => {
                 // Where are we?
-                let loc = ctx
-                    .link()
-                    .history()
-                    .expect_throw("failed to read history")
-                    .location()
-                    .route()
-                    .expect_throw("invalid route");
+                let maybe_loc: Option<ViewRoute> = ctx.link().route();
 
-                models::push_return_location(models::Location::Views(loc));
+                if let Some(loc) = maybe_loc {
+                    models::push_return_location(models::Location::Views(loc));
+                }
 
                 ctx.link()
-                    .history()
+                    .navigator()
                     .expect_throw("failed to read history")
-                    .push(Route::Login);
+                    .push(&Route::Login);
                 html! { <div></div> }
             }
             State::LoggingOut | State::Verifying => {
@@ -326,11 +322,11 @@ impl ViewsApp {
           </div>
         </div>
         <main class="p-3 x-auto">
-              <Switch<ViewRoute> render={ Switch::render(move |route: &ViewRoute| {
+              <Switch<ViewRoute> render={ move |route: ViewRoute| {
                     // safety - can't panic because to get to this location we MUST be authenticated!
                     match route {
                         ViewRoute::Admin => html!{
-                            <Switch<AdminRoute> render={ Switch::render(admin_routes) } />
+                            <Switch<AdminRoute> render={ admin_routes } />
                         },
                         #[allow(clippy::let_unit_value)]
                         ViewRoute::Apps => html! { <AppsApp /> },
@@ -340,7 +336,8 @@ impl ViewsApp {
                             <Redirect<Route> to={Route::NotFound}/>
                         },
                     }
-              })} />
+              }
+            } />
         </main>
         </>
           }
@@ -449,7 +446,7 @@ impl ViewsApp {
     }
 }
 
-fn admin_routes(route: &AdminRoute) -> Html {
+fn admin_routes(route: AdminRoute) -> Html {
     match route {
         AdminRoute::AdminMenu => html! {
           <admin_menu::AdminMenu />

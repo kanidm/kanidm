@@ -6,10 +6,8 @@ use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
-use yew_agent::Dispatched;
 
-use super::eventbus::{EventBus, EventBusMsg};
-use super::reset::PasskeyRemoveModalProps;
+use super::reset::{EventBusMsg, PasskeyRemoveModalProps};
 use crate::error::*;
 use crate::utils;
 
@@ -66,6 +64,7 @@ impl PasskeyRemoveModalApp {
     async fn submit_passkey_update(
         token: CUSessionToken,
         req: CURequest,
+        cb: Callback<EventBusMsg>,
     ) -> Result<Msg, FetchError> {
         let req_jsvalue = serde_json::to_string(&(req, token))
             .map(|s| JsValue::from(&s))
@@ -96,7 +95,7 @@ impl PasskeyRemoveModalApp {
             let status: CUStatus =
                 serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
 
-            EventBus::dispatcher().send(EventBusMsg::UpdateStatus {
+            cb.emit(EventBusMsg::UpdateStatus {
                 status: status.clone(),
             });
 
@@ -139,7 +138,7 @@ impl Component for PasskeyRemoveModalApp {
         }
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         #[cfg(debug_assertions)]
         console::debug!("passkey remove modal::change");
         false
@@ -148,6 +147,7 @@ impl Component for PasskeyRemoveModalApp {
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         #[cfg(debug_assertions)]
         console::debug!("passkey remove modal::update");
+        let cb = ctx.props().cb.clone();
         match msg {
             Msg::Submit => {
                 self.reset_and_hide();
@@ -157,7 +157,8 @@ impl Component for PasskeyRemoveModalApp {
                 let uuid = self.uuid;
 
                 ctx.link().send_future(async move {
-                    match Self::submit_passkey_update(token_c, CURequest::PasskeyRemove(uuid)).await
+                    match Self::submit_passkey_update(token_c, CURequest::PasskeyRemove(uuid), cb)
+                        .await
                     {
                         Ok(v) => v,
                         Err(v) => v.into(),
@@ -171,7 +172,7 @@ impl Component for PasskeyRemoveModalApp {
             }
             Msg::Error { emsg, kopid } => {
                 // Submit the error to the parent.
-                EventBus::dispatcher().send(EventBusMsg::Error { emsg, kopid });
+                cb.emit(EventBusMsg::Error { emsg, kopid });
                 self.reset_and_hide();
             }
         }

@@ -41,14 +41,14 @@ pub enum Route {
 
 #[function_component(Landing)]
 fn landing() -> Html {
-    // Do this to allow use_history to work because lol.
-    use_history()
+    // Do this to allow use_navigator to work because lol.
+    yew_router::hooks::use_navigator()
         .expect_throw("Unable to access history")
-        .push(ViewRoute::Apps);
+        .push(&ViewRoute::Apps);
     html! { <main></main> }
 }
 
-fn switch(route: &Route) -> Html {
+fn switch(route: Route) -> Html {
     #[cfg(debug_assertions)]
     console::debug!("manager::switch");
     match route {
@@ -97,7 +97,7 @@ impl Component for ManagerApp {
         ManagerApp {}
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
         #[cfg(debug_assertions)]
         console::debug!("manager::change");
         false
@@ -119,7 +119,7 @@ impl Component for ManagerApp {
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
             <BrowserRouter>
-                <Switch<Route> render={ Switch::render(switch) } />
+                <Switch<Route> render={ switch } />
             </BrowserRouter>
         }
     }

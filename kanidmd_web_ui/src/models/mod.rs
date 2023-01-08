@@ -7,7 +7,7 @@ use kanidm_proto::oauth2::AuthorisationRequest;
 use kanidm_proto::v1::{CUSessionToken, CUStatus};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::UnwrapThrowExt;
-use yew_router::prelude::{AnyHistory, History};
+use yew_router::navigator::Navigator;
 
 use crate::manager::Route;
 use crate::views::ViewRoute;
@@ -23,10 +23,10 @@ pub enum Location {
 }
 
 impl Location {
-    pub(crate) fn goto(self, history: &AnyHistory) {
+    pub(crate) fn goto(self, navigator: &Navigator) {
         match self {
-            Location::Manager(r) => history.push(r),
-            Location::Views(r) => history.push(r),
+            Location::Manager(r) => navigator.push(&r),
+            Location::Views(r) => navigator.push(&r),
         }
     }
 }
