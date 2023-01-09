@@ -720,7 +720,7 @@ mod tests {
                     .unwrap()
                     .is_none());
 
-                // Non-existant and invalid DNs
+                // Non-existent and invalid DNs
                 assert!(task::block_on(ldaps.do_bind(
                     idms,
                     "spn=admin@example.com,dc=clownshoes,dc=example,dc=com",

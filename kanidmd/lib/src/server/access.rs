@@ -1556,7 +1556,7 @@ impl Default for AccessControls {
                 acps_modify: Vec::new(),
                 acps_delete: Vec::new(),
             }),
-            // Allow the expect, if this fails it reperesents a programming/development
+            // Allow the expect, if this fails it represents a programming/development
             // failure.
             acp_resolve_filter_cache: ARCacheBuilder::new()
                 .set_size(ACP_RESOLVE_FILTER_CACHE_MAX, ACP_RESOLVE_FILTER_CACHE_LOCAL)

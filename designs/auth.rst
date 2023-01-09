@@ -246,7 +246,7 @@ struct AuthClientStep {
 The server verifies the credential, and marks that type of credential as failed or fulfilled.
 On failure of a credential, AuthDenied is immediately sent. On success of a credential
 the server can issue AuthSuccess or AuthResponse with new possible challenges. For example,
-consider we initiall send "password". The client provides the password. The server follows
+consider we initially send "password". The client provides the password. The server follows
  by "totp" as the next type. The client fails the totp, and is denied.
 
 If the response is AuthSuccess, an auth token is issued. The auth token is a bearer token

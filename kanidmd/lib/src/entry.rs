@@ -418,7 +418,7 @@ impl Entry<EntryInit, EntryNew> {
                     }
                     "index" => {
                         valueset::from_value_iter(
-                        vs.into_iter().map(|v| Value::new_indexs(v.as_str())
+                        vs.into_iter().map(|v| Value::new_indexes(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
                                 Value::new_utf8(v)

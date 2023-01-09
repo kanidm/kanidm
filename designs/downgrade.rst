@@ -27,7 +27,7 @@ rather than events that are fully resolved. This way within the changelog
 trim window, a server can be downgraded, and it's RUV move backwards, but the missing updates will be "replayed" backwards to it.
 
 Second, it means we have to consider making replication either version (typed)
-data agnostic *or* have CSN's reperesent a dataset version from the server which gates or blocks replication events from newer to older instances until *they* are upgraded.
+data agnostic *or* have CSN's represent a dataset version from the server which gates or blocks replication events from newer to older instances until *they* are upgraded.
 
 Having the version gate does have a good benefit. Imagine we have three servers
 A, B, C. We upgrade A and B, and they migrate UTF8STRING to XDATA. Server C has

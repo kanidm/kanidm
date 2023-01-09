@@ -384,7 +384,7 @@ impl Component for Oauth2App {
                     // No need to redraw, we are leaving.
                     Ok(_) => false,
                     Err(e) => {
-                        // Something went bang, opps.
+                        // Something went bang, oops.
                         console::error!(format!("{:?}", e).as_str());
                         self.state = State::ErrInvalidRequest;
                         true

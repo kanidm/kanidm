@@ -2150,7 +2150,7 @@ mod tests {
 
             match result {
                 Err(e) => {
-                    // if the error is the file is not found, thats what we want so continue,
+                    // if the error is the file is not found, that's what we want so continue,
                     // otherwise return the error
                     match e.kind() {
                         std::io::ErrorKind::NotFound => {}
@@ -2205,7 +2205,7 @@ mod tests {
 
             match result {
                 Err(e) => {
-                    // if the error is the file is not found, thats what we want so continue,
+                    // if the error is the file is not found, that's what we want so continue,
                     // otherwise return the error
                     match e.kind() {
                         std::io::ErrorKind::NotFound => {}

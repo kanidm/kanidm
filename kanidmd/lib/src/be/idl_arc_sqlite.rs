@@ -755,7 +755,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
          *
          * Since we have the filter2idl threshold, we want to find "what is the smallest
          * and most unique index asap so we can exit faster". This allows us to avoid
-         * loading larger most costly indexs that either have large idls, high variation
+         * loading larger most costly indexes that either have large idls, high variation
          * or few keys and are likely to miss and have to go out to disk.
          *
          * A few methods were proposed, but thanks to advice from Perri Boulton (psychology

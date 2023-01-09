@@ -452,7 +452,7 @@ pub trait QueryServerTransaction<'a> {
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid boolean syntax".to_string())),
                     SyntaxType::SyntaxId => Value::new_syntaxs(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Syntax syntax".to_string())),
-                    SyntaxType::IndexId => Value::new_indexs(value)
+                    SyntaxType::IndexId => Value::new_indexes(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Index syntax".to_string())),
                     SyntaxType::Uuid => {
                         // Attempt to resolve this name to a uuid. If it's already a uuid, then
@@ -531,7 +531,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::SyntaxId => PartialValue::new_syntaxs(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid Syntax syntax".to_string())
                     }),
-                    SyntaxType::IndexId => PartialValue::new_indexs(value).ok_or_else(|| {
+                    SyntaxType::IndexId => PartialValue::new_indexes(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid Index syntax".to_string())
                     }),
                     SyntaxType::Uuid => {

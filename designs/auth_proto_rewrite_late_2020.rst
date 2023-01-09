@@ -52,7 +52,7 @@ change.
 
 Currently Credentials can have *any* combination of factors.
 
-This should be changed to reperesent the valid set of factors.
+This should be changed to represent the valid set of factors.
 
 * Password (only)
 * GeneratedPassword

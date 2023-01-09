@@ -71,7 +71,7 @@ pub struct SchemaReadTransaction {
     ref_cache: CowCellReadTxn<HashMap<AttrString, SchemaAttribute>>,
 }
 
-/// An item reperesenting an attribute and the rules that enforce it. These rules enforce if an
+/// An item representing an attribute and the rules that enforce it. These rules enforce if an
 /// attribute on an [`Entry`] may be single or multi value, must be unique amongst all other types
 /// of this attribute, if the attribute should be [`indexed`], and what type of data [`syntax`] it may hold.
 ///
@@ -287,7 +287,7 @@ impl SchemaAttribute {
     }
 }
 
-/// An item reperesenting a class and the rules for that class. These rules enforce that an
+/// An item representing a class and the rules for that class. These rules enforce that an
 /// [`Entry`]'s avas conform to a set of requirements, giving structure to an entry about
 /// what avas must or may exist. The kanidm project provides attributes in `systemmust` and
 /// `systemmay`, which can not be altered. An administrator may extend these in the `must`
@@ -2448,7 +2448,7 @@ mod tests {
     fn test_schema_filter_validation() {
         let schema_outer = Schema::new().expect("failed to create schema");
         let schema = schema_outer.read();
-        // Test non existant attr name
+        // Test non existent attr name
         let f_mixed = filter_all!(f_eq("nonClAsS", PartialValue::new_class("attributetype")));
         assert_eq!(
             f_mixed.validate(&schema),

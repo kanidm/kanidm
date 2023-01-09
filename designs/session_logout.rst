@@ -44,7 +44,7 @@ metadata of the "creation" of the session, this is why we use the stub form that
 its expiry.
 
 On a replication attribute conflict, an expired state will always "overrule" an active state, even
-if the CID of expiry preceeds that of the active state. We merge the expiry into the metadata in
+if the CID of expiry precedes that of the active state. We merge the expiry into the metadata in
 this case.
 
 Token Usage / Revocation

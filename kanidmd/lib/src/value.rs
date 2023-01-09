@@ -442,7 +442,7 @@ impl PartialValue {
         matches!(self, PartialValue::Refer(_))
     }
 
-    pub fn new_indexs(s: &str) -> Option<Self> {
+    pub fn new_indexes(s: &str) -> Option<Self> {
         IndexType::try_from(s).map(PartialValue::Index).ok()
     }
 
@@ -992,7 +992,7 @@ impl Value {
         matches!(self, Value::Syntax(_))
     }
 
-    pub fn new_indexs(s: &str) -> Option<Self> {
+    pub fn new_indexes(s: &str) -> Option<Self> {
         IndexType::try_from(s).map(Value::Index).ok()
     }
 
