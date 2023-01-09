@@ -2514,7 +2514,7 @@ mod tests {
                 assert!(matches!(e, Oauth2Error::AuthenticationRequired));
                 assert!(idms_prox_write.commit().is_ok());
 
-                // Now submit a non-existant/invalid token. Does not affect our tokens validity.
+                // Now submit a non-existent/invalid token. Does not affect our tokens validity.
                 let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 let revoke_request = TokenRevokeRequest {
                     token: "this is an invalid token, nothing will happen!".to_string(),

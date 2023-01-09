@@ -10,7 +10,7 @@ override even if applicable. They should only be created by system access profil
 changes must be denied.
 
 Access profiles are stored as entries and are dynamically loaded into a structure that is more
-efficent for use at runtime. `Schema` and its transactions are a similar implementation.
+efficient for use at runtime. `Schema` and its transactions are a similar implementation.
 
 ## Search Requirements
 
@@ -74,7 +74,7 @@ acp class user: Pres(name) allow, Pres(desc) deny. Invert and Append
 
 So the filter now is:
 
-```
+```text
 And: {
     AndNot: {
         Eq("class", "user")
@@ -90,7 +90,7 @@ This would now only allow access to the `name` and `description` of the class `g
 
 If we extend this to a third, this would work. A more complex example:
 
-```
+```text
 search {
     action: allow
     targetscope: Eq("class", "group")
@@ -153,7 +153,7 @@ An example:
 ## Create Requirements
 
 A `create` profile defines the following limits to what objects can be created, through the
-combination of filters and atttributes.
+combination of filters and attributes.
 
 An example:
 
@@ -211,7 +211,7 @@ CHANGE: Receiver should be a group, and should be single value/multivalue? Can _
 
 Example profiles:
 
-```
+```text
 search {
     action: allow
     receiver: Eq("memberof", "admins")
@@ -344,7 +344,7 @@ exist! However, each one must still list their respective actions to allow prope
 The set of access controls is checked, and the set where receiver matches the current identified
 user is collected. These then are added to the users requested search as:
 
-```
+```text
 And(<User Search Request>, Or(<Set of Search Profile Filters))
 ```
 
@@ -356,7 +356,7 @@ set of attrs has to be checked to determine what of that entry can be displayed.
 three entries, A, B, C. An ACI that allows read of "name" on A, B exists, and a read of "mail" on B,
 C. The correct behaviour is then:
 
-```
+```text
 A: name
 B: name, mail
 C: mail
@@ -370,7 +370,7 @@ faster method, but initially a simple version is needed.
 
 Delete is similar to search, however there is the risk that the user may say something like:
 
-```
+```text
 Pres("class").
 ```
 

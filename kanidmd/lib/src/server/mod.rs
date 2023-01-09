@@ -966,7 +966,7 @@ impl QueryServer {
             .db_tickets
             .acquire()
             .await
-            .expect("unable to aquire db_ticket for qsr");
+            .expect("unable to acquire db_ticket for qsr");
 
         QueryServerReadTransaction {
             be_txn: self.be.read(),
@@ -985,14 +985,14 @@ impl QueryServer {
             .write_ticket
             .acquire()
             .await
-            .expect("unable to aquire writer_ticket for qsw");
+            .expect("unable to acquire writer_ticket for qsw");
         // We need to ensure a db conn will be available
         #[allow(clippy::expect_used)]
         let db_ticket = self
             .db_tickets
             .acquire()
             .await
-            .expect("unable to aquire db_ticket for qsw");
+            .expect("unable to acquire db_ticket for qsw");
 
         let schema_write = self.schema.write();
         let mut be_txn = self.be.write();
@@ -1010,7 +1010,7 @@ impl QueryServer {
             // take ownership of the value, and cause the commit to "only be run
             // once".
             //
-            // The commited flag is however used for abort-specific code in drop
+            // The committed flag is however used for abort-specific code in drop
             // which today I don't think we have ... yet.
             committed: false,
             phase,
@@ -1362,7 +1362,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.reload_schema()?;
         }
         // Determine if we need to update access control profiles
-        // based on any modifications that have occured.
+        // based on any modifications that have occurred.
         // IF SCHEMA CHANGED WE MUST ALSO RELOAD!!! IE if schema had an attr removed
         // that we rely on we MUST fail this here!!
         if self.changed_schema || self.changed_acp {

@@ -208,7 +208,7 @@ impl KaniHttpServer {
         access: &HashMap<Uuid, Vec<EntityType>>,
         all_entities: &HashMap<Uuid, Entity>,
     ) -> Result<(), ()> {
-        // To make this somewhat effecient, we fold each access req to "need group" or "need user"
+        // To make this somewhat efficient, we fold each access req to "need group" or "need user"
         // access.
         debug!("setup_access_controls");
 

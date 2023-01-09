@@ -117,6 +117,14 @@ prep:
 	cargo outdated -R
 	cargo audit
 
+.PHONY: codespell
+codespell:
+	codespell -c \
+	-L crate,unexpect,Pres,pres,ACI,aci,te \
+	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache' \
+	--skip='./docs/*,./.git' \
+	--skip='./kanidmd_web_ui/src/external,./kanidmd_web_ui/pkg/external,./pykanidm/site,./kanidmd/lib/src/constants/*.json'
+
 .PHONY: test/pykanidm/pytest
 test/pykanidm/pytest:
 	cd pykanidm && \

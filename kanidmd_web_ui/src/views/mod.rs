@@ -207,7 +207,7 @@ impl Component for ViewsApp {
                 html! {
                   <main class="form-signin">
                     <div class="alert alert-danger" role="alert">
-                      <h2>{ "An Error Occured 🥺" }</h2>
+                      <h2>{ "An Error Occurred 🥺" }</h2>
                     <p>{ emsg.to_string() }</p>
                     <p>
                         {

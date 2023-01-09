@@ -5,7 +5,7 @@ this, we need the capability to have "pluggable" synchronisation drivers. This i
 deployments will be able to use our generic versions, or may have customisations they wish to
 perform that are unique to them.
 
-To achieve this we need a layer of seperation - This effectively becomes an "extract, transform,
+To achieve this we need a layer of separation - This effectively becomes an "extract, transform,
 load" process. In addition this process must be _stateful_ where it can be run multiple times or
 even continuously and it will bring kanidm into synchronisation.
 
@@ -106,7 +106,7 @@ For this reason a syncprovider is a derivative of a service account, which also 
 the _state_ of the synchronisation operation. An example of this is that LDAP syncrepl provides a
 cookie defining the "state" of what has been "consumed up to" by the ETL bridge. During the load
 phase the modified entries _and_ the cookie are persisted. This means that if the operation fails
-the cookie also rolls back allowing a retry of the sync. If it suceeds the next sync knows that
+the cookie also rolls back allowing a retry of the sync. If it succeeds the next sync knows that
 kanidm is in the correct state. Graphically:
 
     ┌────────────┐                    ┌────────────┐                   ┌────────────┐
@@ -128,7 +128,7 @@ kanidm is in the correct state. Graphically:
     └────────────┘                    └────────────┘                   └────────────┘
 
 At any point the operation _may_ fail, so by locking the state with the upload of entries this
-guarantees correct upload has suceeded and persisted. A success really means it!
+guarantees correct upload has succeeded and persisted. A success really means it!
 
 ## SCIM
 

@@ -54,7 +54,7 @@ It was considered to provide default ACP's that would protect system items. This
 * it would require a "deny" acp type, and I do not wish to create this, as people could then create their own deny rules (always incorrect!)
 * There would be a lot of acp's involved in this protection (but acp's are expressive enough to provide it!)
 * The acp's would need a self-referencing acp to protect themselves from modification.
-* Having a seperate plugin to protect this will be faster than acp processing because we check less filters (But this is not a strong argument)
+* Having a separate plugin to protect this will be faster than acp processing because we check less filters (But this is not a strong argument)
 * the plugin can provide targeted error messages about why they were denied, rather than a generic acp denied message.
 * the plugin can provide detailed testing of edge cases in a confined manner
 

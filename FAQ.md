@@ -54,7 +54,7 @@ CAP theorem states that in a database you must choose only two of the three poss
 
 - Consistency - All servers in a topology see the same data at all times
 - Availability - All servers in a a topology can accept write operations at all times
-- Partitioning - In the case of a network seperation in the topology, all systems can continue to
+- Partitioning - In the case of a network separation in the topology, all systems can continue to
   process read operations
 
 Many protocols like Raft or Etcd are databases that provide PC guarantees. They guarantee that they
@@ -77,7 +77,7 @@ _without_ communication between the nodes.
 ## Update Resolutionn
 
 Many databases do exist that are PA, such as CouchDB or MongoDB. However, they often do not have the
-properties required in update resoultion that is required for Kanidm.
+properties required in update resolution that is required for Kanidm.
 
 An example of this is that CouchDB uses object-level resolution. This means that if two servers
 update the same entry the "latest write wins". An example of where this won't work for Kanidm is if

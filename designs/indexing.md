@@ -141,13 +141,13 @@ We load the single idl value for name, and then as we are below the test-thresho
 and apply the filter to entry ID 1 - yielding a match or no match.
 
 Notice in the second, by promoting the "smaller" idl, we were able to save the work of the idl load
-and intersection as our first equality of "name" was more targetted?
+and intersection as our first equality of "name" was more targeted?
 
 Filter optimisation is about re-arranging these filters in the server using our insight to data to
 provide faster searches and avoid indexes that are costly unless they are needed.
 
 In this case, we would _demote_ any filter where Eq(class, ...) to the _end_ of the And, because it
-is highly likely to be less targetted than the other Eq types. Another example would be promotion of
+is highly likely to be less targeted than the other Eq types. Another example would be promotion of
 Eq filters to the front of an And over a Sub term, wherh Sub indexes tend to be larger and have
 longer IDLs.
 

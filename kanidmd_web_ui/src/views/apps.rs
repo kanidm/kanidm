@@ -146,7 +146,7 @@ impl AppsApp {
                 <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
             </p>
             <div class="alert alert-danger" role="alert">
-              <h2>{ "An Error Occured 🥺" }</h2>
+              <h2>{ "An Error Occurred 🥺" }</h2>
             <p>{ msg.to_string() }</p>
             <p>
                 {

@@ -733,7 +733,7 @@ pub struct BackupCodesView {
 /* ===== low level proto types ===== */
 
 // ProtoEntry vs Entry
-// There is a good future reason for this seperation. It allows changing
+// There is a good future reason for this separation. It allows changing
 // the in memory server core entry type, without affecting the protoEntry type
 //
 

@@ -125,8 +125,8 @@ impl Component for ChangeUnixPassword {
         let flash = match &self.state {
             State::Error { emsg, kopid } => {
                 let message = match kopid {
-                    Some(k) => format!("An error occured - {} - {}", emsg, k),
-                    None => format!("An error occured - {} - No Operation ID", emsg),
+                    Some(k) => format!("An error occurred - {} - {}", emsg, k),
+                    None => format!("An error occurred - {} - No Operation ID", emsg),
                 };
                 html! {
                   <div class="alert alert-danger alert-dismissible fade show" role="alert">

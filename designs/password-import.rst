@@ -55,7 +55,7 @@ provided to be able to take over high privilege kanidm accounts.
 For this reason, the ability to import passwords must be limited to:
 
 * A service account with strong credentials
-* high_privilige accounts may NOT have their passwords set in this manner
+* high_privilege accounts may NOT have their passwords set in this manner
 
 Once kanidm implements password badlist checks in the auth path, passwords that have been synced
 into kanidm via this route may not function as they are found in the badlist, causing the account

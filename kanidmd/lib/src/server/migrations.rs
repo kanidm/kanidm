@@ -196,7 +196,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e
         })?;
 
-        // If there is nothing, we donn't need to do anything.
+        // If there is nothing, we don't need to do anything.
         if pre_candidates.is_empty() {
             admin_info!("migrate_2_to_3 no entries to migrate, complete");
             return Ok(());
@@ -342,7 +342,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e
         })?;
 
-        // If there is nothing, we donn't need to do anything.
+        // If there is nothing, we don't need to do anything.
         if pre_candidates.is_empty() {
             admin_info!("migrate_8_to_9 no entries to migrate, complete");
             return Ok(());

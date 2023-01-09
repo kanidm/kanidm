@@ -55,7 +55,7 @@ def test_parse_config_validationerror(client: KanidmClient) -> None:
 
 
 async def test_parse_config_data(client: KanidmClient) -> None:
-    """tests parse_config witha  valid input"""
+    """tests parse_config with a valid input"""
     testdict = {
         "uri": "https://example.com",
         "username": "testuser",
@@ -86,7 +86,7 @@ def test_config_invalid_uri() -> None:
 def test_config_none_uri() -> None:
     """tests passing an invalid uri to the config parser"""
 
-    with pytest.raises(ValueError, match="Please intitialize this with a server URI"):
+    with pytest.raises(ValueError, match="Please initialize this with a server URI"):
         KanidmClient(uri=None)
 
 

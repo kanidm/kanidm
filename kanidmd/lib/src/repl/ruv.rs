@@ -155,7 +155,7 @@ impl<'a> ReplicationUpdateVectorTransaction for ReplicationUpdateVectorReadTrans
 impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
     pub fn rebuild(&mut self, entries: &[Arc<EntrySealedCommitted>]) -> Result<(), OperationError> {
         // Entries and their internal changelogs are the "source of truth" for all changes
-        // that have ever occured and are stored on this server. So we use them to rebuild our RUV
+        // that have ever occurred and are stored on this server. So we use them to rebuild our RUV
         // here!
         let mut rebuild_ruv: BTreeMap<Cid, IDLBitRange> = BTreeMap::new();
 

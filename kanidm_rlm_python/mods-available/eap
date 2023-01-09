@@ -339,7 +339,7 @@ eap {
 
 		#
 		#  You can selectively disable TLS versions for
-		#  compatability with old client devices.
+		#  compatibility with old client devices.
 		#
 		#  If your system has OpenSSL 1.1.0 or greater, do NOT
 		#  use these.  Instead, set tls_min_version and

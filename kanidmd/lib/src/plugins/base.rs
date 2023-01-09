@@ -143,7 +143,7 @@ impl Plugin for Base {
                 }
             }
             Err(e) => {
-                admin_error!("Error occured checking UUID existance. {:?}", e);
+                admin_error!("Error occurred checking UUID existence. {:?}", e);
                 return Err(e);
             }
         }

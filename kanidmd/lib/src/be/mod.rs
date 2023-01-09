@@ -513,7 +513,7 @@ pub trait BackendTransaction {
             FilterResolved::Inclusion(l, _) => {
                 // For inclusion to be valid, every term must have *at least* one element present.
                 // This really relies on indexing, and so it's internal only - generally only
-                // for fully indexed existance queries, such as from refint.
+                // for fully indexed existence queries, such as from refint.
 
                 // This has a lot in common with an And and Or but not really quite either.
                 let mut plan = Vec::new();
@@ -1101,7 +1101,7 @@ impl<'a> BackendWriteTransaction<'a> {
         let id_list: IDLBitRange = tombstones.iter().map(|e| e.get_id()).collect();
 
         // Ensure nothing here exists in the RUV index, else it means
-        // we didn't trim properly, or some other state violation has occured.
+        // we didn't trim properly, or some other state violation has occurred.
         if !((&ruv_idls & &id_list).is_empty()) {
             admin_error!("RUV still contains entries that are going to be removed.");
             return Err(OperationError::ReplInvalidRUVState);

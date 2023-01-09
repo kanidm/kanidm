@@ -18,7 +18,7 @@ We have a user with a device E(nrolled), and a device N(ew) that they wish to be
 
 Each device contains a unique webauthn device that is inseperable from the device.
 
-Each device may be connected to a seperate Kanidm instance - IE we can not assume that
+Each device may be connected to a separate Kanidm instance - IE we can not assume that
 the data in the system may be point-in-time consistent due to replication as an asynchronous
 process.
 

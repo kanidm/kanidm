@@ -28,7 +28,7 @@ impl ValueSetJwsKeyEs256 {
             .iter()
             .map(|b| {
                 JwsSigner::from_es256_der(b).map_err(|e| {
-                    debug!(?e, "Error occured parsing ES256 DER");
+                    debug!(?e, "Error occurred parsing ES256 DER");
                     OperationError::InvalidValueState
                 })
             })
@@ -184,7 +184,7 @@ impl ValueSetJwsKeyRs256 {
             .iter()
             .map(|b| {
                 JwsSigner::from_rs256_der(b).map_err(|e| {
-                    debug!(?e, "Error occured parsing RS256 DER");
+                    debug!(?e, "Error occurred parsing RS256 DER");
                     OperationError::InvalidValueState
                 })
             })

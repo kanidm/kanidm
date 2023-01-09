@@ -39,7 +39,7 @@ potentially. This is an argument for the filter-scan method, that checks if any 
 the class, deleted, and if it does, we do not wrap with the AndNot term.
 
 
-The best solution is a whole seperate interface (/search/recycle/) that has it's own access controls
+The best solution is a whole separate interface (/search/recycle/) that has it's own access controls
 that is used. By default searches don't look at recycled items (but internal do). This interface would
 remove that limitation, but would require access controls to prevent read/changes.
 

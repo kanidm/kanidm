@@ -14,7 +14,7 @@ bindaddress = "[::]:8443"
 #   To preserve the original IP of the caller, these systems
 #   will often add a header such as "Forwarded" or
 #   "X-Forwarded-For". If set to true, then this header is
-#   respected as the "authoritive" source of the IP of the
+#   respected as the "authoritative" source of the IP of the
 #   connected client. If you are not using a load balancer
 #   then you should leave this value as default.
 #   Defaults to false

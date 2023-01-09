@@ -26,7 +26,7 @@ the features that satisfy it.
 
 ### Refactor of default access controls
 
-The current default privileges will need to be refactored to improve seperation of privilege and
+The current default privileges will need to be refactored to improve separation of privilege and
 improved delegation of finer access rights.
 
 ### Access profiles target specifiers instead of filters
@@ -53,7 +53,7 @@ resolve step in some cases.
 These are groups who's members are dynamicly allocated based on a filter query. This allows a
 similar level of dynamic group management as we have currently with access profiles, but with the
 additional ability for them to be used outside of the access control context. This is the "bridge"
-allowing us to move from filter based access controls to "group" targetted.
+allowing us to move from filter based access controls to "group" targeted.
 
 A risk of filter based groups is "infinite churn" because of recursion. This can occur if you had a
 rule such a "and not memberof = self" on a dynamic group. Because of this, filters on dynamic groups
@@ -85,7 +85,7 @@ mode and this enforces rules on session expiry.
 
 ### Default Roles / Seperation of Privilege
 
-By default we attempt to seperate privileges so that "no single account" has complete authority over
+By default we attempt to separate privileges so that "no single account" has complete authority over
 the system.
 
 Satisfied by:

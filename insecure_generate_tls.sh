@@ -162,7 +162,7 @@ openssl req -batch -config "${CANAME_FILE}" \
 echo "Generating the server private key..."
 openssl ecparam -genkey -name prime256v1 -noout -out "${KEYFILE}"
 
-echo "Generating the certficate signing request..."
+echo "Generating the certificate signing request..."
 openssl req -sha256 -new \
     -batch \
     -config "${ALTNAME_FILE}" -extensions v3_req \

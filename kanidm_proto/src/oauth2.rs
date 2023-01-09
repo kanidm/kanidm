@@ -116,7 +116,7 @@ pub struct AccessTokenResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub refresh_token: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    /// Space seperated list of scopes that were approved, if this differs from the
+    /// Space separated list of scopes that were approved, if this differs from the
     /// original request.
     pub scope: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

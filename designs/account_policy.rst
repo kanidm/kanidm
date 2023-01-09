@@ -76,7 +76,7 @@ For accounts with password-only:
 
 * After 5 incorrect attempts the account is rate limited by an increasing time window within the API. This limit delays the response to the auth (regardless of success)
 * After X attempts, the account is soft locked on the affected server only for a time window of Y increasing up to Z.
-* If the attempts continue, the account is hard locked and signalled to an external system that this has occured.
+* If the attempts continue, the account is hard locked and signalled to an external system that this has occurred.
 
 The value of X should be less than 100, so that the NIST guidelines can be met. This is beacuse when there are
 many replicas, each replica maintains its own locking state, so "eventually" as each replica is attempted to be

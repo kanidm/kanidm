@@ -1,7 +1,7 @@
 Trust Design and Thoughts
 -------------------------
 
-Trust is a process where users and groups of a seperate kanidm instance may be granted access
+Trust is a process where users and groups of a separate kanidm instance may be granted access
 to resources through this system. Trust is a one way concept, but of course, could be implemented
 twice in each direction to achieve bidirectional trust.
 
@@ -9,9 +9,9 @@ Why?
 ----
 
 There are a number of reasons why a trust configuration may be desired. You may have
-a seperate business to customer instance, where business users should be able to authenticate
+a separate business to customer instance, where business users should be able to authenticate
 to customer resources, but not the inverse. You may have two businesses merge or cooperate and
-require resource sharing. It allows seperation of high value credentials onto different infrastructure.
+require resource sharing. It allows separation of high value credentials onto different infrastructure.
 You could also potentially use trust as a method of sync between
 between a different IDM project and this.
 
@@ -50,7 +50,7 @@ There are different ways we can scope a trust out, each with pros-cons. Here are
  a whitelist.
 * Fractional Replication - similar to the GC in AD, replicate in a subset of your data, but then
  ask for redirects or other information. This is used with 389 and RO servers where you may only
- replicate a subset of accounts to branch offices or a seperate backend.
+ replicate a subset of accounts to branch offices or a separate backend.
 
 Each of these has pros and cons, good bad, and different models. They each achieve different things. For example,
 the Kerberos style trust creates silos where the accounts credential material is stored (in the home
@@ -280,7 +280,7 @@ How do we get the domain at setup time for spn? We already require domain for we
 we write this into the system_info?
 
 This means we need to determine a difference between a localgroup and a group that will
-be synced for trust. This may require a seperate class or label?
+be synced for trust. This may require a separate class or label?
 
 We need to make name -> SPN on groups/accounts that can be sent across a trust boundary.
 
@@ -304,7 +304,7 @@ is a requirement for replication anyway, and SID regeneration is not a complex t
 unlikely that we would ever see duplicates anyway as this is a 32bit field.
 
 An alternate option is to have the stub objects generate ids, but to have a trusted_uuid field
-that is used for replication checking, and a seperate CSN for trust replication.
+that is used for replication checking, and a separate CSN for trust replication.
 
 
 Webauthn

@@ -742,7 +742,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     /// Index Slope Analysis. For the purpose of external modules you can consider this as a
     /// module that generates "weights" for each index that we have. Smaller values are faster
     /// indexes - larger values are more costly ones. This is not intended to yield perfect
-    /// weights. The intent is to seperate over obviously more effective indexes rather than
+    /// weights. The intent is to separate over obviously more effective indexes rather than
     /// to min-max the fine tuning of these. Consider name=foo vs class=*. name=foo will always
     /// be better than class=*, but comparing name=foo to spn=foo is "much over muchness" since
     /// both are really fast.

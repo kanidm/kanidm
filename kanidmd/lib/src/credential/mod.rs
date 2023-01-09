@@ -128,7 +128,7 @@ impl TryFrom<&str> for Password {
     // As we may add more algos, we keep the match algo single for later.
     #[allow(clippy::single_match)]
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        // There is probably a more efficent way to try this given different types?
+        // There is probably a more efficient way to try this given different types?
 
         // test django - algo$salt$hash
         let django_pbkdf: Vec<&str> = value.split('$').collect();

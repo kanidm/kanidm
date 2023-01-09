@@ -663,11 +663,11 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
         }) => totp_secret,
         Ok(status) => {
             debug!(?status);
-            eprintln!("An error occured -> InvalidState");
+            eprintln!("An error occurred -> InvalidState");
             return;
         }
         Err(e) => {
-            eprintln!("An error occured -> {:?}", e);
+            eprintln!("An error occurred -> {:?}", e);
             return;
         }
     };
@@ -728,7 +728,7 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
                     .idm_account_credential_update_cancel_mfareg(session_token)
                     .await
                 {
-                    eprintln!("An error occured -> {:?}", e);
+                    eprintln!("An error occurred -> {:?}", e);
                 } else {
                     println!("success");
                 }
@@ -781,7 +781,7 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
                             .idm_account_credential_update_accept_sha1_totp(session_token)
                             .await
                         {
-                            eprintln!("An error occured -> {:?}", e);
+                            eprintln!("An error occurred -> {:?}", e);
                         } else {
                             println!("success");
                         }
@@ -792,7 +792,7 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
                             .idm_account_credential_update_cancel_mfareg(session_token)
                             .await
                         {
-                            eprintln!("An error occured -> {:?}", e);
+                            eprintln!("An error occurred -> {:?}", e);
                         } else {
                             println!("success");
                         }
@@ -802,11 +802,11 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
             }
             Ok(status) => {
                 debug!(?status);
-                eprintln!("An error occured -> InvalidState");
+                eprintln!("An error occurred -> InvalidState");
                 return;
             }
             Err(e) => {
-                eprintln!("An error occured -> {:?}", e);
+                eprintln!("An error occurred -> {:?}", e);
                 return;
             }
         }
@@ -825,11 +825,11 @@ async fn passkey_enroll_prompt(session_token: &CUSessionToken, client: &KanidmCl
         }) => pk_reg,
         Ok(status) => {
             debug!(?status);
-            eprintln!("An error occured -> InvalidState");
+            eprintln!("An error occurred -> InvalidState");
             return;
         }
         Err(e) => {
-            eprintln!("An error occured -> {:?}", e);
+            eprintln!("An error occurred -> {:?}", e);
             return;
         }
     };
@@ -860,7 +860,7 @@ async fn passkey_enroll_prompt(session_token: &CUSessionToken, client: &KanidmCl
     {
         Ok(_) => println!("success"),
         Err(e) => {
-            eprintln!("An error occured -> {:?}", e);
+            eprintln!("An error occurred -> {:?}", e);
         }
     };
 }
@@ -943,7 +943,7 @@ async fn credential_update_exec(
                 {
                     Ok(status) => display_status(status),
                     Err(e) => {
-                        eprintln!("An error occured -> {:?}", e);
+                        eprintln!("An error occurred -> {:?}", e);
                     }
                 }
             }
@@ -970,7 +970,7 @@ async fn credential_update_exec(
                                 eprintln!(" - {}", fb_item)
                             }
                         }
-                        _ => eprintln!("An error occured -> {:?}", e),
+                        _ => eprintln!("An error occurred -> {:?}", e),
                     }
                 } else {
                     println!("Successfully reset password.");
@@ -987,7 +987,7 @@ async fn credential_update_exec(
                         .idm_account_credential_update_remove_totp(&session_token)
                         .await
                     {
-                        eprintln!("An error occured -> {:?}", e);
+                        eprintln!("An error occurred -> {:?}", e);
                     } else {
                         println!("success");
                     }
@@ -1012,10 +1012,10 @@ async fn credential_update_exec(
                     }
                     Ok(status) => {
                         debug!(?status);
-                        eprintln!("An error occured -> InvalidState");
+                        eprintln!("An error occurred -> InvalidState");
                     }
                     Err(e) => {
-                        eprintln!("An error occured -> {:?}", e);
+                        eprintln!("An error occurred -> {:?}", e);
                     }
                 }
             }
@@ -1029,7 +1029,7 @@ async fn credential_update_exec(
                         .idm_account_credential_update_primary_remove(&session_token)
                         .await
                     {
-                        eprintln!("An error occured -> {:?}", e);
+                        eprintln!("An error occurred -> {:?}", e);
                     } else {
                         println!("success");
                     }
@@ -1055,7 +1055,7 @@ async fn credential_update_exec(
                         }
                     }
                     Err(e) => {
-                        eprintln!("An error occured pulling existing credentials -> {:?}", e);
+                        eprintln!("An error occurred pulling existing credentials -> {:?}", e);
                     }
                 }
                 let uuid_s: String = Input::new()
@@ -1071,13 +1071,13 @@ async fn credential_update_exec(
                     .interact_text()
                     .expect("Failed to interact with interactive session");
 
-                // Remeber, if it's NOT a valid uuid, it must have been empty as a termination.
+                // Remember, if it's NOT a valid uuid, it must have been empty as a termination.
                 if let Ok(uuid) = Uuid::parse_str(&uuid_s) {
                     if let Err(e) = client
                         .idm_account_credential_update_passkey_remove(&session_token, uuid)
                         .await
                     {
-                        eprintln!("An error occured -> {:?}", e);
+                        eprintln!("An error occurred -> {:?}", e);
                     } else {
                         println!("success");
                     }
@@ -1099,7 +1099,7 @@ async fn credential_update_exec(
                         .idm_account_credential_update_commit(&session_token)
                         .await
                     {
-                        eprintln!("An error occured -> {:?}", e);
+                        eprintln!("An error occurred -> {:?}", e);
                     } else {
                         println!("success");
                     }

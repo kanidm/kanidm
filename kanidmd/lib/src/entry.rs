@@ -811,7 +811,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                 // be in the may/must set, and would FAIL our normal checks anyway.
 
                 // The set of "may" is a combination of may and must, since we have already
-                // asserted that all must requirements are fufilled. This allows us to
+                // asserted that all must requirements are fulfilled. This allows us to
                 // perform extended attribute checking in a single pass.
                 let may: Result<Map<&AttrString, &SchemaAttribute>, _> = classes
                     .iter()
@@ -1048,7 +1048,7 @@ type IdxDiff<'a> =
     Vec<Result<(&'a AttrString, IndexType, String), (&'a AttrString, IndexType, String)>>;
 
 impl<VALID> Entry<VALID, EntryCommitted> {
-    /// If this entry has ever been commited to disk, retrieve it's database id number.
+    /// If this entry has ever been committed to disk, retrieve it's database id number.
     pub fn get_id(&self) -> u64 {
         self.state.id
     }
@@ -1420,7 +1420,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                                 changes
                             }
                             (Some(pre_vs), Some(post_vs)) => {
-                                // it exists in both, we need to work out the differents within the attr.
+                                // it exists in both, we need to work out the difference within the attr.
 
                                 let mut pre_idx_keys = pre_vs.generate_idx_eq_keys();
                                 pre_idx_keys.sort_unstable();
@@ -2374,7 +2374,7 @@ where
     }
 
     /// Remove an attribute-value pair from this entry. If the ava doesn't exist, we
-    /// don't do anything else since we are asserting the abscence of a value.
+    /// don't do anything else since we are asserting the absence of a value.
     pub(crate) fn remove_ava(&mut self, attr: &str, value: &PartialValue) {
         self.valid
             .eclog

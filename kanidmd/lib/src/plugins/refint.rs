@@ -47,7 +47,7 @@ impl ReferentialIntegrity {
             e
         })?;
 
-        // Is the existance of all id's confirmed?
+        // Is the existence of all id's confirmed?
         if b {
             Ok(())
         } else {
@@ -70,7 +70,7 @@ impl Plugin for ReferentialIntegrity {
     //
     // There is a situation to account for which is that a create or mod
     // may introduce the entry which is also to be referenced in the same
-    // transaction. Rather than have seperate verification paths - one to
+    // transaction. Rather than have separate verification paths - one to
     // check the UUID is in the cand set, and one to check the UUID exists
     // in the DB, we do the "correct" thing, write to the DB, and then assert
     // that the DB content is complete and valid instead.

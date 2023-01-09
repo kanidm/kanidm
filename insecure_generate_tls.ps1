@@ -90,7 +90,7 @@ if ( $LastExitCode -ne 0  ){
     exit 1
 }
 
-Write-Output "Generating the certficate signing request"
+Write-Output "Generating the certificate signing request"
 openssl req -sha256 -config "${ALTNAME_FILE}" -days 31 -new -extensions v3_req -key "${KEYFILE}" -out "${CSRFILE}"
 if ( $LastExitCode -ne 0  ){
     exit 1

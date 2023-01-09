@@ -32,7 +32,7 @@ code and exchanges it for a valid token that may be provided to the client.
 The resource server may optionally contact the token introspection endpoint about the
 provided oauth token, which yields extra metadata about the identity that holds the
 token and completed the authorisation. This metadata may include identity information,
-but also may include extended metadata, sometimes refered to as "claims". Claims are
+but also may include extended metadata, sometimes referred to as "claims". Claims are
 information bound to a token based on properties of the session that may allow
 the resource server to make extended authorisation decisions without the need
 to contact the authorisation server to arbitrate.
@@ -154,7 +154,7 @@ pkce: https://tools.ietf.org/html/rfc7636
 token introspection: https://tools.ietf.org/html/rfc7662
 bearer: https://tools.ietf.org/html/rfc6750
 device authorisation grant: https://datatracker.ietf.org/doc/html/rfc8628
-claims ad krb: https://syfuhs.net/2017/07/29/active-directory-claims-and-kerberos-net/ 
+claims ad krb: https://syfuhs.net/2017/07/29/active-directory-claims-and-kerberos-net/
 openid connect: https://openid.net/developers/specs/
 
 

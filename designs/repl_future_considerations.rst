@@ -166,7 +166,7 @@ To achieve this, we store a list of CID's and what entries were affected within 
 
 One can imagine a situation where two servers change the entry, but between
 those changes the read-only is supplied the CID. We don't care in what order they did change,
-only that a change *must* have occured.
+only that a change *must* have occurred.
 
 So example: let's take entry A with server A and B, and read-only R.
 
@@ -380,7 +380,7 @@ R:
 
 As R is a read-only it has no concept of the changelog, so it sets MIN to MAX.
 
-Now, we then poll the RUV again. Protocol wise RUV polling should be seperate to suppling of data!
+Now, we then poll the RUV again. Protocol wise RUV polling should be separate to suppling of data!
 
 ::
 

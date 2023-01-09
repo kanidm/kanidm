@@ -74,7 +74,7 @@ impl RadiusAccount {
         let cot = OffsetDateTime::unix_epoch() + ct;
 
         let vmin = if let Some(vft) = &self.valid_from {
-            // If current time greater than strat time window
+            // If current time greater than start time window
             vft < &cot
         } else {
             // We have no time, not expired.

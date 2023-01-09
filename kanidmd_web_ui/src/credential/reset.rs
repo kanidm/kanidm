@@ -107,7 +107,7 @@ impl Component for CredentialResetApp {
 
         add_body_form_classes!();
 
-        // Can we pre-load in a session token? This occures when we are sent a
+        // Can we pre-load in a session token? This occurs when we are sent a
         // credential reset from the views UI.
 
         /* Were we given a token for the reset? */
@@ -531,7 +531,7 @@ impl CredentialResetApp {
                 <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
             </p>
             <div class="alert alert-danger" role="alert">
-              <h2>{ "An Error Occured 🥺" }</h2>
+              <h2>{ "An Error Occurred 🥺" }</h2>
             <p>{ msg.to_string() }</p>
             <p>
                 {

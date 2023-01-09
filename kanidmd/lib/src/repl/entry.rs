@@ -20,7 +20,7 @@ pub struct EntryChangelog {
     /// A subtle and important piece of information is that an anchor can be considered
     /// as the "state as existing between two Cid's". This means for Cid X, this state is
     /// the "moment before X". This is important, as for a create we define the initial anchor
-    /// as "nothing". It's means for the anchor at time X, that changes that occured at time
+    /// as "nothing". It's means for the anchor at time X, that changes that occurred at time
     /// X have NOT been replayed and applied!
     anchors: BTreeMap<Cid, State>,
     changes: BTreeMap<Cid, Change>,
@@ -34,7 +34,7 @@ impl fmt::Display for EntryChangelog {
 }
 */
 
-/// A change defines the transitions that occured within this Cid (transaction). A change is applied
+/// A change defines the transitions that occurred within this Cid (transaction). A change is applied
 /// as a whole, or rejected during the replay process.
 #[derive(Debug, Clone)]
 pub struct Change {
@@ -521,7 +521,7 @@ impl EntryChangelog {
     pub fn trim_up_to(&mut self, cid: &Cid) -> Result<(), OperationError> {
         // Build a new anchor that is equal or less than this cid.
         // In other words, the cid we are trimming to, should be remaining
-        // in the CL, and we should have an anchor that preceeds it.
+        // in the CL, and we should have an anchor that precedes it.
         let (entry_state, rejected) = self.replay(Unbounded, Excluded(cid)).map_err(|e| {
             error!(?e);
             e

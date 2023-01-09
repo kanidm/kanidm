@@ -418,7 +418,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Mark that we have created an intent token on the user.
         // ⚠️   -- remember, there is a risk, very low, but still a risk of collision of the intent_id.
-        //        instead of enforcing unique, which would divulge that the collision occured, we
+        //        instead of enforcing unique, which would divulge that the collision occurred, we
         //        write anyway, and instead on the intent access path we invalidate IF the collision
         //        occurs.
         let mut modlist = ModifyList::new_append(
@@ -589,7 +589,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }
             }
             None => {
-                admin_error!("Corruption may have occured - index yielded an entry for intent_id, but the entry does not contain that intent_id");
+                admin_error!("Corruption may have occurred - index yielded an entry for intent_id, but the entry does not contain that intent_id");
                 return Err(OperationError::InvalidState);
             }
         };
