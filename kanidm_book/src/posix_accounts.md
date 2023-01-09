@@ -122,8 +122,8 @@ separate type of membership for POSIX members required.
 Due to the way that Podman operates, in some cases using the Kanidm client inside non-root
 containers with Kanidm accounts may fail with an error such as:
 
-```
-ERRO[0000] cannot find UID/GID for user NAME: No subuid ranges found for user "NAME" in /etc/subuid
+```text
+ERROR[0000] cannot find UID/GID for user NAME: No subuid ranges found for user "NAME" in /etc/subuid
 ```
 
 This is a fault in Podman and how it attempts to provide non-root containers, when UID/GIDs are

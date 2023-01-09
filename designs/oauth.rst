@@ -42,7 +42,7 @@ In this model, Kanidm will function as the authorisation server.
 Kanidm UAT Claims
 -----------------
 
-To ensure that we can filter and make certain autorisation decisions, the Kanidm UAT
+To ensure that we can filter and make certain authorisation decisions, the Kanidm UAT
 needs to be extended with extra claims similar to the token claims. Since we have the
 ability to strongly type these, we can add these to the UAT. These should include.
 

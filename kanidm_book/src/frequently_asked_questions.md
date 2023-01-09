@@ -49,7 +49,7 @@ This question is normally asked because people want to setup multiple Kanidm ser
 single database.
 
 Kanidm does not use SQL as a _database_. Kanidm uses SQL as a durable key-value store and Kanidm
-implements it's own database, caching, querying, optimisation and indexing ontop of that key-value
+implements it's own database, caching, querying, optimisation and indexing on top of that key-value
 store.
 
 As a result, because Kanidm specifically implements it's own cache layer above the key-value store

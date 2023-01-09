@@ -587,7 +587,7 @@ impl CoreHandle {
 impl Drop for CoreHandle {
     fn drop(&mut self) {
         if !self.clean_shutdown {
-            eprintln!("⚠️  UNCLEAN SHUTDOWN OCCURED ⚠️ ");
+            eprintln!("⚠️  UNCLEAN SHUTDOWN OCCURRED ⚠️ ");
         }
         // Can't enable yet until we clean up unix_int cache layer test
         // debug_assert!(self.clean_shutdown);

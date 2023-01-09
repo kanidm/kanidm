@@ -55,7 +55,7 @@ impl QueryServerReadV1 {
         &(*x_ref)
     }
 
-    // The server only recieves "Message" structures, which
+    // The server only receives "Message" structures, which
     // are whole self contained DB operations with all parsing
     // required complete. We still need to do certain validation steps, but
     // at this point our just is just to route to do_<action>

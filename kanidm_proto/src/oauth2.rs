@@ -219,7 +219,7 @@ pub enum SubjectType {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "UPPERCASE")]
-// WE REFUSE TO SUPPORT NONE. DONT EVEN ASK. IT WONT HAPPEN.
+// WE REFUSE TO SUPPORT NONE. DONT EVEN ASK. IT WON'T HAPPEN.
 pub enum IdTokenSignAlg {
     ES256,
     RS256,

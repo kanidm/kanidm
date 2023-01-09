@@ -32,7 +32,7 @@ improved delegation of finer access rights.
 ### Access profiles target specifiers instead of filters
 
 Access profiles should target a list of groups for who the access profile applies to, and who
-recieves the access it is granting.
+receives the access it is granting.
 
 Alternately an access profile could target "self" so that self-update rules can still be expressed.
 

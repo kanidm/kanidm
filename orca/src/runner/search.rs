@@ -253,7 +253,7 @@ pub(crate) async fn basic(
         let pw = accs[i as usize].1.clone();
         // * arc searches
         let searches_c = searches.clone();
-        // * the broadcast reciever.
+        // * the broadcast receiver.
         let broadcast_rx_c = broadcast_tx.subscribe();
         // * the result queue
         let raw_results_tx_c = raw_results_tx.clone();

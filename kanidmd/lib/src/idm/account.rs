@@ -493,7 +493,7 @@ impl Account {
 pub struct DestroySessionTokenEvent {
     // Who initiated this?
     pub ident: Identity,
-    // Who is it targetting?
+    // Who is it targeting?
     pub target: Uuid,
     // Which token id.
     pub token_id: Uuid,
@@ -617,7 +617,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 pub struct ListUserAuthTokenEvent {
     // Who initiated this?
     pub ident: Identity,
-    // Who is it targetting?
+    // Who is it targeting?
     pub target: Uuid,
 }
 

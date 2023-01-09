@@ -145,7 +145,7 @@ git commit -m 'Commit message' change_file.rs ...
 git push <myfork/origin> <feature-branch-name>
 ```
 
-If you receive advice or make further changes, just keep commiting to the branch, and pushing to
+If you receive advice or make further changes, just keep committing to the branch, and pushing to
 your branch. When we are happy with the code, we'll merge in GitHub, meaning you can now clean up
 your branch.
 
@@ -307,7 +307,7 @@ To speed up testing across platforms, we're leveraging GitHub actions to build c
 use.
 
 Whenever code is merged with the `master` branch of Kanidm, containers are automatically built for
-`kanidmd` and `radius`. Sometimes they fail to build, but we'll try to keep them avilable.
+`kanidmd` and `radius`. Sometimes they fail to build, but we'll try to keep them available.
 
 To find information on the packages,
 [visit the Kanidm packages page](https://github.com/orgs/kanidm/packages?repo_name=kanidm).

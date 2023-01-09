@@ -125,7 +125,7 @@ Implementation ideas for use cases
 
 * For identification:
     * Issue "ID tokens" as an api where you lookup name/uuid and get the userentry + sshkeys + group
-      entries. This allows one-shot caching of relevent types, and groups would not store the member
+      entries. This allows one-shot caching of relevant types, and groups would not store the member
       link on the client. Allows the client to "cache" any extra details into the stored record as
       required. This would be used for linux/mac to get uid/gid details and ssh keys for distribution.
       * Would inherit search permissions for connection.
@@ -395,7 +395,7 @@ More Brain Dumping
 - That would make userPassword and webauthn only for webui and api direct access.
     - All other pw validations would use application pw case.
     - SSH would just read ssh key - should this have a similar group filter/allow
-        mechanism like aplication pw?
+        mechanism like application pw?
 
 - Groups take a "type"
     - credentials also have a "type"

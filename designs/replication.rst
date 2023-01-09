@@ -43,7 +43,7 @@ incoming replicated changes, and has no outbound replication agreements.
 
 
 Replication systems are dictated by CAP theorem. This is a theory that states from
-"consistency, availability and paritition tolerance" you may only have two of the
+"consistency, availability and partition tolerance" you may only have two of the
 three at any time.
 
 * Consistency
@@ -60,7 +60,7 @@ the guarantee that the data is "up to date".
 
 * Partition Tolerance
 
-This is the property that your topology in the face of patition tolerance will
+This is the property that your topology in the face of partition tolerance will
 continue to provide functional services (generally reads).
 
 Almost all systems expect partition tolerance, so the choice becomes between consistency
@@ -82,7 +82,7 @@ at in a system like Kanidm.
 
 Object Level inconsistency occurs when two read-write servers who are partitioned,
 both allocate the same entry UUID to an entry. Since the uuid is the "primary key"
-which anchors all other changes, and can not be duplicated, when the paritioning
+which anchors all other changes, and can not be duplicated, when the partitioning
 is resolved, the replication will occur, and one of the two items must be discarded
 as inconsistent.
 
@@ -171,7 +171,7 @@ Entry Change Log
 
 Within Kanidm id2entry is the primary store of active entry state representation. However
 the content of id2entry is a reflection of the series of modifications and changes that
-have applied to create that entitiy. As a result id2entry can be considered as an entry
+have applied to create that entity. As a result id2entry can be considered as an entry
 state cache.
 
 The true stable storage and representation for an entry will exist in a separate Entry

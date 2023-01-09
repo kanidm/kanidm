@@ -88,8 +88,8 @@ impl Plugin for Base {
         // an internal operation.
         if !ce.ident.is_internal() {
             // TODO: We can't lazy const this as you can't borrow the type down to what
-            // range and contains on btreeset need, but can we possibly make these constly
-            // part of the struct somehow at init. rather than needing to parse a lot?
+            // range and contains on btreeset need, but can we possibly make these
+            // part of the struct at init. rather than needing to parse a lot?
             // The internal set is bounded by: UUID_ADMIN -> UUID_ANONYMOUS
             // Sadly we need to allocate these to strings to make references, sigh.
             let overlap: usize = cand_uuid.range(UUID_ADMIN..UUID_ANONYMOUS).count();

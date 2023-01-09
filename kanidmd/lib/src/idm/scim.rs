@@ -98,7 +98,7 @@ impl SyncAccount {
 pub struct GenerateScimSyncTokenEvent {
     // Who initiated this?
     pub ident: Identity,
-    // Who is it targetting?
+    // Who is it targeting?
     pub target: Uuid,
     // The label
     pub label: String,
@@ -247,7 +247,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })?;
 
         let sync_account = SyncAccount::try_from_entry_rw(&entry).map_err(|e| {
-            admin_error!(?e, "Failed to covert sync account");
+            admin_error!(?e, "Failed to convert sync account");
             e
         })?;
         let sync_uuid = sync_account.uuid;
@@ -290,7 +290,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Importantly, we have to do this for items that are in the recycle bin!
 
         // First, get the set of uuids that exist. We need this so we have the set of uuids we'll
-        // be deleteing *at the end*.
+        // be deleting *at the end*.
         let f_all_sync = filter_all!(f_and!([
             f_eq("class", PVCLASS_SYNC_OBJECT.clone()),
             f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
@@ -370,7 +370,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })?;
 
         let sync_account = SyncAccount::try_from_entry_rw(&entry).map_err(|e| {
-            admin_error!(?e, "Failed to covert sync account");
+            admin_error!(?e, "Failed to convert sync account");
             e
         })?;
         let sync_uuid = sync_account.uuid;
@@ -413,7 +413,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Importantly, we have to do this for items that are in the recycle bin!
 
         // First, get the set of uuids that exist. We need this so we have the set of uuids we'll
-        // be deleteing *at the end*.
+        // be deleting *at the end*.
         let f_all_sync = filter_all!(f_and!([
             f_eq("class", PVCLASS_SYNC_OBJECT.clone()),
             f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
@@ -649,7 +649,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         if fail {
             return Err(OperationError::InvalidEntryState);
         }
-        // From that set of entries, parition to entries that exist and are
+        // From that set of entries, partition to entries that exist and are
         // present, and entries that do not yet exist.
         //
         // We can't easily parititon here because we need to iterate over the

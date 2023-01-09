@@ -607,7 +607,7 @@ impl FilterComp {
         // This probably needs some rework
 
         // Getting this each recursion could be slow. Maybe
-        // we need an inner functon that passes the reference?
+        // we need an inner function that passes the reference?
         let schema_attributes = schema.get_attributes();
         // We used to check the attr_name by normalising it (lowercasing)
         // but should we? I think we actually should just call a special

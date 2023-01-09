@@ -99,7 +99,7 @@ generated into messages. These messages are sent to a single write worker. There
 write worker due to the use of copy-on-write structures in the server, limiting us to a single
 writer, but allowing search transaction to proceed without blocking in parallel.
 
-(3) From the worker, the relevent event is created. This may be a "Create", "Modify" or "Delete"
+(3) From the worker, the relevant event is created. This may be a "Create", "Modify" or "Delete"
 event. The query server handles these slightly differently. In the create path, we take the set of
 entries you wish to create as our candidate set. In modify or delete, we perform an impersonation
 search, and use the set of entries within your read bounds to generate the candidate set. This

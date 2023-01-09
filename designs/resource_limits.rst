@@ -3,7 +3,7 @@ Resource Limits
 
 As security sensitive software, kanidm must be "available" (as defined by
 confidentiality, integrity, and availability). This means that as a service we must
-be able to handle a large volume of potentially malicous traffic, and still able
+be able to handle a large volume of potentially malicious traffic, and still able
 to serve legitimate requests without fault or failure.
 
 To achieve this, the resources of the server must be managed and distributed to allow
@@ -19,7 +19,7 @@ someone's email address in a corporate directory context.
 Each operation requires resources to complete individually, but many operations
 can be processed in parallel.
 
-Resource exhaustion occurs when input from a client consumes more resources 
+Resource exhaustion occurs when input from a client consumes more resources
 than the server can provide. This means the attack surface is any possible input
 and how the server interprets and processes that input. In kanidm this could be
 a search filter for example - the query may be small, but it could be expensive

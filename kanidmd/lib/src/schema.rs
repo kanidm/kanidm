@@ -1026,7 +1026,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 name: AttrString::from("acp_receiver_group"),
                 uuid: UUID_SCHEMA_ATTR_ACP_RECEIVER_GROUP,
                 description: String::from(
-                    "The group that recieves this access control to allow access",
+                    "The group that receives this access control to allow access",
                 ),
                 multivalue: false,
                 unique: false,
@@ -1059,7 +1059,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 name: AttrString::from("acp_search_attr"),
                 uuid: UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR,
                 description: String::from(
-                    "The attributes that may be viewed or searched by the reciever on targetscope.",
+                    "The attributes that may be viewed or searched by the receiver on targetscope.",
                 ),
                 multivalue: true,
                 unique: false,
@@ -1558,7 +1558,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 name: AttrString::from("memberof"),
                 uuid: UUID_SCHEMA_CLASS_MEMBEROF,
                 description: String::from(
-                    "Class that is dynamically added to recepients of memberof or directmemberof",
+                    "Class that is dynamically added to recipients of memberof or directmemberof",
                 ),
                 systemmay: vec![
                     AttrString::from("memberof"),

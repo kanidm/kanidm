@@ -5,7 +5,7 @@ search term (filter) faster.
 
 ## World without indexing
 
-Almost all databases are built ontop of a key-value storage engine of some nature. In our case we
+Almost all databases are built on top of a key-value storage engine of some nature. In our case we
 are using (feb 2019) sqlite and hopefully SLED in the future.
 
 So our entries that contain sets of avas, these are serialised into a byte format (feb 2019, json

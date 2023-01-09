@@ -113,7 +113,7 @@ With the fractional case in mind, this means we have sets of use cases that exis
 * RADIUS authentication to a different network infra in the trusting domain (but the Radius creds are local to the site)
 * Limiting presence of credentials in cloud (but making public key credentials avail)
 * Limiting distribution of personal information to untrusted sites
-* Creating administration domains or other business hierachies that may exist in some complex scenarios
+* Creating administration domains or other business hierarchies that may exist in some complex scenarios
 
 We need to consider how to support these use cases of course :)
 
@@ -196,7 +196,7 @@ if multiple urls exist in the trustanchor, we should choose randomly which to co
 authentications. If a URL is not available, we move to the next URL (failover)
 
 We could consider in-memory caching these values, but then we have to consider the cache expiry
-and management of this data. Additionally types like TOTP aren't cachable. I think we should
+and management of this data. Additionally types like TOTP aren't cacheable. I think we should
 avoid caching in these cases.
 
 Auth Scenarios
@@ -257,7 +257,7 @@ Excluding items from Domain B from replicating back
 In a situation where domain A trusts B, and inverse B trusts A, then A will contain trust stubs to
 entries in B.
 
-Due to the use of spn's we can replicate only our entries for domain to the trust reciever.
+Due to the use of spn's we can replicate only our entries for domain to the trust receiver.
 
 ::
 

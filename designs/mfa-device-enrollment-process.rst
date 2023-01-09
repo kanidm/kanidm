@@ -92,6 +92,6 @@ Possible Changes
 ================
 
 Do not require the approval step, as an OTP has already been provided, which is evidence of possesion
-of an account which has sufficent permissions.
+of an account which has sufficient permissions.
 
 

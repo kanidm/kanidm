@@ -267,7 +267,7 @@ impl Default for Entry<EntryInit, EntryNew> {
 impl Entry<EntryInit, EntryNew> {
     pub fn new() -> Self {
         Entry {
-            // This means NEVER COMMITED
+            // This means NEVER COMMITTED
             valid: EntryInit,
             state: EntryNew,
             attrs: Map::new(),
@@ -1147,7 +1147,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     #[inline]
-    /// Given this entry, determine it's relative distinguished named for LDAP compatability.
+    /// Given this entry, determine it's relative distinguished named for LDAP compatibility.
     pub(crate) fn get_uuid2rdn(&self) -> String {
         self.attrs
             .get("spn")
@@ -1973,7 +1973,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// multivalue in schema - IE this will *not* fail if the attribute is
     /// empty, yielding and empty array instead.
     ///
-    /// However, the converstion to IndexType is fallaible, so in case of a failure
+    /// However, the conversion to IndexType is fallaible, so in case of a failure
     /// to convert, an Err is returned.
     #[inline(always)]
     pub(crate) fn get_ava_opt_index(&self, attr: &str) -> Option<Vec<IndexType>> {

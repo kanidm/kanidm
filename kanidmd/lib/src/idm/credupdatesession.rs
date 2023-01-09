@@ -212,7 +212,7 @@ pub(crate) type CredentialUpdateSessionMutex = Arc<Mutex<CredentialUpdateSession
 pub struct InitCredentialUpdateIntentEvent {
     // Who initiated this?
     pub ident: Identity,
-    // Who is it targetting?
+    // Who is it targeting?
     pub target: Uuid,
     // How long is it valid for?
     pub max_ttl: Option<Duration>,

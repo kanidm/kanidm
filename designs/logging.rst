@@ -69,7 +69,7 @@ This leads to the following log categories:
     * The unique event ID is provided in any operation success or failure.
 * Security (aka audit)
     * Filtering of security sensitive attributes (via debug/display features)
-    * Display of sufficent information to establish a security picture of connected actions via the user's uuid/session id.
+    * Display of sufficient information to establish a security picture of connected actions via the user's uuid/session id.
     * Tracking of who-changed-what-when-why
 * Replication
     * TODO

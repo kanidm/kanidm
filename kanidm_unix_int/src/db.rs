@@ -171,7 +171,7 @@ impl<'a> DbTxn<'a> {
     }
 
     pub fn commit(mut self) -> Result<(), ()> {
-        // debug!("Commiting BE txn");
+        // debug!("Committing BE txn");
         if self.committed {
             error!("Invalid state, SQL transaction was already committed!");
             return Err(());

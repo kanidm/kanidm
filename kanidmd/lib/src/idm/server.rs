@@ -2958,7 +2958,7 @@ mod tests {
                 assert!(idms_prox_write.commit().is_ok());
 
                 // And auth should now fail due to the lack of PW material (note that
-                // softlocking WONT kick in because the cred_uuid is gone!)
+                // softlocking WON'T kick in because the cred_uuid is gone!)
                 let mut idms_auth = idms.auth();
                 let a3 = task::block_on(
                     idms_auth.auth_unix(&uuae_good, Duration::from_secs(TEST_CURRENT_TIME)),
@@ -3119,7 +3119,7 @@ mod tests {
     fn test_idm_account_valid_from_expire() {
         run_idm_test!(
             |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
-                // Any account taht is not yet valrid / expired can't auth.
+                // Any account that is not yet valrid / expired can't auth.
 
                 task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
                     .expect("Failed to setup admin account");

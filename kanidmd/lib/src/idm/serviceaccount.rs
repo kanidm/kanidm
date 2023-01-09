@@ -135,14 +135,14 @@ impl ServiceAccount {
 pub struct ListApiTokenEvent {
     // Who initiated this?
     pub ident: Identity,
-    // Who is it targetting?
+    // Who is it targeting?
     pub target: Uuid,
 }
 
 pub struct GenerateApiTokenEvent {
     // Who initiated this?
     pub ident: Identity,
-    // Who is it targetting?
+    // Who is it targeting?
     pub target: Uuid,
     // The label
     pub label: String,
@@ -169,7 +169,7 @@ impl GenerateApiTokenEvent {
 pub struct DestroyApiTokenEvent {
     // Who initiated this?
     pub ident: Identity,
-    // Who is it targetting?
+    // Who is it targeting?
     pub target: Uuid,
     // Which token id.
     pub token_id: Uuid,
