@@ -787,7 +787,7 @@ pub trait BackendTransaction {
 
         // Check the other entry:attr indexes are valid
         //
-        // This is acutally pretty hard to check, because we can check a value *should*
+        // This is actually pretty hard to check, because we can check a value *should*
         // exist, but not that a value should NOT be present in the index. Thought needed ...
 
         // Got here? Ok!

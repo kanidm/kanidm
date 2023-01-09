@@ -372,9 +372,9 @@ macro_rules! try_from_account_group_e {
                     f_eq("class", PVCLASS_GROUP.clone()),
                     f_or(riter.map(|u| f_eq("uuid", PartialValue::Uuid(u))).collect())
                 ]));
-                let ges: Vec<_> = $qs.internal_search(f)?;
+                let group_entries: Vec<_> = $qs.internal_search(f)?;
                 let groups: Result<Vec<_>, _> = iter::once(Ok(upg))
-                    .chain(ges.iter().map(|e| UnixGroup::try_from_entry(e.as_ref())))
+                    .chain(group_entries.iter().map(|e| UnixGroup::try_from_entry(e.as_ref())))
                     .collect();
                 groups
             }
