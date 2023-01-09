@@ -534,6 +534,7 @@ impl CredHandler {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone)]
 /// This interleaves with the client auth step. The client sends an "init"
 /// and we go to the init state, sending back the list of what can proceed.

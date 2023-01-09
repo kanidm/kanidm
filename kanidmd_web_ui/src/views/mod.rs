@@ -464,16 +464,16 @@ fn admin_routes(route: AdminRoute) -> Html {
           <Redirect<Route> to={Route::NotFound}/>
         ),
         AdminRoute::ViewGroup { uuid } => {
-            html!(<admin_groups::AdminViewGroup uuid={uuid.clone()} />)
+            html!(<admin_groups::AdminViewGroup uuid={uuid} />)
         }
         AdminRoute::ViewPerson { uuid } => html!(
-          <admin_accounts::AdminViewPerson uuid={uuid.clone()} />
+          <admin_accounts::AdminViewPerson uuid={uuid} />
         ),
         AdminRoute::ViewServiceAccount { uuid } => html!(
-          <admin_accounts::AdminViewServiceAccount uuid={uuid.clone()} />
+          <admin_accounts::AdminViewServiceAccount uuid={uuid} />
         ),
         AdminRoute::ViewOAuth2RP { rs_name } => html! {
-          <admin_oauth2::AdminViewOAuth2 rs_name={rs_name.clone()} />
+          <admin_oauth2::AdminViewOAuth2 rs_name={rs_name} />
         },
     }
 }

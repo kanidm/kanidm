@@ -79,7 +79,7 @@ impl SynchOpt {
                     .default(false)
                     .with_prompt("Do you want to continue? This operation can NOT be undone.")
                     .interact()
-                    .unwrap()
+                    .expect("Failed to get a valid response!")
                 {
                     info!("No changes were made");
                     return;
@@ -96,7 +96,7 @@ impl SynchOpt {
                     .default(false)
                     .with_prompt("Do you want to continue? This operation can NOT be undone.")
                     .interact()
-                    .unwrap()
+                    .expect("Failed to get a valid response!")
                 {
                     info!("No changes were made");
                     return;
