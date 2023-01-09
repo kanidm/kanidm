@@ -151,7 +151,8 @@ test/pykanidm: test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/pylint
 
 .PHONY: test/doc/format
 test/doc/format: ## Format docs and the Kanidm book
-	find . -type f -name \*.md -exec deno fmt --check $(MARKDOWN_FORMAT_ARGS) "{}" +
+	find . -type f  -not -path './target/*' -name \*.md \
+		-exec deno fmt --check $(MARKDOWN_FORMAT_ARGS) "{}" +
 
 ########################################################################
 
