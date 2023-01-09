@@ -672,7 +672,7 @@ impl AuthSession {
         // time: &Duration,
         // webauthn: &WebauthnCore,
     ) -> Result<AuthState, OperationError> {
-        // Given some auth mech, select which credential(s) are apropriate
+        // Given some auth mech, select which credential(s) are appropriate
         // and attempt to use them.
 
         // Today we only select one, but later we could have *multiple* that
@@ -702,7 +702,7 @@ impl AuthSession {
                         (
                             None,
                             Err(OperationError::InvalidAuthState(
-                                "unable to negotitate credentials".to_string(),
+                                "unable to negotiate credentials".to_string(),
                             )),
                         )
                     } else {

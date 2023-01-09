@@ -902,7 +902,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         ae: &AuthEvent,
         ct: Duration,
     ) -> Result<AuthResult, OperationError> {
-        trace!(?ae, "Recieved");
+        trace!(?ae, "Received");
         // Match on the auth event, to see what we need to do.
 
         match &ae.step {

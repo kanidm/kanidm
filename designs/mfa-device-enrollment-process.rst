@@ -16,7 +16,7 @@ Situation
 
 We have a user with a device E(nrolled), and a device N(ew) that they wish to be able to use.
 
-Each device contains a unique webauthn device that is inseperable from the device.
+Each device contains a unique webauthn device that is inseparable from the device.
 
 Each device may be connected to a separate Kanidm instance - IE we can not assume that
 the data in the system may be point-in-time consistent due to replication as an asynchronous
@@ -91,7 +91,7 @@ Device N may have to wait for replication back for the WebauthnCredential to app
 Possible Changes
 ================
 
-Do not require the approval step, as an OTP has already been provided, which is evidence of possesion
+Do not require the approval step, as an OTP has already been provided, which is evidence of possession
 of an account which has sufficient permissions.
 
 

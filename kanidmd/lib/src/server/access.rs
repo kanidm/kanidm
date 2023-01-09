@@ -2632,7 +2632,7 @@ mod tests {
         // In this case, we can make the create event with an empty entry
         // set because we only reference the entries in r_set in the test.
         //
-        // In the realy server code, the entry set is derived from and checked
+        // In the server code, the entry set is derived from and checked
         // against the create event, so we have some level of trust in it.
 
         let ce_admin = CreateEvent::new_impersonate_identity(

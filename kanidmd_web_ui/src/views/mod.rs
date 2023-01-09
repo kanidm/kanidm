@@ -85,7 +85,7 @@ pub struct ViewsApp {
 
 pub enum ViewsMsg {
     Verified,
-    ProfileInfoRecieved { uat: UserAuthToken },
+    ProfileInfoReceived { uat: UserAuthToken },
     Logout,
     LogoutComplete,
     Error { emsg: String, kopid: Option<String> },
@@ -145,7 +145,7 @@ impl Component for ViewsApp {
                 });
                 true
             }
-            ViewsMsg::ProfileInfoRecieved { uat } => {
+            ViewsMsg::ProfileInfoReceived { uat } => {
                 self.state = State::Authenticated(uat);
                 true
             }
@@ -406,7 +406,7 @@ impl ViewsApp {
                 })
                 .expect_throw("Invalid response type");
 
-            Ok(ViewsMsg::ProfileInfoRecieved { uat })
+            Ok(ViewsMsg::ProfileInfoReceived { uat })
         } else {
             let headers = resp.headers();
             let kopid = headers.get("x-kanidm-opid").ok().flatten();

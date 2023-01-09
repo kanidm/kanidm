@@ -103,7 +103,7 @@ As a result, the built set of changes *is* persisted on the server in the creden
 as the user interacts with and builds the set of changes. This allows the server to enforce that the update
 session *must* represent a valid and complete set of compliant credentials before commit.
 
-The user may cancel the session at anytime, discarding any set of changes they had inflight. This allows
+The user may cancel the session at anytime, discarding any set of changes they had in-flight. This allows
 another session to now begin.
 
 If the user chooses to commit the changes, the server will assemble the changes into a modification

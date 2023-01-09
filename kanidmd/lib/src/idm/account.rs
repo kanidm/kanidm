@@ -428,7 +428,7 @@ impl Account {
 
     pub(crate) fn existing_credential_id_list(&self) -> Option<Vec<CredentialID>> {
         // TODO!!!
-        // Used in registrations only for disallowing exsiting credentials.
+        // Used in registrations only for disallowing existing credentials.
         None
     }
 

@@ -46,7 +46,7 @@ cargo test
 ```
 
 If a test or change would require extra requirements, dependencies, or preconfiguration, then we can
-no longer provide the above. Testing must be easy and accesible, else we wont do it, and that leads
+no longer provide the above. Testing must be easy and accessible, else we won't do it, and that leads
 to poor software quality.
 
 The project must be simple. Any one should be able to understand how it works and why those

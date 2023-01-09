@@ -123,7 +123,7 @@ async fn tls_acceptor(
                 match accept_result {
                     Ok((tcpstream, client_socket_addr)) => {
                         // Start the event
-                        // From the parms we need to create an SslContext.
+                        // From the parameters we need to create an SslContext.
                         let mut tlsstream = match Ssl::new(tls_parms.context())
                             .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
                         {

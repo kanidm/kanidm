@@ -98,7 +98,7 @@ containing 250,000 ids. Even with idl compression, this is still a lot of data!
 There tend to be two types of searches against a directory like Kanidm.
 
 - Broad searches
-- Targetted single entry searches
+- Targeted single entry searches
 
 For broad searches, filter optimising does little - we just have to load those large idls, and use
 them. (Yes, loading the large idl and using it is still better than full table scan though!)
@@ -182,7 +182,7 @@ the tables as:
 
 They will be structured as string, string for both - where the uuid and name column matches the
 correct direction, and is the primary key. We could use a single table, but if we change to sled we
-need to split this, so we pre-empt this change and duplicate the data here.
+need to split this, so we preempt this change and duplicate the data here.
 
 # Indexing States
 

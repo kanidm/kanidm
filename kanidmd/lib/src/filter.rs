@@ -1110,7 +1110,7 @@ impl FilterResolved {
             }
             // We set the compound filters slope factor to "None" here, because when we do
             // optimise we'll actually fill in the correct slope factors after we sort those
-            // inner terms in a more optimial way.
+            // inner terms in a more optimal way.
             FilterComp::Or(vs) => {
                 let fi: Option<Vec<_>> = vs
                     .into_iter()

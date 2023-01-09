@@ -44,7 +44,7 @@ For this reason, when you search the LDAP interface, Kanidm will make some mappi
 - All other entries are direct subordinates of the domain\_info for DN purposes.
 - Distinguished Names (DNs) are generated from the spn, name, or uuid attribute.
 - Bind DNs can be remapped and rewritten, and may not even be a DN during bind.
-- The '\*' and '+' operators can not be used in conjuction with attribute lists in searches.
+- The '\*' and '+' operators can not be used in conjunction with attribute lists in searches.
 
 These decisions were made to make the path as simple and effective as possible, relying more on the
 Kanidm query and filter system than attempting to generate a tree-like representation of data. As

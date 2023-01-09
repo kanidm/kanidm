@@ -107,7 +107,7 @@ When a session is invalidated, it's session id is added to a "site-wide" revocat
 the maximum time of use of that session id.
 
 When a session is check as part of a standard UAT check, or an OAuth 2.0 refresh, if the session
-id is present in the revocation list, it is denied access. Abscence from the revocation list implies
+id is present in the revocation list, it is denied access. Absence from the revocation list implies
 the session remains valid.
 
 This method requires no gracewindow, since the replication of the revocation list will be bound to the

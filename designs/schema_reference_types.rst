@@ -16,7 +16,7 @@ during ProtoEntry <-> Entry transformations. This means that renames of objects,
 references, but does mean they continue to render their linkage correctly.
 * We can implement native referential integrity for the types rather than relying on admin and
 plugin configuration to match the internal types.
-* User defined classes will inherit referential behavious by using
+* User defined classes will inherit referential behaviour by using
 the correct schema attribute types.
 
 Implementation

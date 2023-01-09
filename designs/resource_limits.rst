@@ -11,7 +11,7 @@ potentially thousands of operations per second, while preventing exhaustion of t
 resources.
 
 Kanidm is structured as a database, where each request requires a process
-to resolve that query into an answer. This could be a request for authetication
+to resolve that query into an answer. This could be a request for authentication
 which is a true/false response, or a request for an identity so that we can
 determine their groups for authorisation, or even just a request to find
 someone's email address in a corporate directory context.

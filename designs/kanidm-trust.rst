@@ -84,7 +84,7 @@ So with a lot of though, I'm going to go with fractional replication.
 * Forwarding - I don't want credentials to be forwarded, or sso to be forwarded.
 * Cred Silo - I want this because it means you have defined boundaries of where security material is stored by who.
 * PII limit - I want this as you can control who-has-what PII on the system side.
-* Group Mgmt - I want this as it enables rbac and familar group management locally for remote and local entries.
+* Group Mgmt - I want this as it enables rbac and familiar group management locally for remote and local entries.
 * Invite Ext - On the fence - cool idea, but not sure how it fits into kanidm with trusts.
 * Distributed - I don't want this because it's model is really different to what kani is trying to be
 * Client Switched - I don't want this because clients should only know they trust an IDM silo, and that does the rest.

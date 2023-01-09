@@ -56,7 +56,7 @@ it is checked by the schema to ensure that the request is valid and can be satis
 As these workers are in a thread pool, it's important that these are concurrent and do not lock or
 block - this concurrency is key to high performance and safety. It's also worth noting that this is
 the level where read transactions are created and committed - all operations are transactionally
-proctected from an early stage to guarantee consistency of the operations.
+protected from an early stage to guarantee consistency of the operations.
 
 3. When the event is known to be consistent, it is then handed to the queryserver - the query server
    begins a process of steps on the event to apply it and determine the results for the request.
@@ -76,7 +76,7 @@ proctected from an early stage to guarantee consistency of the operations.
 
 6. The query server now applies access controls over what you can / can't see. This happens in two
    phases. The first is to determine "which candidate entries you have the rights to query and view"
-   and the second is to determine "which attributes of each entry you have the right to percieve".
+   and the second is to determine "which attributes of each entry you have the right to perceive".
    This separation exists so that other parts of the server can _impersonate_ users and conduct
    searches on their behalf, but still internally operate on the full entry without access controls
    limiting their scope of attributes we can view.

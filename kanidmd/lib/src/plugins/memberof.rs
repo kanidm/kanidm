@@ -98,7 +98,7 @@ fn do_memberof(
 fn apply_memberof(
     qs: &mut QueryServerWriteTransaction,
     // TODO: Experiment with HashSet/BTreeSet here instead of vec.
-    // May require https://github.com/rust-lang/rust/issues/62924 to allow poping
+    // May require https://github.com/rust-lang/rust/issues/62924 to allow popping
     mut group_affect: Vec<Uuid>,
 ) -> Result<(), OperationError> {
     trace!(" => entering apply_memberof");

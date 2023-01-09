@@ -120,10 +120,11 @@ prep:
 .PHONY: codespell
 codespell:
 	codespell -c \
-	-L crate,unexpect,Pres,pres,ACI,aci,te \
+	-L crate,unexpect,Pres,pres,ACI,aci,te,ue \
 	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache' \
 	--skip='./docs/*,./.git' \
-	--skip='./kanidmd_web_ui/src/external,./kanidmd_web_ui/pkg/external,./pykanidm/site,./kanidmd/lib/src/constants/*.json'
+	--skip='./kanidmd_web_ui/src/external,./kanidmd_web_ui/pkg/external' \
+	--skip='./kanidmd/lib/src/constants/system_config.rs,./pykanidm/site,./kanidmd/lib/src/constants/*.json'
 
 .PHONY: test/pykanidm/pytest
 test/pykanidm/pytest:

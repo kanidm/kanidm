@@ -50,7 +50,7 @@ resolve step in some cases.
 
 ### Filter based groups
 
-These are groups who's members are dynamicly allocated based on a filter query. This allows a
+These are groups who's members are dynamically allocated based on a filter query. This allows a
 similar level of dynamic group management as we have currently with access profiles, but with the
 additional ability for them to be used outside of the access control context. This is the "bridge"
 allowing us to move from filter based access controls to "group" targeted.
@@ -83,7 +83,7 @@ mode and this enforces rules on session expiry.
 
 ## Access Control Use Cases
 
-### Default Roles / Seperation of Privilege
+### Default Roles / Separation of Privilege
 
 By default we attempt to separate privileges so that "no single account" has complete authority over
 the system.
@@ -156,7 +156,7 @@ Satisfied by:
 For ux/ui integration, being able to list oauth2 applications that are accessible to the user would
 be a good feature. To limit "who" can see the oauth2 applications that an account can access a way
 to "allow read" but by proxy of the related users of the oauth2 service. This will require access
-controls to be able to interept the oauth2 config and provide rights based on that.
+controls to be able to interpret the oauth2 config and provide rights based on that.
 
 Satisfied by:
 

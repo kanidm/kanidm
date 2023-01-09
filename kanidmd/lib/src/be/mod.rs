@@ -1770,7 +1770,7 @@ impl Backend {
     */
 }
 
-// What are the possible actions we'll recieve here?
+// What are the possible actions we'll receive here?
 
 #[cfg(test)]
 mod tests {

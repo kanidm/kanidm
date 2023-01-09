@@ -874,7 +874,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         * the "slopeyness" aka the jank of the line, or more precisely, the angle.
         *
         * Now we need a way to numerically compare these lines. Since the points could be
-        * anywere on our graph:
+        * anywhere on our graph:
         *
         *    |
         *  4 +  *
@@ -905,7 +905,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         *      ───────────┼
         *         nkeys
         *
-        * Since this is right angled we can use arctan to work out the degress of the line. This
+        * Since this is right angled we can use arctan to work out the degrees of the line. This
         * gives us a value from 1.0 to 90.0 (We clamp to a minimum of 1.0, because we use 0 as "None"
         * in the NonZeroU8 type in filter.rs, which allows ZST optimisation)
         *
@@ -914,7 +914,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         * to minimise this loss and then we convert.
         *
         * And there we have it! A slope factor of the index! A way to compare these sets quickly
-        * at query optimisation time to minimse index access.
+        * at query optimisation time to minimise index access.
         */
         let slopes: HashMap<_, _> = data
             .into_iter()
@@ -956,14 +956,14 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         } else if data.len() == 1 {
             (1.0, data[0])
         } else {
-            // Cant resolve.
+            // Can't resolve.
             return IdxSlope::MAX;
         };
 
         // Now we know sd_1 and number of keys. We can use this as a triangle to work out
         // the angle along the hypotenuse. We use this angle - or slope - to show which
         // elements have the smallest sd_1 and most keys available. Then because this
-        // is bound between 0.0 -> 90.0, we "unfurl" this around a half circle by multipling
+        // is bound between 0.0 -> 90.0, we "unfurl" this around a half circle by multiplying
         // by 2. This gives us a little more precision when we drop the decimal point.
         let sf = (sd_1 / n_keys).atan().to_degrees() * 2.8;
 

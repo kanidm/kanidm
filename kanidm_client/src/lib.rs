@@ -472,7 +472,7 @@ impl KanidmClient {
         let matching = ver == EXPECT_VERSION;
 
         if !matching {
-            warn!(server_version = ?ver, client_version = ?EXPECT_VERSION, "Mismatched client and server version - features may not work, or other unforseen errors may occur.")
+            warn!(server_version = ?ver, client_version = ?EXPECT_VERSION, "Mismatched client and server version - features may not work, or other unforeseen errors may occur.")
         }
 
         debug_assert!(matching);

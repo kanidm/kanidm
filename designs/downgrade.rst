@@ -37,8 +37,8 @@ This means that *all changes* from A and B post upgrade will NOT be sent to C. C
 may accept changes and will continue to provide them to A and B (provided all
 other update resolution steps uphold). If we now revert B, the changes from A will
 not flow to B which has been downgraded, but C's changes that were accepted WILL
-continue to be acceptted by B. Similar with A. This means in a downgrade scenario
-that any data writen on upgraded nodes that are downgraded will be lost, but
+continue to be accepted by B. Similar with A. This means in a downgrade scenario
+that any data written on upgraded nodes that are downgraded will be lost, but
 that all replication as a whole will still be valid. This is good!
 
 It does mean we need to consider that we have to upgrade data as it comes in from

@@ -1201,7 +1201,7 @@ mod tests {
     */
 
     /*
-     * wbrown - 20221104 - I tried to programatically enable the legacy provider, but
+     * wbrown - 20221104 - I tried to programmatically enable the legacy provider, but
      * it consistently "did nothing at all", meaning we have to rely on users to enable
      * this for this test.
      */

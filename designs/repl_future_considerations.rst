@@ -10,7 +10,7 @@ At first glance it may seem correct to no-op a change where the state is:
 
 with a "purge name; add name william".
 
-However, this doesn't express the full possibities of the replication topology
+However, this doesn't express the full possibilities of the replication topology
 in the system. The follow events could occur:
 
 ::
@@ -22,9 +22,9 @@ in the system. The follow events could occur:
     del: name
     n: w
 
-The events of DB 1 seem correct in isolation, to no-op the del and re-add, however
+The events of DB 1 seem correct in isolation, to no-op the delete and re-add, however
 when the changelogs will be replayed, they will then cause the events of DB2 to
-be the final state - whet the timing of events on DB 1 should actually be the
+be the final state - whereas the timing of events on DB 1 should actually be the
 final state.
 
 To contrast if you no-oped the purge name:
@@ -300,7 +300,7 @@ to prevent this situation such as:
     A 0/3     A 0/1     A 0/3
     B 0/1     B 0/4     B 0/1
 
-In this case, one can imagine B would then supply data, and when A recieved B's changes, it would again
+In this case, one can imagine B would then supply data, and when A Received B's changes, it would again
 supply to R. However, this can be easily avoided by adhering to the following:
 
 * A server can only supply to a read-only if all of the suppling server's RUV CSN MAX are contained
@@ -367,7 +367,7 @@ the following:
     GRUV A:
     R (A: 0/0, )
 
-So A has connected to R and polled the RUV and recieved a 0/0. We now can supply our changes to
+So A has connected to R and polled the RUV and Received a 0/0. We now can supply our changes to
 R:
 
 ::

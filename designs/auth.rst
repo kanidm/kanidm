@@ -180,7 +180,7 @@ to admin groups)
 Cookie/Token Auth Considerations
 --------------------------------
 
-* Must prevent replay attacks from occuring at any point during the authentication process
+* Must prevent replay attacks from occurring at any point during the authentication process
 
 * Minimise (but not eliminate) state on the server. This means that an auth process must
   remain on a single server, but the token granted should be valid on any server.

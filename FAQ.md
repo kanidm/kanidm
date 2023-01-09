@@ -11,7 +11,7 @@ projects can come in different forms so I'll answer to a few of them:
 
 If it's not in Rust, it's not ellegible for inclusion. There is a single exception today (rlm
 python) but it's very likely this will also be removed in the future. Keeping a single language
-helps with testing, but also makes the project more accesible and consistent to developers.
+helps with testing, but also makes the project more accessible and consistent to developers.
 Additionally, features exist in Rust that help to improve quality of the project from development to
 production.
 

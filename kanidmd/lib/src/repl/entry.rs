@@ -512,7 +512,7 @@ impl EntryChangelog {
     /*
     fn insert_anchor(&mut self, cid: Cid, entry_state: State) {
         // When we insert an anchor, we have to remove all subsequent anchors (but not
-        // the preceeding ones.)
+        // the preceding ones.)
         let _ = self.anchors.split_off(&cid);
         self.anchors.insert(cid.clone(), entry_state);
     }

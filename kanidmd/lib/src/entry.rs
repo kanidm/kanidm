@@ -474,7 +474,7 @@ impl Entry<EntryInit, EntryNew> {
                         )
                     }
                     ia => {
-                        warn!("WARNING: Allowing invalid attribute {} to be interpretted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
+                        warn!("WARNING: Allowing invalid attribute {} to be interpreted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_utf8(v))
                         )

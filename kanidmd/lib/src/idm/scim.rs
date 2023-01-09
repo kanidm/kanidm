@@ -690,7 +690,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         //
         // For entries that do exist, mod their external_id
         //
-        // Basicly we just set this up as a batch modify and submit it.
+        // Basically we just set this up as a batch modify and submit it.
         self.qs_write
             .internal_batch_modify(change_entries.iter().filter_map(|(u, scim_ent)| {
                 // If the entry has an external id

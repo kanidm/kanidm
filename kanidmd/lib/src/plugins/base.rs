@@ -335,7 +335,7 @@ mod tests {
         );
     }
 
-    // check unparseable uuid
+    // check unparsable uuid
     #[test]
     fn test_pre_create_uuid_invalid() {
         let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();

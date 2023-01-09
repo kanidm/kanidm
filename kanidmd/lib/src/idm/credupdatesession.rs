@@ -1970,7 +1970,7 @@ mod tests {
 
         let cutxn = idms.cred_update_transaction();
 
-        // Now fake going back in time .... allows the tokne to decrypt, but the sesion
+        // Now fake going back in time .... allows the tokne to decrypt, but the session
         // is gone anyway!
         let c_status = cutxn
             .credential_update_status(&cust, ct)
@@ -2264,7 +2264,7 @@ mod tests {
         ));
 
         // Now good to go, we need to now add our backup codes.
-        // Whats the right way to get these back?
+        // What's the right way to get these back?
         let c_status = cutxn
             .credential_primary_init_backup_codes(&cust, ct)
             .expect("Failed to update the primary cred password");
@@ -2386,7 +2386,7 @@ mod tests {
 
         let c_status = cutxn
             .credential_update_cancel_mfareg(&cust, ct)
-            .expect("Failed to cancel inflight totp change");
+            .expect("Failed to cancel in-flight totp change");
 
         assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
         assert!(c_status.can_commit);
@@ -2404,7 +2404,7 @@ mod tests {
 
     // - setup webauthn
     // - remove webauthn
-    // - test mulitple webauthn token.
+    // - test multiple webauthn token.
 
     #[idm_test]
     async fn test_idm_credential_update_onboarding_create_new_passkey(
@@ -2445,7 +2445,7 @@ mod tests {
 
         assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
         assert!(matches!(
-            // Shuld be none.
+            // Should be none.
             c_status.primary.as_ref(),
             None
         ));

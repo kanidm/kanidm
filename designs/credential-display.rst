@@ -47,7 +47,7 @@ perform the correct transforms over the credential types to prevent data leaks.
 The ability to view credentials is bound by the standard search access control rules.
 
 The API would return a list of credential details, which is an enum of the possible classes supported
-by the server. This ensures during addition of new credetial types or changes we update these protocol
+by the server. This ensures during addition of new credential types or changes we update these protocol
 types.
 
 This also helps to support future webui elements for credentials.

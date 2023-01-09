@@ -101,7 +101,7 @@ pub enum IdentType {
 /// caching components.
 pub enum IdentityId {
     // Time stamp of the originating event.
-    // The uuid of the originiating user
+    // The uuid of the originating user
     User(Uuid),
     Synch(Uuid),
     Internal,
@@ -204,7 +204,7 @@ impl Identity {
 
     pub fn from_impersonate(ident: &Self) -> Self {
         // TODO #64 ?: In the future, we could change some of this data
-        // to reflect the fact we are infact impersonating the action
+        // to reflect the fact we are in fact impersonating the action
         // rather than the user explicitly requesting it. Could matter
         // to audits and logs to determine what happened.
         ident.clone()

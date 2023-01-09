@@ -25,15 +25,15 @@ and written to in parallel.
 * Transport Hub
 
 This is a server that is not writeable to clients, but can accept incoming replicated
-writes, and then propogates these to other servers. All servers that are directly after
-this server inthe topology must not be a read-write, as writes may not propogate back
+writes, and then propagates these to other servers. All servers that are directly after
+this server in the topology must not be a read-write, as writes may not propagate back
 from the transport hub. IE the following is invalid
 
 ::
 
     RW 1 ---> HUB <--- RW 2
 
-Note the replication direction in this, and that changes into HUB will not propogate
+Note the replication direction in this, and that changes into HUB will not propagate
 back to RW 1 or RW 2.
 
 * Read-Only server
@@ -55,7 +55,7 @@ see the latest data.
 
 * Availability
 
-This is the property that every request will recieve a non-error response without
+This is the property that every request will receive a non-error response without
 the guarantee that the data is "up to date".
 
 * Partition Tolerance
@@ -324,7 +324,7 @@ snapshot that describes the entry as the sum of previous changes.
     │                         │
     └─────────────────────────┘
 
-In our example here we would find the snapshot preceeding our newely inserted CID (in this case
+In our example here we would find the snapshot preceding our newely inserted CID (in this case
 our Anchor) and from that we would then replay all subsequent changes to ensure they apply
 correctly (or are rejected as conflicts).
 
@@ -538,7 +538,7 @@ Lets now show a conflict case:
 
 Notice that both servers create E1. In order to resolve this conflict, we use the only
 synchronisation mechanism that we possess - time. On Server B at T3 when the changelog
-of Server A is recieved, the events are replayed, and linearised to:
+of Server A is Received, the events are replayed, and linearised to:
 
 ::
 
@@ -549,7 +549,7 @@ of Server A is recieved, the events are replayed, and linearised to:
 As the event at T2 can not be valid, the change at T2 is *skipped* - E1 from B is turned
 into a conflict + recycled entry. See conflict UUID generation above.
 
-Infact, having this state machine means we can see exactly what can and can not be resolved
+In fact, having this state machine means we can see exactly what can and can not be resolved
 correctly as combinations. Here is the complete list of valid combinations.
 
 ::

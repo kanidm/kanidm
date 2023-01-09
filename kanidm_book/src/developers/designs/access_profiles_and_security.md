@@ -28,7 +28,7 @@ An example:
 > `legalName`), and their public `email`.
 
 Worded a bit differently. You need permission over the scope of entries, you need to be able to read
-the attribute to filter on it, and you need to be able to read the attribute to recieve it in the
+the attribute to filter on it, and you need to be able to read the attribute to receive it in the
 result entry.
 
 If Alice searches for `(&(name=william)(secretdata=x))`, we should not allow this to proceed because

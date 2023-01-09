@@ -1,7 +1,7 @@
 # Oauth2 Application Listing
 
 A feature of some other IDM systems is to also double as a portal to linked applications. This
-allows a convinent access point for users to discover and access linked applications without having
+allows a convenient access point for users to discover and access linked applications without having
 to navigate to them manually. This naturally works quite well since it means that the user is
 already authenticated, and the IDM becomes the single "gateway" to accessing other applications.
 
