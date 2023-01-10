@@ -225,7 +225,23 @@ impl LdapServer {
                 // We need all attrs, and we do a full v_attr map.
                 (None, ldap_all_vattrs())
             } else if all_attrs {
-                (None, Vec::new())
+                // We are already getting all attrs, but if there are any virtual attrs
+                // we need them in our request as well.
+                let req_attrs: Vec<String> = sr
+                    .attrs
+                    .iter()
+                    .filter_map(|a| {
+                        let a_lower = a.to_lowercase();
+
+                        if ldap_vattr_map(&a_lower).is_some() {
+                            Some(a_lower)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                (None, req_attrs)
             } else {
                 // What the client requested, in LDAP forms.
                 let req_attrs: Vec<String> = sr
@@ -249,7 +265,10 @@ impl LdapServer {
                         if a == "entrydn" || a == "dn" {
                             None
                         } else {
-                            Some(AttrString::from(ldap_vattr_map(a)))
+                            Some(AttrString::from(
+                                ldap_vattr_map(a)
+                                    .unwrap_or(a)
+                            ))
                         }
                     })
                     .collect();
@@ -552,7 +571,7 @@ pub(crate) fn ldap_all_vattrs() -> Vec<String> {
 }
 
 #[inline]
-pub(crate) fn ldap_vattr_map(input: &str) -> &str {
+pub(crate) fn ldap_vattr_map(input: &str) -> Option<&str> {
     // ⚠️  WARNING ⚠️
     // If you modify this list you MUST add these values to
     // corresponding phantom attributes in the schema to prevent
@@ -560,25 +579,26 @@ pub(crate) fn ldap_vattr_map(input: &str) -> &str {
     //
     //   LDAP NAME     KANI ATTR SOURCE NAME
     match input {
-        "cn" => "name",
-        "email" => "mail",
-        "emailaddress" => "mail",
-        "emailalternative" => "mail",
-        "emailprimary" => "mail",
-        "entryuuid" => "uuid",
-        "keys" => "ssh_publickey",
-        "mail;alternative" => "mail",
-        "mail;primary" => "mail",
-        "objectclass" => "class",
-        "sshpublickey" => "ssh_publickey",
-        "uidnumber" => "gidnumber",
-        a => a,
+        "cn" => Some("name"),
+        "email" => Some("mail"),
+        "emailaddress" => Some("mail"),
+        "emailalternative" => Some("mail"),
+        "emailprimary" => Some("mail"),
+        "entryuuid" => Some("uuid"),
+        "keys" => Some("ssh_publickey"),
+        "mail;alternative" => Some("mail"),
+        "mail;primary" => Some("mail"),
+        "objectclass" => Some("class"),
+        "sshpublickey" => Some("ssh_publickey"),
+        "uidnumber" => Some("gidnumber"),
+        _ => None,
     }
 }
 
 #[inline]
 pub(crate) fn ldap_attr_filter_map(input: &str) -> AttrString {
-    AttrString::from(ldap_vattr_map(&input.to_lowercase()))
+    let a_lower = input.to_lowercase();
+    AttrString::from(ldap_vattr_map(&a_lower).unwrap_or(a_lower.as_str()))
 }
 
 #[cfg(test)]
@@ -761,7 +781,9 @@ mod tests {
                     attrs.insert((a.atype.as_str(), v.as_slice()));
                 }
             };
+            info!(?attrs);
             $(
+                warn!("{}", $item.0);
                 assert!(attrs.contains(&(
                     $item.0, $item.1.as_bytes()
                 )));
@@ -1078,6 +1100,77 @@ mod tests {
                     }
                     _ => assert!(false),
                 };
+            }
+        )
+    }
+
+    #[test]
+    fn test_ldap_virtual_attribute_with_all_attr_search() {
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
+                let ldaps = LdapServer::new(idms).expect("failed to start ldap");
+
+                let acct_uuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+
+                // Setup a user we want to check.
+                {
+                    let e1 = entry_init!(
+                        ("class", Value::new_class("person")),
+                        ("class", Value::new_class("account")),
+                        ("name", Value::new_iname("testperson1")),
+                        ("uuid", Value::Uuid(acct_uuid)),
+                        ("description", Value::new_utf8s("testperson1")),
+                        ("displayname", Value::new_utf8s("testperson1"))
+                    );
+
+                    let mut server_txn =
+                        task::block_on(idms.proxy_write(duration_from_epoch_now()));
+                    assert!(server_txn
+                        .qs_write
+                        .internal_create(vec![e1])
+                        .and_then(|_| server_txn.commit())
+                        .is_ok());
+                }
+
+                // Setup the anonymous login.
+                let anon_t = task::block_on(ldaps.do_bind(idms, "", ""))
+                    .unwrap()
+                    .unwrap();
+                assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+
+                // Check that when we request a virtual attr by name *and* all_attrs we get all the requested values.
+                let sr = SearchRequest {
+                    msgid: 1,
+                    base: "dc=example,dc=com".to_string(),
+                    scope: LdapSearchScope::Subtree,
+                    filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+                    attrs: vec![
+                        "*".to_string(),
+                        // Already being returned
+                        "name".to_string(),
+                        // This is a virtual attribute
+                        "entryuuid".to_string()
+                    ],
+                };
+                let r1 = task::block_on(ldaps.do_search(idms, &sr, &anon_t)).unwrap();
+
+                // The result, and the ldap proto success msg.
+                assert!(r1.len() == 2);
+                match &r1[0].op {
+                    LdapOp::SearchResultEntry(lsre) => {
+                        assert_entry_contains!(
+                            lsre,
+                            "spn=testperson1@example.com,dc=example,dc=com",
+                            ("name", "testperson1"),
+                            ("displayname", "testperson1"),
+                            ("uuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
+                            ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                        );
+                    }
+                    _ => assert!(false),
+                };
+
+
             }
         )
     }
