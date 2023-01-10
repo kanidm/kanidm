@@ -48,7 +48,7 @@ kanidm system pw-badlist upload "path/to/badlist" [...]
 
 Multiple bad lists can be listed and uploaded at once. These are preprocessed to identify and remove
 passwords that zxcvbn and our password rules would already have eliminated. That helps to make the
-bad list more efficent to operate over at run time.
+bad list more efficient to operate over at run time.
 
 ## Password Rotation
 

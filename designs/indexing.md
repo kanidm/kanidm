@@ -5,7 +5,7 @@ search term (filter) faster.
 
 ## World without indexing
 
-Almost all databases are built ontop of a key-value storage engine of some nature. In our case we
+Almost all databases are built on top of a key-value storage engine of some nature. In our case we
 are using (feb 2019) sqlite and hopefully SLED in the future.
 
 So our entries that contain sets of avas, these are serialised into a byte format (feb 2019, json
@@ -98,7 +98,7 @@ containing 250,000 ids. Even with idl compression, this is still a lot of data!
 There tend to be two types of searches against a directory like Kanidm.
 
 - Broad searches
-- Targetted single entry searches
+- Targeted single entry searches
 
 For broad searches, filter optimising does little - we just have to load those large idls, and use
 them. (Yes, loading the large idl and using it is still better than full table scan though!)
@@ -141,13 +141,13 @@ We load the single idl value for name, and then as we are below the test-thresho
 and apply the filter to entry ID 1 - yielding a match or no match.
 
 Notice in the second, by promoting the "smaller" idl, we were able to save the work of the idl load
-and intersection as our first equality of "name" was more targetted?
+and intersection as our first equality of "name" was more targeted?
 
 Filter optimisation is about re-arranging these filters in the server using our insight to data to
 provide faster searches and avoid indexes that are costly unless they are needed.
 
 In this case, we would _demote_ any filter where Eq(class, ...) to the _end_ of the And, because it
-is highly likely to be less targetted than the other Eq types. Another example would be promotion of
+is highly likely to be less targeted than the other Eq types. Another example would be promotion of
 Eq filters to the front of an And over a Sub term, wherh Sub indexes tend to be larger and have
 longer IDLs.
 
@@ -182,7 +182,7 @@ the tables as:
 
 They will be structured as string, string for both - where the uuid and name column matches the
 correct direction, and is the primary key. We could use a single table, but if we change to sled we
-need to split this, so we pre-empt this change and duplicate the data here.
+need to split this, so we preempt this change and duplicate the data here.
 
 # Indexing States
 

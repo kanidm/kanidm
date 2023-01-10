@@ -90,7 +90,7 @@ beyond the attribute name:
 We will accept (and prefer) that Kanidm attribute names are provided in the LDAP filter for applications
 that can be customised.
 
-Compatability Attributes
+Compatibility Attributes
 ========================
 
 Some attributes exist in LDAP that have no direct equivalent in Kanidm. These are often from existing
@@ -101,7 +101,7 @@ two are:
 * EntryUUID
 
 These should be provided through an ldapCompat class in kanidm, and require no other transformation. They
-may require generation from the server, as legacy applications expect their existance and kanidm created
+may require generation from the server, as legacy applications expect their existence and kanidm created
 accounts would need the attributes to exist to work with these.
 
 Entry and Attribute Transformations

@@ -53,7 +53,7 @@ pub struct ScimSyncPerson {
 }
 
 // Need to allow this because clippy is broken and doesn't realise scimentry is out of crate
-// so this can't be fufilled
+// so this can't be fulfilled
 #[allow(clippy::from_over_into)]
 impl Into<ScimEntry> for ScimSyncPerson {
     fn into(self) -> ScimEntry {
@@ -107,7 +107,7 @@ pub struct ScimExternalMember {
 }
 
 // Need to allow this because clippy is broken and doesn't realise scimentry is out of crate
-// so this can't be fufilled
+// so this can't be fulfilled
 #[allow(clippy::from_over_into)]
 impl Into<ScimComplexAttr> for ScimExternalMember {
     fn into(self) -> ScimComplexAttr {
@@ -135,7 +135,7 @@ pub struct ScimSyncGroup {
 }
 
 // Need to allow this because clippy is broken and doesn't realise scimentry is out of crate
-// so this can't be fufilled
+// so this can't be fulfilled
 #[allow(clippy::from_over_into)]
 impl Into<ScimEntry> for ScimSyncGroup {
     fn into(self) -> ScimEntry {

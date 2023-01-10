@@ -69,7 +69,7 @@ This leads to the following log categories:
     * The unique event ID is provided in any operation success or failure.
 * Security (aka audit)
     * Filtering of security sensitive attributes (via debug/display features)
-    * Display of sufficent information to establish a security picture of connected actions via the user's uuid/session id.
+    * Display of sufficient information to establish a security picture of connected actions via the user's uuid/session id.
     * Tracking of who-changed-what-when-why
 * Replication
     * TODO
@@ -78,7 +78,7 @@ It can be seen pretty quickly that multiple message types are useful across cate
 example, the unique event id for all messages, how hard errors affect operation errors
 or how an operation error can come from a security denial.
 
-Logging must also remain a seperate thread and async for performance.
+Logging must also remain a separate thread and async for performance.
 
 This means that the best way to declare these logs is a unified log which can be filtered based
 on the admins or consumers needs.

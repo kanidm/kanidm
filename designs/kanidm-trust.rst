@@ -1,7 +1,7 @@
 Trust Design and Thoughts
 -------------------------
 
-Trust is a process where users and groups of a seperate kanidm instance may be granted access
+Trust is a process where users and groups of a separate kanidm instance may be granted access
 to resources through this system. Trust is a one way concept, but of course, could be implemented
 twice in each direction to achieve bidirectional trust.
 
@@ -9,9 +9,9 @@ Why?
 ----
 
 There are a number of reasons why a trust configuration may be desired. You may have
-a seperate business to customer instance, where business users should be able to authenticate
+a separate business to customer instance, where business users should be able to authenticate
 to customer resources, but not the inverse. You may have two businesses merge or cooperate and
-require resource sharing. It allows seperation of high value credentials onto different infrastructure.
+require resource sharing. It allows separation of high value credentials onto different infrastructure.
 You could also potentially use trust as a method of sync between
 between a different IDM project and this.
 
@@ -50,7 +50,7 @@ There are different ways we can scope a trust out, each with pros-cons. Here are
  a whitelist.
 * Fractional Replication - similar to the GC in AD, replicate in a subset of your data, but then
  ask for redirects or other information. This is used with 389 and RO servers where you may only
- replicate a subset of accounts to branch offices or a seperate backend.
+ replicate a subset of accounts to branch offices or a separate backend.
 
 Each of these has pros and cons, good bad, and different models. They each achieve different things. For example,
 the Kerberos style trust creates silos where the accounts credential material is stored (in the home
@@ -84,7 +84,7 @@ So with a lot of though, I'm going to go with fractional replication.
 * Forwarding - I don't want credentials to be forwarded, or sso to be forwarded.
 * Cred Silo - I want this because it means you have defined boundaries of where security material is stored by who.
 * PII limit - I want this as you can control who-has-what PII on the system side.
-* Group Mgmt - I want this as it enables rbac and familar group management locally for remote and local entries.
+* Group Mgmt - I want this as it enables rbac and familiar group management locally for remote and local entries.
 * Invite Ext - On the fence - cool idea, but not sure how it fits into kanidm with trusts.
 * Distributed - I don't want this because it's model is really different to what kani is trying to be
 * Client Switched - I don't want this because clients should only know they trust an IDM silo, and that does the rest.
@@ -113,7 +113,7 @@ With the fractional case in mind, this means we have sets of use cases that exis
 * RADIUS authentication to a different network infra in the trusting domain (but the Radius creds are local to the site)
 * Limiting presence of credentials in cloud (but making public key credentials avail)
 * Limiting distribution of personal information to untrusted sites
-* Creating administration domains or other business hierachies that may exist in some complex scenarios
+* Creating administration domains or other business hierarchies that may exist in some complex scenarios
 
 We need to consider how to support these use cases of course :)
 
@@ -196,7 +196,7 @@ if multiple urls exist in the trustanchor, we should choose randomly which to co
 authentications. If a URL is not available, we move to the next URL (failover)
 
 We could consider in-memory caching these values, but then we have to consider the cache expiry
-and management of this data. Additionally types like TOTP aren't cachable. I think we should
+and management of this data. Additionally types like TOTP aren't cacheable. I think we should
 avoid caching in these cases.
 
 Auth Scenarios
@@ -257,7 +257,7 @@ Excluding items from Domain B from replicating back
 In a situation where domain A trusts B, and inverse B trusts A, then A will contain trust stubs to
 entries in B.
 
-Due to the use of spn's we can replicate only our entries for domain to the trust reciever.
+Due to the use of spn's we can replicate only our entries for domain to the trust receiver.
 
 ::
 
@@ -280,7 +280,7 @@ How do we get the domain at setup time for spn? We already require domain for we
 we write this into the system_info?
 
 This means we need to determine a difference between a localgroup and a group that will
-be synced for trust. This may require a seperate class or label?
+be synced for trust. This may require a separate class or label?
 
 We need to make name -> SPN on groups/accounts that can be sent across a trust boundary.
 
@@ -304,7 +304,7 @@ is a requirement for replication anyway, and SID regeneration is not a complex t
 unlikely that we would ever see duplicates anyway as this is a 32bit field.
 
 An alternate option is to have the stub objects generate ids, but to have a trusted_uuid field
-that is used for replication checking, and a seperate CSN for trust replication.
+that is used for replication checking, and a separate CSN for trust replication.
 
 
 Webauthn

@@ -89,10 +89,10 @@ for this specific host.
 
 _W: Probably the main one is if a group/permission is granted always or ephemerally on the session. But that's per group/permission.
 I want to limit the amount of configuration policy here, because there are lots of ways that over configuration can create
-too many scenarios to effective audit and test. 
+too many scenarios to effective audit and test.
 So the permissions would probably come down to something like "always", "request", and "request-approve", where always is
 you always have that, request means you have to re-auth then the permission lasts for X time, and request-approve
-would mean you have to request, reauth, then someone else signs off on the approval to grant. 
+would mean you have to request, reauth, then someone else signs off on the approval to grant.
 
 SSH via a bastion host
 ======================
@@ -125,7 +125,7 @@ Implementation ideas for use cases
 
 * For identification:
     * Issue "ID tokens" as an api where you lookup name/uuid and get the userentry + sshkeys + group
-      entries. This allows one-shot caching of relevent types, and groups would not store the member
+      entries. This allows one-shot caching of relevant types, and groups would not store the member
       link on the client. Allows the client to "cache" any extra details into the stored record as
       required. This would be used for linux/mac to get uid/gid details and ssh keys for distribution.
       * Would inherit search permissions for connection.
@@ -172,7 +172,7 @@ that have unique cookie keys to prevent forgery of writable master cookies)
 of group uuids + names derferenced so that a client can make all authorisation
 decisions from a single datapoint
 
-* Groups require the ability to be ephemeral/temporary or permament.
+* Groups require the ability to be ephemeral/temporary or permanent.
 
 * each token can be unique based on the type of auth (ie 2fa needed to get access
 to admin groups)
@@ -180,7 +180,7 @@ to admin groups)
 Cookie/Token Auth Considerations
 --------------------------------
 
-* Must prevent replay attacks from occuring at any point during the authentication process
+* Must prevent replay attacks from occurring at any point during the authentication process
 
 * Minimise (but not eliminate) state on the server. This means that an auth process must
   remain on a single server, but the token granted should be valid on any server.
@@ -243,10 +243,10 @@ struct AuthClientStep {
     Vec<AuthDetails>
 }
 
-The server verifies the credential, and marks that type of credential as failed or fufilled.
+The server verifies the credential, and marks that type of credential as failed or fulfilled.
 On failure of a credential, AuthDenied is immediately sent. On success of a credential
 the server can issue AuthSuccess or AuthResponse with new possible challenges. For example,
-consider we initiall send "password". The client provides the password. The server follows
+consider we initially send "password". The client provides the password. The server follows
  by "totp" as the next type. The client fails the totp, and is denied.
 
 If the response is AuthSuccess, an auth token is issued. The auth token is a bearer token
@@ -281,7 +281,7 @@ We have metadata on each groups generate memberOf (based on group info itself). 
 says what "strength and type" of authentication is required. The auth request would ask for
 password, then when password is provided (and correct), it then requests
 totp OR finalise. If you take finalise, you get authSuccess but the issued token
-only has the group "low". 
+only has the group "low".
 
 If you take totp, then finalise, you get authSuccess and the group low *and* high.
 
@@ -289,11 +289,11 @@ Method Two
 ==========
 
 Groups define if they are "always issued" or "requestable". All group types define
-requirements to be fufilled for the request such as auth strength, connection
+requirements to be fulfilled for the request such as auth strength, connection
 type, auth location etc.
 
 In the AuthRequest if you specific no groups, you do the 'minimum' auth required by
-the set of your "always" groups. 
+the set of your "always" groups.
 
 If you do AuthRequest and you request "high", this is now extended into the set
 of your minimum auth required, which causes potentially more auth steps. However
@@ -380,8 +380,8 @@ the TLS tunnel?
 More Brain Dumping
 ==================
 
-- need a way to just pw check even if mfa is on (for sudo). Perhaps have a seperate sudo password attr?
-- ntpassword attr is seperate
+- need a way to just pw check even if mfa is on (for sudo). Perhaps have a separate sudo password attr?
+- ntpassword attr is separate
 - a way to check application pw which attaches certain rights (is this just a generalisation of sudo?)
     - the provided token (bearer etc?) contains the "memberof" for the session.
     - How to determine what memberof an api provides? Could be policy object that says "api pw of name X
@@ -395,7 +395,7 @@ More Brain Dumping
 - That would make userPassword and webauthn only for webui and api direct access.
     - All other pw validations would use application pw case.
     - SSH would just read ssh key - should this have a similar group filter/allow
-        mechanism like aplication pw?
+        mechanism like application pw?
 
 - Groups take a "type"
     - credentials also have a "type"
@@ -405,7 +405,7 @@ More Brain Dumping
 
 
 - Means a change to auth to take an entry as part of auth, or at least, it's group list for the
-    session. 
+    session.
 
 
 - policy to define if pw types like sudo or radius are linked.

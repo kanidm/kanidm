@@ -261,7 +261,7 @@ impl PartialEq for OperationError {
 }
 
 /* ===== higher level types ===== */
-// These are all types that are conceptually layers ontop of entry and
+// These are all types that are conceptually layers on top of entry and
 // friends. They allow us to process more complex requests and provide
 // domain specific fields for the purposes of IDM, over the normal
 // entry/ava/filter types. These related deeply to schema.
@@ -733,7 +733,7 @@ pub struct BackupCodesView {
 /* ===== low level proto types ===== */
 
 // ProtoEntry vs Entry
-// There is a good future reason for this seperation. It allows changing
+// There is a good future reason for this separation. It allows changing
 // the in memory server core entry type, without affecting the protoEntry type
 //
 

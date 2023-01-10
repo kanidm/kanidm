@@ -56,7 +56,7 @@ We believe this is a reasonable decision and is a low risk to security because:
 
 ### Service Accounts Do Not Have Radius Access
 
-Due to the design of service accounts, they do not have access to radius for credential assignemnt.
+Due to the design of service accounts, they do not have access to radius for credential assignment.
 If you require RADIUS usage with a service account you _may_ need to use EAP-TLS or some other
 authentication method.
 

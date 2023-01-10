@@ -902,7 +902,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         ae: &AuthEvent,
         ct: Duration,
     ) -> Result<AuthResult, OperationError> {
-        trace!(?ae, "Recieved");
+        trace!(?ae, "Received");
         // Match on the auth event, to see what we need to do.
 
         match &ae.step {
@@ -1654,7 +1654,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 })?
         };
 
-        // If we got here, then pre-apply succedded, and that means access control
+        // If we got here, then pre-apply succeeded, and that means access control
         // passed. Now we can do the extra checks.
 
         // Check the password quality.
@@ -1733,7 +1733,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 })?
         };
 
-        // If we got here, then pre-apply succedded, and that means access control
+        // If we got here, then pre-apply succeeded, and that means access control
         // passed. Now we can do the extra checks.
 
         self.check_password_quality(pce.cleartext.as_str(), account.related_inputs().as_slice())
@@ -2291,7 +2291,7 @@ mod tests {
                                 }
                                 _ => {
                                     error!(
-                                    "A critical error has occured! We have a non-continue result!"
+                                    "A critical error has occurred! We have a non-continue result!"
                                 );
                                     panic!();
                                 }
@@ -2301,7 +2301,7 @@ mod tests {
                         }
                         Err(e) => {
                             // Should not occur!
-                            error!("A critical error has occured! {:?}", e);
+                            error!("A critical error has occurred! {:?}", e);
                             panic!();
                         }
                     };
@@ -2338,14 +2338,14 @@ mod tests {
                                 }
                                 _ => {
                                     error!(
-                                    "A critical error has occured! We have a non-continue result!"
+                                    "A critical error has occurred! We have a non-continue result!"
                                 );
                                     panic!();
                                 }
                             }
                         }
                         Err(e) => {
-                            error!("A critical error has occured! {:?}", e);
+                            error!("A critical error has occurred! {:?}", e);
                             // Should not occur!
                             panic!();
                         }
@@ -2379,14 +2379,14 @@ mod tests {
                                 }
                                 _ => {
                                     error!(
-                                    "A critical error has occured! We have a non-succcess result!"
+                                    "A critical error has occurred! We have a non-succcess result!"
                                 );
                                     panic!();
                                 }
                             }
                         }
                         Err(e) => {
-                            error!("A critical error has occured! {:?}", e);
+                            error!("A critical error has occurred! {:?}", e);
                             // Should not occur!
                             panic!();
                         }
@@ -2518,13 +2518,13 @@ mod tests {
                         token
                     }
                     _ => {
-                        error!("A critical error has occured! We have a non-succcess result!");
+                        error!("A critical error has occurred! We have a non-succcess result!");
                         panic!();
                     }
                 }
             }
             Err(e) => {
-                error!("A critical error has occured! {:?}", e);
+                error!("A critical error has occurred! {:?}", e);
                 // Should not occur!
                 panic!();
             }
@@ -2587,14 +2587,14 @@ mod tests {
                             }
                             _ => {
                                 error!(
-                                    "A critical error has occured! We have a non-succcess result!"
+                                    "A critical error has occurred! We have a non-succcess result!"
                                 );
                                 panic!();
                             }
                         }
                     }
                     Err(e) => {
-                        error!("A critical error has occured! {:?}", e);
+                        error!("A critical error has occurred! {:?}", e);
                         // Should not occur!
                         panic!();
                     }
@@ -2644,14 +2644,14 @@ mod tests {
                             }
                             _ => {
                                 error!(
-                                    "A critical error has occured! We have a non-denied result!"
+                                    "A critical error has occurred! We have a non-denied result!"
                                 );
                                 panic!();
                             }
                         }
                     }
                     Err(e) => {
-                        error!("A critical error has occured! {:?}", e);
+                        error!("A critical error has occurred! {:?}", e);
                         // Should not occur!
                         panic!();
                     }
@@ -2958,7 +2958,7 @@ mod tests {
                 assert!(idms_prox_write.commit().is_ok());
 
                 // And auth should now fail due to the lack of PW material (note that
-                // softlocking WONT kick in because the cred_uuid is gone!)
+                // softlocking WON'T kick in because the cred_uuid is gone!)
                 let mut idms_auth = idms.auth();
                 let a3 = task::block_on(
                     idms_auth.auth_unix(&uuae_good, Duration::from_secs(TEST_CURRENT_TIME)),
@@ -3119,7 +3119,7 @@ mod tests {
     fn test_idm_account_valid_from_expire() {
         run_idm_test!(
             |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
-                // Any account taht is not yet valrid / expired can't auth.
+                // Any account that is not yet valrid / expired can't auth.
 
                 task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
                     .expect("Failed to setup admin account");
@@ -3327,14 +3327,14 @@ mod tests {
                             }
                             _ => {
                                 error!(
-                                    "A critical error has occured! We have a non-denied result!"
+                                    "A critical error has occurred! We have a non-denied result!"
                                 );
                                 panic!();
                             }
                         }
                     }
                     Err(e) => {
-                        error!("A critical error has occured! {:?}", e);
+                        error!("A critical error has occurred! {:?}", e);
                         panic!();
                     }
                 };
@@ -3416,14 +3416,14 @@ mod tests {
                             }
                             _ => {
                                 error!(
-                                    "A critical error has occured! We have a non-succcess result!"
+                                    "A critical error has occurred! We have a non-succcess result!"
                                 );
                                 panic!();
                             }
                         }
                     }
                     Err(e) => {
-                        error!("A critical error has occured! {:?}", e);
+                        error!("A critical error has occurred! {:?}", e);
                         // Should not occur!
                         panic!();
                     }
@@ -3489,14 +3489,14 @@ mod tests {
                             }
                             _ => {
                                 error!(
-                                    "A critical error has occured! We have a non-denied result!"
+                                    "A critical error has occurred! We have a non-denied result!"
                                 );
                                 panic!();
                             }
                         }
                     }
                     Err(e) => {
-                        error!("A critical error has occured! {:?}", e);
+                        error!("A critical error has occurred! {:?}", e);
                         panic!();
                     }
                 };
@@ -3525,14 +3525,14 @@ mod tests {
                             }
                             _ => {
                                 error!(
-                                    "A critical error has occured! We have a non-denied result!"
+                                    "A critical error has occurred! We have a non-denied result!"
                                 );
                                 panic!();
                             }
                         }
                     }
                     Err(e) => {
-                        error!("A critical error has occured! {:?}", e);
+                        error!("A critical error has occurred! {:?}", e);
                         panic!();
                     }
                 };

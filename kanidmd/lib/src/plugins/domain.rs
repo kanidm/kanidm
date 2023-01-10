@@ -58,7 +58,7 @@ impl Domain {
             if e.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
                 && e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)
             {
-                // We always set this, because the DB uuid is authorative.
+                // We always set this, because the DB uuid is authoritative.
                 let u = Value::Uuid(qs.get_domain_uuid());
                 e.set_ava("domain_uuid", once(u));
                 trace!("plugin_domain: Applying uuid transform");

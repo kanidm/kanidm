@@ -117,6 +117,15 @@ prep:
 	cargo outdated -R
 	cargo audit
 
+.PHONY: codespell
+codespell:
+	codespell -c \
+	-L crate,unexpect,Pres,pres,ACI,aci,te,ue \
+	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache' \
+	--skip='./docs/*,./.git' \
+	--skip='./kanidmd_web_ui/src/external,./kanidmd_web_ui/pkg/external' \
+	--skip='./kanidmd/lib/src/constants/system_config.rs,./pykanidm/site,./kanidmd/lib/src/constants/*.json'
+
 .PHONY: test/pykanidm/pytest
 test/pykanidm/pytest:
 	cd pykanidm && \
@@ -142,7 +151,8 @@ test/pykanidm: test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/pylint
 
 .PHONY: test/doc/format
 test/doc/format: ## Format docs and the Kanidm book
-	find . -type f -name \*.md -exec deno fmt --check $(MARKDOWN_FORMAT_ARGS) "{}" +
+	find . -type f  -not -path './target/*' -name \*.md \
+		-exec deno fmt --check $(MARKDOWN_FORMAT_ARGS) "{}" +
 
 ########################################################################
 

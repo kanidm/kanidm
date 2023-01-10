@@ -445,7 +445,7 @@ pub const JSON_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV: &str = r#"{
         "class": ["group", "object"],
         "name": ["idm_hp_sync_account_manage_priv"],
         "uuid": ["00000000-0000-0000-0000-000000000037"],
-        "description": ["Builtin IDM Group for managing sychronisation from external identity sources"],
+        "description": ["Builtin IDM Group for managing synchronisation from external identity sources"],
         "member": [
             "00000000-0000-0000-0000-000000000019"
         ]

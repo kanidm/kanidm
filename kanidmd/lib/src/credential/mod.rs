@@ -128,7 +128,7 @@ impl TryFrom<&str> for Password {
     // As we may add more algos, we keep the match algo single for later.
     #[allow(clippy::single_match)]
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        // There is probably a more efficent way to try this given different types?
+        // There is probably a more efficient way to try this given different types?
 
         // test django - algo$salt$hash
         let django_pbkdf: Vec<&str> = value.split('$').collect();
@@ -1201,7 +1201,7 @@ mod tests {
     */
 
     /*
-     * wbrown - 20221104 - I tried to programatically enable the legacy provider, but
+     * wbrown - 20221104 - I tried to programmatically enable the legacy provider, but
      * it consistently "did nothing at all", meaning we have to rely on users to enable
      * this for this test.
      */

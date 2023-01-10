@@ -32,7 +32,7 @@ code and exchanges it for a valid token that may be provided to the client.
 The resource server may optionally contact the token introspection endpoint about the
 provided oauth token, which yields extra metadata about the identity that holds the
 token and completed the authorisation. This metadata may include identity information,
-but also may include extended metadata, sometimes refered to as "claims". Claims are
+but also may include extended metadata, sometimes referred to as "claims". Claims are
 information bound to a token based on properties of the session that may allow
 the resource server to make extended authorisation decisions without the need
 to contact the authorisation server to arbitrate.
@@ -42,7 +42,7 @@ In this model, Kanidm will function as the authorisation server.
 Kanidm UAT Claims
 -----------------
 
-To ensure that we can filter and make certain autorisation decisions, the Kanidm UAT
+To ensure that we can filter and make certain authorisation decisions, the Kanidm UAT
 needs to be extended with extra claims similar to the token claims. Since we have the
 ability to strongly type these, we can add these to the UAT. These should include.
 
@@ -154,7 +154,7 @@ pkce: https://tools.ietf.org/html/rfc7636
 token introspection: https://tools.ietf.org/html/rfc7662
 bearer: https://tools.ietf.org/html/rfc6750
 device authorisation grant: https://datatracker.ietf.org/doc/html/rfc8628
-claims ad krb: https://syfuhs.net/2017/07/29/active-directory-claims-and-kerberos-net/ 
+claims ad krb: https://syfuhs.net/2017/07/29/active-directory-claims-and-kerberos-net/
 openid connect: https://openid.net/developers/specs/
 
 

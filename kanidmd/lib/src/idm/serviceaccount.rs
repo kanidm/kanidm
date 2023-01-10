@@ -135,14 +135,14 @@ impl ServiceAccount {
 pub struct ListApiTokenEvent {
     // Who initiated this?
     pub ident: Identity,
-    // Who is it targetting?
+    // Who is it targeting?
     pub target: Uuid,
 }
 
 pub struct GenerateApiTokenEvent {
     // Who initiated this?
     pub ident: Identity,
-    // Who is it targetting?
+    // Who is it targeting?
     pub target: Uuid,
     // The label
     pub label: String,
@@ -169,7 +169,7 @@ impl GenerateApiTokenEvent {
 pub struct DestroyApiTokenEvent {
     // Who initiated this?
     pub ident: Identity,
-    // Who is it targetting?
+    // Who is it targeting?
     pub target: Uuid,
     // Which token id.
     pub token_id: Uuid,
@@ -204,7 +204,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let session_id = Uuid::new_v4();
         let issued_at = time::OffsetDateTime::unix_epoch() + ct;
 
-        // Normalise to UTC incase it was provided as something else.
+        // Normalise to UTC in case it was provided as something else.
         let expiry = gte.expiry.map(|odt| odt.to_offset(time::UtcOffset::UTC));
 
         let purpose = if gte.read_write {

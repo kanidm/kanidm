@@ -1,7 +1,7 @@
 //! This is the top level router of the web ui for kanidm. It decides based on the incoming
 //! request, where to direct this too, and if the requirements for that request have been
 //! met before rendering. For example, if you land here with an oauth request, but you are
-//! not atuhenticated, this will determine that and send you to authentication first, then
+//! not authenticated, this will determine that and send you to authentication first, then
 //! will allow you to proceed with the oauth flow.
 
 use gloo::console;

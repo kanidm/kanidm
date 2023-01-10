@@ -85,7 +85,7 @@ pub struct ViewsApp {
 
 pub enum ViewsMsg {
     Verified,
-    ProfileInfoRecieved { uat: UserAuthToken },
+    ProfileInfoReceived { uat: UserAuthToken },
     Logout,
     LogoutComplete,
     Error { emsg: String, kopid: Option<String> },
@@ -145,7 +145,7 @@ impl Component for ViewsApp {
                 });
                 true
             }
-            ViewsMsg::ProfileInfoRecieved { uat } => {
+            ViewsMsg::ProfileInfoReceived { uat } => {
                 self.state = State::Authenticated(uat);
                 true
             }
@@ -207,7 +207,7 @@ impl Component for ViewsApp {
                 html! {
                   <main class="form-signin">
                     <div class="alert alert-danger" role="alert">
-                      <h2>{ "An Error Occured 🥺" }</h2>
+                      <h2>{ "An Error Occurred 🥺" }</h2>
                     <p>{ emsg.to_string() }</p>
                     <p>
                         {
@@ -406,7 +406,7 @@ impl ViewsApp {
                 })
                 .expect_throw("Invalid response type");
 
-            Ok(ViewsMsg::ProfileInfoRecieved { uat })
+            Ok(ViewsMsg::ProfileInfoReceived { uat })
         } else {
             let headers = resp.headers();
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
@@ -464,16 +464,16 @@ fn admin_routes(route: AdminRoute) -> Html {
           <Redirect<Route> to={Route::NotFound}/>
         ),
         AdminRoute::ViewGroup { uuid } => {
-            html!(<admin_groups::AdminViewGroup uuid={uuid.clone()} />)
+            html!(<admin_groups::AdminViewGroup uuid={uuid} />)
         }
         AdminRoute::ViewPerson { uuid } => html!(
-          <admin_accounts::AdminViewPerson uuid={uuid.clone()} />
+          <admin_accounts::AdminViewPerson uuid={uuid} />
         ),
         AdminRoute::ViewServiceAccount { uuid } => html!(
-          <admin_accounts::AdminViewServiceAccount uuid={uuid.clone()} />
+          <admin_accounts::AdminViewServiceAccount uuid={uuid} />
         ),
         AdminRoute::ViewOAuth2RP { rs_name } => html! {
-          <admin_oauth2::AdminViewOAuth2 rs_name={rs_name.clone()} />
+          <admin_oauth2::AdminViewOAuth2 rs_name={rs_name} />
         },
     }
 }

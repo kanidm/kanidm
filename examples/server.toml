@@ -72,7 +72,7 @@ origin = "https://idm.example.com:8443"
 #   Defaults to "" (no path set)
 # path = "/var/lib/kanidm/backups/"
 #
-#   The schedule to run online backups. All times are interpretted in UTC.
+#   The schedule to run online backups. All times are interpreted in UTC.
 #   The format of the cron expression is:
 #
 #   sec  min   hour   day of month   month   day of week   year

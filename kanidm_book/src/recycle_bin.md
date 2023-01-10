@@ -80,7 +80,7 @@ revive group1 // no members
 ```
 
 These issues could be looked at again in the future, but for now we think that deletes of groups is
-rare - we expect recycle bin to save you in "opps" moments, and in a majority of cases you may
+rare - we expect recycle bin to save you in "oops" moments, and in a majority of cases you may
 delete a group or a user and then restore them. To handle this series of steps requires extra code
 complexity in how we flag operations. For more, see
 [This issue on github](https://github.com/kanidm/kanidm/issues/177).

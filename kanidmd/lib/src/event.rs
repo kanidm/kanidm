@@ -11,7 +11,7 @@
 //!
 //! An "event" is generally then passed to the `QueryServer` for processing.
 //! By making these fully self contained units, it means that we can assert
-//! at event creation time we have all the correct data requried to proceed
+//! at event creation time we have all the correct data required to proceed
 //! with the operation, and a clear path to know how to transform events between
 //! various types.
 

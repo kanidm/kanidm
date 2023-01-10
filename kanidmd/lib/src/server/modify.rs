@@ -260,7 +260,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     /// Allows writing batches of modified entries without going through
-    /// the modlist path. This allows more effecient batch transformations
+    /// the modlist path. This allows more efficient batch transformations
     /// such as memberof, but at the expense that YOU must guarantee you
     /// uphold all other plugin and state rules that are important. You
     /// probably want modify instead.

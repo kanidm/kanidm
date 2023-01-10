@@ -789,7 +789,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 Vec::with_capacity(0)
             };
 
-            // Subseqent we then return an encrypted session handle which allows
+            // Subsequent we then return an encrypted session handle which allows
             // the user to indicate their consent to this authorisation.
             //
             // This session handle is what we use in "permit" to generate the redirect.
@@ -1566,7 +1566,7 @@ fn parse_basic_authz(client_authz: &str) -> Result<(String, String), Oauth2Error
         Oauth2Error::AuthenticationRequired
     })?;
     let secret = split_iter.next().ok_or_else(|| {
-        admin_error!("Basic authz invalid format (missing ':' seperator?)");
+        admin_error!("Basic authz invalid format (missing ':' separator?)");
         Oauth2Error::AuthenticationRequired
     })?;
 
@@ -2514,7 +2514,7 @@ mod tests {
                 assert!(matches!(e, Oauth2Error::AuthenticationRequired));
                 assert!(idms_prox_write.commit().is_ok());
 
-                // Now submit a non-existant/invalid token. Does not affect our tokens validity.
+                // Now submit a non-existent/invalid token. Does not affect our tokens validity.
                 let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 let revoke_request = TokenRevokeRequest {
                     token: "this is an invalid token, nothing will happen!".to_string(),

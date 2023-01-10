@@ -15,7 +15,7 @@ estimated date for 1.2.0.
 
 ## Support
 
-Releases during alpha will recieve limited fixes once released. Specifically we will resolve:
+Releases during alpha will receive limited fixes once released. Specifically we will resolve:
 
 - Moderate security issues and above
 - Flaws leading to dataloss or corruption

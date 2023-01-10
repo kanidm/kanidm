@@ -136,7 +136,7 @@ account
         GET -> list the credentials
         DELETE ->
     /v1/account/{id}/_credential/{id}/_lock
-        POST -> lock this credential until time (or null for permament)
+        POST -> lock this credential until time (or null for permanent)
         DELETE -> unlock this account
     /v1/account/{id}/_radius
         GET -> get the accounts radius credentials

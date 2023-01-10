@@ -116,7 +116,7 @@ pub struct AccessTokenResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub refresh_token: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    /// Space seperated list of scopes that were approved, if this differs from the
+    /// Space separated list of scopes that were approved, if this differs from the
     /// original request.
     pub scope: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -219,7 +219,7 @@ pub enum SubjectType {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "UPPERCASE")]
-// WE REFUSE TO SUPPORT NONE. DONT EVEN ASK. IT WONT HAPPEN.
+// WE REFUSE TO SUPPORT NONE. DONT EVEN ASK. IT WON'T HAPPEN.
 pub enum IdTokenSignAlg {
     ES256,
     RS256,

@@ -1,4 +1,4 @@
-//! The Identity Management components that are layered ontop of the [QueryServer](crate::server::QueryServer). These allow
+//! The Identity Management components that are layered on top of the [QueryServer](crate::server::QueryServer). These allow
 //! rich and expressive events and transformations that are lowered into the correct/relevant
 //! actions in the [QueryServer](crate::server::QueryServer). Generally this is where "Identity Management" policy and code
 //! is implemented.

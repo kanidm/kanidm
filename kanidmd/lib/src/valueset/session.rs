@@ -260,7 +260,7 @@ pub struct ValueSetOauth2Session {
     // this is a "filter" to tell us if as rs_id is used anywhere
     // in this set. The reason is so that we don't do O(n) searches
     // on a refer if it's not in this set. The alternate approach is
-    // an index on these maps, but its more work to mantain for a rare
+    // an index on these maps, but its more work to maintain for a rare
     // situation where we actually want to query rs_uuid -> sessions.
     rs_filter: BTreeSet<Uuid>,
 }

@@ -1,6 +1,6 @@
 ///! Route-mapping magic for tide
 ///
-/// Instead of adding routes with (for example) the .post method you add them with .mapped_post, pasing an instance of [RouteMap] and it'll do the rest...
+/// Instead of adding routes with (for example) the .post method you add them with .mapped_post, passing an instance of [RouteMap] and it'll do the rest...
 use serde::{Deserialize, Serialize};
 use tide::{Endpoint, Route};
 

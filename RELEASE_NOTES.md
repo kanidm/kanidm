@@ -45,7 +45,7 @@ proxy. You should be ready for this change when you upgrade to the latest versio
 - Components for account permission elevation modes
 - Make pam\_unix more robust in high latency environments
 - Add proc macros for test cases
-- Improve authentication requests with cookie/token seperation
+- Improve authentication requests with cookie/token separation
 - Cleanup of expired authentication sessions
 - Improved administration of password badlists
 
@@ -194,7 +194,7 @@ for a future supported release.
 - Rate limiting and softlocking of account credentials to prevent bruteforcing.
 - Foundations of webauthn and multiple credential support.
 - Rewrite of json authentication protocol components.
-- Unixd will cache "non-existant" items to improve nss/pam latency.
+- Unixd will cache "non-existent" items to improve nss/pam latency.
 
 ## 2020-10-01 - Kanidm 1.1.0-alpha2
 

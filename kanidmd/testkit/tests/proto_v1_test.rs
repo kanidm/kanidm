@@ -551,7 +551,7 @@ async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
     assert!(r2.name == "posix_account");
     assert!(r3.name == "posix_account");
 
-    // get the group by nam
+    // get the group by name
     let r = rsclient
         .idm_group_unix_token_get("posix_group")
         .await

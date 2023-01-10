@@ -265,7 +265,7 @@ pub async fn json_rest_event_delete_attr(
     mut req: tide::Request<AppState>,
     filter: Filter<FilterInvalid>,
     uuid_or_name: String,
-    // Seperate for account_delete_id_radius
+    // Separate for account_delete_id_radius
     attr: String,
 ) -> tide::Result {
     let uat = req.get_current_uat();

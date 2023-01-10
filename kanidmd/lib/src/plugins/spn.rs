@@ -191,7 +191,7 @@ impl Spn {
         );
 
         // All we do is purge spn, and allow the plugin to recreate. Neat! It's also all still
-        // within the transaction, just incase!
+        // within the transaction, just in case!
         qs.internal_modify(
             &filter!(f_or!([
                 f_eq("class", PVCLASS_GROUP.clone()),

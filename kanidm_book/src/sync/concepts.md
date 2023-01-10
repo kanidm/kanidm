@@ -85,7 +85,7 @@ appear into Kanidm. This is affected by how frequently you choose to run the syn
 
 If the sync tool fails, you can investigate details in the Kanidmd server output.
 
-The sync tool can run "indefinetly" if you wish for Kanidm to always import data from the external
+The sync tool can run "indefinitely" if you wish for Kanidm to always import data from the external
 source.
 
 ## Finalisting the Sync Account

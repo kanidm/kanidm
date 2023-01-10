@@ -5,7 +5,7 @@ for these data. As a result, there are many concepts and important details to un
 
 ## Service Accounts vs Person Accounts
 
-Kanidm seperates accounts into two types. Person accounts (or persons) are intended for use by
+Kanidm separates accounts into two types. Person accounts (or persons) are intended for use by
 humans that will access the system in an interactive way. Service accounts are intended for use by
 computers or services that need to identify themself to Kanidm. Generally a person or group of
 persons will be responsible for and will manage service accounts. Because of this distinction these
@@ -32,7 +32,7 @@ There are two builtin system administration accounts.
 
 `admin` is the default service account which has privileges to configure and administer kanidm as a
 whole. This account can manage access controls, schema, integrations and more. However the `admin`
-can not manage persons by default to seperate the priviliges. As this is a service account is is
+can not manage persons by default to separate the privileges. As this is a service account is is
 intended for limited use.
 
 `idm_admin` is the default service account which has privileges to create persons and to manage
@@ -42,7 +42,7 @@ Both the `admin` and the `idm_admin` user should _NOT_ be used for daily activit
 initial system configuration, and for disaster recovery scenarios. You should delegate permissions
 as required to named user accounts instead.
 
-The majority of the builtin groups are privilige groups that provide rights over Kanidm
+The majority of the builtin groups are privilege groups that provide rights over Kanidm
 administrative actions. These include groups for account management, person management (personal and
 sensitive data), group management, and more.
 

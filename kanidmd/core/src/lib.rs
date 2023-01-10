@@ -95,7 +95,7 @@ fn setup_backend_vacuum(
 
 // TODO #54: We could move most of the be/schema/qs setup and startup
 // outside of this call, then pass in "what we need" in a cloneable
-// form, this way we could have seperate Idm vs Qs threads, and dedicated
+// form, this way we could have separate Idm vs Qs threads, and dedicated
 // threads for write vs read
 async fn setup_qs_idms(
     be: Backend,
@@ -456,7 +456,7 @@ pub async fn domain_rename_core(config: &Configuration) {
     match r {
         Ok(_) => info!("Domain Rename Success!"),
         Err(e) => {
-            error!("Domain Rename Failed - Rollback has occured: {:?}", e);
+            error!("Domain Rename Failed - Rollback has occurred: {:?}", e);
             std::process::exit(1);
         }
     };
@@ -529,7 +529,7 @@ pub async fn recover_account_core(config: &Configuration, name: &str) {
         Ok(new_pw) => match idms_prox_write.commit() {
             Ok(_) => new_pw,
             Err(e) => {
-                error!("A critical error during commit occured {:?}", e);
+                error!("A critical error during commit occurred {:?}", e);
                 std::process::exit(1);
             }
         },
@@ -587,7 +587,7 @@ impl CoreHandle {
 impl Drop for CoreHandle {
     fn drop(&mut self) {
         if !self.clean_shutdown {
-            eprintln!("⚠️  UNCLEAN SHUTDOWN OCCURED ⚠️ ");
+            eprintln!("⚠️  UNCLEAN SHUTDOWN OCCURRED ⚠️ ");
         }
         // Can't enable yet until we clean up unix_int cache layer test
         // debug_assert!(self.clean_shutdown);

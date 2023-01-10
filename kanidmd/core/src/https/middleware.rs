@@ -87,7 +87,7 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StaticCon
 }
 
 #[derive(Default)]
-/// Adds the folloing headers to responses
+/// Adds the following headers to responses
 /// - x-frame-options
 /// - x-content-type-options
 /// - cross-origin-resource-policy

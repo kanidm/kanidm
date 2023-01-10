@@ -7,7 +7,7 @@ devices vary from desktops, laptops, tablets, mobile phones and more. Each of th
 different security and trust levels, as well as a variety of input methods.
 
 Historically authentication providers have *not* factored in multiple device classes to
-authentication leading to processes that are inconvinent to insecure for humans to handle when they
+authentication leading to processes that are inconvenient to insecure for humans to handle when they
 want to use their account between devices.
 
 Example of a Bad Workflow
@@ -51,7 +51,7 @@ Roaming vs Platform Authenticators
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In our example our laptop and phone both have platform authenticators, which are security devices
-bound to the platform (they are inseperable). Rather than using a platform authenticator we *may*
+bound to the platform (they are inseparable). Rather than using a platform authenticator we *may*
 allow a roaming authenticator to be used to bootstrap the phone's platform authenticator. An example
 of a roaming authenticator is a yubikey, which can be plugged into the laptop, and then disconnected
 and connected to the phone. This changes the steps of the process to be.

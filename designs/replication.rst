@@ -19,21 +19,21 @@ has a number of negative cultural connotations, and is not used by this project.
 * Read-Write server
 
 This is a server that is fully writable. It accepts external client writes, and these
-writes are propogated to the topology. Many read-write servers can be in a topology
+writes are propagated to the topology. Many read-write servers can be in a topology
 and written to in parallel.
 
 * Transport Hub
 
 This is a server that is not writeable to clients, but can accept incoming replicated
-writes, and then propogates these to other servers. All servers that are directly after
-this server inthe topology must not be a read-write, as writes may not propogate back
+writes, and then propagates these to other servers. All servers that are directly after
+this server in the topology must not be a read-write, as writes may not propagate back
 from the transport hub. IE the following is invalid
 
 ::
 
     RW 1 ---> HUB <--- RW 2
 
-Note the replication direction in this, and that changes into HUB will not propogate
+Note the replication direction in this, and that changes into HUB will not propagate
 back to RW 1 or RW 2.
 
 * Read-Only server
@@ -43,7 +43,7 @@ incoming replicated changes, and has no outbound replication agreements.
 
 
 Replication systems are dictated by CAP theorem. This is a theory that states from
-"consistency, availability and paritition tolerance" you may only have two of the
+"consistency, availability and partition tolerance" you may only have two of the
 three at any time.
 
 * Consistency
@@ -55,12 +55,12 @@ see the latest data.
 
 * Availability
 
-This is the property that every request will recieve a non-error response without
+This is the property that every request will receive a non-error response without
 the guarantee that the data is "up to date".
 
 * Partition Tolerance
 
-This is the property that your topology in the face of patition tolerance will
+This is the property that your topology in the face of partition tolerance will
 continue to provide functional services (generally reads).
 
 Almost all systems expect partition tolerance, so the choice becomes between consistency
@@ -82,7 +82,7 @@ at in a system like Kanidm.
 
 Object Level inconsistency occurs when two read-write servers who are partitioned,
 both allocate the same entry UUID to an entry. Since the uuid is the "primary key"
-which anchors all other changes, and can not be duplicated, when the paritioning
+which anchors all other changes, and can not be duplicated, when the partitioning
 is resolved, the replication will occur, and one of the two items must be discarded
 as inconsistent.
 
@@ -121,7 +121,7 @@ assertions in a change.
 
 The possible entry states are:
 
-* NonExistant
+* NonExistent
 * Live
 * Recycled
 * Tombstone
@@ -153,12 +153,12 @@ a CID.
 
 ::
 
-    create + NonExistant -> Live
+    create + NonExistent -> Live
     modify + Live -> Live
     recycle + Live -> Recycled
     revive + Recycled -> Live
     tombstoned + Recycled -> Tombstone
-    purge + Tombstone -> NonExistant
+    purge + Tombstone -> NonExistent
 
 .. image:: diagrams/object-lifecycle-states.png
     :width: 800
@@ -171,12 +171,12 @@ Entry Change Log
 
 Within Kanidm id2entry is the primary store of active entry state representation. However
 the content of id2entry is a reflection of the series of modifications and changes that
-have applied to create that entitiy. As a result id2entry can be considered as an entry
+have applied to create that entity. As a result id2entry can be considered as an entry
 state cache.
 
-The true stable storage and representation for an entry will exist in a seperate Entry
+The true stable storage and representation for an entry will exist in a separate Entry
 Change Log type. Each entry will have it's own internal changelog that represents the
-changes that have occured in the entries lifetime and it's relevant state at that time.
+changes that have occurred in the entries lifetime and it's relevant state at that time.
 
 The reason for making a per-entry change log is to allow fine grained testing of the
 conflict resolution state machine on a per-entry scale, and then to be able to test
@@ -216,7 +216,7 @@ structure of how we will code this within Kanidm.
     │├───────────────────────────────┤│  │          │                         │
     ││CID 3                          ││  │          │                         │
     │├───────────────────────────────┤│  │          └─────────────────────────┘
-    ││CID 4                          ││  │                                     
+    ││CID 4                          ││  │
     │├───────────────────────────────┤│  │          ┌─────────────────────────┐
     ││CID 5                          ││  │          │ e2 - entry change log   │
     │├───────────────────────────────┤│  │          │ ┌─────────────────────┐ │
@@ -228,13 +228,13 @@ structure of how we will code this within Kanidm.
     │├───────────────────────────────┤│             │  ...                    │
     ││CID 9                          ││             │                         │
     │├───────────────────────────────┤│             └─────────────────────────┘
-    ││CID 10                         ││                                        
-    │├───────────────────────────────┤│                                        
-    ││CID 11                         ││                                        
-    │├───────────────────────────────┤│                                        
-    ││CID 12                         ││                                        
-    │└───────────────────────────────┘│                                        
-    └─────────────────────────────────┘                                        
+    ││CID 10                         ││
+    │├───────────────────────────────┤│
+    ││CID 11                         ││
+    │├───────────────────────────────┤│
+    ││CID 12                         ││
+    │└───────────────────────────────┘│
+    └─────────────────────────────────┘
 
 This allows expression of both:
 
@@ -265,7 +265,7 @@ to be able to replay those events. For example:
                                        │├───────────────────────────────┤│  │          │                         │
                                        ││CID 3                          ││  │          │                         │
                                        │├───────────────────────────────┤│  │          └─────────────────────────┘
-                                       ││CID 4                          ││  │                                     
+                                       ││CID 4                          ││  │
                                        │├───────────────────────────────┤│  │          ┌─────────────────────────┐
                                        ││CID 5                          ││  │          │ e2 - entry change log   │
                                        │├───────────────────────────────┤│  │          │ ┌─────────────────────┐ │
@@ -277,13 +277,13 @@ to be able to replay those events. For example:
                                        │├───────────────────────────────┤│             │  ...                    │
                                        ││CID 9                          ││             │                         │
                                        │├───────────────────────────────┤│             └─────────────────────────┘
-                                       ││CID 10                         ││                                        
-                                       │├───────────────────────────────┤│                                        
-                                       ││CID 11                         ││                                        
-                                       │├───────────────────────────────┤│                                        
-                                       ││CID 12                         ││                                        
-                                       │└───────────────────────────────┘│                                        
-                                       └─────────────────────────────────┘                                        
+                                       ││CID 10                         ││
+                                       │├───────────────────────────────┤│
+                                       ││CID 11                         ││
+                                       │├───────────────────────────────┤│
+                                       ││CID 12                         ││
+                                       │└───────────────────────────────┘│
+                                       └─────────────────────────────────┘
 
 
 Since CID 1 has been inserted previous to CID 2 we need to "undo" the changes of CID 2 in
@@ -324,7 +324,7 @@ snapshot that describes the entry as the sum of previous changes.
     │                         │
     └─────────────────────────┘
 
-In our example here we would find the snapshot preceeding our newely inserted CID (in this case
+In our example here we would find the snapshot preceding our newely inserted CID (in this case
 our Anchor) and from that we would then replay all subsequent changes to ensure they apply
 correctly (or are rejected as conflicts).
 
@@ -362,7 +362,7 @@ it's simpler and correct to continue to consider them.
 Changelog Comparison - Replication Update Vector (RUV)
 ======================================================
 
-A changelog is a single servers knowledge of all changes that have occured in history
+A changelog is a single servers knowledge of all changes that have occurred in history
 of a topology. Of course, the point of replication is that multiple servers are exchanging
 their changes, and potentially that a server must proxy changes to other servers. For this
 to occur we need a method of comparing changelog states, and then allowing fractional
@@ -432,7 +432,7 @@ As a more graphical representation, we could consider our ruv as follows:
     ││    max: CID 12────┼┼──┤ │ │           │├───────────────────────────────┤│  │          │                         │
     │└───────────────────┘│  ├───┼───────────▶│CID 3                          ││  │          │                         │
     └─────────────────────┘  │ │ │           │├───────────────────────────────┤│  │          └─────────────────────────┘
-                             │   └───────────▶│CID 4                          ││  │                                     
+                             │   └───────────▶│CID 4                          ││  │
                              │ │             │├───────────────────────────────┤│  │          ┌─────────────────────────┐
                              │               ││CID 5                          ││  │          │ e2 - entry change log   │
                              │ │             │├───────────────────────────────┤│  │          │ ┌─────────────────────┐ │
@@ -444,13 +444,13 @@ As a more graphical representation, we could consider our ruv as follows:
                              │               │├───────────────────────────────┤│             │  ...                    │
                              │               ││CID 9                          ││             │                         │
                              │               │├───────────────────────────────┤│             └─────────────────────────┘
-                             │               ││CID 10                         ││                                        
-                             │               │├───────────────────────────────┤│                                        
-                             │               ││CID 11                         ││                                        
-                             │               │├───────────────────────────────┤│                                        
-                             └───────────────▶│CID 12                         ││                                        
-                                             │└───────────────────────────────┘│                                        
-                                             └─────────────────────────────────┘                                        
+                             │               ││CID 10                         ││
+                             │               │├───────────────────────────────┤│
+                             │               ││CID 11                         ││
+                             │               │├───────────────────────────────┤│
+                             └───────────────▶│CID 12                         ││
+                                             │└───────────────────────────────┘│
+                                             └─────────────────────────────────┘
 
 It may be that we also add a RUV index that allows the association of exact set of CID's to a
 server's cl, or if during CL replay we just iterate through the CL index finding all values that are
@@ -518,12 +518,12 @@ re-apply these changes, discarding changes that would be invalid for those state
 
 ::
 
-    create + NonExistant -> Live
+    create + NonExistent -> Live
     modify + Live -> Live
     recycle + Live -> Recycled
     revive + Recycled -> Live
     tombstoned + Recycled -> Tombstone
-    purge(*) + Tombstone -> NonExistant
+    purge(*) + Tombstone -> NonExistent
 
 Lets now show a conflict case:
 
@@ -538,18 +538,18 @@ Lets now show a conflict case:
 
 Notice that both servers create E1. In order to resolve this conflict, we use the only
 synchronisation mechanism that we possess - time. On Server B at T3 when the changelog
-of Server A is recieved, the events are replayed, and linearised to:
+of Server A is Received, the events are replayed, and linearised to:
 
 ::
 
-    T0: NonExistant E1 # For illustration only
+    T0: NonExistent E1 # For illustration only
     T1: Create E1 (from A)
     T2: Create E1 (from B)
 
 As the event at T2 can not be valid, the change at T2 is *skipped* - E1 from B is turned
 into a conflict + recycled entry. See conflict UUID generation above.
 
-Infact, having this state machine means we can see exactly what can and can not be resolved
+In fact, having this state machine means we can see exactly what can and can not be resolved
 correctly as combinations. Here is the complete list of valid combinations.
 
 ::

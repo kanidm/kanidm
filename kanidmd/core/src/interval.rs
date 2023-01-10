@@ -128,7 +128,7 @@ impl IntervalActor {
                             )
                             .await
                         {
-                            error!(?e, "An online backup error occured.");
+                            error!(?e, "An online backup error occurred.");
                         }
                     }
                 }

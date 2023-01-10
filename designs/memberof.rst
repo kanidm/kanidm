@@ -42,7 +42,7 @@ where the inverse look up becomes N operations to resolve the full structure.
 Design
 ------
 
-Due to the nature of this plugin, there is a single attribute - 'member' - whos content is examined
+Due to the nature of this plugin, there is a single attribute - 'member' - whose content is examined
 to build the relationship to others - 'memberOf'. We will examine a single group and user situation
 without nesting. We assume the user already exists, as the situation where the group exists and we add
 the user can't occur due to refint.

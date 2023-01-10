@@ -237,7 +237,7 @@ impl Account {
         let cot = OffsetDateTime::unix_epoch() + ct;
 
         let vmin = if let Some(vft) = valid_from {
-            // If current time greater than strat time window
+            // If current time greater than start time window
             vft <= &cot
         } else {
             // We have no time, not expired.
@@ -428,7 +428,7 @@ impl Account {
 
     pub(crate) fn existing_credential_id_list(&self) -> Option<Vec<CredentialID>> {
         // TODO!!!
-        // Used in registrations only for disallowing exsiting credentials.
+        // Used in registrations only for disallowing existing credentials.
         None
     }
 
@@ -493,7 +493,7 @@ impl Account {
 pub struct DestroySessionTokenEvent {
     // Who initiated this?
     pub ident: Identity,
-    // Who is it targetting?
+    // Who is it targeting?
     pub target: Uuid,
     // Which token id.
     pub token_id: Uuid,
@@ -617,7 +617,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 pub struct ListUserAuthTokenEvent {
     // Who initiated this?
     pub ident: Identity,
-    // Who is it targetting?
+    // Who is it targeting?
     pub target: Uuid,
 }
 

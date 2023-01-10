@@ -23,7 +23,7 @@ abstraction over the REST API.
 The `kanidm` proto is a set of structures that are used by the REST and raw API's for HTTP
 communication. These are intended to be a reference implementation of the on-the-wire protocol, but
 importantly these are also how the server represents its communication. This makes this the
-authorative source of protocol layouts with regard to REST or raw communication.
+authoritative source of protocol layouts with regard to REST or raw communication.
 
 ## Kanidmd (main server)
 
@@ -55,8 +55,8 @@ it is checked by the schema to ensure that the request is valid and can be satis
 
 As these workers are in a thread pool, it's important that these are concurrent and do not lock or
 block - this concurrency is key to high performance and safety. It's also worth noting that this is
-the level where read transactions are created and commited - all operations are transactionally
-proctected from an early stage to guarantee consistency of the operations.
+the level where read transactions are created and committed - all operations are transactionally
+protected from an early stage to guarantee consistency of the operations.
 
 3. When the event is known to be consistent, it is then handed to the queryserver - the query server
    begins a process of steps on the event to apply it and determine the results for the request.
@@ -65,7 +65,7 @@ proctected from an early stage to guarantee consistency of the operations.
 
 4. The backend takes the request and begins the low-level processing to actually determine a
    candidate set. The first step in query optimisation, to ensure we apply the query in the most
-   effecient manner. Once optimised, we then use the query to query indexes and create a potential
+   efficient manner. Once optimised, we then use the query to query indexes and create a potential
    candidate set of identifiers for matching entries (5.). Once we have this candidate id set, we
    then retrieve the relevant entries as our result candidate set (6.) and return them (7.) to the
    backend.
@@ -76,8 +76,8 @@ proctected from an early stage to guarantee consistency of the operations.
 
 6. The query server now applies access controls over what you can / can't see. This happens in two
    phases. The first is to determine "which candidate entries you have the rights to query and view"
-   and the second is to determine "which attributes of each entry you have the right to percieve".
-   This seperation exists so that other parts of the server can _impersonate_ users and conduct
+   and the second is to determine "which attributes of each entry you have the right to perceive".
+   This separation exists so that other parts of the server can _impersonate_ users and conduct
    searches on their behalf, but still internally operate on the full entry without access controls
    limiting their scope of attributes we can view.
 
@@ -99,7 +99,7 @@ generated into messages. These messages are sent to a single write worker. There
 write worker due to the use of copy-on-write structures in the server, limiting us to a single
 writer, but allowing search transaction to proceed without blocking in parallel.
 
-(3) From the worker, the relevent event is created. This may be a "Create", "Modify" or "Delete"
+(3) From the worker, the relevant event is created. This may be a "Create", "Modify" or "Delete"
 event. The query server handles these slightly differently. In the create path, we take the set of
 entries you wish to create as our candidate set. In modify or delete, we perform an impersonation
 search, and use the set of entries within your read bounds to generate the candidate set. This

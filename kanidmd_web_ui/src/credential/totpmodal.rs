@@ -195,7 +195,7 @@ impl Component for TotpModalApp {
                 self.secret = TotpValue::Waiting;
             }
             Msg::TotpSecretReady(secret) => {
-                // THIS IS WHATS CALLED WHEN THE SECRET IS BACK
+                // THIS IS WHAT'S CALLED WHEN THE SECRET IS BACK
                 self.secret = TotpValue::Secret(secret);
             }
             Msg::TotpTryAgain => {

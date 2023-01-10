@@ -45,10 +45,10 @@ If the access exists, a intent token is created into a link which can be provide
 
 Exchange of this intent token, creates the time limited credential update session token.
 
-This allows the intent token to have a seperate time window, to the credential update session token.
+This allows the intent token to have a separate time window, to the credential update session token.
 
 If the intent token creates a credential update session, and the credential update session is *not*
-commited, it can be re-started by the intent token.
+committed, it can be re-started by the intent token.
 
 If the credential update session has been committed, then the intent token can NOT create new
 credential update sessions (it is once-use).
@@ -103,10 +103,10 @@ As a result, the built set of changes *is* persisted on the server in the creden
 as the user interacts with and builds the set of changes. This allows the server to enforce that the update
 session *must* represent a valid and complete set of compliant credentials before commit.
 
-The user may cancel the session at anytime, discarding any set of changes they had inflight. This allows
+The user may cancel the session at anytime, discarding any set of changes they had in-flight. This allows
 another session to now begin.
 
-If the user chooses to commit the changes, the server will assemble the changes into a modification 
+If the user chooses to commit the changes, the server will assemble the changes into a modification
 and apply it. The write is applied with server internal permissions - since we checked the permissions
 during the create of the update session we can trust that the origin of this update has been validated.
 Additionally since this is not an arbitrary write interface, this constrains potential risk.
@@ -140,7 +140,7 @@ so that the server that receives the token can enforce the credential adheres to
 If the client successfully enrolls, a new entry for the enrollment is created in the database. This
 allows replication of the new credential to occur.
 
-The main session of the credential update can then check for the existance of this stub uuid in the
+The main session of the credential update can then check for the existence of this stub uuid in the
 db and wait for it to replicate in. This can be checked by the "polling" action.
 
 When it has been replicated in, and polling has found the credential, the credentials are added to the session. The credential

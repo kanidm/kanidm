@@ -832,7 +832,7 @@ pub trait AccessControlsTransaction<'a> {
                         // Here we have an option<&str> which could mean there is a risk of
                         // a malicious entity attempting to trick us by masking class mods
                         // in non-iutf8 types. However, the server first won't respect their
-                        // existance, and second, we would have failed the mod at schema checking
+                        // existence, and second, we would have failed the mod at schema checking
                         // earlier in the process as these were not correctly type. As a result
                         // we can trust these to be correct here and not to be "None".
                         v.to_str()
@@ -1221,7 +1221,7 @@ pub trait AccessControlsTransaction<'a> {
     ) -> Result<Vec<AccessEffectivePermission>, OperationError> {
         // I think we need a structure like " CheckResult, which is in the order of the
         // entries, but also stashes the uuid. Then it has search, mod, create, delete,
-        // as seperate attrs to describe what is capable.
+        // as separate attrs to describe what is capable.
 
         // Does create make sense here? I don't think it does. Create requires you to
         // have an entry template. I think james was right about the create being
@@ -1243,7 +1243,7 @@ pub trait AccessControlsTransaction<'a> {
         };
 
         trace!(ident = %ident, "Effective permission check");
-        // I think we seperate this to multiple checks ...?
+        // I think we separate this to multiple checks ...?
 
         // == search ==
         // Get the relevant acps for this receiver.
@@ -1556,7 +1556,7 @@ impl Default for AccessControls {
                 acps_modify: Vec::new(),
                 acps_delete: Vec::new(),
             }),
-            // Allow the expect, if this fails it reperesents a programming/development
+            // Allow the expect, if this fails it represents a programming/development
             // failure.
             acp_resolve_filter_cache: ARCacheBuilder::new()
                 .set_size(ACP_RESOLVE_FILTER_CACHE_MAX, ACP_RESOLVE_FILTER_CACHE_LOCAL)
@@ -2632,7 +2632,7 @@ mod tests {
         // In this case, we can make the create event with an empty entry
         // set because we only reference the entries in r_set in the test.
         //
-        // In the realy server code, the entry set is derived from and checked
+        // In the server code, the entry set is derived from and checked
         // against the create event, so we have some level of trust in it.
 
         let ce_admin = CreateEvent::new_impersonate_identity(

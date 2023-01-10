@@ -80,7 +80,7 @@ class KanidmClient:
                 self.config = self.config.parse_obj(config_data)
 
         if self.config.uri is None:
-            raise ValueError("Please intitialize this with a server URI")
+            raise ValueError("Please initialize this with a server URI")
 
         self._ssl: Optional[Union[bool, ssl.SSLContext]] = None
         self._configure_ssl()

@@ -98,7 +98,7 @@ fn do_memberof(
 fn apply_memberof(
     qs: &mut QueryServerWriteTransaction,
     // TODO: Experiment with HashSet/BTreeSet here instead of vec.
-    // May require https://github.com/rust-lang/rust/issues/62924 to allow poping
+    // May require https://github.com/rust-lang/rust/issues/62924 to allow popping
     mut group_affect: Vec<Uuid>,
 ) -> Result<(), OperationError> {
     trace!(" => entering apply_memberof");
@@ -189,7 +189,7 @@ fn apply_memberof(
             trace!("=> processing affected uuid {:?}", auuid);
             debug_assert!(!tgte.attribute_equality("class", &PVCLASS_GROUP));
             do_memberof(qs, auuid, &mut tgte)?;
-            // Only write if a change occured.
+            // Only write if a change occurred.
             if pre.get_ava_set("memberof") != tgte.get_ava_set("memberof")
                 || pre.get_ava_set("directmemberof") != tgte.get_ava_set("directmemberof")
             {

@@ -31,14 +31,14 @@ schema will block the creation).
 Due to the requirement that a user have a UPG for security, many systems create these as two
 independent items. For example in /etc/passwd and /etc/group:
 
-```
+```text
 # passwd
 william:x:654401105:654401105::/home/william:/bin/zsh
 # group
 william:x:654401105:
 ```
 
-Other systems like FreeIPA use a plugin that generates a UPG as a seperate group entry on creation
+Other systems like FreeIPA use a plugin that generates a UPG as a separate group entry on creation
 of the account. This means there are two entries for an account, and they must be kept in lock-step.
 
 Kanidm does neither of these. As the GID number of the user must be unique, and a user implies the
@@ -122,8 +122,8 @@ separate type of membership for POSIX members required.
 Due to the way that Podman operates, in some cases using the Kanidm client inside non-root
 containers with Kanidm accounts may fail with an error such as:
 
-```
-ERRO[0000] cannot find UID/GID for user NAME: No subuid ranges found for user "NAME" in /etc/subuid
+```text
+ERROR[0000] cannot find UID/GID for user NAME: No subuid ranges found for user "NAME" in /etc/subuid
 ```
 
 This is a fault in Podman and how it attempts to provide non-root containers, when UID/GIDs are

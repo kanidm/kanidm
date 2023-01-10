@@ -527,7 +527,7 @@ impl LoginApp {
                 self.do_alert_error("Username not found", Some("Please try again"), ctx)
             }
             LoginState::Error { emsg, kopid } => self.do_alert_error(
-                "An error has occured 😔 ",
+                "An error has occurred 😔 ",
                 Some(
                     format!(
                         "{}\n\n{}",
@@ -724,7 +724,7 @@ impl Component for LoginApp {
                         self.session_id = session_id;
                         if mechs.len() == 1 {
                             // If it's only one mech, just submit that.
-                            let mech = mechs.pop().expect_throw("Memory corruption occured");
+                            let mech = mechs.pop().expect_throw("Memory corruption occurred");
                             let authreq = AuthRequest {
                                 step: AuthStep::Begin(mech),
                             };
@@ -814,7 +814,7 @@ impl Component for LoginApp {
                     AuthState::Continue(mut allowed) => {
                         if allowed.len() == 1 {
                             // If there is only one, change our state for that input type.
-                            match allowed.pop().expect_throw("Memory corruption occured") {
+                            match allowed.pop().expect_throw("Memory corruption occurred") {
                                 AuthAllowed::Anonymous => {
                                     // Just submit this.
                                 }

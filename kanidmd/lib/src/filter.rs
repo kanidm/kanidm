@@ -607,7 +607,7 @@ impl FilterComp {
         // This probably needs some rework
 
         // Getting this each recursion could be slow. Maybe
-        // we need an inner functon that passes the reference?
+        // we need an inner function that passes the reference?
         let schema_attributes = schema.get_attributes();
         // We used to check the attr_name by normalising it (lowercasing)
         // but should we? I think we actually should just call a special
@@ -1110,7 +1110,7 @@ impl FilterResolved {
             }
             // We set the compound filters slope factor to "None" here, because when we do
             // optimise we'll actually fill in the correct slope factors after we sort those
-            // inner terms in a more optimial way.
+            // inner terms in a more optimal way.
             FilterComp::Or(vs) => {
                 let fi: Option<Vec<_>> = vs
                     .into_iter()

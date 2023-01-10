@@ -39,8 +39,8 @@ of a positive user experience, having MSCHAPv2 is essential.
 Nice To Have
 ------------
 
-To limit the scope of damage in an attack, RADIUS passwords should be seperate from the main
-account password due to their weak storage. Because these are seperate and shared between devices
+To limit the scope of damage in an attack, RADIUS passwords should be separate from the main
+account password due to their weak storage. Because these are separate and shared between devices
 this does lead to some interesting behaviours we can use.
 
 Storing the RADIUS password in plaintext now becomes an option, meaning that we can have autoconfiguration
@@ -61,7 +61,7 @@ With the above in mind, this leads to the following conclusions:
 * There is only a single RADIUS configuration profile per-kanidm topology
 * A user only requires a single RADIUS infrastructure password as the network is considered a single entity and resources are arbitrated elsewhere.
 * Groups define what vlan a users belongs to (and possibly other ip resources).
-* The users RADIUS password is seperate from their main account, and has no other function than RADIUS authentication.
+* The users RADIUS password is separate from their main account, and has no other function than RADIUS authentication.
 * The users RADIUS password can be server-side generated, and have pathways to distribute it to devices that remove the need for human interaction
 
 Design Details

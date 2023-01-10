@@ -11,7 +11,7 @@ projects can come in different forms so I'll answer to a few of them:
 
 If it's not in Rust, it's not ellegible for inclusion. There is a single exception today (rlm
 python) but it's very likely this will also be removed in the future. Keeping a single language
-helps with testing, but also makes the project more accesible and consistent to developers.
+helps with testing, but also makes the project more accessible and consistent to developers.
 Additionally, features exist in Rust that help to improve quality of the project from development to
 production.
 
@@ -40,7 +40,7 @@ communicating to a real server. Many developer choices have already been made to
 is the most important aspect of the project to ensure that every feature is high quality and
 reliable.
 
-Additon of extra projects or dependencies, would violate this principle and lead to a situation
+Addition of extra projects or dependencies, would violate this principle and lead to a situation
 where it would not be possible to effectively test for all developers.
 
 ## Why don't you use Raft/Etcd/MongoDB/Other to solve replication?
@@ -54,11 +54,11 @@ CAP theorem states that in a database you must choose only two of the three poss
 
 - Consistency - All servers in a topology see the same data at all times
 - Availability - All servers in a a topology can accept write operations at all times
-- Partitioning - In the case of a network seperation in the topology, all systems can continue to
+- Partitioning - In the case of a network separation in the topology, all systems can continue to
   process read operations
 
 Many protocols like Raft or Etcd are databases that provide PC guarantees. They guarantee that they
-are always consistent, and can always be read in the face of patitioning, but to accept a write,
+are always consistent, and can always be read in the face of partitioning, but to accept a write,
 they must not be experiencing a partitioning event. Generally this is achieved by the fact that
 these systems elect a single node to process all operations, and then re-elect a new node in the
 case of partitioning events. The elections will fail if a quorum is not met disallowing writes
@@ -77,12 +77,12 @@ _without_ communication between the nodes.
 ## Update Resolutionn
 
 Many databases do exist that are PA, such as CouchDB or MongoDB. However, they often do not have the
-properties required in update resoultion that is required for Kanidm.
+properties required in update resolution that is required for Kanidm.
 
 An example of this is that CouchDB uses object-level resolution. This means that if two servers
 update the same entry the "latest write wins". An example of where this won't work for Kanidm is if
 one server locks the account as an admin is revoking the access of an account, but another account
-updates the username. If the username update happenned second, the lock event would be lost creating
+updates the username. If the username update happened second, the lock event would be lost creating
 a security risk. There are certainly cases where this resolution method is valid, but Kanidm is not
 one.
 

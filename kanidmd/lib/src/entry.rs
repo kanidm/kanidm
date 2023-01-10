@@ -267,7 +267,7 @@ impl Default for Entry<EntryInit, EntryNew> {
 impl Entry<EntryInit, EntryNew> {
     pub fn new() -> Self {
         Entry {
-            // This means NEVER COMMITED
+            // This means NEVER COMMITTED
             valid: EntryInit,
             state: EntryNew,
             attrs: Map::new(),
@@ -418,7 +418,7 @@ impl Entry<EntryInit, EntryNew> {
                     }
                     "index" => {
                         valueset::from_value_iter(
-                        vs.into_iter().map(|v| Value::new_indexs(v.as_str())
+                        vs.into_iter().map(|v| Value::new_indexes(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
                                 Value::new_utf8(v)
@@ -474,7 +474,7 @@ impl Entry<EntryInit, EntryNew> {
                         )
                     }
                     ia => {
-                        warn!("WARNING: Allowing invalid attribute {} to be interpretted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
+                        warn!("WARNING: Allowing invalid attribute {} to be interpreted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_utf8(v))
                         )
@@ -811,7 +811,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                 // be in the may/must set, and would FAIL our normal checks anyway.
 
                 // The set of "may" is a combination of may and must, since we have already
-                // asserted that all must requirements are fufilled. This allows us to
+                // asserted that all must requirements are fulfilled. This allows us to
                 // perform extended attribute checking in a single pass.
                 let may: Result<Map<&AttrString, &SchemaAttribute>, _> = classes
                     .iter()
@@ -1048,7 +1048,7 @@ type IdxDiff<'a> =
     Vec<Result<(&'a AttrString, IndexType, String), (&'a AttrString, IndexType, String)>>;
 
 impl<VALID> Entry<VALID, EntryCommitted> {
-    /// If this entry has ever been commited to disk, retrieve it's database id number.
+    /// If this entry has ever been committed to disk, retrieve it's database id number.
     pub fn get_id(&self) -> u64 {
         self.state.id
     }
@@ -1147,7 +1147,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     #[inline]
-    /// Given this entry, determine it's relative distinguished named for LDAP compatability.
+    /// Given this entry, determine it's relative distinguished named for LDAP compatibility.
     pub(crate) fn get_uuid2rdn(&self) -> String {
         self.attrs
             .get("spn")
@@ -1420,7 +1420,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                                 changes
                             }
                             (Some(pre_vs), Some(post_vs)) => {
-                                // it exists in both, we need to work out the differents within the attr.
+                                // it exists in both, we need to work out the difference within the attr.
 
                                 let mut pre_idx_keys = pre_vs.generate_idx_eq_keys();
                                 pre_idx_keys.sort_unstable();
@@ -1973,7 +1973,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// multivalue in schema - IE this will *not* fail if the attribute is
     /// empty, yielding and empty array instead.
     ///
-    /// However, the converstion to IndexType is fallaible, so in case of a failure
+    /// However, the conversion to IndexType is fallaible, so in case of a failure
     /// to convert, an Err is returned.
     #[inline(always)]
     pub(crate) fn get_ava_opt_index(&self, attr: &str) -> Option<Vec<IndexType>> {
@@ -2374,7 +2374,7 @@ where
     }
 
     /// Remove an attribute-value pair from this entry. If the ava doesn't exist, we
-    /// don't do anything else since we are asserting the abscence of a value.
+    /// don't do anything else since we are asserting the absence of a value.
     pub(crate) fn remove_ava(&mut self, attr: &str, value: &PartialValue) {
         self.valid
             .eclog

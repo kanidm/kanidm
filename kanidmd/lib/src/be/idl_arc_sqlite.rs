@@ -742,7 +742,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     /// Index Slope Analysis. For the purpose of external modules you can consider this as a
     /// module that generates "weights" for each index that we have. Smaller values are faster
     /// indexes - larger values are more costly ones. This is not intended to yield perfect
-    /// weights. The intent is to seperate over obviously more effective indexes rather than
+    /// weights. The intent is to separate over obviously more effective indexes rather than
     /// to min-max the fine tuning of these. Consider name=foo vs class=*. name=foo will always
     /// be better than class=*, but comparing name=foo to spn=foo is "much over muchness" since
     /// both are really fast.
@@ -755,7 +755,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
          *
          * Since we have the filter2idl threshold, we want to find "what is the smallest
          * and most unique index asap so we can exit faster". This allows us to avoid
-         * loading larger most costly indexs that either have large idls, high variation
+         * loading larger most costly indexes that either have large idls, high variation
          * or few keys and are likely to miss and have to go out to disk.
          *
          * A few methods were proposed, but thanks to advice from Perri Boulton (psychology
@@ -874,7 +874,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         * the "slopeyness" aka the jank of the line, or more precisely, the angle.
         *
         * Now we need a way to numerically compare these lines. Since the points could be
-        * anywere on our graph:
+        * anywhere on our graph:
         *
         *    |
         *  4 +  *
@@ -905,7 +905,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         *      ───────────┼
         *         nkeys
         *
-        * Since this is right angled we can use arctan to work out the degress of the line. This
+        * Since this is right angled we can use arctan to work out the degrees of the line. This
         * gives us a value from 1.0 to 90.0 (We clamp to a minimum of 1.0, because we use 0 as "None"
         * in the NonZeroU8 type in filter.rs, which allows ZST optimisation)
         *
@@ -914,7 +914,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         * to minimise this loss and then we convert.
         *
         * And there we have it! A slope factor of the index! A way to compare these sets quickly
-        * at query optimisation time to minimse index access.
+        * at query optimisation time to minimise index access.
         */
         let slopes: HashMap<_, _> = data
             .into_iter()
@@ -938,7 +938,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             let l: u32 = data.len().try_into().unwrap_or(u32::MAX);
             let c = f64::from(l);
             let mean = data.iter().take(u32::MAX as usize).sum::<f64>() / c;
-            let varience: f64 = data
+            let variance: f64 = data
                 .iter()
                 .take(u32::MAX as usize)
                 .map(|len| {
@@ -948,7 +948,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
                 .sum::<f64>()
                 / (c - 1.0);
 
-            let sd = varience.sqrt();
+            let sd = variance.sqrt();
 
             // This is saying ~85% of values will be at least this len or less.
             let sd_1 = mean + sd;
@@ -956,14 +956,14 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         } else if data.len() == 1 {
             (1.0, data[0])
         } else {
-            // Cant resolve.
+            // Can't resolve.
             return IdxSlope::MAX;
         };
 
         // Now we know sd_1 and number of keys. We can use this as a triangle to work out
         // the angle along the hypotenuse. We use this angle - or slope - to show which
         // elements have the smallest sd_1 and most keys available. Then because this
-        // is bound between 0.0 -> 90.0, we "unfurl" this around a half circle by multipling
+        // is bound between 0.0 -> 90.0, we "unfurl" this around a half circle by multiplying
         // by 2. This gives us a little more precision when we drop the decimal point.
         let sf = (sd_1 / n_keys).atan().to_degrees() * 2.8;
 

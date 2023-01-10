@@ -32,7 +32,7 @@ use crate::idm::AuthState;
 use crate::prelude::*;
 
 // Each CredHandler takes one or more credentials and determines if the
-// handlers requirements can be 100% fufilled. This is where MFA or other
+// handlers requirements can be 100% fulfilled. This is where MFA or other
 // auth policies would exist, but each credHandler has to be a whole
 // encapsulated unit of function.
 
@@ -534,6 +534,7 @@ impl CredHandler {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone)]
 /// This interleaves with the client auth step. The client sends an "init"
 /// and we go to the init state, sending back the list of what can proceed.
@@ -672,7 +673,7 @@ impl AuthSession {
         // time: &Duration,
         // webauthn: &WebauthnCore,
     ) -> Result<AuthState, OperationError> {
-        // Given some auth mech, select which credential(s) are apropriate
+        // Given some auth mech, select which credential(s) are appropriate
         // and attempt to use them.
 
         // Today we only select one, but later we could have *multiple* that
@@ -702,7 +703,7 @@ impl AuthSession {
                         (
                             None,
                             Err(OperationError::InvalidAuthState(
-                                "unable to negotitate credentials".to_string(),
+                                "unable to negotiate credentials".to_string(),
                             )),
                         )
                     } else {
@@ -860,7 +861,7 @@ impl AuthSession {
         //
         // The lockouts could also be an in-memory concept too?
 
-        // If this suceeds audit?
+        // If this succeeds audit?
         //  If success, to authtoken?
 
         response

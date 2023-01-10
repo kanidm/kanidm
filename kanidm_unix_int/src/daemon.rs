@@ -704,7 +704,7 @@ async fn main() {
                             if let Err(e) =
                                 handle_task_client(socket, &task_channel_tx, &mut task_channel_rx).await
                             {
-                                error!("Task client error occured; error = {:?}", e);
+                                error!("Task client error occurred; error = {:?}", e);
                             }
                             // If they DC we go back to accept.
                         }
@@ -727,7 +727,7 @@ async fn main() {
                             tokio::spawn(async move {
                                 if let Err(e) = handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
                                 {
-                                    error!("handle_client error occured; error = {:?}", e);
+                                    error!("handle_client error occurred; error = {:?}", e);
                                 }
                             });
                         }

@@ -26,13 +26,13 @@ the features that satisfy it.
 
 ### Refactor of default access controls
 
-The current default privileges will need to be refactored to improve seperation of privilege and
+The current default privileges will need to be refactored to improve separation of privilege and
 improved delegation of finer access rights.
 
 ### Access profiles target specifiers instead of filters
 
 Access profiles should target a list of groups for who the access profile applies to, and who
-recieves the access it is granting.
+receives the access it is granting.
 
 Alternately an access profile could target "self" so that self-update rules can still be expressed.
 
@@ -50,10 +50,10 @@ resolve step in some cases.
 
 ### Filter based groups
 
-These are groups who's members are dynamicly allocated based on a filter query. This allows a
+These are groups who's members are dynamically allocated based on a filter query. This allows a
 similar level of dynamic group management as we have currently with access profiles, but with the
 additional ability for them to be used outside of the access control context. This is the "bridge"
-allowing us to move from filter based access controls to "group" targetted.
+allowing us to move from filter based access controls to "group" targeted.
 
 A risk of filter based groups is "infinite churn" because of recursion. This can occur if you had a
 rule such a "and not memberof = self" on a dynamic group. Because of this, filters on dynamic groups
@@ -83,9 +83,9 @@ mode and this enforces rules on session expiry.
 
 ## Access Control Use Cases
 
-### Default Roles / Seperation of Privilege
+### Default Roles / Separation of Privilege
 
-By default we attempt to seperate privileges so that "no single account" has complete authority over
+By default we attempt to separate privileges so that "no single account" has complete authority over
 the system.
 
 Satisfied by:
@@ -156,7 +156,7 @@ Satisfied by:
 For ux/ui integration, being able to list oauth2 applications that are accessible to the user would
 be a good feature. To limit "who" can see the oauth2 applications that an account can access a way
 to "allow read" but by proxy of the related users of the oauth2 service. This will require access
-controls to be able to interept the oauth2 config and provide rights based on that.
+controls to be able to interpret the oauth2 config and provide rights based on that.
 
 Satisfied by:
 

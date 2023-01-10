@@ -21,7 +21,7 @@ This will allow filtering on sudo=true, meaning that certain default access cont
 altered to enforce that they require sudo mode.
 
 Some accounts by default represent a high level of privilege. These should have implicit sudo
-granted when they are autheticated. This will be based on a group membership idm_hp_implicit_sudo
+granted when they are authenticated. This will be based on a group membership idm_hp_implicit_sudo
 and should only apply to admin/idm_admin by default. This will pin the sudo expiry to the expiry
 time of the session (rather than a shorter time).
 

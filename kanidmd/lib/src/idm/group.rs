@@ -50,12 +50,12 @@ macro_rules! try_from_account_e {
                 let f = filter!(f_or(
                     riter.map(|u| f_eq("uuid", PartialValue::Uuid(u))).collect()
                 ));
-                let ges: Vec<_> = $qs.internal_search(f).map_err(|e| {
+                let group_entries: Vec<_> = $qs.internal_search(f).map_err(|e| {
                     admin_error!(?e, "internal search failed");
                     e
                 })?;
                 // Now convert the group entries to groups.
-                let groups: Result<Vec<_>, _> = ges
+                let groups: Result<Vec<_>, _> = group_entries
                     .iter()
                     .map(|e| Group::try_from_entry(e.as_ref()))
                     .collect();

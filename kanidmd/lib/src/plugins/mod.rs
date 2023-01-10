@@ -51,7 +51,7 @@ trait Plugin {
 
     fn post_create(
         _qs: &mut QueryServerWriteTransaction,
-        // List of what we commited that was valid?
+        // List of what we committed that was valid?
         _cand: &[EntrySealedCommitted],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {

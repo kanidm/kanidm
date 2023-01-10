@@ -513,7 +513,7 @@ pub trait BackendTransaction {
             FilterResolved::Inclusion(l, _) => {
                 // For inclusion to be valid, every term must have *at least* one element present.
                 // This really relies on indexing, and so it's internal only - generally only
-                // for fully indexed existance queries, such as from refint.
+                // for fully indexed existence queries, such as from refint.
 
                 // This has a lot in common with an And and Or but not really quite either.
                 let mut plan = Vec::new();
@@ -787,7 +787,7 @@ pub trait BackendTransaction {
 
         // Check the other entry:attr indexes are valid
         //
-        // This is acutally pretty hard to check, because we can check a value *should*
+        // This is actually pretty hard to check, because we can check a value *should*
         // exist, but not that a value should NOT be present in the index. Thought needed ...
 
         // Got here? Ok!
@@ -1101,7 +1101,7 @@ impl<'a> BackendWriteTransaction<'a> {
         let id_list: IDLBitRange = tombstones.iter().map(|e| e.get_id()).collect();
 
         // Ensure nothing here exists in the RUV index, else it means
-        // we didn't trim properly, or some other state violation has occured.
+        // we didn't trim properly, or some other state violation has occurred.
         if !((&ruv_idls & &id_list).is_empty()) {
             admin_error!("RUV still contains entries that are going to be removed.");
             return Err(OperationError::ReplInvalidRUVState);
@@ -1770,7 +1770,7 @@ impl Backend {
     */
 }
 
-// What are the possible actions we'll recieve here?
+// What are the possible actions we'll receive here?
 
 #[cfg(test)]
 mod tests {
@@ -2150,7 +2150,7 @@ mod tests {
 
             match result {
                 Err(e) => {
-                    // if the error is the file is not found, thats what we want so continue,
+                    // if the error is the file is not found, that's what we want so continue,
                     // otherwise return the error
                     match e.kind() {
                         std::io::ErrorKind::NotFound => {}
@@ -2205,7 +2205,7 @@ mod tests {
 
             match result {
                 Err(e) => {
-                    // if the error is the file is not found, thats what we want so continue,
+                    // if the error is the file is not found, that's what we want so continue,
                     // otherwise return the error
                     match e.kind() {
                         std::io::ErrorKind::NotFound => {}

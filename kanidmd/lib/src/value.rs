@@ -216,7 +216,7 @@ impl TryFrom<&str> for SyntaxType {
             "REFERENCE_UUID" => Ok(SyntaxType::ReferenceUuid),
             "JSON_FILTER" => Ok(SyntaxType::JsonFilter),
             "CREDENTIAL" => Ok(SyntaxType::Credential),
-            // Compatability for older syntax name.
+            // Compatibility for older syntax name.
             "RADIUS_UTF8STRING" | "SECRET_UTF8STRING" => Ok(SyntaxType::SecretUtf8String),
             "SSHKEY" => Ok(SyntaxType::SshKey),
             "SECURITY_PRINCIPAL_NAME" => Ok(SyntaxType::SecurityPrincipalName),
@@ -442,7 +442,7 @@ impl PartialValue {
         matches!(self, PartialValue::Refer(_))
     }
 
-    pub fn new_indexs(s: &str) -> Option<Self> {
+    pub fn new_indexes(s: &str) -> Option<Self> {
         IndexType::try_from(s).map(PartialValue::Index).ok()
     }
 
@@ -962,7 +962,7 @@ impl Value {
         Uuid::parse_str(s).map(Value::Uuid).ok()
     }
 
-    // Is this correct? Should ref be seperate?
+    // Is this correct? Should ref be separate?
     pub fn is_uuid(&self) -> bool {
         matches!(self, Value::Uuid(_))
     }
@@ -992,7 +992,7 @@ impl Value {
         matches!(self, Value::Syntax(_))
     }
 
-    pub fn new_indexs(s: &str) -> Option<Self> {
+    pub fn new_indexes(s: &str) -> Option<Self> {
         IndexType::try_from(s).map(Value::Index).ok()
     }
 
@@ -1295,7 +1295,7 @@ impl Value {
         }
     }
 
-    // We need a seperate to-ref_uuid to distinguish from normal uuids
+    // We need a separate to-ref_uuid to distinguish from normal uuids
     // in refint plugin.
     pub fn to_ref_uuid(&self) -> Option<Uuid> {
         match &self {
@@ -1483,7 +1483,7 @@ impl Value {
         }
     }
 
-    // !!!! This function is beind phased out !!!
+    // !!!! This function is being phased out !!!
     #[allow(clippy::unreachable)]
     pub(crate) fn to_proto_string_clone(&self) -> String {
         match &self {

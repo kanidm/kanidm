@@ -259,7 +259,7 @@ pub const JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: &str = r#"{
 // 31 - password import modification priv
 // right now, create requires you to have access to every attribute in a single snapshot,
 // so people will need to two step (create then import pw). Later we could add another
-// acp that allows the create here too? Should it be seperate?
+// acp that allows the create here too? Should it be separate?
 pub const JSON_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [

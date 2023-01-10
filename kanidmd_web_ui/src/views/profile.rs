@@ -154,7 +154,7 @@ impl Component for ProfileApp {
             }
             State::Ready(profile) => self.view_profile(ctx, profile),
             State::Error { emsg, kopid } => self.do_alert_error(
-                "An error has occured 😔 ",
+                "An error has occurred 😔 ",
                 Some(
                     format!(
                         "{}\n\n{}",
