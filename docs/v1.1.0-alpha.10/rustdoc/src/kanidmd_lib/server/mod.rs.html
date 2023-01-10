@@ -2197,7 +2197,7 @@
                         .ok_or_else(|| OperationError::InvalidAttribute(<span class="string">&quot;Invalid boolean syntax&quot;</span>.to_string())),
                     SyntaxType::SyntaxId =&gt; Value::new_syntaxs(value)
                         .ok_or_else(|| OperationError::InvalidAttribute(<span class="string">&quot;Invalid Syntax syntax&quot;</span>.to_string())),
-                    SyntaxType::IndexId =&gt; Value::new_indexs(value)
+                    SyntaxType::IndexId =&gt; Value::new_indexes(value)
                         .ok_or_else(|| OperationError::InvalidAttribute(<span class="string">&quot;Invalid Index syntax&quot;</span>.to_string())),
                     SyntaxType::Uuid =&gt; {
                         <span class="comment">// Attempt to resolve this name to a uuid. If it&#39;s already a uuid, then
@@ -2276,7 +2276,7 @@
                     SyntaxType::SyntaxId =&gt; PartialValue::new_syntaxs(value).ok_or_else(|| {
                         OperationError::InvalidAttribute(<span class="string">&quot;Invalid Syntax syntax&quot;</span>.to_string())
                     }),
-                    SyntaxType::IndexId =&gt; PartialValue::new_indexs(value).ok_or_else(|| {
+                    SyntaxType::IndexId =&gt; PartialValue::new_indexes(value).ok_or_else(|| {
                         OperationError::InvalidAttribute(<span class="string">&quot;Invalid Index syntax&quot;</span>.to_string())
                     }),
                     SyntaxType::Uuid =&gt; {
@@ -2711,7 +2711,7 @@
             </span>.db_tickets
             .acquire()
             .<span class="kw">await
-            </span>.expect(<span class="string">&quot;unable to aquire db_ticket for qsr&quot;</span>);
+            </span>.expect(<span class="string">&quot;unable to acquire db_ticket for qsr&quot;</span>);
 
         QueryServerReadTransaction {
             be_txn: <span class="self">self</span>.be.read(),
@@ -2730,14 +2730,14 @@
             </span>.write_ticket
             .acquire()
             .<span class="kw">await
-            </span>.expect(<span class="string">&quot;unable to aquire writer_ticket for qsw&quot;</span>);
+            </span>.expect(<span class="string">&quot;unable to acquire writer_ticket for qsw&quot;</span>);
         <span class="comment">// We need to ensure a db conn will be available
         </span><span class="attribute">#[allow(clippy::expect_used)]
         </span><span class="kw">let </span>db_ticket = <span class="self">self
             </span>.db_tickets
             .acquire()
             .<span class="kw">await
-            </span>.expect(<span class="string">&quot;unable to aquire db_ticket for qsw&quot;</span>);
+            </span>.expect(<span class="string">&quot;unable to acquire db_ticket for qsw&quot;</span>);
 
         <span class="kw">let </span>schema_write = <span class="self">self</span>.schema.write();
         <span class="kw">let </span><span class="kw-2">mut </span>be_txn = <span class="self">self</span>.be.write();
@@ -2755,7 +2755,7 @@
             // take ownership of the value, and cause the commit to &quot;only be run
             // once&quot;.
             //
-            // The commited flag is however used for abort-specific code in drop
+            // The committed flag is however used for abort-specific code in drop
             // which today I don&#39;t think we have ... yet.
             </span>committed: <span class="bool-val">false</span>,
             phase,
@@ -3107,7 +3107,7 @@
             <span class="self">self</span>.reload_schema()<span class="question-mark">?</span>;
         }
         <span class="comment">// Determine if we need to update access control profiles
-        // based on any modifications that have occured.
+        // based on any modifications that have occurred.
         // IF SCHEMA CHANGED WE MUST ALSO RELOAD!!! IE if schema had an attr removed
         // that we rely on we MUST fail this here!!
         </span><span class="kw">if </span><span class="self">self</span>.changed_schema || <span class="self">self</span>.changed_acp {

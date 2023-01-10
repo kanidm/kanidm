@@ -1309,9 +1309,9 @@
     }
 
     <span class="kw">pub fn </span>commit(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
-        <span class="comment">// debug!(&quot;Commiting BE txn&quot;);
+        <span class="comment">// debug!(&quot;Committing BE txn&quot;);
         </span><span class="kw">if </span><span class="self">self</span>.committed {
-            <span class="macro">error!</span>(<span class="string">&quot;Invalid state, SQL transaction was already commited!&quot;</span>);
+            <span class="macro">error!</span>(<span class="string">&quot;Invalid state, SQL transaction was already committed!&quot;</span>);
             <span class="kw">return </span><span class="prelude-val">Err</span>(());
         }
         <span class="self">self</span>.committed = <span class="bool-val">true</span>;

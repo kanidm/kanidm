@@ -1777,11 +1777,11 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
         }) =&gt; totp_secret,
         <span class="prelude-val">Ok</span>(status) =&gt; {
             <span class="macro">debug!</span>(<span class="question-mark">?</span>status);
-            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; InvalidState&quot;</span>);
+            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; InvalidState&quot;</span>);
             <span class="kw">return</span>;
         }
         <span class="prelude-val">Err</span>(e) =&gt; {
-            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; {:?}&quot;</span>, e);
             <span class="kw">return</span>;
         }
     };
@@ -1842,7 +1842,7 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
                     .idm_account_credential_update_cancel_mfareg(session_token)
                     .<span class="kw">await
                 </span>{
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+                    <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; {:?}&quot;</span>, e);
                 } <span class="kw">else </span>{
                     <span class="macro">println!</span>(<span class="string">&quot;success&quot;</span>);
                 }
@@ -1895,7 +1895,7 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
                             .idm_account_credential_update_accept_sha1_totp(session_token)
                             .<span class="kw">await
                         </span>{
-                            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+                            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; {:?}&quot;</span>, e);
                         } <span class="kw">else </span>{
                             <span class="macro">println!</span>(<span class="string">&quot;success&quot;</span>);
                         }
@@ -1906,7 +1906,7 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
                             .idm_account_credential_update_cancel_mfareg(session_token)
                             .<span class="kw">await
                         </span>{
-                            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+                            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; {:?}&quot;</span>, e);
                         } <span class="kw">else </span>{
                             <span class="macro">println!</span>(<span class="string">&quot;success&quot;</span>);
                         }
@@ -1916,11 +1916,11 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
             }
             <span class="prelude-val">Ok</span>(status) =&gt; {
                 <span class="macro">debug!</span>(<span class="question-mark">?</span>status);
-                <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; InvalidState&quot;</span>);
+                <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; InvalidState&quot;</span>);
                 <span class="kw">return</span>;
             }
             <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+                <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; {:?}&quot;</span>, e);
                 <span class="kw">return</span>;
             }
         }
@@ -1939,11 +1939,11 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
         }) =&gt; pk_reg,
         <span class="prelude-val">Ok</span>(status) =&gt; {
             <span class="macro">debug!</span>(<span class="question-mark">?</span>status);
-            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; InvalidState&quot;</span>);
+            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; InvalidState&quot;</span>);
             <span class="kw">return</span>;
         }
         <span class="prelude-val">Err</span>(e) =&gt; {
-            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; {:?}&quot;</span>, e);
             <span class="kw">return</span>;
         }
     };
@@ -1974,7 +1974,7 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
     </span>{
         <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;success&quot;</span>),
         <span class="prelude-val">Err</span>(e) =&gt; {
-            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+            <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; {:?}&quot;</span>, e);
         }
     };
 }
@@ -2057,7 +2057,7 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
                 </span>{
                     <span class="prelude-val">Ok</span>(status) =&gt; display_status(status),
                     <span class="prelude-val">Err</span>(e) =&gt; {
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; {:?}&quot;</span>, e);
                     }
                 }
             }
@@ -2084,7 +2084,7 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
                                 <span class="macro">eprintln!</span>(<span class="string">&quot; - {}&quot;</span>, fb_item)
                             }
                         }
-                        <span class="kw">_ </span>=&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e),
+                        <span class="kw">_ </span>=&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; {:?}&quot;</span>, e),
                     }
                 } <span class="kw">else </span>{
                     <span class="macro">println!</span>(<span class="string">&quot;Successfully reset password.&quot;</span>);
@@ -2101,7 +2101,7 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
                         .idm_account_credential_update_remove_totp(<span class="kw-2">&amp;</span>session_token)
                         .<span class="kw">await
                     </span>{
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; {:?}&quot;</span>, e);
                     } <span class="kw">else </span>{
                         <span class="macro">println!</span>(<span class="string">&quot;success&quot;</span>);
                     }
@@ -2126,10 +2126,10 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
                     }
                     <span class="prelude-val">Ok</span>(status) =&gt; {
                         <span class="macro">debug!</span>(<span class="question-mark">?</span>status);
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; InvalidState&quot;</span>);
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; InvalidState&quot;</span>);
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; {
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; {:?}&quot;</span>, e);
                     }
                 }
             }
@@ -2143,7 +2143,7 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
                         .idm_account_credential_update_primary_remove(<span class="kw-2">&amp;</span>session_token)
                         .<span class="kw">await
                     </span>{
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; {:?}&quot;</span>, e);
                     } <span class="kw">else </span>{
                         <span class="macro">println!</span>(<span class="string">&quot;success&quot;</span>);
                     }
@@ -2169,7 +2169,7 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
                         }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; {
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured pulling existing credentials -&gt; {:?}&quot;</span>, e);
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred pulling existing credentials -&gt; {:?}&quot;</span>, e);
                     }
                 }
                 <span class="kw">let </span>uuid_s: String = Input::new()
@@ -2185,13 +2185,13 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
                     .interact_text()
                     .expect(<span class="string">&quot;Failed to interact with interactive session&quot;</span>);
 
-                <span class="comment">// Remeber, if it&#39;s NOT a valid uuid, it must have been empty as a termination.
+                <span class="comment">// Remember, if it&#39;s NOT a valid uuid, it must have been empty as a termination.
                 </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(uuid) = Uuid::parse_str(<span class="kw-2">&amp;</span>uuid_s) {
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
                         .idm_account_credential_update_passkey_remove(<span class="kw-2">&amp;</span>session_token, uuid)
                         .<span class="kw">await
                     </span>{
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; {:?}&quot;</span>, e);
                     } <span class="kw">else </span>{
                         <span class="macro">println!</span>(<span class="string">&quot;success&quot;</span>);
                     }
@@ -2213,7 +2213,7 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
                         .idm_account_credential_update_commit(<span class="kw-2">&amp;</span>session_token)
                         .<span class="kw">await
                     </span>{
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occured -&gt; {:?}&quot;</span>, e);
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; {:?}&quot;</span>, e);
                     } <span class="kw">else </span>{
                         <span class="macro">println!</span>(<span class="string">&quot;success&quot;</span>);
                     }

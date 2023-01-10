@@ -2234,6 +2234,7 @@
 <span id="2234">2234</span>
 <span id="2235">2235</span>
 <span id="2236">2236</span>
+<span id="2237">2237</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the logic to conduct an authentication of an account.
 //! Generally this has to process an authentication attempt, and validate each
 //! factor to assert that the user is legitimate. This also contains some
@@ -2268,7 +2269,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 
 <span class="comment">// Each CredHandler takes one or more credentials and determines if the
-// handlers requirements can be 100% fufilled. This is where MFA or other
+// handlers requirements can be 100% fulfilled. This is where MFA or other
 // auth policies would exist, but each credHandler has to be a whole
 // encapsulated unit of function.
 
@@ -2770,7 +2771,8 @@
     }
 }
 
-<span class="attribute">#[derive(Clone)]
+<span class="attribute">#[allow(clippy::large_enum_variant)]
+#[derive(Clone)]
 </span><span class="doccomment">/// This interleaves with the client auth step. The client sends an &quot;init&quot;
 /// and we go to the init state, sending back the list of what can proceed.
 /// The client then sends a &quot;begin&quot; with the chosen mech that moves to
@@ -2908,7 +2910,7 @@
         <span class="comment">// time: &amp;Duration,
         // webauthn: &amp;WebauthnCore,
     </span>) -&gt; <span class="prelude-ty">Result</span>&lt;AuthState, OperationError&gt; {
-        <span class="comment">// Given some auth mech, select which credential(s) are apropriate
+        <span class="comment">// Given some auth mech, select which credential(s) are appropriate
         // and attempt to use them.
 
         // Today we only select one, but later we could have *multiple* that
@@ -2938,7 +2940,7 @@
                         (
                             <span class="prelude-val">None</span>,
                             <span class="prelude-val">Err</span>(OperationError::InvalidAuthState(
-                                <span class="string">&quot;unable to negotitate credentials&quot;</span>.to_string(),
+                                <span class="string">&quot;unable to negotiate credentials&quot;</span>.to_string(),
                             )),
                         )
                     } <span class="kw">else </span>{
@@ -3096,7 +3098,7 @@
         //
         // The lockouts could also be an in-memory concept too?
 
-        // If this suceeds audit?
+        // If this succeeds audit?
         //  If success, to authtoken?
 
         </span>response

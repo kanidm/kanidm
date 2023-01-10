@@ -812,8 +812,8 @@
         // an internal operation.
         </span><span class="kw">if </span>!ce.ident.is_internal() {
             <span class="comment">// TODO: We can&#39;t lazy const this as you can&#39;t borrow the type down to what
-            // range and contains on btreeset need, but can we possibly make these constly
-            // part of the struct somehow at init. rather than needing to parse a lot?
+            // range and contains on btreeset need, but can we possibly make these
+            // part of the struct at init. rather than needing to parse a lot?
             // The internal set is bounded by: UUID_ADMIN -&gt; UUID_ANONYMOUS
             // Sadly we need to allocate these to strings to make references, sigh.
             </span><span class="kw">let </span>overlap: usize = cand_uuid.range(UUID_ADMIN..UUID_ANONYMOUS).count();
@@ -867,7 +867,7 @@
                 }
             }
             <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Error occured checking UUID existance. {:?}&quot;</span>, e);
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Error occurred checking UUID existence. {:?}&quot;</span>, e);
                 <span class="kw">return </span><span class="prelude-val">Err</span>(e);
             }
         }
@@ -1059,7 +1059,7 @@
         );
     }
 
-    <span class="comment">// check unparseable uuid
+    <span class="comment">// check unparsable uuid
     </span><span class="attribute">#[test]
     </span><span class="kw">fn </span>test_pre_create_uuid_invalid() {
         <span class="kw">let </span>preload: Vec&lt;Entry&lt;EntryInit, EntryNew&gt;&gt; = Vec::new();

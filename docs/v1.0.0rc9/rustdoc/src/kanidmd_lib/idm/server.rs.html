@@ -4909,7 +4909,7 @@
         ae: <span class="kw-2">&amp;</span>AuthEvent,
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthResult, OperationError&gt; {
-        <span class="macro">trace!</span>(<span class="question-mark">?</span>ae, <span class="string">&quot;Recieved&quot;</span>);
+        <span class="macro">trace!</span>(<span class="question-mark">?</span>ae, <span class="string">&quot;Received&quot;</span>);
         <span class="comment">// Match on the auth event, to see what we need to do.
 
         </span><span class="kw">match </span><span class="kw-2">&amp;</span>ae.step {
@@ -5661,7 +5661,7 @@
                 })<span class="question-mark">?
         </span>};
 
-        <span class="comment">// If we got here, then pre-apply succedded, and that means access control
+        <span class="comment">// If we got here, then pre-apply succeeded, and that means access control
         // passed. Now we can do the extra checks.
 
         // Check the password quality.
@@ -5740,7 +5740,7 @@
                 })<span class="question-mark">?
         </span>};
 
-        <span class="comment">// If we got here, then pre-apply succedded, and that means access control
+        <span class="comment">// If we got here, then pre-apply succeeded, and that means access control
         // passed. Now we can do the extra checks.
 
         </span><span class="self">self</span>.check_password_quality(pce.cleartext.as_str(), account.related_inputs().as_slice())
@@ -6298,7 +6298,7 @@
                                 }
                                 <span class="kw">_ </span>=&gt; {
                                     <span class="macro">error!</span>(
-                                    <span class="string">&quot;A critical error has occured! We have a non-continue result!&quot;
+                                    <span class="string">&quot;A critical error has occurred! We have a non-continue result!&quot;
                                 </span>);
                                     <span class="macro">panic!</span>();
                                 }
@@ -6308,7 +6308,7 @@
                         }
                         <span class="prelude-val">Err</span>(e) =&gt; {
                             <span class="comment">// Should not occur!
-                            </span><span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, e);
+                            </span><span class="macro">error!</span>(<span class="string">&quot;A critical error has occurred! {:?}&quot;</span>, e);
                             <span class="macro">panic!</span>();
                         }
                     };
@@ -6345,14 +6345,14 @@
                                 }
                                 <span class="kw">_ </span>=&gt; {
                                     <span class="macro">error!</span>(
-                                    <span class="string">&quot;A critical error has occured! We have a non-continue result!&quot;
+                                    <span class="string">&quot;A critical error has occurred! We have a non-continue result!&quot;
                                 </span>);
                                     <span class="macro">panic!</span>();
                                 }
                             }
                         }
                         <span class="prelude-val">Err</span>(e) =&gt; {
-                            <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, e);
+                            <span class="macro">error!</span>(<span class="string">&quot;A critical error has occurred! {:?}&quot;</span>, e);
                             <span class="comment">// Should not occur!
                             </span><span class="macro">panic!</span>();
                         }
@@ -6386,14 +6386,14 @@
                                 </span>}
                                 <span class="kw">_ </span>=&gt; {
                                     <span class="macro">error!</span>(
-                                    <span class="string">&quot;A critical error has occured! We have a non-succcess result!&quot;
+                                    <span class="string">&quot;A critical error has occurred! We have a non-succcess result!&quot;
                                 </span>);
                                     <span class="macro">panic!</span>();
                                 }
                             }
                         }
                         <span class="prelude-val">Err</span>(e) =&gt; {
-                            <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, e);
+                            <span class="macro">error!</span>(<span class="string">&quot;A critical error has occurred! {:?}&quot;</span>, e);
                             <span class="comment">// Should not occur!
                             </span><span class="macro">panic!</span>();
                         }
@@ -6525,13 +6525,13 @@
                         </span>token
                     }
                     <span class="kw">_ </span>=&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! We have a non-succcess result!&quot;</span>);
+                        <span class="macro">error!</span>(<span class="string">&quot;A critical error has occurred! We have a non-succcess result!&quot;</span>);
                         <span class="macro">panic!</span>();
                     }
                 }
             }
             <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, e);
+                <span class="macro">error!</span>(<span class="string">&quot;A critical error has occurred! {:?}&quot;</span>, e);
                 <span class="comment">// Should not occur!
                 </span><span class="macro">panic!</span>();
             }
@@ -6594,14 +6594,14 @@
                             </span>}
                             <span class="kw">_ </span>=&gt; {
                                 <span class="macro">error!</span>(
-                                    <span class="string">&quot;A critical error has occured! We have a non-succcess result!&quot;
+                                    <span class="string">&quot;A critical error has occurred! We have a non-succcess result!&quot;
                                 </span>);
                                 <span class="macro">panic!</span>();
                             }
                         }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, e);
+                        <span class="macro">error!</span>(<span class="string">&quot;A critical error has occurred! {:?}&quot;</span>, e);
                         <span class="comment">// Should not occur!
                         </span><span class="macro">panic!</span>();
                     }
@@ -6651,14 +6651,14 @@
                             </span>}
                             <span class="kw">_ </span>=&gt; {
                                 <span class="macro">error!</span>(
-                                    <span class="string">&quot;A critical error has occured! We have a non-denied result!&quot;
+                                    <span class="string">&quot;A critical error has occurred! We have a non-denied result!&quot;
                                 </span>);
                                 <span class="macro">panic!</span>();
                             }
                         }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, e);
+                        <span class="macro">error!</span>(<span class="string">&quot;A critical error has occurred! {:?}&quot;</span>, e);
                         <span class="comment">// Should not occur!
                         </span><span class="macro">panic!</span>();
                     }
@@ -6965,7 +6965,7 @@
                 <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
                 <span class="comment">// And auth should now fail due to the lack of PW material (note that
-                // softlocking WONT kick in because the cred_uuid is gone!)
+                // softlocking WON&#39;T kick in because the cred_uuid is gone!)
                 </span><span class="kw">let </span><span class="kw-2">mut </span>idms_auth = idms.auth();
                 <span class="kw">let </span>a3 = task::block_on(
                     idms_auth.auth_unix(<span class="kw-2">&amp;</span>uuae_good, Duration::from_secs(TEST_CURRENT_TIME)),
@@ -7126,7 +7126,7 @@
     </span><span class="kw">fn </span>test_idm_account_valid_from_expire() {
         <span class="macro">run_idm_test!</span>(
             |qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-                <span class="comment">// Any account taht is not yet valrid / expired can&#39;t auth.
+                <span class="comment">// Any account that is not yet valrid / expired can&#39;t auth.
 
                 </span>task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
                     .expect(<span class="string">&quot;Failed to setup admin account&quot;</span>);
@@ -7334,14 +7334,14 @@
                             }
                             <span class="kw">_ </span>=&gt; {
                                 <span class="macro">error!</span>(
-                                    <span class="string">&quot;A critical error has occured! We have a non-denied result!&quot;
+                                    <span class="string">&quot;A critical error has occurred! We have a non-denied result!&quot;
                                 </span>);
                                 <span class="macro">panic!</span>();
                             }
                         }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, e);
+                        <span class="macro">error!</span>(<span class="string">&quot;A critical error has occurred! {:?}&quot;</span>, e);
                         <span class="macro">panic!</span>();
                     }
                 };
@@ -7423,14 +7423,14 @@
                             </span>}
                             <span class="kw">_ </span>=&gt; {
                                 <span class="macro">error!</span>(
-                                    <span class="string">&quot;A critical error has occured! We have a non-succcess result!&quot;
+                                    <span class="string">&quot;A critical error has occurred! We have a non-succcess result!&quot;
                                 </span>);
                                 <span class="macro">panic!</span>();
                             }
                         }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, e);
+                        <span class="macro">error!</span>(<span class="string">&quot;A critical error has occurred! {:?}&quot;</span>, e);
                         <span class="comment">// Should not occur!
                         </span><span class="macro">panic!</span>();
                     }
@@ -7496,14 +7496,14 @@
                             }
                             <span class="kw">_ </span>=&gt; {
                                 <span class="macro">error!</span>(
-                                    <span class="string">&quot;A critical error has occured! We have a non-denied result!&quot;
+                                    <span class="string">&quot;A critical error has occurred! We have a non-denied result!&quot;
                                 </span>);
                                 <span class="macro">panic!</span>();
                             }
                         }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, e);
+                        <span class="macro">error!</span>(<span class="string">&quot;A critical error has occurred! {:?}&quot;</span>, e);
                         <span class="macro">panic!</span>();
                     }
                 };
@@ -7532,14 +7532,14 @@
                             }
                             <span class="kw">_ </span>=&gt; {
                                 <span class="macro">error!</span>(
-                                    <span class="string">&quot;A critical error has occured! We have a non-denied result!&quot;
+                                    <span class="string">&quot;A critical error has occurred! We have a non-denied result!&quot;
                                 </span>);
                                 <span class="macro">panic!</span>();
                             }
                         }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, e);
+                        <span class="macro">error!</span>(<span class="string">&quot;A critical error has occurred! {:?}&quot;</span>, e);
                         <span class="macro">panic!</span>();
                     }
                 };

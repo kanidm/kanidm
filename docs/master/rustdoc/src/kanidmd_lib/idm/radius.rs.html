@@ -188,7 +188,7 @@
         <span class="kw">let </span>cot = OffsetDateTime::unix_epoch() + ct;
 
         <span class="kw">let </span>vmin = <span class="kw">if let </span><span class="prelude-val">Some</span>(vft) = <span class="kw-2">&amp;</span><span class="self">self</span>.valid_from {
-            <span class="comment">// If current time greater than strat time window
+            <span class="comment">// If current time greater than start time window
             </span>vft &lt; <span class="kw-2">&amp;</span>cot
         } <span class="kw">else </span>{
             <span class="comment">// We have no time, not expired.

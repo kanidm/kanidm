@@ -4708,7 +4708,7 @@
                 Vec::with_capacity(<span class="number">0</span>)
             };
 
-            <span class="comment">// Subseqent we then return an encrypted session handle which allows
+            <span class="comment">// Subsequent we then return an encrypted session handle which allows
             // the user to indicate their consent to this authorisation.
             //
             // This session handle is what we use in &quot;permit&quot; to generate the redirect.
@@ -5485,7 +5485,7 @@
         Oauth2Error::AuthenticationRequired
     })<span class="question-mark">?</span>;
     <span class="kw">let </span>secret = split_iter.next().ok_or_else(|| {
-        <span class="macro">admin_error!</span>(<span class="string">&quot;Basic authz invalid format (missing &#39;:&#39; seperator?)&quot;</span>);
+        <span class="macro">admin_error!</span>(<span class="string">&quot;Basic authz invalid format (missing &#39;:&#39; separator?)&quot;</span>);
         Oauth2Error::AuthenticationRequired
     })<span class="question-mark">?</span>;
 
@@ -6433,7 +6433,7 @@
                 <span class="macro">assert!</span>(<span class="macro">matches!</span>(e, Oauth2Error::AuthenticationRequired));
                 <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
-                <span class="comment">// Now submit a non-existant/invalid token. Does not affect our tokens validity.
+                <span class="comment">// Now submit a non-existent/invalid token. Does not affect our tokens validity.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
                 <span class="kw">let </span>revoke_request = TokenRevokeRequest {
                     token: <span class="string">&quot;this is an invalid token, nothing will happen!&quot;</span>.to_string(),

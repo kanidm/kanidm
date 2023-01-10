@@ -478,7 +478,7 @@
     <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
     </span><span class="kw">pub </span>refresh_token: <span class="prelude-ty">Option</span>&lt;String&gt;,
     <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
-    </span><span class="doccomment">/// Space seperated list of scopes that were approved, if this differs from the
+    </span><span class="doccomment">/// Space separated list of scopes that were approved, if this differs from the
     /// original request.
     </span><span class="kw">pub </span>scope: <span class="prelude-ty">Option</span>&lt;String&gt;,
     <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
@@ -581,7 +581,7 @@
 
 <span class="attribute">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = <span class="string">&quot;UPPERCASE&quot;</span>)]
-</span><span class="comment">// WE REFUSE TO SUPPORT NONE. DONT EVEN ASK. IT WONT HAPPEN.
+</span><span class="comment">// WE REFUSE TO SUPPORT NONE. DONT EVEN ASK. IT WON&#39;T HAPPEN.
 </span><span class="kw">pub enum </span>IdTokenSignAlg {
     ES256,
     RS256,

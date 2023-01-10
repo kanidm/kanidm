@@ -564,7 +564,7 @@
 
 <span class="kw">pub enum </span>ViewsMsg {
     Verified,
-    ProfileInfoRecieved { uat: UserAuthToken },
+    ProfileInfoReceived { uat: UserAuthToken },
     Logout,
     LogoutComplete,
     Error { emsg: String, kopid: <span class="prelude-ty">Option</span>&lt;String&gt; },
@@ -624,7 +624,7 @@
                 });
                 <span class="bool-val">true
             </span>}
-            ViewsMsg::ProfileInfoRecieved { uat } =&gt; {
+            ViewsMsg::ProfileInfoReceived { uat } =&gt; {
                 <span class="self">self</span>.state = State::Authenticated(uat);
                 <span class="bool-val">true
             </span>}
@@ -686,7 +686,7 @@
                 <span class="macro">html! </span>{
                   &lt;main class=<span class="string">&quot;form-signin&quot;</span>&gt;
                     &lt;div class=<span class="string">&quot;alert alert-danger&quot; </span>role=<span class="string">&quot;alert&quot;</span>&gt;
-                      &lt;h2&gt;{ <span class="string">&quot;An Error Occured 🥺&quot; </span>}&lt;/h2&gt;
+                      &lt;h2&gt;{ <span class="string">&quot;An Error Occurred 🥺&quot; </span>}&lt;/h2&gt;
                     &lt;p&gt;{ emsg.to_string() }&lt;/p&gt;
                     &lt;p&gt;
                         {
@@ -885,7 +885,7 @@
                 })
                 .expect_throw(<span class="string">&quot;Invalid response type&quot;</span>);
 
-            <span class="prelude-val">Ok</span>(ViewsMsg::ProfileInfoRecieved { uat })
+            <span class="prelude-val">Ok</span>(ViewsMsg::ProfileInfoReceived { uat })
         } <span class="kw">else </span>{
             <span class="kw">let </span>headers = resp.headers();
             <span class="kw">let </span>kopid = headers.get(<span class="string">&quot;x-kanidm-opid&quot;</span>).ok().flatten();
@@ -943,16 +943,16 @@
           &lt;Redirect&lt;Route&gt; to={Route::NotFound}/&gt;
         ),
         AdminRoute::ViewGroup { uuid } =&gt; {
-            <span class="macro">html!</span>(&lt;admin_groups::AdminViewGroup uuid={uuid.clone()} /&gt;)
+            <span class="macro">html!</span>(&lt;admin_groups::AdminViewGroup uuid={uuid} /&gt;)
         }
         AdminRoute::ViewPerson { uuid } =&gt; <span class="macro">html!</span>(
-          &lt;admin_accounts::AdminViewPerson uuid={uuid.clone()} /&gt;
+          &lt;admin_accounts::AdminViewPerson uuid={uuid} /&gt;
         ),
         AdminRoute::ViewServiceAccount { uuid } =&gt; <span class="macro">html!</span>(
-          &lt;admin_accounts::AdminViewServiceAccount uuid={uuid.clone()} /&gt;
+          &lt;admin_accounts::AdminViewServiceAccount uuid={uuid} /&gt;
         ),
         AdminRoute::ViewOAuth2RP { rs_name } =&gt; <span class="macro">html! </span>{
-          &lt;admin_oauth2::AdminViewOAuth2 rs_name={rs_name.clone()} /&gt;
+          &lt;admin_oauth2::AdminViewOAuth2 rs_name={rs_name} /&gt;
         },
     }
 }

@@ -1025,7 +1025,7 @@
         <span class="kw">let </span>cot = OffsetDateTime::unix_epoch() + ct;
 
         <span class="kw">let </span>vmin = <span class="kw">if let </span><span class="prelude-val">Some</span>(vft) = valid_from {
-            <span class="comment">// If current time greater than strat time window
+            <span class="comment">// If current time greater than start time window
             </span>vft &lt;= <span class="kw-2">&amp;</span>cot
         } <span class="kw">else </span>{
             <span class="comment">// We have no time, not expired.
@@ -1216,7 +1216,7 @@
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>existing_credential_id_list(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;CredentialID&gt;&gt; {
         <span class="comment">// TODO!!!
-        // Used in registrations only for disallowing exsiting credentials.
+        // Used in registrations only for disallowing existing credentials.
         </span><span class="prelude-val">None
     </span>}
 
@@ -1281,7 +1281,7 @@
 </span><span class="kw">pub struct </span>DestroySessionTokenEvent {
     <span class="comment">// Who initiated this?
     </span><span class="kw">pub </span>ident: Identity,
-    <span class="comment">// Who is it targetting?
+    <span class="comment">// Who is it targeting?
     </span><span class="kw">pub </span>target: Uuid,
     <span class="comment">// Which token id.
     </span><span class="kw">pub </span>token_id: Uuid,
@@ -1405,7 +1405,7 @@
 <span class="kw">pub struct </span>ListUserAuthTokenEvent {
     <span class="comment">// Who initiated this?
     </span><span class="kw">pub </span>ident: Identity,
-    <span class="comment">// Who is it targetting?
+    <span class="comment">// Who is it targeting?
     </span><span class="kw">pub </span>target: Uuid,
 }
 

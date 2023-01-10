@@ -346,7 +346,7 @@
             .iter()
             .map(|b| {
                 JwsSigner::from_es256_der(b).map_err(|e| {
-                    <span class="macro">debug!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Error occured parsing ES256 DER&quot;</span>);
+                    <span class="macro">debug!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Error occurred parsing ES256 DER&quot;</span>);
                     OperationError::InvalidValueState
                 })
             })
@@ -502,7 +502,7 @@
             .iter()
             .map(|b| {
                 JwsSigner::from_rs256_der(b).map_err(|e| {
-                    <span class="macro">debug!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Error occured parsing RS256 DER&quot;</span>);
+                    <span class="macro">debug!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Error occurred parsing RS256 DER&quot;</span>);
                     OperationError::InvalidValueState
                 })
             })

@@ -2002,7 +2002,7 @@
             <span class="string">&quot;REFERENCE_UUID&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::ReferenceUuid),
             <span class="string">&quot;JSON_FILTER&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::JsonFilter),
             <span class="string">&quot;CREDENTIAL&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Credential),
-            <span class="comment">// Compatability for older syntax name.
+            <span class="comment">// Compatibility for older syntax name.
             </span><span class="string">&quot;RADIUS_UTF8STRING&quot; </span>| <span class="string">&quot;SECRET_UTF8STRING&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::SecretUtf8String),
             <span class="string">&quot;SSHKEY&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::SshKey),
             <span class="string">&quot;SECURITY_PRINCIPAL_NAME&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::SecurityPrincipalName),
@@ -2228,7 +2228,7 @@
         <span class="macro">matches!</span>(<span class="self">self</span>, PartialValue::Refer(<span class="kw">_</span>))
     }
 
-    <span class="kw">pub fn </span>new_indexs(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
+    <span class="kw">pub fn </span>new_indexes(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
         IndexType::try_from(s).map(PartialValue::Index).ok()
     }
 
@@ -2748,7 +2748,7 @@
         Uuid::parse_str(s).map(Value::Uuid).ok()
     }
 
-    <span class="comment">// Is this correct? Should ref be seperate?
+    <span class="comment">// Is this correct? Should ref be separate?
     </span><span class="kw">pub fn </span>is_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="macro">matches!</span>(<span class="self">self</span>, Value::Uuid(<span class="kw">_</span>))
     }
@@ -2778,7 +2778,7 @@
         <span class="macro">matches!</span>(<span class="self">self</span>, Value::Syntax(<span class="kw">_</span>))
     }
 
-    <span class="kw">pub fn </span>new_indexs(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
+    <span class="kw">pub fn </span>new_indexes(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
         IndexType::try_from(s).map(Value::Index).ok()
     }
 
@@ -3081,7 +3081,7 @@
         }
     }
 
-    <span class="comment">// We need a seperate to-ref_uuid to distinguish from normal uuids
+    <span class="comment">// We need a separate to-ref_uuid to distinguish from normal uuids
     // in refint plugin.
     </span><span class="kw">pub fn </span>to_ref_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Uuid&gt; {
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self </span>{
@@ -3269,7 +3269,7 @@
         }
     }
 
-    <span class="comment">// !!!! This function is beind phased out !!!
+    <span class="comment">// !!!! This function is being phased out !!!
     </span><span class="attribute">#[allow(clippy::unreachable)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_proto_string_clone(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self </span>{

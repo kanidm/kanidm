@@ -169,12 +169,12 @@ schema will block the creation).</p>
 <h3 id="upg-generation"><a class="header" href="#upg-generation">UPG Generation</a></h3>
 <p>Due to the requirement that a user have a UPG for security, many systems create these as two
 independent items. For example in /etc/passwd and /etc/group:</p>
-<pre><code># passwd
+<pre><code class="language-text"># passwd
 william:x:654401105:654401105::/home/william:/bin/zsh
 # group
 william:x:654401105:
 </code></pre>
-<p>Other systems like FreeIPA use a plugin that generates a UPG as a seperate group entry on creation
+<p>Other systems like FreeIPA use a plugin that generates a UPG as a separate group entry on creation
 of the account. This means there are two entries for an account, and they must be kept in lock-step.</p>
 <p>Kanidm does neither of these. As the GID number of the user must be unique, and a user implies the
 UPG must exist, we can generate UPG's on-demand from the account. This has a single side effect -
@@ -229,7 +229,7 @@ separate type of membership for POSIX members required.</p>
 <h3 id="subuid-conflicts-with-podman"><a class="header" href="#subuid-conflicts-with-podman">subuid conflicts with Podman</a></h3>
 <p>Due to the way that Podman operates, in some cases using the Kanidm client inside non-root
 containers with Kanidm accounts may fail with an error such as:</p>
-<pre><code>ERRO[0000] cannot find UID/GID for user NAME: No subuid ranges found for user &quot;NAME&quot; in /etc/subuid
+<pre><code class="language-text">ERROR[0000] cannot find UID/GID for user NAME: No subuid ranges found for user &quot;NAME&quot; in /etc/subuid
 </code></pre>
 <p>This is a fault in Podman and how it attempts to provide non-root containers, when UID/GIDs are
 greater than 65535. In this case you may manually allocate your users GID number to be between

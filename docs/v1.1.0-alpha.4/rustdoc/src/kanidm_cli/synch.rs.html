@@ -192,7 +192,7 @@
                     .default(<span class="bool-val">false</span>)
                     .with_prompt(<span class="string">&quot;Do you want to continue? This operation can NOT be undone.&quot;</span>)
                     .interact()
-                    .unwrap()
+                    .expect(<span class="string">&quot;Failed to get a valid response!&quot;</span>)
                 {
                     <span class="macro">info!</span>(<span class="string">&quot;No changes were made&quot;</span>);
                     <span class="kw">return</span>;
@@ -209,7 +209,7 @@
                     .default(<span class="bool-val">false</span>)
                     .with_prompt(<span class="string">&quot;Do you want to continue? This operation can NOT be undone.&quot;</span>)
                     .interact()
-                    .unwrap()
+                    .expect(<span class="string">&quot;Failed to get a valid response!&quot;</span>)
                 {
                     <span class="macro">info!</span>(<span class="string">&quot;No changes were made&quot;</span>);
                     <span class="kw">return</span>;

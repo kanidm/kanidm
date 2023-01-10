@@ -924,7 +924,7 @@
 
 <span class="comment">// TODO #54: We could move most of the be/schema/qs setup and startup
 // outside of this call, then pass in &quot;what we need&quot; in a cloneable
-// form, this way we could have seperate Idm vs Qs threads, and dedicated
+// form, this way we could have separate Idm vs Qs threads, and dedicated
 // threads for write vs read
 </span><span class="kw">async fn </span>setup_qs_idms(
     be: Backend,
@@ -1285,7 +1285,7 @@
     <span class="kw">match </span>r {
         <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">info!</span>(<span class="string">&quot;Domain Rename Success!&quot;</span>),
         <span class="prelude-val">Err</span>(e) =&gt; {
-            <span class="macro">error!</span>(<span class="string">&quot;Domain Rename Failed - Rollback has occured: {:?}&quot;</span>, e);
+            <span class="macro">error!</span>(<span class="string">&quot;Domain Rename Failed - Rollback has occurred: {:?}&quot;</span>, e);
             std::process::exit(<span class="number">1</span>);
         }
     };
@@ -1358,7 +1358,7 @@
         <span class="prelude-val">Ok</span>(new_pw) =&gt; <span class="kw">match </span>idms_prox_write.commit() {
             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; new_pw,
             <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">error!</span>(<span class="string">&quot;A critical error during commit occured {:?}&quot;</span>, e);
+                <span class="macro">error!</span>(<span class="string">&quot;A critical error during commit occurred {:?}&quot;</span>, e);
                 std::process::exit(<span class="number">1</span>);
             }
         },
@@ -1416,7 +1416,7 @@
 <span class="kw">impl </span>Drop <span class="kw">for </span>CoreHandle {
     <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">if </span>!<span class="self">self</span>.clean_shutdown {
-            <span class="macro">eprintln!</span>(<span class="string">&quot;⚠️  UNCLEAN SHUTDOWN OCCURED ⚠️ &quot;</span>);
+            <span class="macro">eprintln!</span>(<span class="string">&quot;⚠️  UNCLEAN SHUTDOWN OCCURRED ⚠️ &quot;</span>);
         }
         <span class="comment">// Can&#39;t enable yet until we clean up unix_int cache layer test
         // debug_assert!(self.clean_shutdown);

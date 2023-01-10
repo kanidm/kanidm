@@ -608,7 +608,7 @@
     /// A subtle and important piece of information is that an anchor can be considered
     /// as the &quot;state as existing between two Cid&#39;s&quot;. This means for Cid X, this state is
     /// the &quot;moment before X&quot;. This is important, as for a create we define the initial anchor
-    /// as &quot;nothing&quot;. It&#39;s means for the anchor at time X, that changes that occured at time
+    /// as &quot;nothing&quot;. It&#39;s means for the anchor at time X, that changes that occurred at time
     /// X have NOT been replayed and applied!
     </span>anchors: BTreeMap&lt;Cid, State&gt;,
     changes: BTreeMap&lt;Cid, Change&gt;,
@@ -622,7 +622,7 @@ impl fmt::Display for EntryChangelog {
 }
 */
 
-</span><span class="doccomment">/// A change defines the transitions that occured within this Cid (transaction). A change is applied
+</span><span class="doccomment">/// A change defines the transitions that occurred within this Cid (transaction). A change is applied
 /// as a whole, or rejected during the replay process.
 </span><span class="attribute">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>Change {
@@ -1100,7 +1100,7 @@ impl fmt::Display for EntryChangelog {
     <span class="comment">/*
     fn insert_anchor(&amp;mut self, cid: Cid, entry_state: State) {
         // When we insert an anchor, we have to remove all subsequent anchors (but not
-        // the preceeding ones.)
+        // the preceding ones.)
         let _ = self.anchors.split_off(&amp;cid);
         self.anchors.insert(cid.clone(), entry_state);
     }
@@ -1109,7 +1109,7 @@ impl fmt::Display for EntryChangelog {
     </span><span class="kw">pub fn </span>trim_up_to(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cid: <span class="kw-2">&amp;</span>Cid) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="comment">// Build a new anchor that is equal or less than this cid.
         // In other words, the cid we are trimming to, should be remaining
-        // in the CL, and we should have an anchor that preceeds it.
+        // in the CL, and we should have an anchor that precedes it.
         </span><span class="kw">let </span>(entry_state, rejected) = <span class="self">self</span>.replay(Unbounded, Excluded(cid)).map_err(|e| {
             <span class="macro">error!</span>(<span class="question-mark">?</span>e);
             e

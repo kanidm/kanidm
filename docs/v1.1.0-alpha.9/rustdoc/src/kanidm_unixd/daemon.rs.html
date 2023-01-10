@@ -1451,7 +1451,7 @@
                             </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) =
                                 handle_task_client(socket, <span class="kw-2">&amp;</span>task_channel_tx, <span class="kw-2">&amp;mut </span>task_channel_rx).<span class="kw">await
                             </span>{
-                                <span class="macro">error!</span>(<span class="string">&quot;Task client error occured; error = {:?}&quot;</span>, e);
+                                <span class="macro">error!</span>(<span class="string">&quot;Task client error occurred; error = {:?}&quot;</span>, e);
                             }
                             <span class="comment">// If they DC we go back to accept.
                         </span>}
@@ -1474,7 +1474,7 @@
                             tokio::spawn(<span class="kw">async move </span>{
                                 <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = handle_client(socket, cachelayer_ref.clone(), <span class="kw-2">&amp;</span>tc_tx).<span class="kw">await
                                 </span>{
-                                    <span class="macro">error!</span>(<span class="string">&quot;handle_client error occured; error = {:?}&quot;</span>, e);
+                                    <span class="macro">error!</span>(<span class="string">&quot;handle_client error occurred; error = {:?}&quot;</span>, e);
                                 }
                             });
                         }

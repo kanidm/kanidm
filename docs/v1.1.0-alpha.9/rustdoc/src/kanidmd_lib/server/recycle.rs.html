@@ -1032,7 +1032,7 @@
         }
 
         <span class="comment">// Do we need to apply pre-mod?
-        // Very likely, incase domain has renamed etc.
+        // Very likely, in case domain has renamed etc.
         </span>Plugins::run_pre_modify(<span class="self">self</span>, <span class="kw-2">&amp;mut </span>candidates, <span class="kw-2">&amp;</span>me).map_err(|e| {
             <span class="macro">admin_error!</span>(<span class="string">&quot;Revive operation failed (plugin), {:?}&quot;</span>, e);
             e

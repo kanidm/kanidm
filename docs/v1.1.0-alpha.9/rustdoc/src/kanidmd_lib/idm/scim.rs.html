@@ -2766,7 +2766,7 @@
 </span><span class="kw">pub struct </span>GenerateScimSyncTokenEvent {
     <span class="comment">// Who initiated this?
     </span><span class="kw">pub </span>ident: Identity,
-    <span class="comment">// Who is it targetting?
+    <span class="comment">// Who is it targeting?
     </span><span class="kw">pub </span>target: Uuid,
     <span class="comment">// The label
     </span><span class="kw">pub </span>label: String,
@@ -2915,7 +2915,7 @@
             })<span class="question-mark">?</span>;
 
         <span class="kw">let </span>sync_account = SyncAccount::try_from_entry_rw(<span class="kw-2">&amp;</span>entry).map_err(|e| {
-            <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Failed to covert sync account&quot;</span>);
+            <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Failed to convert sync account&quot;</span>);
             e
         })<span class="question-mark">?</span>;
         <span class="kw">let </span>sync_uuid = sync_account.uuid;
@@ -2958,7 +2958,7 @@
         // Importantly, we have to do this for items that are in the recycle bin!
 
         // First, get the set of uuids that exist. We need this so we have the set of uuids we&#39;ll
-        // be deleteing *at the end*.
+        // be deleting *at the end*.
         </span><span class="kw">let </span>f_all_sync = <span class="macro">filter_all!</span>(<span class="macro">f_and!</span>([
             f_eq(<span class="string">&quot;class&quot;</span>, PVCLASS_SYNC_OBJECT.clone()),
             f_eq(<span class="string">&quot;sync_parent_uuid&quot;</span>, PartialValue::Refer(sync_uuid))
@@ -3038,7 +3038,7 @@
             })<span class="question-mark">?</span>;
 
         <span class="kw">let </span>sync_account = SyncAccount::try_from_entry_rw(<span class="kw-2">&amp;</span>entry).map_err(|e| {
-            <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Failed to covert sync account&quot;</span>);
+            <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Failed to convert sync account&quot;</span>);
             e
         })<span class="question-mark">?</span>;
         <span class="kw">let </span>sync_uuid = sync_account.uuid;
@@ -3081,7 +3081,7 @@
         // Importantly, we have to do this for items that are in the recycle bin!
 
         // First, get the set of uuids that exist. We need this so we have the set of uuids we&#39;ll
-        // be deleteing *at the end*.
+        // be deleting *at the end*.
         </span><span class="kw">let </span>f_all_sync = <span class="macro">filter_all!</span>(<span class="macro">f_and!</span>([
             f_eq(<span class="string">&quot;class&quot;</span>, PVCLASS_SYNC_OBJECT.clone()),
             f_eq(<span class="string">&quot;sync_parent_uuid&quot;</span>, PartialValue::Refer(sync_uuid))
@@ -3317,7 +3317,7 @@
         <span class="kw">if </span>fail {
             <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidEntryState);
         }
-        <span class="comment">// From that set of entries, parition to entries that exist and are
+        <span class="comment">// From that set of entries, partition to entries that exist and are
         // present, and entries that do not yet exist.
         //
         // We can&#39;t easily parititon here because we need to iterate over the
@@ -3358,7 +3358,7 @@
         //
         // For entries that do exist, mod their external_id
         //
-        // Basicly we just set this up as a batch modify and submit it.
+        // Basically we just set this up as a batch modify and submit it.
         </span><span class="self">self</span>.qs_write
             .internal_batch_modify(change_entries.iter().filter_map(|(u, scim_ent)| {
                 <span class="comment">// If the entry has an external id

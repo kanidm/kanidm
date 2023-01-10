@@ -192,12 +192,12 @@
                 </span><span class="kw">let </span>f = <span class="macro">filter!</span>(f_or(
                     riter.map(|u| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(u))).collect()
                 ));
-                <span class="kw">let </span>ges: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro-nonterminal">$qs</span>.internal_search(f).map_err(|e| {
+                <span class="kw">let </span>group_entries: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro-nonterminal">$qs</span>.internal_search(f).map_err(|e| {
                     <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;internal search failed&quot;</span>);
                     e
                 })<span class="question-mark">?</span>;
                 <span class="comment">// Now convert the group entries to groups.
-                </span><span class="kw">let </span>groups: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = ges
+                </span><span class="kw">let </span>groups: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = group_entries
                     .iter()
                     .map(|e| Group::try_from_entry(e.as_ref()))
                     .collect();

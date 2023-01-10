@@ -365,7 +365,7 @@
 /// caching components.
 </span><span class="kw">pub enum </span>IdentityId {
     <span class="comment">// Time stamp of the originating event.
-    // The uuid of the originiating user
+    // The uuid of the originating user
     </span>User(Uuid),
     Synch(Uuid),
     Internal,
@@ -468,7 +468,7 @@
 
     <span class="kw">pub fn </span>from_impersonate(ident: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="self">Self </span>{
         <span class="comment">// TODO #64 ?: In the future, we could change some of this data
-        // to reflect the fact we are infact impersonating the action
+        // to reflect the fact we are in fact impersonating the action
         // rather than the user explicitly requesting it. Could matter
         // to audits and logs to determine what happened.
         </span>ident.clone()

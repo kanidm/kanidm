@@ -400,7 +400,7 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; ReplicationUpdateVectorWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">pub fn </span>rebuild(<span class="kw-2">&amp;mut </span><span class="self">self</span>, entries: <span class="kw-2">&amp;</span>[Arc&lt;EntrySealedCommitted&gt;]) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="comment">// Entries and their internal changelogs are the &quot;source of truth&quot; for all changes
-        // that have ever occured and are stored on this server. So we use them to rebuild our RUV
+        // that have ever occurred and are stored on this server. So we use them to rebuild our RUV
         // here!
         </span><span class="kw">let </span><span class="kw-2">mut </span>rebuild_ruv: BTreeMap&lt;Cid, IDLBitRange&gt; = BTreeMap::new();
 

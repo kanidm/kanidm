@@ -1508,7 +1508,7 @@
                 <span class="self">self</span>.do_alert_error(<span class="string">&quot;Username not found&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Please try again&quot;</span>), ctx)
             }
             LoginState::Error { emsg, kopid } =&gt; <span class="self">self</span>.do_alert_error(
-                <span class="string">&quot;An error has occured 😔 &quot;</span>,
+                <span class="string">&quot;An error has occurred 😔 &quot;</span>,
                 <span class="prelude-val">Some</span>(
                     <span class="macro">format!</span>(
                         <span class="string">&quot;{}\n\n{}&quot;</span>,
@@ -1705,7 +1705,7 @@
                         <span class="self">self</span>.session_id = session_id;
                         <span class="kw">if </span>mechs.len() == <span class="number">1 </span>{
                             <span class="comment">// If it&#39;s only one mech, just submit that.
-                            </span><span class="kw">let </span>mech = mechs.pop().expect_throw(<span class="string">&quot;Memory corruption occured&quot;</span>);
+                            </span><span class="kw">let </span>mech = mechs.pop().expect_throw(<span class="string">&quot;Memory corruption occurred&quot;</span>);
                             <span class="kw">let </span>authreq = AuthRequest {
                                 step: AuthStep::Begin(mech),
                             };
@@ -1795,7 +1795,7 @@
                     AuthState::Continue(<span class="kw-2">mut </span>allowed) =&gt; {
                         <span class="kw">if </span>allowed.len() == <span class="number">1 </span>{
                             <span class="comment">// If there is only one, change our state for that input type.
-                            </span><span class="kw">match </span>allowed.pop().expect_throw(<span class="string">&quot;Memory corruption occured&quot;</span>) {
+                            </span><span class="kw">match </span>allowed.pop().expect_throw(<span class="string">&quot;Memory corruption occurred&quot;</span>) {
                                 AuthAllowed::Anonymous =&gt; {
                                     <span class="comment">// Just submit this.
                                 </span>}

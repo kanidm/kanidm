@@ -1997,7 +1997,7 @@
     <span class="doccomment">/// Index Slope Analysis. For the purpose of external modules you can consider this as a
     /// module that generates &quot;weights&quot; for each index that we have. Smaller values are faster
     /// indexes - larger values are more costly ones. This is not intended to yield perfect
-    /// weights. The intent is to seperate over obviously more effective indexes rather than
+    /// weights. The intent is to separate over obviously more effective indexes rather than
     /// to min-max the fine tuning of these. Consider name=foo vs class=*. name=foo will always
     /// be better than class=*, but comparing name=foo to spn=foo is &quot;much over muchness&quot; since
     /// both are really fast.
@@ -2010,7 +2010,7 @@
          *
          * Since we have the filter2idl threshold, we want to find &quot;what is the smallest
          * and most unique index asap so we can exit faster&quot;. This allows us to avoid
-         * loading larger most costly indexs that either have large idls, high variation
+         * loading larger most costly indexes that either have large idls, high variation
          * or few keys and are likely to miss and have to go out to disk.
          *
          * A few methods were proposed, but thanks to advice from Perri Boulton (psychology
@@ -2129,7 +2129,7 @@
         * the &quot;slopeyness&quot; aka the jank of the line, or more precisely, the angle.
         *
         * Now we need a way to numerically compare these lines. Since the points could be
-        * anywere on our graph:
+        * anywhere on our graph:
         *
         *    |
         *  4 +  *
@@ -2160,7 +2160,7 @@
         *      ───────────┼
         *         nkeys
         *
-        * Since this is right angled we can use arctan to work out the degress of the line. This
+        * Since this is right angled we can use arctan to work out the degrees of the line. This
         * gives us a value from 1.0 to 90.0 (We clamp to a minimum of 1.0, because we use 0 as &quot;None&quot;
         * in the NonZeroU8 type in filter.rs, which allows ZST optimisation)
         *
@@ -2169,7 +2169,7 @@
         * to minimise this loss and then we convert.
         *
         * And there we have it! A slope factor of the index! A way to compare these sets quickly
-        * at query optimisation time to minimse index access.
+        * at query optimisation time to minimise index access.
         */
         </span><span class="kw">let </span>slopes: HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = data
             .into_iter()
@@ -2193,7 +2193,7 @@
             </span><span class="kw">let </span>l: u32 = data.len().try_into().unwrap_or(u32::MAX);
             <span class="kw">let </span>c = f64::from(l);
             <span class="kw">let </span>mean = data.iter().take(u32::MAX <span class="kw">as </span>usize).sum::&lt;f64&gt;() / c;
-            <span class="kw">let </span>varience: f64 = data
+            <span class="kw">let </span>variance: f64 = data
                 .iter()
                 .take(u32::MAX <span class="kw">as </span>usize)
                 .map(|len| {
@@ -2203,7 +2203,7 @@
                 .sum::&lt;f64&gt;()
                 / (c - <span class="number">1.0</span>);
 
-            <span class="kw">let </span>sd = varience.sqrt();
+            <span class="kw">let </span>sd = variance.sqrt();
 
             <span class="comment">// This is saying ~85% of values will be at least this len or less.
             </span><span class="kw">let </span>sd_1 = mean + sd;
@@ -2211,14 +2211,14 @@
         } <span class="kw">else if </span>data.len() == <span class="number">1 </span>{
             (<span class="number">1.0</span>, data[<span class="number">0</span>])
         } <span class="kw">else </span>{
-            <span class="comment">// Cant resolve.
+            <span class="comment">// Can&#39;t resolve.
             </span><span class="kw">return </span>IdxSlope::MAX;
         };
 
         <span class="comment">// Now we know sd_1 and number of keys. We can use this as a triangle to work out
         // the angle along the hypotenuse. We use this angle - or slope - to show which
         // elements have the smallest sd_1 and most keys available. Then because this
-        // is bound between 0.0 -&gt; 90.0, we &quot;unfurl&quot; this around a half circle by multipling
+        // is bound between 0.0 -&gt; 90.0, we &quot;unfurl&quot; this around a half circle by multiplying
         // by 2. This gives us a little more precision when we drop the decimal point.
         </span><span class="kw">let </span>sf = (sd_1 / n_keys).atan().to_degrees() * <span class="number">2.8</span>;
 

@@ -924,7 +924,7 @@
                     <span class="comment">// No need to redraw, we are leaving.
                     </span><span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
                     <span class="prelude-val">Err</span>(e) =&gt; {
-                        <span class="comment">// Something went bang, opps.
+                        <span class="comment">// Something went bang, oops.
                         </span><span class="macro">console::error!</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, e).as_str());
                         <span class="self">self</span>.state = State::ErrInvalidRequest;
                         <span class="bool-val">true

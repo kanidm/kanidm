@@ -154,7 +154,7 @@ perform on database records (<code>object</code>) in the system.</p>
 override even if applicable. They should only be created by system access profiles because certain
 changes must be denied.</p>
 <p>Access profiles are stored as entries and are dynamically loaded into a structure that is more
-efficent for use at runtime. <code>Schema</code> and its transactions are a similar implementation.</p>
+efficient for use at runtime. <code>Schema</code> and its transactions are a similar implementation.</p>
 <h2 id="search-requirements"><a class="header" href="#search-requirements">Search Requirements</a></h2>
 <p>A search access profile must be able to limit:</p>
 <ol>
@@ -169,7 +169,7 @@ memberOf the group called &quot;visible&quot;.</p>
 <code>legalName</code>), and their public <code>email</code>.</p>
 </blockquote>
 <p>Worded a bit differently. You need permission over the scope of entries, you need to be able to read
-the attribute to filter on it, and you need to be able to read the attribute to recieve it in the
+the attribute to filter on it, and you need to be able to read the attribute to receive it in the
 result entry.</p>
 <p>If Alice searches for <code>(&amp;(name=william)(secretdata=x))</code>, we should not allow this to proceed because
 Alice doesn't have the rights to read secret data, so they should not be allowed to filter on it.
@@ -206,7 +206,7 @@ SearchRequest {
 acp class user: Pres(name) allow, Pres(desc) deny. Invert and Append
 </code></pre>
 <p>So the filter now is:</p>
-<pre><code>And: {
+<pre><code class="language-text">And: {
     AndNot: {
         Eq(&quot;class&quot;, &quot;user&quot;)
     },
@@ -218,7 +218,7 @@ acp class user: Pres(name) allow, Pres(desc) deny. Invert and Append
 </code></pre>
 <p>This would now only allow access to the <code>name</code> and <code>description</code> of the class <code>group</code>.</p>
 <p>If we extend this to a third, this would work. A more complex example:</p>
-<pre><code>search {
+<pre><code class="language-text">search {
     action: allow
     targetscope: Eq(&quot;class&quot;, &quot;group&quot;)
     targetattr: name
@@ -269,7 +269,7 @@ are not marked as <code>protected</code>.</p>
 </blockquote>
 <h2 id="create-requirements"><a class="header" href="#create-requirements">Create Requirements</a></h2>
 <p>A <code>create</code> profile defines the following limits to what objects can be created, through the
-combination of filters and atttributes.</p>
+combination of filters and attributes.</p>
 <p>An example:</p>
 <blockquote>
 <p>Alice should only be able to create objects where the <code>class</code> is <code>group</code>, and can only name the
@@ -311,7 +311,7 @@ best implemented as a compilation of <code>self -&gt; eq(uuid, self.uuid)</code>
 <h2 id="implementation-details"><a class="header" href="#implementation-details">Implementation Details</a></h2>
 <p>CHANGE: Receiver should be a group, and should be single value/multivalue? Can <em>only</em> be a group.</p>
 <p>Example profiles:</p>
-<pre><code>search {
+<pre><code class="language-text">search {
     action: allow
     receiver: Eq(&quot;memberof&quot;, &quot;admins&quot;)
     targetscope: Pres(&quot;class&quot;)
@@ -434,7 +434,7 @@ exist! However, each one must still list their respective actions to allow prope
 <h2 id="search-application"><a class="header" href="#search-application">&quot;Search&quot; Application</a></h2>
 <p>The set of access controls is checked, and the set where receiver matches the current identified
 user is collected. These then are added to the users requested search as:</p>
-<pre><code>And(&lt;User Search Request&gt;, Or(&lt;Set of Search Profile Filters))
+<pre><code class="language-text">And(&lt;User Search Request&gt;, Or(&lt;Set of Search Profile Filters))
 </code></pre>
 <p>In this manner, the search security is easily applied, as if the targets to conform to one of the
 required search profile filters, the outer <code>And</code> condition is nullified and no results returned.</p>
@@ -442,7 +442,7 @@ required search profile filters, the outer <code>And</code> condition is nullifi
 set of attrs has to be checked to determine what of that entry can be displayed. Consider there are
 three entries, A, B, C. An ACI that allows read of &quot;name&quot; on A, B exists, and a read of &quot;mail&quot; on B,
 C. The correct behaviour is then:</p>
-<pre><code>A: name
+<pre><code class="language-text">A: name
 B: name, mail
 C: mail
 </code></pre>
@@ -451,7 +451,7 @@ control operation, but also one of the most important. It may be possible to com
 faster method, but initially a simple version is needed.</p>
 <h2 id="delete-application"><a class="header" href="#delete-application">&quot;Delete&quot; Application</a></h2>
 <p>Delete is similar to search, however there is the risk that the user may say something like:</p>
-<pre><code>Pres(&quot;class&quot;).
+<pre><code class="language-text">Pres(&quot;class&quot;).
 </code></pre>
 <p>Were we to approach this like search, this would then have &quot;every thing the identified user is
 allowed to delete, is deleted&quot;. A consideration here is that <code>Pres(&quot;class&quot;)</code> would delete &quot;all&quot;

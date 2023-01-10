@@ -167,11 +167,11 @@ These features will be documented <em>first</em>, and the use cases <em>second</
 the features that satisfy it.</p>
 <h2 id="required-features-to-satisfy"><a class="header" href="#required-features-to-satisfy">Required Features to Satisfy</a></h2>
 <h3 id="refactor-of-default-access-controls"><a class="header" href="#refactor-of-default-access-controls">Refactor of default access controls</a></h3>
-<p>The current default privileges will need to be refactored to improve seperation of privilege and
+<p>The current default privileges will need to be refactored to improve separation of privilege and
 improved delegation of finer access rights.</p>
 <h3 id="access-profiles-target-specifiers-instead-of-filters"><a class="header" href="#access-profiles-target-specifiers-instead-of-filters">Access profiles target specifiers instead of filters</a></h3>
 <p>Access profiles should target a list of groups for who the access profile applies to, and who
-recieves the access it is granting.</p>
+receives the access it is granting.</p>
 <p>Alternately an access profile could target &quot;self&quot; so that self-update rules can still be expressed.</p>
 <p>An access profile could target an oauth2 definition for the purpose of allowing reads to members of
 a set of scopes that can access the service.</p>
@@ -183,10 +183,10 @@ management and delegation scenarioes. This improves the situation making things 
 the current filter system. It also may allow filters to be simplified to remove the SELF uuid
 resolve step in some cases.</p>
 <h3 id="filter-based-groups"><a class="header" href="#filter-based-groups">Filter based groups</a></h3>
-<p>These are groups who's members are dynamicly allocated based on a filter query. This allows a
+<p>These are groups who's members are dynamically allocated based on a filter query. This allows a
 similar level of dynamic group management as we have currently with access profiles, but with the
 additional ability for them to be used outside of the access control context. This is the &quot;bridge&quot;
-allowing us to move from filter based access controls to &quot;group&quot; targetted.</p>
+allowing us to move from filter based access controls to &quot;group&quot; targeted.</p>
 <p>A risk of filter based groups is &quot;infinite churn&quot; because of recursion. This can occur if you had a
 rule such a &quot;and not memberof = self&quot; on a dynamic group. Because of this, filters on dynamic groups
 may not use &quot;memberof&quot; unless they are internally provided by the kanidm project so that we can vet
@@ -207,8 +207,8 @@ access to this value.</p>
 authentication. This is required for sudo mode so that a group of accounts can be &quot;always in sudo&quot;
 mode and this enforces rules on session expiry.</p>
 <h2 id="access-control-use-cases"><a class="header" href="#access-control-use-cases">Access Control Use Cases</a></h2>
-<h3 id="default-roles--seperation-of-privilege"><a class="header" href="#default-roles--seperation-of-privilege">Default Roles / Seperation of Privilege</a></h3>
-<p>By default we attempt to seperate privileges so that &quot;no single account&quot; has complete authority over
+<h3 id="default-roles--separation-of-privilege"><a class="header" href="#default-roles--separation-of-privilege">Default Roles / Separation of Privilege</a></h3>
+<p>By default we attempt to separate privileges so that &quot;no single account&quot; has complete authority over
 the system.</p>
 <p>Satisfied by:</p>
 <ul>
@@ -268,7 +268,7 @@ authentication sessions as a result of this.</p>
 <p>For ux/ui integration, being able to list oauth2 applications that are accessible to the user would
 be a good feature. To limit &quot;who&quot; can see the oauth2 applications that an account can access a way
 to &quot;allow read&quot; but by proxy of the related users of the oauth2 service. This will require access
-controls to be able to interept the oauth2 config and provide rights based on that.</p>
+controls to be able to interpret the oauth2 config and provide rights based on that.</p>
 <p>Satisfied by:</p>
 <ul>
 <li>Access profiles target specifiers instead of filters</li>

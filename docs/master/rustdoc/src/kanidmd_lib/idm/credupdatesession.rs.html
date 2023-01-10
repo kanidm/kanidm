@@ -2719,7 +2719,7 @@
 <span class="kw">pub struct </span>InitCredentialUpdateIntentEvent {
     <span class="comment">// Who initiated this?
     </span><span class="kw">pub </span>ident: Identity,
-    <span class="comment">// Who is it targetting?
+    <span class="comment">// Who is it targeting?
     </span><span class="kw">pub </span>target: Uuid,
     <span class="comment">// How long is it valid for?
     </span><span class="kw">pub </span>max_ttl: <span class="prelude-ty">Option</span>&lt;Duration&gt;,
@@ -2925,7 +2925,7 @@
 
         // Mark that we have created an intent token on the user.
         // ⚠️   -- remember, there is a risk, very low, but still a risk of collision of the intent_id.
-        //        instead of enforcing unique, which would divulge that the collision occured, we
+        //        instead of enforcing unique, which would divulge that the collision occurred, we
         //        write anyway, and instead on the intent access path we invalidate IF the collision
         //        occurs.
         </span><span class="kw">let </span><span class="kw-2">mut </span>modlist = ModifyList::new_append(
@@ -3096,7 +3096,7 @@
                 }
             }
             <span class="prelude-val">None </span>=&gt; {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Corruption may have occured - index yielded an entry for intent_id, but the entry does not contain that intent_id&quot;</span>);
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Corruption may have occurred - index yielded an entry for intent_id, but the entry does not contain that intent_id&quot;</span>);
                 <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidState);
             }
         };
@@ -4477,7 +4477,7 @@
 
         <span class="kw">let </span>cutxn = idms.cred_update_transaction();
 
-        <span class="comment">// Now fake going back in time .... allows the tokne to decrypt, but the sesion
+        <span class="comment">// Now fake going back in time .... allows the tokne to decrypt, but the session
         // is gone anyway!
         </span><span class="kw">let </span>c_status = cutxn
             .credential_update_status(<span class="kw-2">&amp;</span>cust, ct)
@@ -4771,7 +4771,7 @@
         ));
 
         <span class="comment">// Now good to go, we need to now add our backup codes.
-        // Whats the right way to get these back?
+        // What&#39;s the right way to get these back?
         </span><span class="kw">let </span>c_status = cutxn
             .credential_primary_init_backup_codes(<span class="kw-2">&amp;</span>cust, ct)
             .expect(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
@@ -4893,7 +4893,7 @@
 
         <span class="kw">let </span>c_status = cutxn
             .credential_update_cancel_mfareg(<span class="kw-2">&amp;</span>cust, ct)
-            .expect(<span class="string">&quot;Failed to cancel inflight totp change&quot;</span>);
+            .expect(<span class="string">&quot;Failed to cancel in-flight totp change&quot;</span>);
 
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(c_status.mfaregstate, MfaRegStateStatus::None));
         <span class="macro">assert!</span>(c_status.can_commit);
@@ -4911,7 +4911,7 @@
 
     // - setup webauthn
     // - remove webauthn
-    // - test mulitple webauthn token.
+    // - test multiple webauthn token.
 
     </span><span class="attribute">#[idm_test]
     </span><span class="kw">async fn </span>test_idm_credential_update_onboarding_create_new_passkey(
@@ -4952,7 +4952,7 @@
 
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(c_status.mfaregstate, MfaRegStateStatus::None));
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-            <span class="comment">// Shuld be none.
+            <span class="comment">// Should be none.
             </span>c_status.primary.as_ref(),
             <span class="prelude-val">None
         </span>));

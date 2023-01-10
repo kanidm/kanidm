@@ -180,7 +180,7 @@
             <span class="kw">if </span>e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DOMAIN_INFO)
                 &amp;&amp; e.attribute_equality(<span class="string">&quot;uuid&quot;</span>, <span class="kw-2">&amp;</span>PVUUID_DOMAIN_INFO)
             {
-                <span class="comment">// We always set this, because the DB uuid is authorative.
+                <span class="comment">// We always set this, because the DB uuid is authoritative.
                 </span><span class="kw">let </span>u = Value::Uuid(qs.get_domain_uuid());
                 e.set_ava(<span class="string">&quot;domain_uuid&quot;</span>, once(u));
                 <span class="macro">trace!</span>(<span class="string">&quot;plugin_domain: Applying uuid transform&quot;</span>);

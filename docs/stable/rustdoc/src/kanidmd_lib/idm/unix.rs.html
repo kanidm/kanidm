@@ -431,6 +431,10 @@
 <span id="431">431</span>
 <span id="432">432</span>
 <span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::iter;
 <span class="comment">// use crossbeam::channel::Sender;
 </span><span class="kw">use </span>std::time::Duration;
@@ -805,9 +809,13 @@
                     f_eq(<span class="string">&quot;class&quot;</span>, PVCLASS_GROUP.clone()),
                     f_or(riter.map(|u| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(u))).collect())
                 ]));
-                <span class="kw">let </span>ges: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro-nonterminal">$qs</span>.internal_search(f)<span class="question-mark">?</span>;
+                <span class="kw">let </span>group_entries: Vec&lt;<span class="kw">_</span>&gt; = <span class="macro-nonterminal">$qs</span>.internal_search(f)<span class="question-mark">?</span>;
                 <span class="kw">let </span>groups: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt; = iter::once(<span class="prelude-val">Ok</span>(upg))
-                    .chain(ges.iter().map(|e| UnixGroup::try_from_entry(e.as_ref())))
+                    .chain(
+                        group_entries
+                            .iter()
+                            .map(|e| UnixGroup::try_from_entry(e.as_ref())),
+                    )
                     .collect();
                 groups
             }

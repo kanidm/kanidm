@@ -1480,7 +1480,7 @@
     <span class="kw-2">mut </span>req: tide::Request&lt;AppState&gt;,
     filter: Filter&lt;FilterInvalid&gt;,
     uuid_or_name: String,
-    <span class="comment">// Seperate for account_delete_id_radius
+    <span class="comment">// Separate for account_delete_id_radius
     </span>attr: String,
 ) -&gt; tide::Result {
     <span class="kw">let </span>uat = req.get_current_uat();

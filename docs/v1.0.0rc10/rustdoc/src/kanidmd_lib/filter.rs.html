@@ -2573,7 +2573,7 @@
         // This probably needs some rework
 
         // Getting this each recursion could be slow. Maybe
-        // we need an inner functon that passes the reference?
+        // we need an inner function that passes the reference?
         </span><span class="kw">let </span>schema_attributes = schema.get_attributes();
         <span class="comment">// We used to check the attr_name by normalising it (lowercasing)
         // but should we? I think we actually should just call a special
@@ -3076,7 +3076,7 @@ impl PartialEq for Filter&lt;FilterValidResolved&gt; {
             }
             <span class="comment">// We set the compound filters slope factor to &quot;None&quot; here, because when we do
             // optimise we&#39;ll actually fill in the correct slope factors after we sort those
-            // inner terms in a more optimial way.
+            // inner terms in a more optimal way.
             </span>FilterComp::Or(vs) =&gt; {
                 <span class="kw">let </span>fi: <span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="kw">_</span>&gt;&gt; = vs
                     .into_iter()

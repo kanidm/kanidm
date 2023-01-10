@@ -461,7 +461,7 @@ bindaddress = &quot;[::]:8443&quot;
 #   To preserve the original IP of the caller, these systems
 #   will often add a header such as &quot;Forwarded&quot; or
 #   &quot;X-Forwarded-For&quot;. If set to true, then this header is
-#   respected as the &quot;authoritive&quot; source of the IP of the
+#   respected as the &quot;authoritative&quot; source of the IP of the
 #   connected client. If you are not using a load balancer
 #   then you should leave this value as default.
 #   Defaults to false
@@ -893,7 +893,7 @@ consistency, and renaming your domain.</p>
 <p>Accounts and Groups are the primary reasons for Kanidm to exist. Kanidm is optimised as a repository
 for these data. As a result, there are many concepts and important details to understand.</p>
 <h2 id="service-accounts-vs-person-accounts"><a class="header" href="#service-accounts-vs-person-accounts">Service Accounts vs Person Accounts</a></h2>
-<p>Kanidm seperates accounts into two types. Person accounts (or persons) are intended for use by
+<p>Kanidm separates accounts into two types. Person accounts (or persons) are intended for use by
 humans that will access the system in an interactive way. Service accounts are intended for use by
 computers or services that need to identify themself to Kanidm. Generally a person or group of
 persons will be responsible for and will manage service accounts. Because of this distinction these
@@ -913,14 +913,14 @@ Identity Management (IDM) systems.</p>
 <p>There are two builtin system administration accounts.</p>
 <p><code>admin</code> is the default service account which has privileges to configure and administer kanidm as a
 whole. This account can manage access controls, schema, integrations and more. However the <code>admin</code>
-can not manage persons by default to seperate the priviliges. As this is a service account is is
+can not manage persons by default to separate the privileges. As this is a service account is is
 intended for limited use.</p>
 <p><code>idm_admin</code> is the default service account which has privileges to create persons and to manage
 these accounts and groups. They can perform credential resets and more.</p>
 <p>Both the <code>admin</code> and the <code>idm_admin</code> user should <em>NOT</em> be used for daily activities - they exist for
 initial system configuration, and for disaster recovery scenarios. You should delegate permissions
 as required to named user accounts instead.</p>
-<p>The majority of the builtin groups are privilige groups that provide rights over Kanidm
+<p>The majority of the builtin groups are privilege groups that provide rights over Kanidm
 administrative actions. These include groups for account management, person management (personal and
 sensitive data), group management, and more.</p>
 <h2 id="recovering-the-initial-admin-accounts"><a class="header" href="#recovering-the-initial-admin-accounts">Recovering the Initial Admin Accounts</a></h2>
@@ -1317,7 +1317,7 @@ passwords previously considered breached.</p>
 </code></pre>
 <p>Multiple bad lists can be listed and uploaded at once. These are preprocessed to identify and remove
 passwords that zxcvbn and our password rules would already have eliminated. That helps to make the
-bad list more efficent to operate over at run time.</p>
+bad list more efficient to operate over at run time.</p>
 <h2 id="password-rotation"><a class="header" href="#password-rotation">Password Rotation</a></h2>
 <p>Kanidm will never support this &quot;anti-feature&quot;. Password rotation encourages poor password hygiene
 and is not shown to prevent any attacks.</p>
@@ -1344,12 +1344,12 @@ schema will block the creation).</p>
 <h3 id="upg-generation"><a class="header" href="#upg-generation">UPG Generation</a></h3>
 <p>Due to the requirement that a user have a UPG for security, many systems create these as two
 independent items. For example in /etc/passwd and /etc/group:</p>
-<pre><code># passwd
+<pre><code class="language-text"># passwd
 william:x:654401105:654401105::/home/william:/bin/zsh
 # group
 william:x:654401105:
 </code></pre>
-<p>Other systems like FreeIPA use a plugin that generates a UPG as a seperate group entry on creation
+<p>Other systems like FreeIPA use a plugin that generates a UPG as a separate group entry on creation
 of the account. This means there are two entries for an account, and they must be kept in lock-step.</p>
 <p>Kanidm does neither of these. As the GID number of the user must be unique, and a user implies the
 UPG must exist, we can generate UPG's on-demand from the account. This has a single side effect -
@@ -1404,7 +1404,7 @@ separate type of membership for POSIX members required.</p>
 <h3 id="subuid-conflicts-with-podman"><a class="header" href="#subuid-conflicts-with-podman">subuid conflicts with Podman</a></h3>
 <p>Due to the way that Podman operates, in some cases using the Kanidm client inside non-root
 containers with Kanidm accounts may fail with an error such as:</p>
-<pre><code>ERRO[0000] cannot find UID/GID for user NAME: No subuid ranges found for user &quot;NAME&quot; in /etc/subuid
+<pre><code class="language-text">ERROR[0000] cannot find UID/GID for user NAME: No subuid ranges found for user &quot;NAME&quot; in /etc/subuid
 </code></pre>
 <p>This is a fault in Podman and how it attempts to provide non-root containers, when UID/GIDs are
 greater than 65535. In this case you may manually allocate your users GID number to be between
@@ -1546,7 +1546,7 @@ revive user1 // re-add groups based on directmemberof (empty set)
 revive group1 // no members
 </code></pre>
 <p>These issues could be looked at again in the future, but for now we think that deletes of groups is
-rare - we expect recycle bin to save you in &quot;opps&quot; moments, and in a majority of cases you may
+rare - we expect recycle bin to save you in &quot;oops&quot; moments, and in a majority of cases you may
 delete a group or a user and then restore them. To handle this series of steps requires extra code
 complexity in how we flag operations. For more, see
 <a href="https://github.com/kanidm/kanidm/issues/177">This issue on github</a>.</p>
@@ -1667,7 +1667,7 @@ communication channels.</p>
 <p>This question is normally asked because people want to setup multiple Kanidm servers connected to a
 single database.</p>
 <p>Kanidm does not use SQL as a <em>database</em>. Kanidm uses SQL as a durable key-value store and Kanidm
-implements it's own database, caching, querying, optimisation and indexing ontop of that key-value
+implements it's own database, caching, querying, optimisation and indexing on top of that key-value
 store.</p>
 <p>As a result, because Kanidm specifically implements it's own cache layer above the key-value store
 (sqlite in this example) then if you were to connect two Kanidm instances to the same key-value
@@ -1754,7 +1754,7 @@ code and exchanges it for a valid token that may be provided to the user's brows
 <p>The resource server may then optionally contact the token introspection endpoint of the
 authorisation server about the provided OAuth token, which yields extra metadata about the identity
 that holds the token from the authorisation. This metadata may include identity information, but
-also may include extended metadata, sometimes refered to as &quot;claims&quot;. Claims are information bound
+also may include extended metadata, sometimes referred to as &quot;claims&quot;. Claims are information bound
 to a token based on properties of the session that may allow the resource server to make extended
 authorisation decisions without the need to contact the authorisation server to arbitrate.</p>
 <p>It's important to note that OAuth2 at its core is an authorisation system which has layered
@@ -2168,7 +2168,7 @@ password    required    pam_kanidm.so
 
 # /etc/pam.d/common-session-pc
 # Controls setup of the user session once a successful authentication and authorisation has
-# occured.
+# occurred.
 session optional    pam_systemd.so
 session required    pam_limits.so
 session optional    pam_unix.so try_first_pass
@@ -2409,7 +2409,7 @@ their disclosure is not going to lead to a full account compromise.</li>
 credentials at any time to enroll further devices.</li>
 </ul>
 <h3 id="service-accounts-do-not-have-radius-access"><a class="header" href="#service-accounts-do-not-have-radius-access">Service Accounts Do Not Have Radius Access</a></h3>
-<p>Due to the design of service accounts, they do not have access to radius for credential assignemnt.
+<p>Due to the design of service accounts, they do not have access to radius for credential assignment.
 If you require RADIUS usage with a service account you <em>may</em> need to use EAP-TLS or some other
 authentication method.</p>
 <h2 id="account-credential-configuration"><a class="header" href="#account-credential-configuration">Account Credential Configuration</a></h2>
@@ -2571,7 +2571,7 @@ tree. Kanidm is a flat model, so we have to emulate some tree-like elements, and
 <li>All other entries are direct subordinates of the domain_info for DN purposes.</li>
 <li>Distinguished Names (DNs) are generated from the spn, name, or uuid attribute.</li>
 <li>Bind DNs can be remapped and rewritten, and may not even be a DN during bind.</li>
-<li>The '*' and '+' operators can not be used in conjuction with attribute lists in searches.</li>
+<li>The '*' and '+' operators can not be used in conjunction with attribute lists in searches.</li>
 </ul>
 <p>These decisions were made to make the path as simple and effective as possible, relying more on the
 Kanidm query and filter system than attempting to generate a tree-like representation of data. As
@@ -2749,7 +2749,7 @@ the sync tool configuration.</p>
 <p>The sync tool runs in batches, meaning that changes from the source IDM service will be delayed to
 appear into Kanidm. This is affected by how frequently you choose to run the sync tool.</p>
 <p>If the sync tool fails, you can investigate details in the Kanidmd server output.</p>
-<p>The sync tool can run &quot;indefinetly&quot; if you wish for Kanidm to always import data from the external
+<p>The sync tool can run &quot;indefinitely&quot; if you wish for Kanidm to always import data from the external
 source.</p>
 <h2 id="finalisting-the-sync-account"><a class="header" href="#finalisting-the-sync-account">Finalisting the Sync Account</a></h2>
 <p>If you are performing a migration from an external IDM to Kanidm, when that migration is completed
@@ -3316,7 +3316,7 @@ us accepting your code!</li>
 <pre><code class="language-bash">git commit -m 'Commit message' change_file.rs ...
 git push &lt;myfork/origin&gt; &lt;feature-branch-name&gt;
 </code></pre>
-<p>If you receive advice or make further changes, just keep commiting to the branch, and pushing to
+<p>If you receive advice or make further changes, just keep committing to the branch, and pushing to
 your branch. When we are happy with the code, we'll merge in GitHub, meaning you can now clean up
 your branch.</p>
 <pre><code class="language-bash">git checkout master
@@ -3422,7 +3422,7 @@ environment:</p>
 <p>To speed up testing across platforms, we're leveraging GitHub actions to build containers for test
 use.</p>
 <p>Whenever code is merged with the <code>master</code> branch of Kanidm, containers are automatically built for
-<code>kanidmd</code> and <code>radius</code>. Sometimes they fail to build, but we'll try to keep them avilable.</p>
+<code>kanidmd</code> and <code>radius</code>. Sometimes they fail to build, but we'll try to keep them available.</p>
 <p>To find information on the packages,
 <a href="https://github.com/orgs/kanidm/packages?repo_name=kanidm">visit the Kanidm packages page</a>.</p>
 <p>An example command for pulling and running the radius container is below. You'll need to
@@ -3466,11 +3466,11 @@ These features will be documented <em>first</em>, and the use cases <em>second</
 the features that satisfy it.</p>
 <h2 id="required-features-to-satisfy"><a class="header" href="#required-features-to-satisfy">Required Features to Satisfy</a></h2>
 <h3 id="refactor-of-default-access-controls"><a class="header" href="#refactor-of-default-access-controls">Refactor of default access controls</a></h3>
-<p>The current default privileges will need to be refactored to improve seperation of privilege and
+<p>The current default privileges will need to be refactored to improve separation of privilege and
 improved delegation of finer access rights.</p>
 <h3 id="access-profiles-target-specifiers-instead-of-filters"><a class="header" href="#access-profiles-target-specifiers-instead-of-filters">Access profiles target specifiers instead of filters</a></h3>
 <p>Access profiles should target a list of groups for who the access profile applies to, and who
-recieves the access it is granting.</p>
+receives the access it is granting.</p>
 <p>Alternately an access profile could target &quot;self&quot; so that self-update rules can still be expressed.</p>
 <p>An access profile could target an oauth2 definition for the purpose of allowing reads to members of
 a set of scopes that can access the service.</p>
@@ -3482,10 +3482,10 @@ management and delegation scenarioes. This improves the situation making things 
 the current filter system. It also may allow filters to be simplified to remove the SELF uuid
 resolve step in some cases.</p>
 <h3 id="filter-based-groups"><a class="header" href="#filter-based-groups">Filter based groups</a></h3>
-<p>These are groups who's members are dynamicly allocated based on a filter query. This allows a
+<p>These are groups who's members are dynamically allocated based on a filter query. This allows a
 similar level of dynamic group management as we have currently with access profiles, but with the
 additional ability for them to be used outside of the access control context. This is the &quot;bridge&quot;
-allowing us to move from filter based access controls to &quot;group&quot; targetted.</p>
+allowing us to move from filter based access controls to &quot;group&quot; targeted.</p>
 <p>A risk of filter based groups is &quot;infinite churn&quot; because of recursion. This can occur if you had a
 rule such a &quot;and not memberof = self&quot; on a dynamic group. Because of this, filters on dynamic groups
 may not use &quot;memberof&quot; unless they are internally provided by the kanidm project so that we can vet
@@ -3506,8 +3506,8 @@ access to this value.</p>
 authentication. This is required for sudo mode so that a group of accounts can be &quot;always in sudo&quot;
 mode and this enforces rules on session expiry.</p>
 <h2 id="access-control-use-cases"><a class="header" href="#access-control-use-cases">Access Control Use Cases</a></h2>
-<h3 id="default-roles--seperation-of-privilege"><a class="header" href="#default-roles--seperation-of-privilege">Default Roles / Seperation of Privilege</a></h3>
-<p>By default we attempt to seperate privileges so that &quot;no single account&quot; has complete authority over
+<h3 id="default-roles--separation-of-privilege"><a class="header" href="#default-roles--separation-of-privilege">Default Roles / Separation of Privilege</a></h3>
+<p>By default we attempt to separate privileges so that &quot;no single account&quot; has complete authority over
 the system.</p>
 <p>Satisfied by:</p>
 <ul>
@@ -3567,7 +3567,7 @@ authentication sessions as a result of this.</p>
 <p>For ux/ui integration, being able to list oauth2 applications that are accessible to the user would
 be a good feature. To limit &quot;who&quot; can see the oauth2 applications that an account can access a way
 to &quot;allow read&quot; but by proxy of the related users of the oauth2 service. This will require access
-controls to be able to interept the oauth2 config and provide rights based on that.</p>
+controls to be able to interpret the oauth2 config and provide rights based on that.</p>
 <p>Satisfied by:</p>
 <ul>
 <li>Access profiles target specifiers instead of filters</li>
@@ -3606,7 +3606,7 @@ perform on database records (<code>object</code>) in the system.</p>
 override even if applicable. They should only be created by system access profiles because certain
 changes must be denied.</p>
 <p>Access profiles are stored as entries and are dynamically loaded into a structure that is more
-efficent for use at runtime. <code>Schema</code> and its transactions are a similar implementation.</p>
+efficient for use at runtime. <code>Schema</code> and its transactions are a similar implementation.</p>
 <h2 id="search-requirements"><a class="header" href="#search-requirements">Search Requirements</a></h2>
 <p>A search access profile must be able to limit:</p>
 <ol>
@@ -3621,7 +3621,7 @@ memberOf the group called &quot;visible&quot;.</p>
 <code>legalName</code>), and their public <code>email</code>.</p>
 </blockquote>
 <p>Worded a bit differently. You need permission over the scope of entries, you need to be able to read
-the attribute to filter on it, and you need to be able to read the attribute to recieve it in the
+the attribute to filter on it, and you need to be able to read the attribute to receive it in the
 result entry.</p>
 <p>If Alice searches for <code>(&amp;(name=william)(secretdata=x))</code>, we should not allow this to proceed because
 Alice doesn't have the rights to read secret data, so they should not be allowed to filter on it.
@@ -3658,7 +3658,7 @@ SearchRequest {
 acp class user: Pres(name) allow, Pres(desc) deny. Invert and Append
 </code></pre>
 <p>So the filter now is:</p>
-<pre><code>And: {
+<pre><code class="language-text">And: {
     AndNot: {
         Eq(&quot;class&quot;, &quot;user&quot;)
     },
@@ -3670,7 +3670,7 @@ acp class user: Pres(name) allow, Pres(desc) deny. Invert and Append
 </code></pre>
 <p>This would now only allow access to the <code>name</code> and <code>description</code> of the class <code>group</code>.</p>
 <p>If we extend this to a third, this would work. A more complex example:</p>
-<pre><code>search {
+<pre><code class="language-text">search {
     action: allow
     targetscope: Eq(&quot;class&quot;, &quot;group&quot;)
     targetattr: name
@@ -3721,7 +3721,7 @@ are not marked as <code>protected</code>.</p>
 </blockquote>
 <h2 id="create-requirements"><a class="header" href="#create-requirements">Create Requirements</a></h2>
 <p>A <code>create</code> profile defines the following limits to what objects can be created, through the
-combination of filters and atttributes.</p>
+combination of filters and attributes.</p>
 <p>An example:</p>
 <blockquote>
 <p>Alice should only be able to create objects where the <code>class</code> is <code>group</code>, and can only name the
@@ -3763,7 +3763,7 @@ best implemented as a compilation of <code>self -&gt; eq(uuid, self.uuid)</code>
 <h2 id="implementation-details"><a class="header" href="#implementation-details">Implementation Details</a></h2>
 <p>CHANGE: Receiver should be a group, and should be single value/multivalue? Can <em>only</em> be a group.</p>
 <p>Example profiles:</p>
-<pre><code>search {
+<pre><code class="language-text">search {
     action: allow
     receiver: Eq(&quot;memberof&quot;, &quot;admins&quot;)
     targetscope: Pres(&quot;class&quot;)
@@ -3886,7 +3886,7 @@ exist! However, each one must still list their respective actions to allow prope
 <h2 id="search-application"><a class="header" href="#search-application">&quot;Search&quot; Application</a></h2>
 <p>The set of access controls is checked, and the set where receiver matches the current identified
 user is collected. These then are added to the users requested search as:</p>
-<pre><code>And(&lt;User Search Request&gt;, Or(&lt;Set of Search Profile Filters))
+<pre><code class="language-text">And(&lt;User Search Request&gt;, Or(&lt;Set of Search Profile Filters))
 </code></pre>
 <p>In this manner, the search security is easily applied, as if the targets to conform to one of the
 required search profile filters, the outer <code>And</code> condition is nullified and no results returned.</p>
@@ -3894,7 +3894,7 @@ required search profile filters, the outer <code>And</code> condition is nullifi
 set of attrs has to be checked to determine what of that entry can be displayed. Consider there are
 three entries, A, B, C. An ACI that allows read of &quot;name&quot; on A, B exists, and a read of &quot;mail&quot; on B,
 C. The correct behaviour is then:</p>
-<pre><code>A: name
+<pre><code class="language-text">A: name
 B: name, mail
 C: mail
 </code></pre>
@@ -3903,7 +3903,7 @@ control operation, but also one of the most important. It may be possible to com
 faster method, but initially a simple version is needed.</p>
 <h2 id="delete-application"><a class="header" href="#delete-application">&quot;Delete&quot; Application</a></h2>
 <p>Delete is similar to search, however there is the risk that the user may say something like:</p>
-<pre><code>Pres(&quot;class&quot;).
+<pre><code class="language-text">Pres(&quot;class&quot;).
 </code></pre>
 <p>Were we to approach this like search, this would then have &quot;every thing the identified user is
 allowed to delete, is deleted&quot;. A consideration here is that <code>Pres(&quot;class&quot;)</code> would delete &quot;all&quot;

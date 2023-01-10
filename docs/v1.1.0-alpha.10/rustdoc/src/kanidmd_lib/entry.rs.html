@@ -3318,7 +3318,7 @@
 <span class="kw">impl </span>Entry&lt;EntryInit, EntryNew&gt; {
     <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         Entry {
-            <span class="comment">// This means NEVER COMMITED
+            <span class="comment">// This means NEVER COMMITTED
             </span>valid: EntryInit,
             state: EntryNew,
             attrs: Map::new(),
@@ -3469,7 +3469,7 @@
                     }
                     <span class="string">&quot;index&quot; </span>=&gt; {
                         valueset::from_value_iter(
-                        vs.into_iter().map(|v| Value::new_indexs(v.as_str())
+                        vs.into_iter().map(|v| Value::new_indexes(v.as_str())
                             .unwrap_or_else(|| {
                                 <span class="macro">warn!</span>(<span class="string">&quot;WARNING: Allowing syntax incorrect attribute to be presented UTF8 string&quot;</span>);
                                 Value::new_utf8(v)
@@ -3525,7 +3525,7 @@
                         )
                     }
                     ia =&gt; {
-                        <span class="macro">warn!</span>(<span class="string">&quot;WARNING: Allowing invalid attribute {} to be interpretted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!&quot;</span>, ia);
+                        <span class="macro">warn!</span>(<span class="string">&quot;WARNING: Allowing invalid attribute {} to be interpreted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!&quot;</span>, ia);
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_utf8(v))
                         )
@@ -3862,7 +3862,7 @@
                 // be in the may/must set, and would FAIL our normal checks anyway.
 
                 // The set of &quot;may&quot; is a combination of may and must, since we have already
-                // asserted that all must requirements are fufilled. This allows us to
+                // asserted that all must requirements are fulfilled. This allows us to
                 // perform extended attribute checking in a single pass.
                 </span><span class="kw">let </span>may: <span class="prelude-ty">Result</span>&lt;Map&lt;<span class="kw-2">&amp;</span>AttrString, <span class="kw-2">&amp;</span>SchemaAttribute&gt;, <span class="kw">_</span>&gt; = classes
                     .iter()
@@ -4099,7 +4099,7 @@
     Vec&lt;<span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>AttrString, IndexType, String), (<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>AttrString, IndexType, String)&gt;&gt;;
 
 <span class="kw">impl</span>&lt;VALID&gt; Entry&lt;VALID, EntryCommitted&gt; {
-    <span class="doccomment">/// If this entry has ever been commited to disk, retrieve it&#39;s database id number.
+    <span class="doccomment">/// If this entry has ever been committed to disk, retrieve it&#39;s database id number.
     </span><span class="kw">pub fn </span>get_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
         <span class="self">self</span>.state.id
     }
@@ -4198,7 +4198,7 @@
     }
 
     <span class="attribute">#[inline]
-    </span><span class="doccomment">/// Given this entry, determine it&#39;s relative distinguished named for LDAP compatability.
+    </span><span class="doccomment">/// Given this entry, determine it&#39;s relative distinguished named for LDAP compatibility.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_uuid2rdn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="self">self</span>.attrs
             .get(<span class="string">&quot;spn&quot;</span>)
@@ -4471,7 +4471,7 @@
                                 changes
                             }
                             (<span class="prelude-val">Some</span>(pre_vs), <span class="prelude-val">Some</span>(post_vs)) =&gt; {
-                                <span class="comment">// it exists in both, we need to work out the differents within the attr.
+                                <span class="comment">// it exists in both, we need to work out the difference within the attr.
 
                                 </span><span class="kw">let </span><span class="kw-2">mut </span>pre_idx_keys = pre_vs.generate_idx_eq_keys();
                                 pre_idx_keys.sort_unstable();
@@ -5024,7 +5024,7 @@
     /// multivalue in schema - IE this will *not* fail if the attribute is
     /// empty, yielding and empty array instead.
     ///
-    /// However, the converstion to IndexType is fallaible, so in case of a failure
+    /// However, the conversion to IndexType is fallaible, so in case of a failure
     /// to convert, an Err is returned.
     </span><span class="attribute">#[inline(always)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_ava_opt_index(<span class="kw-2">&amp;</span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;IndexType&gt;&gt; {
@@ -5425,7 +5425,7 @@
     }
 
     <span class="doccomment">/// Remove an attribute-value pair from this entry. If the ava doesn&#39;t exist, we
-    /// don&#39;t do anything else since we are asserting the abscence of a value.
+    /// don&#39;t do anything else since we are asserting the absence of a value.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>remove_ava(<span class="kw-2">&amp;mut </span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str, value: <span class="kw-2">&amp;</span>PartialValue) {
         <span class="self">self</span>.valid
             .eclog

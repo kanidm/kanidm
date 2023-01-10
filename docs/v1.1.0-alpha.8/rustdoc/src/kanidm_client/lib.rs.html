@@ -2360,7 +2360,7 @@
         <span class="kw">let </span>matching = ver == EXPECT_VERSION;
 
         <span class="kw">if </span>!matching {
-            <span class="macro">warn!</span>(server_version = <span class="question-mark">?</span>ver, client_version = <span class="question-mark">?</span>EXPECT_VERSION, <span class="string">&quot;Mismatched client and server version - features may not work, or other unforseen errors may occur.&quot;</span>)
+            <span class="macro">warn!</span>(server_version = <span class="question-mark">?</span>ver, client_version = <span class="question-mark">?</span>EXPECT_VERSION, <span class="string">&quot;Mismatched client and server version - features may not work, or other unforeseen errors may occur.&quot;</span>)
         }
 
         <span class="macro">debug_assert!</span>(matching);

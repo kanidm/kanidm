@@ -3680,7 +3680,7 @@
             </span>FilterResolved::Inclusion(l, <span class="kw">_</span>) =&gt; {
                 <span class="comment">// For inclusion to be valid, every term must have *at least* one element present.
                 // This really relies on indexing, and so it&#39;s internal only - generally only
-                // for fully indexed existance queries, such as from refint.
+                // for fully indexed existence queries, such as from refint.
 
                 // This has a lot in common with an And and Or but not really quite either.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>plan = Vec::new();
@@ -3954,7 +3954,7 @@
 
         <span class="comment">// Check the other entry:attr indexes are valid
         //
-        // This is acutally pretty hard to check, because we can check a value *should*
+        // This is actually pretty hard to check, because we can check a value *should*
         // exist, but not that a value should NOT be present in the index. Thought needed ...
 
         // Got here? Ok!
@@ -4268,7 +4268,7 @@
         </span><span class="kw">let </span>id_list: IDLBitRange = tombstones.iter().map(|e| e.get_id()).collect();
 
         <span class="comment">// Ensure nothing here exists in the RUV index, else it means
-        // we didn&#39;t trim properly, or some other state violation has occured.
+        // we didn&#39;t trim properly, or some other state violation has occurred.
         </span><span class="kw">if </span>!((<span class="kw-2">&amp;</span>ruv_idls &amp; <span class="kw-2">&amp;</span>id_list).is_empty()) {
             <span class="macro">admin_error!</span>(<span class="string">&quot;RUV still contains entries that are going to be removed.&quot;</span>);
             <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::ReplInvalidRUVState);
@@ -4937,7 +4937,7 @@
     */
 </span>}
 
-<span class="comment">// What are the possible actions we&#39;ll recieve here?
+<span class="comment">// What are the possible actions we&#39;ll receive here?
 
 </span><span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
@@ -5317,7 +5317,7 @@
 
             <span class="kw">match </span>result {
                 <span class="prelude-val">Err</span>(e) =&gt; {
-                    <span class="comment">// if the error is the file is not found, thats what we want so continue,
+                    <span class="comment">// if the error is the file is not found, that&#39;s what we want so continue,
                     // otherwise return the error
                     </span><span class="kw">match </span>e.kind() {
                         std::io::ErrorKind::NotFound =&gt; {}
@@ -5372,7 +5372,7 @@
 
             <span class="kw">match </span>result {
                 <span class="prelude-val">Err</span>(e) =&gt; {
-                    <span class="comment">// if the error is the file is not found, thats what we want so continue,
+                    <span class="comment">// if the error is the file is not found, that&#39;s what we want so continue,
                     // otherwise return the error
                     </span><span class="kw">match </span>e.kind() {
                         std::io::ErrorKind::NotFound =&gt; {}
