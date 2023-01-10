@@ -1774,14 +1774,20 @@ impl Entry<EntryReduced, EntryCommitted> {
                 .chain(
                     l_attrs
                         .iter()
-                        .map(|k| (k.as_str(), ldap_vattr_map(k.as_str()))),
+                        .map(|k| (
+                            k.as_str(),
+                            ldap_vattr_map(k.as_str()).unwrap_or(k.as_str())
+                        ))
                 )
                 .collect()
         } else {
             // Just get the requested ones.
             l_attrs
                 .iter()
-                .map(|k| (k.as_str(), ldap_vattr_map(k.as_str())))
+                .map(|k| (
+                    k.as_str(),
+                    ldap_vattr_map(k.as_str()).unwrap_or(k.as_str())
+                ))
                 .collect()
         };
 
