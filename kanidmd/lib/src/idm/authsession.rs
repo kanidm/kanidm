@@ -1180,7 +1180,7 @@ mod tests {
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, pw_good)
             .unwrap()
-            .update_totp(totp);
+            .append_totp("totp".to_string(), totp);
         // add totp also
         account.primary = Some(cred);
 
@@ -1335,7 +1335,7 @@ mod tests {
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, pw_badlist)
             .unwrap()
-            .update_totp(totp);
+            .append_totp("totp".to_string(), totp);
         // add totp also
         account.primary = Some(cred);
 
@@ -1820,7 +1820,7 @@ mod tests {
             .unwrap()
             .append_securitykey("soft".to_string(), wan_cred)
             .unwrap()
-            .update_totp(totp);
+            .append_totp("totp".to_string(), totp);
 
         account.primary = Some(cred);
 
@@ -2073,7 +2073,7 @@ mod tests {
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, pw_good)
             .unwrap()
-            .update_totp(totp)
+            .append_totp("totp".to_string(), totp)
             .update_backup_code(backup_codes)
             .unwrap();
 

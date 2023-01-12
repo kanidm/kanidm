@@ -2099,10 +2099,10 @@ mod tests {
             .expect("Failed to update the primary cred password");
 
         assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
-        assert!(matches!(
-            c_status.primary.as_ref().map(|c| &c.type_),
-            Some(CredentialDetailType::PasswordMfa(true, _, 0))
-        ));
+        assert!(match c_status.primary.as_ref().map(|c| &c.type_) {
+            Some(CredentialDetailType::PasswordMfa(totp, _, 0)) => !totp.is_empty(),
+            _ => false,
+        });
 
         // Should be okay now!
 
@@ -2196,10 +2196,10 @@ mod tests {
             .expect("Failed to update the primary cred password");
 
         assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
-        assert!(matches!(
-            c_status.primary.as_ref().map(|c| &c.type_),
-            Some(CredentialDetailType::PasswordMfa(true, _, 0))
-        ));
+        assert!(match c_status.primary.as_ref().map(|c| &c.type_) {
+            Some(CredentialDetailType::PasswordMfa(totp, _, 0)) => !totp.is_empty(),
+            _ => false,
+        });
 
         // Should be okay now!
 
@@ -2243,7 +2243,6 @@ mod tests {
 
         let totp_token: Totp = match c_status.mfaregstate {
             MfaRegStateStatus::TotpCheck(secret) => Some(secret.into()),
-
             _ => None,
         }
         .expect("Unable to retrieve totp token, invalid state.");
@@ -2258,10 +2257,10 @@ mod tests {
             .expect("Failed to update the primary cred password");
 
         assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
-        assert!(matches!(
-            c_status.primary.as_ref().map(|c| &c.type_),
-            Some(CredentialDetailType::PasswordMfa(true, _, 0))
-        ));
+        assert!(match c_status.primary.as_ref().map(|c| &c.type_) {
+            Some(CredentialDetailType::PasswordMfa(totp, _, 0)) => !totp.is_empty(),
+            _ => false,
+        });
 
         // Now good to go, we need to now add our backup codes.
         // What's the right way to get these back?
@@ -2277,10 +2276,10 @@ mod tests {
 
         // Should error because the number is not 0
         debug!("{:?}", c_status.primary.as_ref().map(|c| &c.type_));
-        assert!(matches!(
-            c_status.primary.as_ref().map(|c| &c.type_),
-            Some(CredentialDetailType::PasswordMfa(true, _, 8))
-        ));
+        assert!(match c_status.primary.as_ref().map(|c| &c.type_) {
+            Some(CredentialDetailType::PasswordMfa(totp, _, 8)) => !totp.is_empty(),
+            _ => false,
+        });
 
         // Should be okay now!
         drop(cutxn);
@@ -2308,10 +2307,10 @@ mod tests {
             .credential_update_status(&cust, ct)
             .expect("Failed to get the current session status.");
 
-        assert!(matches!(
-            c_status.primary.as_ref().map(|c| &c.type_),
-            Some(CredentialDetailType::PasswordMfa(true, _, 7))
-        ));
+        assert!(match c_status.primary.as_ref().map(|c| &c.type_) {
+            Some(CredentialDetailType::PasswordMfa(totp, _, 7)) => !totp.is_empty(),
+            _ => false,
+        });
 
         // If we remove codes, it leaves totp.
         let c_status = cutxn
@@ -2319,10 +2318,10 @@ mod tests {
             .expect("Failed to update the primary cred password");
 
         assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
-        assert!(matches!(
-            c_status.primary.as_ref().map(|c| &c.type_),
-            Some(CredentialDetailType::PasswordMfa(true, _, 0))
-        ));
+        assert!(match c_status.primary.as_ref().map(|c| &c.type_) {
+            Some(CredentialDetailType::PasswordMfa(totp, _, 0)) => !totp.is_empty(),
+            _ => false,
+        });
 
         // Re-add the codes.
         let c_status = cutxn
@@ -2333,10 +2332,10 @@ mod tests {
             c_status.mfaregstate,
             MfaRegStateStatus::BackupCodes(_)
         ));
-        assert!(matches!(
-            c_status.primary.as_ref().map(|c| &c.type_),
-            Some(CredentialDetailType::PasswordMfa(true, _, 8))
-        ));
+        assert!(match c_status.primary.as_ref().map(|c| &c.type_) {
+            Some(CredentialDetailType::PasswordMfa(totp, _, 8)) => !totp.is_empty(),
+            _ => false,
+        });
 
         // If we remove totp, it removes codes.
         let c_status = cutxn

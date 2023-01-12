@@ -176,14 +176,25 @@ pub enum DbCred {
         uuid: Uuid,
     },
 
-    #[serde(rename = "V2Pw")]
-    V2Password { password: DbPasswordV1, uuid: Uuid },
-    #[serde(rename = "V2GPw")]
-    V2GenPassword { password: DbPasswordV1, uuid: Uuid },
     #[serde(rename = "V2PwMfa")]
     V2PasswordMfa {
         password: DbPasswordV1,
         totp: Option<DbTotpV1>,
+        backup_code: Option<DbBackupCodeV1>,
+        webauthn: Vec<(String, SecurityKeyV4)>,
+        uuid: Uuid,
+    },
+
+    // New Formats!
+
+    #[serde(rename = "V2Pw")]
+    V2Password { password: DbPasswordV1, uuid: Uuid },
+    #[serde(rename = "V2GPw")]
+    V2GenPassword { password: DbPasswordV1, uuid: Uuid },
+    #[serde(rename = "V3PwMfa")]
+    V3PasswordMfa {
+        password: DbPasswordV1,
+        totp: Vec<(String, DbTotpV1)>,
         backup_code: Option<DbBackupCodeV1>,
         webauthn: Vec<(String, SecurityKeyV4)>,
         uuid: Uuid,

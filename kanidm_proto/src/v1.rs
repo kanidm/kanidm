@@ -643,7 +643,7 @@ pub enum CredentialDetailType {
     GeneratedPassword,
     Passkey(Vec<String>),
     /// totp, webauthn
-    PasswordMfa(bool, Vec<String>, usize),
+    PasswordMfa(Vec<String>, Vec<String>, usize),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -675,24 +675,30 @@ impl fmt::Display for CredentialDetail {
                     write!(f, "")
                 }
             }
-            CredentialDetailType::PasswordMfa(totp, labels, backup_code) => {
+            CredentialDetailType::PasswordMfa(totp_labels, wan_labels, backup_code) => {
                 writeln!(f, "password: set")?;
-                if *totp {
-                    writeln!(f, "totp: enabled")?;
+
+                if !totp_labels.is_empty() {
+                    writeln!(f, "totp:")?;
+                    for label in totp_labels {
+                        writeln!(f, " * {}", label)?;
+                    }
                 } else {
                     writeln!(f, "totp: disabled")?;
                 }
+
                 if *backup_code > 0 {
                     writeln!(f, "backup_code: enabled")?;
                 } else {
                     writeln!(f, "backup_code: disabled")?;
                 }
-                if !labels.is_empty() {
+
+                if !wan_labels.is_empty() {
                     // We no longer show the deprecated security key case by default.
                     writeln!(f, " ⚠️  warning - security keys are deprecated.")?;
                     writeln!(f, " ⚠️  you should re-enroll these to passkeys.")?;
                     writeln!(f, "security keys:")?;
-                    for label in labels {
+                    for label in wan_labels {
                         writeln!(f, " * {}", label)?;
                     }
                     write!(f, "")
