@@ -65,7 +65,7 @@ enum CredVerifyState {
 struct CredMfa {
     pw: Password,
     pw_state: CredVerifyState,
-    totp: Option<Totp>,
+    totp: Vec<Totp>,
     wan: Option<(RequestChallengeResponse, SecurityKeyAuthentication)>,
     backup_code: Option<BackupCodes>,
     mfa_state: CredVerifyState,
