@@ -69,6 +69,14 @@ impl Domain {
                     e.set_ava("domain_name", once(n));
                     trace!("plugin_domain: Applying domain_name transform");
                 }
+
+                // Setup the minimum functional level if one is not set already.
+                if !e.attribute_pres("version") {
+                    let n = Value::Uint32(DOMAIN_MIN_LEVEL);
+                    e.set_ava("version", once(n));
+                    trace!("plugin_domain: Applying domain version transform");
+                }
+
                 // create the domain_display_name if it's missing
                 if !e.attribute_pres("domain_display_name") {
                     let domain_display_name = Value::new_utf8(format!("Kanidm {}", qs.get_domain_name()));

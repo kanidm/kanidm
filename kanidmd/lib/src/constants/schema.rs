@@ -114,7 +114,9 @@ pub const JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &str = r#"
       "description": [
         "Primary credential material of the account for authentication interactively."
       ],
-      "index": [],
+      "index": [
+        "PRESENCE"
+      ],
       "unique": [
         "false"
       ],
@@ -485,7 +487,9 @@ pub const JSON_SCHEMA_ATTR_UNIX_PASSWORD: &str = r#"{
       "description": [
         "A posix users unix login password."
       ],
-      "index": [],
+      "index": [
+        "PRESENCE"
+      ],
       "unique": [
         "false"
       ],

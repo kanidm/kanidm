@@ -78,32 +78,20 @@ impl QueryServer {
         }?;
         admin_debug!(?system_info_version);
 
-        if system_info_version < 3 {
-            migrate_txn.migrate_2_to_3()?;
-        }
+        if system_info_version > 0 {
+            if system_info_version <= 6 {
+                error!("Your instance of Kanidm is version 1.1.0-alpha.9 or lower, and you are trying to perform a skip upgrade. This will not work.");
+                error!("You need to upgrade one version at a time to ensure upgrade migrations are performed in the correct order.");
+                return Err(OperationError::InvalidState);
+            }
 
-        if system_info_version < 4 {
-            migrate_txn.migrate_3_to_4()?;
-        }
+            if system_info_version < 9 {
+                migrate_txn.migrate_8_to_9()?;
+            }
 
-        if system_info_version < 5 {
-            migrate_txn.migrate_4_to_5()?;
-        }
-
-        if system_info_version < 6 {
-            migrate_txn.migrate_5_to_6()?;
-        }
-
-        if system_info_version < 7 {
-            migrate_txn.migrate_6_to_7()?;
-        }
-
-        if system_info_version < 8 {
-            migrate_txn.migrate_7_to_8()?;
-        }
-
-        if system_info_version < 9 {
-            migrate_txn.migrate_8_to_9()?;
+            if system_info_version < 10 {
+                migrate_txn.migrate_9_to_10()?;
+            }
         }
 
         migrate_txn.commit()?;
@@ -114,7 +102,7 @@ impl QueryServer {
             ts_write_3.set_phase(ServerPhase::Running);
             ts_write_3.commit()
         })?;
-        // TODO: work out if we've actually done any migrations before printing this
+
         admin_debug!("Database version check and migrations success! ☀️  ");
         Ok(())
     }
@@ -181,146 +169,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             );
             Err(OperationError::InvalidDbState)
         }
-    }
-
-    /// Migrate 2 to 3 changes the name, domain_name types from iutf8 to iname.
-    #[instrument(level = "debug", skip_all)]
-    pub fn migrate_2_to_3(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 2 to 3 migration. THIS MAY TAKE A LONG TIME!");
-        // Get all entries where pres name or domain_name. INCLUDE TS + RECYCLE.
-
-        let filt = filter_all!(f_or!([f_pres("name"), f_pres("domain_name"),]));
-
-        let pre_candidates = self.internal_search(filt).map_err(|e| {
-            admin_error!(err = ?e, "migrate_2_to_3 internal search failure");
-            e
-        })?;
-
-        // If there is nothing, we don't need to do anything.
-        if pre_candidates.is_empty() {
-            admin_info!("migrate_2_to_3 no entries to migrate, complete");
-            return Ok(());
-        }
-
-        // Change the value type.
-        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
-            .iter()
-            .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
-            .collect();
-
-        candidates.iter_mut().try_for_each(|er| {
-            let nvs = if let Some(vs) = er.get_ava_set("name") {
-                vs.migrate_iutf8_iname()?
-            } else {
-                None
-            };
-            if let Some(nvs) = nvs {
-                er.set_ava_set("name", nvs)
-            }
-
-            let nvs = if let Some(vs) = er.get_ava_set("domain_name") {
-                vs.migrate_iutf8_iname()?
-            } else {
-                None
-            };
-            if let Some(nvs) = nvs {
-                er.set_ava_set("domain_name", nvs)
-            }
-
-            Ok(())
-        })?;
-
-        // Schema check all.
-        let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, SchemaError> = candidates
-            .into_iter()
-            .map(|e| e.validate(&self.schema).map(|e| e.seal(&self.schema)))
-            .collect();
-
-        let norm_cand: Vec<Entry<_, _>> = match res {
-            Ok(v) => v,
-            Err(e) => {
-                admin_error!("migrate_2_to_3 schema error -> {:?}", e);
-                return Err(OperationError::SchemaViolation(e));
-            }
-        };
-
-        // Write them back.
-        self.be_txn
-            .modify(&self.cid, &pre_candidates, &norm_cand)
-            .map_err(|e| {
-                admin_error!("migrate_2_to_3 modification failure -> {:?}", e);
-                e
-            })
-        // Complete
-    }
-
-    /// Migrate 3 to 4 - this triggers a regen of the domains security token
-    /// as we previously did not have it in the entry.
-    #[instrument(level = "debug", skip_all)]
-    pub fn migrate_3_to_4(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 3 to 4 migration.");
-        let filter = filter!(f_eq("uuid", (*PVUUID_DOMAIN_INFO).clone()));
-        let modlist = ModifyList::new_purge("domain_token_key");
-        self.internal_modify(&filter, &modlist)
-        // Complete
-    }
-
-    /// Migrate 4 to 5 - this triggers a regen of all oauth2 RS es256 der keys
-    /// as we previously did not generate them on entry creation.
-    #[instrument(level = "debug", skip_all)]
-    pub fn migrate_4_to_5(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 4 to 5 migration.");
-        let filter = filter!(f_and!([
-            f_eq("class", (*PVCLASS_OAUTH2_RS).clone()),
-            f_andnot(f_pres("es256_private_key_der")),
-        ]));
-        let modlist = ModifyList::new_purge("es256_private_key_der");
-        self.internal_modify(&filter, &modlist)
-        // Complete
-    }
-
-    /// Migrate 5 to 6 - This updates the domain info item to reset the token
-    /// keys based on the new encryption types.
-    #[instrument(level = "debug", skip_all)]
-    pub fn migrate_5_to_6(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 5 to 6 migration.");
-        let filter = filter!(f_eq("uuid", (*PVUUID_DOMAIN_INFO).clone()));
-        let mut modlist = ModifyList::new_purge("domain_token_key");
-        // We need to also push the version here so that we pass schema.
-        modlist.push_mod(Modify::Present(
-            AttrString::from("version"),
-            Value::Uint32(0),
-        ));
-        self.internal_modify(&filter, &modlist)
-        // Complete
-    }
-
-    /// Migrate 6 to 7
-    ///
-    /// Modify accounts that are not persons, to be service accounts so that the extension
-    /// rules remain valid.
-    #[instrument(level = "debug", skip_all)]
-    pub fn migrate_6_to_7(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 6 to 7 migration.");
-        let filter = filter!(f_and!([
-            f_eq("class", (*PVCLASS_ACCOUNT).clone()),
-            f_andnot(f_eq("class", (*PVCLASS_PERSON).clone())),
-        ]));
-        let modlist = ModifyList::new_append("class", Value::new_class("service_account"));
-        self.internal_modify(&filter, &modlist)
-        // Complete
-    }
-
-    /// Migrate 7 to 8
-    ///
-    /// Touch all service accounts to trigger a regen of their es256 jws keys for api tokens
-    #[instrument(level = "debug", skip_all)]
-    pub fn migrate_7_to_8(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 7 to 8 migration.");
-        let filter = filter!(f_eq("class", (*PVCLASS_SERVICE_ACCOUNT).clone()));
-        let modlist = ModifyList::new_append("class", Value::new_class("service_account"));
-        self.internal_modify(&filter, &modlist)
-        // Complete
     }
 
     /// Migrate 8 to 9
@@ -403,6 +251,27 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 admin_error!("migrate_8_to_9 modification failure -> {:?}", e);
                 e
             })
+        // Complete
+    }
+
+    /// Migrate 9 to 10
+    ///
+    /// This forces a load and rewrite of all credentials stored on all accounts so that they are
+    /// updated to new on-disk formats. This will allow us to purge some older on disk formats in
+    /// a future version.
+    ///
+    /// An extended feature of this is the ability to store multiple TOTP's per entry.
+    #[instrument(level = "debug", skip_all)]
+    pub fn migrate_9_to_10(&mut self) -> Result<(), OperationError> {
+        admin_warn!("starting 9 to 10 migration.");
+        let filter = filter!(f_or!([
+            f_pres("primary_credential"),
+            f_pres("unix_password"),
+        ]));
+        // This "does nothing" since everything has object anyway, but it forces the entry to be
+        // loaded and rewritten.
+        let modlist = ModifyList::new_append("class", Value::new_class("object"));
+        self.internal_modify(&filter, &modlist)
         // Complete
     }
 
@@ -698,6 +567,7 @@ mod tests {
         }
     }
 
+    /*
     #[qs_test_no_init]
     async fn test_qs_upgrade_entry_attrs(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
@@ -813,4 +683,5 @@ mod tests {
         );
         assert!(server_txn.commit().is_ok());
     }
+    */
 }

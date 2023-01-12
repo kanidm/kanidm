@@ -18,6 +18,35 @@ use std::time::Duration;
 
 // Increment this as we add new schema types and values!!!
 pub const SYSTEM_INDEX_VERSION: i64 = 27;
+
+/* 
+ * domain functional levels
+ *
+ * The idea here is to allow topology wide upgrades to be performed. We have to
+ * assume that across multiple kanidm instances there may be cases where we have version
+ * N and version N minus 1 as upgrades are rolled out.
+ *
+ * Imagine we set up a new cluster. Machine A and B both have level 1 support.
+ * We upgrade machine A. It has support up to level 2, but machine B does not.
+ * So the overall functional level is level 1. Then we upgrade B, which supports
+ * up to level 2. We still don't do the upgrade! The topology is still level 1
+ * unless an admin at this point *intervenes* and forces the update. OR what
+ * happens we we update machine A again and it now supports up to level 3, with
+ * a target level of 2. So we update machine A now to level 2, and that can
+ * still replicate to machine B since it also supports level 2.
+ *
+ * effectively it means that "some features" may be a "release behind" for users
+ * who don't muck with the levels, but it means that we can do mixed version
+ * upgrades.
+ */
+pub const DOMAIN_LEVEL_1: u32 = 1;
+// The minimum supported domain functional level
+pub const DOMAIN_MIN_LEVEL: u32 = DOMAIN_LEVEL_1;
+// The target supported domain functional level
+pub const DOMAIN_TGT_LEVEL: u32 = DOMAIN_LEVEL_1;
+// The maximum supported domain functional level
+pub const DOMAIN_MAX_LEVEL: u32 = DOMAIN_LEVEL_1;
+
 // On test builds, define to 60 seconds
 #[cfg(test)]
 pub const PURGE_FREQUENCY: u64 = 60;
@@ -56,3 +85,4 @@ pub const GRACE_WINDOW: Duration = Duration::from_secs(600);
 /// How long access tokens should last. This is NOT the length
 /// of the refresh token, which is bound to the issuing session.
 pub const OAUTH2_ACCESS_TOKEN_EXPIRY: u32 = 4 * 3600;
+
