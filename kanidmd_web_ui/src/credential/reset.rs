@@ -361,7 +361,7 @@ impl CredentialResetApp {
                       </button>
 
                       <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
-                        { "Delete this Password" }
+                        { "Delete this Insecure Password" }
                       </button>
                     </>
                 }
@@ -413,7 +413,7 @@ impl CredentialResetApp {
                       </button>
 
                       <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
-                        { "Delete this MFA Credential" }
+                        { "Delete this Legacy MFA Credential" }
                       </button>
                     </>
                 }
@@ -479,7 +479,7 @@ impl CredentialResetApp {
 
                     <h4>{"Password / TOTP"}</h4>
                     <p>{ "Legacy password paired with other authentication factors." }</p>
-                    <p>{ "It is recommended you avoid setting these if possible." }</p>
+                    <p>{ "It is recommended you avoid setting these if possible. Since these can be phished or exploited." }</p>
                     { pw_html }
 
                     <hr class="my-4" />
