@@ -2550,7 +2550,7 @@ dependencies = [
 [[package]]
 name = "ldap3_client"
 version = "0.3.0"
-source = "git+https://github.com/kanidm/ldap3.git#2c9dc31432b7e4981eba769d372a56edbd8970b2"
+source = "git+https://github.com/kanidm/ldap3.git#b3c7653471916e803dc8f24d2163fd2710dfb161"
 dependencies = [
  "base64 0.13.1",
  "base64urlsafedata",
@@ -2569,7 +2569,7 @@ dependencies = [
 [[package]]
 name = "ldap3_proto"
 version = "0.3.0"
-source = "git+https://github.com/kanidm/ldap3.git#2c9dc31432b7e4981eba769d372a56edbd8970b2"
+source = "git+https://github.com/kanidm/ldap3.git#b3c7653471916e803dc8f24d2163fd2710dfb161"
 dependencies = [
  "bytes",
  "lber",
