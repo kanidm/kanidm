@@ -52,7 +52,7 @@ mkdocs = "^1.4.2"
 mkdocs-material = "^9.0.3"
 mkdocstrings = "^0.19.1"
 mkdocstrings-python = "^0.8.3"
-pook = "^1.0.2"
+pook = "^1.1.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
