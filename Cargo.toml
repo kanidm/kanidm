@@ -110,7 +110,7 @@ quote = "1"
 r2d2 = "^0.8.9"
 r2d2_sqlite = "^0.21.0"
 rand = "^0.8.5"
-regex = "1.7.0"
+regex = "1.7.1"
 reqwest = { version = "0.11.13", default-features = false, features=["cookies", "json", "gzip", "native-tls"] }
 rpassword = "^7.2.0"
 rusqlite = "^0.28.0"
