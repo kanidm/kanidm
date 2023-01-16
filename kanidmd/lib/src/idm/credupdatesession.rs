@@ -116,6 +116,39 @@ impl fmt::Debug for CredentialUpdateSession {
     }
 }
 
+impl CredentialUpdateSession {
+
+    // In future this should be a Vec of the issues with the current session so that UI's can highlight
+    // properly how to proceed.
+    fn can_commit(&self) -> bool {
+
+        // Should be it's own PR and use account policy
+
+        /*
+        // We'll check policy here in future.
+        let is_primary_valid = match self.primary.as_ref() {
+            Some(Credential {
+                uuid: _,
+                type_: CredentialType::Password(_),
+            }) => {
+                // We refuse password-only auth now.
+                info!("Password only authentication.");
+                false
+            }
+            // So far valid.
+            _ => true,
+        };
+
+        info!("can_commit -> {}", is_primary_valid);
+
+        // For logic later.
+        is_primary_valid
+        */
+
+        true
+    }
+}
+
 enum MfaRegStateStatus {
     // Nothing in progress.
     None,
@@ -183,8 +216,7 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
         CredentialUpdateSessionStatus {
             spn: session.account.spn.clone(),
             displayname: session.account.displayname.clone(),
-
-            can_commit: true,
+            can_commit: session.can_commit(),
             primary: session.primary.as_ref().map(|c| c.into()),
             passkeys: session
                 .passkeys
@@ -727,6 +759,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         let (mut modlist, session, session_token) =
             self.credential_update_commit_common(cust, ct)?;
+
+        // Can we actually proceed?
+        if !session.can_commit() {
+            admin_error!("Session is unable to commit due to a constraint violation.");
+            return Err(OperationError::InvalidState);
+        }
 
         // Setup mods for the various bits. We always assert an *exact* state.
 

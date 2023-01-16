@@ -354,15 +354,80 @@ impl CredentialResetApp {
                 html! {
                     <>
                       <p>{ "✅ Password Set" }</p>
+                      <p>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticPassword">
+                          { "Change Password" }
+                        </button>
+                      </p>
+
                       <p>{ "❌ MFA Disabled" }</p>
+                      <p>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticTotpCreate">
+                          { "Add TOTP" }
+                        </button>
+                      </p>
 
-                      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticTotpCreate">
-                        { "Add TOTP" }
-                      </button>
+                      <p>
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
+                          { "Delete this Insecure Password" }
+                        </button>
+                      </p>
+                    </>
+                }
+            }
+            Some(CredentialDetail {
+                uuid: _,
+                type_:
+                    CredentialDetailType::PasswordMfa(
+                        // Used for what TOTP the user has.
+                        totp_set,
+                        // Being deprecated.
+                        _security_key_labels,
+                        // Need to wire in backup codes.
+                        _backup_codes_remaining,
+                    ),
+            }) => {
+                html! {
+                    <>
+                      <p>{ "✅ Password Set" }</p>
+                      <p>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticPassword">
+                          { "Change Password" }
+                        </button>
+                      </p>
 
-                      <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
-                        { "Delete this Insecure Password" }
-                      </button>
+                      <p>{ "✅ MFA Enabled" }</p>
+
+                      <>
+                      { for totp_set.iter()
+                          .map(|detail|
+                                // TotpRemoveButton::render_button(&detail.tag, detail.uuid)
+                                html! {
+                                  <div class="row mb-3">
+                                    <div class="col">{ detail.clone() }</div>
+                                    <div class="col">
+                                    <button type="button" class="btn btn-dark btn-sml">
+                                      { "Remove" }
+                                    </button>
+                                    </div>
+                                  </div>
+                                }
+                          )
+                      }
+                      </>
+
+                      <p>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticTotpCreate">
+                          { "Add TOTP" }
+                        </button>
+                      </p>
+
+                      <p>
+                        <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
+                          { "Delete this Legacy MFA Credential" }
+                        </button>
+                      </p>
+
                     </>
                 }
             }
@@ -390,32 +455,6 @@ impl CredentialResetApp {
                       { "Delete this Credential" }
                     </button>
                   </>
-                }
-            }
-            Some(CredentialDetail {
-                uuid: _,
-                type_:
-                    // TODO: review this and find out why we aren't using these variables
-                    // Because I'm lazy 🙃
-                    CredentialDetailType::PasswordMfa(
-                        _totp_set,
-                        _security_key_labels,
-                        _backup_codes_remaining,
-                    ),
-            }) => {
-                html! {
-                    <>
-                      <p>{ "✅ Password Set" }</p>
-                      <p>{ "✅ MFA Enabled" }</p>
-
-                      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticTotpCreate">
-                        { "Reset TOTP" }
-                      </button>
-
-                      <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
-                        { "Delete this Legacy MFA Credential" }
-                      </button>
-                    </>
                 }
             }
             None => {
@@ -479,7 +518,7 @@ impl CredentialResetApp {
 
                     <h4>{"Password / TOTP"}</h4>
                     <p>{ "Legacy password paired with other authentication factors." }</p>
-                    <p>{ "It is recommended you avoid setting these if possible. Since these can be phished or exploited." }</p>
+                    <p>{ "It is recommended you avoid setting these if possible, as these can be phished or exploited." }</p>
                     { pw_html }
 
                     <hr class="my-4" />

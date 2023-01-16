@@ -268,6 +268,7 @@ impl LoginApp {
                                 name="username"
                                 oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
                                 type="text"
+                                autocomplete="off"
                                 value={ inputvalue }
                             />
                         </div>
@@ -342,6 +343,7 @@ impl LoginApp {
                                 name="password"
                                 oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
                                 type="password"
+                                autocomplete="current-password"
                                 value={ inputvalue }
                             />
                             </div>
@@ -377,6 +379,7 @@ impl LoginApp {
                                 name="backup_code"
                                 oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
                                 type="text"
+                                autocomplete="off"
                                 value={ inputvalue }
                             />
                             </div>
@@ -405,10 +408,11 @@ impl LoginApp {
                             autofocus=true
                             class="autofocus form-control"
                             disabled={ state==&TotpState::Disabled }
-                            id="totp"
-                            name="totp"
+                            id="otp"
+                            name="otp"
                             oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e)))}
                             type="text"
+                            autocomplete="off"
                             value={ inputvalue }
                             />
                         </div>
@@ -977,5 +981,10 @@ impl Component for LoginApp {
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
         #[cfg(debug_assertions)]
         console::debug!("login::rendered".to_string());
+        // Force autofocus on elements that need it if present.
+        crate::utils::autofocus("username");
+        crate::utils::autofocus("password");
+        crate::utils::autofocus("backup_code");
+        crate::utils::autofocus("otp");
     }
 }

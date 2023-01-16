@@ -512,7 +512,11 @@ impl CredHandler {
                 .backup_code
                 .iter()
                 .map(|_| AuthAllowed::BackupCode)
-                .chain(pw_mfa.totp.iter().map(|_| AuthAllowed::Totp))
+                // This looks weird but the idea is that if at least *one*
+                // totp exists, then we only offer TOTP once. If none are
+                // there we offer it none.
+                .chain(pw_mfa.totp.iter().next().map(|_| AuthAllowed::Totp))
+                // This iter is over an option so it's there or not.
                 .chain(
                     pw_mfa
                         .wan
