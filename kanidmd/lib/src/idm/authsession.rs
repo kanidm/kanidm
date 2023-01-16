@@ -65,7 +65,7 @@ enum CredVerifyState {
 struct CredMfa {
     pw: Password,
     pw_state: CredVerifyState,
-    totp: Vec<Totp>,
+    totp: BTreeMap<String, Totp>,
     wan: Option<(RequestChallengeResponse, SecurityKeyAuthentication)>,
     backup_code: Option<BackupCodes>,
     mfa_state: CredVerifyState,
@@ -120,14 +120,17 @@ impl TryFrom<(&Credential, &Webauthn)> for CredHandler {
                 let cmfa = Box::new(CredMfa {
                     pw: pw.clone(),
                     pw_state: CredVerifyState::Init,
-                    totp: maybe_totp.clone(),
+                    totp: maybe_totp
+                        .iter()
+                        .map(|(l, t)| (l.clone(), t.clone()))
+                        .collect(),
                     wan,
                     backup_code: maybe_backup_code.clone(),
                     mfa_state: CredVerifyState::Init,
                 });
 
                 // Paranoia. Should NEVER occur.
-                if cmfa.totp.is_none() && cmfa.wan.is_none() {
+                if cmfa.totp.is_empty() && cmfa.wan.is_none() {
                     security_critical!("Unable to create CredHandler::PasswordMfa - totp and webauthn are both not present. Credentials MAY be corrupt!");
                     return Err(());
                 }
@@ -285,7 +288,7 @@ impl CredHandler {
                 // MFA first
                 match (
                     cred,
-                    pw_mfa.totp.as_ref(),
+                    !pw_mfa.totp.is_empty(),
                     pw_mfa.wan.as_ref(),
                     pw_mfa.backup_code.as_ref(),
                 ) {
@@ -321,11 +324,19 @@ impl CredHandler {
                             }
                         }
                     }
-                    (AuthCredential::Totp(totp_chal), Some(totp), _, _) => {
-                        if totp.verify(*totp_chal, ts) {
+                    (AuthCredential::Totp(totp_chal), true, _, _) => {
+                        // So long as one totp matches, success. Log which token was used.
+                        // We don't need to worry about the empty case since none will match and we
+                        // will get the failure.
+                        if let Some(label) = pw_mfa
+                            .totp
+                            .iter()
+                            .find(|(_, t)| t.verify(*totp_chal, ts))
+                            .map(|(l, _)| l)
+                        {
                             pw_mfa.mfa_state = CredVerifyState::Success;
                             security_info!(
-                                "Handler::PasswordMfa -> Result::Continue - TOTP OK, password -"
+                                "Handler::PasswordMfa -> Result::Continue - TOTP ({}) OK, password -", label
                             );
                             CredState::Continue(vec![AuthAllowed::Password])
                         } else {

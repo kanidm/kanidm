@@ -186,7 +186,6 @@ pub enum DbCred {
     },
 
     // New Formats!
-
     #[serde(rename = "V2Pw")]
     V2Password { password: DbPasswordV1, uuid: Uuid },
     #[serde(rename = "V2GPw")]
@@ -288,6 +287,20 @@ impl fmt::Display for DbCred {
                 "V2PwMfa (p true, w {}, t {}, b {}, u {})",
                 webauthn.len(),
                 totp.is_some(),
+                backup_code.is_some(),
+                uuid
+            ),
+            DbCred::V3PasswordMfa {
+                password: _,
+                totp,
+                backup_code,
+                webauthn,
+                uuid,
+            } => write!(
+                f,
+                "V3PwMfa (p true, w {}, t {}, b {}, u {})",
+                webauthn.len(),
+                totp.len(),
                 backup_code.is_some(),
                 uuid
             ),

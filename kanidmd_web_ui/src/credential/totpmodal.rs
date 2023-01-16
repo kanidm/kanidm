@@ -164,12 +164,17 @@ impl Component for TotpModalApp {
                 // Send off the submit, lock the form.
                 // default is empty str
                 let totp = utils::get_value_from_element_id("totp").unwrap_or_default();
+                let totp_label = utils::get_value_from_element_id("totp_label").unwrap_or_default();
 
                 match totp.trim().parse::<u32>() {
                     Ok(totp) => {
                         ctx.link().send_future(async move {
-                            match Self::submit_totp_update(token_c, CURequest::TotpVerify(totp), cb)
-                                .await
+                            match Self::submit_totp_update(
+                                token_c,
+                                CURequest::TotpVerify(totp, totp_label),
+                                cb,
+                            )
+                            .await
                             {
                                 Ok(v) => v,
                                 Err(v) => v.into(),

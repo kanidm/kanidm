@@ -1468,8 +1468,9 @@ impl KanidmClient {
         &self,
         session_token: &CUSessionToken,
         totp_chal: u32,
+        label: &str,
     ) -> Result<CUStatus, ClientError> {
-        let scr = CURequest::TotpVerify(totp_chal);
+        let scr = CURequest::TotpVerify(totp_chal, label.to_string());
         self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
             .await
     }
@@ -1486,8 +1487,9 @@ impl KanidmClient {
     pub async fn idm_account_credential_update_remove_totp(
         &self,
         session_token: &CUSessionToken,
+        label: &str,
     ) -> Result<CUStatus, ClientError> {
-        let scr = CURequest::TotpRemove;
+        let scr = CURequest::TotpRemove(label.to_string());
         self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
             .await
     }

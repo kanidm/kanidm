@@ -57,7 +57,7 @@ enum MfaRegState {
     None,
     TotpInit(Totp),
     TotpTryAgain(Totp),
-    TotpInvalidSha1(Totp, Totp),
+    TotpInvalidSha1(Totp, Totp, String),
     Passkey(Box<CreationChallengeResponse>, PasskeyRegistration),
 }
 
@@ -67,7 +67,7 @@ impl fmt::Debug for MfaRegState {
             MfaRegState::None => "MfaRegState::None",
             MfaRegState::TotpInit(_) => "MfaRegState::TotpInit",
             MfaRegState::TotpTryAgain(_) => "MfaRegState::TotpTryAgain",
-            MfaRegState::TotpInvalidSha1(_, _) => "MfaRegState::TotpInvalidSha1",
+            MfaRegState::TotpInvalidSha1(_, _, _) => "MfaRegState::TotpInvalidSha1",
             MfaRegState::Passkey(_, _) => "MfaRegState::Passkey",
         };
         write!(f, "{}", t)
@@ -200,7 +200,7 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
                     token.to_proto(session.account.name.as_str(), session.issuer.as_str()),
                 ),
                 MfaRegState::TotpTryAgain(_) => MfaRegStateStatus::TotpTryAgain,
-                MfaRegState::TotpInvalidSha1(_, _) => MfaRegStateStatus::TotpInvalidSha1,
+                MfaRegState::TotpInvalidSha1(_, _, _) => MfaRegStateStatus::TotpInvalidSha1,
                 MfaRegState::Passkey(r, _) => MfaRegStateStatus::Passkey(r.as_ref().clone()),
             },
         }
@@ -1150,6 +1150,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         cust: &CredentialUpdateSessionToken,
         ct: Duration,
         totp_chal: u32,
+        label: &str,
     ) -> Result<CredentialUpdateSessionStatus, OperationError> {
         let session_handle = self.get_current_session(cust, ct)?;
         let mut session = session_handle.try_lock().map_err(|_| {
@@ -1162,13 +1163,13 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         match &session.mfaregstate {
             MfaRegState::TotpInit(totp_token)
             | MfaRegState::TotpTryAgain(totp_token)
-            | MfaRegState::TotpInvalidSha1(totp_token, _) => {
+            | MfaRegState::TotpInvalidSha1(totp_token, _, _) => {
                 if totp_token.verify(totp_chal, &ct) {
                     // It was valid. Update the credential.
                     let ncred = session
                         .primary
                         .as_ref()
-                        .map(|cred| cred.update_totp(totp_token.clone()))
+                        .map(|cred| cred.append_totp(label.to_string(), totp_token.clone()))
                         .ok_or_else(|| {
                             admin_error!("A TOTP was added, but no primary credential stub exists");
                             OperationError::InvalidState
@@ -1188,8 +1189,11 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
                     if token_sha1.verify(totp_chal, &ct) {
                         // Greeeaaaaaatttt. It's a broken app. Let's check the user
                         // knows this is broken, before we proceed.
-                        session.mfaregstate =
-                            MfaRegState::TotpInvalidSha1(totp_token.clone(), token_sha1);
+                        session.mfaregstate = MfaRegState::TotpInvalidSha1(
+                            totp_token.clone(),
+                            token_sha1,
+                            label.to_string(),
+                        );
                         Ok(session.deref().into())
                     } else {
                         // Let them check again, it's a typo.
@@ -1216,12 +1220,12 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 
         // Are we in a totp reg state?
         match &session.mfaregstate {
-            MfaRegState::TotpInvalidSha1(_, token_sha1) => {
+            MfaRegState::TotpInvalidSha1(_, token_sha1, label) => {
                 // They have accepted it as sha1
                 let ncred = session
                     .primary
                     .as_ref()
-                    .map(|cred| cred.update_totp(token_sha1.clone()))
+                    .map(|cred| cred.append_totp(label.to_string(), token_sha1.clone()))
                     .ok_or_else(|| {
                         admin_error!("A TOTP was added, but no primary credential stub exists");
                         OperationError::InvalidState
@@ -1243,6 +1247,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         &self,
         cust: &CredentialUpdateSessionToken,
         ct: Duration,
+        label: &str,
     ) -> Result<CredentialUpdateSessionStatus, OperationError> {
         let session_handle = self.get_current_session(cust, ct)?;
         let mut session = session_handle.try_lock().map_err(|_| {
@@ -1259,7 +1264,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         let ncred = session
             .primary
             .as_ref()
-            .map(|cred| cred.remove_totp())
+            .map(|cred| cred.remove_totp(label))
             .ok_or_else(|| {
                 admin_error!("Try to remove TOTP, but no primary credential stub exists");
                 OperationError::InvalidState
@@ -2086,7 +2091,7 @@ mod tests {
 
         // Intentionally get it wrong.
         let c_status = cutxn
-            .credential_primary_check_totp(&cust, ct, chal + 1)
+            .credential_primary_check_totp(&cust, ct, chal + 1, "totp")
             .expect("Failed to update the primary cred password");
 
         assert!(matches!(
@@ -2095,7 +2100,7 @@ mod tests {
         ));
 
         let c_status = cutxn
-            .credential_primary_check_totp(&cust, ct, chal)
+            .credential_primary_check_totp(&cust, ct, chal, "totp")
             .expect("Failed to update the primary cred password");
 
         assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
@@ -2122,7 +2127,7 @@ mod tests {
         let cutxn = idms.cred_update_transaction();
 
         let c_status = cutxn
-            .credential_primary_remove_totp(&cust, ct)
+            .credential_primary_remove_totp(&cust, ct, "totp")
             .expect("Failed to update the primary cred password");
 
         assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
@@ -2182,7 +2187,7 @@ mod tests {
 
         // Should getn the warn that it's sha1
         let c_status = cutxn
-            .credential_primary_check_totp(&cust, ct, chal)
+            .credential_primary_check_totp(&cust, ct, chal, "totp")
             .expect("Failed to update the primary cred password");
 
         assert!(matches!(
@@ -2253,8 +2258,8 @@ mod tests {
             .expect("Failed to perform totp step");
 
         let c_status = cutxn
-            .credential_primary_check_totp(&cust, ct, chal)
-            .expect("Failed to update the primary cred password");
+            .credential_primary_check_totp(&cust, ct, chal, "totp")
+            .expect("Failed to update the primary cred totp");
 
         assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
         assert!(match c_status.primary.as_ref().map(|c| &c.type_) {
@@ -2339,7 +2344,7 @@ mod tests {
 
         // If we remove totp, it removes codes.
         let c_status = cutxn
-            .credential_primary_remove_totp(&cust, ct)
+            .credential_primary_remove_totp(&cust, ct, "totp")
             .expect("Failed to update the primary cred password");
 
         assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));

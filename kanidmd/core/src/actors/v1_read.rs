@@ -1053,8 +1053,8 @@ impl QueryServerReadV1 {
                     );
                     e
                 }),
-            CURequest::TotpVerify(totp_chal) => idms_cred_update
-                .credential_primary_check_totp(&session_token, ct, totp_chal)
+            CURequest::TotpVerify(totp_chal, label) => idms_cred_update
+                .credential_primary_check_totp(&session_token, ct, totp_chal, &label)
                 .map_err(|e| {
                     admin_error!(
                         err = ?e,
@@ -1071,8 +1071,8 @@ impl QueryServerReadV1 {
                     );
                     e
                 }),
-            CURequest::TotpRemove => idms_cred_update
-                .credential_primary_remove_totp(&session_token, ct)
+            CURequest::TotpRemove(label) => idms_cred_update
+                .credential_primary_remove_totp(&session_token, ct, &label)
                 .map_err(|e| {
                     admin_error!(
                         err = ?e,

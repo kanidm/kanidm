@@ -19,7 +19,7 @@ use std::time::Duration;
 // Increment this as we add new schema types and values!!!
 pub const SYSTEM_INDEX_VERSION: i64 = 27;
 
-/* 
+/*
  * domain functional levels
  *
  * The idea here is to allow topology wide upgrades to be performed. We have to
@@ -85,4 +85,3 @@ pub const GRACE_WINDOW: Duration = Duration::from_secs(600);
 /// How long access tokens should last. This is NOT the length
 /// of the refresh token, which is bound to the issuing session.
 pub const OAUTH2_ACCESS_TOKEN_EXPIRY: u32 = 4 * 3600;
-
