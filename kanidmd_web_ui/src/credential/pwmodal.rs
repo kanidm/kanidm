@@ -137,7 +137,8 @@ impl Component for PwModalApp {
             Msg::PasswordCheck => {
                 // default is empty string
                 let pw = utils::get_value_from_element_id("new-password").unwrap_or_default();
-                let check = utils::get_value_from_element_id("new-password-check").unwrap_or_default();
+                let check =
+                    utils::get_value_from_element_id("new-password-check").unwrap_or_default();
 
                 if pw == check {
                     self.pw_check = PwCheck::Valid

@@ -14,6 +14,7 @@ use super::passkey::PasskeyModalApp;
 use super::passkeyremove::PasskeyRemoveModalApp;
 use super::pwmodal::PwModalApp;
 use super::totpmodal::TotpModalApp;
+use super::totpremove::TotpRemoveComp;
 use crate::error::*;
 use crate::{models, utils};
 
@@ -29,6 +30,13 @@ pub enum EventBusMsg {
 #[derive(PartialEq, Properties)]
 pub struct ModalProps {
     pub token: CUSessionToken,
+    pub cb: Callback<EventBusMsg>,
+}
+
+#[derive(PartialEq, Properties)]
+pub struct TotpRemoveProps {
+    pub token: CUSessionToken,
+    pub label: String,
     pub cb: Callback<EventBusMsg>,
 }
 
@@ -400,19 +408,7 @@ impl CredentialResetApp {
 
                       <>
                       { for totp_set.iter()
-                          .map(|detail|
-                                // TotpRemoveButton::render_button(&detail.tag, detail.uuid)
-                                html! {
-                                  <div class="row mb-3">
-                                    <div class="col">{ detail.clone() }</div>
-                                    <div class="col">
-                                    <button type="button" class="btn btn-dark btn-sml">
-                                      { "Remove" }
-                                    </button>
-                                    </div>
-                                  </div>
-                                }
-                          )
+                          .map(|detail| html! { <TotpRemoveComp token={ token.clone() } label={ detail.clone() } cb={ cb.clone() } /> })
                       }
                       </>
 

@@ -117,11 +117,9 @@ impl fmt::Debug for CredentialUpdateSession {
 }
 
 impl CredentialUpdateSession {
-
     // In future this should be a Vec of the issues with the current session so that UI's can highlight
     // properly how to proceed.
     fn can_commit(&self) -> bool {
-
         // Should be it's own PR and use account policy
 
         /*
