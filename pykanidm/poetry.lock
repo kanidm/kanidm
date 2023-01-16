@@ -904,14 +904,14 @@ mkdocs = ">=1.1"
 
 [[package]]
 name = "mkdocs-material"
-version = "9.0.3"
+version = "9.0.5"
 description = "Documentation that simply works"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "mkdocs_material-9.0.3-py3-none-any.whl", hash = "sha256:cedbbf84e156370489907d3c5b79999fcf6563f61a96965ec4c2513d303fa706"},
-    {file = "mkdocs_material-9.0.3.tar.gz", hash = "sha256:918fe38f504ca397b388b6c45445c22cb9acab61f00ade78d5f3edf299b6c9df"},
+    {file = "mkdocs_material-9.0.5-py3-none-any.whl", hash = "sha256:53194bf8ae7dfb527fef2892a6ee291d3efc7b57d010b04dbb818b4ee88074a5"},
+    {file = "mkdocs_material-9.0.5.tar.gz", hash = "sha256:bbfed71788223b4c548a6e637cb7a9ee5b6ad6593c6d5b04e57c9c4d2c39d76b"},
 ]
 
 [package.dependencies]
@@ -921,7 +921,7 @@ markdown = ">=3.2"
 mkdocs = ">=1.4.2"
 mkdocs-material-extensions = ">=1.1"
 pygments = ">=2.14"
-pymdown-extensions = ">=9.9"
+pymdown-extensions = ">=9.9.1"
 regex = ">=2022.4.24"
 requests = ">=2.26"
 
@@ -1343,14 +1343,14 @@ pytest = ">=4.6"
 
 [[package]]
 name = "pymdown-extensions"
-version = "9.9"
+version = "9.9.1"
 description = "Extension pack for Python Markdown."
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pymdown_extensions-9.9-py3-none-any.whl", hash = "sha256:ac698c15265680db5eb13cd4342abfcde2079ac01e5486028f47a1b41547b859"},
-    {file = "pymdown_extensions-9.9.tar.gz", hash = "sha256:0f8fb7b74a37a61cc34e90b2c91865458b713ec774894ffad64353a5fce85cfc"},
+    {file = "pymdown_extensions-9.9.1-py3-none-any.whl", hash = "sha256:8a8973933ab45b6fe8f5f8da1de25766356b1f91dee107bf4a34efd158dc340b"},
+    {file = "pymdown_extensions-9.9.1.tar.gz", hash = "sha256:abed29926960bbb3b40f5ed5fa6375e29724d4e3cb86ced7c2bbd37ead1afeea"},
 ]
 
 [package.dependencies]
@@ -1988,4 +1988,4 @@ testing = ["func-timeout", "jaraco.itertools", "pytest (>=6)", "pytest-black (>=
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "08ad25b2ac1cbae51a3131b266b72547f6a19971062e5642db5145659231f5c7"
+content-hash = "0430434bf6ec6b4833a2d00064e67096bcd74d75ad098e1c81779e87ae34a57b"
