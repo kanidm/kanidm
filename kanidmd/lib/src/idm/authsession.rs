@@ -2249,4 +2249,115 @@ mod tests {
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
     }
+
+    #[test]
+    fn test_idm_authsession_multiple_totp_password_mech() {
+        // Slightly different to the other TOTP test, this
+        // checks handling when multiple TOTP's are registered.
+        let _ = sketching::test_init();
+        let webauthn = create_webauthn();
+        let jws_signer = create_jwt_signer();
+        // create the ent
+        let mut account = entry_to_account!(E_ADMIN_V1);
+
+        // Setup a fake time stamp for consistency.
+        let ts = Duration::from_secs(12345);
+
+        // manually load in a cred
+        let totp_a = Totp::generate_secure(TOTP_DEFAULT_STEP);
+        let totp_b = Totp::generate_secure(TOTP_DEFAULT_STEP);
+
+        let totp_good_a = totp_a
+            .do_totp_duration_from_epoch(&ts)
+            .expect("failed to perform totp.");
+
+        let totp_good_b = totp_b
+            .do_totp_duration_from_epoch(&ts)
+            .expect("failed to perform totp.");
+
+        assert!(totp_good_a != totp_good_b);
+
+        let pw_good = "test_password";
+
+        let p = CryptoPolicy::minimum();
+        let cred = Credential::new_password_only(&p, pw_good)
+            .unwrap()
+            .append_totp("totp_a".to_string(), totp_a)
+            .append_totp("totp_b".to_string(), totp_b);
+        // add totp also
+        account.primary = Some(cred);
+
+        let (async_tx, mut async_rx) = unbounded();
+
+        // Test totp_a
+        {
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(account, &webauthn);
+
+            match session.validate_creds(
+                &AuthCredential::Totp(totp_good_a),
+                &ts,
+                &async_tx,
+                &webauthn,
+                Some(&pw_badlist_cache),
+                &jws_signer,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                _ => panic!(),
+            };
+            match session.validate_creds(
+                &AuthCredential::Password(pw_good.to_string()),
+                &ts,
+                &async_tx,
+                &webauthn,
+                Some(&pw_badlist_cache),
+                &jws_signer,
+            ) {
+                Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
+                _ => panic!(),
+            };
+
+            match async_rx.blocking_recv() {
+                Some(DelayedAction::AuthSessionRecord(_)) => {}
+                _ => assert!(false),
+            }
+        }
+
+        // Test totp_b
+        {
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(account, &webauthn);
+
+            match session.validate_creds(
+                &AuthCredential::Totp(totp_good_b),
+                &ts,
+                &async_tx,
+                &webauthn,
+                Some(&pw_badlist_cache),
+                &jws_signer,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                _ => panic!(),
+            };
+            match session.validate_creds(
+                &AuthCredential::Password(pw_good.to_string()),
+                &ts,
+                &async_tx,
+                &webauthn,
+                Some(&pw_badlist_cache),
+                &jws_signer,
+            ) {
+                Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
+                _ => panic!(),
+            };
+
+            match async_rx.blocking_recv() {
+                Some(DelayedAction::AuthSessionRecord(_)) => {}
+                _ => assert!(false),
+            }
+        }
+
+        drop(async_tx);
+        assert!(async_rx.blocking_recv().is_none());
+    }
 }

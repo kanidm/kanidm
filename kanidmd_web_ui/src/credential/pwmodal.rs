@@ -264,6 +264,7 @@ impl Component for PwModalApp {
                             }
                         } ) }
                     >
+                      <input hidden=true type="text" autocomplete="username" />
                       <label for="new-password" class="form-label">{ "Enter New Password" }</label>
                       <input
                         aria-describedby="password-validation-feedback"

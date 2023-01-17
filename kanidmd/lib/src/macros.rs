@@ -73,6 +73,29 @@ macro_rules! entry_str_to_account {
 }
 
 #[cfg(test)]
+macro_rules! entry_to_account {
+    ($entry:expr) => {{
+        use std::iter::once;
+
+        use crate::entry::{Entry, EntryInvalid, EntryNew};
+        use crate::idm::account::Account;
+        use crate::value::Value;
+
+        let mut e: Entry<EntryInvalid, EntryNew> = unsafe { $entry.clone().into_invalid_new() };
+        // Add spn, because normally this is generated but in tests we can't.
+        let spn = e
+            .get_ava_single_iname("name")
+            .map(|s| Value::new_spn_str(s, "example.com"))
+            .expect("Failed to munge spn from name!");
+        e.set_ava("spn", once(spn));
+
+        let e = unsafe { e.into_sealed_committed() };
+
+        Account::try_from_entry_no_groups(&e).expect("Account conversion failure")
+    }};
+}
+
+#[cfg(test)]
 macro_rules! run_idm_test_inner {
     ($test_fn:expr) => {{
         #[allow(unused_imports)]

@@ -268,7 +268,7 @@ impl LoginApp {
                                 name="username"
                                 oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
                                 type="text"
-                                autocomplete="off"
+                                autocomplete="username"
                                 value={ inputvalue }
                             />
                         </div>
@@ -334,6 +334,9 @@ impl LoginApp {
                                 LoginAppMsg::PasswordSubmit
                             } ) }
                         >
+                        <div>
+                            <input hidden=true type="text" autocomplete="username" />
+                        </div>
                         <div class={CLASS_DIV_LOGIN_FIELD}>
                             <input
                                 autofocus=true
