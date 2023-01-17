@@ -2505,6 +2505,46 @@
 <span id="2505">2505</span>
 <span id="2506">2506</span>
 <span id="2507">2507</span>
+<span id="2508">2508</span>
+<span id="2509">2509</span>
+<span id="2510">2510</span>
+<span id="2511">2511</span>
+<span id="2512">2512</span>
+<span id="2513">2513</span>
+<span id="2514">2514</span>
+<span id="2515">2515</span>
+<span id="2516">2516</span>
+<span id="2517">2517</span>
+<span id="2518">2518</span>
+<span id="2519">2519</span>
+<span id="2520">2520</span>
+<span id="2521">2521</span>
+<span id="2522">2522</span>
+<span id="2523">2523</span>
+<span id="2524">2524</span>
+<span id="2525">2525</span>
+<span id="2526">2526</span>
+<span id="2527">2527</span>
+<span id="2528">2528</span>
+<span id="2529">2529</span>
+<span id="2530">2530</span>
+<span id="2531">2531</span>
+<span id="2532">2532</span>
+<span id="2533">2533</span>
+<span id="2534">2534</span>
+<span id="2535">2535</span>
+<span id="2536">2536</span>
+<span id="2537">2537</span>
+<span id="2538">2538</span>
+<span id="2539">2539</span>
+<span id="2540">2540</span>
+<span id="2541">2541</span>
+<span id="2542">2542</span>
+<span id="2543">2543</span>
+<span id="2544">2544</span>
+<span id="2545">2545</span>
+<span id="2546">2546</span>
+<span id="2547">2547</span>
 </pre><pre class="rust"><code><span class="kw">use </span>core::ops::Deref;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::fmt;
@@ -2564,7 +2604,7 @@
     <span class="prelude-val">None</span>,
     TotpInit(Totp),
     TotpTryAgain(Totp),
-    TotpInvalidSha1(Totp, Totp),
+    TotpInvalidSha1(Totp, Totp, String),
     Passkey(Box&lt;CreationChallengeResponse&gt;, PasskeyRegistration),
 }
 
@@ -2574,7 +2614,7 @@
             MfaRegState::None =&gt; <span class="string">&quot;MfaRegState::None&quot;</span>,
             MfaRegState::TotpInit(<span class="kw">_</span>) =&gt; <span class="string">&quot;MfaRegState::TotpInit&quot;</span>,
             MfaRegState::TotpTryAgain(<span class="kw">_</span>) =&gt; <span class="string">&quot;MfaRegState::TotpTryAgain&quot;</span>,
-            MfaRegState::TotpInvalidSha1(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="string">&quot;MfaRegState::TotpInvalidSha1&quot;</span>,
+            MfaRegState::TotpInvalidSha1(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="string">&quot;MfaRegState::TotpInvalidSha1&quot;</span>,
             MfaRegState::Passkey(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="string">&quot;MfaRegState::Passkey&quot;</span>,
         };
         <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, t)
@@ -2621,6 +2661,37 @@
             .field(<span class="string">&quot;mfaregstate&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.mfaregstate)
             .finish()
     }
+}
+
+<span class="kw">impl </span>CredentialUpdateSession {
+    <span class="comment">// In future this should be a Vec of the issues with the current session so that UI&#39;s can highlight
+    // properly how to proceed.
+    </span><span class="kw">fn </span>can_commit(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="comment">// Should be it&#39;s own PR and use account policy
+
+        /*
+        // We&#39;ll check policy here in future.
+        let is_primary_valid = match self.primary.as_ref() {
+            Some(Credential {
+                uuid: _,
+                type_: CredentialType::Password(_),
+            }) =&gt; {
+                // We refuse password-only auth now.
+                info!(&quot;Password only authentication.&quot;);
+                false
+            }
+            // So far valid.
+            _ =&gt; true,
+        };
+
+        info!(&quot;can_commit -&gt; {}&quot;, is_primary_valid);
+
+        // For logic later.
+        is_primary_valid
+        */
+
+        </span><span class="bool-val">true
+    </span>}
 }
 
 <span class="kw">enum </span>MfaRegStateStatus {
@@ -2690,8 +2761,7 @@
         CredentialUpdateSessionStatus {
             spn: session.account.spn.clone(),
             displayname: session.account.displayname.clone(),
-
-            can_commit: <span class="bool-val">true</span>,
+            can_commit: session.can_commit(),
             primary: session.primary.as_ref().map(|c| c.into()),
             passkeys: session
                 .passkeys
@@ -2707,7 +2777,7 @@
                     token.to_proto(session.account.name.as_str(), session.issuer.as_str()),
                 ),
                 MfaRegState::TotpTryAgain(<span class="kw">_</span>) =&gt; MfaRegStateStatus::TotpTryAgain,
-                MfaRegState::TotpInvalidSha1(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; MfaRegStateStatus::TotpInvalidSha1,
+                MfaRegState::TotpInvalidSha1(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; MfaRegStateStatus::TotpInvalidSha1,
                 MfaRegState::Passkey(r, <span class="kw">_</span>) =&gt; MfaRegStateStatus::Passkey(r.as_ref().clone()),
             },
         }
@@ -3235,6 +3305,12 @@
         <span class="kw">let </span>(<span class="kw-2">mut </span>modlist, session, session_token) =
             <span class="self">self</span>.credential_update_commit_common(cust, ct)<span class="question-mark">?</span>;
 
+        <span class="comment">// Can we actually proceed?
+        </span><span class="kw">if </span>!session.can_commit() {
+            <span class="macro">admin_error!</span>(<span class="string">&quot;Session is unable to commit due to a constraint violation.&quot;</span>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidState);
+        }
+
         <span class="comment">// Setup mods for the various bits. We always assert an *exact* state.
 
         // IF an intent was used on this session, AND that intent is not in our
@@ -3657,6 +3733,7 @@
         cust: <span class="kw-2">&amp;</span>CredentialUpdateSessionToken,
         ct: Duration,
         totp_chal: u32,
+        label: <span class="kw-2">&amp;</span>str,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CredentialUpdateSessionStatus, OperationError&gt; {
         <span class="kw">let </span>session_handle = <span class="self">self</span>.get_current_session(cust, ct)<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>session = session_handle.try_lock().map_err(|<span class="kw">_</span>| {
@@ -3669,13 +3746,13 @@
         </span><span class="kw">match </span><span class="kw-2">&amp;</span>session.mfaregstate {
             MfaRegState::TotpInit(totp_token)
             | MfaRegState::TotpTryAgain(totp_token)
-            | MfaRegState::TotpInvalidSha1(totp_token, <span class="kw">_</span>) =&gt; {
+            | MfaRegState::TotpInvalidSha1(totp_token, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
                 <span class="kw">if </span>totp_token.verify(totp_chal, <span class="kw-2">&amp;</span>ct) {
                     <span class="comment">// It was valid. Update the credential.
                     </span><span class="kw">let </span>ncred = session
                         .primary
                         .as_ref()
-                        .map(|cred| cred.update_totp(totp_token.clone()))
+                        .map(|cred| cred.append_totp(label.to_string(), totp_token.clone()))
                         .ok_or_else(|| {
                             <span class="macro">admin_error!</span>(<span class="string">&quot;A TOTP was added, but no primary credential stub exists&quot;</span>);
                             OperationError::InvalidState
@@ -3695,8 +3772,11 @@
                     <span class="kw">if </span>token_sha1.verify(totp_chal, <span class="kw-2">&amp;</span>ct) {
                         <span class="comment">// Greeeaaaaaatttt. It&#39;s a broken app. Let&#39;s check the user
                         // knows this is broken, before we proceed.
-                        </span>session.mfaregstate =
-                            MfaRegState::TotpInvalidSha1(totp_token.clone(), token_sha1);
+                        </span>session.mfaregstate = MfaRegState::TotpInvalidSha1(
+                            totp_token.clone(),
+                            token_sha1,
+                            label.to_string(),
+                        );
                         <span class="prelude-val">Ok</span>(session.deref().into())
                     } <span class="kw">else </span>{
                         <span class="comment">// Let them check again, it&#39;s a typo.
@@ -3723,12 +3803,12 @@
 
         <span class="comment">// Are we in a totp reg state?
         </span><span class="kw">match </span><span class="kw-2">&amp;</span>session.mfaregstate {
-            MfaRegState::TotpInvalidSha1(<span class="kw">_</span>, token_sha1) =&gt; {
+            MfaRegState::TotpInvalidSha1(<span class="kw">_</span>, token_sha1, label) =&gt; {
                 <span class="comment">// They have accepted it as sha1
                 </span><span class="kw">let </span>ncred = session
                     .primary
                     .as_ref()
-                    .map(|cred| cred.update_totp(token_sha1.clone()))
+                    .map(|cred| cred.append_totp(label.to_string(), token_sha1.clone()))
                     .ok_or_else(|| {
                         <span class="macro">admin_error!</span>(<span class="string">&quot;A TOTP was added, but no primary credential stub exists&quot;</span>);
                         OperationError::InvalidState
@@ -3750,6 +3830,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         cust: <span class="kw-2">&amp;</span>CredentialUpdateSessionToken,
         ct: Duration,
+        label: <span class="kw-2">&amp;</span>str,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CredentialUpdateSessionStatus, OperationError&gt; {
         <span class="kw">let </span>session_handle = <span class="self">self</span>.get_current_session(cust, ct)<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>session = session_handle.try_lock().map_err(|<span class="kw">_</span>| {
@@ -3766,7 +3847,7 @@
         <span class="kw">let </span>ncred = session
             .primary
             .as_ref()
-            .map(|cred| cred.remove_totp())
+            .map(|cred| cred.remove_totp(label))
             .ok_or_else(|| {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Try to remove TOTP, but no primary credential stub exists&quot;</span>);
                 OperationError::InvalidState
@@ -4593,7 +4674,7 @@
 
         <span class="comment">// Intentionally get it wrong.
         </span><span class="kw">let </span>c_status = cutxn
-            .credential_primary_check_totp(<span class="kw-2">&amp;</span>cust, ct, chal + <span class="number">1</span>)
+            .credential_primary_check_totp(<span class="kw-2">&amp;</span>cust, ct, chal + <span class="number">1</span>, <span class="string">&quot;totp&quot;</span>)
             .expect(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
 
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(
@@ -4602,14 +4683,14 @@
         ));
 
         <span class="kw">let </span>c_status = cutxn
-            .credential_primary_check_totp(<span class="kw-2">&amp;</span>cust, ct, chal)
+            .credential_primary_check_totp(<span class="kw-2">&amp;</span>cust, ct, chal, <span class="string">&quot;totp&quot;</span>)
             .expect(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
 
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(c_status.mfaregstate, MfaRegStateStatus::None));
-        <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-            c_status.primary.as_ref().map(|c| <span class="kw-2">&amp;</span>c.type_),
-            <span class="prelude-val">Some</span>(CredentialDetailType::PasswordMfa(<span class="bool-val">true</span>, <span class="kw">_</span>, <span class="number">0</span>))
-        ));
+        <span class="macro">assert!</span>(<span class="kw">match </span>c_status.primary.as_ref().map(|c| <span class="kw-2">&amp;</span>c.type_) {
+            <span class="prelude-val">Some</span>(CredentialDetailType::PasswordMfa(totp, <span class="kw">_</span>, <span class="number">0</span>)) =&gt; !totp.is_empty(),
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
+        });
 
         <span class="comment">// Should be okay now!
 
@@ -4629,7 +4710,7 @@
         <span class="kw">let </span>cutxn = idms.cred_update_transaction();
 
         <span class="kw">let </span>c_status = cutxn
-            .credential_primary_remove_totp(<span class="kw-2">&amp;</span>cust, ct)
+            .credential_primary_remove_totp(<span class="kw-2">&amp;</span>cust, ct, <span class="string">&quot;totp&quot;</span>)
             .expect(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
 
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(c_status.mfaregstate, MfaRegStateStatus::None));
@@ -4689,7 +4770,7 @@
 
         <span class="comment">// Should getn the warn that it&#39;s sha1
         </span><span class="kw">let </span>c_status = cutxn
-            .credential_primary_check_totp(<span class="kw-2">&amp;</span>cust, ct, chal)
+            .credential_primary_check_totp(<span class="kw-2">&amp;</span>cust, ct, chal, <span class="string">&quot;totp&quot;</span>)
             .expect(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
 
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(
@@ -4703,10 +4784,10 @@
             .expect(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
 
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(c_status.mfaregstate, MfaRegStateStatus::None));
-        <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-            c_status.primary.as_ref().map(|c| <span class="kw-2">&amp;</span>c.type_),
-            <span class="prelude-val">Some</span>(CredentialDetailType::PasswordMfa(<span class="bool-val">true</span>, <span class="kw">_</span>, <span class="number">0</span>))
-        ));
+        <span class="macro">assert!</span>(<span class="kw">match </span>c_status.primary.as_ref().map(|c| <span class="kw-2">&amp;</span>c.type_) {
+            <span class="prelude-val">Some</span>(CredentialDetailType::PasswordMfa(totp, <span class="kw">_</span>, <span class="number">0</span>)) =&gt; !totp.is_empty(),
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
+        });
 
         <span class="comment">// Should be okay now!
 
@@ -4750,7 +4831,6 @@
 
         <span class="kw">let </span>totp_token: Totp = <span class="kw">match </span>c_status.mfaregstate {
             MfaRegStateStatus::TotpCheck(secret) =&gt; <span class="prelude-val">Some</span>(secret.into()),
-
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
         .expect(<span class="string">&quot;Unable to retrieve totp token, invalid state.&quot;</span>);
@@ -4761,14 +4841,14 @@
             .expect(<span class="string">&quot;Failed to perform totp step&quot;</span>);
 
         <span class="kw">let </span>c_status = cutxn
-            .credential_primary_check_totp(<span class="kw-2">&amp;</span>cust, ct, chal)
-            .expect(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
+            .credential_primary_check_totp(<span class="kw-2">&amp;</span>cust, ct, chal, <span class="string">&quot;totp&quot;</span>)
+            .expect(<span class="string">&quot;Failed to update the primary cred totp&quot;</span>);
 
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(c_status.mfaregstate, MfaRegStateStatus::None));
-        <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-            c_status.primary.as_ref().map(|c| <span class="kw-2">&amp;</span>c.type_),
-            <span class="prelude-val">Some</span>(CredentialDetailType::PasswordMfa(<span class="bool-val">true</span>, <span class="kw">_</span>, <span class="number">0</span>))
-        ));
+        <span class="macro">assert!</span>(<span class="kw">match </span>c_status.primary.as_ref().map(|c| <span class="kw-2">&amp;</span>c.type_) {
+            <span class="prelude-val">Some</span>(CredentialDetailType::PasswordMfa(totp, <span class="kw">_</span>, <span class="number">0</span>)) =&gt; !totp.is_empty(),
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
+        });
 
         <span class="comment">// Now good to go, we need to now add our backup codes.
         // What&#39;s the right way to get these back?
@@ -4784,10 +4864,10 @@
 
         <span class="comment">// Should error because the number is not 0
         </span><span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, c_status.primary.as_ref().map(|c| <span class="kw-2">&amp;</span>c.type_));
-        <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-            c_status.primary.as_ref().map(|c| <span class="kw-2">&amp;</span>c.type_),
-            <span class="prelude-val">Some</span>(CredentialDetailType::PasswordMfa(<span class="bool-val">true</span>, <span class="kw">_</span>, <span class="number">8</span>))
-        ));
+        <span class="macro">assert!</span>(<span class="kw">match </span>c_status.primary.as_ref().map(|c| <span class="kw-2">&amp;</span>c.type_) {
+            <span class="prelude-val">Some</span>(CredentialDetailType::PasswordMfa(totp, <span class="kw">_</span>, <span class="number">8</span>)) =&gt; !totp.is_empty(),
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
+        });
 
         <span class="comment">// Should be okay now!
         </span>drop(cutxn);
@@ -4815,10 +4895,10 @@
             .credential_update_status(<span class="kw-2">&amp;</span>cust, ct)
             .expect(<span class="string">&quot;Failed to get the current session status.&quot;</span>);
 
-        <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-            c_status.primary.as_ref().map(|c| <span class="kw-2">&amp;</span>c.type_),
-            <span class="prelude-val">Some</span>(CredentialDetailType::PasswordMfa(<span class="bool-val">true</span>, <span class="kw">_</span>, <span class="number">7</span>))
-        ));
+        <span class="macro">assert!</span>(<span class="kw">match </span>c_status.primary.as_ref().map(|c| <span class="kw-2">&amp;</span>c.type_) {
+            <span class="prelude-val">Some</span>(CredentialDetailType::PasswordMfa(totp, <span class="kw">_</span>, <span class="number">7</span>)) =&gt; !totp.is_empty(),
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
+        });
 
         <span class="comment">// If we remove codes, it leaves totp.
         </span><span class="kw">let </span>c_status = cutxn
@@ -4826,10 +4906,10 @@
             .expect(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
 
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(c_status.mfaregstate, MfaRegStateStatus::None));
-        <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-            c_status.primary.as_ref().map(|c| <span class="kw-2">&amp;</span>c.type_),
-            <span class="prelude-val">Some</span>(CredentialDetailType::PasswordMfa(<span class="bool-val">true</span>, <span class="kw">_</span>, <span class="number">0</span>))
-        ));
+        <span class="macro">assert!</span>(<span class="kw">match </span>c_status.primary.as_ref().map(|c| <span class="kw-2">&amp;</span>c.type_) {
+            <span class="prelude-val">Some</span>(CredentialDetailType::PasswordMfa(totp, <span class="kw">_</span>, <span class="number">0</span>)) =&gt; !totp.is_empty(),
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
+        });
 
         <span class="comment">// Re-add the codes.
         </span><span class="kw">let </span>c_status = cutxn
@@ -4840,14 +4920,14 @@
             c_status.mfaregstate,
             MfaRegStateStatus::BackupCodes(<span class="kw">_</span>)
         ));
-        <span class="macro">assert!</span>(<span class="macro">matches!</span>(
-            c_status.primary.as_ref().map(|c| <span class="kw-2">&amp;</span>c.type_),
-            <span class="prelude-val">Some</span>(CredentialDetailType::PasswordMfa(<span class="bool-val">true</span>, <span class="kw">_</span>, <span class="number">8</span>))
-        ));
+        <span class="macro">assert!</span>(<span class="kw">match </span>c_status.primary.as_ref().map(|c| <span class="kw-2">&amp;</span>c.type_) {
+            <span class="prelude-val">Some</span>(CredentialDetailType::PasswordMfa(totp, <span class="kw">_</span>, <span class="number">8</span>)) =&gt; !totp.is_empty(),
+            <span class="kw">_ </span>=&gt; <span class="bool-val">false</span>,
+        });
 
         <span class="comment">// If we remove totp, it removes codes.
         </span><span class="kw">let </span>c_status = cutxn
-            .credential_primary_remove_totp(<span class="kw-2">&amp;</span>cust, ct)
+            .credential_primary_remove_totp(<span class="kw-2">&amp;</span>cust, ct, <span class="string">&quot;totp&quot;</span>)
             .expect(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
 
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(c_status.mfaregstate, MfaRegStateStatus::None));

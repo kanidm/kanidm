@@ -2235,6 +2235,132 @@
 <span id="2235">2235</span>
 <span id="2236">2236</span>
 <span id="2237">2237</span>
+<span id="2238">2238</span>
+<span id="2239">2239</span>
+<span id="2240">2240</span>
+<span id="2241">2241</span>
+<span id="2242">2242</span>
+<span id="2243">2243</span>
+<span id="2244">2244</span>
+<span id="2245">2245</span>
+<span id="2246">2246</span>
+<span id="2247">2247</span>
+<span id="2248">2248</span>
+<span id="2249">2249</span>
+<span id="2250">2250</span>
+<span id="2251">2251</span>
+<span id="2252">2252</span>
+<span id="2253">2253</span>
+<span id="2254">2254</span>
+<span id="2255">2255</span>
+<span id="2256">2256</span>
+<span id="2257">2257</span>
+<span id="2258">2258</span>
+<span id="2259">2259</span>
+<span id="2260">2260</span>
+<span id="2261">2261</span>
+<span id="2262">2262</span>
+<span id="2263">2263</span>
+<span id="2264">2264</span>
+<span id="2265">2265</span>
+<span id="2266">2266</span>
+<span id="2267">2267</span>
+<span id="2268">2268</span>
+<span id="2269">2269</span>
+<span id="2270">2270</span>
+<span id="2271">2271</span>
+<span id="2272">2272</span>
+<span id="2273">2273</span>
+<span id="2274">2274</span>
+<span id="2275">2275</span>
+<span id="2276">2276</span>
+<span id="2277">2277</span>
+<span id="2278">2278</span>
+<span id="2279">2279</span>
+<span id="2280">2280</span>
+<span id="2281">2281</span>
+<span id="2282">2282</span>
+<span id="2283">2283</span>
+<span id="2284">2284</span>
+<span id="2285">2285</span>
+<span id="2286">2286</span>
+<span id="2287">2287</span>
+<span id="2288">2288</span>
+<span id="2289">2289</span>
+<span id="2290">2290</span>
+<span id="2291">2291</span>
+<span id="2292">2292</span>
+<span id="2293">2293</span>
+<span id="2294">2294</span>
+<span id="2295">2295</span>
+<span id="2296">2296</span>
+<span id="2297">2297</span>
+<span id="2298">2298</span>
+<span id="2299">2299</span>
+<span id="2300">2300</span>
+<span id="2301">2301</span>
+<span id="2302">2302</span>
+<span id="2303">2303</span>
+<span id="2304">2304</span>
+<span id="2305">2305</span>
+<span id="2306">2306</span>
+<span id="2307">2307</span>
+<span id="2308">2308</span>
+<span id="2309">2309</span>
+<span id="2310">2310</span>
+<span id="2311">2311</span>
+<span id="2312">2312</span>
+<span id="2313">2313</span>
+<span id="2314">2314</span>
+<span id="2315">2315</span>
+<span id="2316">2316</span>
+<span id="2317">2317</span>
+<span id="2318">2318</span>
+<span id="2319">2319</span>
+<span id="2320">2320</span>
+<span id="2321">2321</span>
+<span id="2322">2322</span>
+<span id="2323">2323</span>
+<span id="2324">2324</span>
+<span id="2325">2325</span>
+<span id="2326">2326</span>
+<span id="2327">2327</span>
+<span id="2328">2328</span>
+<span id="2329">2329</span>
+<span id="2330">2330</span>
+<span id="2331">2331</span>
+<span id="2332">2332</span>
+<span id="2333">2333</span>
+<span id="2334">2334</span>
+<span id="2335">2335</span>
+<span id="2336">2336</span>
+<span id="2337">2337</span>
+<span id="2338">2338</span>
+<span id="2339">2339</span>
+<span id="2340">2340</span>
+<span id="2341">2341</span>
+<span id="2342">2342</span>
+<span id="2343">2343</span>
+<span id="2344">2344</span>
+<span id="2345">2345</span>
+<span id="2346">2346</span>
+<span id="2347">2347</span>
+<span id="2348">2348</span>
+<span id="2349">2349</span>
+<span id="2350">2350</span>
+<span id="2351">2351</span>
+<span id="2352">2352</span>
+<span id="2353">2353</span>
+<span id="2354">2354</span>
+<span id="2355">2355</span>
+<span id="2356">2356</span>
+<span id="2357">2357</span>
+<span id="2358">2358</span>
+<span id="2359">2359</span>
+<span id="2360">2360</span>
+<span id="2361">2361</span>
+<span id="2362">2362</span>
+<span id="2363">2363</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the logic to conduct an authentication of an account.
 //! Generally this has to process an authentication attempt, and validate each
 //! factor to assert that the user is legitimate. This also contains some
@@ -2302,7 +2428,7 @@
 </span><span class="kw">struct </span>CredMfa {
     pw: Password,
     pw_state: CredVerifyState,
-    totp: <span class="prelude-ty">Option</span>&lt;Totp&gt;,
+    totp: BTreeMap&lt;String, Totp&gt;,
     wan: <span class="prelude-ty">Option</span>&lt;(RequestChallengeResponse, SecurityKeyAuthentication)&gt;,
     backup_code: <span class="prelude-ty">Option</span>&lt;BackupCodes&gt;,
     mfa_state: CredVerifyState,
@@ -2357,14 +2483,17 @@
                 <span class="kw">let </span>cmfa = Box::new(CredMfa {
                     pw: pw.clone(),
                     pw_state: CredVerifyState::Init,
-                    totp: maybe_totp.clone(),
+                    totp: maybe_totp
+                        .iter()
+                        .map(|(l, t)| (l.clone(), t.clone()))
+                        .collect(),
                     wan,
                     backup_code: maybe_backup_code.clone(),
                     mfa_state: CredVerifyState::Init,
                 });
 
                 <span class="comment">// Paranoia. Should NEVER occur.
-                </span><span class="kw">if </span>cmfa.totp.is_none() &amp;&amp; cmfa.wan.is_none() {
+                </span><span class="kw">if </span>cmfa.totp.is_empty() &amp;&amp; cmfa.wan.is_none() {
                     <span class="macro">security_critical!</span>(<span class="string">&quot;Unable to create CredHandler::PasswordMfa - totp and webauthn are both not present. Credentials MAY be corrupt!&quot;</span>);
                     <span class="kw">return </span><span class="prelude-val">Err</span>(());
                 }
@@ -2522,7 +2651,7 @@
                 <span class="comment">// MFA first
                 </span><span class="kw">match </span>(
                     cred,
-                    pw_mfa.totp.as_ref(),
+                    !pw_mfa.totp.is_empty(),
                     pw_mfa.wan.as_ref(),
                     pw_mfa.backup_code.as_ref(),
                 ) {
@@ -2558,12 +2687,20 @@
                             }
                         }
                     }
-                    (AuthCredential::Totp(totp_chal), <span class="prelude-val">Some</span>(totp), <span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
-                        <span class="kw">if </span>totp.verify(<span class="kw-2">*</span>totp_chal, ts) {
+                    (AuthCredential::Totp(totp_chal), <span class="bool-val">true</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
+                        <span class="comment">// So long as one totp matches, success. Log which token was used.
+                        // We don&#39;t need to worry about the empty case since none will match and we
+                        // will get the failure.
+                        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(label) = pw_mfa
+                            .totp
+                            .iter()
+                            .find(|(<span class="kw">_</span>, t)| t.verify(<span class="kw-2">*</span>totp_chal, ts))
+                            .map(|(l, <span class="kw">_</span>)| l)
+                        {
                             pw_mfa.mfa_state = CredVerifyState::Success;
                             <span class="macro">security_info!</span>(
-                                <span class="string">&quot;Handler::PasswordMfa -&gt; Result::Continue - TOTP OK, password -&quot;
-                            </span>);
+                                <span class="string">&quot;Handler::PasswordMfa -&gt; Result::Continue - TOTP ({}) OK, password -&quot;</span>, label
+                            );
                             CredState::Continue(<span class="macro">vec!</span>[AuthAllowed::Password])
                         } <span class="kw">else </span>{
                             pw_mfa.mfa_state = CredVerifyState::Fail;
@@ -2738,8 +2875,12 @@
                 .backup_code
                 .iter()
                 .map(|<span class="kw">_</span>| AuthAllowed::BackupCode)
-                .chain(pw_mfa.totp.iter().map(|<span class="kw">_</span>| AuthAllowed::Totp))
-                .chain(
+                <span class="comment">// This looks weird but the idea is that if at least *one*
+                // totp exists, then we only offer TOTP once. If none are
+                // there we offer it none.
+                </span>.chain(pw_mfa.totp.iter().next().map(|<span class="kw">_</span>| AuthAllowed::Totp))
+                <span class="comment">// This iter is over an option so it&#39;s there or not.
+                </span>.chain(
                     pw_mfa
                         .wan
                         .iter()
@@ -3417,7 +3558,7 @@
         <span class="kw">let </span>p = CryptoPolicy::minimum();
         <span class="kw">let </span>cred = Credential::new_password_only(<span class="kw-2">&amp;</span>p, pw_good)
             .unwrap()
-            .update_totp(totp);
+            .append_totp(<span class="string">&quot;totp&quot;</span>.to_string(), totp);
         <span class="comment">// add totp also
         </span>account.primary = <span class="prelude-val">Some</span>(cred);
 
@@ -3572,7 +3713,7 @@
         <span class="kw">let </span>p = CryptoPolicy::minimum();
         <span class="kw">let </span>cred = Credential::new_password_only(<span class="kw-2">&amp;</span>p, pw_badlist)
             .unwrap()
-            .update_totp(totp);
+            .append_totp(<span class="string">&quot;totp&quot;</span>.to_string(), totp);
         <span class="comment">// add totp also
         </span>account.primary = <span class="prelude-val">Some</span>(cred);
 
@@ -4057,7 +4198,7 @@
             .unwrap()
             .append_securitykey(<span class="string">&quot;soft&quot;</span>.to_string(), wan_cred)
             .unwrap()
-            .update_totp(totp);
+            .append_totp(<span class="string">&quot;totp&quot;</span>.to_string(), totp);
 
         account.primary = <span class="prelude-val">Some</span>(cred);
 
@@ -4310,7 +4451,7 @@
         </span><span class="kw">let </span>p = CryptoPolicy::minimum();
         <span class="kw">let </span>cred = Credential::new_password_only(<span class="kw-2">&amp;</span>p, pw_good)
             .unwrap()
-            .update_totp(totp)
+            .append_totp(<span class="string">&quot;totp&quot;</span>.to_string(), totp)
             .update_backup_code(backup_codes)
             .unwrap();
 
@@ -4466,6 +4607,117 @@
         </span><span class="kw">match </span>async_rx.blocking_recv() {
             <span class="prelude-val">Some</span>(DelayedAction::AuthSessionRecord(<span class="kw">_</span>)) =&gt; {}
             <span class="kw">_ </span>=&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+        }
+
+        drop(async_tx);
+        <span class="macro">assert!</span>(async_rx.blocking_recv().is_none());
+    }
+
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_idm_authsession_multiple_totp_password_mech() {
+        <span class="comment">// Slightly different to the other TOTP test, this
+        // checks handling when multiple TOTP&#39;s are registered.
+        </span><span class="kw">let _ </span>= sketching::test_init();
+        <span class="kw">let </span>webauthn = create_webauthn();
+        <span class="kw">let </span>jws_signer = create_jwt_signer();
+        <span class="comment">// create the ent
+        </span><span class="kw">let </span><span class="kw-2">mut </span>account = <span class="macro">entry_to_account!</span>(E_ADMIN_V1);
+
+        <span class="comment">// Setup a fake time stamp for consistency.
+        </span><span class="kw">let </span>ts = Duration::from_secs(<span class="number">12345</span>);
+
+        <span class="comment">// manually load in a cred
+        </span><span class="kw">let </span>totp_a = Totp::generate_secure(TOTP_DEFAULT_STEP);
+        <span class="kw">let </span>totp_b = Totp::generate_secure(TOTP_DEFAULT_STEP);
+
+        <span class="kw">let </span>totp_good_a = totp_a
+            .do_totp_duration_from_epoch(<span class="kw-2">&amp;</span>ts)
+            .expect(<span class="string">&quot;failed to perform totp.&quot;</span>);
+
+        <span class="kw">let </span>totp_good_b = totp_b
+            .do_totp_duration_from_epoch(<span class="kw-2">&amp;</span>ts)
+            .expect(<span class="string">&quot;failed to perform totp.&quot;</span>);
+
+        <span class="macro">assert!</span>(totp_good_a != totp_good_b);
+
+        <span class="kw">let </span>pw_good = <span class="string">&quot;test_password&quot;</span>;
+
+        <span class="kw">let </span>p = CryptoPolicy::minimum();
+        <span class="kw">let </span>cred = Credential::new_password_only(<span class="kw-2">&amp;</span>p, pw_good)
+            .unwrap()
+            .append_totp(<span class="string">&quot;totp_a&quot;</span>.to_string(), totp_a)
+            .append_totp(<span class="string">&quot;totp_b&quot;</span>.to_string(), totp_b);
+        <span class="comment">// add totp also
+        </span>account.primary = <span class="prelude-val">Some</span>(cred);
+
+        <span class="kw">let </span>(async_tx, <span class="kw-2">mut </span>async_rx) = unbounded();
+
+        <span class="comment">// Test totp_a
+        </span>{
+            <span class="kw">let </span>(<span class="kw-2">mut </span>session, <span class="kw">_</span>, pw_badlist_cache) =
+                <span class="macro">start_password_mfa_session!</span>(account, <span class="kw-2">&amp;</span>webauthn);
+
+            <span class="kw">match </span>session.validate_creds(
+                <span class="kw-2">&amp;</span>AuthCredential::Totp(totp_good_a),
+                <span class="kw-2">&amp;</span>ts,
+                <span class="kw-2">&amp;</span>async_tx,
+                <span class="kw-2">&amp;</span>webauthn,
+                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>pw_badlist_cache),
+                <span class="kw-2">&amp;</span>jws_signer,
+            ) {
+                <span class="prelude-val">Ok</span>(AuthState::Continue(cont)) =&gt; <span class="macro">assert!</span>(cont == <span class="macro">vec!</span>[AuthAllowed::Password]),
+                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(),
+            };
+            <span class="kw">match </span>session.validate_creds(
+                <span class="kw-2">&amp;</span>AuthCredential::Password(pw_good.to_string()),
+                <span class="kw-2">&amp;</span>ts,
+                <span class="kw-2">&amp;</span>async_tx,
+                <span class="kw-2">&amp;</span>webauthn,
+                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>pw_badlist_cache),
+                <span class="kw-2">&amp;</span>jws_signer,
+            ) {
+                <span class="prelude-val">Ok</span>(AuthState::Success(<span class="kw">_</span>, AuthIssueSession::Token)) =&gt; {}
+                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(),
+            };
+
+            <span class="kw">match </span>async_rx.blocking_recv() {
+                <span class="prelude-val">Some</span>(DelayedAction::AuthSessionRecord(<span class="kw">_</span>)) =&gt; {}
+                <span class="kw">_ </span>=&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+            }
+        }
+
+        <span class="comment">// Test totp_b
+        </span>{
+            <span class="kw">let </span>(<span class="kw-2">mut </span>session, <span class="kw">_</span>, pw_badlist_cache) =
+                <span class="macro">start_password_mfa_session!</span>(account, <span class="kw-2">&amp;</span>webauthn);
+
+            <span class="kw">match </span>session.validate_creds(
+                <span class="kw-2">&amp;</span>AuthCredential::Totp(totp_good_b),
+                <span class="kw-2">&amp;</span>ts,
+                <span class="kw-2">&amp;</span>async_tx,
+                <span class="kw-2">&amp;</span>webauthn,
+                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>pw_badlist_cache),
+                <span class="kw-2">&amp;</span>jws_signer,
+            ) {
+                <span class="prelude-val">Ok</span>(AuthState::Continue(cont)) =&gt; <span class="macro">assert!</span>(cont == <span class="macro">vec!</span>[AuthAllowed::Password]),
+                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(),
+            };
+            <span class="kw">match </span>session.validate_creds(
+                <span class="kw-2">&amp;</span>AuthCredential::Password(pw_good.to_string()),
+                <span class="kw-2">&amp;</span>ts,
+                <span class="kw-2">&amp;</span>async_tx,
+                <span class="kw-2">&amp;</span>webauthn,
+                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>pw_badlist_cache),
+                <span class="kw-2">&amp;</span>jws_signer,
+            ) {
+                <span class="prelude-val">Ok</span>(AuthState::Success(<span class="kw">_</span>, AuthIssueSession::Token)) =&gt; {}
+                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(),
+            };
+
+            <span class="kw">match </span>async_rx.blocking_recv() {
+                <span class="prelude-val">Some</span>(DelayedAction::AuthSessionRecord(<span class="kw">_</span>)) =&gt; {}
+                <span class="kw">_ </span>=&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+            }
         }
 
         drop(async_tx);

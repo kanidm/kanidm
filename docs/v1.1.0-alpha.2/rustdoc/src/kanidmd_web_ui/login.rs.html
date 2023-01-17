@@ -979,6 +979,18 @@
 <span id="979">979</span>
 <span id="980">980</span>
 <span id="981">981</span>
+<span id="982">982</span>
+<span id="983">983</span>
+<span id="984">984</span>
+<span id="985">985</span>
+<span id="986">986</span>
+<span id="987">987</span>
+<span id="988">988</span>
+<span id="989">989</span>
+<span id="990">990</span>
+<span id="991">991</span>
+<span id="992">992</span>
+<span id="993">993</span>
 </pre><pre class="rust"><code><span class="comment">// use anyhow::Error;
 </span><span class="kw">use </span>gloo::console;
 <span class="kw">use </span>kanidm_proto::v1::{
@@ -1249,6 +1261,7 @@
                                 </span>name=<span class="string">&quot;username&quot;
                                 </span>oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
                                 <span class="kw">type</span>=<span class="string">&quot;text&quot;
+                                </span>autocomplete=<span class="string">&quot;username&quot;
                                 </span>value={ inputvalue }
                             /&gt;
                         &lt;/div&gt;
@@ -1314,6 +1327,9 @@
                                 LoginAppMsg::PasswordSubmit
                             } ) }
                         &gt;
+                        &lt;div&gt;
+                            &lt;input hidden=<span class="bool-val">true </span><span class="kw">type</span>=<span class="string">&quot;text&quot; </span>autocomplete=<span class="string">&quot;username&quot; </span>/&gt;
+                        &lt;/div&gt;
                         &lt;div class={CLASS_DIV_LOGIN_FIELD}&gt;
                             &lt;input
                                 autofocus=<span class="bool-val">true
@@ -1323,6 +1339,7 @@
                                 </span>name=<span class="string">&quot;password&quot;
                                 </span>oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
                                 <span class="kw">type</span>=<span class="string">&quot;password&quot;
+                                </span>autocomplete=<span class="string">&quot;current-password&quot;
                                 </span>value={ inputvalue }
                             /&gt;
                             &lt;/div&gt;
@@ -1358,6 +1375,7 @@
                                 </span>name=<span class="string">&quot;backup_code&quot;
                                 </span>oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
                                 <span class="kw">type</span>=<span class="string">&quot;text&quot;
+                                </span>autocomplete=<span class="string">&quot;off&quot;
                                 </span>value={ inputvalue }
                             /&gt;
                             &lt;/div&gt;
@@ -1386,10 +1404,11 @@
                             autofocus=<span class="bool-val">true
                             </span>class=<span class="string">&quot;autofocus form-control&quot;
                             </span>disabled={ state==<span class="kw-2">&amp;</span>TotpState::Disabled }
-                            id=<span class="string">&quot;totp&quot;
-                            </span>name=<span class="string">&quot;totp&quot;
+                            id=<span class="string">&quot;otp&quot;
+                            </span>name=<span class="string">&quot;otp&quot;
                             </span>oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e)))}
                             <span class="kw">type</span>=<span class="string">&quot;text&quot;
+                            </span>autocomplete=<span class="string">&quot;off&quot;
                             </span>value={ inputvalue }
                             /&gt;
                         &lt;/div&gt;
@@ -1958,6 +1977,11 @@
     <span class="kw">fn </span>rendered(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;, _first_render: bool) {
         <span class="attribute">#[cfg(debug_assertions)]
         </span><span class="macro">console::debug!</span>(<span class="string">&quot;login::rendered&quot;</span>.to_string());
+        <span class="comment">// Force autofocus on elements that need it if present.
+        </span><span class="kw">crate</span>::utils::autofocus(<span class="string">&quot;username&quot;</span>);
+        <span class="kw">crate</span>::utils::autofocus(<span class="string">&quot;password&quot;</span>);
+        <span class="kw">crate</span>::utils::autofocus(<span class="string">&quot;backup_code&quot;</span>);
+        <span class="kw">crate</span>::utils::autofocus(<span class="string">&quot;otp&quot;</span>);
     }
 }
 </code></pre></div>

@@ -1783,6 +1783,10 @@
 <span id="1783">1783</span>
 <span id="1784">1784</span>
 <span id="1785">1785</span>
+<span id="1786">1786</span>
+<span id="1787">1787</span>
+<span id="1788">1788</span>
+<span id="1789">1789</span>
 </pre><pre class="rust"><code><span class="comment">// Core
 // Schema uuids start at 00000000-0000-0000-0000-ffff00000000
 
@@ -1899,7 +1903,9 @@
       &quot;description&quot;: [
         &quot;Primary credential material of the account for authentication interactively.&quot;
       ],
-      &quot;index&quot;: [],
+      &quot;index&quot;: [
+        &quot;PRESENCE&quot;
+      ],
       &quot;unique&quot;: [
         &quot;false&quot;
       ],
@@ -2270,7 +2276,9 @@
       &quot;description&quot;: [
         &quot;A posix users unix login password.&quot;
       ],
-      &quot;index&quot;: [],
+      &quot;index&quot;: [
+        &quot;PRESENCE&quot;
+      ],
       &quot;unique&quot;: [
         &quot;false&quot;
       ],

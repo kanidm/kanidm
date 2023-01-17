@@ -56,6 +56,35 @@
 <span id="56">56</span>
 <span id="57">57</span>
 <span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
 </pre><pre class="rust"><code><span class="comment">// Re-export as needed
 
 </span><span class="kw">pub mod </span>acp;
@@ -76,6 +105,35 @@
 
 <span class="comment">// Increment this as we add new schema types and values!!!
 </span><span class="kw">pub const </span>SYSTEM_INDEX_VERSION: i64 = <span class="number">27</span>;
+
+<span class="comment">/*
+ * domain functional levels
+ *
+ * The idea here is to allow topology wide upgrades to be performed. We have to
+ * assume that across multiple kanidm instances there may be cases where we have version
+ * N and version N minus 1 as upgrades are rolled out.
+ *
+ * Imagine we set up a new cluster. Machine A and B both have level 1 support.
+ * We upgrade machine A. It has support up to level 2, but machine B does not.
+ * So the overall functional level is level 1. Then we upgrade B, which supports
+ * up to level 2. We still don&#39;t do the upgrade! The topology is still level 1
+ * unless an admin at this point *intervenes* and forces the update. OR what
+ * happens we we update machine A again and it now supports up to level 3, with
+ * a target level of 2. So we update machine A now to level 2, and that can
+ * still replicate to machine B since it also supports level 2.
+ *
+ * effectively it means that &quot;some features&quot; may be a &quot;release behind&quot; for users
+ * who don&#39;t muck with the levels, but it means that we can do mixed version
+ * upgrades.
+ */
+</span><span class="kw">pub const </span>DOMAIN_LEVEL_1: u32 = <span class="number">1</span>;
+<span class="comment">// The minimum supported domain functional level
+</span><span class="kw">pub const </span>DOMAIN_MIN_LEVEL: u32 = DOMAIN_LEVEL_1;
+<span class="comment">// The target supported domain functional level
+</span><span class="kw">pub const </span>DOMAIN_TGT_LEVEL: u32 = DOMAIN_LEVEL_1;
+<span class="comment">// The maximum supported domain functional level
+</span><span class="kw">pub const </span>DOMAIN_MAX_LEVEL: u32 = DOMAIN_LEVEL_1;
+
 <span class="comment">// On test builds, define to 60 seconds
 </span><span class="attribute">#[cfg(test)]
 </span><span class="kw">pub const </span>PURGE_FREQUENCY: u64 = <span class="number">60</span>;

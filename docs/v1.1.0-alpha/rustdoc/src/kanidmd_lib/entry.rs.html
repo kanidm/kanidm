@@ -3049,12 +3049,6 @@
 <span id="3049">3049</span>
 <span id="3050">3050</span>
 <span id="3051">3051</span>
-<span id="3052">3052</span>
-<span id="3053">3053</span>
-<span id="3054">3054</span>
-<span id="3055">3055</span>
-<span id="3056">3056</span>
-<span id="3057">3057</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Entries are the base unit of object storage in the server. This is one of the three foundational
 //! concepts along with [`filter`]s and [`schema`] that everything else builds upon.
 //!
@@ -4831,20 +4825,14 @@
                 .chain(
                     l_attrs
                         .iter()
-                        .map(|k| (
-                            k.as_str(),
-                            ldap_vattr_map(k.as_str()).unwrap_or(k.as_str())
-                        ))
+                        .map(|k| (k.as_str(), ldap_vattr_map(k.as_str()).unwrap_or(k.as_str()))),
                 )
                 .collect()
         } <span class="kw">else </span>{
             <span class="comment">// Just get the requested ones.
             </span>l_attrs
                 .iter()
-                .map(|k| (
-                    k.as_str(),
-                    ldap_vattr_map(k.as_str()).unwrap_or(k.as_str())
-                ))
+                .map(|k| (k.as_str(), ldap_vattr_map(k.as_str()).unwrap_or(k.as_str())))
                 .collect()
         };
 

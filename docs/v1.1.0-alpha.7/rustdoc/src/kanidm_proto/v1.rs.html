@@ -1235,6 +1235,12 @@
 <span id="1235">1235</span>
 <span id="1236">1236</span>
 <span id="1237">1237</span>
+<span id="1238">1238</span>
+<span id="1239">1239</span>
+<span id="1240">1240</span>
+<span id="1241">1241</span>
+<span id="1242">1242</span>
+<span id="1243">1243</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 <span class="kw">use </span>std::fmt;
@@ -1880,7 +1886,7 @@ pub struct AccountOrgPersonExtend {
     GeneratedPassword,
     Passkey(Vec&lt;String&gt;),
     <span class="doccomment">/// totp, webauthn
-    </span>PasswordMfa(bool, Vec&lt;String&gt;, usize),
+    </span>PasswordMfa(Vec&lt;String&gt;, Vec&lt;String&gt;, usize),
 }
 
 <span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1912,24 +1918,30 @@ pub struct AccountOrgPersonExtend {
                     <span class="macro">write!</span>(f, <span class="string">&quot;&quot;</span>)
                 }
             }
-            CredentialDetailType::PasswordMfa(totp, labels, backup_code) =&gt; {
+            CredentialDetailType::PasswordMfa(totp_labels, wan_labels, backup_code) =&gt; {
                 <span class="macro">writeln!</span>(f, <span class="string">&quot;password: set&quot;</span>)<span class="question-mark">?</span>;
-                <span class="kw">if </span><span class="kw-2">*</span>totp {
-                    <span class="macro">writeln!</span>(f, <span class="string">&quot;totp: enabled&quot;</span>)<span class="question-mark">?</span>;
+
+                <span class="kw">if </span>!totp_labels.is_empty() {
+                    <span class="macro">writeln!</span>(f, <span class="string">&quot;totp:&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="kw">for </span>label <span class="kw">in </span>totp_labels {
+                        <span class="macro">writeln!</span>(f, <span class="string">&quot; * {}&quot;</span>, label)<span class="question-mark">?</span>;
+                    }
                 } <span class="kw">else </span>{
                     <span class="macro">writeln!</span>(f, <span class="string">&quot;totp: disabled&quot;</span>)<span class="question-mark">?</span>;
                 }
+
                 <span class="kw">if </span><span class="kw-2">*</span>backup_code &gt; <span class="number">0 </span>{
                     <span class="macro">writeln!</span>(f, <span class="string">&quot;backup_code: enabled&quot;</span>)<span class="question-mark">?</span>;
                 } <span class="kw">else </span>{
                     <span class="macro">writeln!</span>(f, <span class="string">&quot;backup_code: disabled&quot;</span>)<span class="question-mark">?</span>;
                 }
-                <span class="kw">if </span>!labels.is_empty() {
+
+                <span class="kw">if </span>!wan_labels.is_empty() {
                     <span class="comment">// We no longer show the deprecated security key case by default.
                     </span><span class="macro">writeln!</span>(f, <span class="string">&quot; ⚠️  warning - security keys are deprecated.&quot;</span>)<span class="question-mark">?</span>;
                     <span class="macro">writeln!</span>(f, <span class="string">&quot; ⚠️  you should re-enroll these to passkeys.&quot;</span>)<span class="question-mark">?</span>;
                     <span class="macro">writeln!</span>(f, <span class="string">&quot;security keys:&quot;</span>)<span class="question-mark">?</span>;
-                    <span class="kw">for </span>label <span class="kw">in </span>labels {
+                    <span class="kw">for </span>label <span class="kw">in </span>wan_labels {
                         <span class="macro">writeln!</span>(f, <span class="string">&quot; * {}&quot;</span>, label)<span class="question-mark">?</span>;
                     }
                     <span class="macro">write!</span>(f, <span class="string">&quot;&quot;</span>)
@@ -2360,9 +2372,9 @@ pub enum SetCredentialResponse {
     Password(String),
     CancelMFAReg,
     TotpGenerate,
-    TotpVerify(u32),
+    TotpVerify(u32, String),
     TotpAcceptSha1,
-    TotpRemove,
+    TotpRemove(String),
     BackupCodeGenerate,
     BackupCodeRemove,
     PasskeyInit,
@@ -2377,9 +2389,9 @@ pub enum SetCredentialResponse {
             CURequest::Password(<span class="kw">_</span>) =&gt; <span class="string">&quot;CURequest::Password&quot;</span>,
             CURequest::CancelMFAReg =&gt; <span class="string">&quot;CURequest::CancelMFAReg&quot;</span>,
             CURequest::TotpGenerate =&gt; <span class="string">&quot;CURequest::TotpGenerate&quot;</span>,
-            CURequest::TotpVerify(<span class="kw">_</span>) =&gt; <span class="string">&quot;CURequest::TotpVerify&quot;</span>,
+            CURequest::TotpVerify(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="string">&quot;CURequest::TotpVerify&quot;</span>,
             CURequest::TotpAcceptSha1 =&gt; <span class="string">&quot;CURequest::TotpAcceptSha1&quot;</span>,
-            CURequest::TotpRemove =&gt; <span class="string">&quot;CURequest::TotpRemove&quot;</span>,
+            CURequest::TotpRemove(<span class="kw">_</span>) =&gt; <span class="string">&quot;CURequest::TotpRemove&quot;</span>,
             CURequest::BackupCodeGenerate =&gt; <span class="string">&quot;CURequest::BackupCodeGenerate&quot;</span>,
             CURequest::BackupCodeRemove =&gt; <span class="string">&quot;CURequest::BackupCodeRemove&quot;</span>,
             CURequest::PasskeyInit =&gt; <span class="string">&quot;CURequest::PasskeyInit&quot;</span>,

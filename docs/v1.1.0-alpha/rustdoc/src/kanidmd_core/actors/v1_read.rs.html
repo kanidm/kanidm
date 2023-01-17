@@ -2488,8 +2488,8 @@
                     );
                     e
                 }),
-            CURequest::TotpVerify(totp_chal) =&gt; idms_cred_update
-                .credential_primary_check_totp(<span class="kw-2">&amp;</span>session_token, ct, totp_chal)
+            CURequest::TotpVerify(totp_chal, label) =&gt; idms_cred_update
+                .credential_primary_check_totp(<span class="kw-2">&amp;</span>session_token, ct, totp_chal, <span class="kw-2">&amp;</span>label)
                 .map_err(|e| {
                     <span class="macro">admin_error!</span>(
                         err = <span class="question-mark">?</span>e,
@@ -2506,8 +2506,8 @@
                     );
                     e
                 }),
-            CURequest::TotpRemove =&gt; idms_cred_update
-                .credential_primary_remove_totp(<span class="kw-2">&amp;</span>session_token, ct)
+            CURequest::TotpRemove(label) =&gt; idms_cred_update
+                .credential_primary_remove_totp(<span class="kw-2">&amp;</span>session_token, ct, <span class="kw-2">&amp;</span>label)
                 .map_err(|e| {
                     <span class="macro">admin_error!</span>(
                         err = <span class="question-mark">?</span>e,

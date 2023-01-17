@@ -1112,6 +1112,50 @@
 <span id="1112">1112</span>
 <span id="1113">1113</span>
 <span id="1114">1114</span>
+<span id="1115">1115</span>
+<span id="1116">1116</span>
+<span id="1117">1117</span>
+<span id="1118">1118</span>
+<span id="1119">1119</span>
+<span id="1120">1120</span>
+<span id="1121">1121</span>
+<span id="1122">1122</span>
+<span id="1123">1123</span>
+<span id="1124">1124</span>
+<span id="1125">1125</span>
+<span id="1126">1126</span>
+<span id="1127">1127</span>
+<span id="1128">1128</span>
+<span id="1129">1129</span>
+<span id="1130">1130</span>
+<span id="1131">1131</span>
+<span id="1132">1132</span>
+<span id="1133">1133</span>
+<span id="1134">1134</span>
+<span id="1135">1135</span>
+<span id="1136">1136</span>
+<span id="1137">1137</span>
+<span id="1138">1138</span>
+<span id="1139">1139</span>
+<span id="1140">1140</span>
+<span id="1141">1141</span>
+<span id="1142">1142</span>
+<span id="1143">1143</span>
+<span id="1144">1144</span>
+<span id="1145">1145</span>
+<span id="1146">1146</span>
+<span id="1147">1147</span>
+<span id="1148">1148</span>
+<span id="1149">1149</span>
+<span id="1150">1150</span>
+<span id="1151">1151</span>
+<span id="1152">1152</span>
+<span id="1153">1153</span>
+<span id="1154">1154</span>
+<span id="1155">1155</span>
+<span id="1156">1156</span>
+<span id="1157">1157</span>
+<span id="1158">1158</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt::{<span class="self">self</span>, Debug};
 <span class="kw">use </span>std::str::FromStr;
 
@@ -1122,6 +1166,7 @@
 <span class="kw">use </span>kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 <span class="kw">use </span>kanidm_proto::v1::OperationError::PasswordQuality;
 <span class="kw">use </span>kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus, TotpSecret};
+<span class="kw">use </span>kanidm_proto::v1::{CredentialDetail, CredentialDetailType};
 <span class="kw">use </span>qrcode::render::unicode;
 <span class="kw">use </span>qrcode::QrCode;
 <span class="kw">use </span>time::OffsetDateTime;
@@ -1691,7 +1736,7 @@
                         <span class="macro">println!</span>();
                         <span class="macro">println!</span>(<span class="string">&quot;This link: {}&quot;</span>, url.as_str());
                         <span class="macro">println!</span>(
-                            <span class="string">&quot;Or run this command: kanidm account credential use_reset_token {}&quot;</span>,
+                            <span class="string">&quot;Or run this command: kanidm person credential use_reset_token {}&quot;</span>,
                             cuintent_token.token
                         );
                         <span class="macro">println!</span>();
@@ -1786,6 +1831,11 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
         }
     };
 
+    <span class="kw">let </span>label: String = Input::new()
+        .with_prompt(<span class="string">&quot;TOTP Label&quot;</span>)
+        .interact_text()
+        .expect(<span class="string">&quot;Failed to interact with interactive session&quot;</span>);
+
     <span class="comment">// gen the qr
     </span><span class="macro">println!</span>(<span class="string">&quot;Scan the following QR code with your OTP app.&quot;</span>);
 
@@ -1853,7 +1903,7 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
 
         <span class="comment">// Submit and see what we get.
         </span><span class="kw">match </span>client
-            .idm_account_credential_update_check_totp(session_token, totp_chal)
+            .idm_account_credential_update_check_totp(session_token, totp_chal, <span class="kw-2">&amp;</span>label)
             .<span class="kw">await
         </span>{
             <span class="prelude-val">Ok</span>(CUStatus {
@@ -2092,13 +2142,47 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
             }
             CUAction::Totp =&gt; totp_enroll_prompt(<span class="kw-2">&amp;</span>session_token, <span class="kw-2">&amp;</span>client).<span class="kw">await</span>,
             CUAction::TotpRemove =&gt; {
-                <span class="kw">if </span>Confirm::new()
-                    .with_prompt(<span class="string">&quot;Do you want to remove your totp?&quot;</span>)
-                    .interact()
-                    .expect(<span class="string">&quot;Failed to interact with interactive session&quot;</span>)
-                {
+                <span class="kw">match </span>client
+                    .idm_account_credential_update_status(<span class="kw-2">&amp;</span>session_token)
+                    .<span class="kw">await
+                </span>{
+                    <span class="prelude-val">Ok</span>(status) =&gt; <span class="kw">match </span>status.primary {
+                        <span class="prelude-val">Some</span>(CredentialDetail {
+                            uuid: <span class="kw">_</span>,
+                            type_: CredentialDetailType::PasswordMfa(totp_labels, ..),
+                        }) =&gt; {
+                            <span class="kw">if </span>totp_labels.is_empty() {
+                                <span class="macro">println!</span>(<span class="string">&quot;No totps are configured for this user&quot;</span>);
+                                <span class="kw">return</span>;
+                            } <span class="kw">else </span>{
+                                <span class="macro">println!</span>(<span class="string">&quot;Current totps:&quot;</span>);
+                                <span class="kw">for </span>totp_label <span class="kw">in </span>totp_labels {
+                                    <span class="macro">println!</span>(<span class="string">&quot;  {}&quot;</span>, totp_label);
+                                }
+                            }
+                        }
+                        <span class="kw">_ </span>=&gt; {
+                            <span class="macro">println!</span>(<span class="string">&quot;No totps are configured for this user&quot;</span>);
+                            <span class="kw">return</span>;
+                        }
+                    },
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="macro">eprintln!</span>(
+                            <span class="string">&quot;An error occurred retrieving existing credentials -&gt; {:?}&quot;</span>,
+                            e
+                        );
+                    }
+                }
+
+                <span class="kw">let </span>label: String = Input::new()
+                    .with_prompt(<span class="string">&quot;\nEnter the label of the Passkey to remove (blank to stop) # &quot;</span>)
+                    .allow_empty(<span class="bool-val">true</span>)
+                    .interact_text()
+                    .expect(<span class="string">&quot;Failed to interact with interactive session&quot;</span>);
+
+                <span class="kw">if </span>!label.is_empty() {
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
-                        .idm_account_credential_update_remove_totp(<span class="kw-2">&amp;</span>session_token)
+                        .idm_account_credential_update_remove_totp(<span class="kw-2">&amp;</span>session_token, <span class="kw-2">&amp;</span>label)
                         .<span class="kw">await
                     </span>{
                         <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred -&gt; {:?}&quot;</span>, e);
@@ -2169,9 +2253,13 @@ passkey remove (passkey rm, pkrm) - Remove a Passkey
                         }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; {
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;An error occurred pulling existing credentials -&gt; {:?}&quot;</span>, e);
+                        <span class="macro">eprintln!</span>(
+                            <span class="string">&quot;An error occurred retrieving existing credentials -&gt; {:?}&quot;</span>,
+                            e
+                        );
                     }
                 }
+
                 <span class="kw">let </span>uuid_s: String = Input::new()
                     .with_prompt(<span class="string">&quot;\nEnter the UUID of the Passkey to remove (blank to stop) # &quot;</span>)
                     .validate_with(|input: <span class="kw-2">&amp;</span>String| -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="kw-2">&amp;</span>str&gt; {

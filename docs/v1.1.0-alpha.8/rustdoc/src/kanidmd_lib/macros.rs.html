@@ -675,6 +675,29 @@
 <span id="675">675</span>
 <span id="676">676</span>
 <span id="677">677</span>
+<span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
+<span id="683">683</span>
+<span id="684">684</span>
+<span id="685">685</span>
+<span id="686">686</span>
+<span id="687">687</span>
+<span id="688">688</span>
+<span id="689">689</span>
+<span id="690">690</span>
+<span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
+<span id="695">695</span>
+<span id="696">696</span>
+<span id="697">697</span>
+<span id="698">698</span>
+<span id="699">699</span>
+<span id="700">700</span>
 </pre><pre class="rust"><code><span class="attribute">#[cfg(test)]
 </span><span class="macro">macro_rules! </span>setup_test {
     () =&gt; {{
@@ -736,6 +759,29 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>e: Entry&lt;EntryInvalid, EntryNew&gt; =
             <span class="kw">unsafe </span>{ Entry::unsafe_from_entry_str(<span class="macro-nonterminal">$entry_str</span>).into_invalid_new() };
+        <span class="comment">// Add spn, because normally this is generated but in tests we can&#39;t.
+        </span><span class="kw">let </span>spn = e
+            .get_ava_single_iname(<span class="string">&quot;name&quot;</span>)
+            .map(|s| Value::new_spn_str(s, <span class="string">&quot;example.com&quot;</span>))
+            .expect(<span class="string">&quot;Failed to munge spn from name!&quot;</span>);
+        e.set_ava(<span class="string">&quot;spn&quot;</span>, once(spn));
+
+        <span class="kw">let </span>e = <span class="kw">unsafe </span>{ e.into_sealed_committed() };
+
+        Account::try_from_entry_no_groups(<span class="kw-2">&amp;</span>e).expect(<span class="string">&quot;Account conversion failure&quot;</span>)
+    }};
+}
+
+<span class="attribute">#[cfg(test)]
+</span><span class="macro">macro_rules! </span>entry_to_account {
+    (<span class="macro-nonterminal">$entry</span>:expr) =&gt; {{
+        <span class="kw">use </span>std::iter::once;
+
+        <span class="kw">use </span><span class="kw">crate</span>::entry::{Entry, EntryInvalid, EntryNew};
+        <span class="kw">use </span><span class="kw">crate</span>::idm::account::Account;
+        <span class="kw">use </span><span class="kw">crate</span>::value::Value;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>e: Entry&lt;EntryInvalid, EntryNew&gt; = <span class="kw">unsafe </span>{ <span class="macro-nonterminal">$entry</span>.clone().into_invalid_new() };
         <span class="comment">// Add spn, because normally this is generated but in tests we can&#39;t.
         </span><span class="kw">let </span>spn = e
             .get_ava_single_iname(<span class="string">&quot;name&quot;</span>)

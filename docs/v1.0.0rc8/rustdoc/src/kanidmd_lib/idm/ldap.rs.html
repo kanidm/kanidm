@@ -1170,11 +1170,6 @@
 <span id="1170">1170</span>
 <span id="1171">1171</span>
 <span id="1172">1172</span>
-<span id="1173">1173</span>
-<span id="1174">1174</span>
-<span id="1175">1175</span>
-<span id="1176">1176</span>
-<span id="1177">1177</span>
 </pre><pre class="rust"><code><span class="doccomment">//! LDAP specific operations handling components. This is where LDAP operations
 //! are sent to for processing.
 
@@ -1442,10 +1437,7 @@
                         </span><span class="kw">if </span>a == <span class="string">&quot;entrydn&quot; </span>|| a == <span class="string">&quot;dn&quot; </span>{
                             <span class="prelude-val">None
                         </span>} <span class="kw">else </span>{
-                            <span class="prelude-val">Some</span>(AttrString::from(
-                                ldap_vattr_map(a)
-                                    .unwrap_or(a)
-                            ))
+                            <span class="prelude-val">Some</span>(AttrString::from(ldap_vattr_map(a).unwrap_or(a)))
                         }
                     })
                     .collect();
@@ -2326,7 +2318,7 @@
                         <span class="comment">// Already being returned
                         </span><span class="string">&quot;name&quot;</span>.to_string(),
                         <span class="comment">// This is a virtual attribute
-                        </span><span class="string">&quot;entryuuid&quot;</span>.to_string()
+                        </span><span class="string">&quot;entryuuid&quot;</span>.to_string(),
                     ],
                 };
                 <span class="kw">let </span>r1 = task::block_on(ldaps.do_search(idms, <span class="kw-2">&amp;</span>sr, <span class="kw-2">&amp;</span>anon_t)).unwrap();
@@ -2346,8 +2338,6 @@
                     }
                     <span class="kw">_ </span>=&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
-
-
             }
         )
     }
