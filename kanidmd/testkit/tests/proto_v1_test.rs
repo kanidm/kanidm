@@ -1027,7 +1027,7 @@ async fn test_server_credential_update_session_totp_pw(rsclient: KanidmClient) {
         .expect("Failed to do totp?");
 
     let _status = rsclient
-        .idm_account_credential_update_check_totp(&session_token, totp_chal)
+        .idm_account_credential_update_check_totp(&session_token, totp_chal, "totp")
         .await
         .unwrap();
 
@@ -1061,7 +1061,7 @@ async fn test_server_credential_update_session_totp_pw(rsclient: KanidmClient) {
         .unwrap();
 
     let _status = rsclient
-        .idm_account_credential_update_remove_totp(&session_token)
+        .idm_account_credential_update_remove_totp(&session_token, "totp")
         .await
         .unwrap();
 

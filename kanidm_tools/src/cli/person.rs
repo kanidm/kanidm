@@ -8,6 +8,7 @@ use kanidm_client::KanidmClient;
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use kanidm_proto::v1::OperationError::PasswordQuality;
 use kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus, TotpSecret};
+use kanidm_proto::v1::{CredentialDetail, CredentialDetailType};
 use qrcode::render::unicode;
 use qrcode::QrCode;
 use time::OffsetDateTime;
@@ -577,7 +578,7 @@ impl AccountCredential {
                         println!();
                         println!("This link: {}", url.as_str());
                         println!(
-                            "Or run this command: kanidm account credential use_reset_token {}",
+                            "Or run this command: kanidm person credential use_reset_token {}",
                             cuintent_token.token
                         );
                         println!();
@@ -672,6 +673,11 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
         }
     };
 
+    let label: String = Input::new()
+        .with_prompt("TOTP Label")
+        .interact_text()
+        .expect("Failed to interact with interactive session");
+
     // gen the qr
     println!("Scan the following QR code with your OTP app.");
 
@@ -739,7 +745,7 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
 
         // Submit and see what we get.
         match client
-            .idm_account_credential_update_check_totp(session_token, totp_chal)
+            .idm_account_credential_update_check_totp(session_token, totp_chal, &label)
             .await
         {
             Ok(CUStatus {
@@ -978,13 +984,47 @@ async fn credential_update_exec(
             }
             CUAction::Totp => totp_enroll_prompt(&session_token, &client).await,
             CUAction::TotpRemove => {
-                if Confirm::new()
-                    .with_prompt("Do you want to remove your totp?")
-                    .interact()
-                    .expect("Failed to interact with interactive session")
+                match client
+                    .idm_account_credential_update_status(&session_token)
+                    .await
                 {
+                    Ok(status) => match status.primary {
+                        Some(CredentialDetail {
+                            uuid: _,
+                            type_: CredentialDetailType::PasswordMfa(totp_labels, ..),
+                        }) => {
+                            if totp_labels.is_empty() {
+                                println!("No totps are configured for this user");
+                                return;
+                            } else {
+                                println!("Current totps:");
+                                for totp_label in totp_labels {
+                                    println!("  {}", totp_label);
+                                }
+                            }
+                        }
+                        _ => {
+                            println!("No totps are configured for this user");
+                            return;
+                        }
+                    },
+                    Err(e) => {
+                        eprintln!(
+                            "An error occurred retrieving existing credentials -> {:?}",
+                            e
+                        );
+                    }
+                }
+
+                let label: String = Input::new()
+                    .with_prompt("\nEnter the label of the Passkey to remove (blank to stop) # ")
+                    .allow_empty(true)
+                    .interact_text()
+                    .expect("Failed to interact with interactive session");
+
+                if !label.is_empty() {
                     if let Err(e) = client
-                        .idm_account_credential_update_remove_totp(&session_token)
+                        .idm_account_credential_update_remove_totp(&session_token, &label)
                         .await
                     {
                         eprintln!("An error occurred -> {:?}", e);
@@ -1055,9 +1095,13 @@ async fn credential_update_exec(
                         }
                     }
                     Err(e) => {
-                        eprintln!("An error occurred pulling existing credentials -> {:?}", e);
+                        eprintln!(
+                            "An error occurred retrieving existing credentials -> {:?}",
+                            e
+                        );
                     }
                 }
+
                 let uuid_s: String = Input::new()
                     .with_prompt("\nEnter the UUID of the Passkey to remove (blank to stop) # ")
                     .validate_with(|input: &String| -> Result<(), &str> {

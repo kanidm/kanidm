@@ -261,7 +261,7 @@ mod tests {
         let p = CryptoPolicy::minimum();
         let c = Credential::new_password_only(&p, "password")
             .unwrap()
-            .update_totp(totp);
+            .append_totp("totp".to_string(), totp);
         ea.add_ava("primary_credential", Value::new_credential("primary", c));
 
         let preload = vec![ea];
@@ -285,7 +285,7 @@ mod tests {
                     .expect("failed to get primary cred.");
                 match &c.type_ {
                     CredentialType::PasswordMfa(_pw, totp, webauthn, backup_code) => {
-                        assert!(totp.is_some());
+                        assert!(!totp.is_empty());
                         assert!(webauthn.is_empty());
                         assert!(backup_code.is_none());
                     }

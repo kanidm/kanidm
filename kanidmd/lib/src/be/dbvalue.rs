@@ -176,14 +176,24 @@ pub enum DbCred {
         uuid: Uuid,
     },
 
-    #[serde(rename = "V2Pw")]
-    V2Password { password: DbPasswordV1, uuid: Uuid },
-    #[serde(rename = "V2GPw")]
-    V2GenPassword { password: DbPasswordV1, uuid: Uuid },
     #[serde(rename = "V2PwMfa")]
     V2PasswordMfa {
         password: DbPasswordV1,
         totp: Option<DbTotpV1>,
+        backup_code: Option<DbBackupCodeV1>,
+        webauthn: Vec<(String, SecurityKeyV4)>,
+        uuid: Uuid,
+    },
+
+    // New Formats!
+    #[serde(rename = "V2Pw")]
+    V2Password { password: DbPasswordV1, uuid: Uuid },
+    #[serde(rename = "V2GPw")]
+    V2GenPassword { password: DbPasswordV1, uuid: Uuid },
+    #[serde(rename = "V3PwMfa")]
+    V3PasswordMfa {
+        password: DbPasswordV1,
+        totp: Vec<(String, DbTotpV1)>,
         backup_code: Option<DbBackupCodeV1>,
         webauthn: Vec<(String, SecurityKeyV4)>,
         uuid: Uuid,
@@ -277,6 +287,20 @@ impl fmt::Display for DbCred {
                 "V2PwMfa (p true, w {}, t {}, b {}, u {})",
                 webauthn.len(),
                 totp.is_some(),
+                backup_code.is_some(),
+                uuid
+            ),
+            DbCred::V3PasswordMfa {
+                password: _,
+                totp,
+                backup_code,
+                webauthn,
+                uuid,
+            } => write!(
+                f,
+                "V3PwMfa (p true, w {}, t {}, b {}, u {})",
+                webauthn.len(),
+                totp.len(),
                 backup_code.is_some(),
                 uuid
             ),

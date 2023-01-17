@@ -65,7 +65,7 @@ enum CredVerifyState {
 struct CredMfa {
     pw: Password,
     pw_state: CredVerifyState,
-    totp: Option<Totp>,
+    totp: BTreeMap<String, Totp>,
     wan: Option<(RequestChallengeResponse, SecurityKeyAuthentication)>,
     backup_code: Option<BackupCodes>,
     mfa_state: CredVerifyState,
@@ -120,14 +120,17 @@ impl TryFrom<(&Credential, &Webauthn)> for CredHandler {
                 let cmfa = Box::new(CredMfa {
                     pw: pw.clone(),
                     pw_state: CredVerifyState::Init,
-                    totp: maybe_totp.clone(),
+                    totp: maybe_totp
+                        .iter()
+                        .map(|(l, t)| (l.clone(), t.clone()))
+                        .collect(),
                     wan,
                     backup_code: maybe_backup_code.clone(),
                     mfa_state: CredVerifyState::Init,
                 });
 
                 // Paranoia. Should NEVER occur.
-                if cmfa.totp.is_none() && cmfa.wan.is_none() {
+                if cmfa.totp.is_empty() && cmfa.wan.is_none() {
                     security_critical!("Unable to create CredHandler::PasswordMfa - totp and webauthn are both not present. Credentials MAY be corrupt!");
                     return Err(());
                 }
@@ -285,7 +288,7 @@ impl CredHandler {
                 // MFA first
                 match (
                     cred,
-                    pw_mfa.totp.as_ref(),
+                    !pw_mfa.totp.is_empty(),
                     pw_mfa.wan.as_ref(),
                     pw_mfa.backup_code.as_ref(),
                 ) {
@@ -321,11 +324,19 @@ impl CredHandler {
                             }
                         }
                     }
-                    (AuthCredential::Totp(totp_chal), Some(totp), _, _) => {
-                        if totp.verify(*totp_chal, ts) {
+                    (AuthCredential::Totp(totp_chal), true, _, _) => {
+                        // So long as one totp matches, success. Log which token was used.
+                        // We don't need to worry about the empty case since none will match and we
+                        // will get the failure.
+                        if let Some(label) = pw_mfa
+                            .totp
+                            .iter()
+                            .find(|(_, t)| t.verify(*totp_chal, ts))
+                            .map(|(l, _)| l)
+                        {
                             pw_mfa.mfa_state = CredVerifyState::Success;
                             security_info!(
-                                "Handler::PasswordMfa -> Result::Continue - TOTP OK, password -"
+                                "Handler::PasswordMfa -> Result::Continue - TOTP ({}) OK, password -", label
                             );
                             CredState::Continue(vec![AuthAllowed::Password])
                         } else {
@@ -501,7 +512,11 @@ impl CredHandler {
                 .backup_code
                 .iter()
                 .map(|_| AuthAllowed::BackupCode)
-                .chain(pw_mfa.totp.iter().map(|_| AuthAllowed::Totp))
+                // This looks weird but the idea is that if at least *one*
+                // totp exists, then we only offer TOTP once. If none are
+                // there we offer it none.
+                .chain(pw_mfa.totp.iter().next().map(|_| AuthAllowed::Totp))
+                // This iter is over an option so it's there or not.
                 .chain(
                     pw_mfa
                         .wan
@@ -1180,7 +1195,7 @@ mod tests {
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, pw_good)
             .unwrap()
-            .update_totp(totp);
+            .append_totp("totp".to_string(), totp);
         // add totp also
         account.primary = Some(cred);
 
@@ -1335,7 +1350,7 @@ mod tests {
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, pw_badlist)
             .unwrap()
-            .update_totp(totp);
+            .append_totp("totp".to_string(), totp);
         // add totp also
         account.primary = Some(cred);
 
@@ -1820,7 +1835,7 @@ mod tests {
             .unwrap()
             .append_securitykey("soft".to_string(), wan_cred)
             .unwrap()
-            .update_totp(totp);
+            .append_totp("totp".to_string(), totp);
 
         account.primary = Some(cred);
 
@@ -2073,7 +2088,7 @@ mod tests {
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, pw_good)
             .unwrap()
-            .update_totp(totp)
+            .append_totp("totp".to_string(), totp)
             .update_backup_code(backup_codes)
             .unwrap();
 
@@ -2229,6 +2244,117 @@ mod tests {
         match async_rx.blocking_recv() {
             Some(DelayedAction::AuthSessionRecord(_)) => {}
             _ => assert!(false),
+        }
+
+        drop(async_tx);
+        assert!(async_rx.blocking_recv().is_none());
+    }
+
+    #[test]
+    fn test_idm_authsession_multiple_totp_password_mech() {
+        // Slightly different to the other TOTP test, this
+        // checks handling when multiple TOTP's are registered.
+        let _ = sketching::test_init();
+        let webauthn = create_webauthn();
+        let jws_signer = create_jwt_signer();
+        // create the ent
+        let mut account = entry_to_account!(E_ADMIN_V1);
+
+        // Setup a fake time stamp for consistency.
+        let ts = Duration::from_secs(12345);
+
+        // manually load in a cred
+        let totp_a = Totp::generate_secure(TOTP_DEFAULT_STEP);
+        let totp_b = Totp::generate_secure(TOTP_DEFAULT_STEP);
+
+        let totp_good_a = totp_a
+            .do_totp_duration_from_epoch(&ts)
+            .expect("failed to perform totp.");
+
+        let totp_good_b = totp_b
+            .do_totp_duration_from_epoch(&ts)
+            .expect("failed to perform totp.");
+
+        assert!(totp_good_a != totp_good_b);
+
+        let pw_good = "test_password";
+
+        let p = CryptoPolicy::minimum();
+        let cred = Credential::new_password_only(&p, pw_good)
+            .unwrap()
+            .append_totp("totp_a".to_string(), totp_a)
+            .append_totp("totp_b".to_string(), totp_b);
+        // add totp also
+        account.primary = Some(cred);
+
+        let (async_tx, mut async_rx) = unbounded();
+
+        // Test totp_a
+        {
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(account, &webauthn);
+
+            match session.validate_creds(
+                &AuthCredential::Totp(totp_good_a),
+                &ts,
+                &async_tx,
+                &webauthn,
+                Some(&pw_badlist_cache),
+                &jws_signer,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                _ => panic!(),
+            };
+            match session.validate_creds(
+                &AuthCredential::Password(pw_good.to_string()),
+                &ts,
+                &async_tx,
+                &webauthn,
+                Some(&pw_badlist_cache),
+                &jws_signer,
+            ) {
+                Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
+                _ => panic!(),
+            };
+
+            match async_rx.blocking_recv() {
+                Some(DelayedAction::AuthSessionRecord(_)) => {}
+                _ => assert!(false),
+            }
+        }
+
+        // Test totp_b
+        {
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(account, &webauthn);
+
+            match session.validate_creds(
+                &AuthCredential::Totp(totp_good_b),
+                &ts,
+                &async_tx,
+                &webauthn,
+                Some(&pw_badlist_cache),
+                &jws_signer,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                _ => panic!(),
+            };
+            match session.validate_creds(
+                &AuthCredential::Password(pw_good.to_string()),
+                &ts,
+                &async_tx,
+                &webauthn,
+                Some(&pw_badlist_cache),
+                &jws_signer,
+            ) {
+                Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
+                _ => panic!(),
+            };
+
+            match async_rx.blocking_recv() {
+                Some(DelayedAction::AuthSessionRecord(_)) => {}
+                _ => assert!(false),
+            }
         }
 
         drop(async_tx);

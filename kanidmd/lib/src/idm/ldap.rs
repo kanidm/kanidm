@@ -265,10 +265,7 @@ impl LdapServer {
                         if a == "entrydn" || a == "dn" {
                             None
                         } else {
-                            Some(AttrString::from(
-                                ldap_vattr_map(a)
-                                    .unwrap_or(a)
-                            ))
+                            Some(AttrString::from(ldap_vattr_map(a).unwrap_or(a)))
                         }
                     })
                     .collect();
@@ -1149,7 +1146,7 @@ mod tests {
                         // Already being returned
                         "name".to_string(),
                         // This is a virtual attribute
-                        "entryuuid".to_string()
+                        "entryuuid".to_string(),
                     ],
                 };
                 let r1 = task::block_on(ldaps.do_search(idms, &sr, &anon_t)).unwrap();
@@ -1169,8 +1166,6 @@ mod tests {
                     }
                     _ => assert!(false),
                 };
-
-
             }
         )
     }

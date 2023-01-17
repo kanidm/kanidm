@@ -136,8 +136,9 @@ impl Component for PwModalApp {
         match msg {
             Msg::PasswordCheck => {
                 // default is empty string
-                let pw = utils::get_value_from_element_id("password").unwrap_or_default();
-                let check = utils::get_value_from_element_id("password-check").unwrap_or_default();
+                let pw = utils::get_value_from_element_id("new-password").unwrap_or_default();
+                let check =
+                    utils::get_value_from_element_id("new-password-check").unwrap_or_default();
 
                 if pw == check {
                     self.pw_check = PwCheck::Valid
@@ -155,7 +156,7 @@ impl Component for PwModalApp {
                 self.state = PwState::Waiting;
 
                 // default is empty string
-                let pw = utils::get_value_from_element_id("password").unwrap_or_default();
+                let pw = utils::get_value_from_element_id("new-password").unwrap_or_default();
                 let token_c = ctx.props().token.clone();
 
                 ctx.link().send_future(async {
@@ -263,12 +264,13 @@ impl Component for PwModalApp {
                             }
                         } ) }
                     >
-                      <label for="password" class="form-label">{ "Enter New Password" }</label>
+                      <input hidden=true type="text" autocomplete="username" />
+                      <label for="new-password" class="form-label">{ "Enter New Password" }</label>
                       <input
                         aria-describedby="password-validation-feedback"
                         autocomplete="new-password"
                         class={ pw_class }
-                        id="password"
+                        id="new-password"
                         oninput={
                             ctx.link()
                             .callback(move |_| {
@@ -281,12 +283,12 @@ impl Component for PwModalApp {
                         value={ pw_val }
                       />
                       { pw_feedback }
-                      <label for="password-check" class="form-label">{ "Repeat Password" }</label>
+                      <label for="new-password-check" class="form-label">{ "Repeat Password" }</label>
                       <input
-                        aria-describedby="password-check-feedback"
+                        aria-describedby="new-password-check-feedback"
                         autocomplete="new-password"
                         class={ pw_check_class }
-                        id="password-check"
+                        id="new-password-check"
                         oninput={
                             ctx.link()
                                 .callback(move |_| {
