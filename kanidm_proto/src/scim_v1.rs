@@ -57,10 +57,10 @@ impl Into<ScimComplexAttr> for ScimTotp {
     fn into(self) -> ScimComplexAttr {
         let ScimTotp {
             external_id,
-            secret: _,
-            algo: _,
-            step: _,
-            digits: _,
+            secret,
+            algo,
+            step,
+            digits,
         } = self;
         let mut attrs = BTreeMap::default();
 
@@ -68,6 +68,14 @@ impl Into<ScimComplexAttr> for ScimTotp {
             "external_id".to_string(),
             ScimSimpleAttr::String(external_id),
         );
+
+        attrs.insert("secret".to_string(), ScimSimpleAttr::String(secret));
+
+        attrs.insert("algo".to_string(), ScimSimpleAttr::String(algo));
+
+        attrs.insert("step".to_string(), ScimSimpleAttr::Number(step.into()));
+
+        attrs.insert("digits".to_string(), ScimSimpleAttr::Number(digits.into()));
 
         ScimComplexAttr { attrs }
     }

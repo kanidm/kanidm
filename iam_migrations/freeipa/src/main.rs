@@ -19,6 +19,7 @@ mod error;
 
 use crate::config::{Config, EntryConfig};
 use crate::error::SyncError;
+use base64urlsafedata::Base64UrlSafeData;
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
@@ -48,6 +49,7 @@ use uuid::Uuid;
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::scim_v1::{
     ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest, ScimSyncState,
+    ScimTotp,
 };
 use kanidmd_lib::utils::file_permissions_readonly;
 
@@ -664,7 +666,7 @@ async fn process_ipa_sync_result(
 fn ipa_to_scim_entry(
     sync_entry: LdapSyncReplEntry,
     entry_config: &EntryConfig,
-    _totp: &[LdapSyncReplEntry],
+    totp: &[LdapSyncReplEntry],
 ) -> Result<Option<ScimEntry>, ()> {
     debug!("{:#?}", sync_entry);
 
@@ -722,7 +724,7 @@ fn ipa_to_scim_entry(
             .map(|s| format!("ipaNTHash: {}", s));
 
         // If there are TOTP's, convert them to something sensible.
-        let totp_import = Vec::default();
+        let totp_import = totp.iter().filter_map(ipa_to_totp).collect();
 
         let login_shell = entry.remove_ava_single("loginshell");
         let external_id = Some(entry.dn);
@@ -799,6 +801,74 @@ fn ipa_to_scim_entry(
         debug!("Skipping entry {} with oc {:?}", dn, oc);
         Ok(None)
     }
+}
+
+fn ipa_to_totp(sync_entry: &LdapSyncReplEntry) -> Option<ScimTotp> {
+    let external_id = sync_entry
+        .entry
+        .attrs
+        .get("ipatokenuniqueid")
+        .and_then(|v| v.first().cloned())
+        .or_else(|| {
+            warn!("Invalid ipatokenuniqueid");
+            None
+        })?;
+
+    let secret = sync_entry
+        .entry
+        .attrs
+        .get("ipatokenotpkey")
+        .and_then(|v| v.first())
+        .and_then(|s| {
+            // Decode, and then make it urlsafe.
+            Base64UrlSafeData::try_from(s.as_str())
+                .ok()
+                .map(|b| b.to_string())
+        })
+        .or_else(|| {
+            warn!("Invalid ipatokenotpkey");
+            None
+        })?;
+
+    let algo = sync_entry
+        .entry
+        .attrs
+        .get("ipatokenotpalgorithm")
+        .and_then(|v| v.first().cloned())
+        .or_else(|| {
+            warn!("Invalid ipatokenotpalgorithm");
+            None
+        })?;
+
+    let step = sync_entry
+        .entry
+        .attrs
+        .get("ipatokentotptimestep")
+        .and_then(|v| v.first())
+        .and_then(|d| u32::from_str(d).ok())
+        .or_else(|| {
+            warn!("Invalid ipatokentotptimestep");
+            None
+        })?;
+
+    let digits = sync_entry
+        .entry
+        .attrs
+        .get("ipatokenotpdigits")
+        .and_then(|v| v.first())
+        .and_then(|d| u32::from_str(d).ok())
+        .or_else(|| {
+            warn!("Invalid ipatokenotpdigits");
+            None
+        })?;
+
+    Some(ScimTotp {
+        external_id,
+        secret,
+        algo,
+        step,
+        digits,
+    })
 }
 
 fn config_security_checks(cfg_path: &Path) -> bool {
