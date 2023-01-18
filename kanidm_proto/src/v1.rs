@@ -1076,6 +1076,7 @@ pub struct TotpSecret {
     pub secret: Vec<u8>,
     pub algo: TotpAlgo,
     pub step: u64,
+    pub digits: u8,
 }
 
 impl TotpSecret {
@@ -1087,10 +1088,11 @@ impl TotpSecret {
         let algo = self.algo.to_string();
         let secret = self.get_secret();
         let period = self.step;
+        let digits = self.digits;
 
         format!(
-            "otpauth://totp/{}?secret={}&issuer={}&algorithm={}&digits=6&period={}",
-            label, secret, issuer, algo, period
+            "otpauth://totp/{}?secret={}&issuer={}&algorithm={}&digits={}&period={}",
+            label, secret, issuer, algo, digits, period
         )
     }
 
@@ -1224,6 +1226,7 @@ mod tests {
             secret: vec![0xaa, 0xbb, 0xcc, 0xdd],
             step: 30,
             algo: TotpAlgo::Sha256,
+            digits: 6,
         };
         let s = totp.to_uri();
         assert!(s == "otpauth://totp/blackhats:william?secret=VK54ZXI&issuer=blackhats&algorithm=SHA256&digits=6&period=30");
@@ -1235,6 +1238,7 @@ mod tests {
             secret: vec![0xaa, 0xbb, 0xcc, 0xdd],
             step: 30,
             algo: TotpAlgo::Sha256,
+            digits: 6,
         };
         let s = totp.to_uri();
         println!("{}", s);

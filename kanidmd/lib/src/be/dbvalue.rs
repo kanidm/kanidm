@@ -73,6 +73,8 @@ pub struct DbTotpV1 {
     pub step: u64,
     #[serde(rename = "a")]
     pub algo: DbTotpAlgoV1,
+    #[serde(rename = "d", default)]
+    pub digits: Option<u8>,
 }
 
 impl std::fmt::Debug for DbTotpV1 {

@@ -20,6 +20,35 @@ pub enum TotpError {
     TimeError,
 }
 
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TotpDigits {
+    Six = 1_000_000,
+    Eight = 100_000_000,
+}
+
+impl TryFrom<u8> for TotpDigits {
+    type Error = ();
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            6 => Ok(TotpDigits::Six),
+            8 => Ok(TotpDigits::Six),
+            _ => Err(()),
+        }
+    }
+}
+
+#[allow(clippy::from_over_into)]
+impl Into<u8> for TotpDigits {
+    fn into(self) -> u8 {
+        match self {
+            TotpDigits::Six => 6,
+            TotpDigits::Eight => 8,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TotpAlgo {
     Sha1,
@@ -62,6 +91,7 @@ pub struct Totp {
     secret: Vec<u8>,
     pub(crate) step: u64,
     algo: TotpAlgo,
+    digits: TotpDigits,
 }
 
 impl TryFrom<DbTotpV1> for Totp {
@@ -73,17 +103,23 @@ impl TryFrom<DbTotpV1> for Totp {
             DbTotpAlgoV1::S256 => TotpAlgo::Sha256,
             DbTotpAlgoV1::S512 => TotpAlgo::Sha512,
         };
+        // Default.
+        let digits = TotpDigits::try_from(value.digits.unwrap_or(6))?;
+
         Ok(Totp {
             secret: value.key,
             step: value.step,
             algo,
+            digits,
         })
     }
 }
 
-impl From<ProtoTotp> for Totp {
-    fn from(value: ProtoTotp) -> Self {
-        Totp {
+impl TryFrom<ProtoTotp> for Totp {
+    type Error = ();
+
+    fn try_from(value: ProtoTotp) -> Result<Self, Self::Error> {
+        Ok(Totp {
             secret: value.secret,
             algo: match value.algo {
                 ProtoTotpAlgo::Sha1 => TotpAlgo::Sha1,
@@ -91,13 +127,19 @@ impl From<ProtoTotp> for Totp {
                 ProtoTotpAlgo::Sha512 => TotpAlgo::Sha512,
             },
             step: value.step,
-        }
+            digits: TotpDigits::try_from(value.digits)?,
+        })
     }
 }
 
 impl Totp {
-    pub fn new(secret: Vec<u8>, step: u64, algo: TotpAlgo) -> Self {
-        Totp { secret, step, algo }
+    pub fn new(secret: Vec<u8>, step: u64, algo: TotpAlgo, digits: TotpDigits) -> Self {
+        Totp {
+            secret,
+            step,
+            algo,
+            digits,
+        }
     }
 
     // Create a new token with secure key and algo.
@@ -105,7 +147,13 @@ impl Totp {
         let mut rng = rand::thread_rng();
         let secret: Vec<u8> = (0..SECRET_SIZE_BYTES).map(|_| rng.gen()).collect();
         let algo = TotpAlgo::Sha256;
-        Totp { secret, step, algo }
+        let digits = TotpDigits::Six;
+        Totp {
+            secret,
+            step,
+            algo,
+            digits,
+        }
     }
 
     pub(crate) fn to_dbtotpv1(&self) -> DbTotpV1 {
@@ -118,6 +166,7 @@ impl Totp {
                 TotpAlgo::Sha256 => DbTotpAlgoV1::S256,
                 TotpAlgo::Sha512 => DbTotpAlgoV1::S512,
             },
+            digits: Some(self.digits.into()),
         }
     }
 
@@ -134,7 +183,12 @@ impl Totp {
             .map_err(|_| TotpError::HmacError)?;
 
         let otp = u32::from_be_bytes(bytes);
-        Ok((otp & 0x7fff_ffff) % 1_000_000)
+        // Treat as a u31, this masks the first bit.
+        // then modulo based on the number of digits requested.
+        // * For 6 digits modulo 1_000_000
+        // * For 8 digits modulo 100_000_000
+        // Based on this 9 is max digits.
+        Ok((otp & 0x7fff_ffff) % (self.digits as u32))
     }
 
     pub fn do_totp_duration_from_epoch(&self, time: &Duration) -> Result<u32, TotpError> {
@@ -173,6 +227,7 @@ impl Totp {
                 TotpAlgo::Sha256 => ProtoTotpAlgo::Sha256,
                 TotpAlgo::Sha512 => ProtoTotpAlgo::Sha512,
             },
+            digits: self.digits.into(),
         }
     }
 
@@ -185,6 +240,7 @@ impl Totp {
             secret: self.secret,
             step: self.step,
             algo: TotpAlgo::Sha1,
+            digits: self.digits,
         }
     }
 }
@@ -193,20 +249,27 @@ impl Totp {
 mod tests {
     use std::time::Duration;
 
-    use crate::credential::totp::{Totp, TotpAlgo, TotpError, TOTP_DEFAULT_STEP};
+    use crate::credential::totp::{Totp, TotpAlgo, TotpDigits, TotpError, TOTP_DEFAULT_STEP};
 
     #[test]
     fn hotp_basic() {
-        let otp_sha1 = Totp::new(vec![0], 30, TotpAlgo::Sha1);
+        let otp_sha1 = Totp::new(vec![0], 30, TotpAlgo::Sha1, TotpDigits::Six);
         assert!(otp_sha1.digest(0) == Ok(328482));
-        let otp_sha256 = Totp::new(vec![0], 30, TotpAlgo::Sha256);
+        let otp_sha256 = Totp::new(vec![0], 30, TotpAlgo::Sha256, TotpDigits::Six);
         assert!(otp_sha256.digest(0) == Ok(356306));
-        let otp_sha512 = Totp::new(vec![0], 30, TotpAlgo::Sha512);
+        let otp_sha512 = Totp::new(vec![0], 30, TotpAlgo::Sha512, TotpDigits::Six);
         assert!(otp_sha512.digest(0) == Ok(674061));
     }
 
-    fn do_test(key: Vec<u8>, algo: TotpAlgo, secs: u64, step: u64, expect: Result<u32, TotpError>) {
-        let otp = Totp::new(key.clone(), step, algo.clone());
+    fn do_test(
+        key: Vec<u8>,
+        algo: TotpAlgo,
+        secs: u64,
+        step: u64,
+        digits: TotpDigits,
+        expect: Result<u32, TotpError>,
+    ) {
+        let otp = Totp::new(key.clone(), step, algo.clone(), digits);
         let d = Duration::from_secs(secs);
         let r = otp.do_totp_duration_from_epoch(&d);
         debug!(
@@ -223,13 +286,23 @@ mod tests {
             TotpAlgo::Sha1,
             1585368920,
             TOTP_DEFAULT_STEP,
+            TotpDigits::Six,
             Ok(728926),
+        );
+        do_test(
+            vec![0x00, 0x00, 0x00, 0x00],
+            TotpAlgo::Sha1,
+            1585368920,
+            TOTP_DEFAULT_STEP,
+            TotpDigits::Eight,
+            Ok(74728926),
         );
         do_test(
             vec![0x00, 0xaa, 0xbb, 0xcc],
             TotpAlgo::Sha1,
             1585369498,
             TOTP_DEFAULT_STEP,
+            TotpDigits::Six,
             Ok(985074),
         );
     }
@@ -241,13 +314,23 @@ mod tests {
             TotpAlgo::Sha256,
             1585369682,
             TOTP_DEFAULT_STEP,
+            TotpDigits::Six,
             Ok(795483),
+        );
+        do_test(
+            vec![0x00, 0x00, 0x00, 0x00],
+            TotpAlgo::Sha256,
+            1585369682,
+            TOTP_DEFAULT_STEP,
+            TotpDigits::Eight,
+            Ok(11795483),
         );
         do_test(
             vec![0x00, 0xaa, 0xbb, 0xcc],
             TotpAlgo::Sha256,
             1585369689,
             TOTP_DEFAULT_STEP,
+            TotpDigits::Six,
             Ok(728402),
         );
     }
@@ -259,13 +342,23 @@ mod tests {
             TotpAlgo::Sha512,
             1585369775,
             TOTP_DEFAULT_STEP,
+            TotpDigits::Six,
             Ok(587735),
+        );
+        do_test(
+            vec![0x00, 0x00, 0x00, 0x00],
+            TotpAlgo::Sha512,
+            1585369775,
+            TOTP_DEFAULT_STEP,
+            TotpDigits::Eight,
+            Ok(14587735),
         );
         do_test(
             vec![0x00, 0xaa, 0xbb, 0xcc],
             TotpAlgo::Sha512,
             1585369780,
             TOTP_DEFAULT_STEP,
+            TotpDigits::Six,
             Ok(952181),
         );
     }
@@ -274,7 +367,12 @@ mod tests {
     fn totp_allow_one_previous() {
         let key = vec![0x00, 0xaa, 0xbb, 0xcc];
         let secs = 1585369780;
-        let otp = Totp::new(key.clone(), TOTP_DEFAULT_STEP, TotpAlgo::Sha512);
+        let otp = Totp::new(
+            key.clone(),
+            TOTP_DEFAULT_STEP,
+            TotpAlgo::Sha512,
+            TotpDigits::Six,
+        );
         let d = Duration::from_secs(secs);
         // Step
         assert!(otp.verify(952181, &d));

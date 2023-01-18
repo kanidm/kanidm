@@ -1014,7 +1014,7 @@ async fn test_server_credential_update_session_totp_pw(rsclient: KanidmClient) {
 
     // Extract the totp from the status, and set it back
     let totp: Totp = match status.mfaregstate {
-        CURegState::TotpCheck(totp_secret) => totp_secret.into(),
+        CURegState::TotpCheck(totp_secret) => totp_secret.try_into().unwrap(),
         _ => unreachable!(),
     };
 
