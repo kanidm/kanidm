@@ -23,7 +23,7 @@ use uuid::Uuid;
 use webauthn_rs::prelude::{DeviceKey as DeviceKeyV4, Passkey as PasskeyV4};
 
 use crate::be::dbentry::DbIdentSpn;
-use crate::credential::Credential;
+use crate::credential::{Credential, totp::Totp};
 use crate::repl::cid::Cid;
 use crate::server::identity::{AccessScope, IdentityId};
 
@@ -198,6 +198,7 @@ pub enum SyntaxType {
     JwsKeyRs256 = 27,
     Oauth2Session = 28,
     UiHint = 29,
+    TotpSecret = 30,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -237,6 +238,7 @@ impl TryFrom<&str> for SyntaxType {
             "JWS_KEY_RS256" => Ok(SyntaxType::JwsKeyRs256),
             "OAUTH2SESSION" => Ok(SyntaxType::Oauth2Session),
             "UIHINT" => Ok(SyntaxType::UiHint),
+            "TOTPSECRET" => Ok(SyntaxType::TotpSecret),
             _ => Err(()),
         }
     }
@@ -275,6 +277,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::JwsKeyRs256 => "JWS_KEY_RS256",
             SyntaxType::Oauth2Session => "OAUTH2SESSION",
             SyntaxType::UiHint => "UIHINT",
+            SyntaxType::TotpSecret => "TOTPSECRET",
         })
     }
 }
@@ -321,12 +324,11 @@ pub enum PartialValue {
     RestrictedString(String),
     IntentToken(String),
     UiHint(UiHint),
-
     Passkey(Uuid),
     DeviceKey(Uuid),
-
     TrustedDeviceEnrollment(Uuid),
     Session(Uuid),
+    // The label, if any.
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -773,6 +775,8 @@ pub enum Value {
     JwsKeyEs256(JwsSigner),
     JwsKeyRs256(JwsSigner),
     UiHint(UiHint),
+
+    TotpSecret(String, Totp),
 }
 
 impl PartialEq for Value {

@@ -61,8 +61,8 @@ impl Default for Limits {
     fn default() -> Self {
         Limits {
             unindexed_allow: false,
-            search_max_results: 128,
-            search_max_filter_test: 256,
+            search_max_results: 256,
+            search_max_filter_test: 512,
             filter_max_elements: 32,
         }
     }

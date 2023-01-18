@@ -499,6 +499,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::UiHint => UiHint::from_str(value)
                         .map(Value::UiHint)
                         .map_err(|()| OperationError::InvalidAttribute("Invalid uihint syntax".to_string())),
+                    SyntaxType::TotpSecret => Err(OperationError::InvalidAttribute("TotpSecret Values can not be supplied through modification".to_string())),
                 }
             }
             None => {
@@ -520,7 +521,9 @@ pub trait QueryServerTransaction<'a> {
         match schema.get_attributes().get(attr) {
             Some(schema_a) => {
                 match schema_a.syntax {
-                    SyntaxType::Utf8String => Ok(PartialValue::new_utf8(value.to_string())),
+                    SyntaxType::Utf8String |
+                    SyntaxType::TotpSecret
+                    => Ok(PartialValue::new_utf8(value.to_string())),
                     SyntaxType::Utf8StringInsensitive
                     | SyntaxType::JwsKeyEs256
                     | SyntaxType::JwsKeyRs256 => Ok(PartialValue::new_iutf8(value)),

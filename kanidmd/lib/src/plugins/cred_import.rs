@@ -9,9 +9,9 @@ use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 
-pub struct PasswordImport {}
+pub struct CredImport {}
 
-impl Plugin for PasswordImport {
+impl Plugin for CredImport {
     fn id() -> &'static str {
         "plugin_password_import"
     }
@@ -26,44 +26,6 @@ impl Plugin for PasswordImport {
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        /*
-        cand.iter_mut()
-            .try_for_each(|e| {
-                // is there a password we are trying to import?
-                let vs = match e.pop_ava("password_import") {
-                    Some(vs) => vs,
-                    None => return Ok(()),
-                };
-                // if there are multiple, fail.
-                if vs.len() > 1 {
-                    return Err(OperationError::Plugin(PluginError::PasswordImport("multiple password_imports specified".to_string())))
-                }
-
-                let im_pw = vs.to_utf8_single()
-                    .ok_or_else(|| OperationError::Plugin(PluginError::PasswordImport("password_import has incorrect value type".to_string())))?;
-
-                // convert the import_password to a cred
-                let pw = Password::try_from(im_pw)
-                    .map_err(|_| OperationError::Plugin(PluginError::PasswordImport("password_import was unable to convert hash format".to_string())))?;
-
-                // does the entry have a primary cred?
-                match e.get_ava_single_credential("primary_credential") {
-                    Some(_c) => {
-                        Err(
-                            OperationError::Plugin(PluginError::PasswordImport(
-                                "password_import - impossible state, how did you get a credential into a create!?".to_string()))
-                        )
-                    }
-                    None => {
-                        // just set it then!
-                        let c = Credential::new_from_password(pw);
-                        e.set_ava("primary_credential",
-                            once(Value::new_credential("primary", c)));
-                        Ok(())
-                    }
-                }
-            })
-        */
         Self::modify_inner(cand)
     }
 
@@ -90,7 +52,7 @@ impl Plugin for PasswordImport {
     }
 }
 
-impl PasswordImport {
+impl CredImport {
     fn modify_inner<T: Clone>(cand: &mut [Entry<EntryInvalid, T>]) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
             // is there a password we are trying to import?
@@ -100,20 +62,20 @@ impl PasswordImport {
             };
             // if there are multiple, fail.
             if vs.len() > 1 {
-                return Err(OperationError::Plugin(PluginError::PasswordImport(
+                return Err(OperationError::Plugin(PluginError::CredImport(
                     "multiple password_imports specified".to_string(),
                 )));
             }
 
             let im_pw = vs.to_utf8_single().ok_or_else(|| {
-                OperationError::Plugin(PluginError::PasswordImport(
+                OperationError::Plugin(PluginError::CredImport(
                     "password_import has incorrect value type".to_string(),
                 ))
             })?;
 
             // convert the import_password to a cred
             let pw = Password::try_from(im_pw).map_err(|_| {
-                OperationError::Plugin(PluginError::PasswordImport(
+                OperationError::Plugin(PluginError::CredImport(
                     "password_import was unable to convert hash format".to_string(),
                 ))
             })?;

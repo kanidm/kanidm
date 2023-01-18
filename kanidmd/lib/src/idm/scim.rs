@@ -876,6 +876,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }
                 Ok(vs)
             }
+            (SyntaxType::TotpSecret, true, ScimAttr::MultiComplex(_values)) => {
+                todo!();
+            }
             (syn, mv, sa) => {
                 error!(?syn, ?mv, ?sa, "Unsupported scim attribute conversion. This may be a syntax error in your import, or a missing feature in Kanidm.");
                 Err(OperationError::InvalidAttribute(format!(
