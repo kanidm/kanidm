@@ -521,9 +521,9 @@ pub trait QueryServerTransaction<'a> {
         match schema.get_attributes().get(attr) {
             Some(schema_a) => {
                 match schema_a.syntax {
-                    SyntaxType::Utf8String |
-                    SyntaxType::TotpSecret
-                    => Ok(PartialValue::new_utf8(value.to_string())),
+                    SyntaxType::Utf8String | SyntaxType::TotpSecret => {
+                        Ok(PartialValue::new_utf8(value.to_string()))
+                    }
                     SyntaxType::Utf8StringInsensitive
                     | SyntaxType::JwsKeyEs256
                     | SyntaxType::JwsKeyRs256 => Ok(PartialValue::new_iutf8(value)),

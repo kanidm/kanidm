@@ -12,7 +12,7 @@ use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
 use webauthn_rs::prelude::Passkey as PasskeyV4;
 
 use crate::be::dbvalue::DbValueSetV2;
-use crate::credential::Credential;
+use crate::credential::{totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::schema::SchemaAttribute;
@@ -281,6 +281,11 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     }
 
     fn as_credential_map(&self) -> Option<&BTreeMap<String, Credential>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_totp_map(&self) -> Option<&BTreeMap<String, Totp>> {
         debug_assert!(false);
         None
     }

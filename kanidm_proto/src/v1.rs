@@ -38,7 +38,7 @@ pub enum PluginError {
     AttrUnique(String),
     Base(String),
     ReferentialIntegrity(String),
-    PasswordImport(String),
+    CredImport(String),
     Oauth2Secrets,
 }
 

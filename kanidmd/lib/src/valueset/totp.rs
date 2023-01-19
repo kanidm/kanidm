@@ -4,9 +4,9 @@ use std::collections::BTreeMap;
 use crate::credential::totp::Totp;
 use crate::prelude::*;
 
+use crate::be::dbvalue::DbTotpV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
-use crate::be::dbvalue::DbTotpV1;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetTotpSecret {
@@ -46,7 +46,6 @@ impl ValueSetTotpSecret {
         let map = iter.into_iter().collect();
         Some(Box::new(ValueSetTotpSecret { map }))
     }
-
 }
 
 impl ValueSetT for ValueSetTotpSecret {
@@ -112,11 +111,10 @@ impl ValueSetT for ValueSetTotpSecret {
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::TotpSecret(
-            self.map.iter()
-                .map(|(label, totp)| {
-                    (label.clone(), totp.to_dbtotpv1())
-                })
-                .collect()
+            self.map
+                .iter()
+                .map(|(label, totp)| (label.clone(), totp.to_dbtotpv1()))
+                .collect(),
         )
     }
 
@@ -160,9 +158,7 @@ impl ValueSetT for ValueSetTotpSecret {
         Err(OperationError::InvalidValueState)
     }
 
-    /*
-    fn as_credential_map(&self) -> Option<&BTreeMap<String, Credential>> {
+    fn as_totp_map(&self) -> Option<&BTreeMap<String, Totp>> {
         Some(&self.map)
     }
-    */
 }

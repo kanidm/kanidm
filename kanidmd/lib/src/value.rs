@@ -23,7 +23,7 @@ use uuid::Uuid;
 use webauthn_rs::prelude::{DeviceKey as DeviceKeyV4, Passkey as PasskeyV4};
 
 use crate::be::dbentry::DbIdentSpn;
-use crate::credential::{Credential, totp::Totp};
+use crate::credential::{totp::Totp, Credential};
 use crate::repl::cid::Cid;
 use crate::server::identity::{AccessScope, IdentityId};
 

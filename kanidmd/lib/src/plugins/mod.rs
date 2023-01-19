@@ -13,12 +13,12 @@ use crate::prelude::*;
 
 mod attrunique;
 mod base;
+mod cred_import;
 mod domain;
 pub(crate) mod dyngroup;
 mod gidnumber;
 mod jwskeygen;
 mod memberof;
-mod cred_import;
 mod protected;
 mod refint;
 mod session;
