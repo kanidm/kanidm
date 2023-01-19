@@ -1241,6 +1241,10 @@
 <span id="1241">1241</span>
 <span id="1242">1242</span>
 <span id="1243">1243</span>
+<span id="1244">1244</span>
+<span id="1245">1245</span>
+<span id="1246">1246</span>
+<span id="1247">1247</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 <span class="kw">use </span>std::fmt;
@@ -1281,7 +1285,7 @@
     AttrUnique(String),
     Base(String),
     ReferentialIntegrity(String),
-    PasswordImport(String),
+    CredImport(String),
     Oauth2Secrets,
 }
 
@@ -2319,6 +2323,7 @@ pub enum SetCredentialRequest {
     <span class="kw">pub </span>secret: Vec&lt;u8&gt;,
     <span class="kw">pub </span>algo: TotpAlgo,
     <span class="kw">pub </span>step: u64,
+    <span class="kw">pub </span>digits: u8,
 }
 
 <span class="kw">impl </span>TotpSecret {
@@ -2330,10 +2335,11 @@ pub enum SetCredentialRequest {
         <span class="kw">let </span>algo = <span class="self">self</span>.algo.to_string();
         <span class="kw">let </span>secret = <span class="self">self</span>.get_secret();
         <span class="kw">let </span>period = <span class="self">self</span>.step;
+        <span class="kw">let </span>digits = <span class="self">self</span>.digits;
 
         <span class="macro">format!</span>(
-            <span class="string">&quot;otpauth://totp/{}?secret={}&amp;issuer={}&amp;algorithm={}&amp;digits=6&amp;period={}&quot;</span>,
-            label, secret, issuer, algo, period
+            <span class="string">&quot;otpauth://totp/{}?secret={}&amp;issuer={}&amp;algorithm={}&amp;digits={}&amp;period={}&quot;</span>,
+            label, secret, issuer, algo, digits, period
         )
     }
 
@@ -2467,6 +2473,7 @@ pub enum SetCredentialResponse {
             secret: <span class="macro">vec!</span>[<span class="number">0xaa</span>, <span class="number">0xbb</span>, <span class="number">0xcc</span>, <span class="number">0xdd</span>],
             step: <span class="number">30</span>,
             algo: TotpAlgo::Sha256,
+            digits: <span class="number">6</span>,
         };
         <span class="kw">let </span>s = totp.to_uri();
         <span class="macro">assert!</span>(s == <span class="string">&quot;otpauth://totp/blackhats:william?secret=VK54ZXI&amp;issuer=blackhats&amp;algorithm=SHA256&amp;digits=6&amp;period=30&quot;</span>);
@@ -2478,6 +2485,7 @@ pub enum SetCredentialResponse {
             secret: <span class="macro">vec!</span>[<span class="number">0xaa</span>, <span class="number">0xbb</span>, <span class="number">0xcc</span>, <span class="number">0xdd</span>],
             step: <span class="number">30</span>,
             algo: TotpAlgo::Sha256,
+            digits: <span class="number">6</span>,
         };
         <span class="kw">let </span>s = totp.to_uri();
         <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, s);

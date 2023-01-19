@@ -4661,7 +4661,7 @@
 
         <span class="comment">// Check the status has the token.
         </span><span class="kw">let </span>totp_token: Totp = <span class="kw">match </span>c_status.mfaregstate {
-            MfaRegStateStatus::TotpCheck(secret) =&gt; <span class="prelude-val">Some</span>(secret.into()),
+            MfaRegStateStatus::TotpCheck(secret) =&gt; <span class="prelude-val">Some</span>(secret.try_into().unwrap()),
 
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
@@ -4755,7 +4755,7 @@
 
         <span class="comment">// Check the status has the token.
         </span><span class="kw">let </span>totp_token: Totp = <span class="kw">match </span>c_status.mfaregstate {
-            MfaRegStateStatus::TotpCheck(secret) =&gt; <span class="prelude-val">Some</span>(secret.into()),
+            MfaRegStateStatus::TotpCheck(secret) =&gt; <span class="prelude-val">Some</span>(secret.try_into().unwrap()),
 
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
@@ -4830,7 +4830,7 @@
             .expect(<span class="string">&quot;Failed to update the primary cred password&quot;</span>);
 
         <span class="kw">let </span>totp_token: Totp = <span class="kw">match </span>c_status.mfaregstate {
-            MfaRegStateStatus::TotpCheck(secret) =&gt; <span class="prelude-val">Some</span>(secret.into()),
+            MfaRegStateStatus::TotpCheck(secret) =&gt; <span class="prelude-val">Some</span>(secret.try_into().unwrap()),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
         .expect(<span class="string">&quot;Unable to retrieve totp token, invalid state.&quot;</span>);

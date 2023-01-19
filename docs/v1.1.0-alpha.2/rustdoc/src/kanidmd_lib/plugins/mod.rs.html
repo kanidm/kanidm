@@ -286,12 +286,12 @@
 
 <span class="kw">mod </span>attrunique;
 <span class="kw">mod </span>base;
+<span class="kw">mod </span>cred_import;
 <span class="kw">mod </span>domain;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>dyngroup;
 <span class="kw">mod </span>gidnumber;
 <span class="kw">mod </span>jwskeygen;
 <span class="kw">mod </span>memberof;
-<span class="kw">mod </span>password_import;
 <span class="kw">mod </span>protected;
 <span class="kw">mod </span>refint;
 <span class="kw">mod </span>session;
@@ -424,7 +424,7 @@
         ce: <span class="kw-2">&amp;</span>CreateEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         base::Base::pre_create_transform(qs, cand, ce)
-            .and_then(|<span class="kw">_</span>| password_import::PasswordImport::pre_create_transform(qs, cand, ce))
+            .and_then(|<span class="kw">_</span>| cred_import::CredImport::pre_create_transform(qs, cand, ce))
             .and_then(|<span class="kw">_</span>| jwskeygen::JwsKeygen::pre_create_transform(qs, cand, ce))
             .and_then(|<span class="kw">_</span>| gidnumber::GidNumber::pre_create_transform(qs, cand, ce))
             .and_then(|<span class="kw">_</span>| domain::Domain::pre_create_transform(qs, cand, ce))
@@ -460,7 +460,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         protected::Protected::pre_modify(qs, cand, me)
             .and_then(|<span class="kw">_</span>| base::Base::pre_modify(qs, cand, me))
-            .and_then(|<span class="kw">_</span>| password_import::PasswordImport::pre_modify(qs, cand, me))
+            .and_then(|<span class="kw">_</span>| cred_import::CredImport::pre_modify(qs, cand, me))
             .and_then(|<span class="kw">_</span>| jwskeygen::JwsKeygen::pre_modify(qs, cand, me))
             .and_then(|<span class="kw">_</span>| gidnumber::GidNumber::pre_modify(qs, cand, me))
             .and_then(|<span class="kw">_</span>| domain::Domain::pre_modify(qs, cand, me))
@@ -490,7 +490,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         protected::Protected::pre_batch_modify(qs, cand, me)
             .and_then(|<span class="kw">_</span>| base::Base::pre_batch_modify(qs, cand, me))
-            .and_then(|<span class="kw">_</span>| password_import::PasswordImport::pre_batch_modify(qs, cand, me))
+            .and_then(|<span class="kw">_</span>| cred_import::CredImport::pre_batch_modify(qs, cand, me))
             .and_then(|<span class="kw">_</span>| jwskeygen::JwsKeygen::pre_batch_modify(qs, cand, me))
             .and_then(|<span class="kw">_</span>| gidnumber::GidNumber::pre_batch_modify(qs, cand, me))
             .and_then(|<span class="kw">_</span>| domain::Domain::pre_batch_modify(qs, cand, me))

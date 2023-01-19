@@ -1743,6 +1743,9 @@
 <span id="1743">1743</span>
 <span id="1744">1744</span>
 <span id="1745">1745</span>
+<span id="1746">1746</span>
+<span id="1747">1747</span>
+<span id="1748">1748</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
@@ -2244,6 +2247,7 @@
                     SyntaxType::UiHint =&gt; UiHint::from_str(value)
                         .map(Value::UiHint)
                         .map_err(|()| OperationError::InvalidAttribute(<span class="string">&quot;Invalid uihint syntax&quot;</span>.to_string())),
+                    SyntaxType::TotpSecret =&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="string">&quot;TotpSecret Values can not be supplied through modification&quot;</span>.to_string())),
                 }
             }
             <span class="prelude-val">None </span>=&gt; {
@@ -2265,7 +2269,9 @@
         </span><span class="kw">match </span>schema.get_attributes().get(attr) {
             <span class="prelude-val">Some</span>(schema_a) =&gt; {
                 <span class="kw">match </span>schema_a.syntax {
-                    SyntaxType::Utf8String =&gt; <span class="prelude-val">Ok</span>(PartialValue::new_utf8(value.to_string())),
+                    SyntaxType::Utf8String | SyntaxType::TotpSecret =&gt; {
+                        <span class="prelude-val">Ok</span>(PartialValue::new_utf8(value.to_string()))
+                    }
                     SyntaxType::Utf8StringInsensitive
                     | SyntaxType::JwsKeyEs256
                     | SyntaxType::JwsKeyRs256 =&gt; <span class="prelude-val">Ok</span>(PartialValue::new_iutf8(value)),

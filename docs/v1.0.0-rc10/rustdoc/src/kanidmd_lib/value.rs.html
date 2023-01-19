@@ -1784,6 +1784,10 @@
 <span id="1784">1784</span>
 <span id="1785">1785</span>
 <span id="1786">1786</span>
+<span id="1787">1787</span>
+<span id="1788">1788</span>
+<span id="1789">1789</span>
+<span id="1790">1790</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of
 //! the [`Value`] module allow storage and transformation of various types of input into strongly
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
@@ -1809,7 +1813,7 @@
 <span class="kw">use </span>webauthn_rs::prelude::{DeviceKey <span class="kw">as </span>DeviceKeyV4, Passkey <span class="kw">as </span>PasskeyV4};
 
 <span class="kw">use </span><span class="kw">crate</span>::be::dbentry::DbIdentSpn;
-<span class="kw">use </span><span class="kw">crate</span>::credential::Credential;
+<span class="kw">use </span><span class="kw">crate</span>::credential::{totp::Totp, Credential};
 <span class="kw">use </span><span class="kw">crate</span>::repl::cid::Cid;
 <span class="kw">use </span><span class="kw">crate</span>::server::identity::{AccessScope, IdentityId};
 
@@ -1984,6 +1988,7 @@
     JwsKeyRs256 = <span class="number">27</span>,
     Oauth2Session = <span class="number">28</span>,
     UiHint = <span class="number">29</span>,
+    TotpSecret = <span class="number">30</span>,
 }
 
 <span class="kw">impl </span>TryFrom&lt;<span class="kw-2">&amp;</span>str&gt; <span class="kw">for </span>SyntaxType {
@@ -2023,6 +2028,7 @@
             <span class="string">&quot;JWS_KEY_RS256&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::JwsKeyRs256),
             <span class="string">&quot;OAUTH2SESSION&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Oauth2Session),
             <span class="string">&quot;UIHINT&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::UiHint),
+            <span class="string">&quot;TOTPSECRET&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::TotpSecret),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(()),
         }
     }
@@ -2061,6 +2067,7 @@
             SyntaxType::JwsKeyRs256 =&gt; <span class="string">&quot;JWS_KEY_RS256&quot;</span>,
             SyntaxType::Oauth2Session =&gt; <span class="string">&quot;OAUTH2SESSION&quot;</span>,
             SyntaxType::UiHint =&gt; <span class="string">&quot;UIHINT&quot;</span>,
+            SyntaxType::TotpSecret =&gt; <span class="string">&quot;TOTPSECRET&quot;</span>,
         })
     }
 }
@@ -2107,13 +2114,12 @@
     </span>RestrictedString(String),
     IntentToken(String),
     UiHint(UiHint),
-
     Passkey(Uuid),
     DeviceKey(Uuid),
-
     TrustedDeviceEnrollment(Uuid),
     Session(Uuid),
-}
+    <span class="comment">// The label, if any.
+</span>}
 
 <span class="kw">impl </span>From&lt;SyntaxType&gt; <span class="kw">for </span>PartialValue {
     <span class="kw">fn </span>from(s: SyntaxType) -&gt; <span class="self">Self </span>{
@@ -2559,6 +2565,8 @@
     JwsKeyEs256(JwsSigner),
     JwsKeyRs256(JwsSigner),
     UiHint(UiHint),
+
+    TotpSecret(String, Totp),
 }
 
 <span class="kw">impl </span>PartialEq <span class="kw">for </span>Value {

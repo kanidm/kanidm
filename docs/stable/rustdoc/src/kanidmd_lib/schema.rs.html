@@ -2664,6 +2664,24 @@
 <span id="2664">2664</span>
 <span id="2665">2665</span>
 <span id="2666">2666</span>
+<span id="2667">2667</span>
+<span id="2668">2668</span>
+<span id="2669">2669</span>
+<span id="2670">2670</span>
+<span id="2671">2671</span>
+<span id="2672">2672</span>
+<span id="2673">2673</span>
+<span id="2674">2674</span>
+<span id="2675">2675</span>
+<span id="2676">2676</span>
+<span id="2677">2677</span>
+<span id="2678">2678</span>
+<span id="2679">2679</span>
+<span id="2680">2680</span>
+<span id="2681">2681</span>
+<span id="2682">2682</span>
+<span id="2683">2683</span>
+<span id="2684">2684</span>
 </pre><pre class="rust"><code><span class="doccomment">//! [`Schema`] is one of the foundational concepts of the server. It provides a
 //! set of rules to enforce that [`Entries`] ava&#39;s must be compliant to, to be
 //! considered valid for commit to the database. This allows us to provide
@@ -2869,6 +2887,8 @@
             </span>SyntaxType::JwsKeyEs256 =&gt; <span class="macro">matches!</span>(v, PartialValue::Iutf8(<span class="kw">_</span>)),
             SyntaxType::JwsKeyRs256 =&gt; <span class="macro">matches!</span>(v, PartialValue::Iutf8(<span class="kw">_</span>)),
             SyntaxType::UiHint =&gt; <span class="macro">matches!</span>(v, PartialValue::UiHint(<span class="kw">_</span>)),
+            <span class="comment">// Comparing on the label.
+            </span>SyntaxType::TotpSecret =&gt; <span class="macro">matches!</span>(v, PartialValue::Utf8(<span class="kw">_</span>)),
         };
         <span class="kw">if </span>r {
             <span class="prelude-val">Ok</span>(())
@@ -2916,6 +2936,7 @@
                 SyntaxType::JwsKeyEs256 =&gt; <span class="macro">matches!</span>(v, Value::JwsKeyEs256(<span class="kw">_</span>)),
                 SyntaxType::JwsKeyRs256 =&gt; <span class="macro">matches!</span>(v, Value::JwsKeyRs256(<span class="kw">_</span>)),
                 SyntaxType::UiHint =&gt; <span class="macro">matches!</span>(v, Value::UiHint(<span class="kw">_</span>)),
+                SyntaxType::TotpSecret =&gt; <span class="macro">matches!</span>(v, Value::TotpSecret(<span class="kw">_</span>, <span class="kw">_</span>)),
             };
         <span class="kw">if </span>r {
             <span class="prelude-val">Ok</span>(())
@@ -3980,6 +4001,21 @@
                 sync_allowed: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Utf8String,
+            },
+        );
+
+        <span class="self">self</span>.attributes.insert(
+            AttrString::from(<span class="string">&quot;totp_import&quot;</span>),
+            SchemaAttribute {
+                name: AttrString::from(<span class="string">&quot;totp_import&quot;</span>),
+                uuid: UUID_SCHEMA_ATTR_TOTP_IMPORT,
+                description: String::from(<span class="string">&quot;An imported totp secret from an external system.&quot;</span>),
+                multivalue: <span class="bool-val">true</span>,
+                unique: <span class="bool-val">false</span>,
+                phantom: <span class="bool-val">true</span>,
+                sync_allowed: <span class="bool-val">true</span>,
+                index: <span class="macro">vec!</span>[],
+                syntax: SyntaxType::TotpSecret,
             },
         );
 

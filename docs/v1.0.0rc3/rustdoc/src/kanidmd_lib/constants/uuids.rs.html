@@ -307,6 +307,7 @@
 <span id="307">307</span>
 <span id="308">308</span>
 <span id="309">309</span>
+<span id="310">310</span>
 </pre><pre class="rust"><code><span class="attribute">#![allow(clippy::unwrap_used)]
 
 </span><span class="kw">use </span>uuid::{uuid, Uuid};
@@ -531,6 +532,7 @@
 
 <span class="kw">pub const </span>UUID_SCHEMA_ATTR_EMAILPRIMARY: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000126&quot;</span>);
 <span class="kw">pub const </span>UUID_SCHEMA_ATTR_EMAILALTERNATIVE: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000127&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_TOTP_IMPORT: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000128&quot;</span>);
 
 <span class="comment">// System and domain infos
 // I&#39;d like to strongly criticise william of the past for making poor choices about these allocations.

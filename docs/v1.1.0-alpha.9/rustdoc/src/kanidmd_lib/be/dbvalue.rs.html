@@ -690,6 +690,11 @@
 <span id="690">690</span>
 <span id="691">691</span>
 <span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
+<span id="695">695</span>
+<span id="696">696</span>
+<span id="697">697</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt;
 <span class="kw">use </span>std::time::Duration;
 
@@ -765,6 +770,8 @@
     </span><span class="kw">pub </span>step: u64,
     <span class="attribute">#[serde(rename = <span class="string">&quot;a&quot;</span>)]
     </span><span class="kw">pub </span>algo: DbTotpAlgoV1,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;d&quot;</span>, default)]
+    </span><span class="kw">pub </span>digits: <span class="prelude-ty">Option</span>&lt;u8&gt;,
 }
 
 <span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>DbTotpV1 {
@@ -1268,6 +1275,8 @@
     </span>Oauth2Session(Vec&lt;DbValueOauth2Session&gt;),
     <span class="attribute">#[serde(rename = <span class="string">&quot;UH&quot;</span>)]
     </span>UiHint(Vec&lt;u16&gt;),
+    <span class="attribute">#[serde(rename = <span class="string">&quot;TO&quot;</span>)]
+    </span>TotpSecret(Vec&lt;(String, DbTotpV1)&gt;),
 }
 
 <span class="kw">impl </span>DbValueSetV2 {
@@ -1308,6 +1317,7 @@
             DbValueSetV2::JwsKeyEs256(set) =&gt; set.len(),
             DbValueSetV2::JwsKeyRs256(set) =&gt; set.len(),
             DbValueSetV2::UiHint(set) =&gt; set.len(),
+            DbValueSetV2::TotpSecret(set) =&gt; set.len(),
         }
     }
 

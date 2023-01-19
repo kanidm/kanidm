@@ -676,6 +676,16 @@
 <span id="676">676</span>
 <span id="677">677</span>
 <span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
+<span id="683">683</span>
+<span id="684">684</span>
+<span id="685">685</span>
+<span id="686">686</span>
+<span id="687">687</span>
+<span id="688">688</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 
 <span class="kw">use </span>compact_jwt::JwsSigner;
@@ -690,7 +700,7 @@
 <span class="kw">use </span>webauthn_rs::prelude::Passkey <span class="kw">as </span>PasskeyV4;
 
 <span class="kw">use </span><span class="kw">crate</span>::be::dbvalue::DbValueSetV2;
-<span class="kw">use </span><span class="kw">crate</span>::credential::Credential;
+<span class="kw">use </span><span class="kw">crate</span>::credential::{totp::Totp, Credential};
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::repl::cid::Cid;
 <span class="kw">use </span><span class="kw">crate</span>::schema::SchemaAttribute;
@@ -715,6 +725,7 @@
 <span class="kw">mod </span>spn;
 <span class="kw">mod </span>ssh;
 <span class="kw">mod </span>syntax;
+<span class="kw">mod </span>totp;
 <span class="kw">mod </span>uihint;
 <span class="kw">mod </span>uint32;
 <span class="kw">mod </span>url;
@@ -740,6 +751,7 @@
 <span class="kw">pub use </span><span class="self">self</span>::spn::ValueSetSpn;
 <span class="kw">pub use </span><span class="self">self</span>::ssh::ValueSetSshKey;
 <span class="kw">pub use </span><span class="self">self</span>::syntax::ValueSetSyntax;
+<span class="kw">pub use </span><span class="self">self</span>::totp::ValueSetTotpSecret;
 <span class="kw">pub use </span><span class="self">self</span>::uihint::ValueSetUiHint;
 <span class="kw">pub use </span><span class="self">self</span>::uint32::ValueSetUint32;
 <span class="kw">pub use </span><span class="self">self</span>::url::ValueSetUrl;
@@ -957,6 +969,11 @@
     </span>}
 
     <span class="kw">fn </span>as_credential_map(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeMap&lt;String, Credential&gt;&gt; {
+        <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
+        <span class="prelude-val">None
+    </span>}
+
+    <span class="kw">fn </span>as_totp_map(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeMap&lt;String, Totp&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
         <span class="prelude-val">None
     </span>}
@@ -1241,6 +1258,7 @@
         Value::PhoneNumber(<span class="kw">_</span>, <span class="kw">_</span>)
         | Value::Passkey(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)
         | Value::DeviceKey(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)
+        | Value::TotpSecret(<span class="kw">_</span>, <span class="kw">_</span>)
         | Value::TrustedDeviceEnrollment(<span class="kw">_</span>)
         | Value::Session(<span class="kw">_</span>, <span class="kw">_</span>)
         | Value::Oauth2Session(<span class="kw">_</span>, <span class="kw">_</span>)
@@ -1301,6 +1319,7 @@
         Value::Session(u, m) =&gt; ValueSetSession::new(u, m),
         Value::Oauth2Session(u, m) =&gt; ValueSetOauth2Session::new(u, m),
         Value::UiHint(u) =&gt; ValueSetUiHint::new(u),
+        Value::TotpSecret(l, t) =&gt; ValueSetTotpSecret::new(l, t),
         Value::PhoneNumber(<span class="kw">_</span>, <span class="kw">_</span>) | Value::TrustedDeviceEnrollment(<span class="kw">_</span>) =&gt; {
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
             <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidValueState);
@@ -1348,6 +1367,7 @@
         DbValueSetV2::JwsKeyEs256(set) =&gt; ValueSetJwsKeyEs256::from_dbvs2(<span class="kw-2">&amp;</span>set),
         DbValueSetV2::JwsKeyRs256(set) =&gt; ValueSetJwsKeyEs256::from_dbvs2(<span class="kw-2">&amp;</span>set),
         DbValueSetV2::UiHint(set) =&gt; ValueSetUiHint::from_dbvs2(set),
+        DbValueSetV2::TotpSecret(set) =&gt; ValueSetTotpSecret::from_dbvs2(set),
         DbValueSetV2::PhoneNumber(<span class="kw">_</span>, <span class="kw">_</span>) | DbValueSetV2::TrustedDeviceEnrollment(<span class="kw">_</span>) =&gt; {
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
             <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
