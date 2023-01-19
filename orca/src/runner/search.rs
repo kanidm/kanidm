@@ -76,7 +76,6 @@ async fn basic_arbiter(
 
     loop {
         match raw_results_rx.recv_deadline(end_of_test) {
-            // We are currently discarding results.
             Ok(datum) => results.push(datum),
             Err(RecvTimeoutError::Timeout) => {
                 break;
