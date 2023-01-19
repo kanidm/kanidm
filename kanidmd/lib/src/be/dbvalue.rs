@@ -73,6 +73,8 @@ pub struct DbTotpV1 {
     pub step: u64,
     #[serde(rename = "a")]
     pub algo: DbTotpAlgoV1,
+    #[serde(rename = "d", default)]
+    pub digits: Option<u8>,
 }
 
 impl std::fmt::Debug for DbTotpV1 {
@@ -576,6 +578,8 @@ pub enum DbValueSetV2 {
     Oauth2Session(Vec<DbValueOauth2Session>),
     #[serde(rename = "UH")]
     UiHint(Vec<u16>),
+    #[serde(rename = "TO")]
+    TotpSecret(Vec<(String, DbTotpV1)>),
 }
 
 impl DbValueSetV2 {
@@ -616,6 +620,7 @@ impl DbValueSetV2 {
             DbValueSetV2::JwsKeyEs256(set) => set.len(),
             DbValueSetV2::JwsKeyRs256(set) => set.len(),
             DbValueSetV2::UiHint(set) => set.len(),
+            DbValueSetV2::TotpSecret(set) => set.len(),
         }
     }
 

@@ -2114,7 +2114,7 @@ mod tests {
 
         // Check the status has the token.
         let totp_token: Totp = match c_status.mfaregstate {
-            MfaRegStateStatus::TotpCheck(secret) => Some(secret.into()),
+            MfaRegStateStatus::TotpCheck(secret) => Some(secret.try_into().unwrap()),
 
             _ => None,
         }
@@ -2208,7 +2208,7 @@ mod tests {
 
         // Check the status has the token.
         let totp_token: Totp = match c_status.mfaregstate {
-            MfaRegStateStatus::TotpCheck(secret) => Some(secret.into()),
+            MfaRegStateStatus::TotpCheck(secret) => Some(secret.try_into().unwrap()),
 
             _ => None,
         }
@@ -2283,7 +2283,7 @@ mod tests {
             .expect("Failed to update the primary cred password");
 
         let totp_token: Totp = match c_status.mfaregstate {
-            MfaRegStateStatus::TotpCheck(secret) => Some(secret.into()),
+            MfaRegStateStatus::TotpCheck(secret) => Some(secret.try_into().unwrap()),
             _ => None,
         }
         .expect("Unable to retrieve totp token, invalid state.");

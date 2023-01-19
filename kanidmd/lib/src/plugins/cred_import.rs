@@ -9,9 +9,9 @@ use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 
-pub struct PasswordImport {}
+pub struct CredImport {}
 
-impl Plugin for PasswordImport {
+impl Plugin for CredImport {
     fn id() -> &'static str {
         "plugin_password_import"
     }
@@ -26,44 +26,6 @@ impl Plugin for PasswordImport {
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        /*
-        cand.iter_mut()
-            .try_for_each(|e| {
-                // is there a password we are trying to import?
-                let vs = match e.pop_ava("password_import") {
-                    Some(vs) => vs,
-                    None => return Ok(()),
-                };
-                // if there are multiple, fail.
-                if vs.len() > 1 {
-                    return Err(OperationError::Plugin(PluginError::PasswordImport("multiple password_imports specified".to_string())))
-                }
-
-                let im_pw = vs.to_utf8_single()
-                    .ok_or_else(|| OperationError::Plugin(PluginError::PasswordImport("password_import has incorrect value type".to_string())))?;
-
-                // convert the import_password to a cred
-                let pw = Password::try_from(im_pw)
-                    .map_err(|_| OperationError::Plugin(PluginError::PasswordImport("password_import was unable to convert hash format".to_string())))?;
-
-                // does the entry have a primary cred?
-                match e.get_ava_single_credential("primary_credential") {
-                    Some(_c) => {
-                        Err(
-                            OperationError::Plugin(PluginError::PasswordImport(
-                                "password_import - impossible state, how did you get a credential into a create!?".to_string()))
-                        )
-                    }
-                    None => {
-                        // just set it then!
-                        let c = Credential::new_from_password(pw);
-                        e.set_ava("primary_credential",
-                            once(Value::new_credential("primary", c)));
-                        Ok(())
-                    }
-                }
-            })
-        */
         Self::modify_inner(cand)
     }
 
@@ -90,55 +52,74 @@ impl Plugin for PasswordImport {
     }
 }
 
-impl PasswordImport {
+impl CredImport {
     fn modify_inner<T: Clone>(cand: &mut [Entry<EntryInvalid, T>]) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
-            // is there a password we are trying to import?
-            let vs = match e.pop_ava("password_import") {
-                Some(vs) => vs,
-                None => return Ok(()),
+            // PASSWORD IMPORT
+            if let Some(vs) = e.pop_ava("password_import") {
+                // if there are multiple, fail.
+                let im_pw = vs.to_utf8_single().ok_or_else(|| {
+                    OperationError::Plugin(PluginError::CredImport(
+                        "password_import has incorrect value type - should be a single utf8 string"
+                            .to_string(),
+                    ))
+                })?;
+
+                // convert the import_password_string to a password
+                let pw = Password::try_from(im_pw).map_err(|_| {
+                    OperationError::Plugin(PluginError::CredImport(
+                        "password_import was unable to convert hash format".to_string(),
+                    ))
+                })?;
+
+                // does the entry have a primary cred?
+                match e.get_ava_single_credential("primary_credential") {
+                    Some(c) => {
+                        // This is the major diff to create, we can update in place!
+                        let c = c.update_password(pw);
+                        e.set_ava(
+                            "primary_credential",
+                            once(Value::new_credential("primary", c)),
+                        );
+                    }
+                    None => {
+                        // just set it then!
+                        let c = Credential::new_from_password(pw);
+                        e.set_ava(
+                            "primary_credential",
+                            once(Value::new_credential("primary", c)),
+                        );
+                    }
+                }
             };
-            // if there are multiple, fail.
-            if vs.len() > 1 {
-                return Err(OperationError::Plugin(PluginError::PasswordImport(
-                    "multiple password_imports specified".to_string(),
-                )));
-            }
 
-            let im_pw = vs.to_utf8_single().ok_or_else(|| {
-                OperationError::Plugin(PluginError::PasswordImport(
-                    "password_import has incorrect value type".to_string(),
-                ))
-            })?;
+            // TOTP IMPORT
+            if let Some(vs) = e.pop_ava("totp_import") {
+                // Get the map.
+                let totps = vs.as_totp_map().ok_or_else(|| {
+                    OperationError::Plugin(PluginError::CredImport(
+                        "totp_import has incorrect value type - should be a map of totp"
+                            .to_string(),
+                    ))
+                })?;
 
-            // convert the import_password to a cred
-            let pw = Password::try_from(im_pw).map_err(|_| {
-                OperationError::Plugin(PluginError::PasswordImport(
-                    "password_import was unable to convert hash format".to_string(),
-                ))
-            })?;
-
-            // does the entry have a primary cred?
-            match e.get_ava_single_credential("primary_credential") {
-                Some(c) => {
-                    // This is the major diff to create, we can update in place!
-                    let c = c.update_password(pw);
+                if let Some(c) = e.get_ava_single_credential("primary_credential") {
+                    let c = totps.iter().fold(c.clone(), |acc, (label, totp)| {
+                        acc.append_totp(label.clone(), totp.clone())
+                    });
                     e.set_ava(
                         "primary_credential",
                         once(Value::new_credential("primary", c)),
                     );
-                    Ok(())
-                }
-                None => {
-                    // just set it then!
-                    let c = Credential::new_from_password(pw);
-                    e.set_ava(
-                        "primary_credential",
-                        once(Value::new_credential("primary", c)),
-                    );
-                    Ok(())
+                } else {
+                    return Err(OperationError::Plugin(PluginError::CredImport(
+                        "totp_import can not be used if primary_credential (password) is missing"
+                            .to_string(),
+                    )));
                 }
             }
+
+            Ok(())
         })
     }
 }
@@ -149,6 +130,7 @@ mod tests {
     use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::{Credential, CredentialType};
     use crate::prelude::*;
+    use kanidm_proto::v1::PluginError;
 
     const IMPORT_HASH: &'static str =
         "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=";
@@ -285,13 +267,105 @@ mod tests {
                     .expect("failed to get primary cred.");
                 match &c.type_ {
                     CredentialType::PasswordMfa(_pw, totp, webauthn, backup_code) => {
-                        assert!(!totp.is_empty());
+                        assert!(totp.len() == 1);
                         assert!(webauthn.is_empty());
                         assert!(backup_code.is_none());
                     }
                     _ => assert!(false),
                 };
             }
+        );
+    }
+
+    #[test]
+    fn test_modify_cred_import_pw_and_multi_totp() {
+        let euuid = Uuid::new_v4();
+
+        let ea = entry_init!(
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson")),
+            ("description", Value::Utf8("testperson".to_string())),
+            ("displayname", Value::Utf8("testperson".to_string())),
+            ("uuid", Value::Uuid(euuid))
+        );
+
+        let preload = vec![ea];
+
+        let totp_a = Totp::generate_secure(TOTP_DEFAULT_STEP);
+        let totp_b = Totp::generate_secure(TOTP_DEFAULT_STEP);
+
+        run_modify_test!(
+            Ok(()),
+            preload,
+            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+            ModifyList::new_list(vec![
+                Modify::Present(
+                    AttrString::from("password_import"),
+                    Value::Utf8(IMPORT_HASH.to_string())
+                ),
+                Modify::Present(
+                    AttrString::from("totp_import"),
+                    Value::TotpSecret("a".to_string(), totp_a.clone())
+                ),
+                Modify::Present(
+                    AttrString::from("totp_import"),
+                    Value::TotpSecret("b".to_string(), totp_b.clone())
+                )
+            ]),
+            None,
+            |_| {},
+            |qs: &mut QueryServerWriteTransaction| {
+                let e = qs.internal_search_uuid(euuid).expect("failed to get entry");
+                let c = e
+                    .get_ava_single_credential("primary_credential")
+                    .expect("failed to get primary cred.");
+                match &c.type_ {
+                    CredentialType::PasswordMfa(_pw, totp, webauthn, backup_code) => {
+                        assert!(totp.len() == 2);
+                        assert!(webauthn.is_empty());
+                        assert!(backup_code.is_none());
+
+                        assert!(totp.get("a") == Some(&totp_a));
+                        assert!(totp.get("b") == Some(&totp_b));
+                    }
+                    _ => assert!(false),
+                };
+            }
+        );
+    }
+
+    #[test]
+    fn test_modify_cred_import_pw_missing_with_totp() {
+        let euuid = Uuid::new_v4();
+
+        let ea = entry_init!(
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson")),
+            ("description", Value::Utf8("testperson".to_string())),
+            ("displayname", Value::Utf8("testperson".to_string())),
+            ("uuid", Value::Uuid(euuid))
+        );
+
+        let preload = vec![ea];
+
+        let totp_a = Totp::generate_secure(TOTP_DEFAULT_STEP);
+
+        run_modify_test!(
+            Err(OperationError::Plugin(PluginError::CredImport(
+                "totp_import can not be used if primary_credential (password) is missing"
+                    .to_string()
+            ))),
+            preload,
+            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+            ModifyList::new_list(vec![Modify::Present(
+                AttrString::from("totp_import"),
+                Value::TotpSecret("a".to_string(), totp_a.clone())
+            )]),
+            None,
+            |_| {},
+            |_| {}
         );
     }
 }

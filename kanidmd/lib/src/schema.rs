@@ -203,6 +203,8 @@ impl SchemaAttribute {
             SyntaxType::JwsKeyEs256 => matches!(v, PartialValue::Iutf8(_)),
             SyntaxType::JwsKeyRs256 => matches!(v, PartialValue::Iutf8(_)),
             SyntaxType::UiHint => matches!(v, PartialValue::UiHint(_)),
+            // Comparing on the label.
+            SyntaxType::TotpSecret => matches!(v, PartialValue::Utf8(_)),
         };
         if r {
             Ok(())
@@ -250,6 +252,7 @@ impl SchemaAttribute {
                 SyntaxType::JwsKeyEs256 => matches!(v, Value::JwsKeyEs256(_)),
                 SyntaxType::JwsKeyRs256 => matches!(v, Value::JwsKeyRs256(_)),
                 SyntaxType::UiHint => matches!(v, Value::UiHint(_)),
+                SyntaxType::TotpSecret => matches!(v, Value::TotpSecret(_, _)),
             };
         if r {
             Ok(())
@@ -1314,6 +1317,21 @@ impl<'a> SchemaWriteTransaction<'a> {
                 sync_allowed: true,
                 index: vec![],
                 syntax: SyntaxType::Utf8String,
+            },
+        );
+
+        self.attributes.insert(
+            AttrString::from("totp_import"),
+            SchemaAttribute {
+                name: AttrString::from("totp_import"),
+                uuid: UUID_SCHEMA_ATTR_TOTP_IMPORT,
+                description: String::from("An imported totp secret from an external system."),
+                multivalue: true,
+                unique: false,
+                phantom: true,
+                sync_allowed: true,
+                index: vec![],
+                syntax: SyntaxType::TotpSecret,
             },
         );
 

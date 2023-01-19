@@ -41,6 +41,47 @@ pub const SCIM_SCHEMA_SYNC_POSIXACCOUNT: &str =
     "urn:ietf:params:scim:schemas:kanidm:1.0:posixaccount";
 
 #[derive(Serialize, Debug, Clone)]
+pub struct ScimTotp {
+    /// maps to "label" in kanidm.
+    pub external_id: String,
+    pub secret: String,
+    pub algo: String,
+    pub step: u32,
+    pub digits: u32,
+}
+
+// Need to allow this because clippy is broken and doesn't realise scimentry is out of crate
+// so this can't be fulfilled
+#[allow(clippy::from_over_into)]
+impl Into<ScimComplexAttr> for ScimTotp {
+    fn into(self) -> ScimComplexAttr {
+        let ScimTotp {
+            external_id,
+            secret,
+            algo,
+            step,
+            digits,
+        } = self;
+        let mut attrs = BTreeMap::default();
+
+        attrs.insert(
+            "external_id".to_string(),
+            ScimSimpleAttr::String(external_id),
+        );
+
+        attrs.insert("secret".to_string(), ScimSimpleAttr::String(secret));
+
+        attrs.insert("algo".to_string(), ScimSimpleAttr::String(algo));
+
+        attrs.insert("step".to_string(), ScimSimpleAttr::Number(step.into()));
+
+        attrs.insert("digits".to_string(), ScimSimpleAttr::Number(digits.into()));
+
+        ScimComplexAttr { attrs }
+    }
+}
+
+#[derive(Serialize, Debug, Clone)]
 #[serde(into = "ScimEntry")]
 pub struct ScimSyncPerson {
     pub id: Uuid,
@@ -49,6 +90,7 @@ pub struct ScimSyncPerson {
     pub display_name: String,
     pub gidnumber: Option<u32>,
     pub password_import: Option<String>,
+    pub totp_import: Vec<ScimTotp>,
     pub login_shell: Option<String>,
 }
 
@@ -64,6 +106,7 @@ impl Into<ScimEntry> for ScimSyncPerson {
             display_name,
             gidnumber,
             password_import,
+            totp_import,
             login_shell,
         } = self;
 
@@ -86,6 +129,7 @@ impl Into<ScimEntry> for ScimSyncPerson {
         set_string!(attrs, "displayname", display_name);
         set_option_u32!(attrs, "gidnumber", gidnumber);
         set_option_string!(attrs, "password_import", password_import);
+        set_multi_complex!(attrs, "totp_import", totp_import);
         set_option_string!(attrs, "loginshell", login_shell);
 
         ScimEntry {

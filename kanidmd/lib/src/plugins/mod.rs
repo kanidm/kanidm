@@ -13,12 +13,12 @@ use crate::prelude::*;
 
 mod attrunique;
 mod base;
+mod cred_import;
 mod domain;
 pub(crate) mod dyngroup;
 mod gidnumber;
 mod jwskeygen;
 mod memberof;
-mod password_import;
 mod protected;
 mod refint;
 mod session;
@@ -151,7 +151,7 @@ impl Plugins {
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         base::Base::pre_create_transform(qs, cand, ce)
-            .and_then(|_| password_import::PasswordImport::pre_create_transform(qs, cand, ce))
+            .and_then(|_| cred_import::CredImport::pre_create_transform(qs, cand, ce))
             .and_then(|_| jwskeygen::JwsKeygen::pre_create_transform(qs, cand, ce))
             .and_then(|_| gidnumber::GidNumber::pre_create_transform(qs, cand, ce))
             .and_then(|_| domain::Domain::pre_create_transform(qs, cand, ce))
@@ -187,7 +187,7 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         protected::Protected::pre_modify(qs, cand, me)
             .and_then(|_| base::Base::pre_modify(qs, cand, me))
-            .and_then(|_| password_import::PasswordImport::pre_modify(qs, cand, me))
+            .and_then(|_| cred_import::CredImport::pre_modify(qs, cand, me))
             .and_then(|_| jwskeygen::JwsKeygen::pre_modify(qs, cand, me))
             .and_then(|_| gidnumber::GidNumber::pre_modify(qs, cand, me))
             .and_then(|_| domain::Domain::pre_modify(qs, cand, me))
@@ -217,7 +217,7 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         protected::Protected::pre_batch_modify(qs, cand, me)
             .and_then(|_| base::Base::pre_batch_modify(qs, cand, me))
-            .and_then(|_| password_import::PasswordImport::pre_batch_modify(qs, cand, me))
+            .and_then(|_| cred_import::CredImport::pre_batch_modify(qs, cand, me))
             .and_then(|_| jwskeygen::JwsKeygen::pre_batch_modify(qs, cand, me))
             .and_then(|_| gidnumber::GidNumber::pre_batch_modify(qs, cand, me))
             .and_then(|_| domain::Domain::pre_batch_modify(qs, cand, me))

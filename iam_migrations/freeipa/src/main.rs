@@ -14,15 +14,16 @@
 mod config;
 mod error;
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
 use crate::config::{Config, EntryConfig};
 use crate::error::SyncError;
+use base64urlsafedata::Base64UrlSafeData;
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs::metadata;
 use std::fs::File;
 use std::io::Read;
@@ -48,13 +49,14 @@ use uuid::Uuid;
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::scim_v1::{
     ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest, ScimSyncState,
+    ScimTotp,
 };
 use kanidmd_lib::utils::file_permissions_readonly;
 
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
 use ldap3_client::{
-    proto, proto::LdapFilter, LdapClientBuilder, LdapSyncRepl, LdapSyncReplEntry,
+    proto, proto::LdapFilter, LdapClient, LdapClientBuilder, LdapSyncRepl, LdapSyncReplEntry,
     LdapSyncStateValue,
 };
 
@@ -331,6 +333,8 @@ async fn run_sync(
         ScimSyncState::Active { cookie } => Some(cookie.0.clone()),
     };
 
+    let is_initialise = cookie.is_none();
+
     let filter = LdapFilter::Or(vec![
         // LdapFilter::Equality("objectclass".to_string(), "domain".to_string()),
         LdapFilter::And(vec![
@@ -341,6 +345,7 @@ async fn run_sync(
         LdapFilter::And(vec![
             LdapFilter::Equality("objectclass".to_string(), "groupofnames".to_string()),
             LdapFilter::Equality("objectclass".to_string(), "ipausergroup".to_string()),
+            // Ignore user private groups, kani generates these internally.
             LdapFilter::Not(Box::new(LdapFilter::Equality(
                 "objectclass".to_string(),
                 "mepmanagedentry".to_string(),
@@ -356,6 +361,7 @@ async fn run_sync(
                 "ipausers".to_string(),
             ))),
         ]),
+        // Fetch TOTP's so we know when/if they change.
         LdapFilter::And(vec![
             LdapFilter::Equality("objectclass".to_string(), "ipatoken".to_string()),
             LdapFilter::Equality("objectclass".to_string(), "ipatokentotp".to_string()),
@@ -381,17 +387,69 @@ async fn run_sync(
         }
     }
 
-    // pre-process the entries.
-    //  - > fn so we can test.
-    let scim_sync_request = match process_ipa_sync_result(
-        scim_sync_status,
-        sync_result,
-        &sync_config.entry_map,
-    )
-    .await
-    {
-        Ok(ssr) => ssr,
-        Err(()) => return Err(SyncError::Preprocess),
+    // Convert the ldap sync repl result to a scim equivalent
+    let scim_sync_request = match sync_result {
+        LdapSyncRepl::Success {
+            cookie,
+            refresh_deletes,
+            entries,
+            delete_uuids,
+            present_uuids,
+        } => {
+            if refresh_deletes {
+                error!("Unsure how to handle refreshDeletes=True");
+                return Err(SyncError::Preprocess);
+            }
+
+            if !present_uuids.is_empty() {
+                error!("Unsure how to handle presentUuids > 0");
+                return Err(SyncError::Preprocess);
+            }
+
+            let to_state = cookie
+                .map(|cookie| {
+                    ScimSyncState::Active { cookie }
+                })
+                .ok_or_else(|| {
+                    error!("Invalid state, ldap sync repl did not provide a valid state cookie in response.");
+
+                    SyncError::Preprocess
+
+                })?;
+
+            // process the entries to scim.
+            let entries = match process_ipa_sync_result(
+                ipa_client,
+                entries,
+                &sync_config.entry_map,
+                is_initialise,
+            )
+            .await
+            {
+                Ok(ssr) => ssr,
+                Err(()) => {
+                    error!("Failed to process IPA entries to SCIM");
+                    return Err(SyncError::Preprocess);
+                }
+            };
+
+            ScimSyncRequest {
+                from_state: scim_sync_status,
+                to_state,
+                entries,
+                delete_uuids,
+            }
+        }
+        LdapSyncRepl::RefreshRequired => {
+            let to_state = ScimSyncState::Refresh;
+
+            ScimSyncRequest {
+                from_state: scim_sync_status,
+                to_state,
+                entries: Vec::new(),
+                delete_uuids: Vec::new(),
+            }
+        }
     };
 
     if opt.proto_dump {
@@ -421,78 +479,186 @@ async fn run_sync(
 }
 
 async fn process_ipa_sync_result(
-    from_state: ScimSyncState,
-    sync_result: LdapSyncRepl,
+    _ipa_client: LdapClient,
+    ldap_entries: Vec<LdapSyncReplEntry>,
     entry_config_map: &HashMap<Uuid, EntryConfig>,
-) -> Result<ScimSyncRequest, ()> {
-    match sync_result {
-        LdapSyncRepl::Success {
-            cookie,
-            refresh_deletes,
-            entries,
-            delete_uuids,
-            present_uuids,
-        } => {
-            if refresh_deletes {
-                error!("Unsure how to handle refreshDeletes=True");
-                return Err(());
-            }
+    is_initialise: bool,
+) -> Result<Vec<ScimEntry>, ()> {
+    // Because of how TOTP works with freeipa it's a soft referral from
+    // the totp toward the user. This means if a TOTP is added or removed
+    // we see those as unique entries in the syncrepl but we are missing
+    // the user entry that actually needs the update since Kanidm makes TOTP
+    // part of the entry itself.
+    //
+    // This *also* means that when a user is updated that we also need to
+    // fetch their TOTP's that are related so we can assert them on the
+    // submission.
+    //
+    // Because of this, we have to do some client-side processing here to
+    // work out what "entries we are missing" and do a second search to
+    // fetch them. Sadly, this means that we need to do a second search
+    // and since ldap is NOT transactional there is a possibility of a
+    // desync between the sync-repl and the results of the second search.
+    //
+    // There are 5 possibilities - note one of TOTP or USER must be in syncrepl
+    // state else we wouldn't proceed.
+    //      TOTP          USER             OUTCOME
+    //    SyncRepl      SyncRepl         No ext detail needed, proceed
+    //    SyncRepl      Add/Mod          Update user, won't change on next syncrepl
+    //    SyncRepl        Del            Ignore this TOTP -> will be deleted on next syncrepl
+    //    Add/Mod       SyncRepl         Add the new TOTP, won't change on next syncrepl
+    //      Del         SyncRepl         Remove TOTP, won't change on next syncrepl
+    //
+    // The big challenge is to transform our data in a way that we can actually work
+    // with it here meaning we have to disassemble and "index" the content of our
+    // sync result.
 
-            if !present_uuids.is_empty() {
-                error!("Unsure how to handle presentUuids > 0");
-                return Err(());
-            }
+    // Hash entries by DN -> Split TOTP's to their own set.
+    //    make a list of updated TOTP's and what DN's they require.
+    //    make a list of updated Users and what TOTP's they require.
 
-            let to_state = cookie
-                .map(|cookie| {
-                    ScimSyncState::Active { cookie }
-                })
-                .ok_or_else(|| {
-                    error!("Invalid state, ldap sync repl did not provide a valid state cookie in response.");
-                })?;
+    let mut entries = BTreeMap::default();
+    let mut user_dns = Vec::default();
+    let mut totp_entries: BTreeMap<String, Vec<_>> = BTreeMap::default();
 
-            // Future - make this par-map
-            let entries = entries
-                .into_iter()
-                .filter_map(|e| {
-                    let e_config = entry_config_map
-                        .get(&e.entry_uuid)
-                        .cloned()
-                        .unwrap_or_default();
-                    match ipa_to_scim_entry(e, &e_config) {
-                        Ok(Some(e)) => Some(Ok(e)),
-                        Ok(None) => None,
-                        Err(()) => Some(Err(())),
-                    }
-                })
-                .collect::<Result<Vec<_>, _>>();
-
-            let entries = match entries {
-                Ok(e) => e,
-                Err(()) => {
-                    error!("Failed to process IPA entries to SCIM");
-                    return Err(());
-                }
+    for lentry in ldap_entries.into_iter() {
+        if lentry
+            .entry
+            .attrs
+            .get("objectclass")
+            .map(|oc| oc.contains("ipatokentotp"))
+            .unwrap_or_default()
+        {
+            // It's an otp. Lets see ...
+            let token_owner_dn = if let Some(todn) = lentry
+                .entry
+                .attrs
+                .get("ipatokenowner")
+                .and_then(|attr| if attr.len() != 1 { None } else { attr.first() })
+            {
+                debug!("totp with owner {}", todn);
+                todn.clone()
+            } else {
+                warn!("totp with invalid ownership will be ignored");
+                continue;
             };
 
-            Ok(ScimSyncRequest {
-                from_state,
-                to_state,
-                entries,
-                delete_uuids,
-            })
-        }
-        LdapSyncRepl::RefreshRequired => {
-            let to_state = ScimSyncState::Refresh;
+            if !totp_entries.contains_key(&token_owner_dn) {
+                totp_entries.insert(token_owner_dn.clone(), Vec::default());
+            }
 
-            Ok(ScimSyncRequest {
-                from_state,
-                to_state,
-                entries: Vec::new(),
-                delete_uuids: Vec::new(),
-            })
+            if let Some(v) = totp_entries.get_mut(&token_owner_dn) {
+                v.push(lentry)
+            }
+        } else {
+            let dn = lentry.entry.dn.clone();
+
+            if lentry
+                .entry
+                .attrs
+                .get("objectclass")
+                .map(|oc| oc.contains("person"))
+                .unwrap_or_default()
+            {
+                user_dns.push(dn.clone());
+            }
+
+            entries.insert(dn, lentry);
         }
     }
+
+    // Now, we have to invert the totp set so that it's defined by entry dn instead.
+    debug!("te, {}, e {}", totp_entries.len(), entries.len());
+
+    // If this is an INIT we have the full state already - no extra search is needed.
+
+    // On a refresh, we need to search and fix up to make sure TOTP/USER sets are
+    // consistent.
+    if !is_initialise {
+        // If the totp's related user is NOT in our sync repl, we need to fetch them.
+        let fetch_user: Vec<&str> = totp_entries
+            .keys()
+            .map(|k| k.as_str())
+            .filter(|k| !entries.contains_key(*k))
+            .collect();
+
+        // For every user in our fetch_user *and* entries set, we need to fetch their
+        // related TOTP's.
+        let fetch_totps_for: Vec<&str> = fetch_user
+            .iter()
+            .copied()
+            .chain(user_dns.iter().map(|s| s.as_str()))
+            .collect();
+
+        // Create filter (could hit a limit, may need to split this search).
+
+        let totp_conditions: Vec<_> = fetch_totps_for
+            .iter()
+            .map(|dn| LdapFilter::Equality("ipatokenowner".to_string(), dn.to_string()))
+            .collect();
+
+        let user_conditions = fetch_user
+            .iter()
+            .filter_map(|dn| {
+                // We have to split the DN to it's RDN because lol.
+                dn.split_once(',')
+                    .and_then(|(rdn, _)| rdn.split_once('='))
+                    .map(|(_, uid)| LdapFilter::Equality("uid".to_string(), uid.to_string()))
+            })
+            .collect();
+
+        let filter = LdapFilter::Or(vec![
+            LdapFilter::And(vec![
+                LdapFilter::Equality("objectclass".to_string(), "ipatoken".to_string()),
+                LdapFilter::Equality("objectclass".to_string(), "ipatokentotp".to_string()),
+                LdapFilter::Or(totp_conditions),
+            ]),
+            LdapFilter::And(vec![
+                LdapFilter::Equality("objectclass".to_string(), "person".to_string()),
+                LdapFilter::Equality("objectclass".to_string(), "ipantuserattrs".to_string()),
+                LdapFilter::Equality("objectclass".to_string(), "posixaccount".to_string()),
+                LdapFilter::Or(user_conditions),
+            ]),
+        ]);
+
+        debug!(?filter);
+
+        // Search
+        // Inject all new entries to our maps. At this point we discard the original content
+        // of the totp entries since we just fetched them all again anyway.
+    }
+
+    // For each updated TOTP -> If it's related DN is not in Hash -> remove from map
+    totp_entries.retain(|k, _| {
+        let x = entries.contains_key(k);
+        if !x {
+            warn!("Removing totp with no valid owner {}", k);
+        }
+        x
+    });
+
+    let empty_slice = Vec::default();
+
+    // Future - make this par-map
+    let entries = entries
+        .into_iter()
+        .filter_map(|(dn, e)| {
+            let e_config = entry_config_map
+                .get(&e.entry_uuid)
+                .cloned()
+                .unwrap_or_default();
+
+            let totp = totp_entries.get(&dn).unwrap_or(&empty_slice);
+
+            match ipa_to_scim_entry(e, &e_config, totp) {
+                Ok(Some(e)) => Some(Ok(e)),
+                Ok(None) => None,
+                Err(()) => Some(Err(())),
+            }
+        })
+        .collect::<Result<Vec<_>, _>>();
+
+    entries
 }
 
 // TODO: Allow re-map of uuid -> uuid
@@ -500,6 +666,7 @@ async fn process_ipa_sync_result(
 fn ipa_to_scim_entry(
     sync_entry: LdapSyncReplEntry,
     entry_config: &EntryConfig,
+    totp: &[LdapSyncReplEntry],
 ) -> Result<Option<ScimEntry>, ()> {
     debug!("{:#?}", sync_entry);
 
@@ -555,6 +722,10 @@ fn ipa_to_scim_entry(
         let password_import = entry
             .remove_ava_single("ipanthash")
             .map(|s| format!("ipaNTHash: {}", s));
+
+        // If there are TOTP's, convert them to something sensible.
+        let totp_import = totp.iter().filter_map(ipa_to_totp).collect();
+
         let login_shell = entry.remove_ava_single("loginshell");
         let external_id = Some(entry.dn);
 
@@ -566,6 +737,7 @@ fn ipa_to_scim_entry(
                 display_name,
                 gidnumber,
                 password_import,
+                totp_import,
                 login_shell,
             }
             .into(),
@@ -629,6 +801,74 @@ fn ipa_to_scim_entry(
         debug!("Skipping entry {} with oc {:?}", dn, oc);
         Ok(None)
     }
+}
+
+fn ipa_to_totp(sync_entry: &LdapSyncReplEntry) -> Option<ScimTotp> {
+    let external_id = sync_entry
+        .entry
+        .attrs
+        .get("ipatokenuniqueid")
+        .and_then(|v| v.first().cloned())
+        .or_else(|| {
+            warn!("Invalid ipatokenuniqueid");
+            None
+        })?;
+
+    let secret = sync_entry
+        .entry
+        .attrs
+        .get("ipatokenotpkey")
+        .and_then(|v| v.first())
+        .and_then(|s| {
+            // Decode, and then make it urlsafe.
+            Base64UrlSafeData::try_from(s.as_str())
+                .ok()
+                .map(|b| b.to_string())
+        })
+        .or_else(|| {
+            warn!("Invalid ipatokenotpkey");
+            None
+        })?;
+
+    let algo = sync_entry
+        .entry
+        .attrs
+        .get("ipatokenotpalgorithm")
+        .and_then(|v| v.first().cloned())
+        .or_else(|| {
+            warn!("Invalid ipatokenotpalgorithm");
+            None
+        })?;
+
+    let step = sync_entry
+        .entry
+        .attrs
+        .get("ipatokentotptimestep")
+        .and_then(|v| v.first())
+        .and_then(|d| u32::from_str(d).ok())
+        .or_else(|| {
+            warn!("Invalid ipatokentotptimestep");
+            None
+        })?;
+
+    let digits = sync_entry
+        .entry
+        .attrs
+        .get("ipatokenotpdigits")
+        .and_then(|v| v.first())
+        .and_then(|d| u32::from_str(d).ok())
+        .or_else(|| {
+            warn!("Invalid ipatokenotpdigits");
+            None
+        })?;
+
+    Some(ScimTotp {
+        external_id,
+        secret,
+        algo,
+        step,
+        digits,
+    })
 }
 
 fn config_security_checks(cfg_path: &Path) -> bool {

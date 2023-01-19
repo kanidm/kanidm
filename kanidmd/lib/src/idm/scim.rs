@@ -8,6 +8,7 @@ use kanidm_proto::v1::ApiTokenPurpose;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
+use crate::credential::totp::{Totp, TotpAlgo, TotpDigits};
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
 use crate::prelude::*;
 use crate::value::Session;
@@ -873,6 +874,159 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     } else {
                         warn!("Could not convert external_id to reference - {}", value);
                     }
+                }
+                Ok(vs)
+            }
+            (SyntaxType::TotpSecret, true, ScimAttr::MultiComplex(values)) => {
+                // We have to break down each complex value into a totp.
+                let mut vs = Vec::with_capacity(values.len());
+                for complex in values.iter() {
+                    let external_id = complex
+                        .attrs
+                        .get("external_id")
+                        .ok_or_else(|| {
+                            error!("Invalid scim complex attr - missing required key external_id");
+                            OperationError::InvalidAttribute(format!(
+                                "missing required key external_id - {}",
+                                scim_attr_name
+                            ))
+                        })
+                        .and_then(|external_id| match external_id {
+                            ScimSimpleAttr::String(value) => Ok(value.clone()),
+                            _ => {
+                                error!(
+                                    "Invalid external_id attribute - must be scim simple string"
+                                );
+                                Err(OperationError::InvalidAttribute(format!(
+                                    "external_id must be scim simple string - {}",
+                                    scim_attr_name
+                                )))
+                            }
+                        })?;
+
+                    let secret = complex
+                        .attrs
+                        .get("secret")
+                        .ok_or_else(|| {
+                            error!("Invalid scim complex attr - missing required key secret");
+                            OperationError::InvalidAttribute(format!(
+                                "missing required key secret - {}",
+                                scim_attr_name
+                            ))
+                        })
+                        .and_then(|secret| match secret {
+                            ScimSimpleAttr::String(value) => {
+                                Base64UrlSafeData::try_from(value.as_str())
+                                    .map(|b| b.into())
+                                    .map_err(|_| {
+                                        error!("Invalid secret attribute - must be base64 string");
+                                        OperationError::InvalidAttribute(format!(
+                                            "secret must be base64 string - {}",
+                                            scim_attr_name
+                                        ))
+                                    })
+                            }
+                            _ => {
+                                error!("Invalid secret attribute - must be scim simple string");
+                                Err(OperationError::InvalidAttribute(format!(
+                                    "secret must be scim simple string - {}",
+                                    scim_attr_name
+                                )))
+                            }
+                        })?;
+
+                    let algo = complex.attrs.get("algo")
+                        .ok_or_else(|| {
+                            error!("Invalid scim complex attr - missing required key algo");
+                            OperationError::InvalidAttribute(format!(
+                                "missing required key algo - {}",
+                                scim_attr_name
+                            ))
+                        })
+                        .and_then(|algo_str| {
+                            match algo_str {
+                                ScimSimpleAttr::String(value) => {
+                                    match value.as_str() {
+                                        "sha1" => Ok(TotpAlgo::Sha1),
+                                        "sha256" => Ok(TotpAlgo::Sha256),
+                                        "sha512" => Ok(TotpAlgo::Sha512),
+                                        _ => {
+                                            error!("Invalid algo attribute - must be one of sha1, sha256 or sha512");
+                                            Err(OperationError::InvalidAttribute(format!(
+                                                "algo must be one of sha1, sha256 or sha512 - {}",
+                                                scim_attr_name
+                                            )))
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    error!("Invalid algo attribute - must be scim simple string");
+                                    Err(OperationError::InvalidAttribute(format!(
+                                        "algo must be scim simple string - {}",
+                                        scim_attr_name
+                                    )))
+                                }
+                            }
+                        })?;
+
+                    let step = complex.attrs.get("step").ok_or_else(|| {
+                        error!("Invalid scim complex attr - missing required key step");
+                        OperationError::InvalidAttribute(format!(
+                            "missing required key step - {}",
+                            scim_attr_name
+                        ))
+                    }).and_then(|step| {
+                        match step {
+                            ScimSimpleAttr::Number(value) => {
+                                match value.as_u64() {
+                                    Some(s) if s >= 30 => Ok(s),
+                                    _ =>
+                                        Err(OperationError::InvalidAttribute(format!(
+                                            "step must be a positive integer value equal to or greater than 30 - {}",
+                                            scim_attr_name
+                                        ))),
+                                }
+                            }
+                            _ => {
+                                error!("Invalid step attribute - must be scim simple number");
+                                Err(OperationError::InvalidAttribute(format!(
+                                    "step must be scim simple number - {}",
+                                    scim_attr_name
+                                )))
+                            }
+                        }
+                    })?;
+
+                    let digits = complex
+                        .attrs
+                        .get("digits")
+                        .ok_or_else(|| {
+                            error!("Invalid scim complex attr - missing required key digits");
+                            OperationError::InvalidAttribute(format!(
+                                "missing required key digits - {}",
+                                scim_attr_name
+                            ))
+                        })
+                        .and_then(|digits| match digits {
+                            ScimSimpleAttr::Number(value) => match value.as_u64() {
+                                Some(6) => Ok(TotpDigits::Six),
+                                Some(8) => Ok(TotpDigits::Eight),
+                                _ => Err(OperationError::InvalidAttribute(format!(
+                                    "digits must be a positive integer value of 6 OR 8 - {}",
+                                    scim_attr_name
+                                ))),
+                            },
+                            _ => {
+                                error!("Invalid digits attribute - must be scim simple number");
+                                Err(OperationError::InvalidAttribute(format!(
+                                    "digits must be scim simple number - {}",
+                                    scim_attr_name
+                                )))
+                            }
+                        })?;
+
+                    let totp = Totp::new(secret, step, algo, digits);
+                    vs.push(Value::TotpSecret(external_id, totp))
                 }
                 Ok(vs)
             }

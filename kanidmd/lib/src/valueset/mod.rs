@@ -12,7 +12,7 @@ use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
 use webauthn_rs::prelude::Passkey as PasskeyV4;
 
 use crate::be::dbvalue::DbValueSetV2;
-use crate::credential::Credential;
+use crate::credential::{totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::schema::SchemaAttribute;
@@ -37,6 +37,7 @@ mod session;
 mod spn;
 mod ssh;
 mod syntax;
+mod totp;
 mod uihint;
 mod uint32;
 mod url;
@@ -62,6 +63,7 @@ pub use self::session::{ValueSetOauth2Session, ValueSetSession};
 pub use self::spn::ValueSetSpn;
 pub use self::ssh::ValueSetSshKey;
 pub use self::syntax::ValueSetSyntax;
+pub use self::totp::ValueSetTotpSecret;
 pub use self::uihint::ValueSetUiHint;
 pub use self::uint32::ValueSetUint32;
 pub use self::url::ValueSetUrl;
@@ -279,6 +281,11 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     }
 
     fn as_credential_map(&self) -> Option<&BTreeMap<String, Credential>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_totp_map(&self) -> Option<&BTreeMap<String, Totp>> {
         debug_assert!(false);
         None
     }
@@ -563,6 +570,7 @@ pub fn from_result_value_iter(
         Value::PhoneNumber(_, _)
         | Value::Passkey(_, _, _)
         | Value::DeviceKey(_, _, _)
+        | Value::TotpSecret(_, _)
         | Value::TrustedDeviceEnrollment(_)
         | Value::Session(_, _)
         | Value::Oauth2Session(_, _)
@@ -623,6 +631,7 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::Session(u, m) => ValueSetSession::new(u, m),
         Value::Oauth2Session(u, m) => ValueSetOauth2Session::new(u, m),
         Value::UiHint(u) => ValueSetUiHint::new(u),
+        Value::TotpSecret(l, t) => ValueSetTotpSecret::new(l, t),
         Value::PhoneNumber(_, _) | Value::TrustedDeviceEnrollment(_) => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -670,6 +679,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::JwsKeyEs256(set) => ValueSetJwsKeyEs256::from_dbvs2(&set),
         DbValueSetV2::JwsKeyRs256(set) => ValueSetJwsKeyEs256::from_dbvs2(&set),
         DbValueSetV2::UiHint(set) => ValueSetUiHint::from_dbvs2(set),
+        DbValueSetV2::TotpSecret(set) => ValueSetTotpSecret::from_dbvs2(set),
         DbValueSetV2::PhoneNumber(_, _) | DbValueSetV2::TrustedDeviceEnrollment(_) => {
             debug_assert!(false);
             Err(OperationError::InvalidValueState)
