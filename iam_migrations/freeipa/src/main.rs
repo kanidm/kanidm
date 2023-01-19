@@ -417,7 +417,7 @@ async fn run_sync(
 
                 })?;
 
-            // proccess the entries to scim.
+            // process the entries to scim.
             let entries = match process_ipa_sync_result(
                 ipa_client,
                 entries,
