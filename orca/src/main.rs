@@ -16,17 +16,21 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 extern crate tracing;
 
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use std::time::{Duration, Instant};
 
 use clap::{Parser, Subcommand};
 use uuid::Uuid;
 
 use crate::ds::DirectoryServer;
+use crate::ipa::IpaServer;
 use crate::kani::{KaniHttpServer, KaniLdapServer};
+use crate::setup::config;
 
 mod data;
 mod ds;
+mod generate;
+mod ipa;
 mod kani;
 mod ldap;
 mod preprocess;
@@ -39,6 +43,8 @@ include!("./opt.rs");
 impl OrcaOpt {
     pub fn debug(&self) -> bool {
         match self {
+            OrcaOpt::TestConnection(opt) => opt.copt.debug,
+            OrcaOpt::Generate(opt) => opt.copt.debug,
             OrcaOpt::PreProc(opt) => opt.copt.debug,
             OrcaOpt::Setup(opt) => opt.copt.debug,
             OrcaOpt::Run(opt) => opt.copt.debug,
@@ -50,6 +56,7 @@ pub enum TargetServerBuilder {
     Kanidm(String, String),
     KanidmLdap(String, String, String, String),
     DirSrv(String, String, String),
+    Ipa(String, String, String),
 }
 
 impl TargetServerBuilder {
@@ -59,6 +66,7 @@ impl TargetServerBuilder {
             TargetServerBuilder::Kanidm(a, b) => KaniHttpServer::build(a, b),
             TargetServerBuilder::KanidmLdap(a, b, c, d) => KaniLdapServer::build(a, b, c, d),
             TargetServerBuilder::DirSrv(a, b, c) => DirectoryServer::build(a, b, c),
+            TargetServerBuilder::Ipa(a, b, c) => IpaServer::build(a, b, c),
         }
     }
 }
@@ -68,6 +76,7 @@ pub enum TargetServer {
     Kanidm(KaniHttpServer),
     KanidmLdap(Box<KaniLdapServer>),
     DirSrv(DirectoryServer),
+    Ipa(IpaServer),
 }
 
 impl TargetServer {
@@ -76,6 +85,7 @@ impl TargetServer {
             TargetServer::Kanidm(k) => k.info(),
             TargetServer::KanidmLdap(k) => k.info(),
             TargetServer::DirSrv(k) => k.info(),
+            TargetServer::Ipa(k) => k.info(),
         }
     }
 
@@ -84,6 +94,7 @@ impl TargetServer {
             TargetServer::Kanidm(_) => "kanidm_http",
             TargetServer::KanidmLdap(_) => "kanidm_ldap",
             TargetServer::DirSrv(_) => "directory_server",
+            TargetServer::Ipa(_) => "ipa",
         }
     }
 
@@ -92,6 +103,7 @@ impl TargetServer {
             TargetServer::Kanidm(k) => k.builder(),
             TargetServer::KanidmLdap(k) => k.builder(),
             TargetServer::DirSrv(k) => k.builder(),
+            TargetServer::Ipa(k) => k.builder(),
         }
     }
 
@@ -100,6 +112,7 @@ impl TargetServer {
             TargetServer::Kanidm(k) => k.open_admin_connection().await,
             TargetServer::KanidmLdap(k) => k.open_admin_connection().await,
             TargetServer::DirSrv(k) => k.open_admin_connection().await,
+            TargetServer::Ipa(k) => k.open_admin_connection().await,
         }
     }
 
@@ -108,6 +121,7 @@ impl TargetServer {
             TargetServer::Kanidm(k) => k.setup_admin_delete_uuids(targets).await,
             TargetServer::KanidmLdap(k) => k.setup_admin_delete_uuids(targets).await,
             TargetServer::DirSrv(k) => k.setup_admin_delete_uuids(targets).await,
+            TargetServer::Ipa(k) => k.setup_admin_delete_uuids(targets).await,
         }
     }
 
@@ -129,6 +143,10 @@ impl TargetServer {
                 k.setup_admin_precreate_entities(targets, all_entities)
                     .await
             }
+            TargetServer::Ipa(k) => {
+                k.setup_admin_precreate_entities(targets, all_entities)
+                    .await
+            }
         }
     }
 
@@ -141,6 +159,7 @@ impl TargetServer {
             TargetServer::Kanidm(k) => k.setup_access_controls(access, all_entities).await,
             TargetServer::KanidmLdap(k) => k.setup_access_controls(access, all_entities).await,
             TargetServer::DirSrv(k) => k.setup_access_controls(access, all_entities).await,
+            TargetServer::Ipa(k) => k.setup_access_controls(access, all_entities).await,
         }
     }
 
@@ -154,6 +173,7 @@ impl TargetServer {
             TargetServer::Kanidm(k) => k.open_user_connection(test_start, name, pw).await,
             TargetServer::KanidmLdap(k) => k.open_user_connection(test_start, name, pw).await,
             TargetServer::DirSrv(k) => k.open_user_connection(test_start, name, pw).await,
+            TargetServer::Ipa(k) => k.open_user_connection(test_start, name, pw).await,
         }
     }
 
@@ -162,6 +182,7 @@ impl TargetServer {
             TargetServer::Kanidm(k) => k.close_connection().await,
             TargetServer::KanidmLdap(k) => k.close_connection().await,
             TargetServer::DirSrv(k) => k.close_connection().await,
+            TargetServer::Ipa(k) => k.close_connection().await,
         }
     }
 
@@ -174,8 +195,23 @@ impl TargetServer {
             TargetServer::Kanidm(k) => k.search(test_start, ids).await,
             TargetServer::KanidmLdap(k) => k.search(test_start, ids).await,
             TargetServer::DirSrv(k) => k.search(test_start, ids).await,
+            TargetServer::Ipa(k) => k.search(test_start, ids).await,
         }
     }
+}
+
+async fn conntest(target: &TargetOpt, profile_path: &Path) -> Result<(), ()> {
+    info!(
+        "Performing conntest of {:?} from {}",
+        target,
+        profile_path.to_str().unwrap(),
+    );
+
+    let (_data, _profile, server) = config(target, profile_path)?;
+
+    server.open_admin_connection().await
+        .map(|_| info!("success") )
+        .map_err(|_| error!("connection test failed") )
 }
 
 #[tokio::main]
@@ -193,6 +229,12 @@ async fn main() {
     info!("Orca - the Kanidm Load Testing Utility.");
     debug!("cli -> {:?}", opt);
     match opt {
+        OrcaOpt::TestConnection(opt) => {
+            let _ = conntest(&opt.target, &opt.profile_path).await;
+        }
+        OrcaOpt::Generate(opt) => {
+            let _ = generate::doit(&opt.output_path);
+        }
         OrcaOpt::PreProc(opt) => preprocess::doit(&opt.input_path, &opt.output_path),
         OrcaOpt::Setup(opt) => {
             let _ = setup::doit(&opt.target, &opt.profile_path).await;
@@ -204,5 +246,5 @@ async fn main() {
             // run the test!
         }
     };
-    info!("Success");
+    debug!("Exit");
 }

@@ -20,6 +20,15 @@ struct PreProcOpt {
 }
 
 #[derive(Debug, Parser)]
+struct GenerateOpt {
+    #[clap(flatten)]
+    pub copt: CommonOpt,
+    #[clap(parse(from_os_str), short, long = "output")]
+    /// Path to write the generated output.
+    pub output_path: PathBuf,
+}
+
+#[derive(Debug, Parser)]
 struct SetupOpt {
     #[clap(flatten)]
     pub copt: CommonOpt,
@@ -53,6 +62,9 @@ pub(crate) enum TargetOpt {
     #[clap(name = "ds")]
     /// Run against the ldap/ds profile
     Ds,
+    #[clap(name = "ipa")]
+    /// Run against the ipa profile
+    Ipa,
     #[clap(name = "kanidm")]
     /// Run against the kanidm http profile
     Kanidm,
@@ -67,9 +79,10 @@ impl FromStr for TargetOpt {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "ds" => Ok(TargetOpt::Ds),
+            "ipa" => Ok(TargetOpt::Ipa),
             "kanidm" => Ok(TargetOpt::Kanidm),
             "kanidm_ldap" => Ok(TargetOpt::KanidmLdap),
-            _ => Err("Invalid target type. Must be ds, kanidm, or kanidm_ldap"),
+            _ => Err("Invalid target type. Must be ds, ipa, kanidm, or kanidm_ldap"),
         }
     }
 }
@@ -122,6 +135,13 @@ Orca works in a few steps.
 "
 )]
 enum OrcaOpt {
+    #[clap(name = "conntest")]
+    /// Perform a connection test against the specified target
+    TestConnection(SetupOpt),
+    #[clap(name = "generate")]
+    /// Generate a new dataset that can be used for testing. Parameters can be provided
+    /// to affect the type and quantity of data created.
+    Generate(GenerateOpt),
     #[clap(name = "preprocess")]
     /// Preprocess a dataset that can be used for testing
     PreProc(PreProcOpt),

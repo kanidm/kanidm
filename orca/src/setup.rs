@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use crate::data::TestData;
 use crate::ds::DirectoryServer;
+use crate::ipa::IpaServer;
 use crate::kani::{KaniHttpServer, KaniLdapServer};
 use crate::profile::Profile;
 use crate::{TargetOpt, TargetServer};
@@ -51,6 +52,14 @@ pub(crate) fn config(
                 DirectoryServer::new(dsconfig)?
             } else {
                 error!("To use ds, you must have the ds_config section in your profile");
+                return Err(());
+            }
+        }
+        TargetOpt::Ipa => {
+            if let Some(ipaconfig) = profile.ipa_config.as_ref() {
+                IpaServer::new(ipaconfig)?
+            } else {
+                error!("To use ipa, you must have the ipa_config section in your profile");
                 return Err(());
             }
         }
