@@ -1178,6 +1178,7 @@ dependencies = [
  "kanidmd_core",
  "kanidmd_lib",
  "profiles",
+ "reqwest",
  "serde",
  "sketching",
  "tikv-jemallocator",
@@ -2394,6 +2395,7 @@ dependencies = [
  "tokio",
  "tokio-openssl",
  "tokio-util",
+ "toml",
  "tracing",
  "uuid",
 ]
