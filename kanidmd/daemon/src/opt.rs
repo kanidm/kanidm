@@ -75,7 +75,7 @@ struct DbScanListIndex {
 struct HealthCheckArgs {
     /// Disable TLS verification
     #[clap(short, long, action)]
-    no_verify_ssl: bool,
+    no_verify_tls: bool,
     #[clap(flatten)]
     commonopts: CommonOpt,
 }

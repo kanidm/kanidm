@@ -219,11 +219,7 @@ impl Configuration {
         }
     }
 
-    /// Get the base URL for the server
-    pub fn https_url(&self) -> String {
-        format!("https://{}", self.address)
-    }
-
+    // Startup config action, used in kanidmd server etc
     pub fn update_config_for_server_mode(&mut self, sconfig: &ServerConfig) {
         #[cfg(debug_assertions)]
         debug!("update_config_for_server_mode {:?}", sconfig);

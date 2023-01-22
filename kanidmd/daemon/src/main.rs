@@ -439,12 +439,38 @@ async fn main() {
 
                     debug!("{sopt:?}");
 
-                    let healthcheck_url = format!("{}/status", config.https_url());
+                    let healthcheck_url = format!("https://{}/status", config.address);
                     debug!("Checking {healthcheck_url}");
 
+
+
                     let client = reqwest::ClientBuilder::new()
-                        .danger_accept_invalid_certs(sopt.no_verify_ssl)
-                        .danger_accept_invalid_hostnames(sopt.no_verify_ssl)
+                        .danger_accept_invalid_certs(sopt.no_verify_tls)
+                        .danger_accept_invalid_hostnames(sopt.no_verify_tls)
+                        .https_only(true);
+                    // TODO: work out how to pull the CA from the chain
+                    // client = match config.tls_config {
+                    //     Some(tls_config) => {
+                    //         eprintln!("{:?}", tls_config);
+                    //         let mut buf = Vec::new();
+                    //         File::open(tls_config.chain)
+                    //             .unwrap()
+                    //             .read_to_end(&mut buf)
+                    //             .unwrap();
+                    //         eprintln!("buf: {:?}", buf);
+                    //         match reqwest::Certificate::from_pem(&buf){
+                    //             Ok(cert) => client.add_root_certificate(cert),
+                    //             Err(err) => {
+                    //                 error!("Failed to read TLS chain: {err:?}");
+                    //                 client
+                    //             }
+                    //         }
+
+                    //     },
+                    //     None => client,
+                    // };
+
+                    let client = client
                         .build()
                         .unwrap();
 
@@ -461,16 +487,10 @@ async fn main() {
                                     format!("Failed to complete healthcheck: {:?}", error)
                                 }
                             };
-
                             eprintln!("CRITICAL: {error_message}");
                             exit(1);
                         }
                     };
-                    if req.status() == 200 {
-                        debug!("Status 200");
-                    } else {
-                        debug!("Status: {}", req.status());
-                    }
                     debug!("Request: {req:?}");
                     println!("OK")
                 }
