@@ -13,7 +13,7 @@ rm -rf "$pkgdir"
 mkdir -p "$pkgdir"
 
 # build the project
-make release/kanidm release/kanidm-unixd
+make release/kanidm release/kanidm-unixd release/kandim-ssh
 
 # enable the following block to include deployment specific configuration files
 if [ 1 -eq 0 ]; then
