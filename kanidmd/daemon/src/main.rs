@@ -14,15 +14,14 @@
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-use std::fs::{metadata, File, Metadata};
-use std::io::Read;
+use std::fs::{metadata, Metadata};
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::exit;
 
 use clap::{Args, Parser, Subcommand};
-use kanidmd_core::config::{Configuration, OnlineBackup, ServerRole};
+use kanidmd_core::config::{Configuration, ServerConfig};
 use kanidmd_core::{
     backup_server_core, create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
     dbscan_list_index_analysis_core, dbscan_list_index_core, dbscan_list_indexes_core,
@@ -31,7 +30,6 @@ use kanidmd_core::{
 };
 #[cfg(not(target_family = "windows"))]
 use kanidmd_lib::utils::file_permissions_readonly;
-use serde::Deserialize;
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
 use sketching::tracing_forest::{self};
@@ -41,38 +39,6 @@ use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_u
 use whoami;
 
 include!("./opt.rs");
-
-#[derive(Debug, Deserialize)]
-struct ServerConfig {
-    pub bindaddress: Option<String>,
-    pub ldapbindaddress: Option<String>,
-    pub trust_x_forward_for: Option<bool>,
-    // pub threads: Option<usize>,
-    pub db_path: String,
-    pub db_fs_type: Option<String>,
-    pub db_arc_size: Option<usize>,
-    pub tls_chain: Option<String>,
-    pub tls_key: Option<String>,
-    pub online_backup: Option<OnlineBackup>,
-    pub domain: String,
-    pub origin: String,
-    #[serde(default)]
-    pub role: ServerRole,
-}
-
-impl ServerConfig {
-    pub fn new<P: AsRef<Path>>(config_path: P) -> Result<Self, ()> {
-        let mut f = File::open(config_path).map_err(|e| {
-            eprintln!("Unable to open config file [{:?}] 🥺", e);
-        })?;
-
-        let mut contents = String::new();
-        f.read_to_string(&mut contents)
-            .map_err(|e| eprintln!("unable to read contents {:?}", e))?;
-
-        toml::from_str(contents.as_str()).map_err(|e| eprintln!("unable to parse config {:?}", e))
-    }
-}
 
 impl KanidmdOpt {
     fn commonopt(&self) -> &CommonOpt {
@@ -114,6 +80,7 @@ impl KanidmdOpt {
             KanidmdOpt::Database {
                 commands: DbCommands::Vacuum(copt),
             } => &copt,
+            KanidmdOpt::HealthCheck(hcopt) => &hcopt.commonopts,
             KanidmdOpt::Version(copt) => &copt,
         }
     }
@@ -124,7 +91,7 @@ fn read_file_metadata(path: &PathBuf) -> Metadata {
         Ok(m) => m,
         Err(e) => {
             eprintln!(
-                "Unable to read metadata for {} - {:?}",
+                "Unable to read metadata for '{}' - {:?}",
                 path.to_str().unwrap_or("invalid file path"),
                 e
             );
@@ -290,10 +257,7 @@ async fn main() {
                     };
 
                     // configuration options that only relate to server mode
-                    config.update_tls(&sconfig.tls_chain, &sconfig.tls_key);
-                    config.update_bind(&sconfig.bindaddress);
-                    config.update_ldapbind(&sconfig.ldapbindaddress);
-                    config.update_online_backup(&sconfig.online_backup);
+                    config.update_config_for_server_mode(&sconfig);
 
                     if let Some(i_str) = &(sconfig.tls_chain) {
                         let i_path = PathBuf::from(i_str.as_str());
@@ -469,6 +433,66 @@ async fn main() {
                 } => {
                     eprintln!("Running in vacuum mode ...");
                     vacuum_server_core(&config);
+                }
+                KanidmdOpt::HealthCheck(sopt) => {
+                    config.update_config_for_server_mode(&sconfig);
+
+                    debug!("{sopt:?}");
+
+                    let healthcheck_url = format!("https://{}/status", config.address);
+                    debug!("Checking {healthcheck_url}");
+
+
+
+                    let client = reqwest::ClientBuilder::new()
+                        .danger_accept_invalid_certs(sopt.no_verify_tls)
+                        .danger_accept_invalid_hostnames(sopt.no_verify_tls)
+                        .https_only(true);
+                    // TODO: work out how to pull the CA from the chain
+                    // client = match config.tls_config {
+                    //     Some(tls_config) => {
+                    //         eprintln!("{:?}", tls_config);
+                    //         let mut buf = Vec::new();
+                    //         File::open(tls_config.chain)
+                    //             .unwrap()
+                    //             .read_to_end(&mut buf)
+                    //             .unwrap();
+                    //         eprintln!("buf: {:?}", buf);
+                    //         match reqwest::Certificate::from_pem(&buf){
+                    //             Ok(cert) => client.add_root_certificate(cert),
+                    //             Err(err) => {
+                    //                 error!("Failed to read TLS chain: {err:?}");
+                    //                 client
+                    //             }
+                    //         }
+
+                    //     },
+                    //     None => client,
+                    // };
+
+                    let client = client
+                        .build()
+                        .unwrap();
+
+
+                        let req = match client.get(&healthcheck_url).send().await {
+                        Ok(val) => val,
+                        Err(error) => {
+                            let error_message = {
+                                if error.is_timeout() {
+                                    format!("Timeout connecting to url={healthcheck_url}")
+                                } else if error.is_connect() {
+                                    format!("Connection failed: {}", error.to_string())
+                                } else {
+                                    format!("Failed to complete healthcheck: {:?}", error)
+                                }
+                            };
+                            eprintln!("CRITICAL: {error_message}");
+                            exit(1);
+                        }
+                    };
+                    debug!("Request: {req:?}");
+                    println!("OK")
                 }
                 KanidmdOpt::Version(_) => {
                     return

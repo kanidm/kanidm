@@ -70,6 +70,16 @@ struct DbScanListIndex {
     commonopts: CommonOpt,
 }
 
+
+#[derive(Debug,Parser)]
+struct HealthCheckArgs {
+    /// Disable TLS verification
+    #[clap(short, long, action)]
+    no_verify_tls: bool,
+    #[clap(flatten)]
+    commonopts: CommonOpt,
+}
+
 /*
 #[derive(Debug, Args)]
 struct DbScanGetIndex {
@@ -149,6 +159,10 @@ enum KanidmdOpt {
         #[clap(subcommand)]
         commands: DomainSettingsCmds,
     },
+    /// Load the server config and check services are listening
+    #[clap(name = "healthcheck")]
+    HealthCheck(HealthCheckArgs),
+
     /// Print the program version and exit
     #[clap(name="version")]
     Version(CommonOpt)

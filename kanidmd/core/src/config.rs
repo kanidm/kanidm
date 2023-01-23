@@ -5,6 +5,10 @@
 //! or domain entries that are able to be replicated.
 
 use std::fmt;
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
+
 use std::str::FromStr;
 
 use kanidm_proto::messages::ConsoleOutputMode;
@@ -38,6 +42,39 @@ fn default_online_backup_versions() -> usize {
 pub struct TlsConfiguration {
     pub chain: String,
     pub key: String,
+}
+
+
+#[derive(Debug, Deserialize)]
+pub struct ServerConfig {
+    pub bindaddress: Option<String>,
+    pub ldapbindaddress: Option<String>,
+    pub trust_x_forward_for: Option<bool>,
+    // pub threads: Option<usize>,
+    pub db_path: String,
+    pub db_fs_type: Option<String>,
+    pub db_arc_size: Option<usize>,
+    pub tls_chain: Option<String>,
+    pub tls_key: Option<String>,
+    pub online_backup: Option<OnlineBackup>,
+    pub domain: String,
+    pub origin: String,
+    #[serde(default)]
+    pub role: ServerRole,
+}
+
+impl ServerConfig {
+    pub fn new<P: AsRef<Path>>(config_path: P) -> Result<Self, ()> {
+        let mut f = File::open(config_path).map_err(|e| {
+            eprintln!("Unable to open config file [{:?}] 🥺", e);
+        })?;
+
+        let mut contents = String::new();
+        f.read_to_string(&mut contents)
+            .map_err(|e| eprintln!("unable to read contents {:?}", e))?;
+
+        toml::from_str(contents.as_str()).map_err(|e| eprintln!("unable to parse config {:?}", e))
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
@@ -180,6 +217,16 @@ impl Configuration {
                 })
             }
         }
+    }
+
+    // Startup config action, used in kanidmd server etc
+    pub fn update_config_for_server_mode(&mut self, sconfig: &ServerConfig) {
+        #[cfg(debug_assertions)]
+        debug!("update_config_for_server_mode {:?}", sconfig);
+        self.update_tls(&sconfig.tls_chain, &sconfig.tls_key);
+        self.update_bind(&sconfig.bindaddress);
+        self.update_ldapbind(&sconfig.ldapbindaddress);
+        self.update_online_backup(&sconfig.online_backup);
     }
 
     pub fn update_trust_x_forward_for(&mut self, t: Option<bool>) {

@@ -36,6 +36,7 @@ tide-openssl.workspace = true
 tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
 tokio-openssl.workspace = true
 tokio-util = { workspace = true, features = ["codec"] }
+toml = {workspace = true}
 tracing = { workspace = true, features = ["attributes"] }
 uuid = { workspace = true, features = ["serde", "v4" ] }
 
