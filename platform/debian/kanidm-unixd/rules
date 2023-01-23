@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 # See debhelper(7) (uncomment to enable)
-
+include /usr/share/dpkg/architecture.mk
 # be REALLY noisy
 export DH_VERBOSE=1
 export DH_OPTIONS=-v
@@ -8,7 +8,8 @@ export DH_OPTIONS=-v
 export DEB_BUILD_OPTIONS=noautodbgsym
 PACKAGE=kanidm-unixd
 PKGDIR=debian/${PACKAGE}
-BINDIR=${PKGDIR}/usr/local/sbin/
+BINDIR=${PKGDIR}/usr/sbin/
+LIBDIR=${PKGDIR}/lib/${DEB_HOST_MULTIARCH}
 SHARED_DIR=${PKGDIR}/usr/share/${PACKAGE}
 
 %:
@@ -28,24 +29,29 @@ override_dh_strip:
 # Do the systemd things
 override_dh_installinit:
 	install -g root -o root \
-		examples/systemd/${PACKAGE}.service \
+		platform/debian/systemd/${PACKAGE}.service \
 		debian/
 	dh_systemd_enable -p${PACKAGE} --name=${PACKAGE} ${PACKAGE}.service
 	dh_installinit -p${PACKAGE} --no-start --noscripts
 	dh_systemd_start -p${PACKAGE} --no-restart-on-upgrade
 
 	install -g root -o root \
-		examples/systemd/${PACKAGE}-tasks.service \
+		platform/debian/systemd/${PACKAGE}-tasks.service \
 		debian/
 	dh_systemd_enable -p${PACKAGE} --name=${PACKAGE}-tasks ${PACKAGE}-tasks.service
-	dh_installinit -p${PACKAGE} --no-start --noscripts
-	dh_systemd_start -p${PACKAGE} --no-restart-on-upgrade
+	dh_installinit -p${PACKAGE} --name=${PACKAGE}-tasks --no-start --noscripts
+	dh_systemd_start -p${PACKAGE} --name=${PACKAGE}-tasks --no-restart-on-upgrade
 
 override_dh_systemd_start:
 	echo "Not running dh_systemd_start"
 
 override_dh_auto_install:
 	mkdir -p ${BINDIR}
+	mkdir -p ${LIBDIR}/security
+	install \
+		-g root -o root \
+		platform/debian/pam-config-kanidm \
+		${PKGDIR}/usr/share/pam-configs/kanidm
 	install \
 		-g root -o root \
 		target/release/kanidm_unixd \
@@ -66,6 +72,15 @@ override_dh_auto_install:
 		-g root -o root \
 		target/release/kanidm_cache_invalidate \
 		${BINDIR}
+	install \
+		-g root -o root \
+		target/release/libpam_kanidm.so \
+		${LIBDIR}/security/pam_kanidm.so
+	install \
+		-g root -o root \
+		target/release/libnss_kanidm.so \
+		${LIBDIR}/libnss_kanidm.so.2
+
 
 
 override_dh_installexamples:
@@ -76,5 +91,5 @@ override_dh_installexamples:
 		${SHARED_DIR}/
 	install -D \
 		-g root -o root \
-		examples/config \
+		examples/unixd \
 		${SHARED_DIR}/

@@ -35,7 +35,7 @@ override_dh_strip:
 # Do the systemd things
 override_dh_installinit:
 	install -g root -o root \
-		examples/systemd/${PACKAGE}.service \
+		platform/debian/systemd/${PACKAGE}.service \
 		debian/
 	dh_systemd_enable -p${PACKAGE} --name=${PACKAGE} ${PACKAGE}.service
 	dh_installinit -p${PACKAGE} --no-start --noscripts

@@ -9,7 +9,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 
-ExecStart=/usr/local/sbin/kanidmd server --config=/etc/kanidm/server.toml
+ExecStart=/usr/sbin/kanidmd server --config=/etc/kanidm/server.toml
 Restart=on-failure
 RestartSec=15s
 WorkingDirectory=/var/lib/kanidm
