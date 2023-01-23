@@ -16,7 +16,7 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 extern crate tracing;
 
 use std::collections::{HashMap, HashSet};
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use clap::{Parser, Subcommand};
@@ -209,9 +209,11 @@ async fn conntest(target: &TargetOpt, profile_path: &Path) -> Result<(), ()> {
 
     let (_data, _profile, server) = config(target, profile_path)?;
 
-    server.open_admin_connection().await
-        .map(|_| info!("success") )
-        .map_err(|_| error!("connection test failed") )
+    server
+        .open_admin_connection()
+        .await
+        .map(|_| info!("success"))
+        .map_err(|_| error!("connection test failed"))
 }
 
 #[tokio::main]
@@ -232,9 +234,7 @@ async fn main() {
         OrcaOpt::TestConnection(opt) => {
             let _ = conntest(&opt.target, &opt.profile_path).await;
         }
-        OrcaOpt::Generate(opt) => {
-            let _ = generate::doit(&opt.output_path);
-        }
+        OrcaOpt::Generate(opt) => generate::doit(&opt.output_path),
         OrcaOpt::PreProc(opt) => preprocess::doit(&opt.input_path, &opt.output_path),
         OrcaOpt::Setup(opt) => {
             let _ = setup::doit(&opt.target, &opt.profile_path).await;

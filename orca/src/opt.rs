@@ -33,8 +33,6 @@ struct SetupOpt {
     #[clap(flatten)]
     pub copt: CommonOpt,
     #[clap(name = "target")]
-    /// Which service to target during this operation.
-    /// Valid values are "ds" or "kanidm"
     pub target: TargetOpt,
     #[clap(parse(from_os_str), short, long = "profile")]
     /// Path to the test profile.
@@ -46,8 +44,6 @@ struct RunOpt {
     #[clap(flatten)]
     pub copt: CommonOpt,
     #[clap(name = "target")]
-    /// Which service to target during this operation.
-    /// Valid values are "ds" or "kanidm"
     pub target: TargetOpt,
     #[clap(name = "test_type")]
     /// Which type of test to run against this system
@@ -58,6 +54,7 @@ struct RunOpt {
 }
 
 #[derive(Debug, Subcommand)]
+/// The target to run against
 pub(crate) enum TargetOpt {
     #[clap(name = "ds")]
     /// Run against the ldap/ds profile

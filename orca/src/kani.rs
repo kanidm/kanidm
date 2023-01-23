@@ -291,7 +291,12 @@ impl KaniHttpServer {
     }
 
     pub async fn close_connection(&self) {
-        assert!(self.client.logout().await.is_ok());
+        assert!(self
+            .client
+            .logout()
+            .await
+            .map_err(|e| error!("close_connection {:?}", e))
+            .is_ok());
     }
 
     pub async fn search(
