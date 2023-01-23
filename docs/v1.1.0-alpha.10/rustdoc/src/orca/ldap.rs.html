@@ -359,6 +359,11 @@
 <span id="359">359</span>
 <span id="360">360</span>
 <span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
 </pre><pre class="rust"><code><span class="kw">use </span>core::pin::Pin;
 <span class="kw">use </span>std::net::{SocketAddr, ToSocketAddrs};
 <span class="kw">use </span>std::time::{Duration, Instant};
@@ -494,6 +499,11 @@
     <span class="kw">pub async fn </span>open_dm_connection(<span class="kw-2">&amp;</span><span class="self">self</span>, pw: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
         <span class="self">self</span>.bind(<span class="string">&quot;cn=Directory Manager&quot;</span>.to_string(), pw.to_string())
             .<span class="kw">await
+    </span>}
+
+    <span class="kw">pub async fn </span>open_ipa_admin_connection(<span class="kw-2">&amp;</span><span class="self">self</span>, pw: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+        <span class="kw">let </span>admin_dn = <span class="macro">format!</span>(<span class="string">&quot;uid=admin,cn=users,cn=accounts,{}&quot;</span>, <span class="self">self</span>.basedn);
+        <span class="self">self</span>.bind(admin_dn, pw.to_string()).<span class="kw">await
     </span>}
 
     <span class="kw">pub async fn </span>open_user_connection(

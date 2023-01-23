@@ -241,6 +241,53 @@
 <span id="241">241</span>
 <span id="242">242</span>
 <span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The server configuration as processed from the startup wrapper. This controls a number of
 //! variables that determine how our backends, query server, and frontends are configured.
 //!
@@ -248,6 +295,10 @@
 //! or domain entries that are able to be replicated.
 
 </span><span class="kw">use </span>std::fmt;
+<span class="kw">use </span>std::fs::File;
+<span class="kw">use </span>std::io::Read;
+<span class="kw">use </span>std::path::Path;
+
 <span class="kw">use </span>std::str::FromStr;
 
 <span class="kw">use </span>kanidm_proto::messages::ConsoleOutputMode;
@@ -281,6 +332,39 @@
 </span><span class="kw">pub struct </span>TlsConfiguration {
     <span class="kw">pub </span>chain: String,
     <span class="kw">pub </span>key: String,
+}
+
+
+<span class="attribute">#[derive(Debug, Deserialize)]
+</span><span class="kw">pub struct </span>ServerConfig {
+    <span class="kw">pub </span>bindaddress: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>ldapbindaddress: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>trust_x_forward_for: <span class="prelude-ty">Option</span>&lt;bool&gt;,
+    <span class="comment">// pub threads: Option&lt;usize&gt;,
+    </span><span class="kw">pub </span>db_path: String,
+    <span class="kw">pub </span>db_fs_type: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>db_arc_size: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+    <span class="kw">pub </span>tls_chain: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>tls_key: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>online_backup: <span class="prelude-ty">Option</span>&lt;OnlineBackup&gt;,
+    <span class="kw">pub </span>domain: String,
+    <span class="kw">pub </span>origin: String,
+    <span class="attribute">#[serde(default)]
+    </span><span class="kw">pub </span>role: ServerRole,
+}
+
+<span class="kw">impl </span>ServerConfig {
+    <span class="kw">pub fn </span>new&lt;P: AsRef&lt;Path&gt;&gt;(config_path: P) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ()&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>f = File::open(config_path).map_err(|e| {
+            <span class="macro">eprintln!</span>(<span class="string">&quot;Unable to open config file [{:?}] 🥺&quot;</span>, e);
+        })<span class="question-mark">?</span>;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>contents = String::new();
+        f.read_to_string(<span class="kw-2">&amp;mut </span>contents)
+            .map_err(|e| <span class="macro">eprintln!</span>(<span class="string">&quot;unable to read contents {:?}&quot;</span>, e))<span class="question-mark">?</span>;
+
+        toml::from_str(contents.as_str()).map_err(|e| <span class="macro">eprintln!</span>(<span class="string">&quot;unable to parse config {:?}&quot;</span>, e))
+    }
 }
 
 <span class="attribute">#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
@@ -423,6 +507,16 @@
                 })
             }
         }
+    }
+
+    <span class="comment">// Startup config action, used in kanidmd server etc
+    </span><span class="kw">pub fn </span>update_config_for_server_mode(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sconfig: <span class="kw-2">&amp;</span>ServerConfig) {
+        <span class="attribute">#[cfg(debug_assertions)]
+        </span><span class="macro">debug!</span>(<span class="string">&quot;update_config_for_server_mode {:?}&quot;</span>, sconfig);
+        <span class="self">self</span>.update_tls(<span class="kw-2">&amp;</span>sconfig.tls_chain, <span class="kw-2">&amp;</span>sconfig.tls_key);
+        <span class="self">self</span>.update_bind(<span class="kw-2">&amp;</span>sconfig.bindaddress);
+        <span class="self">self</span>.update_ldapbind(<span class="kw-2">&amp;</span>sconfig.ldapbindaddress);
+        <span class="self">self</span>.update_online_backup(<span class="kw-2">&amp;</span>sconfig.online_backup);
     }
 
     <span class="kw">pub fn </span>update_trust_x_forward_for(<span class="kw-2">&amp;mut </span><span class="self">self</span>, t: <span class="prelude-ty">Option</span>&lt;bool&gt;) {

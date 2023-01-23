@@ -176,6 +176,21 @@
 <span id="176">176</span>
 <span id="177">177</span>
 <span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{HashMap, HashSet};
 <span class="kw">use </span>std::time::Duration;
 
@@ -224,6 +239,10 @@
         <span class="macro">format!</span>(<span class="string">&quot;uid={},ou=people,{}&quot;</span>, <span class="self">self</span>.name.as_str(), basedn)
     }
 
+    <span class="kw">pub fn </span>get_ipa_ldap_dn(<span class="kw-2">&amp;</span><span class="self">self</span>, basedn: <span class="kw-2">&amp;</span>str) -&gt; String {
+        <span class="macro">format!</span>(<span class="string">&quot;uid={},cn=users,cn=accounts,{}&quot;</span>, <span class="self">self</span>.name.as_str(), basedn)
+    }
+
     <span class="kw">pub fn </span>generate(uuid: Uuid) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>rng = rand::thread_rng();
         <span class="kw">let </span>id: u64 = rng.gen();
@@ -249,6 +268,10 @@
 <span class="kw">impl </span>Group {
     <span class="kw">pub fn </span>get_ds_ldap_dn(<span class="kw-2">&amp;</span><span class="self">self</span>, basedn: <span class="kw-2">&amp;</span>str) -&gt; String {
         <span class="macro">format!</span>(<span class="string">&quot;cn={},ou=groups,{}&quot;</span>, <span class="self">self</span>.name.as_str(), basedn)
+    }
+
+    <span class="kw">pub fn </span>get_ipa_ldap_dn(<span class="kw-2">&amp;</span><span class="self">self</span>, basedn: <span class="kw-2">&amp;</span>str) -&gt; String {
+        <span class="macro">format!</span>(<span class="string">&quot;cn={},cn=groups,cn=accounts,{}&quot;</span>, <span class="self">self</span>.name.as_str(), basedn)
     }
 
     <span class="kw">pub fn </span>generate(uuid: Uuid, members: Vec&lt;Uuid&gt;) -&gt; <span class="self">Self </span>{
@@ -290,6 +313,13 @@
         <span class="kw">match </span><span class="self">self </span>{
             Entity::Account(a) =&gt; a.get_ds_ldap_dn(basedn),
             Entity::Group(g) =&gt; g.get_ds_ldap_dn(basedn),
+        }
+    }
+
+    <span class="kw">pub fn </span>get_ipa_ldap_dn(<span class="kw-2">&amp;</span><span class="self">self</span>, basedn: <span class="kw-2">&amp;</span>str) -&gt; String {
+        <span class="kw">match </span><span class="self">self </span>{
+            Entity::Account(a) =&gt; a.get_ipa_ldap_dn(basedn),
+            Entity::Group(g) =&gt; g.get_ipa_ldap_dn(basedn),
         }
     }
 

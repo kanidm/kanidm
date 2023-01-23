@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["ServerRole",""]],"struct":[["Configuration",""],["IntegrationTestConfig",""],["OnlineBackup",""],["TlsConfiguration",""]]};
+window.SIDEBAR_ITEMS = {"enum":[["ServerRole",""]],"struct":[["Configuration",""],["IntegrationTestConfig",""],["OnlineBackup",""],["ServerConfig",""],["TlsConfiguration",""]]};

@@ -153,6 +153,20 @@
 <span id="153">153</span>
 <span id="154">154</span>
 <span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
 </pre><pre class="rust"><code><span class="attribute">#[derive(Debug, Args)]
 </span><span class="kw">struct </span>CommonOpt {
     <span class="attribute">#[clap(parse(from_os_str), default_value = <span class="string">&quot;&quot;</span>, short, long = <span class="string">&quot;config&quot;</span>, env = <span class="string">&quot;KANIDM_CONFIG&quot;</span>)]
@@ -221,6 +235,16 @@
 </span><span class="kw">struct </span>DbScanListIndex {
     <span class="doccomment">/// The name of the index to list
     </span>index_name: String,
+    <span class="attribute">#[clap(flatten)]
+    </span>commonopts: CommonOpt,
+}
+
+
+<span class="attribute">#[derive(Debug,Parser)]
+</span><span class="kw">struct </span>HealthCheckArgs {
+    <span class="doccomment">/// Disable TLS verification
+    </span><span class="attribute">#[clap(short, long, action)]
+    </span>no_verify_tls: bool,
     <span class="attribute">#[clap(flatten)]
     </span>commonopts: CommonOpt,
 }
@@ -304,6 +328,10 @@ struct DbScanGetIndex {
         <span class="attribute">#[clap(subcommand)]
         </span>commands: DomainSettingsCmds,
     },
+    <span class="doccomment">/// Load the server config and check services are listening
+    </span><span class="attribute">#[clap(name = <span class="string">&quot;healthcheck&quot;</span>)]
+    </span>HealthCheck(HealthCheckArgs),
+
     <span class="doccomment">/// Print the program version and exit
     </span><span class="attribute">#[clap(name=<span class="string">&quot;version&quot;</span>)]
     </span>Version(CommonOpt)

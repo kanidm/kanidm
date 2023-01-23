@@ -143,6 +143,15 @@
 <span id="143">143</span>
 <span id="144">144</span>
 <span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fs::File;
 <span class="kw">use </span>std::io::{BufReader, Read};
 <span class="kw">use </span>std::path::{Path, PathBuf};
@@ -151,6 +160,7 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::data::TestData;
 <span class="kw">use </span><span class="kw">crate</span>::ds::DirectoryServer;
+<span class="kw">use </span><span class="kw">crate</span>::ipa::IpaServer;
 <span class="kw">use </span><span class="kw">crate</span>::kani::{KaniHttpServer, KaniLdapServer};
 <span class="kw">use </span><span class="kw">crate</span>::profile::Profile;
 <span class="kw">use crate</span>::{TargetOpt, TargetServer};
@@ -196,6 +206,14 @@
                 DirectoryServer::new(dsconfig)<span class="question-mark">?
             </span>} <span class="kw">else </span>{
                 <span class="macro">error!</span>(<span class="string">&quot;To use ds, you must have the ds_config section in your profile&quot;</span>);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(());
+            }
+        }
+        TargetOpt::Ipa =&gt; {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(ipaconfig) = profile.ipa_config.as_ref() {
+                IpaServer::new(ipaconfig)<span class="question-mark">?
+            </span>} <span class="kw">else </span>{
+                <span class="macro">error!</span>(<span class="string">&quot;To use ipa, you must have the ipa_config section in your profile&quot;</span>);
                 <span class="kw">return </span><span class="prelude-val">Err</span>(());
             }
         }

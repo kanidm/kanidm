@@ -336,7 +336,6 @@
 <span id="336">336</span>
 <span id="337">337</span>
 <span id="338">338</span>
-<span id="339">339</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fs::File;
 <span class="kw">use </span>std::io::BufWriter;
 <span class="kw">use </span>std::path::PathBuf;
@@ -415,8 +414,7 @@
 
     <span class="kw">loop </span>{
         <span class="kw">match </span>raw_results_rx.recv_deadline(end_of_test) {
-            <span class="comment">// We are currently discarding results.
-            </span><span class="prelude-val">Ok</span>(datum) =&gt; results.push(datum),
+            <span class="prelude-val">Ok</span>(datum) =&gt; results.push(datum),
             <span class="prelude-val">Err</span>(RecvTimeoutError::Timeout) =&gt; {
                 <span class="kw">break</span>;
             }

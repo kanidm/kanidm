@@ -132,6 +132,23 @@
 <span id="132">132</span>
 <span id="133">133</span>
 <span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::str::FromStr;
 
 <span class="attribute">#[derive(Debug, Parser)]
@@ -154,12 +171,19 @@
 }
 
 <span class="attribute">#[derive(Debug, Parser)]
+</span><span class="kw">struct </span>GenerateOpt {
+    <span class="attribute">#[clap(flatten)]
+    </span><span class="kw">pub </span>copt: CommonOpt,
+    <span class="attribute">#[clap(parse(from_os_str), short, long = <span class="string">&quot;output&quot;</span>)]
+    </span><span class="doccomment">/// Path to write the generated output.
+    </span><span class="kw">pub </span>output_path: PathBuf,
+}
+
+<span class="attribute">#[derive(Debug, Parser)]
 </span><span class="kw">struct </span>SetupOpt {
     <span class="attribute">#[clap(flatten)]
     </span><span class="kw">pub </span>copt: CommonOpt,
     <span class="attribute">#[clap(name = <span class="string">&quot;target&quot;</span>)]
-    </span><span class="doccomment">/// Which service to target during this operation.
-    /// Valid values are &quot;ds&quot; or &quot;kanidm&quot;
     </span><span class="kw">pub </span>target: TargetOpt,
     <span class="attribute">#[clap(parse(from_os_str), short, long = <span class="string">&quot;profile&quot;</span>)]
     </span><span class="doccomment">/// Path to the test profile.
@@ -171,8 +195,6 @@
     <span class="attribute">#[clap(flatten)]
     </span><span class="kw">pub </span>copt: CommonOpt,
     <span class="attribute">#[clap(name = <span class="string">&quot;target&quot;</span>)]
-    </span><span class="doccomment">/// Which service to target during this operation.
-    /// Valid values are &quot;ds&quot; or &quot;kanidm&quot;
     </span><span class="kw">pub </span>target: TargetOpt,
     <span class="attribute">#[clap(name = <span class="string">&quot;test_type&quot;</span>)]
     </span><span class="doccomment">/// Which type of test to run against this system
@@ -183,10 +205,14 @@
 }
 
 <span class="attribute">#[derive(Debug, Subcommand)]
+</span><span class="doccomment">/// The target to run against
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>TargetOpt {
     <span class="attribute">#[clap(name = <span class="string">&quot;ds&quot;</span>)]
     </span><span class="doccomment">/// Run against the ldap/ds profile
     </span>Ds,
+    <span class="attribute">#[clap(name = <span class="string">&quot;ipa&quot;</span>)]
+    </span><span class="doccomment">/// Run against the ipa profile
+    </span>Ipa,
     <span class="attribute">#[clap(name = <span class="string">&quot;kanidm&quot;</span>)]
     </span><span class="doccomment">/// Run against the kanidm http profile
     </span>Kanidm,
@@ -201,9 +227,10 @@
     <span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
         <span class="kw">match </span>s {
             <span class="string">&quot;ds&quot; </span>=&gt; <span class="prelude-val">Ok</span>(TargetOpt::Ds),
+            <span class="string">&quot;ipa&quot; </span>=&gt; <span class="prelude-val">Ok</span>(TargetOpt::Ipa),
             <span class="string">&quot;kanidm&quot; </span>=&gt; <span class="prelude-val">Ok</span>(TargetOpt::Kanidm),
             <span class="string">&quot;kanidm_ldap&quot; </span>=&gt; <span class="prelude-val">Ok</span>(TargetOpt::KanidmLdap),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Invalid target type. Must be ds, kanidm, or kanidm_ldap&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Invalid target type. Must be ds, ipa, kanidm, or kanidm_ldap&quot;</span>),
         }
     }
 }
@@ -256,6 +283,13 @@ Orca works in a few steps.
 &quot;
 </span>)]
 </span><span class="kw">enum </span>OrcaOpt {
+    <span class="attribute">#[clap(name = <span class="string">&quot;conntest&quot;</span>)]
+    </span><span class="doccomment">/// Perform a connection test against the specified target
+    </span>TestConnection(SetupOpt),
+    <span class="attribute">#[clap(name = <span class="string">&quot;generate&quot;</span>)]
+    </span><span class="doccomment">/// Generate a new dataset that can be used for testing. Parameters can be provided
+    /// to affect the type and quantity of data created.
+    </span>Generate(GenerateOpt),
     <span class="attribute">#[clap(name = <span class="string">&quot;preprocess&quot;</span>)]
     </span><span class="doccomment">/// Preprocess a dataset that can be used for testing
     </span>PreProc(PreProcOpt),

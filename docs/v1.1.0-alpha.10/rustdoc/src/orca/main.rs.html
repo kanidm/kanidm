@@ -206,6 +206,48 @@
 <span id="206">206</span>
 <span id="207">207</span>
 <span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
 </pre><pre class="rust"><code><span class="attribute">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![allow(clippy::unwrap_used)]
@@ -224,17 +266,21 @@
 </span><span class="kw">extern crate </span>tracing;
 
 <span class="kw">use </span>std::collections::{HashMap, HashSet};
-<span class="kw">use </span>std::path::PathBuf;
+<span class="kw">use </span>std::path::{Path, PathBuf};
 <span class="kw">use </span>std::time::{Duration, Instant};
 
 <span class="kw">use </span>clap::{Parser, Subcommand};
 <span class="kw">use </span>uuid::Uuid;
 
 <span class="kw">use </span><span class="kw">crate</span>::ds::DirectoryServer;
+<span class="kw">use </span><span class="kw">crate</span>::ipa::IpaServer;
 <span class="kw">use </span><span class="kw">crate</span>::kani::{KaniHttpServer, KaniLdapServer};
+<span class="kw">use </span><span class="kw">crate</span>::setup::config;
 
 <span class="kw">mod </span>data;
 <span class="kw">mod </span>ds;
+<span class="kw">mod </span>generate;
+<span class="kw">mod </span>ipa;
 <span class="kw">mod </span>kani;
 <span class="kw">mod </span>ldap;
 <span class="kw">mod </span>preprocess;
@@ -247,6 +293,8 @@
 <span class="kw">impl </span>OrcaOpt {
     <span class="kw">pub fn </span>debug(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">match </span><span class="self">self </span>{
+            OrcaOpt::TestConnection(opt) =&gt; opt.copt.debug,
+            OrcaOpt::Generate(opt) =&gt; opt.copt.debug,
             OrcaOpt::PreProc(opt) =&gt; opt.copt.debug,
             OrcaOpt::Setup(opt) =&gt; opt.copt.debug,
             OrcaOpt::Run(opt) =&gt; opt.copt.debug,
@@ -258,6 +306,7 @@
     Kanidm(String, String),
     KanidmLdap(String, String, String, String),
     DirSrv(String, String, String),
+    Ipa(String, String, String),
 }
 
 <span class="kw">impl </span>TargetServerBuilder {
@@ -267,6 +316,7 @@
             TargetServerBuilder::Kanidm(a, b) =&gt; KaniHttpServer::build(a, b),
             TargetServerBuilder::KanidmLdap(a, b, c, d) =&gt; KaniLdapServer::build(a, b, c, d),
             TargetServerBuilder::DirSrv(a, b, c) =&gt; DirectoryServer::build(a, b, c),
+            TargetServerBuilder::Ipa(a, b, c) =&gt; IpaServer::build(a, b, c),
         }
     }
 }
@@ -276,6 +326,7 @@
     Kanidm(KaniHttpServer),
     KanidmLdap(Box&lt;KaniLdapServer&gt;),
     DirSrv(DirectoryServer),
+    Ipa(IpaServer),
 }
 
 <span class="kw">impl </span>TargetServer {
@@ -284,6 +335,7 @@
             TargetServer::Kanidm(k) =&gt; k.info(),
             TargetServer::KanidmLdap(k) =&gt; k.info(),
             TargetServer::DirSrv(k) =&gt; k.info(),
+            TargetServer::Ipa(k) =&gt; k.info(),
         }
     }
 
@@ -292,6 +344,7 @@
             TargetServer::Kanidm(<span class="kw">_</span>) =&gt; <span class="string">&quot;kanidm_http&quot;</span>,
             TargetServer::KanidmLdap(<span class="kw">_</span>) =&gt; <span class="string">&quot;kanidm_ldap&quot;</span>,
             TargetServer::DirSrv(<span class="kw">_</span>) =&gt; <span class="string">&quot;directory_server&quot;</span>,
+            TargetServer::Ipa(<span class="kw">_</span>) =&gt; <span class="string">&quot;ipa&quot;</span>,
         }
     }
 
@@ -300,6 +353,7 @@
             TargetServer::Kanidm(k) =&gt; k.builder(),
             TargetServer::KanidmLdap(k) =&gt; k.builder(),
             TargetServer::DirSrv(k) =&gt; k.builder(),
+            TargetServer::Ipa(k) =&gt; k.builder(),
         }
     }
 
@@ -308,6 +362,7 @@
             TargetServer::Kanidm(k) =&gt; k.open_admin_connection().<span class="kw">await</span>,
             TargetServer::KanidmLdap(k) =&gt; k.open_admin_connection().<span class="kw">await</span>,
             TargetServer::DirSrv(k) =&gt; k.open_admin_connection().<span class="kw">await</span>,
+            TargetServer::Ipa(k) =&gt; k.open_admin_connection().<span class="kw">await</span>,
         }
     }
 
@@ -316,6 +371,7 @@
             TargetServer::Kanidm(k) =&gt; k.setup_admin_delete_uuids(targets).<span class="kw">await</span>,
             TargetServer::KanidmLdap(k) =&gt; k.setup_admin_delete_uuids(targets).<span class="kw">await</span>,
             TargetServer::DirSrv(k) =&gt; k.setup_admin_delete_uuids(targets).<span class="kw">await</span>,
+            TargetServer::Ipa(k) =&gt; k.setup_admin_delete_uuids(targets).<span class="kw">await</span>,
         }
     }
 
@@ -337,6 +393,10 @@
                 k.setup_admin_precreate_entities(targets, all_entities)
                     .<span class="kw">await
             </span>}
+            TargetServer::Ipa(k) =&gt; {
+                k.setup_admin_precreate_entities(targets, all_entities)
+                    .<span class="kw">await
+            </span>}
         }
     }
 
@@ -349,6 +409,7 @@
             TargetServer::Kanidm(k) =&gt; k.setup_access_controls(access, all_entities).<span class="kw">await</span>,
             TargetServer::KanidmLdap(k) =&gt; k.setup_access_controls(access, all_entities).<span class="kw">await</span>,
             TargetServer::DirSrv(k) =&gt; k.setup_access_controls(access, all_entities).<span class="kw">await</span>,
+            TargetServer::Ipa(k) =&gt; k.setup_access_controls(access, all_entities).<span class="kw">await</span>,
         }
     }
 
@@ -362,6 +423,7 @@
             TargetServer::Kanidm(k) =&gt; k.open_user_connection(test_start, name, pw).<span class="kw">await</span>,
             TargetServer::KanidmLdap(k) =&gt; k.open_user_connection(test_start, name, pw).<span class="kw">await</span>,
             TargetServer::DirSrv(k) =&gt; k.open_user_connection(test_start, name, pw).<span class="kw">await</span>,
+            TargetServer::Ipa(k) =&gt; k.open_user_connection(test_start, name, pw).<span class="kw">await</span>,
         }
     }
 
@@ -370,6 +432,7 @@
             TargetServer::Kanidm(k) =&gt; k.close_connection().<span class="kw">await</span>,
             TargetServer::KanidmLdap(k) =&gt; k.close_connection().<span class="kw">await</span>,
             TargetServer::DirSrv(k) =&gt; k.close_connection().<span class="kw">await</span>,
+            TargetServer::Ipa(k) =&gt; k.close_connection().<span class="kw">await</span>,
         }
     }
 
@@ -382,8 +445,25 @@
             TargetServer::Kanidm(k) =&gt; k.search(test_start, ids).<span class="kw">await</span>,
             TargetServer::KanidmLdap(k) =&gt; k.search(test_start, ids).<span class="kw">await</span>,
             TargetServer::DirSrv(k) =&gt; k.search(test_start, ids).<span class="kw">await</span>,
+            TargetServer::Ipa(k) =&gt; k.search(test_start, ids).<span class="kw">await</span>,
         }
     }
+}
+
+<span class="kw">async fn </span>conntest(target: <span class="kw-2">&amp;</span>TargetOpt, profile_path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
+    <span class="macro">info!</span>(
+        <span class="string">&quot;Performing conntest of {:?} from {}&quot;</span>,
+        target,
+        profile_path.to_str().unwrap(),
+    );
+
+    <span class="kw">let </span>(_data, _profile, server) = config(target, profile_path)<span class="question-mark">?</span>;
+
+    server
+        .open_admin_connection()
+        .<span class="kw">await
+        </span>.map(|<span class="kw">_</span>| <span class="macro">info!</span>(<span class="string">&quot;success&quot;</span>))
+        .map_err(|<span class="kw">_</span>| <span class="macro">error!</span>(<span class="string">&quot;connection test failed&quot;</span>))
 }
 
 <span class="attribute">#[tokio::main]
@@ -401,6 +481,10 @@
     <span class="macro">info!</span>(<span class="string">&quot;Orca - the Kanidm Load Testing Utility.&quot;</span>);
     <span class="macro">debug!</span>(<span class="string">&quot;cli -&gt; {:?}&quot;</span>, opt);
     <span class="kw">match </span>opt {
+        OrcaOpt::TestConnection(opt) =&gt; {
+            <span class="kw">let _ </span>= conntest(<span class="kw-2">&amp;</span>opt.target, <span class="kw-2">&amp;</span>opt.profile_path).<span class="kw">await</span>;
+        }
+        OrcaOpt::Generate(opt) =&gt; generate::doit(<span class="kw-2">&amp;</span>opt.output_path),
         OrcaOpt::PreProc(opt) =&gt; preprocess::doit(<span class="kw-2">&amp;</span>opt.input_path, <span class="kw-2">&amp;</span>opt.output_path),
         OrcaOpt::Setup(opt) =&gt; {
             <span class="kw">let _ </span>= setup::doit(<span class="kw-2">&amp;</span>opt.target, <span class="kw-2">&amp;</span>opt.profile_path).<span class="kw">await</span>;
@@ -412,7 +496,7 @@
             // run the test!
         </span>}
     };
-    <span class="macro">info!</span>(<span class="string">&quot;Success&quot;</span>);
+    <span class="macro">debug!</span>(<span class="string">&quot;Exit&quot;</span>);
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="orca" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.66.1 (90743e729 2023-01-10)" ></div></body></html>

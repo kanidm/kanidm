@@ -477,6 +477,30 @@
 <span id="477">477</span>
 <span id="478">478</span>
 <span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
 </pre><pre class="rust"><code><span class="attribute">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -493,15 +517,14 @@
 #[global_allocator]
 </span><span class="kw">static </span>ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-<span class="kw">use </span>std::fs::{metadata, File, Metadata};
-<span class="kw">use </span>std::io::Read;
+<span class="kw">use </span>std::fs::{metadata, Metadata};
 <span class="attribute">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
 </span><span class="kw">use </span>std::os::unix::fs::MetadataExt;
-<span class="kw">use </span>std::path::{Path, PathBuf};
+<span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::process::exit;
 
 <span class="kw">use </span>clap::{Args, Parser, Subcommand};
-<span class="kw">use </span>kanidmd_core::config::{Configuration, OnlineBackup, ServerRole};
+<span class="kw">use </span>kanidmd_core::config::{Configuration, ServerConfig};
 <span class="kw">use </span>kanidmd_core::{
     backup_server_core, create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
     dbscan_list_index_analysis_core, dbscan_list_index_core, dbscan_list_indexes_core,
@@ -510,7 +533,6 @@
 };
 <span class="attribute">#[cfg(not(target_family = <span class="string">&quot;windows&quot;</span>))]
 </span><span class="kw">use </span>kanidmd_lib::utils::file_permissions_readonly;
-<span class="kw">use </span>serde::Deserialize;
 <span class="kw">use </span>sketching::tracing_forest::traits::<span class="kw-2">*</span>;
 <span class="kw">use </span>sketching::tracing_forest::util::<span class="kw-2">*</span>;
 <span class="kw">use </span>sketching::tracing_forest::{<span class="self">self</span>};
@@ -520,38 +542,6 @@
 </span><span class="kw">use </span>whoami;
 
 <span class="macro">include!</span>(<span class="string">&quot;./opt.rs&quot;</span>);
-
-<span class="attribute">#[derive(Debug, Deserialize)]
-</span><span class="kw">struct </span>ServerConfig {
-    <span class="kw">pub </span>bindaddress: <span class="prelude-ty">Option</span>&lt;String&gt;,
-    <span class="kw">pub </span>ldapbindaddress: <span class="prelude-ty">Option</span>&lt;String&gt;,
-    <span class="kw">pub </span>trust_x_forward_for: <span class="prelude-ty">Option</span>&lt;bool&gt;,
-    <span class="comment">// pub threads: Option&lt;usize&gt;,
-    </span><span class="kw">pub </span>db_path: String,
-    <span class="kw">pub </span>db_fs_type: <span class="prelude-ty">Option</span>&lt;String&gt;,
-    <span class="kw">pub </span>db_arc_size: <span class="prelude-ty">Option</span>&lt;usize&gt;,
-    <span class="kw">pub </span>tls_chain: <span class="prelude-ty">Option</span>&lt;String&gt;,
-    <span class="kw">pub </span>tls_key: <span class="prelude-ty">Option</span>&lt;String&gt;,
-    <span class="kw">pub </span>online_backup: <span class="prelude-ty">Option</span>&lt;OnlineBackup&gt;,
-    <span class="kw">pub </span>domain: String,
-    <span class="kw">pub </span>origin: String,
-    <span class="attribute">#[serde(default)]
-    </span><span class="kw">pub </span>role: ServerRole,
-}
-
-<span class="kw">impl </span>ServerConfig {
-    <span class="kw">pub fn </span>new&lt;P: AsRef&lt;Path&gt;&gt;(config_path: P) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ()&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>f = File::open(config_path).map_err(|e| {
-            <span class="macro">eprintln!</span>(<span class="string">&quot;Unable to open config file [{:?}] 🥺&quot;</span>, e);
-        })<span class="question-mark">?</span>;
-
-        <span class="kw">let </span><span class="kw-2">mut </span>contents = String::new();
-        f.read_to_string(<span class="kw-2">&amp;mut </span>contents)
-            .map_err(|e| <span class="macro">eprintln!</span>(<span class="string">&quot;unable to read contents {:?}&quot;</span>, e))<span class="question-mark">?</span>;
-
-        toml::from_str(contents.as_str()).map_err(|e| <span class="macro">eprintln!</span>(<span class="string">&quot;unable to parse config {:?}&quot;</span>, e))
-    }
-}
 
 <span class="kw">impl </span>KanidmdOpt {
     <span class="kw">fn </span>commonopt(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>CommonOpt {
@@ -593,6 +583,7 @@
             KanidmdOpt::Database {
                 commands: DbCommands::Vacuum(copt),
             } =&gt; <span class="kw-2">&amp;</span>copt,
+            KanidmdOpt::HealthCheck(hcopt) =&gt; <span class="kw-2">&amp;</span>hcopt.commonopts,
             KanidmdOpt::Version(copt) =&gt; <span class="kw-2">&amp;</span>copt,
         }
     }
@@ -603,7 +594,7 @@
         <span class="prelude-val">Ok</span>(m) =&gt; m,
         <span class="prelude-val">Err</span>(e) =&gt; {
             <span class="macro">eprintln!</span>(
-                <span class="string">&quot;Unable to read metadata for {} - {:?}&quot;</span>,
+                <span class="string">&quot;Unable to read metadata for &#39;{}&#39; - {:?}&quot;</span>,
                 path.to_str().unwrap_or(<span class="string">&quot;invalid file path&quot;</span>),
                 e
             );
@@ -769,10 +760,7 @@
                     };
 
                     <span class="comment">// configuration options that only relate to server mode
-                    </span>config.update_tls(<span class="kw-2">&amp;</span>sconfig.tls_chain, <span class="kw-2">&amp;</span>sconfig.tls_key);
-                    config.update_bind(<span class="kw-2">&amp;</span>sconfig.bindaddress);
-                    config.update_ldapbind(<span class="kw-2">&amp;</span>sconfig.ldapbindaddress);
-                    config.update_online_backup(<span class="kw-2">&amp;</span>sconfig.online_backup);
+                    </span>config.update_config_for_server_mode(<span class="kw-2">&amp;</span>sconfig);
 
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(i_str) = <span class="kw-2">&amp;</span>(sconfig.tls_chain) {
                         <span class="kw">let </span>i_path = PathBuf::from(i_str.as_str());
@@ -948,6 +936,66 @@
                 } =&gt; {
                     <span class="macro">eprintln!</span>(<span class="string">&quot;Running in vacuum mode ...&quot;</span>);
                     vacuum_server_core(<span class="kw-2">&amp;</span>config);
+                }
+                KanidmdOpt::HealthCheck(sopt) =&gt; {
+                    config.update_config_for_server_mode(<span class="kw-2">&amp;</span>sconfig);
+
+                    <span class="macro">debug!</span>(<span class="string">&quot;{sopt:?}&quot;</span>);
+
+                    <span class="kw">let </span>healthcheck_url = <span class="macro">format!</span>(<span class="string">&quot;https://{}/status&quot;</span>, config.address);
+                    <span class="macro">debug!</span>(<span class="string">&quot;Checking {healthcheck_url}&quot;</span>);
+
+
+
+                    <span class="kw">let </span>client = reqwest::ClientBuilder::new()
+                        .danger_accept_invalid_certs(sopt.no_verify_tls)
+                        .danger_accept_invalid_hostnames(sopt.no_verify_tls)
+                        .https_only(<span class="bool-val">true</span>);
+                    <span class="comment">// TODO: work out how to pull the CA from the chain
+                    // client = match config.tls_config {
+                    //     Some(tls_config) =&gt; {
+                    //         eprintln!(&quot;{:?}&quot;, tls_config);
+                    //         let mut buf = Vec::new();
+                    //         File::open(tls_config.chain)
+                    //             .unwrap()
+                    //             .read_to_end(&amp;mut buf)
+                    //             .unwrap();
+                    //         eprintln!(&quot;buf: {:?}&quot;, buf);
+                    //         match reqwest::Certificate::from_pem(&amp;buf){
+                    //             Ok(cert) =&gt; client.add_root_certificate(cert),
+                    //             Err(err) =&gt; {
+                    //                 error!(&quot;Failed to read TLS chain: {err:?}&quot;);
+                    //                 client
+                    //             }
+                    //         }
+
+                    //     },
+                    //     None =&gt; client,
+                    // };
+
+                    </span><span class="kw">let </span>client = client
+                        .build()
+                        .unwrap();
+
+
+                        <span class="kw">let </span>req = <span class="kw">match </span>client.get(<span class="kw-2">&amp;</span>healthcheck_url).send().<span class="kw">await </span>{
+                        <span class="prelude-val">Ok</span>(val) =&gt; val,
+                        <span class="prelude-val">Err</span>(error) =&gt; {
+                            <span class="kw">let </span>error_message = {
+                                <span class="kw">if </span>error.is_timeout() {
+                                    <span class="macro">format!</span>(<span class="string">&quot;Timeout connecting to url={healthcheck_url}&quot;</span>)
+                                } <span class="kw">else if </span>error.is_connect() {
+                                    <span class="macro">format!</span>(<span class="string">&quot;Connection failed: {}&quot;</span>, error.to_string())
+                                } <span class="kw">else </span>{
+                                    <span class="macro">format!</span>(<span class="string">&quot;Failed to complete healthcheck: {:?}&quot;</span>, error)
+                                }
+                            };
+                            <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: {error_message}&quot;</span>);
+                            exit(<span class="number">1</span>);
+                        }
+                    };
+                    <span class="macro">debug!</span>(<span class="string">&quot;Request: {req:?}&quot;</span>);
+                    <span class="macro">println!</span>(<span class="string">&quot;OK&quot;</span>)
                 }
                 KanidmdOpt::Version(<span class="kw">_</span>) =&gt; {
                     <span class="kw">return

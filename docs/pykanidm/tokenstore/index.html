@@ -13,7 +13,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.0.5">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.0.6">
     
     
       
@@ -370,7 +370,7 @@
         
           <li class="md-nav__item">
   <a href="#kanidm.tokens.JWSPayload.expiry_datetime" class="md-nav__link">
-    expiry_datetime()
+    expiry_datetime
   </a>
   
 </li>
@@ -552,7 +552,7 @@
         
           <li class="md-nav__item">
   <a href="#kanidm.tokens.JWSPayload.expiry_datetime" class="md-nav__link">
-    expiry_datetime()
+    expiry_datetime
   </a>
   
 </li>
@@ -1190,14 +1190,12 @@
 
 
 
-
-
-<div class="doc doc-object doc-function">
+<div class="doc doc-object doc-attribute">
 
 
 
 <h3 id="kanidm.tokens.JWSPayload.expiry_datetime" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">expiry_datetime</span><span class="p">()</span></code>
+<code class="highlight language-python"><span class="n">expiry_datetime</span><span class="p">:</span> <span class="n">datetime</span></code>
   
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
@@ -1209,33 +1207,11 @@
   <div class="doc doc-contents ">
   
       <p>parse the expiry and return a datetime object</p>
-
-      <details class="quote">
-        <summary>Source code in <code>kanidm/tokens.py</code></summary>
-        <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">59</span>
-<span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@property</span>
-<span class="k">def</span> <span class="nf">expiry_datetime</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">datetime</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;parse the expiry and return a datetime object&quot;&quot;&quot;</span>
-    <span class="n">year</span><span class="p">,</span> <span class="n">day</span><span class="p">,</span> <span class="n">seconds</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expiry</span>
-    <span class="n">retval</span> <span class="o">=</span> <span class="n">datetime</span><span class="p">(</span>
-        <span class="n">year</span><span class="o">=</span><span class="n">year</span><span class="p">,</span> <span class="n">month</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">day</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">second</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">hour</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">tzinfo</span><span class="o">=</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span>
-    <span class="p">)</span>
-    <span class="c1"># day - 1 because we&#39;re already starting at day 1</span>
-    <span class="n">retval</span> <span class="o">+=</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="n">day</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">seconds</span><span class="o">=</span><span class="n">seconds</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">retval</span>
-</code></pre></div></td></tr></table></div>
-      </details>
   </div>
 
 </div>
+
+
 
 
 
