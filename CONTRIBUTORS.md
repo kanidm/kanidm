@@ -22,6 +22,7 @@
 - Florian Klink (flokli)
 - Kaleb Olson (kalebo)
 - Jan Christoph Ebersbach (jceb)
+- Yuxuan Lu (leoleoasd)
 
 ## Acknowledgements
 
