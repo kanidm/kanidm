@@ -46,6 +46,10 @@ impl Account {
         format!("uid={},ou=people,{}", self.name.as_str(), basedn)
     }
 
+    pub fn get_ipa_ldap_dn(&self, basedn: &str) -> String {
+        format!("uid={},cn=users,cn=accounts,{}", self.name.as_str(), basedn)
+    }
+
     pub fn generate(uuid: Uuid) -> Self {
         let mut rng = rand::thread_rng();
         let id: u64 = rng.gen();
@@ -71,6 +75,10 @@ pub struct Group {
 impl Group {
     pub fn get_ds_ldap_dn(&self, basedn: &str) -> String {
         format!("cn={},ou=groups,{}", self.name.as_str(), basedn)
+    }
+
+    pub fn get_ipa_ldap_dn(&self, basedn: &str) -> String {
+        format!("cn={},cn=groups,cn=accounts,{}", self.name.as_str(), basedn)
     }
 
     pub fn generate(uuid: Uuid, members: Vec<Uuid>) -> Self {
@@ -112,6 +120,13 @@ impl Entity {
         match self {
             Entity::Account(a) => a.get_ds_ldap_dn(basedn),
             Entity::Group(g) => g.get_ds_ldap_dn(basedn),
+        }
+    }
+
+    pub fn get_ipa_ldap_dn(&self, basedn: &str) -> String {
+        match self {
+            Entity::Account(a) => a.get_ipa_ldap_dn(basedn),
+            Entity::Group(g) => g.get_ipa_ldap_dn(basedn),
         }
     }
 

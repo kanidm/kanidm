@@ -8,6 +8,13 @@ pub struct DsConfig {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct IpaConfig {
+    pub uri: String,
+    pub realm: String,
+    pub admin_pw: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct KaniHttpConfig {
     pub uri: String,
     pub admin_pw: String,
@@ -43,6 +50,7 @@ pub struct Profile {
     pub data: String,
     pub results: String,
     pub ds_config: Option<DsConfig>,
+    pub ipa_config: Option<IpaConfig>,
     pub kani_http_config: Option<KaniHttpConfig>,
     pub kani_ldap_config: Option<KaniLdapConfig>,
     #[serde(default)]

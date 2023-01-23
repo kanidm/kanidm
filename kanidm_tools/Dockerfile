@@ -19,7 +19,6 @@ RUN zypper install -y \
         pam-devel \
         libudev-devel \
         sqlite3-devel \
-        sccache \
         rsync
 RUN zypper clean -a
 RUN rustup default stable
@@ -33,17 +32,6 @@ RUN echo Features $KANIDM_FEATURES
 
 ENV CARGO_HOME=/scratch/.cargo
 ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.lld"
-
-# set up sccache if you've done the thing
-RUN if [ "${SCCACHE_REDIS}" != "" ]; \
-then \
-  export CARGO_INCREMENTAL=false && \
-  export CC="/usr/bin/sccache /usr/bin/clang" && \
-  export RUSTC_WRAPPER=sccache && \
-  sccache --start-server; \
-else \
-  export CC="/usr/bin/clang"; \
-fi
 
 WORKDIR /usr/src/kanidm/
 # build the CLI
@@ -64,8 +52,6 @@ else \
     --features="${KANIDM_FEATURES}" \
     --release; \
 fi
-
-RUN if [ "${SCCACHE_REDIS}" != "" ]; then sccache -s; fi
 
 RUN ls -al /usr/src/kanidm/target/release
 

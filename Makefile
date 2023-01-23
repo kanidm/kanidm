@@ -4,8 +4,6 @@ CONTAINER_TOOL_ARGS ?=
 IMAGE_ARCH ?= "linux/amd64,linux/arm64"
 CONTAINER_BUILD_ARGS ?=
 MARKDOWN_FORMAT_ARGS ?= --options-line-width=100
-# Example of using redis with sccache
-# --build-arg "SCCACHE_REDIS=redis://redis.dev.blackhats.net.au:6379"
 CONTAINER_TOOL ?= docker
 
 BOOK_VERSION ?= master
