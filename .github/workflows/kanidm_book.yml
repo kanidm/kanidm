@@ -32,7 +32,7 @@ jobs:
 
       - name: Test document formatting
         run: |
-          make test/doc/format
+          make doc/format
 
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1

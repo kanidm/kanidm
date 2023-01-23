@@ -97,6 +97,10 @@ test/radiusd: build/radiusd
 test:
 	cargo test
 
+.PHONY: precommit
+precommit: ## all the usual test things
+precommit: test codespell test/pykanidm doc/format
+
 .PHONY: vendor
 vendor:
 	cargo vendor
@@ -147,11 +151,6 @@ test/pykanidm/mypy: ## python library type checking
 test/pykanidm: ## run the kanidm python module test suite (mypy/lint/pytest)
 test/pykanidm: test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/lint
 
-.PHONY: test/doc/format
-test/doc/format: ## Format docs and the Kanidm book
-	find . -type f  -not -path './target/*' -name \*.md \
-		-exec deno fmt --check $(MARKDOWN_FORMAT_ARGS) "{}" +
-
 ########################################################################
 
 .PHONY: doc
@@ -161,7 +160,15 @@ doc:
 
 .PHONY: doc/format
 doc/format: ## Format docs and the Kanidm book
-	find . -type f -name \*.md -exec deno fmt $(MARKDOWN_FORMAT_ARGS) "{}" +
+	find . -type f  -not -path './target/*' -not -path '*/.venv/*' \
+		-name \*.md \
+		-exec deno fmt --check $(MARKDOWN_FORMAT_ARGS) "{}" +
+
+.PHONY: doc/format/fix
+doc/format/fix: ## Fix docs and the Kanidm book
+	find . -type f  -not -path './target/*' -not -path '*/.venv/*' \
+		-name \*.md \
+		-exec deno fmt  $(MARKDOWN_FORMAT_ARGS) "{}" +
 
 .PHONY: book
 book: ## Build the Kanidm book
