@@ -108,7 +108,7 @@ vendor-prep: vendor
 	tar -cJf vendor.tar.xz vendor
 
 .PHONY: install-tools
-install-tools: ## install tools in local environment
+install-tools: ## install kanidm_tools in your local environment
 install-tools:
 	cd kanidm_tools && cargo install --path . --force
 
@@ -127,27 +127,27 @@ codespell:
 	--skip='./kanidmd/lib/src/constants/system_config.rs,./pykanidm/site,./kanidmd/lib/src/constants/*.json'
 
 .PHONY: test/pykanidm/pytest
-test/pykanidm/pytest:
+test/pykanidm/pytest: ## python library testing
 	cd pykanidm && \
 	poetry install && \
 	poetry run pytest -vv
 
-.PHONY: test/pykanidm/pylint
-test/pykanidm/pylint:
+.PHONY: test/pykanidm/lint
+test/pykanidm/lint: ## python library linting
 	cd pykanidm && \
 	poetry install && \
-	poetry run pylint tests kanidm
+	poetry run ruff tests kanidm
 
 .PHONY: test/pykanidm/mypy
-test/pykanidm/mypy:
+test/pykanidm/mypy: ## python library type checking
 	cd pykanidm && \
 	poetry install && \
 	echo "Running mypy" && \
 	poetry run mypy --strict tests kanidm
 
 .PHONY: test/pykanidm
-test/pykanidm: ## run the test suite (mypy/pylint/pytest) for the kanidm python module
-test/pykanidm: test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/pylint
+test/pykanidm: ## run the kanidm python module test suite (mypy/lint/pytest)
+test/pykanidm: test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/lint
 
 .PHONY: test/doc/format
 test/doc/format: ## Format docs and the Kanidm book

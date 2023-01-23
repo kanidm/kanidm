@@ -1,5 +1,5 @@
 ---
-name: pykanidm - pylint
+name: pykanidm - Python Linting
 
 "on":
   push:
@@ -8,7 +8,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  pykanidm_pylint:
+  pykanidm_lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -26,4 +26,4 @@ jobs:
           cd pykanidm
           python -m pip install --quiet --no-cache-dir --upgrade poetry
           poetry install
-          poetry run pylint tests kanidm
+          poetry run ruff tests kanidm

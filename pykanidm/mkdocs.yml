@@ -15,8 +15,8 @@ plugins:
       python:
         rendering:
           show_source: true
-    watch:
-    - "kanidm/"
+watch:
+- "kanidm/"
 
 nav:
   - "Home": README.md
