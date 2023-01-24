@@ -263,8 +263,6 @@ pub trait AccessControlsTransaction<'a> {
         se: &SearchEvent,
         entries: Vec<Arc<EntrySealedCommitted>>,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
-
-
         // Build a reference set from the req_attrs. This is what we test against
         // to see if the attribute is something we currently want.
         let requested_attrs: Option<BTreeSet<_>> = se
@@ -274,7 +272,7 @@ pub trait AccessControlsTransaction<'a> {
 
         // Get the relevant acps for this receiver.
         let related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(&se.ident);
-        let related_acp: Vec<(&AccessControlSearch, _)> = if let Some(r_attrs) = requested_attrs.as_ref() {
+        let related_acp: Vec<(&AccessControlSearch, _)> = if let Some(r_attrs) = se.attrs.as_ref() {
             // If the acp doesn't overlap with our requested attrs, there is no point in
             // testing it!
             related_acp
@@ -298,6 +296,13 @@ pub trait AccessControlsTransaction<'a> {
                 let mut allow = BTreeSet::default();
 
                 // Process each access module.
+                match profiles::search_filter_entry_attributes(se, related_acp.as_slice(), &e) {
+                    AccessResult::Denied => denied = true,
+                    AccessResult::Grant => grant = true,
+                    AccessResult::Ignore => {}
+                    AccessResult::Constrain(mut set) => constrain.append(&mut set),
+                    AccessResult::Allow(mut set) => allow.append(&mut set),
+                };
 
                 if denied {
                     None
@@ -324,7 +329,18 @@ pub trait AccessControlsTransaction<'a> {
                         "attributes",
                     );
 
-                    e.reduce_attributes(&allowed_attrs)
+                    // Reduce requested by allowed.
+                    let reduced_attrs = if let Some(requested) = requested_attrs.as_ref() {
+                        requested & &allowed_attrs
+                    } else {
+                        allowed_attrs
+                    };
+
+                    if reduced_attrs.is_empty() {
+                        None
+                    } else {
+                        Some(e.reduce_attributes(&reduced_attrs))
+                    }
                 }
                 // End filter
             })
