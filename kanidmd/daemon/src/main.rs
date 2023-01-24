@@ -293,11 +293,7 @@ async fn main() {
                         }
                     }
 
-                    #[cfg(debug_assertions)]
-                    trace!("Starting server core...");
                     let sctx = create_server_core(config, config_test).await;
-                    #[cfg(debug_assertions)]
-                    trace!("Done starting server core!");
                     if !config_test {
                         match sctx {
                             Ok(mut sctx) => {
