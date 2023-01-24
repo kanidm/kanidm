@@ -50,10 +50,6 @@ override_dh_auto_install:
 	mkdir -p ${LIBDIR}/security
 	install \
 		-g root -o root \
-		platform/debian/pam-config-kanidm \
-		${PKGDIR}/usr/share/pam-configs/kanidm
-	install \
-		-g root -o root \
 		target/release/kanidm_unixd \
 		${BINDIR}
 	install \
