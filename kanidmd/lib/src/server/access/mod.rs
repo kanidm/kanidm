@@ -31,11 +31,7 @@ use crate::modify::Modify;
 use crate::prelude::*;
 
 use self::profiles::{
-    AccessControlCreate,
-    AccessControlDelete,
-    AccessControlModify,
-    // AccessControlProfile,
-    AccessControlSearch,
+    AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
 };
 
 use self::search::{apply_search_access, SearchResult};
@@ -63,9 +59,9 @@ pub struct AccessEffectivePermission {
     pub target: Uuid,
     pub delete: bool,
     pub search: Access,
-    pub modify_pres: BTreeSet<AttrString>,
-    pub modify_rem: BTreeSet<AttrString>,
-    pub modify_class: BTreeSet<AttrString>,
+    pub modify_pres: Access,
+    pub modify_rem: Access,
+    pub modify_class: Access,
 }
 
 pub enum AccessResult<'a> {
@@ -373,7 +369,6 @@ pub trait AccessControlsTransaction<'a> {
         related_acp
     }
 
-    #[allow(clippy::cognitive_complexity)]
     #[instrument(level = "debug", name = "access::modify_allow_operation", skip_all)]
     fn modify_allow_operation(
         &self,
@@ -495,7 +490,6 @@ pub trait AccessControlsTransaction<'a> {
         Ok(r)
     }
 
-    #[allow(clippy::cognitive_complexity)]
     #[instrument(
         level = "debug",
         name = "access::batch_modify_allow_operation",
@@ -536,7 +530,6 @@ pub trait AccessControlsTransaction<'a> {
         Err(OperationError::InvalidState)
     }
 
-    #[allow(clippy::cognitive_complexity)]
     #[instrument(level = "debug", name = "access::create_allow_operation", skip_all)]
     fn create_allow_operation(
         &self,
@@ -849,31 +842,17 @@ pub trait AccessControlsTransaction<'a> {
                     };
 
                 // == modify ==
-                let modify_scoped_acp: Vec<&AccessControlModify> = modify_related_acp
-                    .iter()
-                    .filter_map(|(acm, f_res)| {
-                        if e.entry_match_no_index(f_res) {
-                            Some(*acm)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
 
-                let modify_pres: BTreeSet<AttrString> = modify_scoped_acp
-                    .iter()
-                    .flat_map(|acp| acp.presattrs.iter().cloned())
-                    .collect();
-
-                let modify_rem: BTreeSet<AttrString> = modify_scoped_acp
-                    .iter()
-                    .flat_map(|acp| acp.remattrs.iter().cloned())
-                    .collect();
-
-                let modify_class: BTreeSet<AttrString> = modify_scoped_acp
-                    .iter()
-                    .flat_map(|acp| acp.classes.iter().cloned())
-                    .collect();
+                let (modify_pres, modify_rem, modify_class) =
+                    match apply_modify_access(ident, modify_related_acp.as_slice(), &e) {
+                        ModifyResult::Denied => (Access::Denied, Access::Denied, Access::Denied),
+                        ModifyResult::Grant => (Access::Grant, Access::Grant, Access::Grant),
+                        ModifyResult::Allow { pres, rem, cls } => (
+                            Access::Allow(pres.into_iter().map(|s| s.into()).collect()),
+                            Access::Allow(rem.into_iter().map(|s| s.into()).collect()),
+                            Access::Allow(cls.into_iter().map(|s| s.into()).collect()),
+                        ),
+                    };
 
                 // == delete ==
                 let delete = delete_related_acp.iter().any(|(acd, f_res)| {
@@ -2392,9 +2371,9 @@ mod tests {
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                 search: Access::Allow(btreeset![AttrString::from("name")]),
-                modify_pres: BTreeSet::new(),
-                modify_rem: BTreeSet::new(),
-                modify_class: BTreeSet::new(),
+                modify_pres: Access::Allow(BTreeSet::new()),
+                modify_rem: Access::Allow(BTreeSet::new()),
+                modify_class: Access::Allow(BTreeSet::new()),
             }]
         )
     }
@@ -2433,9 +2412,9 @@ mod tests {
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                 search: Access::Allow(BTreeSet::new()),
-                modify_pres: btreeset![AttrString::from("name")],
-                modify_rem: btreeset![AttrString::from("name")],
-                modify_class: btreeset![AttrString::from("object")],
+                modify_pres: Access::Allow(btreeset![AttrString::from("name")]),
+                modify_rem: Access::Allow(btreeset![AttrString::from("name")]),
+                modify_class: Access::Allow(btreeset![AttrString::from("object")]),
             }]
         )
     }

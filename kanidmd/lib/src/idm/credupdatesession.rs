@@ -351,10 +351,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             Access::Allow(attrs) => attrs.contains("primary_credential"),
         };
 
-        if !eperm_search_primary_cred
-            || !eperm.modify_pres.contains("primary_credential")
-            || !eperm.modify_rem.contains("primary_credential")
-        {
+        let eperm_mod_primary_cred = match &eperm.modify_pres {
+            Access::Denied => false,
+            Access::Grant => true,
+            Access::Allow(attrs) => attrs.contains("primary_credential"),
+        };
+
+        let eperm_rem_primary_cred = match &eperm.modify_rem {
+            Access::Denied => false,
+            Access::Grant => true,
+            Access::Allow(attrs) => attrs.contains("primary_credential"),
+        };
+
+        if !eperm_search_primary_cred || !eperm_mod_primary_cred || !eperm_rem_primary_cred {
             security_info!(
                 "Requestor {} does not have permission to update credentials of {}",
                 ident,

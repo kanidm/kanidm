@@ -149,7 +149,6 @@ fn modify_pres_test<'a>(scoped_acp: &[&'a AccessControlModify]) -> AccessResult<
         .iter()
         .flat_map(|acp| acp.presattrs.iter().map(|v| v.as_str()))
         .collect();
-
     AccessResult::Allow(allowed_pres)
 }
 
@@ -166,6 +165,5 @@ fn modify_cls_test<'a>(scoped_acp: &[&'a AccessControlModify]) -> AccessResult<'
         .iter()
         .flat_map(|acp| acp.classes.iter().map(|v| v.as_str()))
         .collect();
-
     AccessResult::Allow(allowed_classes)
 }
