@@ -11,6 +11,10 @@ PKGDIR=debian/${PACKAGE}
 BINDIR=${PKGDIR}/usr/sbin/
 LIBDIR=${PKGDIR}/lib/${DEB_HOST_MULTIARCH}
 SHARED_DIR=${PKGDIR}/usr/share/${PACKAGE}
+DISTRIBUTOR_ID=$(shell lsb_release -is)
+DISTRIBUTOR_RELEASE=$(shell lsb_release -rs)
+DISTRIBUTOR=$(DISTRIBUTOR_ID)_$(DISTRIBUTOR_RELEASE)
+DEB_VERSION_FULL=$(shell dpkg-parsechangelog --show-field Version)
 
 %:
 	dh $@ --with systemd
@@ -20,7 +24,7 @@ override_dh_auto_clean:
 override_dh_autoreconf:
 
 override_dh_auto_build:
-	KANIDM_BUILD_PROFILE=release_suse_generic dh_auto_build -- release/${PACKAGE}
+	KANIDM_BUILD_PROFILE=release_suse_generic dh_auto_build -- release/${PACKAGE} release/kanidm-ssh
 
 override_dh_auto_test:
 override_dh_shlibdeps:
@@ -48,6 +52,14 @@ override_dh_systemd_start:
 override_dh_auto_install:
 	mkdir -p ${BINDIR}
 	mkdir -p ${LIBDIR}/security
+	install \
+		-g root -o root \
+		target/release/kanidm_ssh_authorizedkeys \
+		${BINDIR}
+	install \
+		-g root -o root \
+		target/release/kanidm_ssh_authorizedkeys_direct \
+		${BINDIR}
 	install \
 		-g root -o root \
 		target/release/kanidm_unixd \
@@ -89,3 +101,6 @@ override_dh_installexamples:
 		-g root -o root \
 		examples/unixd \
 		${SHARED_DIR}/
+
+override_dh_builddeb:
+	dh_builddeb --filename ${PACKAGE}_${DISTRIBUTOR}_${DEB_VERSION_FULL}_${DEB_HOST_GNU_CPU}.deb
