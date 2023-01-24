@@ -232,7 +232,7 @@ pub trait AccessControlsTransaction<'a> {
                     // The allow set constrained.
                     security_access!(
                         requested = ?requested_attrs,
-                        allows = ?allowed_attrs,
+                        allowed = ?allowed_attrs,
                         "attributes",
                     );
 
@@ -263,44 +263,20 @@ pub trait AccessControlsTransaction<'a> {
         se: &SearchEvent,
         entries: Vec<Arc<EntrySealedCommitted>>,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
-        // If this is an internal search, do nothing. This can occur in some test cases ONLY
-        match &se.ident.origin {
-            IdentType::Internal => {
-                if cfg!(test) {
-                    trace!("TEST: Internal search in external interface - allowing due to cfg test ...");
-                    // In tests we just push everything back.
-                    return Ok(entries
-                        .into_iter()
-                        .map(|e| unsafe { e.as_ref().clone().into_reduced() })
-                        .collect());
-                } else {
-                    // In production we can't risk leaking data here, so we return
-                    // empty sets.
-                    security_critical!("IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
-                    // No need to check ACS
-                    return Ok(Vec::new());
-                }
-            }
-            IdentType::Synch(_) => {
-                security_critical!("Blocking sync check");
-                return Err(OperationError::InvalidState);
-            }
-            IdentType::User(_) => {}
-        };
 
-        /*
-         * Super similar to above (could even re-use some parts). Given a set of entries,
-         * reduce the attribute sets on them to "what is visible". This is ONLY called on
-         * the server edge, such that clients only see what they can, but internally,
-         * impersonate and such actually still get the whole entry back as not to break
-         * modify and co.
-         */
 
-        info!(event = %se.ident, "Access check for search (reduce) event");
+        // Build a reference set from the req_attrs. This is what we test against
+        // to see if the attribute is something we currently want.
+        let requested_attrs: Option<BTreeSet<_>> = se
+            .attrs
+            .as_ref()
+            .map(|vs| vs.iter().map(|s| s.as_str()).collect());
 
         // Get the relevant acps for this receiver.
         let related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(&se.ident);
-        let related_acp: Vec<(&AccessControlSearch, _)> = if let Some(r_attrs) = se.attrs.as_ref() {
+        let related_acp: Vec<(&AccessControlSearch, _)> = if let Some(r_attrs) = requested_attrs.as_ref() {
+            // If the acp doesn't overlap with our requested attrs, there is no point in
+            // testing it!
             related_acp
                 .into_iter()
                 .filter(|(acs, _)| !acs.attrs.is_disjoint(r_attrs))
@@ -309,62 +285,48 @@ pub trait AccessControlsTransaction<'a> {
             related_acp
         };
 
-        /*
-        related_acp.iter().for_each(|racp| {
-            lsecurity_access!( "Related acs -> {:?}", racp.acp.name);
-        });
-        */
-
-        // Build a reference set from the req_attrs. This is what we test against
-        // to see if the attribute is something we currently want.
-        let req_attrs: Option<BTreeSet<_>> = se
-            .attrs
-            .as_ref()
-            .map(|vs| vs.iter().map(|s| s.as_str()).collect());
-
-        //  For each entry
-        let allowed_entries: Vec<Entry<EntryReduced, EntryCommitted>> = entries
+        // For each entry.
+        let allowed_entries: Vec<_> = entries
             .into_iter()
-            .map(|e| {
-                // Get the set of attributes you can see for this entry
-                // this is within your related acp scope.
-                let allowed_attrs: BTreeSet<&str> = related_acp
-                    .iter()
-                    .filter_map(|(acs, f_res)| {
-                        if e.entry_match_no_index(f_res) {
-                            security_access!(
-                                target = ?e.get_uuid(),
-                                acs = %acs.acp.name,
-                                "target entry matches acs",
-                            );
-                            // add search_attrs to allowed iterator
-                            Some(acs.attrs.iter().map(|s| s.as_str()).filter(|s| {
-                                req_attrs
-                                    .as_ref()
-                                    .map(|r_attrs| r_attrs.contains(s))
-                                    .unwrap_or(true)
-                            }))
-                        } else {
-                            trace!(
-                                target = ?e.get_uuid(),
-                                acs = %acs.acp.name,
-                                "target entry DOES NOT match acs",
-                            );
-                            None
-                        }
-                    })
-                    .flatten()
-                    .collect();
+            .filter_map(|e| {
+                // This could be considered "slow" due to allocs each iter with the entry. We
+                // could move these out of the loop and re-use, but there are likely risks to
+                // that.
+                let mut denied = false;
+                let mut grant = false;
+                let mut constrain = BTreeSet::default();
+                let mut allow = BTreeSet::default();
 
-                // Remove all others that are present on the entry.
-                security_access!(
-                    requested = ?req_attrs,
-                    allowed = ?allowed_attrs,
-                    "attributes"
-                );
+                // Process each access module.
 
-                // Now purge the attrs that are NOT allowed.
-                e.reduce_attributes(&allowed_attrs)
+                if denied {
+                    None
+                } else if grant {
+                    if cfg!(test) {
+                        // We only allow this during tests.
+                        // No properly written access module should allow
+                        // unbounded attribute read!
+                        Some(unsafe { e.as_ref().clone().into_reduced() })
+                    } else {
+                        None
+                    }
+                } else {
+                    let allowed_attrs = if !constrain.is_empty() {
+                        // bit_and
+                        &constrain & &allow
+                    } else {
+                        allow
+                    };
+                    // The allow set constrained.
+                    security_access!(
+                        requested = ?requested_attrs,
+                        allowed = ?allowed_attrs,
+                        "attributes",
+                    );
+
+                    e.reduce_attributes(&allowed_attrs)
+                }
+                // End filter
             })
             .collect();
 

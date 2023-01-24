@@ -116,6 +116,103 @@ pub(super) fn search_filter_entries<'a>(
     AccessResult::Allow(allowed_attrs)
 }
 
+pub(super) fn search_filter_entry_attributes<'a>(
+    se: &SearchEvent,
+    related_acp: &'a [(&AccessControlSearch, Filter<FilterValidResolved>)],
+    entry: &'a Arc<EntrySealedCommitted>,
+) -> AccessResult<'a> {
+        // If this is an internal search, do nothing. This can occur in some test cases ONLY
+        match &se.ident.origin {
+            IdentType::Internal => {
+                if cfg!(test) {
+                    trace!("TEST: Internal search in external interface - allowing due to cfg test ...");
+                    return AccessResult::Grant;
+                } else {
+                    // In production we can't risk leaking data here, so we return
+                    // empty sets.
+                    security_critical!("IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
+                    // No need to check ACS
+                    return AccessResult::Denied;
+                }
+            }
+            IdentType::Synch(_) => {
+                security_critical!("Blocking sync check");
+                return AccessResult::Denied;
+            }
+            IdentType::User(_) => {}
+        };
+
+        /*
+         * Super similar to above (could even re-use some parts). Given a set of entries,
+         * reduce the attribute sets on them to "what is visible". This is ONLY called on
+         * the server edge, such that clients only see what they can, but internally,
+         * impersonate and such actually still get the whole entry back as not to break
+         * modify and co.
+         */
+
+        info!(event = %se.ident, "Access check for search (reduce) event");
+
+
+
+        //  For each entry
+        let allowed_entries: Vec<Entry<EntryReduced, EntryCommitted>> = entries
+            .into_iter()
+            .map(|e| {
+                // Get the set of attributes you can see for this entry
+                // this is within your related acp scope.
+                let allowed_attrs: BTreeSet<&str> = related_acp
+                    .iter()
+                    .filter_map(|(acs, f_res)| {
+                        if e.entry_match_no_index(f_res) {
+                            security_access!(
+                                target = ?e.get_uuid(),
+                                acs = %acs.acp.name,
+                                "target entry matches acs",
+                            );
+                            // add search_attrs to allowed iterator
+                            Some(acs.attrs.iter().map(|s| s.as_str()).filter(|s| {
+                                req_attrs
+                                    .as_ref()
+                                    .map(|r_attrs| r_attrs.contains(s))
+                                    .unwrap_or(true)
+                            }))
+                        } else {
+                            trace!(
+                                target = ?e.get_uuid(),
+                                acs = %acs.acp.name,
+                                "target entry DOES NOT match acs",
+                            );
+                            None
+                        }
+                    })
+                    .flatten()
+                    .collect();
+
+                // Remove all others that are present on the entry.
+                security_access!(
+                    requested = ?req_attrs,
+                    allowed = ?allowed_attrs,
+                    "attributes"
+                );
+
+                // Now purge the attrs that are NOT allowed.
+                e.reduce_attributes(&allowed_attrs)
+            })
+            .collect();
+
+        if allowed_entries.is_empty() {
+            security_access!("reduced to empty set on all entries ❌");
+        } else {
+            security_access!(
+                "attribute set reduced on {} entries ✅",
+                allowed_entries.len()
+            );
+        }
+
+        Ok(allowed_entries)
+}
+
+
 #[derive(Debug, Clone)]
 pub struct AccessControlDelete {
     pub acp: AccessControlProfile,
