@@ -38,10 +38,23 @@ use self::profiles::{
     AccessControlSearch,
 };
 
+use self::search::{apply_search_access, SearchResult};
+
+use self::modify::{apply_modify_access, ModifyResult};
+
 const ACP_RESOLVE_FILTER_CACHE_MAX: usize = 2048;
 const ACP_RESOLVE_FILTER_CACHE_LOCAL: usize = 16;
 
+mod modify;
 pub mod profiles;
+mod search;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Access {
+    Grant,
+    Denied,
+    Allow(BTreeSet<AttrString>),
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccessEffectivePermission {
@@ -49,7 +62,7 @@ pub struct AccessEffectivePermission {
     // ident: Uuid,
     pub target: Uuid,
     pub delete: bool,
-    pub search: BTreeSet<AttrString>,
+    pub search: Access,
     pub modify_pres: BTreeSet<AttrString>,
     pub modify_rem: BTreeSet<AttrString>,
     pub modify_class: BTreeSet<AttrString>,
@@ -201,46 +214,22 @@ pub trait AccessControlsTransaction<'a> {
         let allowed_entries: Vec<_> = entries
             .into_iter()
             .filter(|e| {
-                // This could be considered "slow" due to allocs each iter with the entry. We
-                // could move these out of the loop and re-use, but there are likely risks to
-                // that.
-                let mut denied = false;
-                let mut grant = false;
-                let mut constrain = BTreeSet::default();
-                let mut allow = BTreeSet::default();
+                match apply_search_access(&se.ident, related_acp.as_slice(), &e) {
+                    SearchResult::Denied => false,
+                    SearchResult::Grant => true,
+                    SearchResult::Allow(allowed_attrs) => {
+                        // The allow set constrained.
+                        security_access!(
+                            requested = ?requested_attrs,
+                            allowed = ?allowed_attrs,
+                            "attributes",
+                        );
 
-                match profiles::search_filter_entries(se, related_acp.as_slice(), &e) {
-                    AccessResult::Denied => denied = true,
-                    AccessResult::Grant => grant = true,
-                    AccessResult::Ignore => {}
-                    AccessResult::Constrain(mut set) => constrain.append(&mut set),
-                    AccessResult::Allow(mut set) => allow.append(&mut set),
-                };
-                // Now apply the decision.
-
-                if denied {
-                    false
-                } else if grant {
-                    true
-                } else {
-                    let allowed_attrs = if !constrain.is_empty() {
-                        // bit_and
-                        &constrain & &allow
-                    } else {
-                        allow
-                    };
-                    // The allow set constrained.
-                    security_access!(
-                        requested = ?requested_attrs,
-                        allowed = ?allowed_attrs,
-                        "attributes",
-                    );
-
-                    let decision = requested_attrs.is_subset(&allowed_attrs);
-                    security_access!(?decision, "search attr decision");
-                    decision
+                        let decision = requested_attrs.is_subset(&allowed_attrs);
+                        security_access!(?decision, "search attr decision");
+                        decision
+                    }
                 }
-                // End filter
             })
             .collect();
 
@@ -287,61 +276,47 @@ pub trait AccessControlsTransaction<'a> {
         let allowed_entries: Vec<_> = entries
             .into_iter()
             .filter_map(|e| {
-                // This could be considered "slow" due to allocs each iter with the entry. We
-                // could move these out of the loop and re-use, but there are likely risks to
-                // that.
-                let mut denied = false;
-                let mut grant = false;
-                let mut constrain = BTreeSet::default();
-                let mut allow = BTreeSet::default();
-
-                // Process each access module.
-                match profiles::search_filter_entry_attributes(se, related_acp.as_slice(), &e) {
-                    AccessResult::Denied => denied = true,
-                    AccessResult::Grant => grant = true,
-                    AccessResult::Ignore => {}
-                    AccessResult::Constrain(mut set) => constrain.append(&mut set),
-                    AccessResult::Allow(mut set) => allow.append(&mut set),
-                };
-
-                if denied {
-                    None
-                } else if grant {
-                    if cfg!(test) {
-                        // We only allow this during tests.
-                        // No properly written access module should allow
-                        // unbounded attribute read!
-                        Some(unsafe { e.as_ref().clone().into_reduced() })
-                    } else {
-                        None
+                match apply_search_access(&se.ident, related_acp.as_slice(), &e) {
+                    SearchResult::Denied => None,
+                    SearchResult::Grant => {
+                        if cfg!(test) {
+                            // We only allow this during tests.
+                            // No properly written access module should allow
+                            // unbounded attribute read!
+                            Some(unsafe { e.as_ref().clone().into_reduced() })
+                        } else {
+                            None
+                        }
                     }
-                } else {
-                    let allowed_attrs = if !constrain.is_empty() {
-                        // bit_and
-                        &constrain & &allow
-                    } else {
-                        allow
-                    };
-                    // The allow set constrained.
-                    security_access!(
-                        requested = ?requested_attrs,
-                        allowed = ?allowed_attrs,
-                        "attributes",
-                    );
+                    SearchResult::Allow(allowed_attrs) => {
+                        // The allow set constrained.
+                        security_access!(
+                            requested = ?requested_attrs,
+                            allowed = ?allowed_attrs,
+                            "attributes",
+                        );
+                        // The allow set constrained.
+                        security_access!(
+                            requested = ?requested_attrs,
+                            allowed = ?allowed_attrs,
+                            "attributes",
+                        );
 
-                    // Reduce requested by allowed.
-                    let reduced_attrs = if let Some(requested) = requested_attrs.as_ref() {
-                        requested & &allowed_attrs
-                    } else {
-                        allowed_attrs
-                    };
+                        // Reduce requested by allowed.
+                        let reduced_attrs = if let Some(requested) = requested_attrs.as_ref() {
+                            requested & &allowed_attrs
+                        } else {
+                            allowed_attrs
+                        };
 
-                    if reduced_attrs.is_empty() {
-                        None
-                    } else {
-                        Some(e.reduce_attributes(&reduced_attrs))
+                        if reduced_attrs.is_empty() {
+                            None
+                        } else {
+                            Some(e.reduce_attributes(&reduced_attrs))
+                        }
                     }
                 }
+
                 // End filter
             })
             .collect();
@@ -405,30 +380,6 @@ pub trait AccessControlsTransaction<'a> {
         me: &ModifyEvent,
         entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<bool, OperationError> {
-        match &me.ident.origin {
-            IdentType::Internal => {
-                trace!("Internal operation, bypassing access check");
-                // No need to check ACS
-                return Ok(true);
-            }
-            IdentType::Synch(_) => {
-                security_critical!("Blocking sync check");
-                return Err(OperationError::InvalidState);
-            }
-            IdentType::User(_) => {}
-        };
-        info!(event = %me.ident, "Access check for modify event");
-
-        match me.ident.access_scope() {
-            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise => {
-                security_access!("denied ❌ - identity access scope is not permitted to modify");
-                return Ok(false);
-            }
-            AccessScope::ReadWrite => {
-                // As you were
-            }
-        };
-
         // Pre-check if the no-no purge class is present
         let disallow = me
             .modlist
@@ -443,10 +394,6 @@ pub trait AccessControlsTransaction<'a> {
         // Find the acps that relate to the caller, and compile their related
         // target filters.
         let related_acp: Vec<(&AccessControlModify, _)> = self.modify_related_acp(&me.ident);
-
-        related_acp.iter().for_each(|racp| {
-            trace!("Related acs -> {:?}", racp.0.acp.name);
-        });
 
         // build two sets of "requested pres" and "requested rem"
         let requested_pres: BTreeSet<&str> = me
@@ -504,66 +451,42 @@ pub trait AccessControlsTransaction<'a> {
         security_access!(?requested_classes, "Requested class set");
 
         let r = entries.iter().all(|e| {
-            // For this entry, find the acp's that apply to it from the
-            // set that apply to the entry that is performing the operation
-            let scoped_acp: Vec<&AccessControlModify> = related_acp
-                .iter()
-                .filter_map(|(acm, f_res)| {
-                    if e.entry_match_no_index(f_res) {
-                        Some(*acm)
+            match apply_modify_access(&me.ident, related_acp.as_slice(), &e) {
+                ModifyResult::Denied => false,
+                ModifyResult::Grant => true,
+                ModifyResult::Allow { pres, rem, cls } => {
+                    if !requested_pres.is_subset(&pres) {
+                        security_access!("requested_pres is not a subset of allowed");
+                        security_access!(
+                            "requested_pres: {:?} !⊆ allowed: {:?}",
+                            requested_pres,
+                            pres
+                        );
+                        false
+                    } else if !requested_rem.is_subset(&rem) {
+                        security_access!("requested_rem is not a subset of allowed");
+                        security_access!(
+                            "requested_rem: {:?} !⊆ allowed: {:?}",
+                            requested_rem,
+                            rem
+                        );
+                        false
+                    } else if !requested_classes.is_subset(&cls) {
+                        security_access!("requested_classes is not a subset of allowed");
+                        security_access!(
+                            "requested_classes: {:?} !⊆ allowed: {:?}",
+                            requested_classes,
+                            cls
+                        );
+                        false
                     } else {
-                        None
-                    }
-                })
-                .collect();
-            // Build the sets of classes, pres and rem we are allowed to modify, extend
-            // or use based on the set of matched acps.
-            let allowed_pres: BTreeSet<&str> = scoped_acp
-                .iter()
-                .flat_map(|acp| acp.presattrs.iter().map(|v| v.as_str()))
-                .collect();
-
-            let allowed_rem: BTreeSet<&str> = scoped_acp
-                .iter()
-                .flat_map(|acp| acp.remattrs.iter().map(|v| v.as_str()))
-                .collect();
-
-            let allowed_classes: BTreeSet<&str> = scoped_acp
-                .iter()
-                .flat_map(|acp| acp.classes.iter().map(|v| v.as_str()))
-                .collect();
-
-            // Now check all the subsets are true. Remember, purge class
-            // is already checked above.
-            if !requested_pres.is_subset(&allowed_pres) {
-                security_access!("requested_pres is not a subset of allowed");
-                security_access!(
-                    "requested_pres: {:?} !⊆ allowed: {:?}",
-                    requested_pres,
-                    allowed_pres
-                );
-                false
-            } else if !requested_rem.is_subset(&allowed_rem) {
-                security_access!("requested_rem is not a subset of allowed");
-                security_access!(
-                    "requested_rem: {:?} !⊆ allowed: {:?}",
-                    requested_rem,
-                    allowed_rem
-                );
-                false
-            } else if !requested_classes.is_subset(&allowed_classes) {
-                security_access!("requested_classes is not a subset of allowed");
-                security_access!(
-                    "requested_classes: {:?} !⊆ allowed: {:?}",
-                    requested_classes,
-                    allowed_classes
-                );
-                false
-            } else {
-                security_access!("passed pres, rem, classes check.");
-                true
-            } // if acc == false
+                        security_access!("passed pres, rem, classes check.");
+                        true
+                    } // if acc == false
+                }
+            }
         });
+
         if r {
             security_access!("allowed ✅");
         } else {
@@ -906,54 +829,24 @@ pub trait AccessControlsTransaction<'a> {
                 search_related_acp
             };
 
-        /*
-        search_related_acp.iter().for_each(|(racp, _)| {
-            trace!("Related acs -> {:?}", racp.acp.name);
-        });
-        */
-
         // == modify ==
 
         let modify_related_acp = self.modify_related_acp(ident);
         let delete_related_acp = self.delete_related_acp(ident);
 
-        /*
-        modify_related_acp.iter().for_each(|(racp, _)| {
-            trace!("Related acm -> {:?}", racp.acp.name);
-        });
-        */
-
         let effective_permissions: Vec<_> = entries
             .iter()
             .map(|e| {
                 // == search ==
-                let allowed_attrs: BTreeSet<AttrString> = search_related_acp
-                    .iter()
-                    .filter_map(|(acs, f_res)| {
-                        // if it applies
-                        if e.entry_match_no_index(f_res) {
-                            // security_access!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry matches acs");
-                            Some(acs.attrs.iter().cloned())
-                        } else {
-                            trace!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry DOES NOT match acs"); // should this be `security_access`?
-                            None
+                let search_effective =
+                    match apply_search_access(ident, search_related_acp.as_slice(), &e) {
+                        SearchResult::Denied => Access::Denied,
+                        SearchResult::Grant => Access::Grant,
+                        SearchResult::Allow(allowed_attrs) => {
+                            // Bound by requested attrs?
+                            Access::Allow(allowed_attrs.into_iter().map(|s| s.into()).collect())
                         }
-                    })
-                    .flatten()
-                    .collect();
-
-                security_access!(
-                    requested = ?attrs,
-                    allows = ?allowed_attrs,
-                    "attributes",
-                );
-
-                // intersect?
-                let search_effective = if let Some(r_attrs) = attrs.as_ref() {
-                    r_attrs & &allowed_attrs
-                } else {
-                    allowed_attrs
-                };
+                    };
 
                 // == modify ==
                 let modify_scoped_acp: Vec<&AccessControlModify> = modify_related_acp
@@ -1209,7 +1102,7 @@ mod tests {
             AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlProfile,
             AccessControlSearch,
         },
-        AccessControls, AccessControlsTransaction, AccessEffectivePermission,
+        Access, AccessControls, AccessControlsTransaction, AccessEffectivePermission,
     };
     use crate::prelude::*;
 
@@ -2498,7 +2391,7 @@ mod tests {
             vec![AccessEffectivePermission {
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                search: btreeset![AttrString::from("name")],
+                search: Access::Allow(btreeset![AttrString::from("name")]),
                 modify_pres: BTreeSet::new(),
                 modify_rem: BTreeSet::new(),
                 modify_class: BTreeSet::new(),
@@ -2539,7 +2432,7 @@ mod tests {
             vec![AccessEffectivePermission {
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                search: BTreeSet::new(),
+                search: Access::Allow(BTreeSet::new()),
                 modify_pres: btreeset![AttrString::from("name")],
                 modify_rem: btreeset![AttrString::from("name")],
                 modify_class: btreeset![AttrString::from("object")],

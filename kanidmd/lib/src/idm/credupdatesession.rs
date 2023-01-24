@@ -20,6 +20,7 @@ use crate::credential::{BackupCodes, Credential};
 use crate::idm::account::Account;
 use crate::idm::server::{IdmServerCredUpdateTransaction, IdmServerProxyWriteTransaction};
 use crate::prelude::*;
+use crate::server::access::Access;
 use crate::utils::{backup_code_from_random, readable_password_from_random, uuid_from_duration};
 use crate::value::IntentTokenState;
 
@@ -344,7 +345,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             return Err(OperationError::InvalidEntryState);
         }
 
-        if !eperm.search.contains("primary_credential")
+        let eperm_search_primary_cred = match &eperm.search {
+            Access::Denied => false,
+            Access::Grant => true,
+            Access::Allow(attrs) => attrs.contains("primary_credential"),
+        };
+
+        if !eperm_search_primary_cred
             || !eperm.modify_pres.contains("primary_credential")
             || !eperm.modify_rem.contains("primary_credential")
         {
