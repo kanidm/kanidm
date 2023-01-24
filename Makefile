@@ -240,3 +240,15 @@ release/kanidm-unixd:
 		--bin kanidm_unixd_tasks \
 		--bin kanidm_cache_clear \
 		--bin kanidm_cache_invalidate
+
+
+# cert things
+
+.PHONY: cert/clean
+cert/clean: ## clean out the insecure cert bits
+cert/clean:
+	rm -f /tmp/kanidm/*.pem
+	rm -f /tmp/kanidm/*.cnf
+	rm -f /tmp/kanidm/*.csr
+	rm -f /tmp/kanidm/ca.txt*
+	rm -f /tmp/kanidm/ca.{cnf,srl,srl.old}

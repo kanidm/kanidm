@@ -293,45 +293,63 @@ async fn main() {
                         }
                     }
 
+                    #[cfg(debug_assertions)]
+                    trace!("Starting server core...");
                     let sctx = create_server_core(config, config_test).await;
+                    #[cfg(debug_assertions)]
+                    trace!("Done starting server core!");
                     if !config_test {
                         match sctx {
                             Ok(mut sctx) => {
+                                eprintln!("server started, sleeping for 5 seconds...");
+                                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                                 loop {
+
+                                    #[cfg(target_family = "unix")]
+                                    {
+                                        tokio::select! {
+                                            Ok(()) = tokio::signal::ctrl_c() => {
+                                                break
+                                            }
+                                            Some(()) = async move {
+                                                let sigterm = tokio::signal::unix::SignalKind::terminate();
+                                                tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                            } => {
+                                                break
+                                            }
+                                            Some(()) = async move {
+                                                let sigterm = tokio::signal::unix::SignalKind::alarm();
+                                                tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                            } => {
+                                                // Ignore
+                                            }
+                                            Some(()) = async move {
+                                                let sigterm = tokio::signal::unix::SignalKind::hangup();
+                                                tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                            } => {
+                                                // Ignore
+                                            }
+                                            Some(()) = async move {
+                                                let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                                                tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                            } => {
+                                                // Ignore
+                                            }
+                                            Some(()) = async move {
+                                                let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                                                tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                            } => {
+                                                // Ignore
+                                            }
+                                        }
+                                    }
+                                    #[cfg(target_family = "windows")]
+                                    {
                                     tokio::select! {
                                         Ok(()) = tokio::signal::ctrl_c() => {
                                             break
                                         }
-                                        Some(()) = async move {
-                                            let sigterm = tokio::signal::unix::SignalKind::terminate();
-                                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                        } => {
-                                            break
-                                        }
-                                        Some(()) = async move {
-                                            let sigterm = tokio::signal::unix::SignalKind::alarm();
-                                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                        } => {
-                                            // Ignore
-                                        }
-                                        Some(()) = async move {
-                                            let sigterm = tokio::signal::unix::SignalKind::hangup();
-                                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                        } => {
-                                            // Ignore
-                                        }
-                                        Some(()) = async move {
-                                            let sigterm = tokio::signal::unix::SignalKind::user_defined1();
-                                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                        } => {
-                                            // Ignore
-                                        }
-                                        Some(()) = async move {
-                                            let sigterm = tokio::signal::unix::SignalKind::user_defined2();
-                                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                        } => {
-                                            // Ignore
-                                        }
+                                    }
                                     }
                                 }
                                 eprintln!("Signal received, shutting down");
