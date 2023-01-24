@@ -301,10 +301,7 @@ async fn main() {
                     if !config_test {
                         match sctx {
                             Ok(mut sctx) => {
-                                eprintln!("server started, sleeping for 5 seconds...");
-                                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                                 loop {
-
                                     #[cfg(target_family = "unix")]
                                     {
                                         tokio::select! {
