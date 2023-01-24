@@ -13,8 +13,6 @@
 //! - the ability to turn an entry into a partial-entry for results send
 //!   requirements (also search).
 
-// use concread::collections::bptree::*;
-// use hashbrown::HashSet;
 use std::cell::Cell;
 use std::collections::BTreeSet;
 use std::ops::DerefMut;
@@ -22,343 +20,28 @@ use std::sync::Arc;
 
 use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
 use concread::cowcell::*;
-use kanidm_proto::v1::{Filter as ProtoFilter, OperationError};
+use kanidm_proto::v1::OperationError;
 use tracing::trace;
 use uuid::Uuid;
 
-use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced, EntrySealed};
+use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
 use crate::filter::{Filter, FilterValid, FilterValidResolved};
 use crate::modify::Modify;
 use crate::prelude::*;
 
+use self::profiles::{
+    AccessControlCreate,
+    AccessControlDelete,
+    AccessControlModify,
+    // AccessControlProfile,
+    AccessControlSearch,
+};
+
 const ACP_RESOLVE_FILTER_CACHE_MAX: usize = 2048;
 const ACP_RESOLVE_FILTER_CACHE_LOCAL: usize = 16;
 
-// =========================================================================
-// PARSE ENTRY TO ACP, AND ACP MANAGEMENT
-// =========================================================================
-
-#[derive(Debug, Clone)]
-pub struct AccessControlSearch {
-    acp: AccessControlProfile,
-    attrs: BTreeSet<AttrString>,
-}
-
-impl AccessControlSearch {
-    pub fn try_from(
-        qs: &mut QueryServerWriteTransaction,
-        value: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<Self, OperationError> {
-        if !value.attribute_equality("class", &PVCLASS_ACS) {
-            admin_error!("class access_control_search not present.");
-            return Err(OperationError::InvalidAcpState(
-                "Missing access_control_search".to_string(),
-            ));
-        }
-
-        let attrs = value
-            .get_ava_iter_iutf8("acp_search_attr")
-            .ok_or_else(|| {
-                admin_error!("Missing acp_search_attr");
-                OperationError::InvalidAcpState("Missing acp_search_attr".to_string())
-            })?
-            .map(AttrString::from)
-            .collect();
-
-        let acp = AccessControlProfile::try_from(qs, value)?;
-
-        Ok(AccessControlSearch { acp, attrs })
-    }
-
-    #[cfg(test)]
-    unsafe fn from_raw(
-        name: &str,
-        uuid: Uuid,
-        receiver: Uuid,
-        targetscope: Filter<FilterValid>,
-        attrs: &str,
-    ) -> Self {
-        AccessControlSearch {
-            acp: AccessControlProfile {
-                name: name.to_string(),
-                uuid,
-                receiver: Some(receiver),
-                targetscope,
-            },
-            attrs: attrs
-                .split_whitespace()
-                .map(|s| AttrString::from(s))
-                .collect(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct AccessControlDelete {
-    acp: AccessControlProfile,
-}
-
-impl AccessControlDelete {
-    pub fn try_from(
-        qs: &mut QueryServerWriteTransaction,
-        value: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<Self, OperationError> {
-        if !value.attribute_equality("class", &PVCLASS_ACD) {
-            admin_error!("class access_control_delete not present.");
-            return Err(OperationError::InvalidAcpState(
-                "Missing access_control_delete".to_string(),
-            ));
-        }
-
-        Ok(AccessControlDelete {
-            acp: AccessControlProfile::try_from(qs, value)?,
-        })
-    }
-
-    #[cfg(test)]
-    unsafe fn from_raw(
-        name: &str,
-        uuid: Uuid,
-        receiver: Uuid,
-        targetscope: Filter<FilterValid>,
-    ) -> Self {
-        AccessControlDelete {
-            acp: AccessControlProfile {
-                name: name.to_string(),
-                uuid,
-                receiver: Some(receiver),
-                targetscope,
-            },
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct AccessControlCreate {
-    acp: AccessControlProfile,
-    classes: Vec<AttrString>,
-    attrs: Vec<AttrString>,
-}
-
-impl AccessControlCreate {
-    pub fn try_from(
-        qs: &mut QueryServerWriteTransaction,
-        value: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<Self, OperationError> {
-        if !value.attribute_equality("class", &PVCLASS_ACC) {
-            admin_error!("class access_control_create not present.");
-            return Err(OperationError::InvalidAcpState(
-                "Missing access_control_create".to_string(),
-            ));
-        }
-
-        let attrs = value
-            .get_ava_iter_iutf8("acp_create_attr")
-            .map(|i| i.map(AttrString::from).collect())
-            .unwrap_or_else(Vec::new);
-
-        let classes = value
-            .get_ava_iter_iutf8("acp_create_class")
-            .map(|i| i.map(AttrString::from).collect())
-            .unwrap_or_else(Vec::new);
-
-        Ok(AccessControlCreate {
-            acp: AccessControlProfile::try_from(qs, value)?,
-            classes,
-            attrs,
-        })
-    }
-
-    #[cfg(test)]
-    unsafe fn from_raw(
-        name: &str,
-        uuid: Uuid,
-        receiver: Uuid,
-        targetscope: Filter<FilterValid>,
-        classes: &str,
-        attrs: &str,
-    ) -> Self {
-        AccessControlCreate {
-            acp: AccessControlProfile {
-                name: name.to_string(),
-                uuid,
-                receiver: Some(receiver),
-                targetscope,
-            },
-            classes: classes.split_whitespace().map(AttrString::from).collect(),
-            attrs: attrs.split_whitespace().map(AttrString::from).collect(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct AccessControlModify {
-    acp: AccessControlProfile,
-    classes: Vec<AttrString>,
-    presattrs: Vec<AttrString>,
-    remattrs: Vec<AttrString>,
-}
-
-impl AccessControlModify {
-    pub fn try_from(
-        qs: &mut QueryServerWriteTransaction,
-        value: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<Self, OperationError> {
-        if !value.attribute_equality("class", &PVCLASS_ACM) {
-            admin_error!("class access_control_modify not present.");
-            return Err(OperationError::InvalidAcpState(
-                "Missing access_control_modify".to_string(),
-            ));
-        }
-
-        let presattrs = value
-            .get_ava_iter_iutf8("acp_modify_presentattr")
-            .map(|i| i.map(AttrString::from).collect())
-            .unwrap_or_else(Vec::new);
-
-        let remattrs = value
-            .get_ava_iter_iutf8("acp_modify_removedattr")
-            .map(|i| i.map(AttrString::from).collect())
-            .unwrap_or_else(Vec::new);
-
-        let classes = value
-            .get_ava_iter_iutf8("acp_modify_class")
-            .map(|i| i.map(AttrString::from).collect())
-            .unwrap_or_else(Vec::new);
-
-        Ok(AccessControlModify {
-            acp: AccessControlProfile::try_from(qs, value)?,
-            classes,
-            presattrs,
-            remattrs,
-        })
-    }
-
-    #[cfg(test)]
-    unsafe fn from_raw(
-        name: &str,
-        uuid: Uuid,
-        receiver: Uuid,
-        targetscope: Filter<FilterValid>,
-        presattrs: &str,
-        remattrs: &str,
-        classes: &str,
-    ) -> Self {
-        AccessControlModify {
-            acp: AccessControlProfile {
-                name: name.to_string(),
-                uuid,
-                receiver: Some(receiver),
-                targetscope,
-            },
-            classes: classes
-                .split_whitespace()
-                .map(|s| AttrString::from(s))
-                .collect(),
-            presattrs: presattrs
-                .split_whitespace()
-                .map(|s| AttrString::from(s))
-                .collect(),
-            remattrs: remattrs
-                .split_whitespace()
-                .map(|s| AttrString::from(s))
-                .collect(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-struct AccessControlProfile {
-    name: String,
-    // Currently we retrieve this but don't use it. We could depending on how we change
-    // the acp update routine.
-    #[allow(dead_code)]
-    uuid: Uuid,
-    // Must be
-    //   Group
-    // === ⚠️   WARNING!!! ⚠️  ===
-    // This is OPTION to allow migration from 10 -> 11. We have to do this because ACP is reloaded
-    // so early in the boot phase that we can't have migrated the content of the receiver yet! As a
-    // result we MUST be able to withstand some failure in the parse process. The INTENT is that
-    // during early boot this will be None, and will NEVER match. Once started, the migration
-    // will occur, and this will flip to Some. In a future version we can remove this!
-    receiver: Option<Uuid>,
-    // or
-    //  Filter
-    //  Group
-    //  Self
-    // and
-    //  exclude
-    //    Group
-    targetscope: Filter<FilterValid>,
-}
-
-impl AccessControlProfile {
-    fn try_from(
-        qs: &mut QueryServerWriteTransaction,
-        value: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<Self, OperationError> {
-        // Assert we have class access_control_profile
-        if !value.attribute_equality("class", &PVCLASS_ACP) {
-            admin_error!("class access_control_profile not present.");
-            return Err(OperationError::InvalidAcpState(
-                "Missing access_control_profile".to_string(),
-            ));
-        }
-
-        // copy name
-        let name = value
-            .get_ava_single_iname("name")
-            .ok_or_else(|| {
-                admin_error!("Missing name");
-                OperationError::InvalidAcpState("Missing name".to_string())
-            })?
-            .to_string();
-        // copy uuid
-        let uuid = value.get_uuid();
-        // receiver, and turn to real filter
-
-        // === ⚠️   WARNING!!! ⚠️  ===
-        // See struct ACP for details.
-        let receiver = value.get_ava_single_refer("acp_receiver_group");
-        /*
-        .ok_or_else(|| {
-            admin_error!("Missing acp_receiver_group");
-            OperationError::InvalidAcpState("Missing acp_receiver_group".to_string())
-        })?;
-        */
-
-        // targetscope, and turn to real filter
-        let targetscope_f: ProtoFilter = value
-            .get_ava_single_protofilter("acp_targetscope")
-            // .map(|pf| pf.clone())
-            .cloned()
-            .ok_or_else(|| {
-                admin_error!("Missing acp_targetscope");
-                OperationError::InvalidAcpState("Missing acp_targetscope".to_string())
-            })?;
-
-        let ident = Identity::from_internal();
-
-        let targetscope_i = Filter::from_rw(&ident, &targetscope_f, qs).map_err(|e| {
-            admin_error!("Targetscope validation failed {:?}", e);
-            e
-        })?;
-
-        let targetscope = targetscope_i.validate(qs.get_schema()).map_err(|e| {
-            admin_error!("acp_targetscope Schema Violation {:?}", e);
-            OperationError::SchemaViolation(e)
-        })?;
-
-        Ok(AccessControlProfile {
-            name,
-            uuid,
-            receiver,
-            targetscope,
-        })
-    }
-}
+pub mod profiles;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccessEffectivePermission {
@@ -372,6 +55,19 @@ pub struct AccessEffectivePermission {
     pub modify_class: BTreeSet<AttrString>,
 }
 
+pub enum AccessResult<'a> {
+    // Deny this operation unconditionally.
+    Denied,
+    // Unbounded allow, provided no denied exists.
+    Grant,
+    // This module makes no decisions about this entry.
+    Ignore,
+    // Limit the allowed attr set to this.
+    Constrain(BTreeSet<&'a str>),
+    // Allow these attributes within constraints.
+    Allow(BTreeSet<&'a str>),
+}
+
 // =========================================================================
 // ACP transactions and management for server bits.
 // =========================================================================
@@ -382,6 +78,8 @@ struct AccessControlsInner {
     acps_create: Vec<AccessControlCreate>,
     acps_modify: Vec<AccessControlModify>,
     acps_delete: Vec<AccessControlDelete>,
+    // Oauth2
+    // Sync prov
 }
 
 pub struct AccessControls {
@@ -396,7 +94,7 @@ pub trait AccessControlsTransaction<'a> {
     fn get_create(&self) -> &Vec<AccessControlCreate>;
     fn get_modify(&self) -> &Vec<AccessControlModify>;
     fn get_delete(&self) -> &Vec<AccessControlDelete>;
-    // fn get_acp_related_search_cache(&self) -> &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>>;
+
     #[allow(clippy::mut_from_ref)]
     fn get_acp_resolve_filter_cache(
         &self,
@@ -408,7 +106,6 @@ pub trait AccessControlsTransaction<'a> {
         ident: &Identity,
     ) -> Vec<(&'b AccessControlSearch, Filter<FilterValidResolved>)> {
         let search_state = self.get_search();
-        // let acp_related_search_cache = self.get_acp_related_search_cache();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
         // ⚠️  WARNING ⚠️  -- Why is this cache commented out?
@@ -480,13 +177,6 @@ pub trait AccessControlsTransaction<'a> {
             })
             .collect();
 
-        /*
-        // Stash the uuids into the cache.
-        let mut acs_uuids: Vec<Uuid> = related_acp.iter().map(|acs| acs.acp.uuid).collect();
-        acs_uuids.sort_unstable();
-        acp_related_search_cache.insert(*rec_entry.get_uuid(), acs_uuids);
-        */
-
         related_acp
         // }
     }
@@ -498,81 +188,61 @@ pub trait AccessControlsTransaction<'a> {
         se: &SearchEvent,
         entries: Vec<Arc<EntrySealedCommitted>>,
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
-        // If this is an internal search, return our working set.
-        match &se.ident.origin {
-            IdentType::Internal => {
-                trace!("Internal operation, bypassing access check");
-                // No need to check ACS
-                return Ok(entries);
-            }
-            IdentType::Synch(_) => {
-                security_critical!("Blocking sync check");
-                return Err(OperationError::InvalidState);
-            }
-            IdentType::User(_) => {}
-        };
-        info!(event = %se.ident, "Access check for search (filter) event");
-
-        match se.ident.access_scope() {
-            AccessScope::IdentityOnly | AccessScope::Synchronise => {
-                security_access!("denied ❌ - identity access scope is not permitted to search");
-                return Ok(vec![]);
-            }
-            AccessScope::ReadOnly | AccessScope::ReadWrite => {
-                // As you were
-            }
-        };
-
-        // First get the set of acps that apply to this receiver
-        let related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(&se.ident);
-
-        /*
-        related_acp.iter().for_each(|racp| {
-            security_access!(acs = ?racp.acp.name, "Event Origin Related acs");
-        });
-        */
+        // Prepare some shared resources.
 
         // Get the set of attributes requested by this se filter. This is what we are
         // going to access check.
         let requested_attrs: BTreeSet<&str> = se.filter_orig.get_attr_set();
 
-        // For each entry
-        let allowed_entries: Vec<Arc<EntrySealedCommitted>> =
-            entries
-                .into_iter()
-                .filter(|e| {
-                    // For each acp
-                    let allowed_attrs: BTreeSet<&str> = related_acp
-                        .iter()
-                        .filter_map(|(acs, f_res)| {
-                            // if it applies
-                            if e.entry_match_no_index(f_res) {
-                                security_access!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry matches acs");
-                                // add search_attrs to allowed.
-                                Some(acs.attrs.iter().map(|s| s.as_str()))
-                            } else {
-                                trace!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry DOES NOT match acs"); // should this be `security_access`?
-                                None
-                            }
-                        })
-                        .flatten()
-                        .collect();
+        // First get the set of acps that apply to this receiver
+        let related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(&se.ident);
 
+        // For each entry.
+        let allowed_entries: Vec<_> = entries
+            .into_iter()
+            .filter(|e| {
+                // This could be considered "slow" due to allocs each iter with the entry. We
+                // could move these out of the loop and re-use, but there are likely risks to
+                // that.
+                let mut denied = false;
+                let mut grant = false;
+                let mut constrain = BTreeSet::default();
+                let mut allow = BTreeSet::default();
+
+                match profiles::search_filter_entries(se, related_acp.as_slice(), &e) {
+                    AccessResult::Denied => denied = true,
+                    AccessResult::Grant => grant = true,
+                    AccessResult::Ignore => {}
+                    AccessResult::Constrain(mut set) => constrain.append(&mut set),
+                    AccessResult::Allow(mut set) => allow.append(&mut set),
+                };
+                // Now apply the decision.
+
+                if denied {
+                    false
+                } else if grant {
+                    true
+                } else {
+                    let allowed_attrs = if !constrain.is_empty() {
+                        // bit_and
+                        &constrain & &allow
+                    } else {
+                        allow
+                    };
+                    // The allow set constrained.
                     security_access!(
                         requested = ?requested_attrs,
                         allows = ?allowed_attrs,
                         "attributes",
                     );
 
-                    // is attr set a subset of allowed set?
-                    // true -> entry is allowed in result set
-                    // false -> the entry is not allowed to be searched by this entity, so is
-                    //          excluded.
                     let decision = requested_attrs.is_subset(&allowed_attrs);
                     security_access!(?decision, "search attr decision");
                     decision
-                })
-                .collect();
+                }
+                // End filter
+            })
+            .collect();
 
         if allowed_entries.is_empty() {
             security_access!("denied ❌");
@@ -1369,8 +1039,6 @@ pub trait AccessControlsTransaction<'a> {
 
 pub struct AccessControlsWriteTransaction<'a> {
     inner: CowCellWriteTxn<'a, AccessControlsInner>,
-    // acp_related_search_cache_wr: ARCacheWriteTxn<'a, Uuid, Vec<Uuid>>,
-    // acp_related_search_cache: Cell<ARCacheReadTxn<'a, Uuid, Vec<Uuid>>>,
     acp_resolve_filter_cache: Cell<
         ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
     >,
@@ -1384,29 +1052,9 @@ impl<'a> AccessControlsWriteTransaction<'a> {
         &mut self,
         mut acps: Vec<AccessControlSearch>,
     ) -> Result<(), OperationError> {
-        // Clear the existing tree. We don't care that we are wiping it
-        // because we have the transactions to protect us from errors
-        // to allow rollbacks.
-        /*
-        let acps_search = &mut self.inner.deref_mut().acps_search;
-        acps_search.clear();
-        for acp in acps {
-            let uuid = acp.acp.uuid;
-            acps_search.insert(uuid, acp);
-        }
-        */
         std::mem::swap(&mut acps, &mut self.inner.deref_mut().acps_search);
-        // We reloaded the search acps, so we need to ditch all the cache.
-        // self.acp_related_search_cache_wr.clear();
         Ok(())
     }
-
-    /*
-    pub fn invalidate_related_cache(&mut self, inv: &[Uuid]) {
-        inv.iter()
-            .for_each(|uuid| self.acp_related_search_cache_wr.remove(*uuid))
-    }
-    */
 
     pub fn update_create(
         &mut self,
@@ -1433,7 +1081,6 @@ impl<'a> AccessControlsWriteTransaction<'a> {
     }
 
     pub fn commit(self) -> Result<(), OperationError> {
-        // self.acp_related_search_cache_wr.commit();
         self.inner.commit();
 
         Ok(())
@@ -1456,15 +1103,6 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsWriteTransaction<'a> {
     fn get_delete(&self) -> &Vec<AccessControlDelete> {
         &self.inner.acps_delete
     }
-
-    /*
-    fn get_acp_related_search_cache(&self) -> &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>> {
-        unsafe {
-            let mptr = self.acp_related_search_cache.as_ptr();
-            &mut (*mptr) as &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>>
-        }
-    }
-    */
 
     fn get_acp_resolve_filter_cache(
         &self,
@@ -1515,15 +1153,6 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
     fn get_delete(&self) -> &Vec<AccessControlDelete> {
         &self.inner.acps_delete
     }
-
-    /*
-    fn get_acp_related_search_cache(&self) -> &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>> {
-        unsafe {
-            let mptr = self.acp_related_search_cache.as_ptr();
-            &mut (*mptr) as &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>>
-        }
-    }
-    */
 
     fn get_acp_resolve_filter_cache(
         &self,
@@ -1598,8 +1227,11 @@ mod tests {
     use uuid::uuid;
 
     use super::{
-        AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlProfile,
-        AccessControlSearch, AccessControls, AccessControlsTransaction, AccessEffectivePermission,
+        profiles::{
+            AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlProfile,
+            AccessControlSearch,
+        },
+        AccessControls, AccessControlsTransaction, AccessEffectivePermission,
     };
     use crate::prelude::*;
 

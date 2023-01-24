@@ -885,7 +885,10 @@ fn config_security_checks(cfg_path: &Path) -> bool {
         let cfg_meta = match metadata(&cfg_path) {
             Ok(v) => v,
             Err(e) => {
-                error!("Unable to read metadata for '{}' during security checks - {:?}", cfg_path_str, e);
+                error!(
+                    "Unable to read metadata for '{}' during security checks - {:?}",
+                    cfg_path_str, e
+                );
                 return false;
             }
         };
