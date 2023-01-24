@@ -11,40 +11,69 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build-deb-package:
-    runs-on: ubuntu-20.04
+    name: Build deb packages
+    strategy:
+      matrix:
+        image:
+         - ubuntu:22.04
+         - ubuntu:20.04
+         - ubuntu:18.04
+         - debian:11
+         - debian:10
+    runs-on: ubuntu-latest
+    container: 
+      image: ${{ matrix.image }}
+      env:
+        DEBIAN_FRONTEND: noninteractive
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
+      - name: Update package manager
+        run: apt-get update
+      - name: Install dependencies
+        run: |
+          apt-get install -y \
+            lsb-release \
+            libpam0g-dev \
+            libudev-dev \
+            libssl-dev \
+            libsqlite3-dev \
+            pkg-config \
+            make \
+            curl \
+            sudo
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
           default: true
-      - name: Update package manager
-        run: sudo apt-get update
-      - name: Install dependencies
-        run: |
-          sudo apt-get install -y \
-            libpam0g-dev \
-            libudev-dev \
-            libssl-dev \
-            libsqlite3-dev \
-            pkg-config \
-            make
-      - uses: jetli/wasm-pack-action@v0.4.0
-        with:
-          # Optional version of wasm-pack to install(eg. 'v0.9.1', 'latest')
-          version: 'latest'
       - name: "Doing the package build"
         run: |
           make -f platform/debian/Makefile debs/all
+      - name: Upload debs
+        uses: actions/upload-artifact@v3
+        with:
+          name: ubuntu-packages
+          path: |
+            target/*.deb
+  upload-to-releases:
+    name: Upload to releases
+    needs: build-deb-package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download previously built debs
+        uses: actions/download-artifact@v3
+        with:
+          name: ubuntu-packages
+      - name: List packages
+        run: |
+          ls
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           automatic_release_tag: "latest"
           prerelease: true
-          title: "Ubuntu Packages (20.04)"
-          files: target/*.deb
+          title: "Ubuntu Packages"
+          files: "*.deb"
         if: ${{ github.ref == 'refs/heads/master' }}

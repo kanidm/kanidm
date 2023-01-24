@@ -13,7 +13,7 @@ rm -rf "$pkgdir"
 mkdir -p "$pkgdir"
 
 # build the project
-make release/kanidm release/kanidm-unixd
+make release/kanidm release/kanidm-unixd release/kanidm-ssh
 
 # enable the following block to include deployment specific configuration files
 if [ 1 -eq 0 ]; then
@@ -36,7 +36,7 @@ EOF
 fi 
 
 # This is for allowing login via PAM. It needs to be enabled using `pam-auth-update`
-install -Dm644  platform/debian/pam-config-kanidm "${pkgdir}/usr/share/pam-configs/kanidm"
+install -Dm644  platform/debian/kanidm-unixd/kanidm-unixd.pam "${pkgdir}/usr/share/pam-configs/kanidm-unixd"
 
 # Install kanidm cli
 install -Dm755 target/release/kanidm "${pkgdir}/usr/local/sbin/kanidm"

@@ -14,6 +14,8 @@ case "$1" in
             echo "============================="
             echo "Please ensure you create configuration files at /etc/kanidm/unixd and /etc/kanidm/config"
             echo "Examples are in /usr/share/kanidm-unixd/"
+            echo "To configure pam module, please run pam-auth-update and select Kanidm"
+            echo "To configure nsswitch, please follow instructions in https://kanidm.github.io/kanidm/master/integrations/pam_and_nsswitch.html"
         fi
     ;;
 

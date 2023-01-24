@@ -1,6 +1,7 @@
 #!/usr/bin/make -f
 # See debhelper(7) (uncomment to enable)
 
+include /usr/share/dpkg/architecture.mk
 # be REALLY noisy
 export DH_VERBOSE=1
 export DH_OPTIONS=-v
@@ -12,6 +13,10 @@ PACKAGE=kanidmd
 PKGDIR=debian/${PACKAGE}
 BINDIR=${PKGDIR}/usr/sbin/
 SHARED_DIR=${PKGDIR}/usr/share/${PACKAGE}
+DISTRIBUTOR_ID=$(shell lsb_release -is)
+DISTRIBUTOR_RELEASE=$(shell lsb_release -rs)
+DISTRIBUTOR=$(DISTRIBUTOR_ID)_$(DISTRIBUTOR_RELEASE)
+DEB_VERSION_FULL=$(shell dpkg-parsechangelog --show-field Version)
 
 %:
 	dh $@ --with systemd
@@ -35,7 +40,7 @@ override_dh_strip:
 # Do the systemd things
 override_dh_installinit:
 	install -g root -o root \
-		examples/systemd/${PACKAGE}.service \
+		platform/debian/systemd/${PACKAGE}.service \
 		debian/
 	dh_systemd_enable -p${PACKAGE} --name=${PACKAGE} ${PACKAGE}.service
 	dh_installinit -p${PACKAGE} --no-start --noscripts
@@ -64,3 +69,6 @@ override_dh_installexamples:
 		--mode=644 \
 		examples/server.toml \
 		${SHARED_DIR}/
+
+override_dh_builddeb:
+	dh_builddeb --filename ${PACKAGE}_${DISTRIBUTOR}_${DEB_VERSION_FULL}_${DEB_HOST_GNU_CPU}.deb

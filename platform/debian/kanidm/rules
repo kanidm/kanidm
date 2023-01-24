@@ -1,6 +1,7 @@
 #!/usr/bin/make -f
 # See debhelper(7) (uncomment to enable)
 
+include /usr/share/dpkg/architecture.mk
 # be REALLY noisy
 export DH_VERBOSE=1
 export DH_OPTIONS=-v
@@ -10,6 +11,10 @@ PACKAGE=kanidm
 PKGDIR=debian/${PACKAGE}
 BINDIR=${PKGDIR}/usr/bin/
 SHARED_DIR=${PKGDIR}/usr/share/${PACKAGE}
+DISTRIBUTOR_ID=$(shell lsb_release -is)
+DISTRIBUTOR_RELEASE=$(shell lsb_release -rs)
+DISTRIBUTOR=$(DISTRIBUTOR_ID)_$(DISTRIBUTOR_RELEASE)
+DEB_VERSION_FULL=$(shell dpkg-parsechangelog --show-field Version)
 
 %:
 	dh $@
@@ -42,3 +47,6 @@ override_dh_installexamples:
 		--mode 644 \
 		examples/config \
 		${SHARED_DIR}/kanidm
+
+override_dh_builddeb:
+	dh_builddeb --filename ${PACKAGE}_${DISTRIBUTOR}_${DEB_VERSION_FULL}_${DEB_HOST_GNU_CPU}.deb
