@@ -969,6 +969,9 @@
 <span id="969">969</span>
 <span id="970">970</span>
 <span id="971">971</span>
+<span id="972">972</span>
+<span id="973">973</span>
+<span id="974">974</span>
 </pre><pre class="rust"><code><span class="attribute">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -1856,7 +1859,10 @@
         <span class="kw">let </span>cfg_meta = <span class="kw">match </span>metadata(<span class="kw-2">&amp;</span>cfg_path) {
             <span class="prelude-val">Ok</span>(v) =&gt; v,
             <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">error!</span>(<span class="string">&quot;Unable to read metadata for &#39;{}&#39; during security checks - {:?}&quot;</span>, cfg_path_str, e);
+                <span class="macro">error!</span>(
+                    <span class="string">&quot;Unable to read metadata for &#39;{}&#39; during security checks - {:?}&quot;</span>,
+                    cfg_path_str, e
+                );
                 <span class="kw">return </span><span class="bool-val">false</span>;
             }
         };

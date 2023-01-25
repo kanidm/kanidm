@@ -2545,6 +2545,22 @@
 <span id="2545">2545</span>
 <span id="2546">2546</span>
 <span id="2547">2547</span>
+<span id="2548">2548</span>
+<span id="2549">2549</span>
+<span id="2550">2550</span>
+<span id="2551">2551</span>
+<span id="2552">2552</span>
+<span id="2553">2553</span>
+<span id="2554">2554</span>
+<span id="2555">2555</span>
+<span id="2556">2556</span>
+<span id="2557">2557</span>
+<span id="2558">2558</span>
+<span id="2559">2559</span>
+<span id="2560">2560</span>
+<span id="2561">2561</span>
+<span id="2562">2562</span>
+<span id="2563">2563</span>
 </pre><pre class="rust"><code><span class="kw">use </span>core::ops::Deref;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::fmt;
@@ -2567,6 +2583,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::idm::account::Account;
 <span class="kw">use </span><span class="kw">crate</span>::idm::server::{IdmServerCredUpdateTransaction, IdmServerProxyWriteTransaction};
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::server::access::Access;
 <span class="kw">use </span><span class="kw">crate</span>::utils::{backup_code_from_random, readable_password_from_random, uuid_from_duration};
 <span class="kw">use </span><span class="kw">crate</span>::value::IntentTokenState;
 
@@ -2891,10 +2908,25 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidEntryState);
         }
 
-        <span class="kw">if </span>!eperm.search.contains(<span class="string">&quot;primary_credential&quot;</span>)
-            || !eperm.modify_pres.contains(<span class="string">&quot;primary_credential&quot;</span>)
-            || !eperm.modify_rem.contains(<span class="string">&quot;primary_credential&quot;</span>)
-        {
+        <span class="kw">let </span>eperm_search_primary_cred = <span class="kw">match </span><span class="kw-2">&amp;</span>eperm.search {
+            Access::Denied =&gt; <span class="bool-val">false</span>,
+            Access::Grant =&gt; <span class="bool-val">true</span>,
+            Access::Allow(attrs) =&gt; attrs.contains(<span class="string">&quot;primary_credential&quot;</span>),
+        };
+
+        <span class="kw">let </span>eperm_mod_primary_cred = <span class="kw">match </span><span class="kw-2">&amp;</span>eperm.modify_pres {
+            Access::Denied =&gt; <span class="bool-val">false</span>,
+            Access::Grant =&gt; <span class="bool-val">true</span>,
+            Access::Allow(attrs) =&gt; attrs.contains(<span class="string">&quot;primary_credential&quot;</span>),
+        };
+
+        <span class="kw">let </span>eperm_rem_primary_cred = <span class="kw">match </span><span class="kw-2">&amp;</span>eperm.modify_rem {
+            Access::Denied =&gt; <span class="bool-val">false</span>,
+            Access::Grant =&gt; <span class="bool-val">true</span>,
+            Access::Allow(attrs) =&gt; attrs.contains(<span class="string">&quot;primary_credential&quot;</span>),
+        };
+
+        <span class="kw">if </span>!eperm_search_primary_cred || !eperm_mod_primary_cred || !eperm_rem_primary_cred {
             <span class="macro">security_info!</span>(
                 <span class="string">&quot;Requestor {} does not have permission to update credentials of {}&quot;</span>,
                 ident,
