@@ -99,16 +99,19 @@ impl TryFrom<IdRawEntry> for IdSqliteEntry {
 #[derive(Clone)]
 pub struct IdlSqlite {
     pool: Pool<SqliteConnectionManager>,
+    db_name: &'static str,
 }
 
 pub struct IdlSqliteReadTransaction {
     committed: bool,
     conn: r2d2::PooledConnection<SqliteConnectionManager>,
+    db_name: &'static str,
 }
 
 pub struct IdlSqliteWriteTransaction {
     committed: bool,
     conn: r2d2::PooledConnection<SqliteConnectionManager>,
+    db_name: &'static str,
 }
 
 pub trait IdlSqliteTransaction {
@@ -561,7 +564,7 @@ pub trait IdlSqliteTransaction {
 
 impl IdlSqliteTransaction for IdlSqliteReadTransaction {
     fn get_db_name(&self) -> &str {
-        "main"
+        self.db_name
     }
 
     fn get_conn(&self) -> &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager> {
@@ -585,7 +588,10 @@ impl Drop for IdlSqliteReadTransaction {
 }
 
 impl IdlSqliteReadTransaction {
-    pub fn new(conn: r2d2::PooledConnection<SqliteConnectionManager>) -> Self {
+    pub fn new(
+        conn: r2d2::PooledConnection<SqliteConnectionManager>,
+        db_name: &'static str,
+    ) -> Self {
         // Start the transaction
         //
         // I'm happy for this to be an expect, because this is a huge failure
@@ -599,13 +605,14 @@ impl IdlSqliteReadTransaction {
         IdlSqliteReadTransaction {
             committed: false,
             conn,
+            db_name,
         }
     }
 }
 
 impl IdlSqliteTransaction for IdlSqliteWriteTransaction {
     fn get_db_name(&self) -> &str {
-        "main"
+        self.db_name
     }
 
     fn get_conn(&self) -> &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager> {
@@ -626,7 +633,10 @@ impl Drop for IdlSqliteWriteTransaction {
 }
 
 impl IdlSqliteWriteTransaction {
-    pub fn new(conn: r2d2::PooledConnection<SqliteConnectionManager>) -> Self {
+    pub fn new(
+        conn: r2d2::PooledConnection<SqliteConnectionManager>,
+        db_name: &'static str,
+    ) -> Self {
         // Start the transaction
         #[allow(clippy::expect_used)]
         conn.execute("BEGIN EXCLUSIVE TRANSACTION", [])
@@ -634,6 +644,7 @@ impl IdlSqliteWriteTransaction {
         IdlSqliteWriteTransaction {
             committed: false,
             conn,
+            db_name,
         }
     }
 
@@ -656,7 +667,7 @@ impl IdlSqliteWriteTransaction {
             .conn
             .prepare(&format!(
                 "SELECT MAX(id) as id_max FROM {}.id2entry",
-                "main"
+                self.get_db_name(),
             ))
             .map_err(sqlite_error)?;
         // This exists checks for if any rows WERE returned
@@ -724,7 +735,7 @@ impl IdlSqliteWriteTransaction {
             .conn
             .prepare(&format!(
                 "INSERT OR REPLACE INTO {}.id2entry (id, data) VALUES(:id, :data)",
-                "main"
+                self.get_db_name()
             ))
             .map_err(sqlite_error)?;
 
@@ -781,7 +792,10 @@ impl IdlSqliteWriteTransaction {
     pub fn delete_identry(&self, id: u64) -> Result<(), OperationError> {
         let mut stmt = self
             .conn
-            .prepare(&format!("DELETE FROM {}.id2entry WHERE id = :id", "main"))
+            .prepare(&format!(
+                "DELETE FROM {}.id2entry WHERE id = :id",
+                self.get_db_name()
+            ))
             .map_err(sqlite_error)?;
 
         let iid: i64 = id
@@ -812,7 +826,7 @@ impl IdlSqliteWriteTransaction {
             // Delete this idx_key from the table.
             let query = format!(
                 "DELETE FROM {}.idx_{}_{} WHERE key = :key",
-                "main",
+                self.get_db_name(),
                 itype.as_idx_str(),
                 attr
             );
@@ -828,7 +842,7 @@ impl IdlSqliteWriteTransaction {
             // update or create it.
             let query = format!(
                 "INSERT OR REPLACE INTO {}.idx_{}_{} (key, idl) VALUES(:key, :idl)",
-                "main",
+                self.get_db_name(),
                 itype.as_idx_str(),
                 attr
             );
@@ -850,7 +864,7 @@ impl IdlSqliteWriteTransaction {
     pub fn create_name2uuid(&self) -> Result<(), OperationError> {
         self.conn
             .execute(
-                &format!("CREATE TABLE IF NOT EXISTS {}.idx_name2uuid (name TEXT PRIMARY KEY, uuid TEXT)", "main"),
+                &format!("CREATE TABLE IF NOT EXISTS {}.idx_name2uuid (name TEXT PRIMARY KEY, uuid TEXT)", self.get_db_name()),
                 [],
             )
             .map(|_| ())
@@ -863,7 +877,7 @@ impl IdlSqliteWriteTransaction {
         self.conn
             .prepare(&format!(
                 "INSERT OR REPLACE INTO {}.idx_name2uuid (name, uuid) VALUES(:name, :uuid)",
-                "main"
+                self.get_db_name()
             ))
             .and_then(|mut stmt| {
                 stmt.execute(named_params! {
@@ -879,7 +893,7 @@ impl IdlSqliteWriteTransaction {
         self.conn
             .prepare(&format!(
                 "DELETE FROM {}.idx_name2uuid WHERE name = :name",
-                "main"
+                self.get_db_name()
             ))
             .and_then(|mut stmt| stmt.execute(&[(":name", &name)]))
             .map(|_| ())
@@ -889,7 +903,7 @@ impl IdlSqliteWriteTransaction {
     pub fn create_externalid2uuid(&self) -> Result<(), OperationError> {
         self.conn
             .execute(
-                &format!("CREATE TABLE IF NOT EXISTS {}.idx_externalid2uuid (eid TEXT PRIMARY KEY, uuid TEXT)", "main"),
+                &format!("CREATE TABLE IF NOT EXISTS {}.idx_externalid2uuid (eid TEXT PRIMARY KEY, uuid TEXT)", self.get_db_name()),
                 [],
             )
             .map(|_| ())
@@ -902,7 +916,7 @@ impl IdlSqliteWriteTransaction {
         self.conn
             .prepare(&format!(
                 "INSERT OR REPLACE INTO {}.idx_externalid2uuid (eid, uuid) VALUES(:eid, :uuid)",
-                "main"
+                self.get_db_name()
             ))
             .and_then(|mut stmt| {
                 stmt.execute(named_params! {
@@ -918,7 +932,7 @@ impl IdlSqliteWriteTransaction {
         self.conn
             .prepare(&format!(
                 "DELETE FROM {}.idx_externalid2uuid WHERE eid = :eid",
-                "main"
+                self.get_db_name()
             ))
             .and_then(|mut stmt| stmt.execute(&[(":eid", &name)]))
             .map(|_| ())
@@ -930,7 +944,7 @@ impl IdlSqliteWriteTransaction {
             .execute(
                 &format!(
                     "CREATE TABLE IF NOT EXISTS {}.idx_uuid2spn (uuid TEXT PRIMARY KEY, spn BLOB)",
-                    "main"
+                    self.get_db_name()
                 ),
                 [],
             )
@@ -972,7 +986,7 @@ impl IdlSqliteWriteTransaction {
                 self.conn
                     .prepare(&format!(
                         "INSERT OR REPLACE INTO {}.idx_uuid2spn (uuid, spn) VALUES(:uuid, :spn)",
-                        "main"
+                        self.get_db_name()
                     ))
                     .and_then(|mut stmt| {
                         stmt.execute(named_params! {
@@ -987,7 +1001,7 @@ impl IdlSqliteWriteTransaction {
                 .conn
                 .prepare(&format!(
                     "DELETE FROM {}.idx_uuid2spn WHERE uuid = :uuid",
-                    "main"
+                    self.get_db_name()
                 ))
                 .and_then(|mut stmt| stmt.execute(&[(":uuid", &uuids)]))
                 .map(|_| ())
@@ -1000,7 +1014,7 @@ impl IdlSqliteWriteTransaction {
             .execute(
                 &format!(
                     "CREATE TABLE IF NOT EXISTS {}.idx_uuid2rdn (uuid TEXT PRIMARY KEY, rdn TEXT)",
-                    "main"
+                    self.get_db_name()
                 ),
                 [],
             )
@@ -1015,7 +1029,7 @@ impl IdlSqliteWriteTransaction {
                 .conn
                 .prepare(&format!(
                     "INSERT OR REPLACE INTO {}.idx_uuid2rdn (uuid, rdn) VALUES(:uuid, :rdn)",
-                    "main"
+                    self.get_db_name()
                 ))
                 .and_then(|mut stmt| stmt.execute(&[(":uuid", &uuids), (":rdn", k)]))
                 .map(|_| ())
@@ -1024,7 +1038,7 @@ impl IdlSqliteWriteTransaction {
                 .conn
                 .prepare(&format!(
                     "DELETE FROM {}.idx_uuid2rdn WHERE uuid = :uuid",
-                    "main"
+                    self.get_db_name()
                 ))
                 .and_then(|mut stmt| stmt.execute(&[(":uuid", &uuids)]))
                 .map(|_| ())
@@ -1039,7 +1053,7 @@ impl IdlSqliteWriteTransaction {
         // We could also re-design our idl storage.
         let idx_stmt = format!(
             "CREATE TABLE IF NOT EXISTS {}.idx_{}_{} (key TEXT PRIMARY KEY, idl BLOB)",
-            "main",
+            self.get_db_name(),
             itype.as_idx_str(),
             attr
         );
@@ -1057,7 +1071,7 @@ impl IdlSqliteWriteTransaction {
         idx_table_list.iter().try_for_each(|idx_table| {
             trace!(table = ?idx_table, "removing idx_table");
             self.conn
-                .prepare(format!("DROP TABLE {}.{}", "main", idx_table).as_str())
+                .prepare(format!("DROP TABLE {}.{}", self.get_db_name(), idx_table).as_str())
                 .and_then(|mut stmt| stmt.execute([]).map(|_| ()))
                 .map_err(sqlite_error)
         })
@@ -1074,7 +1088,7 @@ impl IdlSqliteWriteTransaction {
                     id TEXT PRIMARY KEY,
                     slope INTEGER
                 )",
-                    "main"
+                    self.get_db_name()
                 ),
                 [],
             )
@@ -1083,7 +1097,10 @@ impl IdlSqliteWriteTransaction {
 
         // Remove any data if it exists.
         self.conn
-            .execute(&format!("DELETE FROM {}.idxslope_analysis", "main"), [])
+            .execute(
+                &format!("DELETE FROM {}.idxslope_analysis", self.get_db_name()),
+                [],
+            )
             .map(|_| ())
             .map_err(sqlite_error)?;
 
@@ -1091,7 +1108,7 @@ impl IdlSqliteWriteTransaction {
             let key = format!("idx_{}_{}", k.itype.as_idx_str(), k.attr);
             self.conn
                 .execute(
-                    &format!("INSERT OR REPLACE INTO {}.idxslope_analysis (id, slope) VALUES(:id, :slope)", "main"),
+                    &format!("INSERT OR REPLACE INTO {}.idxslope_analysis (id, slope) VALUES(:id, :slope)", self.get_db_name()),
                     named_params! {
                         ":id": &key,
                         ":slope": &v,
@@ -1124,7 +1141,7 @@ impl IdlSqliteWriteTransaction {
             .get_conn()
             .prepare(&format!(
                 "SELECT slope FROM {}.idxslope_analysis WHERE id = :id",
-                "main"
+                self.get_db_name()
             ))
             .map_err(sqlite_error)?;
 
@@ -1140,7 +1157,7 @@ impl IdlSqliteWriteTransaction {
 
     pub unsafe fn purge_id2entry(&self) -> Result<(), OperationError> {
         self.conn
-            .execute(&format!("DELETE FROM {}.id2entry", "main"), [])
+            .execute(&format!("DELETE FROM {}.id2entry", self.get_db_name()), [])
             .map(|_| ())
             .map_err(sqlite_error)
     }
@@ -1156,7 +1173,7 @@ impl IdlSqliteWriteTransaction {
             .execute(
                 &format!(
                     "INSERT OR REPLACE INTO {}.db_sid (id, data) VALUES(:id, :sid)",
-                    "main"
+                    self.get_db_name()
                 ),
                 named_params! {
                     ":id": &2,
@@ -1182,7 +1199,7 @@ impl IdlSqliteWriteTransaction {
             .execute(
                 &format!(
                     "INSERT OR REPLACE INTO {}.db_did (id, data) VALUES(:id, :did)",
-                    "main"
+                    self.get_db_name()
                 ),
                 named_params! {
                     ":id": &2,
@@ -1208,7 +1225,7 @@ impl IdlSqliteWriteTransaction {
             .execute(
                 &format!(
                     "INSERT OR REPLACE INTO {}.db_op_ts (id, data) VALUES(:id, :did)",
-                    "main"
+                    self.get_db_name()
                 ),
                 named_params! {
                     ":id": &1,
@@ -1228,7 +1245,10 @@ impl IdlSqliteWriteTransaction {
     fn get_db_version_key(&self, key: &str) -> i64 {
         self.conn
             .query_row(
-                &format!("SELECT version FROM {}.db_version WHERE id = :id", "main"),
+                &format!(
+                    "SELECT version FROM {}.db_version WHERE id = :id",
+                    self.get_db_name()
+                ),
                 &[(":id", &key)],
                 |row| row.get(0),
             )
@@ -1243,7 +1263,7 @@ impl IdlSqliteWriteTransaction {
             .execute(
                 &format!(
                     "INSERT OR REPLACE INTO {}.db_version (id, version) VALUES(:id, :dbv_id2entry)",
-                    "main"
+                    self.get_db_name()
                 ),
                 named_params! {
                     ":id": &key,
@@ -1266,6 +1286,16 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub fn setup(&self) -> Result<(), OperationError> {
+        // If the db_name is NOT main, we MAY need to create it as we are in
+        // a test!
+        if self.get_db_name() != "main" {
+            warn!("Using non-default db-name - this database content WILL be lost!");
+            // we need to attach the DB!
+            self.conn
+                .execute(&format!("ATTACH DATABASE '' AS {}", self.get_db_name()), [])
+                .map_err(sqlite_error)?;
+        };
+
         // This stores versions of components. For example:
         // ----------------------
         // | id       | version |
@@ -1286,7 +1316,7 @@ impl IdlSqliteWriteTransaction {
                     version INTEGER
                 )
                 ",
-                    "main"
+                    self.get_db_name()
                 ),
                 [],
             )
@@ -1306,7 +1336,7 @@ impl IdlSqliteWriteTransaction {
                         data BLOB NOT NULL
                     )
                     ",
-                        "main"
+                        self.get_db_name()
                     ),
                     [],
                 )
@@ -1318,7 +1348,7 @@ impl IdlSqliteWriteTransaction {
                         data BLOB NOT NULL
                     )
                     ",
-                            "main"
+                            self.get_db_name()
                         ),
                         [],
                     )
@@ -1339,7 +1369,7 @@ impl IdlSqliteWriteTransaction {
                         data BLOB NOT NULL
                     )
                     ",
-                        "main"
+                        self.get_db_name()
                     ),
                     [],
                 )
@@ -1358,7 +1388,7 @@ impl IdlSqliteWriteTransaction {
                         data BLOB NOT NULL
                     )
                     ",
-                        "main"
+                        self.get_db_name()
                     ),
                     [],
                 )
@@ -1505,7 +1535,10 @@ impl IdlSqlite {
             OperationError::SqliteError
         })?;
 
-        Ok(IdlSqlite { pool })
+        Ok(IdlSqlite {
+            pool,
+            db_name: cfg.db_name,
+        })
     }
 
     pub(crate) fn get_allids_count(&self) -> Result<u64, OperationError> {
@@ -1526,7 +1559,7 @@ impl IdlSqlite {
             .pool
             .try_get()
             .expect("Unable to get connection from pool!!!");
-        IdlSqliteReadTransaction::new(conn)
+        IdlSqliteReadTransaction::new(conn, self.db_name)
     }
 
     pub fn write(&self) -> IdlSqliteWriteTransaction {
@@ -1535,7 +1568,7 @@ impl IdlSqlite {
             .pool
             .try_get()
             .expect("Unable to get connection from pool!!!");
-        IdlSqliteWriteTransaction::new(conn)
+        IdlSqliteWriteTransaction::new(conn, self.db_name)
     }
 }
 
@@ -1547,7 +1580,7 @@ mod tests {
     #[test]
     fn test_idl_sqlite_verify() {
         let _ = sketching::test_init();
-        let cfg = BackendConfig::new_test();
+        let cfg = BackendConfig::new_test("main");
         let be = IdlSqlite::new(&cfg, false).unwrap();
         let be_w = be.write();
         let r = be_w.verify();
