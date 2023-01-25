@@ -133,9 +133,7 @@ impl TotpRemoveComp {
             let status: CUStatus =
                 serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
 
-            cb.emit(EventBusMsg::UpdateStatus {
-                status: status.clone(),
-            });
+            cb.emit(EventBusMsg::UpdateStatus { status });
 
             Ok(Msg::Success)
         } else {

@@ -12,7 +12,7 @@ const N_GROUPS: usize = 1500;
 const N_MEMBERSHIPS: usize = 10;
 const N_NEST: usize = 4;
 
-pub(crate) fn doit(output: &Path) -> () {
+pub(crate) fn doit(output: &Path) {
     info!(
         "Performing data generation into {}",
         output.to_str().unwrap(),
@@ -68,7 +68,8 @@ pub(crate) fn doit(output: &Path) -> () {
         let mut chunk_iter = groups.chunks_mut(chunk_size);
         // Can't fail due to above checks.
         let mut p_chunk = chunk_iter.next().unwrap();
-        while let Some(w_chunk) = chunk_iter.next() {
+        // while let Some(w_chunk) = chunk_iter.next() {
+        for w_chunk in chunk_iter {
             // add items from work chunk to parent chunk
             p_chunk
                 .iter_mut()

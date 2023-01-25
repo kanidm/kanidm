@@ -45,6 +45,9 @@ pub mod recycle;
 const RESOLVE_FILTER_CACHE_MAX: usize = 4096;
 const RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
 
+pub type ResolveFilterCacheReadTxn<'a> =
+    ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>;
+
 #[derive(Debug, Clone, PartialOrd, PartialEq, Eq)]
 enum ServerPhase {
     Bootstrap,
@@ -140,9 +143,7 @@ pub trait QueryServerTransaction<'a> {
 
     fn get_domain_display_name(&self) -> &str;
 
-    fn get_resolve_filter_cache(
-        &mut self,
-    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>;
+    fn get_resolve_filter_cache(&mut self) -> &mut ResolveFilterCacheReadTxn<'a>;
 
     // Because of how borrowck in rust works, if we need to get two inner types we have to get them
     // in a single fn.
@@ -151,7 +152,7 @@ pub trait QueryServerTransaction<'a> {
         &mut self,
     ) -> (
         &mut Self::BackendTransactionType,
-        &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+        &mut ResolveFilterCacheReadTxn<'a>,
     );
 
     /// Conduct a search and apply access controls to yield a set of entries that
