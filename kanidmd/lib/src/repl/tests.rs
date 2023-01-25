@@ -4,4 +4,3 @@
 async fn multiple_qs_setup() {
     assert!(true);
 }
-
