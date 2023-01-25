@@ -34,13 +34,16 @@ use self::profiles::{
     AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
 };
 
-use self::search::{apply_search_access, SearchResult};
-
+use self::create::{apply_create_access, CreateResult};
+use self::delete::{apply_delete_access, DeleteResult};
 use self::modify::{apply_modify_access, ModifyResult};
+use self::search::{apply_search_access, SearchResult};
 
 const ACP_RESOLVE_FILTER_CACHE_MAX: usize = 2048;
 const ACP_RESOLVE_FILTER_CACHE_LOCAL: usize = 16;
 
+mod create;
+mod delete;
 mod modify;
 pub mod profiles;
 mod search;
@@ -536,30 +539,6 @@ pub trait AccessControlsTransaction<'a> {
         ce: &CreateEvent,
         entries: &[Entry<EntryInit, EntryNew>],
     ) -> Result<bool, OperationError> {
-        match &ce.ident.origin {
-            IdentType::Internal => {
-                trace!("Internal operation, bypassing access check");
-                // No need to check ACS
-                return Ok(true);
-            }
-            IdentType::Synch(_) => {
-                security_critical!("Blocking sync check");
-                return Err(OperationError::InvalidState);
-            }
-            IdentType::User(_) => {}
-        };
-        info!(event = %ce.ident, "Access check for create event");
-
-        match ce.ident.access_scope() {
-            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise => {
-                security_access!("denied ❌ - identity access scope is not permitted to create");
-                return Ok(false);
-            }
-            AccessScope::ReadWrite => {
-                // As you were
-            }
-        };
-
         // Some useful references we'll use for the remainder of the operation
         let create_state = self.get_create();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
@@ -591,72 +570,12 @@ pub trait AccessControlsTransaction<'a> {
             })
             .collect();
 
-        // lsecurity_access!( "Related acc -> {:?}", related_acp);
-
         // For each entry
         let r = entries.iter().all(|e| {
-            // Build the set of requested classes and attrs here.
-            let create_attrs: BTreeSet<&str> = e.get_ava_names().collect();
-            // If this is empty, we make an empty set, which is fine because
-            // the empty class set despite matching is_subset, will have the
-            // following effect:
-            // * there is no class on entry, so schema will fail
-            // * plugin-base will add object to give a class, but excess
-            //   attrs will cause fail (could this be a weakness?)
-            // * class is a "may", so this could be empty in the rules, so
-            //   if the accr is empty this would not be a true subset,
-            //   so this would "fail", but any content in the accr would
-            //   have to be validated.
-            //
-            // I still think if this is None, we should just fail here ...
-            // because it shouldn't be possible to match.
-
-            let create_classes: BTreeSet<&str> = match e.get_ava_iter_iutf8("class") {
-                Some(s) => s.collect(),
-                None => {
-                    admin_error!("Class set failed to build - corrupted entry?");
-                    return false;
-                }
-            };
-
-            related_acp.iter().any(|(accr, f_res)| {
-                // Check to see if allowed.
-                if e.entry_match_no_index(f_res) {
-                    security_access!(?e, acs = ?accr, "entry matches acs");
-                    // It matches, so now we have to check attrs and classes.
-                    // Remember, we have to match ALL requested attrs
-                    // and classes to pass!
-                    let allowed_attrs: BTreeSet<&str> =
-                        accr.attrs.iter().map(|s| s.as_str()).collect();
-                    let allowed_classes: BTreeSet<&str> =
-                        accr.classes.iter().map(|s| s.as_str()).collect();
-
-                    if !create_attrs.is_subset(&allowed_attrs) {
-                        security_access!("create_attrs is not a subset of allowed");
-                        security_access!("{:?} !⊆ {:?}", create_attrs, allowed_attrs);
-                        return false;
-                    }
-                    if !create_classes.is_subset(&allowed_classes) {
-                        security_access!("create_classes is not a subset of allowed");
-                        security_access!("{:?} !⊆ {:?}", create_classes, allowed_classes);
-                        return false;
-                    }
-                    security_access!("passed");
-
-                    true
-                } else {
-                    trace!(?e, acs = %accr.acp.name, "entry DOES NOT match acs");
-                    // Does not match, fail this rule.
-                    false
-                }
-            })
-            //      Find the set of related acps for this entry.
-            //
-            //      For each "created" entry.
-            //          If the created entry is 100% allowed by this acp
-            //          IE: all attrs to be created AND classes match classes
-            //              allow
-            //          if no acp allows, fail operation.
+            match apply_create_access(&ce.ident, related_acp.as_slice(), &e) {
+                CreateResult::Denied => false,
+                CreateResult::Grant => true,
+            }
         });
 
         if r {
@@ -712,61 +631,15 @@ pub trait AccessControlsTransaction<'a> {
         de: &DeleteEvent,
         entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<bool, OperationError> {
-        match &de.ident.origin {
-            IdentType::Internal => {
-                trace!("Internal operation, bypassing access check");
-                // No need to check ACS
-                return Ok(true);
-            }
-            IdentType::Synch(_) => {
-                security_critical!("Blocking sync check");
-                return Err(OperationError::InvalidState);
-            }
-            IdentType::User(_) => {}
-        };
-        info!(event = %de.ident, "Access check for delete event");
-
-        match de.ident.access_scope() {
-            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise => {
-                security_access!("denied ❌ - identity access scope is not permitted to delete");
-                return Ok(false);
-            }
-            AccessScope::ReadWrite => {
-                // As you were
-            }
-        };
-
         // Find the acps that relate to the caller.
         let related_acp = self.delete_related_acp(&de.ident);
 
-        /*
-        related_acp.iter().for_each(|racp| {
-            lsecurity_access!( "Related acs -> {:?}", racp.acp.name);
-        });
-        */
-
         // For each entry
         let r = entries.iter().all(|e| {
-            related_acp.iter().any(|(acd, f_res)| {
-                if e.entry_match_no_index(f_res) {
-                    security_access!(
-                        entry_uuid = ?e.get_uuid(),
-                        acs = %acd.acp.name,
-                        "entry matches acs"
-                    );
-                    // It matches, so we can delete this!
-                    security_access!("passed");
-                    true
-                } else {
-                    trace!(
-                        "entry {:?} DOES NOT match acs {}",
-                        e.get_uuid(),
-                        acd.acp.name
-                    );
-                    // Does not match, fail.
-                    false
-                } // else
-            }) // any related_acp
+            match apply_delete_access(&de.ident, related_acp.as_slice(), &e) {
+                DeleteResult::Denied => false,
+                DeleteResult::Grant => true,
+            }
         });
         if r {
             security_access!("allowed ✅");
