@@ -108,6 +108,7 @@ impl IdxMeta {
 pub struct BackendConfig {
     path: String,
     pool_size: u32,
+    db_name: &'static str,
     fstype: FsType,
     // Cachesizes?
     arcsize: Option<usize>,
@@ -118,15 +119,17 @@ impl BackendConfig {
         BackendConfig {
             pool_size,
             path: path.to_string(),
+            db_name: "main",
             fstype,
             arcsize,
         }
     }
 
-    pub(crate) fn new_test() -> Self {
+    pub(crate) fn new_test(db_name: &'static str) -> Self {
         BackendConfig {
             pool_size: 1,
             path: "".to_string(),
+            db_name,
             fstype: FsType::Generic,
             arcsize: Some(1024),
         }
@@ -1834,7 +1837,7 @@ mod tests {
                 },
             ];
 
-            let be = Backend::new(BackendConfig::new_test(), idxmeta, false)
+            let be = Backend::new(BackendConfig::new_test("main"), idxmeta, false)
                 .expect("Failed to setup backend");
 
             let mut be_txn = be.write();
@@ -3163,5 +3166,69 @@ mod tests {
             let res = be.exists(&lim_deny, &filt);
             assert!(res == Err(OperationError::ResourceLimit));
         })
+    }
+
+    #[test]
+    fn test_be_mulitple_create() {
+        let _ = sketching::test_init();
+
+        // This is a demo idxmeta, purely for testing.
+        let idxmeta = vec![IdxKey {
+            attr: AttrString::from("uuid"),
+            itype: IndexType::Equality,
+        }];
+
+        let be_a = Backend::new(BackendConfig::new_test("main"), idxmeta.clone(), false)
+            .expect("Failed to setup backend");
+
+        let be_b = Backend::new(BackendConfig::new_test("db_2"), idxmeta, false)
+            .expect("Failed to setup backend");
+
+        let mut be_a_txn = be_a.write();
+        let mut be_b_txn = be_b.write();
+
+        assert!(be_a_txn.get_db_s_uuid() != be_b_txn.get_db_s_uuid());
+
+        // Create into A
+        let mut e: Entry<EntryInit, EntryNew> = Entry::new();
+        e.add_ava("userid", Value::from("william"));
+        e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+        let e = unsafe { e.into_sealed_new() };
+
+        let single_result = be_a_txn.create(&CID_ZERO, vec![e.clone()]);
+
+        assert!(single_result.is_ok());
+
+        // Assert it's in A but not B.
+        let filt = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_utf8s("william"))) };
+
+        let lims = Limits::unlimited();
+
+        let r = be_a_txn.search(&lims, &filt);
+        assert!(r.expect("Search failed!").len() == 1);
+
+        let r = be_b_txn.search(&lims, &filt);
+        assert!(r.expect("Search failed!").len() == 0);
+
+        // Create into B
+        let mut e: Entry<EntryInit, EntryNew> = Entry::new();
+        e.add_ava("userid", Value::from("claire"));
+        e.add_ava("uuid", Value::from("0c680959-0944-47d6-9dea-53304d124266"));
+        let e = unsafe { e.into_sealed_new() };
+
+        let single_result = be_b_txn.create(&CID_ZERO, vec![e.clone()]);
+
+        assert!(single_result.is_ok());
+
+        // Assert it's in B but not A
+        let filt = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire"))) };
+
+        let lims = Limits::unlimited();
+
+        let r = be_a_txn.search(&lims, &filt);
+        assert!(r.expect("Search failed!").len() == 0);
+
+        let r = be_b_txn.search(&lims, &filt);
+        assert!(r.expect("Search failed!").len() == 1);
     }
 }

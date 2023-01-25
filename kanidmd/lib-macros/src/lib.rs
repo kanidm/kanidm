@@ -23,6 +23,11 @@ pub fn qs_test(args: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
+pub fn qs_pair_test(args: TokenStream, item: TokenStream) -> TokenStream {
+    entry::qs_pair_test(&args, item, true)
+}
+
+#[proc_macro_attribute]
 pub fn qs_test_no_init(args: TokenStream, item: TokenStream) -> TokenStream {
     entry::qs_test(&args, item, false)
 }

@@ -168,8 +168,7 @@ mod tests {
         let filt = filter!(f_eq("name", PartialValue::new_iname("testperson")));
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
-        let se1 = unsafe { SearchEvent::new_impersonate_entry(admin.clone(), filt.clone()) };
-        let se2 = unsafe { SearchEvent::new_impersonate_entry(admin, filt) };
+        let se1 = unsafe { SearchEvent::new_impersonate_entry(admin, filt) };
 
         let mut e = entry_init!(
             ("class", Value::new_class("object")),
@@ -193,7 +192,7 @@ mod tests {
         let cr = server_txn.create(&ce);
         assert!(cr.is_ok());
 
-        let r2 = server_txn.search(&se2).expect("search failure");
+        let r2 = server_txn.search(&se1).expect("search failure");
         debug!("--> {:?}", r2);
         assert!(r2.len() == 1);
 
@@ -209,5 +208,52 @@ mod tests {
         assert_eq!(r2, expected);
 
         assert!(server_txn.commit().is_ok());
+    }
+
+    #[qs_pair_test]
+    async fn test_pair_create_user(server_a: &QueryServer, server_b: &QueryServer) {
+        let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+        let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+        // Create on server a
+        let filt = filter!(f_eq("name", PartialValue::new_iname("testperson")));
+
+        let admin = server_a_txn
+            .internal_search_uuid(UUID_ADMIN)
+            .expect("failed");
+        let se_a = unsafe { SearchEvent::new_impersonate_entry(admin, filt.clone()) };
+
+        let admin = server_b_txn
+            .internal_search_uuid(UUID_ADMIN)
+            .expect("failed");
+        let se_b = unsafe { SearchEvent::new_impersonate_entry(admin, filt) };
+
+        let e = entry_init!(
+            ("class", Value::new_class("person")),
+            ("class", Value::new_class("account")),
+            ("name", Value::new_iname("testperson")),
+            ("description", Value::new_utf8s("testperson")),
+            ("displayname", Value::new_utf8s("testperson"))
+        );
+
+        let cr = server_a_txn.internal_create(vec![e.clone()]);
+        assert!(cr.is_ok());
+
+        let r1 = server_a_txn.search(&se_a).expect("search failure");
+        assert!(!r1.is_empty());
+
+        // Not on sb
+        let r2 = server_b_txn.search(&se_b).expect("search failure");
+        assert!(r2.is_empty());
+
+        let cr = server_b_txn.internal_create(vec![e.clone()]);
+        assert!(cr.is_ok());
+
+        // Now is present
+        let r2 = server_b_txn.search(&se_b).expect("search failure");
+        assert!(!r2.is_empty());
+
+        assert!(server_a_txn.commit().is_ok());
+        assert!(server_b_txn.commit().is_ok());
     }
 }

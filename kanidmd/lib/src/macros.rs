@@ -9,8 +9,8 @@ macro_rules! setup_test {
             let schema_txn = schema_outer.write_blocking();
             schema_txn.reload_idxmeta()
         };
-        let be =
-            Backend::new(BackendConfig::new_test(), idxmeta, false).expect("Failed to init BE");
+        let be = Backend::new(BackendConfig::new_test("main"), idxmeta, false)
+            .expect("Failed to init BE");
 
         let qs = QueryServer::new(be, schema_outer, "example.com".to_string());
         async_std::task::block_on(qs.initialise_helper(duration_from_epoch_now()))
@@ -30,8 +30,8 @@ macro_rules! setup_test {
             let schema_txn = schema_outer.write();
             schema_txn.reload_idxmeta()
         };
-        let be =
-            Backend::new(BackendConfig::new_test(), idxmeta, false).expect("Failed to init BE");
+        let be = Backend::new(BackendConfig::new_test("main"), idxmeta, false)
+            .expect("Failed to init BE");
 
         let qs = QueryServer::new(be, schema_outer, "example.com".to_string());
         async_std::task::block_on(qs.initialise_helper(duration_from_epoch_now()))
