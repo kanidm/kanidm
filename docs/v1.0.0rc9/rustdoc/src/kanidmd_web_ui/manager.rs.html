@@ -124,6 +124,8 @@
 <span id="124">124</span>
 <span id="125">125</span>
 <span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This is the top level router of the web ui for kanidm. It decides based on the incoming
 //! request, where to direct this too, and if the requirements for that request have been
 //! met before rendering. For example, if you land here with an oauth request, but you are
@@ -174,7 +176,9 @@
     <span class="macro">html! </span>{ &lt;main&gt;&lt;/main&gt; }
 }
 
-<span class="kw">fn </span>switch(route: Route) -&gt; Html {
+<span class="comment">// Needed for yew to pass by value
+</span><span class="attribute">#[allow(clippy::needless_pass_by_value)]
+</span><span class="kw">fn </span>switch(route: Route) -&gt; Html {
     <span class="attribute">#[cfg(debug_assertions)]
     </span><span class="macro">console::debug!</span>(<span class="string">&quot;manager::switch&quot;</span>);
     <span class="kw">match </span>route {

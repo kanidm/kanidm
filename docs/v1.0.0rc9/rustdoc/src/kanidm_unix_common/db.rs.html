@@ -1132,10 +1132,6 @@
 <span id="1132">1132</span>
 <span id="1133">1133</span>
 <span id="1134">1134</span>
-<span id="1135">1135</span>
-<span id="1136">1136</span>
-<span id="1137">1137</span>
-<span id="1138">1138</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::TryFrom;
 <span class="kw">use </span>std::fmt;
 <span class="kw">use </span>std::time::Duration;
@@ -1224,7 +1220,7 @@
     }
 
     <span class="doccomment">/// This handles an error coming back from an sqlite event and dumps more information from it
-    </span><span class="kw">fn </span>sqlite_error(<span class="kw-2">&amp;</span><span class="self">self</span>, msg: <span class="kw-2">&amp;</span>str, error: rusqlite::Error) {
+    </span><span class="kw">fn </span>sqlite_error(<span class="kw-2">&amp;</span><span class="self">self</span>, msg: <span class="kw-2">&amp;</span>str, error: <span class="kw-2">&amp;</span>rusqlite::Error) {
         <span class="macro">error!</span>(
             <span class="string">&quot;sqlite {} error: {:?} db_path={:?}&quot;</span>,
             msg,
@@ -1234,7 +1230,7 @@
     }
 
     <span class="doccomment">/// This handles an error coming back from an sqlite transaction and dumps a load of information from it
-    </span><span class="kw">fn </span>sqlite_transaction_error(<span class="kw-2">&amp;</span><span class="self">self</span>, error: rusqlite::Error, _stmt: <span class="kw-2">&amp;</span>rusqlite::Statement) {
+    </span><span class="kw">fn </span>sqlite_transaction_error(<span class="kw-2">&amp;</span><span class="self">self</span>, error: <span class="kw-2">&amp;</span>rusqlite::Error, _stmt: <span class="kw-2">&amp;</span>rusqlite::Statement) {
         <span class="macro">error!</span>(
             <span class="string">&quot;sqlite transaction error={:?} db_path={:?}&quot;</span>,
             error,
@@ -1249,7 +1245,7 @@
             .prepare(<span class="string">&quot;PRAGMA journal_mode=WAL;&quot;</span>)
             .and_then(|<span class="kw-2">mut </span>wal_stmt| wal_stmt.query([]).map(|<span class="kw">_</span>| ()))
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;account_t create&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;account_t create&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
 
         <span class="comment">// Setup two tables - one for accounts, one for groups.
@@ -1270,7 +1266,7 @@
                 [],
             )
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;account_t create&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;account_t create&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
 
         <span class="self">self</span>.conn
@@ -1287,7 +1283,7 @@
                 [],
             )
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;group_t create&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;group_t create&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
 
         <span class="self">self</span>.conn
@@ -1302,7 +1298,7 @@
                 [],
             )
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;memberof_t create error&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;memberof_t create error&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
@@ -1320,7 +1316,7 @@
             .execute(<span class="string">&quot;COMMIT TRANSACTION&quot;</span>, [])
             .map(|<span class="kw">_</span>| ())
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;commit&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;commit&quot;</span>, <span class="kw-2">&amp;</span>e);
             })
     }
 
@@ -1328,13 +1324,13 @@
         <span class="self">self</span>.conn
             .execute(<span class="string">&quot;UPDATE group_t SET expiry = 0&quot;</span>, [])
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;update group_t&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;update group_t&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
 
         <span class="self">self</span>.conn
             .execute(<span class="string">&quot;UPDATE account_t SET expiry = 0&quot;</span>, [])
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;update account_t&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;update account_t&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
@@ -1342,13 +1338,13 @@
 
     <span class="kw">pub fn </span>clear_cache(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
         <span class="self">self</span>.conn.execute(<span class="string">&quot;DELETE FROM group_t&quot;</span>, []).map_err(|e| {
-            <span class="self">self</span>.sqlite_error(<span class="string">&quot;delete group_t&quot;</span>, e);
+            <span class="self">self</span>.sqlite_error(<span class="string">&quot;delete group_t&quot;</span>, <span class="kw-2">&amp;</span>e);
         })<span class="question-mark">?</span>;
 
         <span class="self">self</span>.conn
             .execute(<span class="string">&quot;DELETE FROM account_t&quot;</span>, [])
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;delete group_t&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;delete group_t&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
@@ -1360,19 +1356,19 @@
         <span class="string">&quot;SELECT token, expiry FROM account_t WHERE uuid = :account_id OR name = :account_id OR spn = :account_id&quot;
             </span>)
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;select prepare&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;select prepare&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
 
         <span class="comment">// Makes tuple (token, expiry)
         </span><span class="kw">let </span>data_iter = stmt
-            .query_map(<span class="kw-2">&amp;</span>[account_id], |row| <span class="prelude-val">Ok</span>((row.get(<span class="number">0</span>)<span class="question-mark">?</span>, row.get(<span class="number">1</span>)<span class="question-mark">?</span>)))
+            .query_map([account_id], |row| <span class="prelude-val">Ok</span>((row.get(<span class="number">0</span>)<span class="question-mark">?</span>, row.get(<span class="number">1</span>)<span class="question-mark">?</span>)))
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;query_map failure&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;query_map failure&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
         <span class="kw">let </span>data: <span class="prelude-ty">Result</span>&lt;Vec&lt;(Vec&lt;u8&gt;, i64)&gt;, <span class="kw">_</span>&gt; = data_iter
             .map(|v| {
                 v.map_err(|e| {
-                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;map failure&quot;</span>, e);
+                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;map failure&quot;</span>, <span class="kw-2">&amp;</span>e);
                 })
             })
             .collect();
@@ -1384,19 +1380,19 @@
             </span>.conn
             .prepare(<span class="string">&quot;SELECT token, expiry FROM account_t WHERE gidnumber = :gid&quot;</span>)
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;select prepare&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;select prepare&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
 
         <span class="comment">// Makes tuple (token, expiry)
         </span><span class="kw">let </span>data_iter = stmt
             .query_map(<span class="macro">params!</span>[gid], |row| <span class="prelude-val">Ok</span>((row.get(<span class="number">0</span>)<span class="question-mark">?</span>, row.get(<span class="number">1</span>)<span class="question-mark">?</span>)))
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;query_map&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;query_map&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
         <span class="kw">let </span>data: <span class="prelude-ty">Result</span>&lt;Vec&lt;(Vec&lt;u8&gt;, i64)&gt;, <span class="kw">_</span>&gt; = data_iter
             .map(|v| {
                 v.map_err(|e| {
-                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;map&quot;</span>, e);
+                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;map&quot;</span>, <span class="kw-2">&amp;</span>e);
                 })
             })
             .collect();
@@ -1441,16 +1437,16 @@
             </span>.conn
             .prepare(<span class="string">&quot;SELECT token FROM account_t&quot;</span>)
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;select prepare&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;select prepare&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>data_iter = stmt.query_map([], |row| <span class="prelude-val">Ok</span>(row.get(<span class="number">0</span>)<span class="question-mark">?</span>)).map_err(|e| {
-            <span class="self">self</span>.sqlite_error(<span class="string">&quot;query_map&quot;</span>, e);
+        <span class="kw">let </span>data_iter = stmt.query_map([], |row| row.get(<span class="number">0</span>)).map_err(|e| {
+            <span class="self">self</span>.sqlite_error(<span class="string">&quot;query_map&quot;</span>, <span class="kw-2">&amp;</span>e);
         })<span class="question-mark">?</span>;
         <span class="kw">let </span>data: <span class="prelude-ty">Result</span>&lt;Vec&lt;Vec&lt;u8&gt;&gt;, <span class="kw">_</span>&gt; = data_iter
             .map(|v| {
                 v.map_err(|e| {
-                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;map&quot;</span>, e);
+                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;map&quot;</span>, <span class="kw-2">&amp;</span>e);
                 })
             })
             .collect();
@@ -1493,7 +1489,7 @@
             }
             )
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;delete account_t duplicate&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;delete account_t duplicate&quot;</span>, <span class="kw-2">&amp;</span>e);
             })
             .map(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
 
@@ -1509,14 +1505,14 @@
             }
             )
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;delete account_t duplicate&quot;</span>,e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;delete account_t duplicate&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
 
         <span class="kw">if </span>updated == <span class="number">0 </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>stmt = <span class="self">self</span>.conn
                 .prepare(<span class="string">&quot;INSERT INTO account_t (uuid, name, spn, gidnumber, token, expiry) VALUES (:uuid, :name, :spn, :gidnumber, :token, :expiry) ON CONFLICT(uuid) DO UPDATE SET name=excluded.name, spn=excluded.name, gidnumber=excluded.gidnumber, token=excluded.token, expiry=excluded.expiry&quot;</span>)
                 .map_err(|e| {
-                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;prepare&quot;</span>,e);
+                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;prepare&quot;</span>, <span class="kw-2">&amp;</span>e);
                 })<span class="question-mark">?</span>;
 
             stmt.execute(<span class="macro">named_params! </span>{
@@ -1531,7 +1527,7 @@
                 <span class="macro">debug!</span>(<span class="string">&quot;insert -&gt; {:?}&quot;</span>, r);
             })
             .map_err(|error| {
-                <span class="self">self</span>.sqlite_transaction_error(error, <span class="kw-2">&amp;</span>stmt);
+                <span class="self">self</span>.sqlite_transaction_error(<span class="kw-2">&amp;</span>error, <span class="kw-2">&amp;</span>stmt);
             })<span class="question-mark">?</span>;
         }
 
@@ -1542,21 +1538,21 @@
             </span>.conn
             .prepare(<span class="string">&quot;DELETE FROM memberof_t WHERE a_uuid = :a_uuid&quot;</span>)
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;prepare&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;prepare&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
-        stmt.execute(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>account.uuid])
+        stmt.execute([<span class="kw-2">&amp;</span>account.uuid])
             .map(|r| {
                 <span class="macro">debug!</span>(<span class="string">&quot;delete memberships -&gt; {:?}&quot;</span>, r);
             })
             .map_err(|error| {
-                <span class="self">self</span>.sqlite_transaction_error(error, <span class="kw-2">&amp;</span>stmt);
+                <span class="self">self</span>.sqlite_transaction_error(<span class="kw-2">&amp;</span>error, <span class="kw-2">&amp;</span>stmt);
             })<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>stmt = <span class="self">self
             </span>.conn
             .prepare(<span class="string">&quot;INSERT INTO memberof_t (a_uuid, g_uuid) VALUES (:a_uuid, :g_uuid)&quot;</span>)
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;prepare&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;prepare&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
         <span class="comment">// Now for each group, add the relation.
         </span>account.groups.iter().try_for_each(|g| {
@@ -1568,7 +1564,7 @@
                 <span class="macro">debug!</span>(<span class="string">&quot;insert membership -&gt; {:?}&quot;</span>, r);
             })
             .map_err(|error| {
-                <span class="self">self</span>.sqlite_transaction_error(error, <span class="kw-2">&amp;</span>stmt);
+                <span class="self">self</span>.sqlite_transaction_error(<span class="kw-2">&amp;</span>error, <span class="kw-2">&amp;</span>stmt);
             })
         })
     }
@@ -1581,12 +1577,12 @@
             )
             .map(|<span class="kw">_</span>| ())
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;memberof_t create&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;memberof_t create&quot;</span>, <span class="kw-2">&amp;</span>e);
             })
     }
 
     <span class="kw">pub fn </span>update_account_password(<span class="kw-2">&amp;</span><span class="self">self</span>, a_uuid: <span class="kw-2">&amp;</span>str, cred: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
-        <span class="kw">let </span>pw = Password::new(<span class="kw-2">&amp;</span><span class="self">self</span>.crypto_policy, cred).map_err(|e| {
+        <span class="kw">let </span>pw = Password::new(<span class="self">self</span>.crypto_policy, cred).map_err(|e| {
             <span class="macro">error!</span>(<span class="string">&quot;password error -&gt; {:?}&quot;</span>, e);
         })<span class="question-mark">?</span>;
         <span class="kw">let </span>dbpw = pw.to_dbpasswordv1();
@@ -1603,7 +1599,7 @@
                 },
             )
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;update account_t password&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;update account_t password&quot;</span>, <span class="kw-2">&amp;</span>e);
             })
             .map(|<span class="kw">_</span>| ())
     }
@@ -1613,19 +1609,17 @@
             </span>.conn
             .prepare(<span class="string">&quot;SELECT password FROM account_t WHERE uuid = :a_uuid AND password IS NOT NULL&quot;</span>)
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;select prepare&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;select prepare&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
 
         <span class="comment">// Makes tuple (token, expiry)
-        </span><span class="kw">let </span>data_iter = stmt
-            .query_map(<span class="kw-2">&amp;</span>[a_uuid], |row| <span class="prelude-val">Ok</span>(row.get(<span class="number">0</span>)<span class="question-mark">?</span>))
-            .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;query_map&quot;</span>, e);
-            })<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>data_iter = stmt.query_map([a_uuid], |row| row.get(<span class="number">0</span>)).map_err(|e| {
+            <span class="self">self</span>.sqlite_error(<span class="string">&quot;query_map&quot;</span>, <span class="kw-2">&amp;</span>e);
+        })<span class="question-mark">?</span>;
         <span class="kw">let </span>data: <span class="prelude-ty">Result</span>&lt;Vec&lt;Vec&lt;u8&gt;&gt;, <span class="kw">_</span>&gt; = data_iter
             .map(|v| {
                 v.map_err(|e| {
-                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;map&quot;</span>, e);
+                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;map&quot;</span>, <span class="kw-2">&amp;</span>e);
                 })
             })
             .collect();
@@ -1664,19 +1658,19 @@
         <span class="string">&quot;SELECT token, expiry FROM group_t WHERE uuid = :grp_id OR name = :grp_id OR spn = :grp_id&quot;
             </span>)
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;select prepare&quot;</span>,e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;select prepare&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
 
         <span class="comment">// Makes tuple (token, expiry)
         </span><span class="kw">let </span>data_iter = stmt
-            .query_map(<span class="kw-2">&amp;</span>[grp_id], |row| <span class="prelude-val">Ok</span>((row.get(<span class="number">0</span>)<span class="question-mark">?</span>, row.get(<span class="number">1</span>)<span class="question-mark">?</span>)))
+            .query_map([grp_id], |row| <span class="prelude-val">Ok</span>((row.get(<span class="number">0</span>)<span class="question-mark">?</span>, row.get(<span class="number">1</span>)<span class="question-mark">?</span>)))
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;query_map&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;query_map&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
         <span class="kw">let </span>data: <span class="prelude-ty">Result</span>&lt;Vec&lt;(Vec&lt;u8&gt;, i64)&gt;, <span class="kw">_</span>&gt; = data_iter
             .map(|v| {
                 v.map_err(|e| {
-                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;map&quot;</span>, e);
+                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;map&quot;</span>, <span class="kw-2">&amp;</span>e);
                 })
             })
             .collect();
@@ -1688,19 +1682,19 @@
             </span>.conn
             .prepare(<span class="string">&quot;SELECT token, expiry FROM group_t WHERE gidnumber = :gid&quot;</span>)
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;select prepare&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;select prepare&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
 
         <span class="comment">// Makes tuple (token, expiry)
         </span><span class="kw">let </span>data_iter = stmt
             .query_map(<span class="macro">params!</span>[gid], |row| <span class="prelude-val">Ok</span>((row.get(<span class="number">0</span>)<span class="question-mark">?</span>, row.get(<span class="number">1</span>)<span class="question-mark">?</span>)))
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;query_map&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;query_map&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
         <span class="kw">let </span>data: <span class="prelude-ty">Result</span>&lt;Vec&lt;(Vec&lt;u8&gt;, i64)&gt;, <span class="kw">_</span>&gt; = data_iter
             .map(|v| {
                 v.map_err(|e| {
-                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;map&quot;</span>, e);
+                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;map&quot;</span>, <span class="kw-2">&amp;</span>e);
                 })
             })
             .collect();
@@ -1745,18 +1739,16 @@
             </span>.conn
             .prepare(<span class="string">&quot;SELECT account_t.token FROM (account_t, memberof_t) WHERE account_t.uuid = memberof_t.a_uuid AND memberof_t.g_uuid = :g_uuid&quot;</span>)
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;select prepare&quot;</span>,e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;select prepare&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>data_iter = stmt
-            .query_map(<span class="kw-2">&amp;</span>[g_uuid], |row| <span class="prelude-val">Ok</span>(row.get(<span class="number">0</span>)<span class="question-mark">?</span>))
-            .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;query_map&quot;</span>, e);
-            })<span class="question-mark">?</span>;
+        <span class="kw">let </span>data_iter = stmt.query_map([g_uuid], |row| row.get(<span class="number">0</span>)).map_err(|e| {
+            <span class="self">self</span>.sqlite_error(<span class="string">&quot;query_map&quot;</span>, <span class="kw-2">&amp;</span>e);
+        })<span class="question-mark">?</span>;
         <span class="kw">let </span>data: <span class="prelude-ty">Result</span>&lt;Vec&lt;Vec&lt;u8&gt;&gt;, <span class="kw">_</span>&gt; = data_iter
             .map(|v| {
                 v.map_err(|e| {
-                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;map&quot;</span>, e);
+                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;map&quot;</span>, <span class="kw-2">&amp;</span>e);
                 })
             })
             .collect();
@@ -1779,16 +1771,16 @@
             </span>.conn
             .prepare(<span class="string">&quot;SELECT token FROM group_t&quot;</span>)
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;select prepare&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;select prepare&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>data_iter = stmt.query_map([], |row| <span class="prelude-val">Ok</span>(row.get(<span class="number">0</span>)<span class="question-mark">?</span>)).map_err(|e| {
-            <span class="self">self</span>.sqlite_error(<span class="string">&quot;query_map&quot;</span>, e);
+        <span class="kw">let </span>data_iter = stmt.query_map([], |row| row.get(<span class="number">0</span>)).map_err(|e| {
+            <span class="self">self</span>.sqlite_error(<span class="string">&quot;query_map&quot;</span>, <span class="kw-2">&amp;</span>e);
         })<span class="question-mark">?</span>;
         <span class="kw">let </span>data: <span class="prelude-ty">Result</span>&lt;Vec&lt;Vec&lt;u8&gt;&gt;, <span class="kw">_</span>&gt; = data_iter
             .map(|v| {
                 v.map_err(|e| {
-                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;map&quot;</span>, e);
+                    <span class="self">self</span>.sqlite_error(<span class="string">&quot;map&quot;</span>, <span class="kw-2">&amp;</span>e);
                 })
             })
             .collect();
@@ -1820,7 +1812,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>stmt = <span class="self">self</span>.conn
             .prepare(<span class="string">&quot;INSERT OR REPLACE INTO group_t (uuid, name, spn, gidnumber, token, expiry) VALUES (:uuid, :name, :spn, :gidnumber, :token, :expiry)&quot;</span>)
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;prepare&quot;</span>,e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;prepare&quot;</span>, <span class="kw-2">&amp;</span>e);
             })<span class="question-mark">?</span>;
 
         stmt.execute(<span class="macro">named_params! </span>{
@@ -1835,16 +1827,16 @@
             <span class="macro">debug!</span>(<span class="string">&quot;insert -&gt; {:?}&quot;</span>, r);
         })
         .map_err(|e| {
-            <span class="self">self</span>.sqlite_error(<span class="string">&quot;execute&quot;</span>, e);
+            <span class="self">self</span>.sqlite_error(<span class="string">&quot;execute&quot;</span>, <span class="kw-2">&amp;</span>e);
         })
     }
 
     <span class="kw">pub fn </span>delete_group(<span class="kw-2">&amp;</span><span class="self">self</span>, g_uuid: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
         <span class="self">self</span>.conn
-            .execute(<span class="string">&quot;DELETE FROM group_t WHERE uuid = :g_uuid&quot;</span>, <span class="kw-2">&amp;</span>[g_uuid])
+            .execute(<span class="string">&quot;DELETE FROM group_t WHERE uuid = :g_uuid&quot;</span>, [g_uuid])
             .map(|<span class="kw">_</span>| ())
             .map_err(|e| {
-                <span class="self">self</span>.sqlite_error(<span class="string">&quot;memberof_t create&quot;</span>, e);
+                <span class="self">self</span>.sqlite_error(<span class="string">&quot;memberof_t create&quot;</span>, <span class="kw-2">&amp;</span>e);
             })
     }
 }

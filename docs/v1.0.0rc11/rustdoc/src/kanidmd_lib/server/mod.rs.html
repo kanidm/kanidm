@@ -1748,6 +1748,7 @@
 <span id="1748">1748</span>
 <span id="1749">1749</span>
 <span id="1750">1750</span>
+<span id="1751">1751</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
@@ -1794,6 +1795,9 @@
 
 <span class="kw">const </span>RESOLVE_FILTER_CACHE_MAX: usize = <span class="number">4096</span>;
 <span class="kw">const </span>RESOLVE_FILTER_CACHE_LOCAL: usize = <span class="number">0</span>;
+
+<span class="kw">pub type </span>ResolveFilterCacheReadTxn&lt;<span class="lifetime">&#39;a</span>&gt; =
+    ARCacheReadTxn&lt;<span class="lifetime">&#39;a</span>, (IdentityId, Filter&lt;FilterValid&gt;), Filter&lt;FilterValidResolved&gt;, ()&gt;;
 
 <span class="attribute">#[derive(Debug, Clone, PartialOrd, PartialEq, Eq)]
 </span><span class="kw">enum </span>ServerPhase {
@@ -1890,9 +1894,7 @@
 
     <span class="kw">fn </span>get_domain_display_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str;
 
-    <span class="kw">fn </span>get_resolve_filter_cache(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-    ) -&gt; <span class="kw-2">&amp;mut </span>ARCacheReadTxn&lt;<span class="lifetime">&#39;a</span>, (IdentityId, Filter&lt;FilterValid&gt;), Filter&lt;FilterValidResolved&gt;, ()&gt;;
+    <span class="kw">fn </span>get_resolve_filter_cache(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>ResolveFilterCacheReadTxn&lt;<span class="lifetime">&#39;a</span>&gt;;
 
     <span class="comment">// Because of how borrowck in rust works, if we need to get two inner types we have to get them
     // in a single fn.
@@ -1901,7 +1903,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
     ) -&gt; (
         <span class="kw-2">&amp;mut </span><span class="self">Self</span>::BackendTransactionType,
-        <span class="kw-2">&amp;mut </span>ARCacheReadTxn&lt;<span class="lifetime">&#39;a</span>, (IdentityId, Filter&lt;FilterValid&gt;), Filter&lt;FilterValidResolved&gt;, ()&gt;,
+        <span class="kw-2">&amp;mut </span>ResolveFilterCacheReadTxn&lt;<span class="lifetime">&#39;a</span>&gt;,
     );
 
     <span class="doccomment">/// Conduct a search and apply access controls to yield a set of entries that

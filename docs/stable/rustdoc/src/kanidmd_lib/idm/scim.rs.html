@@ -2820,6 +2820,8 @@
 <span id="2820">2820</span>
 <span id="2821">2821</span>
 <span id="2822">2822</span>
+<span id="2823">2823</span>
+<span id="2824">2824</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>base64urlsafedata::Base64UrlSafeData;
@@ -3122,22 +3124,24 @@
         <span class="comment">// TODO: This could benefit from a search that only grabs uuids?
         </span><span class="kw">let </span>existing_entries = <span class="self">self
             </span>.qs_write
-            .internal_search(f_all_sync.clone())
+            <span class="comment">// .internal_search(f_all_sync.clone())
+            </span>.internal_exists(f_all_sync.clone())
             .map_err(|e| {
                 <span class="macro">error!</span>(<span class="string">&quot;Failed to determine existing entries set&quot;</span>);
                 e
             })<span class="question-mark">?</span>;
 
-        <span class="comment">// This is the delete filter we need later.
-        </span><span class="kw">let </span>filter_or: Vec&lt;<span class="kw">_</span>&gt; = existing_entries
+        <span class="comment">/*
+        let filter_or: Vec&lt;_&gt; = existing_entries
             .iter()
-            .map(|e| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(e.get_uuid())))
+            .map(|e| f_eq(&quot;uuid&quot;, PartialValue::Uuid(e.get_uuid())))
             .collect();
+        */
 
-        <span class="comment">// We only need to delete the sync account itself.
+        // We only need to delete the sync account itself.
         </span><span class="kw">let </span>delete_filter = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(sync_uuid)));
 
-        <span class="kw">if </span>!filter_or.is_empty() {
+        <span class="kw">if </span>existing_entries {
             <span class="comment">// Now modify these to remove their sync related attributes.
             </span><span class="kw">let </span>schema = <span class="self">self</span>.qs_write.get_schema();
             <span class="kw">let </span>sync_class = schema.get_classes().get(<span class="string">&quot;sync_object&quot;</span>).ok_or_else(|| {
@@ -3251,16 +3255,16 @@
                 e
             })<span class="question-mark">?</span>;
 
-        <span class="comment">// This is the delete filter we need later.
-        </span><span class="kw">let </span>filter_or: Vec&lt;<span class="kw">_</span>&gt; = existing_entries
-            .iter()
-            .map(|e| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(e.get_uuid())))
-            .collect();
-
-        <span class="kw">let </span>delete_filter = <span class="kw">if </span>filter_or.is_empty() {
+        <span class="kw">let </span>delete_filter = <span class="kw">if </span>existing_entries.is_empty() {
             <span class="comment">// We only need to delete the sync account itself.
             </span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(sync_uuid)))
         } <span class="kw">else </span>{
+            <span class="comment">// This is the delete filter we need later.
+            </span><span class="kw">let </span>filter_or: Vec&lt;<span class="kw">_</span>&gt; = existing_entries
+                .iter()
+                .map(|e| f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(e.get_uuid())))
+                .collect();
+
             <span class="comment">// Now modify these to remove their sync related attributes.
             </span><span class="kw">let </span>schema = <span class="self">self</span>.qs_write.get_schema();
             <span class="kw">let </span>sync_class = schema.get_classes().get(<span class="string">&quot;sync_object&quot;</span>).ok_or_else(|| {

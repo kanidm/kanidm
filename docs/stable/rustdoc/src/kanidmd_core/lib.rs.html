@@ -1261,7 +1261,7 @@
     </span><span class="kw">match </span>qs.read().<span class="kw">await</span>.get_db_domain_name() {
         <span class="prelude-val">Ok</span>(old_domain_name) =&gt; {
             <span class="macro">admin_info!</span>(<span class="question-mark">?</span>old_domain_name, <span class="question-mark">?</span>new_domain_name);
-            <span class="kw">if </span><span class="kw-2">&amp;</span>old_domain_name == <span class="kw-2">&amp;</span>new_domain_name {
+            <span class="kw">if </span>old_domain_name == new_domain_name {
                 <span class="macro">admin_info!</span>(<span class="string">&quot;Domain name not changing, stopping.&quot;</span>);
                 <span class="kw">return</span>;
             }
@@ -1397,14 +1397,14 @@
 
 <span class="kw">impl </span>CoreHandle {
     <span class="kw">pub async fn </span>shutdown(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(<span class="kw">_</span>) = <span class="self">self</span>.tx.send(CoreAction::Shutdown) {
+        <span class="kw">if </span><span class="self">self</span>.tx.send(CoreAction::Shutdown).is_err() {
             <span class="macro">eprintln!</span>(<span class="string">&quot;No receivers acked shutdown request. Treating as unclean.&quot;</span>);
             <span class="kw">return</span>;
         }
 
         <span class="comment">// Wait on the handles.
         </span><span class="kw">while let </span><span class="prelude-val">Some</span>(handle) = <span class="self">self</span>.handles.pop() {
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(<span class="kw">_</span>) = handle.<span class="kw">await </span>{
+            <span class="kw">if </span>handle.<span class="kw">await</span>.is_err() {
                 <span class="macro">eprintln!</span>(<span class="string">&quot;A task failed to join&quot;</span>);
             }
         }
@@ -1436,7 +1436,7 @@
     } <span class="kw">else if </span>config.tls_config.is_none() {
         <span class="comment">// TLS is great! We won&#39;t run without it.
         </span><span class="macro">error!</span>(<span class="string">&quot;Running without TLS is not supported! Quitting!&quot;</span>);
-        <span class="kw">return </span><span class="prelude-val">Err</span>({});
+        <span class="kw">return </span><span class="prelude-val">Err</span>(());
     }
 
     <span class="macro">info!</span>(

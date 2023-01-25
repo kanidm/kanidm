@@ -964,14 +964,6 @@
 <span id="964">964</span>
 <span id="965">965</span>
 <span id="966">966</span>
-<span id="967">967</span>
-<span id="968">968</span>
-<span id="969">969</span>
-<span id="970">970</span>
-<span id="971">971</span>
-<span id="972">972</span>
-<span id="973">973</span>
-<span id="974">974</span>
 </pre><pre class="rust"><code><span class="attribute">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -1196,10 +1188,8 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(sh) = status_handle {
             <span class="kw">let _ </span>= sh.<span class="kw">await</span>;
         }
-    } <span class="kw">else </span>{
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = run_sync(cb, <span class="kw-2">&amp;</span>sync_config, <span class="kw-2">&amp;</span>opt).<span class="kw">await </span>{
-            <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Sync completed with error&quot;</span>);
-        };
+    } <span class="kw">else if let </span><span class="prelude-val">Err</span>(e) = run_sync(cb, <span class="kw-2">&amp;</span>sync_config, <span class="kw-2">&amp;</span>opt).<span class="kw">await </span>{
+        <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Sync completed with error&quot;</span>);
     }
 }
 
@@ -1437,17 +1427,15 @@
         <span class="macro">info!</span>(<span class="string">&quot;dry-run complete&quot;</span>);
         <span class="macro">info!</span>(<span class="string">&quot;Success!&quot;</span>);
         <span class="prelude-val">Ok</span>(())
+    } <span class="kw">else if let </span><span class="prelude-val">Err</span>(e) = rsclient.scim_v1_sync_update(<span class="kw-2">&amp;</span>scim_sync_request).<span class="kw">await </span>{
+        <span class="macro">error!</span>(
+            <span class="question-mark">?</span>e,
+            <span class="string">&quot;Failed to submit scim sync update - see the kanidmd server log for more details.&quot;
+        </span>);
+        <span class="prelude-val">Err</span>(SyncError::SyncUpdate)
     } <span class="kw">else </span>{
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = rsclient.scim_v1_sync_update(<span class="kw-2">&amp;</span>scim_sync_request).<span class="kw">await </span>{
-            <span class="macro">error!</span>(
-                <span class="question-mark">?</span>e,
-                <span class="string">&quot;Failed to submit scim sync update - see the kanidmd server log for more details.&quot;
-            </span>);
-            <span class="prelude-val">Err</span>(SyncError::SyncUpdate)
-        } <span class="kw">else </span>{
-            <span class="macro">info!</span>(<span class="string">&quot;Success!&quot;</span>);
-            <span class="prelude-val">Ok</span>(())
-        }
+        <span class="macro">info!</span>(<span class="string">&quot;Success!&quot;</span>);
+        <span class="prelude-val">Ok</span>(())
     }
     <span class="comment">// done!
 </span>}
@@ -1614,7 +1602,7 @@
     <span class="kw">let </span>empty_slice = Vec::default();
 
     <span class="comment">// Future - make this par-map
-    </span><span class="kw">let </span>entries = entries
+    </span>entries
         .into_iter()
         .filter_map(|(dn, e)| {
             <span class="kw">let </span>e_config = entry_config_map
@@ -1630,9 +1618,7 @@
                 <span class="prelude-val">Err</span>(()) =&gt; <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(())),
             }
         })
-        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;();
-
-    entries
+        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()
 }
 
 <span class="comment">// TODO: Allow re-map of uuid -&gt; uuid
@@ -1854,9 +1840,9 @@
             <span class="string">&quot;Config missing from {} - cannot start up. Quitting.&quot;</span>,
             cfg_path_str
         );
-        <span class="kw">return </span><span class="bool-val">false</span>;
-    } <span class="kw">else </span>{
-        <span class="kw">let </span>cfg_meta = <span class="kw">match </span>metadata(<span class="kw-2">&amp;</span>cfg_path) {
+        <span class="bool-val">false
+    </span>} <span class="kw">else </span>{
+        <span class="kw">let </span>cfg_meta = <span class="kw">match </span>metadata(cfg_path) {
             <span class="prelude-val">Ok</span>(v) =&gt; v,
             <span class="prelude-val">Err</span>(e) =&gt; {
                 <span class="macro">error!</span>(
@@ -1919,11 +1905,9 @@
     </span><span class="kw">if </span>opt.skip_root_check {
         <span class="macro">warn!</span>(<span class="string">&quot;Skipping root user check, if you&#39;re running this for testing, ensure you clean up temporary files.&quot;</span>)
         <span class="comment">// TODO: this wording is not great m&#39;kay.
-    </span>} <span class="kw">else </span>{
-        <span class="kw">if </span>cuid == <span class="number">0 </span>|| ceuid == <span class="number">0 </span>|| cgid == <span class="number">0 </span>|| cegid == <span class="number">0 </span>{
-            <span class="macro">error!</span>(<span class="string">&quot;Refusing to run - this process must not operate as root.&quot;</span>);
-            <span class="kw">return</span>;
-        }
+    </span>} <span class="kw">else if </span>cuid == <span class="number">0 </span>|| ceuid == <span class="number">0 </span>|| cgid == <span class="number">0 </span>|| cegid == <span class="number">0 </span>{
+        <span class="macro">error!</span>(<span class="string">&quot;Refusing to run - this process must not operate as root.&quot;</span>);
+        <span class="kw">return</span>;
     };
 
     <span class="kw">if </span>!config_security_checks(<span class="kw-2">&amp;</span>opt.client_config) || !config_security_checks(<span class="kw-2">&amp;</span>opt.ipa_sync_config)

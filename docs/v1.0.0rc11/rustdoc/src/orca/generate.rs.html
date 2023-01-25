@@ -161,6 +161,7 @@
 <span id="161">161</span>
 <span id="162">162</span>
 <span id="163">163</span>
+<span id="164">164</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fs::File;
 <span class="kw">use </span>std::path::Path;
 <span class="kw">use </span>std::time::Duration;
@@ -175,7 +176,7 @@
 <span class="kw">const </span>N_MEMBERSHIPS: usize = <span class="number">10</span>;
 <span class="kw">const </span>N_NEST: usize = <span class="number">4</span>;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>doit(output: <span class="kw-2">&amp;</span>Path) -&gt; () {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>doit(output: <span class="kw-2">&amp;</span>Path) {
     <span class="macro">info!</span>(
         <span class="string">&quot;Performing data generation into {}&quot;</span>,
         output.to_str().unwrap(),
@@ -231,7 +232,8 @@
         <span class="kw">let </span><span class="kw-2">mut </span>chunk_iter = groups.chunks_mut(chunk_size);
         <span class="comment">// Can&#39;t fail due to above checks.
         </span><span class="kw">let </span><span class="kw-2">mut </span>p_chunk = chunk_iter.next().unwrap();
-        <span class="kw">while let </span><span class="prelude-val">Some</span>(w_chunk) = chunk_iter.next() {
+        <span class="comment">// while let Some(w_chunk) = chunk_iter.next() {
+        </span><span class="kw">for </span>w_chunk <span class="kw">in </span>chunk_iter {
             <span class="comment">// add items from work chunk to parent chunk
             </span>p_chunk
                 .iter_mut()

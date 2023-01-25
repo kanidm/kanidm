@@ -967,7 +967,6 @@
 <span id="967">967</span>
 <span id="968">968</span>
 <span id="969">969</span>
-<span id="970">970</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
 <span class="kw">use </span>std::num::NonZeroUsize;
 <span class="kw">use </span>std::ops::{Add, Sub};
@@ -1052,7 +1051,7 @@
             dbtxn.commit()<span class="question-mark">?</span>;
         }
 
-        <span class="kw">if </span>pam_allow_groups.len() == <span class="number">0 </span>{
+        <span class="kw">if </span>pam_allow_groups.is_empty() {
             <span class="macro">eprintln!</span>(<span class="string">&quot;Will not be able to authenticate users, pam_allow_groups config is not configured.&quot;</span>);
         }
 
@@ -1140,7 +1139,7 @@
         //  * uuid
         //  Attempt to search these in the db.
         </span><span class="kw">let </span>dbtxn = <span class="self">self</span>.db.write().<span class="kw">await</span>;
-        <span class="kw">let </span>r = dbtxn.get_account(<span class="kw-2">&amp;</span>account_id)<span class="question-mark">?</span>;
+        <span class="kw">let </span>r = dbtxn.get_account(account_id)<span class="question-mark">?</span>;
 
         <span class="kw">match </span>r {
             <span class="prelude-val">Some</span>((ut, ex)) =&gt; {
@@ -1192,7 +1191,7 @@
         //  * uuid
         //  Attempt to search these in the db.
         </span><span class="kw">let </span>dbtxn = <span class="self">self</span>.db.write().<span class="kw">await</span>;
-        <span class="kw">let </span>r = dbtxn.get_group(<span class="kw-2">&amp;</span>grp_id)<span class="question-mark">?</span>;
+        <span class="kw">let </span>r = dbtxn.get_group(grp_id)<span class="question-mark">?</span>;
 
         <span class="kw">match </span>r {
             <span class="prelude-val">Some</span>((ut, ex)) =&gt; {
@@ -1834,7 +1833,7 @@
     <span class="kw">pub async fn </span>pam_account_allowed(<span class="kw-2">&amp;</span><span class="self">self</span>, account_id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;, ()&gt; {
         <span class="kw">let </span>token = <span class="self">self</span>.get_usertoken(Id::Name(account_id.to_string())).<span class="kw">await</span><span class="question-mark">?</span>;
 
-        <span class="kw">if </span><span class="self">self</span>.pam_allow_groups.len() == <span class="number">0 </span>{
+        <span class="kw">if </span><span class="self">self</span>.pam_allow_groups.is_empty() {
             <span class="comment">// can&#39;t allow anything if the group list is zero...
             </span><span class="macro">eprintln!</span>(<span class="string">&quot;Cannot authenticate users, no allowed groups in configuration!&quot;</span>);
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="bool-val">false</span>))
@@ -1843,8 +1842,7 @@
                 <span class="kw">let </span>user_set: BTreeSet&lt;<span class="kw">_</span>&gt; = tok
                     .groups
                     .iter()
-                    .map(|g| <span class="macro">vec!</span>[g.name.clone(), g.spn.clone(), g.uuid.clone()])
-                    .flatten()
+                    .flat_map(|g| [g.name.clone(), g.spn.clone(), g.uuid.clone()])
                     .collect();
 
                 <span class="macro">debug!</span>(

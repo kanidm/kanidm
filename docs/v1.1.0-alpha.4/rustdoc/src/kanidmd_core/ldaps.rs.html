@@ -251,7 +251,7 @@
     </span><span class="kw">while let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(protomsg)) = r.next().<span class="kw">await </span>{
         <span class="comment">// Start the event
         </span><span class="kw">let </span>uat = session.uat.clone();
-        <span class="kw">let </span>caddr = client_address.clone();
+        <span class="kw">let </span>caddr = client_address;
 
         <span class="kw">match </span>client_process_msg(uat, caddr, protomsg, qe_r_ref).<span class="kw">await </span>{
             <span class="comment">// I&#39;d really have liked to have put this near the [LdapResponseState::Bind] but due

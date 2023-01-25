@@ -1307,7 +1307,7 @@ Disallow: /
             .with_session_ttl(<span class="prelude-val">None</span>)
             .with_cookie_name(<span class="string">&quot;kanidm-session&quot;</span>)
             <span class="comment">// Without this, the cookies won&#39;t be used on subdomains of origin.
-            </span>.with_cookie_domain(<span class="kw-2">&amp;</span>domain)
+            </span>.with_cookie_domain(domain)
             <span class="comment">// Im not sure if we need Lax here, I don&#39;t think we do because on the first get
             // we don&#39;t need the cookie since wasm drives the fetches.
             </span>.with_same_site_policy(tide::http::cookies::SameSite::Strict),
