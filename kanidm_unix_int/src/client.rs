@@ -17,7 +17,7 @@ impl Decoder for ClientCodec {
     type Item = ClientResponse;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match serde_json::from_slice::<ClientResponse>(&src) {
+        match serde_json::from_slice::<ClientResponse>(src) {
             Ok(msg) => {
                 // Clear the buffer for the next message.
                 src.clear();

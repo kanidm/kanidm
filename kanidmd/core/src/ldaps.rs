@@ -59,7 +59,7 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
     while let Some(Ok(protomsg)) = r.next().await {
         // Start the event
         let uat = session.uat.clone();
-        let caddr = client_address.clone();
+        let caddr = client_address;
 
         match client_process_msg(uat, caddr, protomsg, qe_r_ref).await {
             // I'd really have liked to have put this near the [LdapResponseState::Bind] but due

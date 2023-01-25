@@ -213,7 +213,7 @@ pub trait AccessControlsTransaction<'a> {
         let allowed_entries: Vec<_> = entries
             .into_iter()
             .filter(|e| {
-                match apply_search_access(&se.ident, related_acp.as_slice(), &e) {
+                match apply_search_access(&se.ident, related_acp.as_slice(), e) {
                     SearchResult::Denied => false,
                     SearchResult::Grant => true,
                     SearchResult::Allow(allowed_attrs) => {
@@ -449,7 +449,7 @@ pub trait AccessControlsTransaction<'a> {
         security_access!(?requested_classes, "Requested class set");
 
         let r = entries.iter().all(|e| {
-            match apply_modify_access(&me.ident, related_acp.as_slice(), &e) {
+            match apply_modify_access(&me.ident, related_acp.as_slice(), e) {
                 ModifyResult::Denied => false,
                 ModifyResult::Grant => true,
                 ModifyResult::Allow { pres, rem, cls } => {
@@ -582,7 +582,7 @@ pub trait AccessControlsTransaction<'a> {
             security_access!(?requested_rem, "Requested remove set");
             security_access!(?requested_classes, "Requested class set");
 
-            match apply_modify_access(&me.ident, related_acp.as_slice(), &e) {
+            match apply_modify_access(&me.ident, related_acp.as_slice(), e) {
                 ModifyResult::Denied => false,
                 ModifyResult::Grant => true,
                 ModifyResult::Allow { pres, rem, cls } => {
@@ -665,7 +665,7 @@ pub trait AccessControlsTransaction<'a> {
 
         // For each entry
         let r = entries.iter().all(|e| {
-            match apply_create_access(&ce.ident, related_acp.as_slice(), &e) {
+            match apply_create_access(&ce.ident, related_acp.as_slice(), e) {
                 CreateResult::Denied => false,
                 CreateResult::Grant => true,
             }
@@ -729,7 +729,7 @@ pub trait AccessControlsTransaction<'a> {
 
         // For each entry
         let r = entries.iter().all(|e| {
-            match apply_delete_access(&de.ident, related_acp.as_slice(), &e) {
+            match apply_delete_access(&de.ident, related_acp.as_slice(), e) {
                 DeleteResult::Denied => false,
                 DeleteResult::Grant => true,
             }
@@ -798,7 +798,7 @@ pub trait AccessControlsTransaction<'a> {
             .map(|e| {
                 // == search ==
                 let search_effective =
-                    match apply_search_access(ident, search_related_acp.as_slice(), &e) {
+                    match apply_search_access(ident, search_related_acp.as_slice(), e) {
                         SearchResult::Denied => Access::Denied,
                         SearchResult::Grant => Access::Grant,
                         SearchResult::Allow(allowed_attrs) => {
@@ -810,7 +810,7 @@ pub trait AccessControlsTransaction<'a> {
                 // == modify ==
 
                 let (modify_pres, modify_rem, modify_class) =
-                    match apply_modify_access(ident, modify_related_acp.as_slice(), &e) {
+                    match apply_modify_access(ident, modify_related_acp.as_slice(), e) {
                         ModifyResult::Denied => (Access::Denied, Access::Denied, Access::Denied),
                         ModifyResult::Grant => (Access::Grant, Access::Grant, Access::Grant),
                         ModifyResult::Allow { pres, rem, cls } => (

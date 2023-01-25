@@ -300,22 +300,24 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // TODO: This could benefit from a search that only grabs uuids?
         let existing_entries = self
             .qs_write
-            .internal_search(f_all_sync.clone())
+            // .internal_search(f_all_sync.clone())
+            .internal_exists(f_all_sync.clone())
             .map_err(|e| {
                 error!("Failed to determine existing entries set");
                 e
             })?;
 
-        // This is the delete filter we need later.
+        /*
         let filter_or: Vec<_> = existing_entries
             .iter()
             .map(|e| f_eq("uuid", PartialValue::Uuid(e.get_uuid())))
             .collect();
+        */
 
         // We only need to delete the sync account itself.
         let delete_filter = filter!(f_eq("uuid", PartialValue::Uuid(sync_uuid)));
 
-        if !filter_or.is_empty() {
+        if existing_entries {
             // Now modify these to remove their sync related attributes.
             let schema = self.qs_write.get_schema();
             let sync_class = schema.get_classes().get("sync_object").ok_or_else(|| {
@@ -429,16 +431,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
 
-        // This is the delete filter we need later.
-        let filter_or: Vec<_> = existing_entries
-            .iter()
-            .map(|e| f_eq("uuid", PartialValue::Uuid(e.get_uuid())))
-            .collect();
-
-        let delete_filter = if filter_or.is_empty() {
+        let delete_filter = if existing_entries.is_empty() {
             // We only need to delete the sync account itself.
             filter!(f_eq("uuid", PartialValue::Uuid(sync_uuid)))
         } else {
+            // This is the delete filter we need later.
+            let filter_or: Vec<_> = existing_entries
+                .iter()
+                .map(|e| f_eq("uuid", PartialValue::Uuid(e.get_uuid())))
+                .collect();
+
             // Now modify these to remove their sync related attributes.
             let schema = self.qs_write.get_schema();
             let sync_class = schema.get_classes().get("sync_object").ok_or_else(|| {

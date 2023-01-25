@@ -48,6 +48,8 @@ fn landing() -> Html {
     html! { <main></main> }
 }
 
+// Needed for yew to pass by value
+#[allow(clippy::needless_pass_by_value)]
 fn switch(route: Route) -> Html {
     #[cfg(debug_assertions)]
     console::debug!("manager::switch");

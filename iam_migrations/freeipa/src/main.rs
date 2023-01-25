@@ -222,10 +222,8 @@ async fn driver_main(opt: Opt) {
         if let Some(sh) = status_handle {
             let _ = sh.await;
         }
-    } else {
-        if let Err(e) = run_sync(cb, &sync_config, &opt).await {
-            error!(?e, "Sync completed with error");
-        };
+    } else if let Err(e) = run_sync(cb, &sync_config, &opt).await {
+        error!(?e, "Sync completed with error");
     }
 }
 
@@ -463,17 +461,15 @@ async fn run_sync(
         info!("dry-run complete");
         info!("Success!");
         Ok(())
+    } else if let Err(e) = rsclient.scim_v1_sync_update(&scim_sync_request).await {
+        error!(
+            ?e,
+            "Failed to submit scim sync update - see the kanidmd server log for more details."
+        );
+        Err(SyncError::SyncUpdate)
     } else {
-        if let Err(e) = rsclient.scim_v1_sync_update(&scim_sync_request).await {
-            error!(
-                ?e,
-                "Failed to submit scim sync update - see the kanidmd server log for more details."
-            );
-            Err(SyncError::SyncUpdate)
-        } else {
-            info!("Success!");
-            Ok(())
-        }
+        info!("Success!");
+        Ok(())
     }
     // done!
 }
@@ -640,7 +636,7 @@ async fn process_ipa_sync_result(
     let empty_slice = Vec::default();
 
     // Future - make this par-map
-    let entries = entries
+    entries
         .into_iter()
         .filter_map(|(dn, e)| {
             let e_config = entry_config_map
@@ -656,9 +652,7 @@ async fn process_ipa_sync_result(
                 Err(()) => Some(Err(())),
             }
         })
-        .collect::<Result<Vec<_>, _>>();
-
-    entries
+        .collect::<Result<Vec<_>, _>>()
 }
 
 // TODO: Allow re-map of uuid -> uuid
@@ -880,9 +874,9 @@ fn config_security_checks(cfg_path: &Path) -> bool {
             "Config missing from {} - cannot start up. Quitting.",
             cfg_path_str
         );
-        return false;
+        false
     } else {
-        let cfg_meta = match metadata(&cfg_path) {
+        let cfg_meta = match metadata(cfg_path) {
             Ok(v) => v,
             Err(e) => {
                 error!(
@@ -945,11 +939,9 @@ fn main() {
     if opt.skip_root_check {
         warn!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
         // TODO: this wording is not great m'kay.
-    } else {
-        if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
-            error!("Refusing to run - this process must not operate as root.");
-            return;
-        }
+    } else if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
+        error!("Refusing to run - this process must not operate as root.");
+        return;
     };
 
     if !config_security_checks(&opt.client_config) || !config_security_checks(&opt.ipa_sync_config)
