@@ -432,7 +432,7 @@ pub async fn domain_rename_core(config: &Configuration) {
     match qs.read().await.get_db_domain_name() {
         Ok(old_domain_name) => {
             admin_info!(?old_domain_name, ?new_domain_name);
-            if &old_domain_name == &new_domain_name {
+            if old_domain_name == new_domain_name {
                 admin_info!("Domain name not changing, stopping.");
                 return;
             }
@@ -568,14 +568,14 @@ pub struct CoreHandle {
 
 impl CoreHandle {
     pub async fn shutdown(&mut self) {
-        if let Err(_) = self.tx.send(CoreAction::Shutdown) {
+        if self.tx.send(CoreAction::Shutdown).is_err() {
             eprintln!("No receivers acked shutdown request. Treating as unclean.");
             return;
         }
 
         // Wait on the handles.
         while let Some(handle) = self.handles.pop() {
-            if let Err(_) = handle.await {
+            if handle.await.is_err() {
                 eprintln!("A task failed to join");
             }
         }
@@ -607,7 +607,7 @@ pub async fn create_server_core(
     } else if config.tls_config.is_none() {
         // TLS is great! We won't run without it.
         error!("Running without TLS is not supported! Quitting!");
-        return Err({});
+        return Err(());
     }
 
     info!(

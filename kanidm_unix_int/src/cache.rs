@@ -82,7 +82,7 @@ impl CacheLayer {
             dbtxn.commit()?;
         }
 
-        if pam_allow_groups.len() == 0 {
+        if pam_allow_groups.is_empty() {
             eprintln!("Will not be able to authenticate users, pam_allow_groups config is not configured.");
         }
 
@@ -170,7 +170,7 @@ impl CacheLayer {
         //  * uuid
         //  Attempt to search these in the db.
         let dbtxn = self.db.write().await;
-        let r = dbtxn.get_account(&account_id)?;
+        let r = dbtxn.get_account(account_id)?;
 
         match r {
             Some((ut, ex)) => {
@@ -222,7 +222,7 @@ impl CacheLayer {
         //  * uuid
         //  Attempt to search these in the db.
         let dbtxn = self.db.write().await;
-        let r = dbtxn.get_group(&grp_id)?;
+        let r = dbtxn.get_group(grp_id)?;
 
         match r {
             Some((ut, ex)) => {
@@ -864,7 +864,7 @@ impl CacheLayer {
     pub async fn pam_account_allowed(&self, account_id: &str) -> Result<Option<bool>, ()> {
         let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
 
-        if self.pam_allow_groups.len() == 0 {
+        if self.pam_allow_groups.is_empty() {
             // can't allow anything if the group list is zero...
             eprintln!("Cannot authenticate users, no allowed groups in configuration!");
             Ok(Some(false))
@@ -873,8 +873,7 @@ impl CacheLayer {
                 let user_set: BTreeSet<_> = tok
                     .groups
                     .iter()
-                    .map(|g| vec![g.name.clone(), g.spn.clone(), g.uuid.clone()])
-                    .flatten()
+                    .flat_map(|g| [g.name.clone(), g.spn.clone(), g.uuid.clone()])
                     .collect();
 
                 debug!(

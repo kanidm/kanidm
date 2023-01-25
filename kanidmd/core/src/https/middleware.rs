@@ -212,7 +212,7 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
     }
 }
 
-const KANIDM_VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const KANIDM_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Default)]
 pub struct VersionHeaderMiddleware;
