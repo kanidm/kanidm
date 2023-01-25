@@ -44,7 +44,6 @@ pub struct TlsConfiguration {
     pub key: String,
 }
 
-
 #[derive(Debug, Deserialize)]
 pub struct ServerConfig {
     pub bindaddress: Option<String>,

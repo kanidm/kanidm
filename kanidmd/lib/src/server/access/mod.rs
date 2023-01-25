@@ -13,8 +13,6 @@
 //! - the ability to turn an entry into a partial-entry for results send
 //!   requirements (also search).
 
-// use concread::collections::bptree::*;
-// use hashbrown::HashSet;
 use std::cell::Cell;
 use std::collections::BTreeSet;
 use std::ops::DerefMut;
@@ -22,342 +20,39 @@ use std::sync::Arc;
 
 use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
 use concread::cowcell::*;
-use kanidm_proto::v1::{Filter as ProtoFilter, OperationError};
+use kanidm_proto::v1::OperationError;
 use tracing::trace;
 use uuid::Uuid;
 
-use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced, EntrySealed};
+use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
 use crate::filter::{Filter, FilterValid, FilterValidResolved};
 use crate::modify::Modify;
 use crate::prelude::*;
 
+use self::profiles::{
+    AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
+};
+
+use self::create::{apply_create_access, CreateResult};
+use self::delete::{apply_delete_access, DeleteResult};
+use self::modify::{apply_modify_access, ModifyResult};
+use self::search::{apply_search_access, SearchResult};
+
 const ACP_RESOLVE_FILTER_CACHE_MAX: usize = 2048;
 const ACP_RESOLVE_FILTER_CACHE_LOCAL: usize = 16;
 
-// =========================================================================
-// PARSE ENTRY TO ACP, AND ACP MANAGEMENT
-// =========================================================================
+mod create;
+mod delete;
+mod modify;
+pub mod profiles;
+mod search;
 
-#[derive(Debug, Clone)]
-pub struct AccessControlSearch {
-    acp: AccessControlProfile,
-    attrs: BTreeSet<AttrString>,
-}
-
-impl AccessControlSearch {
-    pub fn try_from(
-        qs: &mut QueryServerWriteTransaction,
-        value: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<Self, OperationError> {
-        if !value.attribute_equality("class", &PVCLASS_ACS) {
-            admin_error!("class access_control_search not present.");
-            return Err(OperationError::InvalidAcpState(
-                "Missing access_control_search".to_string(),
-            ));
-        }
-
-        let attrs = value
-            .get_ava_iter_iutf8("acp_search_attr")
-            .ok_or_else(|| {
-                admin_error!("Missing acp_search_attr");
-                OperationError::InvalidAcpState("Missing acp_search_attr".to_string())
-            })?
-            .map(AttrString::from)
-            .collect();
-
-        let acp = AccessControlProfile::try_from(qs, value)?;
-
-        Ok(AccessControlSearch { acp, attrs })
-    }
-
-    #[cfg(test)]
-    unsafe fn from_raw(
-        name: &str,
-        uuid: Uuid,
-        receiver: Uuid,
-        targetscope: Filter<FilterValid>,
-        attrs: &str,
-    ) -> Self {
-        AccessControlSearch {
-            acp: AccessControlProfile {
-                name: name.to_string(),
-                uuid,
-                receiver: Some(receiver),
-                targetscope,
-            },
-            attrs: attrs
-                .split_whitespace()
-                .map(|s| AttrString::from(s))
-                .collect(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct AccessControlDelete {
-    acp: AccessControlProfile,
-}
-
-impl AccessControlDelete {
-    pub fn try_from(
-        qs: &mut QueryServerWriteTransaction,
-        value: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<Self, OperationError> {
-        if !value.attribute_equality("class", &PVCLASS_ACD) {
-            admin_error!("class access_control_delete not present.");
-            return Err(OperationError::InvalidAcpState(
-                "Missing access_control_delete".to_string(),
-            ));
-        }
-
-        Ok(AccessControlDelete {
-            acp: AccessControlProfile::try_from(qs, value)?,
-        })
-    }
-
-    #[cfg(test)]
-    unsafe fn from_raw(
-        name: &str,
-        uuid: Uuid,
-        receiver: Uuid,
-        targetscope: Filter<FilterValid>,
-    ) -> Self {
-        AccessControlDelete {
-            acp: AccessControlProfile {
-                name: name.to_string(),
-                uuid,
-                receiver: Some(receiver),
-                targetscope,
-            },
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct AccessControlCreate {
-    acp: AccessControlProfile,
-    classes: Vec<AttrString>,
-    attrs: Vec<AttrString>,
-}
-
-impl AccessControlCreate {
-    pub fn try_from(
-        qs: &mut QueryServerWriteTransaction,
-        value: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<Self, OperationError> {
-        if !value.attribute_equality("class", &PVCLASS_ACC) {
-            admin_error!("class access_control_create not present.");
-            return Err(OperationError::InvalidAcpState(
-                "Missing access_control_create".to_string(),
-            ));
-        }
-
-        let attrs = value
-            .get_ava_iter_iutf8("acp_create_attr")
-            .map(|i| i.map(AttrString::from).collect())
-            .unwrap_or_else(Vec::new);
-
-        let classes = value
-            .get_ava_iter_iutf8("acp_create_class")
-            .map(|i| i.map(AttrString::from).collect())
-            .unwrap_or_else(Vec::new);
-
-        Ok(AccessControlCreate {
-            acp: AccessControlProfile::try_from(qs, value)?,
-            classes,
-            attrs,
-        })
-    }
-
-    #[cfg(test)]
-    unsafe fn from_raw(
-        name: &str,
-        uuid: Uuid,
-        receiver: Uuid,
-        targetscope: Filter<FilterValid>,
-        classes: &str,
-        attrs: &str,
-    ) -> Self {
-        AccessControlCreate {
-            acp: AccessControlProfile {
-                name: name.to_string(),
-                uuid,
-                receiver: Some(receiver),
-                targetscope,
-            },
-            classes: classes.split_whitespace().map(AttrString::from).collect(),
-            attrs: attrs.split_whitespace().map(AttrString::from).collect(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct AccessControlModify {
-    acp: AccessControlProfile,
-    classes: Vec<AttrString>,
-    presattrs: Vec<AttrString>,
-    remattrs: Vec<AttrString>,
-}
-
-impl AccessControlModify {
-    pub fn try_from(
-        qs: &mut QueryServerWriteTransaction,
-        value: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<Self, OperationError> {
-        if !value.attribute_equality("class", &PVCLASS_ACM) {
-            admin_error!("class access_control_modify not present.");
-            return Err(OperationError::InvalidAcpState(
-                "Missing access_control_modify".to_string(),
-            ));
-        }
-
-        let presattrs = value
-            .get_ava_iter_iutf8("acp_modify_presentattr")
-            .map(|i| i.map(AttrString::from).collect())
-            .unwrap_or_else(Vec::new);
-
-        let remattrs = value
-            .get_ava_iter_iutf8("acp_modify_removedattr")
-            .map(|i| i.map(AttrString::from).collect())
-            .unwrap_or_else(Vec::new);
-
-        let classes = value
-            .get_ava_iter_iutf8("acp_modify_class")
-            .map(|i| i.map(AttrString::from).collect())
-            .unwrap_or_else(Vec::new);
-
-        Ok(AccessControlModify {
-            acp: AccessControlProfile::try_from(qs, value)?,
-            classes,
-            presattrs,
-            remattrs,
-        })
-    }
-
-    #[cfg(test)]
-    unsafe fn from_raw(
-        name: &str,
-        uuid: Uuid,
-        receiver: Uuid,
-        targetscope: Filter<FilterValid>,
-        presattrs: &str,
-        remattrs: &str,
-        classes: &str,
-    ) -> Self {
-        AccessControlModify {
-            acp: AccessControlProfile {
-                name: name.to_string(),
-                uuid,
-                receiver: Some(receiver),
-                targetscope,
-            },
-            classes: classes
-                .split_whitespace()
-                .map(|s| AttrString::from(s))
-                .collect(),
-            presattrs: presattrs
-                .split_whitespace()
-                .map(|s| AttrString::from(s))
-                .collect(),
-            remattrs: remattrs
-                .split_whitespace()
-                .map(|s| AttrString::from(s))
-                .collect(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-struct AccessControlProfile {
-    name: String,
-    // Currently we retrieve this but don't use it. We could depending on how we change
-    // the acp update routine.
-    #[allow(dead_code)]
-    uuid: Uuid,
-    // Must be
-    //   Group
-    // === ⚠️   WARNING!!! ⚠️  ===
-    // This is OPTION to allow migration from 10 -> 11. We have to do this because ACP is reloaded
-    // so early in the boot phase that we can't have migrated the content of the receiver yet! As a
-    // result we MUST be able to withstand some failure in the parse process. The INTENT is that
-    // during early boot this will be None, and will NEVER match. Once started, the migration
-    // will occur, and this will flip to Some. In a future version we can remove this!
-    receiver: Option<Uuid>,
-    // or
-    //  Filter
-    //  Group
-    //  Self
-    // and
-    //  exclude
-    //    Group
-    targetscope: Filter<FilterValid>,
-}
-
-impl AccessControlProfile {
-    fn try_from(
-        qs: &mut QueryServerWriteTransaction,
-        value: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<Self, OperationError> {
-        // Assert we have class access_control_profile
-        if !value.attribute_equality("class", &PVCLASS_ACP) {
-            admin_error!("class access_control_profile not present.");
-            return Err(OperationError::InvalidAcpState(
-                "Missing access_control_profile".to_string(),
-            ));
-        }
-
-        // copy name
-        let name = value
-            .get_ava_single_iname("name")
-            .ok_or_else(|| {
-                admin_error!("Missing name");
-                OperationError::InvalidAcpState("Missing name".to_string())
-            })?
-            .to_string();
-        // copy uuid
-        let uuid = value.get_uuid();
-        // receiver, and turn to real filter
-
-        // === ⚠️   WARNING!!! ⚠️  ===
-        // See struct ACP for details.
-        let receiver = value.get_ava_single_refer("acp_receiver_group");
-        /*
-        .ok_or_else(|| {
-            admin_error!("Missing acp_receiver_group");
-            OperationError::InvalidAcpState("Missing acp_receiver_group".to_string())
-        })?;
-        */
-
-        // targetscope, and turn to real filter
-        let targetscope_f: ProtoFilter = value
-            .get_ava_single_protofilter("acp_targetscope")
-            // .map(|pf| pf.clone())
-            .cloned()
-            .ok_or_else(|| {
-                admin_error!("Missing acp_targetscope");
-                OperationError::InvalidAcpState("Missing acp_targetscope".to_string())
-            })?;
-
-        let ident = Identity::from_internal();
-
-        let targetscope_i = Filter::from_rw(&ident, &targetscope_f, qs).map_err(|e| {
-            admin_error!("Targetscope validation failed {:?}", e);
-            e
-        })?;
-
-        let targetscope = targetscope_i.validate(qs.get_schema()).map_err(|e| {
-            admin_error!("acp_targetscope Schema Violation {:?}", e);
-            OperationError::SchemaViolation(e)
-        })?;
-
-        Ok(AccessControlProfile {
-            name,
-            uuid,
-            receiver,
-            targetscope,
-        })
-    }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Access {
+    Grant,
+    Denied,
+    Allow(BTreeSet<AttrString>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -366,10 +61,23 @@ pub struct AccessEffectivePermission {
     // ident: Uuid,
     pub target: Uuid,
     pub delete: bool,
-    pub search: BTreeSet<AttrString>,
-    pub modify_pres: BTreeSet<AttrString>,
-    pub modify_rem: BTreeSet<AttrString>,
-    pub modify_class: BTreeSet<AttrString>,
+    pub search: Access,
+    pub modify_pres: Access,
+    pub modify_rem: Access,
+    pub modify_class: Access,
+}
+
+pub enum AccessResult<'a> {
+    // Deny this operation unconditionally.
+    Denied,
+    // Unbounded allow, provided no denied exists.
+    Grant,
+    // This module makes no decisions about this entry.
+    Ignore,
+    // Limit the allowed attr set to this.
+    Constrain(BTreeSet<&'a str>),
+    // Allow these attributes within constraints.
+    Allow(BTreeSet<&'a str>),
 }
 
 // =========================================================================
@@ -382,6 +90,8 @@ struct AccessControlsInner {
     acps_create: Vec<AccessControlCreate>,
     acps_modify: Vec<AccessControlModify>,
     acps_delete: Vec<AccessControlDelete>,
+    // Oauth2
+    // Sync prov
 }
 
 pub struct AccessControls {
@@ -396,7 +106,7 @@ pub trait AccessControlsTransaction<'a> {
     fn get_create(&self) -> &Vec<AccessControlCreate>;
     fn get_modify(&self) -> &Vec<AccessControlModify>;
     fn get_delete(&self) -> &Vec<AccessControlDelete>;
-    // fn get_acp_related_search_cache(&self) -> &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>>;
+
     #[allow(clippy::mut_from_ref)]
     fn get_acp_resolve_filter_cache(
         &self,
@@ -408,7 +118,6 @@ pub trait AccessControlsTransaction<'a> {
         ident: &Identity,
     ) -> Vec<(&'b AccessControlSearch, Filter<FilterValidResolved>)> {
         let search_state = self.get_search();
-        // let acp_related_search_cache = self.get_acp_related_search_cache();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
         // ⚠️  WARNING ⚠️  -- Why is this cache commented out?
@@ -480,13 +189,6 @@ pub trait AccessControlsTransaction<'a> {
             })
             .collect();
 
-        /*
-        // Stash the uuids into the cache.
-        let mut acs_uuids: Vec<Uuid> = related_acp.iter().map(|acs| acs.acp.uuid).collect();
-        acs_uuids.sort_unstable();
-        acp_related_search_cache.insert(*rec_entry.get_uuid(), acs_uuids);
-        */
-
         related_acp
         // }
     }
@@ -498,81 +200,37 @@ pub trait AccessControlsTransaction<'a> {
         se: &SearchEvent,
         entries: Vec<Arc<EntrySealedCommitted>>,
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
-        // If this is an internal search, return our working set.
-        match &se.ident.origin {
-            IdentType::Internal => {
-                trace!("Internal operation, bypassing access check");
-                // No need to check ACS
-                return Ok(entries);
-            }
-            IdentType::Synch(_) => {
-                security_critical!("Blocking sync check");
-                return Err(OperationError::InvalidState);
-            }
-            IdentType::User(_) => {}
-        };
-        info!(event = %se.ident, "Access check for search (filter) event");
-
-        match se.ident.access_scope() {
-            AccessScope::IdentityOnly | AccessScope::Synchronise => {
-                security_access!("denied ❌ - identity access scope is not permitted to search");
-                return Ok(vec![]);
-            }
-            AccessScope::ReadOnly | AccessScope::ReadWrite => {
-                // As you were
-            }
-        };
-
-        // First get the set of acps that apply to this receiver
-        let related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(&se.ident);
-
-        /*
-        related_acp.iter().for_each(|racp| {
-            security_access!(acs = ?racp.acp.name, "Event Origin Related acs");
-        });
-        */
+        // Prepare some shared resources.
 
         // Get the set of attributes requested by this se filter. This is what we are
         // going to access check.
         let requested_attrs: BTreeSet<&str> = se.filter_orig.get_attr_set();
 
-        // For each entry
-        let allowed_entries: Vec<Arc<EntrySealedCommitted>> =
-            entries
-                .into_iter()
-                .filter(|e| {
-                    // For each acp
-                    let allowed_attrs: BTreeSet<&str> = related_acp
-                        .iter()
-                        .filter_map(|(acs, f_res)| {
-                            // if it applies
-                            if e.entry_match_no_index(f_res) {
-                                security_access!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry matches acs");
-                                // add search_attrs to allowed.
-                                Some(acs.attrs.iter().map(|s| s.as_str()))
-                            } else {
-                                trace!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry DOES NOT match acs"); // should this be `security_access`?
-                                None
-                            }
-                        })
-                        .flatten()
-                        .collect();
+        // First get the set of acps that apply to this receiver
+        let related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(&se.ident);
 
-                    security_access!(
-                        requested = ?requested_attrs,
-                        allows = ?allowed_attrs,
-                        "attributes",
-                    );
+        // For each entry.
+        let allowed_entries: Vec<_> = entries
+            .into_iter()
+            .filter(|e| {
+                match apply_search_access(&se.ident, related_acp.as_slice(), &e) {
+                    SearchResult::Denied => false,
+                    SearchResult::Grant => true,
+                    SearchResult::Allow(allowed_attrs) => {
+                        // The allow set constrained.
+                        security_access!(
+                            requested = ?requested_attrs,
+                            allowed = ?allowed_attrs,
+                            "attributes",
+                        );
 
-                    // is attr set a subset of allowed set?
-                    // true -> entry is allowed in result set
-                    // false -> the entry is not allowed to be searched by this entity, so is
-                    //          excluded.
-                    let decision = requested_attrs.is_subset(&allowed_attrs);
-                    security_access!(?decision, "search attr decision");
-                    decision
-                })
-                .collect();
+                        let decision = requested_attrs.is_subset(&allowed_attrs);
+                        security_access!(?decision, "search attr decision");
+                        decision
+                    }
+                }
+            })
+            .collect();
 
         if allowed_entries.is_empty() {
             security_access!("denied ❌");
@@ -593,44 +251,18 @@ pub trait AccessControlsTransaction<'a> {
         se: &SearchEvent,
         entries: Vec<Arc<EntrySealedCommitted>>,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
-        // If this is an internal search, do nothing. This can occur in some test cases ONLY
-        match &se.ident.origin {
-            IdentType::Internal => {
-                if cfg!(test) {
-                    trace!("TEST: Internal search in external interface - allowing due to cfg test ...");
-                    // In tests we just push everything back.
-                    return Ok(entries
-                        .into_iter()
-                        .map(|e| unsafe { e.as_ref().clone().into_reduced() })
-                        .collect());
-                } else {
-                    // In production we can't risk leaking data here, so we return
-                    // empty sets.
-                    security_critical!("IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
-                    // No need to check ACS
-                    return Ok(Vec::new());
-                }
-            }
-            IdentType::Synch(_) => {
-                security_critical!("Blocking sync check");
-                return Err(OperationError::InvalidState);
-            }
-            IdentType::User(_) => {}
-        };
-
-        /*
-         * Super similar to above (could even re-use some parts). Given a set of entries,
-         * reduce the attribute sets on them to "what is visible". This is ONLY called on
-         * the server edge, such that clients only see what they can, but internally,
-         * impersonate and such actually still get the whole entry back as not to break
-         * modify and co.
-         */
-
-        info!(event = %se.ident, "Access check for search (reduce) event");
+        // Build a reference set from the req_attrs. This is what we test against
+        // to see if the attribute is something we currently want.
+        let requested_attrs: Option<BTreeSet<_>> = se
+            .attrs
+            .as_ref()
+            .map(|vs| vs.iter().map(|s| s.as_str()).collect());
 
         // Get the relevant acps for this receiver.
         let related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(&se.ident);
         let related_acp: Vec<(&AccessControlSearch, _)> = if let Some(r_attrs) = se.attrs.as_ref() {
+            // If the acp doesn't overlap with our requested attrs, there is no point in
+            // testing it!
             related_acp
                 .into_iter()
                 .filter(|(acs, _)| !acs.attrs.is_disjoint(r_attrs))
@@ -639,62 +271,52 @@ pub trait AccessControlsTransaction<'a> {
             related_acp
         };
 
-        /*
-        related_acp.iter().for_each(|racp| {
-            lsecurity_access!( "Related acs -> {:?}", racp.acp.name);
-        });
-        */
-
-        // Build a reference set from the req_attrs. This is what we test against
-        // to see if the attribute is something we currently want.
-        let req_attrs: Option<BTreeSet<_>> = se
-            .attrs
-            .as_ref()
-            .map(|vs| vs.iter().map(|s| s.as_str()).collect());
-
-        //  For each entry
-        let allowed_entries: Vec<Entry<EntryReduced, EntryCommitted>> = entries
+        // For each entry.
+        let allowed_entries: Vec<_> = entries
             .into_iter()
-            .map(|e| {
-                // Get the set of attributes you can see for this entry
-                // this is within your related acp scope.
-                let allowed_attrs: BTreeSet<&str> = related_acp
-                    .iter()
-                    .filter_map(|(acs, f_res)| {
-                        if e.entry_match_no_index(f_res) {
-                            security_access!(
-                                target = ?e.get_uuid(),
-                                acs = %acs.acp.name,
-                                "target entry matches acs",
-                            );
-                            // add search_attrs to allowed iterator
-                            Some(acs.attrs.iter().map(|s| s.as_str()).filter(|s| {
-                                req_attrs
-                                    .as_ref()
-                                    .map(|r_attrs| r_attrs.contains(s))
-                                    .unwrap_or(true)
-                            }))
+            .filter_map(|e| {
+                match apply_search_access(&se.ident, related_acp.as_slice(), &e) {
+                    SearchResult::Denied => None,
+                    SearchResult::Grant => {
+                        if cfg!(test) {
+                            // We only allow this during tests.
+                            // No properly written access module should allow
+                            // unbounded attribute read!
+                            Some(unsafe { e.as_ref().clone().into_reduced() })
                         } else {
-                            trace!(
-                                target = ?e.get_uuid(),
-                                acs = %acs.acp.name,
-                                "target entry DOES NOT match acs",
-                            );
                             None
                         }
-                    })
-                    .flatten()
-                    .collect();
+                    }
+                    SearchResult::Allow(allowed_attrs) => {
+                        // The allow set constrained.
+                        security_access!(
+                            requested = ?requested_attrs,
+                            allowed = ?allowed_attrs,
+                            "attributes",
+                        );
+                        // The allow set constrained.
+                        security_access!(
+                            requested = ?requested_attrs,
+                            allowed = ?allowed_attrs,
+                            "attributes",
+                        );
 
-                // Remove all others that are present on the entry.
-                security_access!(
-                    requested = ?req_attrs,
-                    allowed = ?allowed_attrs,
-                    "attributes"
-                );
+                        // Reduce requested by allowed.
+                        let reduced_attrs = if let Some(requested) = requested_attrs.as_ref() {
+                            requested & &allowed_attrs
+                        } else {
+                            allowed_attrs
+                        };
 
-                // Now purge the attrs that are NOT allowed.
-                e.reduce_attributes(&allowed_attrs)
+                        if reduced_attrs.is_empty() {
+                            None
+                        } else {
+                            Some(e.reduce_attributes(&reduced_attrs))
+                        }
+                    }
+                }
+
+                // End filter
             })
             .collect();
 
@@ -750,37 +372,12 @@ pub trait AccessControlsTransaction<'a> {
         related_acp
     }
 
-    #[allow(clippy::cognitive_complexity)]
     #[instrument(level = "debug", name = "access::modify_allow_operation", skip_all)]
     fn modify_allow_operation(
         &self,
         me: &ModifyEvent,
         entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<bool, OperationError> {
-        match &me.ident.origin {
-            IdentType::Internal => {
-                trace!("Internal operation, bypassing access check");
-                // No need to check ACS
-                return Ok(true);
-            }
-            IdentType::Synch(_) => {
-                security_critical!("Blocking sync check");
-                return Err(OperationError::InvalidState);
-            }
-            IdentType::User(_) => {}
-        };
-        info!(event = %me.ident, "Access check for modify event");
-
-        match me.ident.access_scope() {
-            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise => {
-                security_access!("denied ❌ - identity access scope is not permitted to modify");
-                return Ok(false);
-            }
-            AccessScope::ReadWrite => {
-                // As you were
-            }
-        };
-
         // Pre-check if the no-no purge class is present
         let disallow = me
             .modlist
@@ -795,10 +392,6 @@ pub trait AccessControlsTransaction<'a> {
         // Find the acps that relate to the caller, and compile their related
         // target filters.
         let related_acp: Vec<(&AccessControlModify, _)> = self.modify_related_acp(&me.ident);
-
-        related_acp.iter().for_each(|racp| {
-            trace!("Related acs -> {:?}", racp.0.acp.name);
-        });
 
         // build two sets of "requested pres" and "requested rem"
         let requested_pres: BTreeSet<&str> = me
@@ -856,66 +449,42 @@ pub trait AccessControlsTransaction<'a> {
         security_access!(?requested_classes, "Requested class set");
 
         let r = entries.iter().all(|e| {
-            // For this entry, find the acp's that apply to it from the
-            // set that apply to the entry that is performing the operation
-            let scoped_acp: Vec<&AccessControlModify> = related_acp
-                .iter()
-                .filter_map(|(acm, f_res)| {
-                    if e.entry_match_no_index(f_res) {
-                        Some(*acm)
+            match apply_modify_access(&me.ident, related_acp.as_slice(), &e) {
+                ModifyResult::Denied => false,
+                ModifyResult::Grant => true,
+                ModifyResult::Allow { pres, rem, cls } => {
+                    if !requested_pres.is_subset(&pres) {
+                        security_access!("requested_pres is not a subset of allowed");
+                        security_access!(
+                            "requested_pres: {:?} !⊆ allowed: {:?}",
+                            requested_pres,
+                            pres
+                        );
+                        false
+                    } else if !requested_rem.is_subset(&rem) {
+                        security_access!("requested_rem is not a subset of allowed");
+                        security_access!(
+                            "requested_rem: {:?} !⊆ allowed: {:?}",
+                            requested_rem,
+                            rem
+                        );
+                        false
+                    } else if !requested_classes.is_subset(&cls) {
+                        security_access!("requested_classes is not a subset of allowed");
+                        security_access!(
+                            "requested_classes: {:?} !⊆ allowed: {:?}",
+                            requested_classes,
+                            cls
+                        );
+                        false
                     } else {
-                        None
-                    }
-                })
-                .collect();
-            // Build the sets of classes, pres and rem we are allowed to modify, extend
-            // or use based on the set of matched acps.
-            let allowed_pres: BTreeSet<&str> = scoped_acp
-                .iter()
-                .flat_map(|acp| acp.presattrs.iter().map(|v| v.as_str()))
-                .collect();
-
-            let allowed_rem: BTreeSet<&str> = scoped_acp
-                .iter()
-                .flat_map(|acp| acp.remattrs.iter().map(|v| v.as_str()))
-                .collect();
-
-            let allowed_classes: BTreeSet<&str> = scoped_acp
-                .iter()
-                .flat_map(|acp| acp.classes.iter().map(|v| v.as_str()))
-                .collect();
-
-            // Now check all the subsets are true. Remember, purge class
-            // is already checked above.
-            if !requested_pres.is_subset(&allowed_pres) {
-                security_access!("requested_pres is not a subset of allowed");
-                security_access!(
-                    "requested_pres: {:?} !⊆ allowed: {:?}",
-                    requested_pres,
-                    allowed_pres
-                );
-                false
-            } else if !requested_rem.is_subset(&allowed_rem) {
-                security_access!("requested_rem is not a subset of allowed");
-                security_access!(
-                    "requested_rem: {:?} !⊆ allowed: {:?}",
-                    requested_rem,
-                    allowed_rem
-                );
-                false
-            } else if !requested_classes.is_subset(&allowed_classes) {
-                security_access!("requested_classes is not a subset of allowed");
-                security_access!(
-                    "requested_classes: {:?} !⊆ allowed: {:?}",
-                    requested_classes,
-                    allowed_classes
-                );
-                false
-            } else {
-                security_access!("passed pres, rem, classes check.");
-                true
-            } // if acc == false
+                        security_access!("passed pres, rem, classes check.");
+                        true
+                    } // if acc == false
+                }
+            }
         });
+
         if r {
             security_access!("allowed ✅");
         } else {
@@ -924,7 +493,6 @@ pub trait AccessControlsTransaction<'a> {
         Ok(r)
     }
 
-    #[allow(clippy::cognitive_complexity)]
     #[instrument(
         level = "debug",
         name = "access::batch_modify_allow_operation",
@@ -933,69 +501,137 @@ pub trait AccessControlsTransaction<'a> {
     fn batch_modify_allow_operation(
         &self,
         me: &BatchModifyEvent,
-        _entries: &[Arc<EntrySealedCommitted>],
+        entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<bool, OperationError> {
-        match &me.ident.origin {
-            IdentType::Internal => {
-                trace!("Internal operation, bypassing access check");
-                // No need to check ACS
-                return Ok(true);
-            }
-            IdentType::Synch(_) => {
-                security_critical!("Blocking sync check");
-                return Err(OperationError::InvalidState);
-            }
-            IdentType::User(_) => {}
-        };
-        info!(event = %me.ident, "Access check for batch modify event");
+        // Find the acps that relate to the caller, and compile their related
+        // target filters.
+        let related_acp: Vec<(&AccessControlModify, _)> = self.modify_related_acp(&me.ident);
 
-        match me.ident.access_scope() {
-            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise => {
-                security_access!("denied ❌ - identity access scope is not permitted to modify");
-                return Ok(false);
-            }
-            AccessScope::ReadWrite => {
-                // As you were
-            }
-        };
+        let r = entries.iter().all(|e| {
+            // Due to how batch mod works, we have to check the modlist *per entry* rather
+            // than as a whole.
 
-        error!("How did you get here?! Batch modify isn't public yet!");
-        debug_assert!(false);
+            let modlist = if let Some(mlist) = me.modset.get(&e.get_uuid()) {
+                mlist
+            } else {
+                security_access!(
+                    "modlist not present for {}, failing operation.",
+                    e.get_uuid()
+                );
+                return false;
+            };
 
-        Err(OperationError::InvalidState)
+            let disallow = modlist
+                .iter()
+                .any(|m| matches!(m, Modify::Purged(a) if a == "class"));
+
+            if disallow {
+                security_access!("Disallowing purge class in modification");
+                return false;
+            }
+
+            // build two sets of "requested pres" and "requested rem"
+            let requested_pres: BTreeSet<&str> = modlist
+                .iter()
+                .filter_map(|m| match m {
+                    Modify::Present(a, _) => Some(a.as_str()),
+                    _ => None,
+                })
+                .collect();
+
+            let requested_rem: BTreeSet<&str> = modlist
+                .iter()
+                .filter_map(|m| match m {
+                    Modify::Removed(a, _) => Some(a.as_str()),
+                    Modify::Purged(a) => Some(a.as_str()),
+                    _ => None,
+                })
+                .collect();
+
+            // Build the set of classes that we to work on, only in terms of "addition". To remove
+            // I think we have no limit, but ... william of the future may find a problem with this
+            // policy.
+            let requested_classes: BTreeSet<&str> = modlist
+                .iter()
+                .filter_map(|m| match m {
+                    Modify::Present(a, v) => {
+                        if a.as_str() == "class" {
+                            // Here we have an option<&str> which could mean there is a risk of
+                            // a malicious entity attempting to trick us by masking class mods
+                            // in non-iutf8 types. However, the server first won't respect their
+                            // existence, and second, we would have failed the mod at schema checking
+                            // earlier in the process as these were not correctly type. As a result
+                            // we can trust these to be correct here and not to be "None".
+                            v.to_str()
+                        } else {
+                            None
+                        }
+                    }
+                    Modify::Removed(a, v) => {
+                        if a.as_str() == "class" {
+                            v.to_str()
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
+                })
+                .collect();
+
+            security_access!(?requested_pres, "Requested present set");
+            security_access!(?requested_rem, "Requested remove set");
+            security_access!(?requested_classes, "Requested class set");
+
+            match apply_modify_access(&me.ident, related_acp.as_slice(), &e) {
+                ModifyResult::Denied => false,
+                ModifyResult::Grant => true,
+                ModifyResult::Allow { pres, rem, cls } => {
+                    if !requested_pres.is_subset(&pres) {
+                        security_access!("requested_pres is not a subset of allowed");
+                        security_access!(
+                            "requested_pres: {:?} !⊆ allowed: {:?}",
+                            requested_pres,
+                            pres
+                        );
+                        false
+                    } else if !requested_rem.is_subset(&rem) {
+                        security_access!("requested_rem is not a subset of allowed");
+                        security_access!(
+                            "requested_rem: {:?} !⊆ allowed: {:?}",
+                            requested_rem,
+                            rem
+                        );
+                        false
+                    } else if !requested_classes.is_subset(&cls) {
+                        security_access!("requested_classes is not a subset of allowed");
+                        security_access!(
+                            "requested_classes: {:?} !⊆ allowed: {:?}",
+                            requested_classes,
+                            cls
+                        );
+                        false
+                    } else {
+                        security_access!("passed pres, rem, classes check.");
+                        true
+                    } // if acc == false
+                }
+            }
+        });
+
+        if r {
+            security_access!("allowed ✅");
+        } else {
+            security_access!("denied ❌");
+        }
+        Ok(r)
     }
 
-    #[allow(clippy::cognitive_complexity)]
     #[instrument(level = "debug", name = "access::create_allow_operation", skip_all)]
     fn create_allow_operation(
         &self,
         ce: &CreateEvent,
         entries: &[Entry<EntryInit, EntryNew>],
     ) -> Result<bool, OperationError> {
-        match &ce.ident.origin {
-            IdentType::Internal => {
-                trace!("Internal operation, bypassing access check");
-                // No need to check ACS
-                return Ok(true);
-            }
-            IdentType::Synch(_) => {
-                security_critical!("Blocking sync check");
-                return Err(OperationError::InvalidState);
-            }
-            IdentType::User(_) => {}
-        };
-        info!(event = %ce.ident, "Access check for create event");
-
-        match ce.ident.access_scope() {
-            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise => {
-                security_access!("denied ❌ - identity access scope is not permitted to create");
-                return Ok(false);
-            }
-            AccessScope::ReadWrite => {
-                // As you were
-            }
-        };
-
         // Some useful references we'll use for the remainder of the operation
         let create_state = self.get_create();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
@@ -1027,72 +663,12 @@ pub trait AccessControlsTransaction<'a> {
             })
             .collect();
 
-        // lsecurity_access!( "Related acc -> {:?}", related_acp);
-
         // For each entry
         let r = entries.iter().all(|e| {
-            // Build the set of requested classes and attrs here.
-            let create_attrs: BTreeSet<&str> = e.get_ava_names().collect();
-            // If this is empty, we make an empty set, which is fine because
-            // the empty class set despite matching is_subset, will have the
-            // following effect:
-            // * there is no class on entry, so schema will fail
-            // * plugin-base will add object to give a class, but excess
-            //   attrs will cause fail (could this be a weakness?)
-            // * class is a "may", so this could be empty in the rules, so
-            //   if the accr is empty this would not be a true subset,
-            //   so this would "fail", but any content in the accr would
-            //   have to be validated.
-            //
-            // I still think if this is None, we should just fail here ...
-            // because it shouldn't be possible to match.
-
-            let create_classes: BTreeSet<&str> = match e.get_ava_iter_iutf8("class") {
-                Some(s) => s.collect(),
-                None => {
-                    admin_error!("Class set failed to build - corrupted entry?");
-                    return false;
-                }
-            };
-
-            related_acp.iter().any(|(accr, f_res)| {
-                // Check to see if allowed.
-                if e.entry_match_no_index(f_res) {
-                    security_access!(?e, acs = ?accr, "entry matches acs");
-                    // It matches, so now we have to check attrs and classes.
-                    // Remember, we have to match ALL requested attrs
-                    // and classes to pass!
-                    let allowed_attrs: BTreeSet<&str> =
-                        accr.attrs.iter().map(|s| s.as_str()).collect();
-                    let allowed_classes: BTreeSet<&str> =
-                        accr.classes.iter().map(|s| s.as_str()).collect();
-
-                    if !create_attrs.is_subset(&allowed_attrs) {
-                        security_access!("create_attrs is not a subset of allowed");
-                        security_access!("{:?} !⊆ {:?}", create_attrs, allowed_attrs);
-                        return false;
-                    }
-                    if !create_classes.is_subset(&allowed_classes) {
-                        security_access!("create_classes is not a subset of allowed");
-                        security_access!("{:?} !⊆ {:?}", create_classes, allowed_classes);
-                        return false;
-                    }
-                    security_access!("passed");
-
-                    true
-                } else {
-                    trace!(?e, acs = %accr.acp.name, "entry DOES NOT match acs");
-                    // Does not match, fail this rule.
-                    false
-                }
-            })
-            //      Find the set of related acps for this entry.
-            //
-            //      For each "created" entry.
-            //          If the created entry is 100% allowed by this acp
-            //          IE: all attrs to be created AND classes match classes
-            //              allow
-            //          if no acp allows, fail operation.
+            match apply_create_access(&ce.ident, related_acp.as_slice(), &e) {
+                CreateResult::Denied => false,
+                CreateResult::Grant => true,
+            }
         });
 
         if r {
@@ -1148,61 +724,15 @@ pub trait AccessControlsTransaction<'a> {
         de: &DeleteEvent,
         entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<bool, OperationError> {
-        match &de.ident.origin {
-            IdentType::Internal => {
-                trace!("Internal operation, bypassing access check");
-                // No need to check ACS
-                return Ok(true);
-            }
-            IdentType::Synch(_) => {
-                security_critical!("Blocking sync check");
-                return Err(OperationError::InvalidState);
-            }
-            IdentType::User(_) => {}
-        };
-        info!(event = %de.ident, "Access check for delete event");
-
-        match de.ident.access_scope() {
-            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise => {
-                security_access!("denied ❌ - identity access scope is not permitted to delete");
-                return Ok(false);
-            }
-            AccessScope::ReadWrite => {
-                // As you were
-            }
-        };
-
         // Find the acps that relate to the caller.
         let related_acp = self.delete_related_acp(&de.ident);
 
-        /*
-        related_acp.iter().for_each(|racp| {
-            lsecurity_access!( "Related acs -> {:?}", racp.acp.name);
-        });
-        */
-
         // For each entry
         let r = entries.iter().all(|e| {
-            related_acp.iter().any(|(acd, f_res)| {
-                if e.entry_match_no_index(f_res) {
-                    security_access!(
-                        entry_uuid = ?e.get_uuid(),
-                        acs = %acd.acp.name,
-                        "entry matches acs"
-                    );
-                    // It matches, so we can delete this!
-                    security_access!("passed");
-                    true
-                } else {
-                    trace!(
-                        "entry {:?} DOES NOT match acs {}",
-                        e.get_uuid(),
-                        acd.acp.name
-                    );
-                    // Does not match, fail.
-                    false
-                } // else
-            }) // any related_acp
+            match apply_delete_access(&de.ident, related_acp.as_slice(), &e) {
+                DeleteResult::Denied => false,
+                DeleteResult::Grant => true,
+            }
         });
         if r {
             security_access!("allowed ✅");
@@ -1258,81 +788,37 @@ pub trait AccessControlsTransaction<'a> {
                 search_related_acp
             };
 
-        /*
-        search_related_acp.iter().for_each(|(racp, _)| {
-            trace!("Related acs -> {:?}", racp.acp.name);
-        });
-        */
-
         // == modify ==
 
         let modify_related_acp = self.modify_related_acp(ident);
         let delete_related_acp = self.delete_related_acp(ident);
 
-        /*
-        modify_related_acp.iter().for_each(|(racp, _)| {
-            trace!("Related acm -> {:?}", racp.acp.name);
-        });
-        */
-
         let effective_permissions: Vec<_> = entries
             .iter()
             .map(|e| {
                 // == search ==
-                let allowed_attrs: BTreeSet<AttrString> = search_related_acp
-                    .iter()
-                    .filter_map(|(acs, f_res)| {
-                        // if it applies
-                        if e.entry_match_no_index(f_res) {
-                            // security_access!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry matches acs");
-                            Some(acs.attrs.iter().cloned())
-                        } else {
-                            trace!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry DOES NOT match acs"); // should this be `security_access`?
-                            None
+                let search_effective =
+                    match apply_search_access(ident, search_related_acp.as_slice(), &e) {
+                        SearchResult::Denied => Access::Denied,
+                        SearchResult::Grant => Access::Grant,
+                        SearchResult::Allow(allowed_attrs) => {
+                            // Bound by requested attrs?
+                            Access::Allow(allowed_attrs.into_iter().map(|s| s.into()).collect())
                         }
-                    })
-                    .flatten()
-                    .collect();
-
-                security_access!(
-                    requested = ?attrs,
-                    allows = ?allowed_attrs,
-                    "attributes",
-                );
-
-                // intersect?
-                let search_effective = if let Some(r_attrs) = attrs.as_ref() {
-                    r_attrs & &allowed_attrs
-                } else {
-                    allowed_attrs
-                };
+                    };
 
                 // == modify ==
-                let modify_scoped_acp: Vec<&AccessControlModify> = modify_related_acp
-                    .iter()
-                    .filter_map(|(acm, f_res)| {
-                        if e.entry_match_no_index(f_res) {
-                            Some(*acm)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
 
-                let modify_pres: BTreeSet<AttrString> = modify_scoped_acp
-                    .iter()
-                    .flat_map(|acp| acp.presattrs.iter().cloned())
-                    .collect();
-
-                let modify_rem: BTreeSet<AttrString> = modify_scoped_acp
-                    .iter()
-                    .flat_map(|acp| acp.remattrs.iter().cloned())
-                    .collect();
-
-                let modify_class: BTreeSet<AttrString> = modify_scoped_acp
-                    .iter()
-                    .flat_map(|acp| acp.classes.iter().cloned())
-                    .collect();
+                let (modify_pres, modify_rem, modify_class) =
+                    match apply_modify_access(ident, modify_related_acp.as_slice(), &e) {
+                        ModifyResult::Denied => (Access::Denied, Access::Denied, Access::Denied),
+                        ModifyResult::Grant => (Access::Grant, Access::Grant, Access::Grant),
+                        ModifyResult::Allow { pres, rem, cls } => (
+                            Access::Allow(pres.into_iter().map(|s| s.into()).collect()),
+                            Access::Allow(rem.into_iter().map(|s| s.into()).collect()),
+                            Access::Allow(cls.into_iter().map(|s| s.into()).collect()),
+                        ),
+                    };
 
                 // == delete ==
                 let delete = delete_related_acp.iter().any(|(acd, f_res)| {
@@ -1369,8 +855,6 @@ pub trait AccessControlsTransaction<'a> {
 
 pub struct AccessControlsWriteTransaction<'a> {
     inner: CowCellWriteTxn<'a, AccessControlsInner>,
-    // acp_related_search_cache_wr: ARCacheWriteTxn<'a, Uuid, Vec<Uuid>>,
-    // acp_related_search_cache: Cell<ARCacheReadTxn<'a, Uuid, Vec<Uuid>>>,
     acp_resolve_filter_cache: Cell<
         ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
     >,
@@ -1384,29 +868,9 @@ impl<'a> AccessControlsWriteTransaction<'a> {
         &mut self,
         mut acps: Vec<AccessControlSearch>,
     ) -> Result<(), OperationError> {
-        // Clear the existing tree. We don't care that we are wiping it
-        // because we have the transactions to protect us from errors
-        // to allow rollbacks.
-        /*
-        let acps_search = &mut self.inner.deref_mut().acps_search;
-        acps_search.clear();
-        for acp in acps {
-            let uuid = acp.acp.uuid;
-            acps_search.insert(uuid, acp);
-        }
-        */
         std::mem::swap(&mut acps, &mut self.inner.deref_mut().acps_search);
-        // We reloaded the search acps, so we need to ditch all the cache.
-        // self.acp_related_search_cache_wr.clear();
         Ok(())
     }
-
-    /*
-    pub fn invalidate_related_cache(&mut self, inv: &[Uuid]) {
-        inv.iter()
-            .for_each(|uuid| self.acp_related_search_cache_wr.remove(*uuid))
-    }
-    */
 
     pub fn update_create(
         &mut self,
@@ -1433,7 +897,6 @@ impl<'a> AccessControlsWriteTransaction<'a> {
     }
 
     pub fn commit(self) -> Result<(), OperationError> {
-        // self.acp_related_search_cache_wr.commit();
         self.inner.commit();
 
         Ok(())
@@ -1456,15 +919,6 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsWriteTransaction<'a> {
     fn get_delete(&self) -> &Vec<AccessControlDelete> {
         &self.inner.acps_delete
     }
-
-    /*
-    fn get_acp_related_search_cache(&self) -> &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>> {
-        unsafe {
-            let mptr = self.acp_related_search_cache.as_ptr();
-            &mut (*mptr) as &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>>
-        }
-    }
-    */
 
     fn get_acp_resolve_filter_cache(
         &self,
@@ -1515,15 +969,6 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
     fn get_delete(&self) -> &Vec<AccessControlDelete> {
         &self.inner.acps_delete
     }
-
-    /*
-    fn get_acp_related_search_cache(&self) -> &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>> {
-        unsafe {
-            let mptr = self.acp_related_search_cache.as_ptr();
-            &mut (*mptr) as &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>>
-        }
-    }
-    */
 
     fn get_acp_resolve_filter_cache(
         &self,
@@ -1598,8 +1043,11 @@ mod tests {
     use uuid::uuid;
 
     use super::{
-        AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlProfile,
-        AccessControlSearch, AccessControls, AccessControlsTransaction, AccessEffectivePermission,
+        profiles::{
+            AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlProfile,
+            AccessControlSearch,
+        },
+        Access, AccessControls, AccessControlsTransaction, AccessEffectivePermission,
     };
     use crate::prelude::*;
 
@@ -2888,10 +2336,10 @@ mod tests {
             vec![AccessEffectivePermission {
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                search: btreeset![AttrString::from("name")],
-                modify_pres: BTreeSet::new(),
-                modify_rem: BTreeSet::new(),
-                modify_class: BTreeSet::new(),
+                search: Access::Allow(btreeset![AttrString::from("name")]),
+                modify_pres: Access::Allow(BTreeSet::new()),
+                modify_rem: Access::Allow(BTreeSet::new()),
+                modify_class: Access::Allow(BTreeSet::new()),
             }]
         )
     }
@@ -2929,10 +2377,10 @@ mod tests {
             vec![AccessEffectivePermission {
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                search: BTreeSet::new(),
-                modify_pres: btreeset![AttrString::from("name")],
-                modify_rem: btreeset![AttrString::from("name")],
-                modify_class: btreeset![AttrString::from("object")],
+                search: Access::Allow(BTreeSet::new()),
+                modify_pres: Access::Allow(btreeset![AttrString::from("name")]),
+                modify_rem: Access::Allow(btreeset![AttrString::from("name")]),
+                modify_class: Access::Allow(btreeset![AttrString::from("object")]),
             }]
         )
     }

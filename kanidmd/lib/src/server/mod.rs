@@ -14,7 +14,9 @@ use tokio::sync::{Semaphore, SemaphorePermit};
 use tracing::trace;
 
 use self::access::{
-    AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
+    profiles::{
+        AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
+    },
     AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
     AccessControlsWriteTransaction,
 };
