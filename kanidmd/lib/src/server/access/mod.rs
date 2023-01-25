@@ -501,36 +501,129 @@ pub trait AccessControlsTransaction<'a> {
     fn batch_modify_allow_operation(
         &self,
         me: &BatchModifyEvent,
-        _entries: &[Arc<EntrySealedCommitted>],
+        entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<bool, OperationError> {
-        match &me.ident.origin {
-            IdentType::Internal => {
-                trace!("Internal operation, bypassing access check");
-                // No need to check ACS
-                return Ok(true);
-            }
-            IdentType::Synch(_) => {
-                security_critical!("Blocking sync check");
-                return Err(OperationError::InvalidState);
-            }
-            IdentType::User(_) => {}
-        };
-        info!(event = %me.ident, "Access check for batch modify event");
+        // Find the acps that relate to the caller, and compile their related
+        // target filters.
+        let related_acp: Vec<(&AccessControlModify, _)> = self.modify_related_acp(&me.ident);
 
-        match me.ident.access_scope() {
-            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise => {
-                security_access!("denied ❌ - identity access scope is not permitted to modify");
-                return Ok(false);
-            }
-            AccessScope::ReadWrite => {
-                // As you were
-            }
-        };
+        let r = entries.iter().all(|e| {
+            // Due to how batch mod works, we have to check the modlist *per entry* rather
+            // than as a whole.
 
-        error!("How did you get here?! Batch modify isn't public yet!");
-        debug_assert!(false);
+            let modlist = if let Some(mlist) = me.modset.get(&e.get_uuid()) {
+                mlist
+            } else {
+                security_access!(
+                    "modlist not present for {}, failing operation.",
+                    e.get_uuid()
+                );
+                return false;
+            };
 
-        Err(OperationError::InvalidState)
+            let disallow = modlist
+                .iter()
+                .any(|m| matches!(m, Modify::Purged(a) if a == "class"));
+
+            if disallow {
+                security_access!("Disallowing purge class in modification");
+                return false;
+            }
+
+            // build two sets of "requested pres" and "requested rem"
+            let requested_pres: BTreeSet<&str> = modlist
+                .iter()
+                .filter_map(|m| match m {
+                    Modify::Present(a, _) => Some(a.as_str()),
+                    _ => None,
+                })
+                .collect();
+
+            let requested_rem: BTreeSet<&str> = modlist
+                .iter()
+                .filter_map(|m| match m {
+                    Modify::Removed(a, _) => Some(a.as_str()),
+                    Modify::Purged(a) => Some(a.as_str()),
+                    _ => None,
+                })
+                .collect();
+
+            // Build the set of classes that we to work on, only in terms of "addition". To remove
+            // I think we have no limit, but ... william of the future may find a problem with this
+            // policy.
+            let requested_classes: BTreeSet<&str> = modlist
+                .iter()
+                .filter_map(|m| match m {
+                    Modify::Present(a, v) => {
+                        if a.as_str() == "class" {
+                            // Here we have an option<&str> which could mean there is a risk of
+                            // a malicious entity attempting to trick us by masking class mods
+                            // in non-iutf8 types. However, the server first won't respect their
+                            // existence, and second, we would have failed the mod at schema checking
+                            // earlier in the process as these were not correctly type. As a result
+                            // we can trust these to be correct here and not to be "None".
+                            v.to_str()
+                        } else {
+                            None
+                        }
+                    }
+                    Modify::Removed(a, v) => {
+                        if a.as_str() == "class" {
+                            v.to_str()
+                        } else {
+                            None
+                        }
+                    }
+                    _ => None,
+                })
+                .collect();
+
+            security_access!(?requested_pres, "Requested present set");
+            security_access!(?requested_rem, "Requested remove set");
+            security_access!(?requested_classes, "Requested class set");
+
+            match apply_modify_access(&me.ident, related_acp.as_slice(), &e) {
+                ModifyResult::Denied => false,
+                ModifyResult::Grant => true,
+                ModifyResult::Allow { pres, rem, cls } => {
+                    if !requested_pres.is_subset(&pres) {
+                        security_access!("requested_pres is not a subset of allowed");
+                        security_access!(
+                            "requested_pres: {:?} !⊆ allowed: {:?}",
+                            requested_pres,
+                            pres
+                        );
+                        false
+                    } else if !requested_rem.is_subset(&rem) {
+                        security_access!("requested_rem is not a subset of allowed");
+                        security_access!(
+                            "requested_rem: {:?} !⊆ allowed: {:?}",
+                            requested_rem,
+                            rem
+                        );
+                        false
+                    } else if !requested_classes.is_subset(&cls) {
+                        security_access!("requested_classes is not a subset of allowed");
+                        security_access!(
+                            "requested_classes: {:?} !⊆ allowed: {:?}",
+                            requested_classes,
+                            cls
+                        );
+                        false
+                    } else {
+                        security_access!("passed pres, rem, classes check.");
+                        true
+                    } // if acc == false
+                }
+            }
+        });
+
+        if r {
+            security_access!("allowed ✅");
+        } else {
+            security_access!("denied ❌");
+        }
+        Ok(r)
     }
 
     #[instrument(level = "debug", name = "access::create_allow_operation", skip_all)]
