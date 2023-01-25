@@ -17,7 +17,7 @@ pub use crate::constants::values::*;
 use std::time::Duration;
 
 // Increment this as we add new schema types and values!!!
-pub const SYSTEM_INDEX_VERSION: i64 = 27;
+pub const SYSTEM_INDEX_VERSION: i64 = 28;
 
 /*
  * domain functional levels

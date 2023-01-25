@@ -49,7 +49,7 @@ clap_complete = "^3.2.5"
 chrono = "^0.4.23"
 compact_jwt = "^0.2.3"
 # compact_jwt = { path = "../compact_jwt" }
-concread = "^0.4.0"
+concread = "^0.4.1"
 # concread = { path = "../concread" }
 cron = "0.12.0"
 crossbeam = "0.8.1"
@@ -81,16 +81,13 @@ kanidm_unix_int = { path = "./kanidm_unix_int" }
 last-git-commit = "0.2.0"
 # REMOVE this
 lazy_static = "^1.4.0"
-# ldap3_client = "^0.3.0"
-# ldap3_proto = "^0.3.0"
+ldap3_client = "^0.3.1"
+ldap3_proto = "^0.3.1"
 
 # ldap3_client = { path = "../ldap3/client", version = "0.3.0" }
 # ldap3_proto = { path = "../ldap3/proto", version = "0.3.0" }
-# scim_proto = { path = "../scim/proto", version = "0.1.0" }
-
-ldap3_client = { git = "https://github.com/kanidm/ldap3.git", version = "0.3.0" }
-ldap3_proto = { git = "https://github.com/kanidm/ldap3.git", version = "0.3.0" }
-scim_proto = { git = "https://github.com/kanidm/scim.git", version = "0.1.0" }
+# ldap3_client = { git = "https://github.com/kanidm/ldap3.git", version = "0.3.0" }
+# ldap3_proto = { git = "https://github.com/kanidm/ldap3.git", version = "0.3.0" }
 
 libc = "^0.2.139"
 libnss = "^0.4.0"
@@ -114,6 +111,11 @@ regex = "1.7.1"
 reqwest = { version = "0.11.14", default-features = false, features=["cookies", "json", "gzip", "native-tls"] }
 rpassword = "^7.2.0"
 rusqlite = "^0.28.0"
+
+scim_proto = "^0.1.1"
+# scim_proto = { path = "../scim/proto", version = "0.1.1" }
+# scim_proto = { git = "https://github.com/kanidm/scim.git", version = "0.1.1" }
+
 serde = "^1.0.152"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
 serde_json = "^1.0.91"
