@@ -1554,6 +1554,39 @@
 <span id="1554">1554</span>
 <span id="1555">1555</span>
 <span id="1556">1556</span>
+<span id="1557">1557</span>
+<span id="1558">1558</span>
+<span id="1559">1559</span>
+<span id="1560">1560</span>
+<span id="1561">1561</span>
+<span id="1562">1562</span>
+<span id="1563">1563</span>
+<span id="1564">1564</span>
+<span id="1565">1565</span>
+<span id="1566">1566</span>
+<span id="1567">1567</span>
+<span id="1568">1568</span>
+<span id="1569">1569</span>
+<span id="1570">1570</span>
+<span id="1571">1571</span>
+<span id="1572">1572</span>
+<span id="1573">1573</span>
+<span id="1574">1574</span>
+<span id="1575">1575</span>
+<span id="1576">1576</span>
+<span id="1577">1577</span>
+<span id="1578">1578</span>
+<span id="1579">1579</span>
+<span id="1580">1580</span>
+<span id="1581">1581</span>
+<span id="1582">1582</span>
+<span id="1583">1583</span>
+<span id="1584">1584</span>
+<span id="1585">1585</span>
+<span id="1586">1586</span>
+<span id="1587">1587</span>
+<span id="1588">1588</span>
+<span id="1589">1589</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::{TryFrom, TryInto};
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::time::Duration;
@@ -1655,16 +1688,19 @@
 <span class="attribute">#[derive(Clone)]
 </span><span class="kw">pub struct </span>IdlSqlite {
     pool: Pool&lt;SqliteConnectionManager&gt;,
+    db_name: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str,
 }
 
 <span class="kw">pub struct </span>IdlSqliteReadTransaction {
     committed: bool,
     conn: r2d2::PooledConnection&lt;SqliteConnectionManager&gt;,
+    db_name: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str,
 }
 
 <span class="kw">pub struct </span>IdlSqliteWriteTransaction {
     committed: bool,
     conn: r2d2::PooledConnection&lt;SqliteConnectionManager&gt;,
+    db_name: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str,
 }
 
 <span class="kw">pub trait </span>IdlSqliteTransaction {
@@ -2117,8 +2153,8 @@
 
 <span class="kw">impl </span>IdlSqliteTransaction <span class="kw">for </span>IdlSqliteReadTransaction {
     <span class="kw">fn </span>get_db_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
-        <span class="string">&quot;main&quot;
-    </span>}
+        <span class="self">self</span>.db_name
+    }
 
     <span class="kw">fn </span>get_conn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>r2d2::PooledConnection&lt;r2d2_sqlite::SqliteConnectionManager&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.conn
@@ -2141,7 +2177,10 @@
 }
 
 <span class="kw">impl </span>IdlSqliteReadTransaction {
-    <span class="kw">pub fn </span>new(conn: r2d2::PooledConnection&lt;SqliteConnectionManager&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(
+        conn: r2d2::PooledConnection&lt;SqliteConnectionManager&gt;,
+        db_name: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str,
+    ) -&gt; <span class="self">Self </span>{
         <span class="comment">// Start the transaction
         //
         // I&#39;m happy for this to be an expect, because this is a huge failure
@@ -2155,14 +2194,15 @@
         IdlSqliteReadTransaction {
             committed: <span class="bool-val">false</span>,
             conn,
+            db_name,
         }
     }
 }
 
 <span class="kw">impl </span>IdlSqliteTransaction <span class="kw">for </span>IdlSqliteWriteTransaction {
     <span class="kw">fn </span>get_db_name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
-        <span class="string">&quot;main&quot;
-    </span>}
+        <span class="self">self</span>.db_name
+    }
 
     <span class="kw">fn </span>get_conn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>r2d2::PooledConnection&lt;r2d2_sqlite::SqliteConnectionManager&gt; {
         <span class="kw-2">&amp;</span><span class="self">self</span>.conn
@@ -2182,7 +2222,10 @@
 }
 
 <span class="kw">impl </span>IdlSqliteWriteTransaction {
-    <span class="kw">pub fn </span>new(conn: r2d2::PooledConnection&lt;SqliteConnectionManager&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(
+        conn: r2d2::PooledConnection&lt;SqliteConnectionManager&gt;,
+        db_name: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str,
+    ) -&gt; <span class="self">Self </span>{
         <span class="comment">// Start the transaction
         </span><span class="attribute">#[allow(clippy::expect_used)]
         </span>conn.execute(<span class="string">&quot;BEGIN EXCLUSIVE TRANSACTION&quot;</span>, [])
@@ -2190,6 +2233,7 @@
         IdlSqliteWriteTransaction {
             committed: <span class="bool-val">false</span>,
             conn,
+            db_name,
         }
     }
 
@@ -2212,8 +2256,8 @@
             </span>.conn
             .prepare(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
                 <span class="string">&quot;SELECT MAX(id) as id_max FROM {}.id2entry&quot;</span>,
-                <span class="string">&quot;main&quot;
-            </span>))
+                <span class="self">self</span>.get_db_name(),
+            ))
             .map_err(sqlite_error)<span class="question-mark">?</span>;
         <span class="comment">// This exists checks for if any rows WERE returned
         // that way we know to shortcut or not.
@@ -2280,8 +2324,8 @@
             </span>.conn
             .prepare(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
                 <span class="string">&quot;INSERT OR REPLACE INTO {}.id2entry (id, data) VALUES(:id, :data)&quot;</span>,
-                <span class="string">&quot;main&quot;
-            </span>))
+                <span class="self">self</span>.get_db_name()
+            ))
             .map_err(sqlite_error)<span class="question-mark">?</span>;
 
         entries.try_for_each(|e| {
@@ -2337,7 +2381,10 @@
     </span><span class="kw">pub fn </span>delete_identry(<span class="kw-2">&amp;</span><span class="self">self</span>, id: u64) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>stmt = <span class="self">self
             </span>.conn
-            .prepare(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;DELETE FROM {}.id2entry WHERE id = :id&quot;</span>, <span class="string">&quot;main&quot;</span>))
+            .prepare(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
+                <span class="string">&quot;DELETE FROM {}.id2entry WHERE id = :id&quot;</span>,
+                <span class="self">self</span>.get_db_name()
+            ))
             .map_err(sqlite_error)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>iid: i64 = id
@@ -2368,7 +2415,7 @@
             // Delete this idx_key from the table.
             </span><span class="kw">let </span>query = <span class="macro">format!</span>(
                 <span class="string">&quot;DELETE FROM {}.idx_{}_{} WHERE key = :key&quot;</span>,
-                <span class="string">&quot;main&quot;</span>,
+                <span class="self">self</span>.get_db_name(),
                 itype.as_idx_str(),
                 attr
             );
@@ -2384,7 +2431,7 @@
             <span class="comment">// update or create it.
             </span><span class="kw">let </span>query = <span class="macro">format!</span>(
                 <span class="string">&quot;INSERT OR REPLACE INTO {}.idx_{}_{} (key, idl) VALUES(:key, :idl)&quot;</span>,
-                <span class="string">&quot;main&quot;</span>,
+                <span class="self">self</span>.get_db_name(),
                 itype.as_idx_str(),
                 attr
             );
@@ -2406,7 +2453,7 @@
     <span class="kw">pub fn </span>create_name2uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="self">self</span>.conn
             .execute(
-                <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;CREATE TABLE IF NOT EXISTS {}.idx_name2uuid (name TEXT PRIMARY KEY, uuid TEXT)&quot;</span>, <span class="string">&quot;main&quot;</span>),
+                <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;CREATE TABLE IF NOT EXISTS {}.idx_name2uuid (name TEXT PRIMARY KEY, uuid TEXT)&quot;</span>, <span class="self">self</span>.get_db_name()),
                 [],
             )
             .map(|<span class="kw">_</span>| ())
@@ -2419,8 +2466,8 @@
         <span class="self">self</span>.conn
             .prepare(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
                 <span class="string">&quot;INSERT OR REPLACE INTO {}.idx_name2uuid (name, uuid) VALUES(:name, :uuid)&quot;</span>,
-                <span class="string">&quot;main&quot;
-            </span>))
+                <span class="self">self</span>.get_db_name()
+            ))
             .and_then(|<span class="kw-2">mut </span>stmt| {
                 stmt.execute(<span class="macro">named_params! </span>{
                     <span class="string">&quot;:name&quot;</span>: <span class="kw-2">&amp;</span>name,
@@ -2435,8 +2482,8 @@
         <span class="self">self</span>.conn
             .prepare(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
                 <span class="string">&quot;DELETE FROM {}.idx_name2uuid WHERE name = :name&quot;</span>,
-                <span class="string">&quot;main&quot;
-            </span>))
+                <span class="self">self</span>.get_db_name()
+            ))
             .and_then(|<span class="kw-2">mut </span>stmt| stmt.execute(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:name&quot;</span>, <span class="kw-2">&amp;</span>name)]))
             .map(|<span class="kw">_</span>| ())
             .map_err(sqlite_error)
@@ -2445,7 +2492,7 @@
     <span class="kw">pub fn </span>create_externalid2uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="self">self</span>.conn
             .execute(
-                <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;CREATE TABLE IF NOT EXISTS {}.idx_externalid2uuid (eid TEXT PRIMARY KEY, uuid TEXT)&quot;</span>, <span class="string">&quot;main&quot;</span>),
+                <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;CREATE TABLE IF NOT EXISTS {}.idx_externalid2uuid (eid TEXT PRIMARY KEY, uuid TEXT)&quot;</span>, <span class="self">self</span>.get_db_name()),
                 [],
             )
             .map(|<span class="kw">_</span>| ())
@@ -2458,8 +2505,8 @@
         <span class="self">self</span>.conn
             .prepare(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
                 <span class="string">&quot;INSERT OR REPLACE INTO {}.idx_externalid2uuid (eid, uuid) VALUES(:eid, :uuid)&quot;</span>,
-                <span class="string">&quot;main&quot;
-            </span>))
+                <span class="self">self</span>.get_db_name()
+            ))
             .and_then(|<span class="kw-2">mut </span>stmt| {
                 stmt.execute(<span class="macro">named_params! </span>{
                     <span class="string">&quot;:eid&quot;</span>: <span class="kw-2">&amp;</span>name,
@@ -2474,8 +2521,8 @@
         <span class="self">self</span>.conn
             .prepare(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
                 <span class="string">&quot;DELETE FROM {}.idx_externalid2uuid WHERE eid = :eid&quot;</span>,
-                <span class="string">&quot;main&quot;
-            </span>))
+                <span class="self">self</span>.get_db_name()
+            ))
             .and_then(|<span class="kw-2">mut </span>stmt| stmt.execute(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:eid&quot;</span>, <span class="kw-2">&amp;</span>name)]))
             .map(|<span class="kw">_</span>| ())
             .map_err(sqlite_error)
@@ -2486,8 +2533,8 @@
             .execute(
                 <span class="kw-2">&amp;</span><span class="macro">format!</span>(
                     <span class="string">&quot;CREATE TABLE IF NOT EXISTS {}.idx_uuid2spn (uuid TEXT PRIMARY KEY, spn BLOB)&quot;</span>,
-                    <span class="string">&quot;main&quot;
-                </span>),
+                    <span class="self">self</span>.get_db_name()
+                ),
                 [],
             )
             .map(|<span class="kw">_</span>| ())
@@ -2528,8 +2575,8 @@
                 <span class="self">self</span>.conn
                     .prepare(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
                         <span class="string">&quot;INSERT OR REPLACE INTO {}.idx_uuid2spn (uuid, spn) VALUES(:uuid, :spn)&quot;</span>,
-                        <span class="string">&quot;main&quot;
-                    </span>))
+                        <span class="self">self</span>.get_db_name()
+                    ))
                     .and_then(|<span class="kw-2">mut </span>stmt| {
                         stmt.execute(<span class="macro">named_params! </span>{
                             <span class="string">&quot;:uuid&quot;</span>: <span class="kw-2">&amp;</span>uuids,
@@ -2543,8 +2590,8 @@
                 </span>.conn
                 .prepare(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
                     <span class="string">&quot;DELETE FROM {}.idx_uuid2spn WHERE uuid = :uuid&quot;</span>,
-                    <span class="string">&quot;main&quot;
-                </span>))
+                    <span class="self">self</span>.get_db_name()
+                ))
                 .and_then(|<span class="kw-2">mut </span>stmt| stmt.execute(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:uuid&quot;</span>, <span class="kw-2">&amp;</span>uuids)]))
                 .map(|<span class="kw">_</span>| ())
                 .map_err(sqlite_error),
@@ -2556,8 +2603,8 @@
             .execute(
                 <span class="kw-2">&amp;</span><span class="macro">format!</span>(
                     <span class="string">&quot;CREATE TABLE IF NOT EXISTS {}.idx_uuid2rdn (uuid TEXT PRIMARY KEY, rdn TEXT)&quot;</span>,
-                    <span class="string">&quot;main&quot;
-                </span>),
+                    <span class="self">self</span>.get_db_name()
+                ),
                 [],
             )
             .map(|<span class="kw">_</span>| ())
@@ -2571,8 +2618,8 @@
                 </span>.conn
                 .prepare(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
                     <span class="string">&quot;INSERT OR REPLACE INTO {}.idx_uuid2rdn (uuid, rdn) VALUES(:uuid, :rdn)&quot;</span>,
-                    <span class="string">&quot;main&quot;
-                </span>))
+                    <span class="self">self</span>.get_db_name()
+                ))
                 .and_then(|<span class="kw-2">mut </span>stmt| stmt.execute(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:uuid&quot;</span>, <span class="kw-2">&amp;</span>uuids), (<span class="string">&quot;:rdn&quot;</span>, k)]))
                 .map(|<span class="kw">_</span>| ())
                 .map_err(sqlite_error),
@@ -2580,8 +2627,8 @@
                 </span>.conn
                 .prepare(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
                     <span class="string">&quot;DELETE FROM {}.idx_uuid2rdn WHERE uuid = :uuid&quot;</span>,
-                    <span class="string">&quot;main&quot;
-                </span>))
+                    <span class="self">self</span>.get_db_name()
+                ))
                 .and_then(|<span class="kw-2">mut </span>stmt| stmt.execute(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:uuid&quot;</span>, <span class="kw-2">&amp;</span>uuids)]))
                 .map(|<span class="kw">_</span>| ())
                 .map_err(sqlite_error),
@@ -2595,7 +2642,7 @@
         // We could also re-design our idl storage.
         </span><span class="kw">let </span>idx_stmt = <span class="macro">format!</span>(
             <span class="string">&quot;CREATE TABLE IF NOT EXISTS {}.idx_{}_{} (key TEXT PRIMARY KEY, idl BLOB)&quot;</span>,
-            <span class="string">&quot;main&quot;</span>,
+            <span class="self">self</span>.get_db_name(),
             itype.as_idx_str(),
             attr
         );
@@ -2613,7 +2660,7 @@
         idx_table_list.iter().try_for_each(|idx_table| {
             <span class="macro">trace!</span>(table = <span class="question-mark">?</span>idx_table, <span class="string">&quot;removing idx_table&quot;</span>);
             <span class="self">self</span>.conn
-                .prepare(<span class="macro">format!</span>(<span class="string">&quot;DROP TABLE {}.{}&quot;</span>, <span class="string">&quot;main&quot;</span>, idx_table).as_str())
+                .prepare(<span class="macro">format!</span>(<span class="string">&quot;DROP TABLE {}.{}&quot;</span>, <span class="self">self</span>.get_db_name(), idx_table).as_str())
                 .and_then(|<span class="kw-2">mut </span>stmt| stmt.execute([]).map(|<span class="kw">_</span>| ()))
                 .map_err(sqlite_error)
         })
@@ -2630,8 +2677,8 @@
                     id TEXT PRIMARY KEY,
                     slope INTEGER
                 )&quot;</span>,
-                    <span class="string">&quot;main&quot;
-                </span>),
+                    <span class="self">self</span>.get_db_name()
+                ),
                 [],
             )
             .map(|<span class="kw">_</span>| ())
@@ -2639,7 +2686,10 @@
 
         <span class="comment">// Remove any data if it exists.
         </span><span class="self">self</span>.conn
-            .execute(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;DELETE FROM {}.idxslope_analysis&quot;</span>, <span class="string">&quot;main&quot;</span>), [])
+            .execute(
+                <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;DELETE FROM {}.idxslope_analysis&quot;</span>, <span class="self">self</span>.get_db_name()),
+                [],
+            )
             .map(|<span class="kw">_</span>| ())
             .map_err(sqlite_error)<span class="question-mark">?</span>;
 
@@ -2647,7 +2697,7 @@
             <span class="kw">let </span>key = <span class="macro">format!</span>(<span class="string">&quot;idx_{}_{}&quot;</span>, k.itype.as_idx_str(), k.attr);
             <span class="self">self</span>.conn
                 .execute(
-                    <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;INSERT OR REPLACE INTO {}.idxslope_analysis (id, slope) VALUES(:id, :slope)&quot;</span>, <span class="string">&quot;main&quot;</span>),
+                    <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;INSERT OR REPLACE INTO {}.idxslope_analysis (id, slope) VALUES(:id, :slope)&quot;</span>, <span class="self">self</span>.get_db_name()),
                     <span class="macro">named_params! </span>{
                         <span class="string">&quot;:id&quot;</span>: <span class="kw-2">&amp;</span>key,
                         <span class="string">&quot;:slope&quot;</span>: <span class="kw-2">&amp;</span>v,
@@ -2680,8 +2730,8 @@
             </span>.get_conn()
             .prepare(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
                 <span class="string">&quot;SELECT slope FROM {}.idxslope_analysis WHERE id = :id&quot;</span>,
-                <span class="string">&quot;main&quot;
-            </span>))
+                <span class="self">self</span>.get_db_name()
+            ))
             .map_err(sqlite_error)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>slope: <span class="prelude-ty">Option</span>&lt;IdxSlope&gt; = stmt
@@ -2696,7 +2746,7 @@
 
     <span class="kw">pub unsafe fn </span>purge_id2entry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="self">self</span>.conn
-            .execute(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;DELETE FROM {}.id2entry&quot;</span>, <span class="string">&quot;main&quot;</span>), [])
+            .execute(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;DELETE FROM {}.id2entry&quot;</span>, <span class="self">self</span>.get_db_name()), [])
             .map(|<span class="kw">_</span>| ())
             .map_err(sqlite_error)
     }
@@ -2712,8 +2762,8 @@
             .execute(
                 <span class="kw-2">&amp;</span><span class="macro">format!</span>(
                     <span class="string">&quot;INSERT OR REPLACE INTO {}.db_sid (id, data) VALUES(:id, :sid)&quot;</span>,
-                    <span class="string">&quot;main&quot;
-                </span>),
+                    <span class="self">self</span>.get_db_name()
+                ),
                 <span class="macro">named_params! </span>{
                     <span class="string">&quot;:id&quot;</span>: <span class="kw-2">&amp;</span><span class="number">2</span>,
                     <span class="string">&quot;:sid&quot;</span>: <span class="kw-2">&amp;</span>data,
@@ -2738,8 +2788,8 @@
             .execute(
                 <span class="kw-2">&amp;</span><span class="macro">format!</span>(
                     <span class="string">&quot;INSERT OR REPLACE INTO {}.db_did (id, data) VALUES(:id, :did)&quot;</span>,
-                    <span class="string">&quot;main&quot;
-                </span>),
+                    <span class="self">self</span>.get_db_name()
+                ),
                 <span class="macro">named_params! </span>{
                     <span class="string">&quot;:id&quot;</span>: <span class="kw-2">&amp;</span><span class="number">2</span>,
                     <span class="string">&quot;:did&quot;</span>: <span class="kw-2">&amp;</span>data,
@@ -2764,8 +2814,8 @@
             .execute(
                 <span class="kw-2">&amp;</span><span class="macro">format!</span>(
                     <span class="string">&quot;INSERT OR REPLACE INTO {}.db_op_ts (id, data) VALUES(:id, :did)&quot;</span>,
-                    <span class="string">&quot;main&quot;
-                </span>),
+                    <span class="self">self</span>.get_db_name()
+                ),
                 <span class="macro">named_params! </span>{
                     <span class="string">&quot;:id&quot;</span>: <span class="kw-2">&amp;</span><span class="number">1</span>,
                     <span class="string">&quot;:did&quot;</span>: <span class="kw-2">&amp;</span>data,
@@ -2784,7 +2834,10 @@
     </span><span class="kw">fn </span>get_db_version_key(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>str) -&gt; i64 {
         <span class="self">self</span>.conn
             .query_row(
-                <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;SELECT version FROM {}.db_version WHERE id = :id&quot;</span>, <span class="string">&quot;main&quot;</span>),
+                <span class="kw-2">&amp;</span><span class="macro">format!</span>(
+                    <span class="string">&quot;SELECT version FROM {}.db_version WHERE id = :id&quot;</span>,
+                    <span class="self">self</span>.get_db_name()
+                ),
                 <span class="kw-2">&amp;</span>[(<span class="string">&quot;:id&quot;</span>, <span class="kw-2">&amp;</span>key)],
                 |row| row.get(<span class="number">0</span>),
             )
@@ -2799,8 +2852,8 @@
             .execute(
                 <span class="kw-2">&amp;</span><span class="macro">format!</span>(
                     <span class="string">&quot;INSERT OR REPLACE INTO {}.db_version (id, version) VALUES(:id, :dbv_id2entry)&quot;</span>,
-                    <span class="string">&quot;main&quot;
-                </span>),
+                    <span class="self">self</span>.get_db_name()
+                ),
                 <span class="macro">named_params! </span>{
                     <span class="string">&quot;:id&quot;</span>: <span class="kw-2">&amp;</span>key,
                     <span class="string">&quot;:dbv_id2entry&quot;</span>: v,
@@ -2822,6 +2875,16 @@
     }
 
     <span class="kw">pub fn </span>setup(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="comment">// If the db_name is NOT main, we MAY need to create it as we are in
+        // a test!
+        </span><span class="kw">if </span><span class="self">self</span>.get_db_name() != <span class="string">&quot;main&quot; </span>{
+            <span class="macro">warn!</span>(<span class="string">&quot;Using non-default db-name - this database content WILL be lost!&quot;</span>);
+            <span class="comment">// we need to attach the DB!
+            </span><span class="self">self</span>.conn
+                .execute(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;ATTACH DATABASE &#39;&#39; AS {}&quot;</span>, <span class="self">self</span>.get_db_name()), [])
+                .map_err(sqlite_error)<span class="question-mark">?</span>;
+        };
+
         <span class="comment">// This stores versions of components. For example:
         // ----------------------
         // | id       | version |
@@ -2842,8 +2905,8 @@
                     version INTEGER
                 )
                 &quot;</span>,
-                    <span class="string">&quot;main&quot;
-                </span>),
+                    <span class="self">self</span>.get_db_name()
+                ),
                 [],
             )
             .map_err(sqlite_error)<span class="question-mark">?</span>;
@@ -2862,8 +2925,8 @@
                         data BLOB NOT NULL
                     )
                     &quot;</span>,
-                        <span class="string">&quot;main&quot;
-                    </span>),
+                        <span class="self">self</span>.get_db_name()
+                    ),
                     [],
                 )
                 .and_then(|<span class="kw">_</span>| {
@@ -2874,8 +2937,8 @@
                         data BLOB NOT NULL
                     )
                     &quot;</span>,
-                            <span class="string">&quot;main&quot;
-                        </span>),
+                            <span class="self">self</span>.get_db_name()
+                        ),
                         [],
                     )
                 })
@@ -2895,8 +2958,8 @@
                         data BLOB NOT NULL
                     )
                     &quot;</span>,
-                        <span class="string">&quot;main&quot;
-                    </span>),
+                        <span class="self">self</span>.get_db_name()
+                    ),
                     [],
                 )
                 .map_err(sqlite_error)<span class="question-mark">?</span>;
@@ -2914,8 +2977,8 @@
                         data BLOB NOT NULL
                     )
                     &quot;</span>,
-                        <span class="string">&quot;main&quot;
-                    </span>),
+                        <span class="self">self</span>.get_db_name()
+                    ),
                     [],
                 )
                 .map_err(sqlite_error)<span class="question-mark">?</span>;
@@ -3061,7 +3124,10 @@
             </span>OperationError::SqliteError
         })<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(IdlSqlite { pool })
+        <span class="prelude-val">Ok</span>(IdlSqlite {
+            pool,
+            db_name: cfg.db_name,
+        })
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_allids_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;u64, OperationError&gt; {
@@ -3082,7 +3148,7 @@
             </span>.pool
             .try_get()
             .expect(<span class="string">&quot;Unable to get connection from pool!!!&quot;</span>);
-        IdlSqliteReadTransaction::new(conn)
+        IdlSqliteReadTransaction::new(conn, <span class="self">self</span>.db_name)
     }
 
     <span class="kw">pub fn </span>write(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; IdlSqliteWriteTransaction {
@@ -3091,7 +3157,7 @@
             </span>.pool
             .try_get()
             .expect(<span class="string">&quot;Unable to get connection from pool!!!&quot;</span>);
-        IdlSqliteWriteTransaction::new(conn)
+        IdlSqliteWriteTransaction::new(conn, <span class="self">self</span>.db_name)
     }
 }
 
@@ -3103,7 +3169,7 @@
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>test_idl_sqlite_verify() {
         <span class="kw">let _ </span>= sketching::test_init();
-        <span class="kw">let </span>cfg = BackendConfig::new_test();
+        <span class="kw">let </span>cfg = BackendConfig::new_test(<span class="string">&quot;main&quot;</span>);
         <span class="kw">let </span>be = IdlSqlite::new(<span class="kw-2">&amp;</span>cfg, <span class="bool-val">false</span>).unwrap();
         <span class="kw">let </span>be_w = be.write();
         <span class="kw">let </span>r = be_w.verify();

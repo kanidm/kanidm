@@ -211,6 +211,52 @@
 <span id="211">211</span>
 <span id="212">212</span>
 <span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::server::CreateEvent;
 <span class="kw">use </span><span class="kw">crate</span>::server::Plugins;
@@ -381,8 +427,7 @@
         <span class="kw">let </span>filt = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testperson&quot;</span>)));
         <span class="kw">let </span>admin = server_txn.internal_search_uuid(UUID_ADMIN).expect(<span class="string">&quot;failed&quot;</span>);
 
-        <span class="kw">let </span>se1 = <span class="kw">unsafe </span>{ SearchEvent::new_impersonate_entry(admin.clone(), filt.clone()) };
-        <span class="kw">let </span>se2 = <span class="kw">unsafe </span>{ SearchEvent::new_impersonate_entry(admin, filt) };
+        <span class="kw">let </span>se1 = <span class="kw">unsafe </span>{ SearchEvent::new_impersonate_entry(admin, filt) };
 
         <span class="kw">let </span><span class="kw-2">mut </span>e = <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
@@ -406,7 +451,7 @@
         <span class="kw">let </span>cr = server_txn.create(<span class="kw-2">&amp;</span>ce);
         <span class="macro">assert!</span>(cr.is_ok());
 
-        <span class="kw">let </span>r2 = server_txn.search(<span class="kw-2">&amp;</span>se2).expect(<span class="string">&quot;search failure&quot;</span>);
+        <span class="kw">let </span>r2 = server_txn.search(<span class="kw-2">&amp;</span>se1).expect(<span class="string">&quot;search failure&quot;</span>);
         <span class="macro">debug!</span>(<span class="string">&quot;--&gt; {:?}&quot;</span>, r2);
         <span class="macro">assert!</span>(r2.len() == <span class="number">1</span>);
 
@@ -422,6 +467,53 @@
         <span class="macro">assert_eq!</span>(r2, expected);
 
         <span class="macro">assert!</span>(server_txn.commit().is_ok());
+    }
+
+    <span class="attribute">#[qs_pair_test]
+    </span><span class="kw">async fn </span>test_pair_create_user(server_a: <span class="kw-2">&amp;</span>QueryServer, server_b: <span class="kw-2">&amp;</span>QueryServer) {
+        <span class="kw">let </span><span class="kw-2">mut </span>server_a_txn = server_a.write(duration_from_epoch_now()).<span class="kw">await</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>server_b_txn = server_b.write(duration_from_epoch_now()).<span class="kw">await</span>;
+
+        <span class="comment">// Create on server a
+        </span><span class="kw">let </span>filt = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testperson&quot;</span>)));
+
+        <span class="kw">let </span>admin = server_a_txn
+            .internal_search_uuid(UUID_ADMIN)
+            .expect(<span class="string">&quot;failed&quot;</span>);
+        <span class="kw">let </span>se_a = <span class="kw">unsafe </span>{ SearchEvent::new_impersonate_entry(admin, filt.clone()) };
+
+        <span class="kw">let </span>admin = server_b_txn
+            .internal_search_uuid(UUID_ADMIN)
+            .expect(<span class="string">&quot;failed&quot;</span>);
+        <span class="kw">let </span>se_b = <span class="kw">unsafe </span>{ SearchEvent::new_impersonate_entry(admin, filt) };
+
+        <span class="kw">let </span>e = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson&quot;</span>)),
+            (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson&quot;</span>))
+        );
+
+        <span class="kw">let </span>cr = server_a_txn.internal_create(<span class="macro">vec!</span>[e.clone()]);
+        <span class="macro">assert!</span>(cr.is_ok());
+
+        <span class="kw">let </span>r1 = server_a_txn.search(<span class="kw-2">&amp;</span>se_a).expect(<span class="string">&quot;search failure&quot;</span>);
+        <span class="macro">assert!</span>(!r1.is_empty());
+
+        <span class="comment">// Not on sb
+        </span><span class="kw">let </span>r2 = server_b_txn.search(<span class="kw-2">&amp;</span>se_b).expect(<span class="string">&quot;search failure&quot;</span>);
+        <span class="macro">assert!</span>(r2.is_empty());
+
+        <span class="kw">let </span>cr = server_b_txn.internal_create(<span class="macro">vec!</span>[e.clone()]);
+        <span class="macro">assert!</span>(cr.is_ok());
+
+        <span class="comment">// Now is present
+        </span><span class="kw">let </span>r2 = server_b_txn.search(<span class="kw-2">&amp;</span>se_b).expect(<span class="string">&quot;search failure&quot;</span>);
+        <span class="macro">assert!</span>(!r2.is_empty());
+
+        <span class="macro">assert!</span>(server_a_txn.commit().is_ok());
+        <span class="macro">assert!</span>(server_b_txn.commit().is_ok());
     }
 }
 </code></pre></div>

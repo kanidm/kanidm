@@ -29,6 +29,42 @@
 <span id="29">29</span>
 <span id="30">30</span>
 <span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::be::{Backend, BackendConfig};
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::schema::Schema;
@@ -45,10 +81,46 @@
         <span class="kw">let </span>schema_txn = schema_outer.write();
         schema_txn.reload_idxmeta()
     };
-    <span class="kw">let </span>be = Backend::new(BackendConfig::new_test(), idxmeta, <span class="bool-val">false</span>).expect(<span class="string">&quot;Failed to init BE&quot;</span>);
+    <span class="kw">let </span>be =
+        Backend::new(BackendConfig::new_test(<span class="string">&quot;main&quot;</span>), idxmeta, <span class="bool-val">false</span>).expect(<span class="string">&quot;Failed to init BE&quot;</span>);
 
     <span class="comment">// Init is called via the proc macro
     </span>QueryServer::new(be, schema_outer, <span class="string">&quot;example.com&quot;</span>.to_string())
+}
+
+<span class="attribute">#[allow(clippy::expect_used)]
+</span><span class="kw">pub async fn </span>setup_pair_test() -&gt; (QueryServer, QueryServer) {
+    sketching::test_init();
+
+    <span class="kw">let </span>qs_a = {
+        <span class="comment">// Create an in memory BE
+        </span><span class="kw">let </span>schema_outer = Schema::new().expect(<span class="string">&quot;Failed to init schema&quot;</span>);
+        <span class="kw">let </span>idxmeta = {
+            <span class="kw">let </span>schema_txn = schema_outer.write();
+            schema_txn.reload_idxmeta()
+        };
+        <span class="kw">let </span>be = Backend::new(BackendConfig::new_test(<span class="string">&quot;db_a&quot;</span>), idxmeta, <span class="bool-val">false</span>)
+            .expect(<span class="string">&quot;Failed to init BE&quot;</span>);
+
+        <span class="comment">// Init is called via the proc macro
+        </span>QueryServer::new(be, schema_outer, <span class="string">&quot;example.com&quot;</span>.to_string())
+    };
+
+    <span class="kw">let </span>qs_b = {
+        <span class="comment">// Create an in memory BE
+        </span><span class="kw">let </span>schema_outer = Schema::new().expect(<span class="string">&quot;Failed to init schema&quot;</span>);
+        <span class="kw">let </span>idxmeta = {
+            <span class="kw">let </span>schema_txn = schema_outer.write();
+            schema_txn.reload_idxmeta()
+        };
+        <span class="kw">let </span>be = Backend::new(BackendConfig::new_test(<span class="string">&quot;db_b&quot;</span>), idxmeta, <span class="bool-val">false</span>)
+            .expect(<span class="string">&quot;Failed to init BE&quot;</span>);
+
+        <span class="comment">// Init is called via the proc macro
+        </span>QueryServer::new(be, schema_outer, <span class="string">&quot;example.com&quot;</span>.to_string())
+    };
+
+    (qs_a, qs_b)
 }
 
 <span class="attribute">#[allow(clippy::expect_used)]

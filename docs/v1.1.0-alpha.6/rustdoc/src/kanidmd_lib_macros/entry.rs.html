@@ -178,6 +178,100 @@
 <span id="178">178</span>
 <span id="179">179</span>
 <span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
 </pre><pre class="rust"><code><span class="kw">use </span>proc_macro::TokenStream;
 <span class="kw">use </span>proc_macro2::{Ident, Span};
 <span class="kw">use </span>quote::{quote, quote_spanned, ToTokens};
@@ -263,6 +357,100 @@
                 </span><span class="kw">let </span>verifications = test_server.verify().<span class="kw">await</span>;
                 <span class="macro">trace!</span>(<span class="string">&quot;Verification result: {:?}&quot;</span>, verifications);
                 <span class="macro">assert!</span>(verifications.len() == <span class="number">0</span>);
+            };
+            <span class="attribute">#[allow(clippy::expect_used, clippy::diverging_sub_expression)]
+            </span>{
+                <span class="kw">return </span>#rt
+                    .enable_all()
+                    .build()
+                    .expect(<span class="string">&quot;Failed building the Runtime&quot;</span>)
+                    .block_on(body);
+            }
+        }
+    };
+
+    result.into()
+}
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>qs_pair_test(_args: <span class="kw-2">&amp;</span>TokenStream, item: TokenStream, with_init: bool) -&gt; TokenStream {
+    <span class="kw">let </span>input: syn::ItemFn = <span class="kw">match </span>syn::parse(item.clone()) {
+        <span class="prelude-val">Ok</span>(it) =&gt; it,
+        <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span>token_stream_with_error(item, e),
+    };
+
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(attr) = input.attrs.iter().find(|attr| attr.path.is_ident(<span class="string">&quot;test&quot;</span>)) {
+        <span class="kw">let </span>msg = <span class="string">&quot;second test attribute is supplied&quot;</span>;
+        <span class="kw">return </span>token_stream_with_error(item, syn::Error::new_spanned(attr, msg));
+    };
+
+    <span class="kw">if </span>input.sig.asyncness.is_none() {
+        <span class="kw">let </span>msg = <span class="string">&quot;the `async` keyword is missing from the function declaration&quot;</span>;
+        <span class="kw">return </span>token_stream_with_error(item, syn::Error::new_spanned(input.sig.fn_token, msg));
+    }
+
+    <span class="comment">// If type mismatch occurs, the current rustc points to the last statement.
+    </span><span class="kw">let </span>(last_stmt_start_span, _last_stmt_end_span) = {
+        <span class="kw">let </span><span class="kw-2">mut </span>last_stmt = input
+            .block
+            .stmts
+            .last()
+            .map(ToTokens::into_token_stream)
+            .unwrap_or_default()
+            .into_iter();
+        <span class="comment">// `Span` on stable Rust has a limitation that only points to the first
+        // token, not the whole tokens. We can work around this limitation by
+        // using the first/last span of the tokens like
+        // `syn::Error::new_spanned` does.
+        </span><span class="kw">let </span>start = last_stmt.next().map_or_else(Span::call_site, |t| t.span());
+        <span class="kw">let </span>end = last_stmt.last().map_or(start, |t| t.span());
+        (start, end)
+    };
+
+    <span class="kw">let </span>rt = <span class="macro">quote_spanned! </span>{last_stmt_start_span=&gt;
+        tokio::runtime::Builder::new_current_thread()
+    };
+
+    <span class="kw">let </span>header = <span class="macro">quote! </span>{
+        <span class="attribute">#[::core::prelude::v1::test]
+    </span>};
+
+    <span class="kw">let </span>init = <span class="kw">if </span>with_init {
+        <span class="macro">quote! </span>{
+            server_a.initialise_helper(duration_from_epoch_now())
+                .<span class="kw">await
+                </span>.expect(<span class="string">&quot;init_a failed!&quot;</span>);
+            server_b.initialise_helper(duration_from_epoch_now())
+                .<span class="kw">await
+                </span>.expect(<span class="string">&quot;init_b failed!&quot;</span>);
+        }
+    } <span class="kw">else </span>{
+        <span class="macro">quote! </span>{}
+    };
+
+    <span class="kw">let </span>test_fn = <span class="kw-2">&amp;</span>input.sig.ident;
+    <span class="kw">let </span>test_driver = Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;qs_{}&quot;</span>, test_fn), input.sig.span());
+
+    <span class="comment">// Effectively we are just injecting a real test function around this which we will
+    // call.
+
+    </span><span class="kw">let </span>result = <span class="macro">quote! </span>{
+        #input
+
+        #header
+        <span class="kw">fn </span>#test_driver() {
+            <span class="kw">let </span>body = <span class="kw">async </span>{
+                <span class="kw">let </span>(server_a, server_b) = <span class="kw">crate</span>::testkit::setup_pair_test().<span class="kw">await</span>;
+
+                #init
+
+                #test_fn(<span class="kw-2">&amp;</span>server_a, <span class="kw-2">&amp;</span>server_b).<span class="kw">await</span>;
+
+                <span class="comment">// Any needed teardown?
+                // Make sure there are no errors.
+                </span><span class="kw">let </span>verifications_a = server_a.verify().<span class="kw">await</span>;
+                <span class="kw">let </span>verifications_b = server_b.verify().<span class="kw">await</span>;
+                <span class="macro">trace!</span>(<span class="string">&quot;Verification result: {:?}, {:?}&quot;</span>, verifications_a, verifications_b);
+                <span class="macro">assert!</span>(verifications_a.len() + verifications_b.len() == <span class="number">0</span>);
             };
             <span class="attribute">#[allow(clippy::expect_used, clippy::diverging_sub_expression)]
             </span>{

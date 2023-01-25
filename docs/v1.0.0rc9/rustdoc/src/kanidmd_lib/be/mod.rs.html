@@ -3165,6 +3165,73 @@
 <span id="3165">3165</span>
 <span id="3166">3166</span>
 <span id="3167">3167</span>
+<span id="3168">3168</span>
+<span id="3169">3169</span>
+<span id="3170">3170</span>
+<span id="3171">3171</span>
+<span id="3172">3172</span>
+<span id="3173">3173</span>
+<span id="3174">3174</span>
+<span id="3175">3175</span>
+<span id="3176">3176</span>
+<span id="3177">3177</span>
+<span id="3178">3178</span>
+<span id="3179">3179</span>
+<span id="3180">3180</span>
+<span id="3181">3181</span>
+<span id="3182">3182</span>
+<span id="3183">3183</span>
+<span id="3184">3184</span>
+<span id="3185">3185</span>
+<span id="3186">3186</span>
+<span id="3187">3187</span>
+<span id="3188">3188</span>
+<span id="3189">3189</span>
+<span id="3190">3190</span>
+<span id="3191">3191</span>
+<span id="3192">3192</span>
+<span id="3193">3193</span>
+<span id="3194">3194</span>
+<span id="3195">3195</span>
+<span id="3196">3196</span>
+<span id="3197">3197</span>
+<span id="3198">3198</span>
+<span id="3199">3199</span>
+<span id="3200">3200</span>
+<span id="3201">3201</span>
+<span id="3202">3202</span>
+<span id="3203">3203</span>
+<span id="3204">3204</span>
+<span id="3205">3205</span>
+<span id="3206">3206</span>
+<span id="3207">3207</span>
+<span id="3208">3208</span>
+<span id="3209">3209</span>
+<span id="3210">3210</span>
+<span id="3211">3211</span>
+<span id="3212">3212</span>
+<span id="3213">3213</span>
+<span id="3214">3214</span>
+<span id="3215">3215</span>
+<span id="3216">3216</span>
+<span id="3217">3217</span>
+<span id="3218">3218</span>
+<span id="3219">3219</span>
+<span id="3220">3220</span>
+<span id="3221">3221</span>
+<span id="3222">3222</span>
+<span id="3223">3223</span>
+<span id="3224">3224</span>
+<span id="3225">3225</span>
+<span id="3226">3226</span>
+<span id="3227">3227</span>
+<span id="3228">3228</span>
+<span id="3229">3229</span>
+<span id="3230">3230</span>
+<span id="3231">3231</span>
+<span id="3232">3232</span>
+<span id="3233">3233</span>
+<span id="3234">3234</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The backend. This contains the &quot;low level&quot; storage and query code, which is
 //! implemented as a json-like kv document database. This has no rules about content
 //! of the server, which are all enforced at higher levels. The role of the backend
@@ -3275,6 +3342,7 @@
 </span><span class="kw">pub struct </span>BackendConfig {
     path: String,
     pool_size: u32,
+    db_name: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str,
     fstype: FsType,
     <span class="comment">// Cachesizes?
     </span>arcsize: <span class="prelude-ty">Option</span>&lt;usize&gt;,
@@ -3285,15 +3353,17 @@
         BackendConfig {
             pool_size,
             path: path.to_string(),
+            db_name: <span class="string">&quot;main&quot;</span>,
             fstype,
             arcsize,
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_test() -&gt; <span class="self">Self </span>{
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new_test(db_name: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str) -&gt; <span class="self">Self </span>{
         BackendConfig {
             pool_size: <span class="number">1</span>,
             path: <span class="string">&quot;&quot;</span>.to_string(),
+            db_name,
             fstype: FsType::Generic,
             arcsize: <span class="prelude-val">Some</span>(<span class="number">1024</span>),
         }
@@ -5001,7 +5071,7 @@
                 },
             ];
 
-            <span class="kw">let </span>be = Backend::new(BackendConfig::new_test(), idxmeta, <span class="bool-val">false</span>)
+            <span class="kw">let </span>be = Backend::new(BackendConfig::new_test(<span class="string">&quot;main&quot;</span>), idxmeta, <span class="bool-val">false</span>)
                 .expect(<span class="string">&quot;Failed to setup backend&quot;</span>);
 
             <span class="kw">let </span><span class="kw-2">mut </span>be_txn = be.write();
@@ -6330,6 +6400,70 @@
             </span><span class="kw">let </span>res = be.exists(<span class="kw-2">&amp;</span>lim_deny, <span class="kw-2">&amp;</span>filt);
             <span class="macro">assert!</span>(res == <span class="prelude-val">Err</span>(OperationError::ResourceLimit));
         })
+    }
+
+    <span class="attribute">#[test]
+    </span><span class="kw">fn </span>test_be_mulitple_create() {
+        <span class="kw">let _ </span>= sketching::test_init();
+
+        <span class="comment">// This is a demo idxmeta, purely for testing.
+        </span><span class="kw">let </span>idxmeta = <span class="macro">vec!</span>[IdxKey {
+            attr: AttrString::from(<span class="string">&quot;uuid&quot;</span>),
+            itype: IndexType::Equality,
+        }];
+
+        <span class="kw">let </span>be_a = Backend::new(BackendConfig::new_test(<span class="string">&quot;main&quot;</span>), idxmeta.clone(), <span class="bool-val">false</span>)
+            .expect(<span class="string">&quot;Failed to setup backend&quot;</span>);
+
+        <span class="kw">let </span>be_b = Backend::new(BackendConfig::new_test(<span class="string">&quot;db_2&quot;</span>), idxmeta, <span class="bool-val">false</span>)
+            .expect(<span class="string">&quot;Failed to setup backend&quot;</span>);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>be_a_txn = be_a.write();
+        <span class="kw">let </span><span class="kw-2">mut </span>be_b_txn = be_b.write();
+
+        <span class="macro">assert!</span>(be_a_txn.get_db_s_uuid() != be_b_txn.get_db_s_uuid());
+
+        <span class="comment">// Create into A
+        </span><span class="kw">let </span><span class="kw-2">mut </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::new();
+        e.add_ava(<span class="string">&quot;userid&quot;</span>, Value::from(<span class="string">&quot;william&quot;</span>));
+        e.add_ava(<span class="string">&quot;uuid&quot;</span>, Value::from(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>));
+        <span class="kw">let </span>e = <span class="kw">unsafe </span>{ e.into_sealed_new() };
+
+        <span class="kw">let </span>single_result = be_a_txn.create(<span class="kw-2">&amp;</span>CID_ZERO, <span class="macro">vec!</span>[e.clone()]);
+
+        <span class="macro">assert!</span>(single_result.is_ok());
+
+        <span class="comment">// Assert it&#39;s in A but not B.
+        </span><span class="kw">let </span>filt = <span class="kw">unsafe </span>{ <span class="macro">filter_resolved!</span>(f_eq(<span class="string">&quot;userid&quot;</span>, PartialValue::new_utf8s(<span class="string">&quot;william&quot;</span>))) };
+
+        <span class="kw">let </span>lims = Limits::unlimited();
+
+        <span class="kw">let </span>r = be_a_txn.search(<span class="kw-2">&amp;</span>lims, <span class="kw-2">&amp;</span>filt);
+        <span class="macro">assert!</span>(r.expect(<span class="string">&quot;Search failed!&quot;</span>).len() == <span class="number">1</span>);
+
+        <span class="kw">let </span>r = be_b_txn.search(<span class="kw-2">&amp;</span>lims, <span class="kw-2">&amp;</span>filt);
+        <span class="macro">assert!</span>(r.expect(<span class="string">&quot;Search failed!&quot;</span>).len() == <span class="number">0</span>);
+
+        <span class="comment">// Create into B
+        </span><span class="kw">let </span><span class="kw-2">mut </span>e: Entry&lt;EntryInit, EntryNew&gt; = Entry::new();
+        e.add_ava(<span class="string">&quot;userid&quot;</span>, Value::from(<span class="string">&quot;claire&quot;</span>));
+        e.add_ava(<span class="string">&quot;uuid&quot;</span>, Value::from(<span class="string">&quot;0c680959-0944-47d6-9dea-53304d124266&quot;</span>));
+        <span class="kw">let </span>e = <span class="kw">unsafe </span>{ e.into_sealed_new() };
+
+        <span class="kw">let </span>single_result = be_b_txn.create(<span class="kw-2">&amp;</span>CID_ZERO, <span class="macro">vec!</span>[e.clone()]);
+
+        <span class="macro">assert!</span>(single_result.is_ok());
+
+        <span class="comment">// Assert it&#39;s in B but not A
+        </span><span class="kw">let </span>filt = <span class="kw">unsafe </span>{ <span class="macro">filter_resolved!</span>(f_eq(<span class="string">&quot;userid&quot;</span>, PartialValue::new_utf8s(<span class="string">&quot;claire&quot;</span>))) };
+
+        <span class="kw">let </span>lims = Limits::unlimited();
+
+        <span class="kw">let </span>r = be_a_txn.search(<span class="kw-2">&amp;</span>lims, <span class="kw-2">&amp;</span>filt);
+        <span class="macro">assert!</span>(r.expect(<span class="string">&quot;Search failed!&quot;</span>).len() == <span class="number">0</span>);
+
+        <span class="kw">let </span>r = be_b_txn.search(<span class="kw-2">&amp;</span>lims, <span class="kw-2">&amp;</span>filt);
+        <span class="macro">assert!</span>(r.expect(<span class="string">&quot;Search failed!&quot;</span>).len() == <span class="number">1</span>);
     }
 }
 </code></pre></div>

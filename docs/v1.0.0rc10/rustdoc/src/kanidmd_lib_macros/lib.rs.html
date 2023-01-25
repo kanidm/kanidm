@@ -31,6 +31,11 @@
 <span id="31">31</span>
 <span id="32">32</span>
 <span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
 </pre><pre class="rust"><code><span class="attribute">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -53,6 +58,11 @@
 <span class="attribute">#[proc_macro_attribute]
 </span><span class="kw">pub fn </span>qs_test(args: TokenStream, item: TokenStream) -&gt; TokenStream {
     entry::qs_test(<span class="kw-2">&amp;</span>args, item, <span class="bool-val">true</span>)
+}
+
+<span class="attribute">#[proc_macro_attribute]
+</span><span class="kw">pub fn </span>qs_pair_test(args: TokenStream, item: TokenStream) -&gt; TokenStream {
+    entry::qs_pair_test(<span class="kw-2">&amp;</span>args, item, <span class="bool-val">true</span>)
 }
 
 <span class="attribute">#[proc_macro_attribute]

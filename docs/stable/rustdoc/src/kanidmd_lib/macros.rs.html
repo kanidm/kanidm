@@ -709,8 +709,8 @@
             <span class="kw">let </span>schema_txn = schema_outer.write_blocking();
             schema_txn.reload_idxmeta()
         };
-        <span class="kw">let </span>be =
-            Backend::new(BackendConfig::new_test(), idxmeta, <span class="bool-val">false</span>).expect(<span class="string">&quot;Failed to init BE&quot;</span>);
+        <span class="kw">let </span>be = Backend::new(BackendConfig::new_test(<span class="string">&quot;main&quot;</span>), idxmeta, <span class="bool-val">false</span>)
+            .expect(<span class="string">&quot;Failed to init BE&quot;</span>);
 
         <span class="kw">let </span>qs = QueryServer::new(be, schema_outer, <span class="string">&quot;example.com&quot;</span>.to_string());
         async_std::task::block_on(qs.initialise_helper(duration_from_epoch_now()))
@@ -730,8 +730,8 @@
             <span class="kw">let </span>schema_txn = schema_outer.write();
             schema_txn.reload_idxmeta()
         };
-        <span class="kw">let </span>be =
-            Backend::new(BackendConfig::new_test(), idxmeta, <span class="bool-val">false</span>).expect(<span class="string">&quot;Failed to init BE&quot;</span>);
+        <span class="kw">let </span>be = Backend::new(BackendConfig::new_test(<span class="string">&quot;main&quot;</span>), idxmeta, <span class="bool-val">false</span>)
+            .expect(<span class="string">&quot;Failed to init BE&quot;</span>);
 
         <span class="kw">let </span>qs = QueryServer::new(be, schema_outer, <span class="string">&quot;example.com&quot;</span>.to_string());
         async_std::task::block_on(qs.initialise_helper(duration_from_epoch_now()))
