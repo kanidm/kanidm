@@ -11,7 +11,7 @@ impl CryptoPolicy {
     #[cfg(test)]
     pub(crate) fn minimum() -> Self {
         CryptoPolicy {
-            pbkdf2_cost: PBKDF2_MIN_NIST_COST as usize,
+            pbkdf2_cost: PBKDF2_MIN_NIST_COST,
         }
     }
 

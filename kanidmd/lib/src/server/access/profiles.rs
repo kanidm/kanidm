@@ -58,7 +58,7 @@ impl AccessControlSearch {
             },
             attrs: attrs
                 .split_whitespace()
-                .map(|s| AttrString::from(s))
+                .map(AttrString::from)
                 .collect(),
         }
     }
@@ -224,15 +224,15 @@ impl AccessControlModify {
             },
             classes: classes
                 .split_whitespace()
-                .map(|s| AttrString::from(s))
+                .map(AttrString::from)
                 .collect(),
             presattrs: presattrs
                 .split_whitespace()
-                .map(|s| AttrString::from(s))
+                .map(AttrString::from)
                 .collect(),
             remattrs: remattrs
                 .split_whitespace()
-                .map(|s| AttrString::from(s))
+                .map(AttrString::from)
                 .collect(),
         }
     }

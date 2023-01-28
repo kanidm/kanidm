@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn test_cid_lamport() {
         let d_uuid = uuid!("00000000-0000-0000-0000-000000000001");
-        let s_uuid = d_uuid.clone();
+        let s_uuid = d_uuid;
 
         let ts5 = Duration::new(5, 0);
         let ts10 = Duration::new(10, 0);
@@ -140,9 +140,9 @@ mod tests {
 
         let cid_z = unsafe { Cid::new_zero() };
 
-        let cid_a = Cid::new_lamport(d_uuid, s_uuid, ts5.clone(), &ts5);
+        let cid_a = Cid::new_lamport(d_uuid, s_uuid, ts5, &ts5);
         assert!(cid_a.cmp(&cid_z) == Ordering::Greater);
-        let cid_b = Cid::new_lamport(d_uuid, s_uuid, ts15.clone(), &ts10);
+        let cid_b = Cid::new_lamport(d_uuid, s_uuid, ts15, &ts10);
         assert!(cid_b.cmp(&cid_a) == Ordering::Greater);
         // Even with an older ts, we should still step forward.
         let cid_c = Cid::new_lamport(d_uuid, s_uuid, ts10, &ts15);

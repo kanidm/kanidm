@@ -1391,7 +1391,7 @@ mod tests {
 
     #[test]
     fn test_filter_optimise() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         // Given sets of "optimisable" filters, optimise them.
         filter_optimise_assert!(
             f_and(vec![f_and(vec![f_eq(
@@ -1573,13 +1573,13 @@ mod tests {
         };
 
         let f_t1a = unsafe { filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(500))) };
-        assert!(e.entry_match_no_index(&f_t1a) == false);
+        assert!(!e.entry_match_no_index(&f_t1a));
 
         let f_t1b = unsafe { filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(1000))) };
-        assert!(e.entry_match_no_index(&f_t1b) == false);
+        assert!(!e.entry_match_no_index(&f_t1b));
 
         let f_t1c = unsafe { filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(1001))) };
-        assert!(e.entry_match_no_index(&f_t1c) == true);
+        assert!(e.entry_match_no_index(&f_t1c));
     }
 
     #[test]

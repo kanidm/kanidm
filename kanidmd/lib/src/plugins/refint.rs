@@ -270,7 +270,7 @@ mod tests {
         }"#,
         );
 
-        let create = vec![e.clone()];
+        let create = vec![e];
         let preload = Vec::new();
         run_create_test!(
             Err(OperationError::Plugin(PluginError::ReferentialIntegrity(

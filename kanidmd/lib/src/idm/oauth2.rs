@@ -1883,7 +1883,7 @@ mod tests {
             let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
             let pkce_request = Some(PkceRequest {
-                code_challenge: Base64UrlSafeData(code_challenge.clone()),
+                code_challenge: Base64UrlSafeData(code_challenge),
                 code_challenge_method: CodeChallengeMethod::S256,
             });
 
@@ -2012,7 +2012,7 @@ mod tests {
                 response_type: "code".to_string(),
                 client_id: "test_resource_server".to_string(),
                 state: "123".to_string(),
-                pkce_request: pkce_request.clone(),
+                pkce_request,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 scope: "read openid".to_string(),
                 nonce: None,
@@ -2341,7 +2341,7 @@ mod tests {
 
                 let token_req = AccessTokenRequest {
                     grant_type: "authorization_code".to_string(),
-                    code: permit_success.code.clone(),
+                    code: permit_success.code,
                     redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                     client_id: None,
                     client_secret: None,
@@ -2359,7 +2359,7 @@ mod tests {
 
                 // Okay, now we have the token, we can check it works with introspect.
                 let intr_request = AccessTokenIntrospectRequest {
-                    token: oauth2_token.access_token.clone(),
+                    token: oauth2_token.access_token,
                     token_type_hint: None,
                 };
                 let intr_response = idms_prox_read
@@ -2456,7 +2456,7 @@ mod tests {
 
                 let token_req = AccessTokenRequest {
                     grant_type: "authorization_code".to_string(),
-                    code: permit_success.code.clone(),
+                    code: permit_success.code,
                     redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                     client_id: None,
                     client_secret: None,
@@ -2581,7 +2581,7 @@ mod tests {
                 // A second invalidation of the token "does nothing".
                 let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 let revoke_request = TokenRevokeRequest {
-                    token: oauth2_token.access_token.clone(),
+                    token: oauth2_token.access_token,
                     token_type_hint: None,
                 };
                 assert!(idms_prox_write
@@ -2637,7 +2637,7 @@ mod tests {
 
                 let token_req = AccessTokenRequest {
                     grant_type: "authorization_code".to_string(),
-                    code: permit_success.code.clone(),
+                    code: permit_success.code,
                     redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                     client_id: None,
                     client_secret: None,

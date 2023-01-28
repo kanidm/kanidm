@@ -1583,7 +1583,7 @@ mod tests {
         let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
         let ev2 = unsafe { E_TESTPERSON_2.clone().into_sealed_committed() };
 
-        let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2.clone())];
+        let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2)];
 
         let se_a = unsafe {
             SearchEvent::new_impersonate_entry(
@@ -1591,7 +1591,7 @@ mod tests {
                 filter_all!(f_pres("name")),
             )
         };
-        let ex_a = vec![Arc::new(ev1.clone())];
+        let ex_a = vec![Arc::new(ev1)];
 
         let se_b = unsafe {
             SearchEvent::new_impersonate_entry(
@@ -1624,7 +1624,7 @@ mod tests {
 
     #[test]
     fn test_access_enforce_scope_search() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         // Test that identities are bound by their access scope.
         let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
 
@@ -1673,7 +1673,7 @@ mod tests {
 
         test_acp_search!(&se_ro, vec![acp.clone()], r_set.clone(), ex_some);
 
-        test_acp_search!(&se_rw, vec![acp.clone()], r_set.clone(), ex_some);
+        test_acp_search!(&se_rw, vec![acp], r_set, ex_some);
     }
 
     #[test]
@@ -1682,11 +1682,11 @@ mod tests {
         // "nothing to do" based on search_filter_entries, but we do the "right thing" anyway.
 
         let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
-        let r_set = vec![Arc::new(ev1.clone())];
+        let r_set = vec![Arc::new(ev1)];
 
         let exv1 = unsafe { E_TESTPERSON_1_REDUCED.clone().into_sealed_committed() };
 
-        let ex_anon_some = vec![exv1.clone()];
+        let ex_anon_some = vec![exv1];
         let ex_anon_none: Vec<EntrySealedCommitted> = vec![];
 
         let se_anon_io = unsafe {
@@ -1734,10 +1734,10 @@ mod tests {
         // In this case, we test that a user can only see "name" despite the
         // class and uuid being present.
         let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
-        let r_set = vec![Arc::new(ev1.clone())];
+        let r_set = vec![Arc::new(ev1)];
 
         let exv1 = unsafe { E_TESTPERSON_1_REDUCED.clone().into_sealed_committed() };
-        let ex_anon = vec![exv1.clone()];
+        let ex_anon = vec![exv1];
 
         let se_anon = unsafe {
             SearchEvent::new_impersonate_entry(
@@ -1771,10 +1771,10 @@ mod tests {
         // class and uuid being present.
         let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
 
-        let r_set = vec![Arc::new(ev1.clone())];
+        let r_set = vec![Arc::new(ev1)];
 
         let exv1 = unsafe { E_TESTPERSON_1_REDUCED.clone().into_sealed_committed() };
-        let ex_anon = vec![exv1.clone()];
+        let ex_anon = vec![exv1];
 
         let mut se_anon = unsafe {
             SearchEvent::new_impersonate_entry(
@@ -1829,7 +1829,7 @@ mod tests {
     #[test]
     fn test_access_enforce_modify() {
         let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
-        let r_set = vec![Arc::new(ev1.clone())];
+        let r_set = vec![Arc::new(ev1)];
 
         // Name present
         let me_pres = unsafe {
@@ -1952,22 +1952,22 @@ mod tests {
         // test allowed rem class
         test_acp_modify!(&me_rem_class, vec![acp_allow.clone()], &r_set, true);
         // test reject purge-class even if class present in allowed remattrs
-        test_acp_modify!(&me_purge_class, vec![acp_allow.clone()], &r_set, false);
+        test_acp_modify!(&me_purge_class, vec![acp_allow], &r_set, false);
 
         // Test reject pres class, but class not in classes
         test_acp_modify!(&me_pres_class, vec![acp_no_class.clone()], &r_set, false);
         // Test reject pres class, class in classes but not in pres attrs
         test_acp_modify!(&me_pres_class, vec![acp_deny.clone()], &r_set, false);
         // test reject rem class, but class not in classes
-        test_acp_modify!(&me_rem_class, vec![acp_no_class.clone()], &r_set, false);
+        test_acp_modify!(&me_rem_class, vec![acp_no_class], &r_set, false);
         // test reject rem class, class in classes but not in pres attrs
-        test_acp_modify!(&me_rem_class, vec![acp_deny.clone()], &r_set, false);
+        test_acp_modify!(&me_rem_class, vec![acp_deny], &r_set, false);
     }
 
     #[test]
     fn test_access_enforce_scope_modify() {
         let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
-        let r_set = vec![Arc::new(ev1.clone())];
+        let r_set = vec![Arc::new(ev1)];
 
         // Name present
         let me_pres_io = unsafe {
@@ -2017,7 +2017,7 @@ mod tests {
 
         test_acp_modify!(&me_pres_ro, vec![acp_allow.clone()], &r_set, false);
 
-        test_acp_modify!(&me_pres_rw, vec![acp_allow.clone()], &r_set, true);
+        test_acp_modify!(&me_pres_rw, vec![acp_allow], &r_set, true);
     }
 
     macro_rules! test_acp_create {
@@ -2050,7 +2050,7 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
-        let r1_set = vec![ev1.clone()];
+        let r1_set = vec![ev1];
 
         let ev2 = entry_init!(
             ("class", Value::new_class("account")),
@@ -2059,7 +2059,7 @@ mod tests {
             ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
 
-        let r2_set = vec![ev2.clone()];
+        let r2_set = vec![ev2];
 
         let ev3 = entry_init!(
             ("class", Value::new_class("account")),
@@ -2067,7 +2067,7 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
-        let r3_set = vec![ev3.clone()];
+        let r3_set = vec![ev3];
 
         let ev4 = entry_init!(
             ("class", Value::new_class("account")),
@@ -2075,7 +2075,7 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
-        let r4_set = vec![ev4.clone()];
+        let r4_set = vec![ev4];
 
         // In this case, we can make the create event with an empty entry
         // set because we only reference the entries in r_set in the test.
@@ -2136,7 +2136,7 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
         );
-        let r1_set = vec![ev1.clone()];
+        let r1_set = vec![ev1];
 
         let admin = E_TEST_ACCOUNT_1.clone();
 
@@ -2151,7 +2151,7 @@ mod tests {
         );
 
         let ce_admin_rw = CreateEvent::new_impersonate_identity(
-            Identity::from_impersonate_entry_readwrite(admin.clone()),
+            Identity::from_impersonate_entry_readwrite(admin),
             vec![],
         );
 
@@ -2204,7 +2204,7 @@ mod tests {
     #[test]
     fn test_access_enforce_delete() {
         let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
-        let r_set = vec![Arc::new(ev1.clone())];
+        let r_set = vec![Arc::new(ev1)];
 
         let de_admin = unsafe {
             DeleteEvent::new_impersonate_entry(
@@ -2240,7 +2240,7 @@ mod tests {
     #[test]
     fn test_access_enforce_scope_delete() {
         let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
-        let r_set = vec![Arc::new(ev1.clone())];
+        let r_set = vec![Arc::new(ev1)];
 
         let admin = E_TEST_ACCOUNT_1.clone();
 
@@ -2255,7 +2255,7 @@ mod tests {
         );
 
         let de_admin_rw = DeleteEvent::new_impersonate_identity(
-            Identity::from_impersonate_entry_readwrite(admin.clone()),
+            Identity::from_impersonate_entry_readwrite(admin),
             filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
         );
 
@@ -2307,14 +2307,14 @@ mod tests {
 
     #[test]
     fn test_access_effective_permission_check_1() {
-        let _ = sketching::test_init();
+        sketching::test_init();
 
         let admin = Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone());
 
         let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.into_sealed_committed() };
 
-        let r_set = vec![Arc::new(ev1.clone())];
+        let r_set = vec![Arc::new(ev1)];
 
         test_acp_effective_permissions!(
             &admin,
@@ -2346,14 +2346,14 @@ mod tests {
 
     #[test]
     fn test_access_effective_permission_check_2() {
-        let _ = sketching::test_init();
+        sketching::test_init();
 
         let admin = Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone());
 
         let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.into_sealed_committed() };
 
-        let r_set = vec![Arc::new(ev1.clone())];
+        let r_set = vec![Arc::new(ev1)];
 
         test_acp_effective_permissions!(
             &admin,

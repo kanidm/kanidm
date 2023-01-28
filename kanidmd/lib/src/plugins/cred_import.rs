@@ -132,7 +132,7 @@ mod tests {
     use crate::prelude::*;
     use kanidm_proto::v1::PluginError;
 
-    const IMPORT_HASH: &'static str =
+    const IMPORT_HASH: &str =
         "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=";
     // const IMPORT_PASSWORD: &'static str = "eicieY7ahchaoCh0eeTa";
 
@@ -153,7 +153,7 @@ mod tests {
         }"#,
         );
 
-        let create = vec![e.clone()];
+        let create = vec![e];
 
         run_create_test!(Ok(()), preload, create, None, |_| {});
     }
@@ -361,7 +361,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("totp_import"),
-                Value::TotpSecret("a".to_string(), totp_a.clone())
+                Value::TotpSecret("a".to_string(), totp_a)
             )]),
             None,
             |_| {},

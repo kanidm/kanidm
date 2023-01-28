@@ -220,7 +220,7 @@ mod tests {
         }"#,
         );
 
-        let create = vec![e.clone()];
+        let create = vec![e];
         let preload = Vec::new();
 
         run_create_test!(
@@ -275,7 +275,7 @@ mod tests {
         }"#,
         );
 
-        let create = vec![e.clone()];
+        let create = vec![e];
         let preload = Vec::new();
 
         run_create_test!(

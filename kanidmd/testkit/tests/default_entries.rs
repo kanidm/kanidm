@@ -55,16 +55,16 @@ static DEFAULT_HP_GROUP_NAMES: [&str; 24] = [
 static DEFAULT_NOT_HP_GROUP_NAMES: [&str; 2] =
     ["idm_account_unix_extend_priv", "idm_group_unix_extend_priv"];
 
-async fn create_user(rsclient: &KanidmClient, id: &str, group_name: &str) -> () {
+async fn create_user(rsclient: &KanidmClient, id: &str, group_name: &str) {
     rsclient.idm_person_account_create(id, id).await.unwrap();
 
     // Create group and add to user to test read attr: member_of
-    if rsclient.idm_group_get(&group_name).await.unwrap().is_none() {
-        rsclient.idm_group_create(&group_name).await.unwrap();
+    if rsclient.idm_group_get(group_name).await.unwrap().is_none() {
+        rsclient.idm_group_create(group_name).await.unwrap();
     }
 
     rsclient
-        .idm_group_add_members(&group_name, &[id])
+        .idm_group_add_members(group_name, &[id])
         .await
         .unwrap();
 }
@@ -137,27 +137,27 @@ async fn add_all_attrs(
 ) {
     // Extend with posix attrs to test read attr: gidnumber and loginshell
     rsclient
-        .idm_person_account_unix_extend(id, None, Some(&"/bin/sh"))
+        .idm_person_account_unix_extend(id, None, Some("/bin/sh"))
         .await
         .unwrap();
     rsclient
-        .idm_group_unix_extend(&group_name, None)
+        .idm_group_unix_extend(group_name, None)
         .await
         .unwrap();
 
     for attr in ["ssh_publickey", "mail"].iter() {
-        assert!(is_attr_writable(&rsclient, id, attr).await.unwrap());
+        assert!(is_attr_writable(rsclient, id, attr).await.unwrap());
     }
 
     if let Some(legalname) = legalname {
-        assert!(is_attr_writable(&rsclient, legalname, "legalname")
+        assert!(is_attr_writable(rsclient, legalname, "legalname")
             .await
             .unwrap());
     }
 
     // Write radius credentials
     if id != "anonymous" {
-        login_account(&rsclient, id).await;
+        login_account(rsclient, id).await;
         let _ = rsclient
             .idm_account_radius_credential_regenerate(id)
             .await
@@ -173,15 +173,15 @@ async fn create_user_with_all_attrs(
     rsclient: &KanidmClient,
     id: &str,
     optional_group: Option<&str>,
-) -> () {
+) {
     let group_format = format!("{}_group", id);
     let group_name = optional_group.unwrap_or(&group_format);
 
-    create_user(&rsclient, id, group_name).await;
-    add_all_attrs(&rsclient, id, group_name, Some(id)).await;
+    create_user(rsclient, id, group_name).await;
+    add_all_attrs(rsclient, id, group_name, Some(id)).await;
 }
 
-async fn login_account(rsclient: &KanidmClient, id: &str) -> () {
+async fn login_account(rsclient: &KanidmClient, id: &str) {
     rsclient
         .idm_group_add_members(
             "idm_people_account_password_import_priv",
@@ -210,7 +210,7 @@ async fn login_account(rsclient: &KanidmClient, id: &str) -> () {
 // Login to the given account, but first login with default admin credentials.
 // This is necessary when switching between unprivileged accounts, but adds extra calls which
 // create extra debugging noise, so should be avoided when unnecessary.
-async fn login_account_via_admin(rsclient: &KanidmClient, id: &str) -> () {
+async fn login_account_via_admin(rsclient: &KanidmClient, id: &str) {
     let _ = rsclient.logout();
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
@@ -224,7 +224,7 @@ async fn test_read_attrs(
     id: &str,
     attrs: &[&str],
     is_readable: bool,
-) -> () {
+) {
     println!("Test read to {}, is readable: {}", id, is_readable);
     let rset = rsclient
         .search(Filter::Eq("name".to_string(), id.to_string()))
@@ -251,11 +251,11 @@ async fn test_write_attrs(
     id: &str,
     attrs: &[&str],
     is_writeable: bool,
-) -> () {
+) {
     println!("Test write to {}, is writeable: {}", id, is_writeable);
     for attr in attrs.iter() {
         println!("Writing to {}", attr);
-        let is_ok = is_attr_writable(&rsclient, id, attr).await.unwrap();
+        let is_ok = is_attr_writable(rsclient, id, attr).await.unwrap();
         assert!(is_ok == is_writeable)
     }
 }
@@ -264,12 +264,12 @@ async fn test_modify_group(
     rsclient: &KanidmClient,
     group_names: &[&str],
     is_modificable: bool,
-) -> () {
+) {
     // need user test created to be added as test part
     for group in group_names.iter() {
         println!("Testing group: {}", group);
         for attr in ["description", "name"].iter() {
-            assert!(is_attr_writable(&rsclient, group, attr).await.unwrap() == is_modificable)
+            assert!(is_attr_writable(rsclient, group, attr).await.unwrap() == is_modificable)
         }
         assert!(
             rsclient

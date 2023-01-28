@@ -118,7 +118,7 @@ mod tests {
             ("displayname", Value::new_utf8s("testperson"))
         );
 
-        let create = vec![e.clone()];
+        let create = vec![e];
         let preload = Vec::new();
 
         run_create_test!(
@@ -150,7 +150,7 @@ mod tests {
             ("displayname", Value::new_utf8s("testperson"))
         );
 
-        let create = vec![e.clone()];
+        let create = vec![e];
         let preload = Vec::new();
 
         run_create_test!(
@@ -279,7 +279,7 @@ mod tests {
             ("displayname", Value::new_utf8s("testperson"))
         );
 
-        let create = vec![e.clone()];
+        let create = vec![e];
         let preload = Vec::new();
 
         run_create_test!(
@@ -304,7 +304,7 @@ mod tests {
             ("displayname", Value::new_utf8s("testperson"))
         );
 
-        let create = vec![e.clone()];
+        let create = vec![e];
         let preload = Vec::new();
 
         run_create_test!(
@@ -329,7 +329,7 @@ mod tests {
             ("displayname", Value::new_utf8s("testperson"))
         );
 
-        let create = vec![e.clone()];
+        let create = vec![e];
         let preload = Vec::new();
 
         run_create_test!(

@@ -257,8 +257,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     let redir_str = response
         .headers()
         .get("Location")
-        .map(|hv| hv.to_str().ok().map(str::to_string))
-        .flatten()
+        .and_then(|hv| hv.to_str().ok().map(str::to_string))
         .expect("Invalid redirect url");
 
     // Now check it's content

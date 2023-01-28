@@ -1579,11 +1579,11 @@ mod tests {
 
     #[test]
     fn test_idl_sqlite_verify() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         let cfg = BackendConfig::new_test("main");
         let be = IdlSqlite::new(&cfg, false).unwrap();
         let be_w = be.write();
         let r = be_w.verify();
-        assert!(r.len() == 0);
+        assert!(r.is_empty());
     }
 }

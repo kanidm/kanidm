@@ -614,7 +614,7 @@ mod tests {
     use crate::idm::event::UnixPasswordChangeEvent;
     use crate::idm::serviceaccount::GenerateApiTokenEvent;
 
-    const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
+    const TEST_PASSWORD: &str = "ntaoeuntnaoeuhraohuercahu😍";
 
     #[test]
     fn test_ldap_simple_bind() {
@@ -1076,7 +1076,7 @@ mod tests {
                 let sa_lbt = task::block_on(ldaps.do_bind(idms, "", &apitoken))
                     .unwrap()
                     .unwrap();
-                assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner.clone()));
+                assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner));
 
                 // Search and retrieve mail that's now accessible.
                 let r1 = task::block_on(ldaps.do_search(idms, &sr, &sa_lbt)).unwrap();

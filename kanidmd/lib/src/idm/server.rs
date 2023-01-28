@@ -2254,8 +2254,8 @@ mod tests {
     use crate::prelude::*;
     use crate::utils::duration_from_epoch_now;
 
-    const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
-    const TEST_PASSWORD_INC: &'static str = "ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx ";
+    const TEST_PASSWORD: &str = "ntaoeuntnaoeuhraohuercahu😍";
+    const TEST_PASSWORD_INC: &str = "ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx ";
     const TEST_CURRENT_TIME: u64 = 6000;
 
     #[test]
@@ -2697,7 +2697,7 @@ mod tests {
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
                 let mut idms_prox_write =
                     task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
+                let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
 
                 // Generates a new credential when none exists
                 let r1 = idms_prox_write
@@ -2718,7 +2718,7 @@ mod tests {
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
                 let mut idms_prox_write =
                     task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
+                let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
 
                 let r1 = idms_prox_write
                     .regenerate_radius_secret(&rrse)
@@ -2744,14 +2744,14 @@ mod tests {
             |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
                 let mut idms_prox_write =
                     task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
+                let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
                 let r1 = idms_prox_write
                     .regenerate_radius_secret(&rrse)
                     .expect("Failed to reset radius credential 1");
                 idms_prox_write.commit().expect("failed to commit");
 
                 let mut idms_prox_read = task::block_on(idms.proxy_read());
-                let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN.clone());
+                let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN);
                 let tok_r = idms_prox_read
                     .get_radiusauthtoken(&rate, duration_from_epoch_now())
                     .expect("Failed to generate radius auth token");
@@ -2851,7 +2851,7 @@ mod tests {
                     )
                 );
 
-                let ce = CreateEvent::new_internal(vec![e.clone()]);
+                let ce = CreateEvent::new_internal(vec![e]);
 
                 assert!(idms_prox_write.qs_write.create(&ce).is_ok());
 
@@ -2869,7 +2869,7 @@ mod tests {
                 assert!(tok_g.name == "testgroup");
                 assert!(tok_g.spn == "testgroup@example.com");
 
-                let uute = UnixUserTokenEvent::new_internal(UUID_ADMIN.clone());
+                let uute = UnixUserTokenEvent::new_internal(UUID_ADMIN);
                 let tok_r = idms_prox_read
                     .get_unixusertoken(&uute, duration_from_epoch_now())
                     .expect("Failed to generate unix user token");
@@ -2879,7 +2879,7 @@ mod tests {
                 assert!(tok_r.groups.len() == 2);
                 assert!(tok_r.groups[0].name == "admin");
                 assert!(tok_r.groups[1].name == "testgroup");
-                assert!(tok_r.valid == true);
+                assert!(tok_r.valid);
 
                 // Show we can get the admin as a unix group token too
                 let ugte = UnixGroupTokenEvent::new_internal(uuid!(
@@ -3231,21 +3231,21 @@ mod tests {
                 idms_auth.commit().expect("Must not fail");
                 // Also check the generated unix tokens are invalid.
                 let mut idms_prox_read = task::block_on(idms.proxy_read());
-                let uute = UnixUserTokenEvent::new_internal(UUID_ADMIN.clone());
+                let uute = UnixUserTokenEvent::new_internal(UUID_ADMIN);
 
                 let tok_r = idms_prox_read
                     .get_unixusertoken(&uute, time_low)
                     .expect("Failed to generate unix user token");
 
                 assert!(tok_r.name == "admin");
-                assert!(tok_r.valid == false);
+                assert!(!tok_r.valid);
 
                 let tok_r = idms_prox_read
                     .get_unixusertoken(&uute, time_high)
                     .expect("Failed to generate unix user token");
 
                 assert!(tok_r.name == "admin");
-                assert!(tok_r.valid == false);
+                assert!(!tok_r.valid);
             }
         )
     }
@@ -3265,17 +3265,17 @@ mod tests {
 
                 let mut idms_prox_write =
                     task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
+                let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
                 let _r1 = idms_prox_write
                     .regenerate_radius_secret(&rrse)
                     .expect("Failed to reset radius credential 1");
                 idms_prox_write.commit().expect("failed to commit");
 
                 let mut idms_prox_read = task::block_on(idms.proxy_read());
-                let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN.clone());
+                let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN);
                 let tok_r = idms_prox_read.get_radiusauthtoken(&rate, time_low);
 
-                if let Err(_) = tok_r {
+                if tok_r.is_err() {
                     // Ok?
                 } else {
                     assert!(false);
@@ -3283,7 +3283,7 @@ mod tests {
 
                 let tok_r = idms_prox_read.get_radiusauthtoken(&rate, time_high);
 
-                if let Err(_) = tok_r {
+                if tok_r.is_err() {
                     // Ok?
                 } else {
                     assert!(false);
@@ -3779,7 +3779,7 @@ mod tests {
                 drop(idms_prox_read);
 
                 // Mark the session as invalid now.
-                let mut idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 let dte =
                     DestroySessionTokenEvent::new_internal(uat_inner.uuid, uat_inner.session_id);
                 assert!(idms_prox_write.account_destroy_session_token(&dte).is_ok());
@@ -3810,7 +3810,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
             // get an account.
             let account = idms_prox_write
@@ -3937,7 +3937,7 @@ mod tests {
                 //
                 // fernet_private_key_str
                 // es256_private_key_der
-                let mut idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
+                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
                 let me_reset_tokens = unsafe {
                     ModifyEvent::new_internal_invalid(
                         filter!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO))),
@@ -3976,7 +3976,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
             let ident = Identity::from_internal();
             let target_uuid = Uuid::new_v4();

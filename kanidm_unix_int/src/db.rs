@@ -738,7 +738,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_db_account_basic() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
@@ -822,7 +822,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_db_group_basic() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
@@ -897,7 +897,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_db_account_group_update() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
@@ -930,7 +930,7 @@ mod tests {
 
         // First, add the groups.
         ut1.groups.iter().for_each(|g| {
-            dbtxn.update_group(&g, 0).unwrap();
+            dbtxn.update_group(g, 0).unwrap();
         });
 
         // The add the account
@@ -958,14 +958,14 @@ mod tests {
             .get_group_members("b500be97-8552-42a5-aca0-668bc5625705")
             .unwrap();
         assert!(m1[0].name == "testuser");
-        assert!(m2.len() == 0);
+        assert!(m2.is_empty());
 
         assert!(dbtxn.commit().is_ok());
     }
 
     #[tokio::test]
     async fn test_cache_db_account_password() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
@@ -1014,7 +1014,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_db_group_rename_duplicate() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
@@ -1069,7 +1069,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_db_account_rename_duplicate() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());

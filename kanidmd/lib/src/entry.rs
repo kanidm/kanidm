@@ -438,7 +438,7 @@ impl Entry<EntryInit, EntryNew> {
                     }
                     "displayname" | "description" | "domain_display_name" => {
                         valueset::from_value_iter(
-                        vs.into_iter().map(|v| Value::new_utf8(v))
+                        vs.into_iter().map(Value::new_utf8)
                         )
                     }
                     "spn" => {
@@ -476,7 +476,7 @@ impl Entry<EntryInit, EntryNew> {
                     ia => {
                         warn!("WARNING: Allowing invalid attribute {} to be interpreted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
                         valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_utf8(v))
+                            vs.into_iter().map(Value::new_utf8)
                         )
                     }
                 }
@@ -547,7 +547,7 @@ impl Entry<EntryInit, EntryNew> {
             valid: EntryValid {
                 cid,
                 eclog,
-                uuid: self.get_uuid().expect("Invalid uuid").clone(),
+                uuid: self.get_uuid().expect("Invalid uuid"),
             },
             state: EntryNew,
             attrs: self.attrs,
@@ -561,8 +561,7 @@ impl Entry<EntryInit, EntryNew> {
         let eclog = EntryChangelog::new_without_schema(cid, self.attrs.clone());
         let uuid = self
             .get_uuid()
-            .and_then(|u| Some(u.clone()))
-            .unwrap_or_else(|| Uuid::new_v4());
+            .unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntrySealed { uuid, eclog },
             state: EntryCommitted { id: 0 },
@@ -578,7 +577,7 @@ impl Entry<EntryInit, EntryNew> {
 
         Entry {
             valid: EntrySealed {
-                uuid: self.get_uuid().expect("Invalid uuid").clone(),
+                uuid: self.get_uuid().expect("Invalid uuid"),
                 eclog,
             },
             state: EntryNew,
@@ -890,7 +889,7 @@ where
 impl Entry<EntryInvalid, EntryCommitted> {
     #[cfg(test)]
     pub unsafe fn into_valid_new(self) -> Entry<EntryValid, EntryNew> {
-        let uuid = self.get_uuid().expect("Invalid uuid").clone();
+        let uuid = self.get_uuid().expect("Invalid uuid");
         Entry {
             valid: EntryValid {
                 cid: self.valid.cid,
@@ -937,7 +936,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
 impl Entry<EntryInvalid, EntryNew> {
     #[cfg(test)]
     pub unsafe fn into_valid_new(self) -> Entry<EntryValid, EntryNew> {
-        let uuid = self.get_uuid().expect("Invalid uuid").clone();
+        let uuid = self.get_uuid().expect("Invalid uuid");
         Entry {
             valid: EntryValid {
                 cid: self.valid.cid,
@@ -953,8 +952,7 @@ impl Entry<EntryInvalid, EntryNew> {
     pub unsafe fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
         let uuid = self
             .get_uuid()
-            .and_then(|u| Some(u.clone()))
-            .unwrap_or_else(|| Uuid::new_v4());
+            .unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntrySealed {
                 uuid,
@@ -987,8 +985,7 @@ impl Entry<EntryInvalid, EntryNew> {
     pub unsafe fn into_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
         let uuid = self
             .get_uuid()
-            .and_then(|u| Some(u.clone()))
-            .unwrap_or_else(|| Uuid::new_v4());
+            .unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntryValid {
                 cid: self.valid.cid,
@@ -1006,8 +1003,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
     pub unsafe fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
         let uuid = self
             .get_uuid()
-            .and_then(|u| Some(u.clone()))
-            .unwrap_or_else(|| Uuid::new_v4());
+            .unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntrySealed {
                 uuid,
@@ -2654,17 +2650,17 @@ mod tests {
 
         e1.add_ava("a", Value::new_uint32(10));
 
-        assert!(e1.attribute_lessthan("a", &pv2) == false);
-        assert!(e1.attribute_lessthan("a", &pv8) == false);
-        assert!(e1.attribute_lessthan("a", &pv10) == false);
-        assert!(e1.attribute_lessthan("a", &pv15) == true);
+        assert!(!e1.attribute_lessthan("a", &pv2));
+        assert!(!e1.attribute_lessthan("a", &pv8));
+        assert!(!e1.attribute_lessthan("a", &pv10));
+        assert!(e1.attribute_lessthan("a", &pv15));
 
         e1.add_ava("a", Value::new_uint32(8));
 
-        assert!(e1.attribute_lessthan("a", &pv2) == false);
-        assert!(e1.attribute_lessthan("a", &pv8) == false);
-        assert!(e1.attribute_lessthan("a", &pv10) == true);
-        assert!(e1.attribute_lessthan("a", &pv15) == true);
+        assert!(!e1.attribute_lessthan("a", &pv2));
+        assert!(!e1.attribute_lessthan("a", &pv8));
+        assert!(e1.attribute_lessthan("a", &pv10));
+        assert!(e1.attribute_lessthan("a", &pv15));
     }
 
     #[test]
@@ -2827,7 +2823,7 @@ mod tests {
 
         // Check no changes
         let no_r = Entry::idx_diff(&idxmeta, Some(&e1), Some(&e1));
-        assert!(no_r.len() == 0);
+        assert!(no_r.is_empty());
 
         // Check "adding" an attribute.
         let add_a_r = Entry::idx_diff(&idxmeta, Some(&e1), Some(&e1_mod));
@@ -3003,7 +2999,7 @@ mod tests {
 
     #[test]
     fn test_entry_idx_uuid2spn_diff() {
-        assert!(Entry::idx_uuid2spn_diff(None, None) == None);
+        assert!(Entry::idx_uuid2spn_diff(None, None).is_none());
 
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
         e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
@@ -3018,7 +3014,7 @@ mod tests {
                 == Some(Ok(Value::new_spn_str("testperson", "example.com")))
         );
         assert!(Entry::idx_uuid2spn_diff(Some(&e1), None) == Some(Err(())));
-        assert!(Entry::idx_uuid2spn_diff(Some(&e1), Some(&e1)) == None);
+        assert!(Entry::idx_uuid2spn_diff(Some(&e1), Some(&e1)).is_none());
         assert!(
             Entry::idx_uuid2spn_diff(Some(&e1), Some(&e2))
                 == Some(Ok(Value::new_spn_str("renameperson", "example.com")))
@@ -3027,7 +3023,7 @@ mod tests {
 
     #[test]
     fn test_entry_idx_uuid2rdn_diff() {
-        assert!(Entry::idx_uuid2rdn_diff(None, None) == None);
+        assert!(Entry::idx_uuid2rdn_diff(None, None).is_none());
 
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
         e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
@@ -3042,7 +3038,7 @@ mod tests {
                 == Some(Ok("spn=testperson@example.com".to_string()))
         );
         assert!(Entry::idx_uuid2rdn_diff(Some(&e1), None) == Some(Err(())));
-        assert!(Entry::idx_uuid2rdn_diff(Some(&e1), Some(&e1)) == None);
+        assert!(Entry::idx_uuid2rdn_diff(Some(&e1), Some(&e1)).is_none());
         assert!(
             Entry::idx_uuid2rdn_diff(Some(&e1), Some(&e2))
                 == Some(Ok("spn=renameperson@example.com".to_string()))

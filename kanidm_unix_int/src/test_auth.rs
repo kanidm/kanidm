@@ -29,7 +29,7 @@ async fn main() {
 
     let cfg = KanidmUnixdConfig::new()
         .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
-        .expect(&format!("Failed to parse {}", DEFAULT_CONFIG_PATH));
+        .unwrap_or_else(|_| panic!("Failed to parse {}", DEFAULT_CONFIG_PATH));
 
     let password = rpassword::prompt_password("Enter Unix password: ").unwrap();
 

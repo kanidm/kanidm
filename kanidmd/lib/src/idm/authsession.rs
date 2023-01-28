@@ -929,7 +929,7 @@ mod tests {
 
     fn create_pw_badlist_cache() -> HashSet<String> {
         let mut s = HashSet::new();
-        s.insert((&"list@no3IBTyqHu$bad").to_lowercase());
+        s.insert("list@no3IBTyqHu$bad".to_lowercase());
         s
     }
 
@@ -948,7 +948,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_anonymous_auth_mech() {
-        let _ = sketching::test_init();
+        sketching::test_init();
 
         let webauthn = create_webauthn();
 
@@ -1019,7 +1019,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_simple_password_mech() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         let webauthn = create_webauthn();
         // create the ent
         let mut account = entry_str_to_account!(JSON_ADMIN_V1);
@@ -1077,7 +1077,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_simple_password_badlist() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         let jws_signer = create_jwt_signer();
         let webauthn = create_webauthn();
         // create the ent
@@ -1169,7 +1169,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_totp_password_mech() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         let webauthn = create_webauthn();
         let jws_signer = create_jwt_signer();
         // create the ent
@@ -1329,7 +1329,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_password_mfa_badlist() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         let webauthn = create_webauthn();
         let jws_signer = create_jwt_signer();
         // create the ent
@@ -1493,7 +1493,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_webauthn_only_mech() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         let (async_tx, mut async_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
@@ -1631,7 +1631,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_webauthn_password_mech() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         let (async_tx, mut async_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
@@ -1808,7 +1808,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_webauthn_password_totp_mech() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         let (async_tx, mut async_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
@@ -2057,7 +2057,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_backup_code_mech() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         let jws_signer = create_jwt_signer();
         let webauthn = create_webauthn();
         // create the ent
@@ -2175,7 +2175,7 @@ mod tests {
                 start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &AuthCredential::BackupCode(backup_code_good.clone()),
+                &AuthCredential::BackupCode(backup_code_good),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -2254,7 +2254,7 @@ mod tests {
     fn test_idm_authsession_multiple_totp_password_mech() {
         // Slightly different to the other TOTP test, this
         // checks handling when multiple TOTP's are registered.
-        let _ = sketching::test_init();
+        sketching::test_init();
         let webauthn = create_webauthn();
         let jws_signer = create_jwt_signer();
         // create the ent

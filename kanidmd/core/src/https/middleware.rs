@@ -110,13 +110,10 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictRes
         Ok(response)
     }
 }
+#[derive(Default)]
 struct StrictRequestMiddleware;
 
-impl Default for StrictRequestMiddleware {
-    fn default() -> Self {
-        StrictRequestMiddleware {}
-    }
-}
+
 
 #[async_trait::async_trait]
 impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictRequestMiddleware {
@@ -157,7 +154,7 @@ pub struct UIContentSecurityPolicyResponseMiddleware {
 }
 impl UIContentSecurityPolicyResponseMiddleware {
     pub fn new(hashes: Vec<JavaScriptFile>) -> Self {
-        return Self { hashes };
+        Self { hashes }
     }
 }
 
