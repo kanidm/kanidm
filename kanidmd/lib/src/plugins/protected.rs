@@ -381,7 +381,7 @@ mod tests {
         }"#,
         );
 
-        let create = vec![e.clone()];
+        let create = vec![e];
         let preload = PRELOAD.clone();
 
         run_create_test!(
@@ -408,7 +408,7 @@ mod tests {
         );
 
         let mut preload = PRELOAD.clone();
-        preload.push(e.clone());
+        preload.push(e);
 
         run_modify_test!(
             Err(OperationError::SystemProtectedObject),
@@ -439,7 +439,7 @@ mod tests {
         );
 
         let mut preload = PRELOAD.clone();
-        preload.push(e.clone());
+        preload.push(e);
 
         run_modify_test!(
             Ok(()),
@@ -470,7 +470,7 @@ mod tests {
         );
 
         let mut preload = PRELOAD.clone();
-        preload.push(e.clone());
+        preload.push(e);
 
         run_delete_test!(
             Err(OperationError::SystemProtectedObject),
@@ -504,7 +504,7 @@ mod tests {
         );
 
         let mut preload = PRELOAD.clone();
-        preload.push(e.clone());
+        preload.push(e);
 
         run_modify_test!(
             Ok(()),
@@ -578,7 +578,7 @@ mod tests {
         );
 
         let mut preload = PRELOAD.clone();
-        preload.push(e.clone());
+        preload.push(e);
 
         run_delete_test!(
             Err(OperationError::SystemProtectedObject),

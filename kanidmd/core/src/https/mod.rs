@@ -344,7 +344,8 @@ pub fn create_https_server(
 
     if !matches!(role, ServerRole::WriteReplicaNoUI) {
         // let's set up the list of js module hashes
-        for filepath in ["wasmloader.js"] {
+        {
+            let filepath = "wasmloader.js";
             js_files.push(JavaScriptFile {
                 filepath,
                 hash: generate_integrity_hash(format!(
@@ -357,7 +358,8 @@ pub fn create_https_server(
             });
         }
         // let's set up the list of non-module hashes
-        for filepath in ["external/bootstrap.bundle.min.js"] {
+        {
+            let filepath = "external/bootstrap.bundle.min.js";
             js_files.push(JavaScriptFile {
                 filepath,
                 hash: generate_integrity_hash(format!(

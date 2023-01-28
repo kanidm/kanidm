@@ -53,7 +53,7 @@ impl KanidmdOpt {
             }
             | KanidmdOpt::DbScan {
                 commands: DbScanOpt::ListIndexAnalysis(sopt),
-            } => &sopt,
+            } => sopt,
             KanidmdOpt::Database {
                 commands: DbCommands::Backup(bopt),
             } => &bopt.commonopts,
@@ -70,18 +70,18 @@ impl KanidmdOpt {
             } => &dopt.commonopts,
             KanidmdOpt::DomainSettings {
                 commands: DomainSettingsCmds::DomainChange(sopt),
-            } => &sopt,
+            } => sopt,
             KanidmdOpt::Database {
                 commands: DbCommands::Verify(sopt),
             }
             | KanidmdOpt::Database {
                 commands: DbCommands::Reindex(sopt),
-            } => &sopt,
+            } => sopt,
             KanidmdOpt::Database {
                 commands: DbCommands::Vacuum(copt),
-            } => &copt,
+            } => copt,
             KanidmdOpt::HealthCheck(hcopt) => &hcopt.commonopts,
-            KanidmdOpt::Version(copt) => &copt,
+            KanidmdOpt::Version(copt) => copt,
         }
     }
 }
@@ -231,10 +231,10 @@ async fn main() {
                 }
             }
 
-            config.update_db_path(&sconfig.db_path.as_str());
+            config.update_db_path(sconfig.db_path.as_str());
             config.update_db_fs_type(&sconfig.db_fs_type);
-            config.update_origin(&sconfig.origin.as_str());
-            config.update_domain(&sconfig.domain.as_str());
+            config.update_origin(sconfig.origin.as_str());
+            config.update_domain(sconfig.domain.as_str());
             config.update_db_arc_size(sconfig.db_arc_size);
             config.update_role(sconfig.role);
             config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());
@@ -493,7 +493,7 @@ async fn main() {
                                 if error.is_timeout() {
                                     format!("Timeout connecting to url={healthcheck_url}")
                                 } else if error.is_connect() {
-                                    format!("Connection failed: {}", error.to_string())
+                                    format!("Connection failed: {}", error)
                                 } else {
                                     format!("Failed to complete healthcheck: {:?}", error)
                                 }
@@ -506,7 +506,7 @@ async fn main() {
                     println!("OK")
                 }
                 KanidmdOpt::Version(_) => {
-                    return
+                    
                 }
             }
         })

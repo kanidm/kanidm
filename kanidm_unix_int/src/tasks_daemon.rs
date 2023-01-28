@@ -39,7 +39,7 @@ impl Decoder for TaskCodec {
     type Item = TaskRequest;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match serde_json::from_slice::<TaskRequest>(&src) {
+        match serde_json::from_slice::<TaskRequest>(src) {
             Ok(msg) => {
                 // Clear the buffer for the next message.
                 src.clear();
@@ -90,8 +90,7 @@ fn create_home_directory(
     let name = info
         .name
         .trim_start_matches('.')
-        .replace("/", "")
-        .replace("\\", "");
+        .replace(['/', '\\'], "");
 
     let home_prefix_path = Path::new(home_prefix);
 
@@ -154,8 +153,7 @@ fn create_home_directory(
         // let alias = alias.replace(".", "").replace("/", "").replace("\\", "");
         let alias = alias
             .trim_start_matches('.')
-            .replace("/", "")
-            .replace("\\", "");
+            .replace(['/', '\\'], "");
         let alias_path_raw = format!("{}{}", home_prefix, alias);
         let alias_path = Path::new(&alias_path_raw);
 

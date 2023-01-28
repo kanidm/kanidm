@@ -246,7 +246,7 @@ mod tests {
         let r2 = server_b_txn.search(&se_b).expect("search failure");
         assert!(r2.is_empty());
 
-        let cr = server_b_txn.internal_create(vec![e.clone()]);
+        let cr = server_b_txn.internal_create(vec![e]);
         assert!(cr.is_ok());
 
         // Now is present

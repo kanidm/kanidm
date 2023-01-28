@@ -899,7 +899,7 @@ impl From<&str> for Value {
 #[cfg(test)]
 impl From<&Uuid> for Value {
     fn from(u: &Uuid) -> Self {
-        Value::Uuid(u.clone())
+        Value::Uuid(*u)
     }
 }
 

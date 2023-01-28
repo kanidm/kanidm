@@ -2214,7 +2214,7 @@ mod tests {
 
     #[test]
     fn test_schema_entries() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         // Given an entry, assert it's schema is valid
         // We do
         let schema_outer = Schema::new().expect("failed to create schema");
@@ -2531,7 +2531,7 @@ mod tests {
         let schema_outer = Schema::new().expect("failed to create schema");
         let mut schema = schema_outer.write_blocking();
 
-        assert!(schema.validate().len() == 0);
+        assert!(schema.validate().is_empty());
 
         // Attempt to create a class with a phantom attribute, should be refused.
         let class = SchemaClass {
@@ -2549,12 +2549,12 @@ mod tests {
 
     #[test]
     fn test_schema_class_exclusion_requires() {
-        let _ = sketching::test_init();
+        sketching::test_init();
 
         let schema_outer = Schema::new().expect("failed to create schema");
         let mut schema = schema_outer.write_blocking();
 
-        assert!(schema.validate().len() == 0);
+        assert!(schema.validate().is_empty());
 
         // We setup some classes that have requires and excludes and check that they
         // are enforced correctly.

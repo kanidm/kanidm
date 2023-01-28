@@ -37,7 +37,7 @@ pub fn is_free_port(port: u16) -> bool {
 // allowed because the use of this function is behind a test gate
 #[allow(dead_code)]
 pub async fn setup_async_test() -> (KanidmClient, CoreHandle) {
-    let _ = sketching::test_init();
+    sketching::test_init();
 
     let mut counter = 0;
     let port = loop {

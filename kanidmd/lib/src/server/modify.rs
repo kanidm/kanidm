@@ -490,7 +490,7 @@ mod tests {
             ("displayname", Value::new_utf8s("testperson2"))
         );
 
-        let ce = CreateEvent::new_internal(vec![e1.clone(), e2.clone()]);
+        let ce = CreateEvent::new_internal(vec![e1, e2]);
 
         let cr = server_txn.create(&ce);
         assert!(cr.is_ok());
@@ -638,7 +638,7 @@ mod tests {
             ("displayname", Value::new_utf8s("testperson1"))
         );
 
-        let ce = CreateEvent::new_internal(vec![e1.clone()]);
+        let ce = CreateEvent::new_internal(vec![e1]);
 
         let cr = server_txn.create(&ce);
         assert!(cr.is_ok());

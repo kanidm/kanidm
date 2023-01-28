@@ -368,7 +368,7 @@ mod tests {
         let key = vec![0x00, 0xaa, 0xbb, 0xcc];
         let secs = 1585369780;
         let otp = Totp::new(
-            key.clone(),
+            key,
             TOTP_DEFAULT_STEP,
             TotpAlgo::Sha512,
             TotpDigits::Six,

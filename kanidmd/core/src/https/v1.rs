@@ -584,7 +584,7 @@ pub async fn account_get_id_credential_update_intent(req: tide::Request<AppState
                 })
                 .ok()
         })
-        .map(|s| Duration::from_secs(s));
+        .map(Duration::from_secs);
 
     let (eventid, hvalue) = req.new_eventid();
 
@@ -1115,7 +1115,7 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
 
                             let jws = Jws::new(SessionId { sessionid });
                             // Get the header token ready.
-                            jws.sign(&kref)
+                            jws.sign(kref)
                                 .map(|jwss| {
                                     auth_session_id_tok = Some(jwss.to_string());
                                 })
@@ -1141,7 +1141,7 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                             let kref = &req.state().jws_signer;
                             // Get the header token ready.
                             let jws = Jws::new(SessionId { sessionid });
-                            jws.sign(&kref)
+                            jws.sign(kref)
                                 .map(|jwss| {
                                     auth_session_id_tok = Some(jwss.to_string());
                                 })

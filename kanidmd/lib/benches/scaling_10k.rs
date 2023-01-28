@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use criterion::{
     criterion_group, criterion_main, BenchmarkId, Criterion, SamplingMode, Throughput,
 };
-use kanidmd_lib;
+
 use kanidmd_lib::entry::{Entry, EntryInit, EntryNew};
 use kanidmd_lib::entry_init;
 use kanidmd_lib::utils::duration_from_epoch_now;

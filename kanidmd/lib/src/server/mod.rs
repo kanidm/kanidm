@@ -1569,25 +1569,25 @@ mod tests {
         assert!(cr.is_ok());
 
         // test attr not exist
-        let r1 = server_txn.clone_value(&"tausau".to_string(), &"naoeutnhaou".to_string());
+        let r1 = server_txn.clone_value("tausau", "naoeutnhaou");
 
         assert!(r1.is_err());
 
         // test attr not-normalised (error)
         // test attr not-reference
-        let r2 = server_txn.clone_value(&"NaMe".to_string(), &"NaMe".to_string());
+        let r2 = server_txn.clone_value("NaMe", "NaMe");
 
         assert!(r2.is_err());
 
         // test attr reference
-        let r3 = server_txn.clone_value(&"member".to_string(), &"testperson1".to_string());
+        let r3 = server_txn.clone_value("member", "testperson1");
 
         assert!(r3 == Ok(Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))));
 
         // test attr reference already resolved.
         let r4 = server_txn.clone_value(
-            &"member".to_string(),
-            &"cc8e95b4-c24f-4d68-ba54-8bed76f63930".to_string(),
+            "member",
+            "cc8e95b4-c24f-4d68-ba54-8bed76f63930",
         );
 
         debug!("{:?}", r4);

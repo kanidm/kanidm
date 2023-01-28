@@ -77,17 +77,12 @@ pub struct RouteInfo {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Default)]
 pub struct RouteMap {
     pub routelist: Vec<RouteInfo>,
 }
 
-impl Default for RouteMap {
-    fn default() -> Self {
-        RouteMap {
-            routelist: Vec::new(),
-        }
-    }
-}
+
 
 impl RouteMap {
     // Serializes the object out to a pretty JSON blob

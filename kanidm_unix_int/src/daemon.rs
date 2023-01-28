@@ -51,7 +51,7 @@ impl Decoder for ClientCodec {
     type Item = ClientRequest;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match serde_json::from_slice::<ClientRequest>(&src) {
+        match serde_json::from_slice::<ClientRequest>(src) {
             Ok(msg) => {
                 // Clear the buffer for the next message.
                 src.clear();
@@ -89,7 +89,7 @@ impl Decoder for TaskCodec {
     type Item = TaskResponse;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match serde_json::from_slice::<TaskResponse>(&src) {
+        match serde_json::from_slice::<TaskResponse>(src) {
             Ok(msg) => {
                 // Clear the buffer for the next message.
                 src.clear();
@@ -419,11 +419,9 @@ async fn main() {
     if clap_args.get_flag("skip-root-check") {
         warn!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
         // TODO: this wording is not great m'kay.
-    } else {
-        if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
-            error!("Refusing to run - this process must not operate as root.");
-            return;
-        }
+    } else if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
+        error!("Refusing to run - this process must not operate as root.");
+        return;
     };
     if clap_args.get_flag("debug") {
         std::env::set_var("RUST_LOG", "debug");
@@ -542,7 +540,7 @@ async fn main() {
 
 
             // Check the db path will be okay.
-            if cfg.db_path != "" {
+            if !cfg.db_path.is_empty() {
                 let db_path = PathBuf::from(cfg.db_path.as_str());
                 // We only need to check the parent folder path permissions as the db itself may not exist yet.
                 if let Some(db_parent_path) = db_path.parent() {
@@ -551,7 +549,7 @@ async fn main() {
                             "Refusing to run, DB folder {} does not exist",
                             db_parent_path
                                 .to_str()
-                                .unwrap_or_else(|| "<db_parent_path invalid>")
+                                .unwrap_or("<db_parent_path invalid>")
                         );
                         return
                     }
@@ -565,7 +563,7 @@ async fn main() {
                                 "Unable to read metadata for {} - {:?}",
                                 db_par_path_buf
                                     .to_str()
-                                    .unwrap_or_else(|| "<db_par_path_buf invalid>"),
+                                    .unwrap_or("<db_par_path_buf invalid>"),
                                 e
                             );
                             return
@@ -577,19 +575,19 @@ async fn main() {
                             "Refusing to run - DB folder {} may not be a directory",
                             db_par_path_buf
                                 .to_str()
-                                .unwrap_or_else(|| "<db_par_path_buf invalid>")
+                                .unwrap_or("<db_par_path_buf invalid>")
                         );
                         return
                     }
                     if !file_permissions_readonly(&i_meta) {
                         warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
-                        .unwrap_or_else(|| "<db_par_path_buf invalid>")
+                        .unwrap_or("<db_par_path_buf invalid>")
                         );
                     }
 
                     if i_meta.mode() & 0o007 != 0 {
                         warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str()
-                        .unwrap_or_else(|| "<db_par_path_buf invalid>")
+                        .unwrap_or("<db_par_path_buf invalid>")
                         );
                     }
                 }
@@ -599,7 +597,7 @@ async fn main() {
                     if !db_path.is_file() {
                         error!(
                             "Refusing to run - DB path {} already exists and is not a file.",
-                            db_path.to_str().unwrap_or_else(|| "<db_path invalid>")
+                            db_path.to_str().unwrap_or("<db_path invalid>")
                         );
                         return
                     };
@@ -609,7 +607,7 @@ async fn main() {
                         Err(e) => {
                             error!(
                                 "Unable to read metadata for {} - {:?}",
-                                db_path.to_str().unwrap_or_else(|| "<db_path invalid>"),
+                                db_path.to_str().unwrap_or("<db_path invalid>"),
                                 e
                             );
                             return

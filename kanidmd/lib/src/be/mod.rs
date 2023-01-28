@@ -1923,7 +1923,7 @@ mod tests {
             e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e = unsafe { e.into_sealed_new() };
 
-            let single_result = be.create(&CID_ZERO, vec![e.clone()]);
+            let single_result = be.create(&CID_ZERO, vec![e]);
             assert!(single_result.is_ok());
             // Test a simple EQ search
 
@@ -1981,10 +1981,10 @@ mod tests {
             // However, with some unsafe ....
             let ue1 = unsafe { e1.clone().into_sealed_committed() };
             assert!(be
-                .modify(&CID_ZERO, &vec![Arc::new(ue1.clone())], &vec![ue1])
+                .modify(&CID_ZERO, &[Arc::new(ue1.clone())], &[ue1])
                 .is_err());
             // Modify none
-            assert!(be.modify(&CID_ZERO, &vec![], &vec![]).is_err());
+            assert!(be.modify(&CID_ZERO, &[], &[]).is_err());
 
             // Make some changes to r1, r2.
             let pre1 = unsafe { Arc::new(r1.clone().into_sealed_committed()) };
@@ -1999,7 +1999,7 @@ mod tests {
 
             // Modify single
             assert!(be
-                .modify(&CID_ZERO, &vec![pre1.clone()], &vec![vr1.clone()])
+                .modify(&CID_ZERO, &[pre1], &[vr1.clone()])
                 .is_ok());
             // Assert no other changes
             assert!(entry_attr_pres!(be, vr1, "desc"));
@@ -2009,8 +2009,8 @@ mod tests {
             assert!(be
                 .modify(
                     &CID_ZERO,
-                    &vec![Arc::new(vr1.clone()), pre2.clone()],
-                    &vec![vr1.clone(), vr2.clone()]
+                    &[Arc::new(vr1.clone()), pre2],
+                    &[vr1.clone(), vr2.clone()]
                 )
                 .is_ok());
 
@@ -2065,7 +2065,7 @@ mod tests {
             let r1_ts = unsafe { r1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
 
             assert!(be
-                .modify(&CID_ONE, &vec![r1.clone(),], &vec![r1_ts.clone()])
+                .modify(&CID_ONE, &[r1], &[r1_ts.clone()])
                 .is_ok());
 
             let r2_ts = unsafe { r2.to_tombstone(CID_TWO.clone()).into_sealed_committed() };
@@ -2074,8 +2074,8 @@ mod tests {
             assert!(be
                 .modify(
                     &CID_TWO,
-                    &vec![r2.clone(), r3.clone()],
-                    &vec![r2_ts.clone(), r3_ts.clone()]
+                    &[r2, r3],
+                    &[r2_ts.clone(), r3_ts.clone()]
                 )
                 .is_ok());
 
@@ -2166,7 +2166,7 @@ mod tests {
             be.backup(&db_backup_file_name).expect("Backup failed!");
             be.restore(&db_backup_file_name).expect("Restore failed!");
 
-            assert!(be.verify().len() == 0);
+            assert!(be.verify().is_empty());
         });
     }
 
@@ -2244,7 +2244,7 @@ mod tests {
 
             be.restore(&db_backup_file_name).expect("Restore failed!");
 
-            assert!(be.verify().len() == 0);
+            assert!(be.verify().is_empty());
         });
     }
 
@@ -2288,7 +2288,7 @@ mod tests {
             e2.add_ava("uuid", Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
             let e2 = unsafe { e2.into_sealed_new() };
 
-            be.create(&CID_ZERO, vec![e1.clone(), e2.clone()]).unwrap();
+            be.create(&CID_ZERO, vec![e1, e2]).unwrap();
 
             // purge indexes
             be.purge_idxs().unwrap();
@@ -2380,7 +2380,7 @@ mod tests {
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e1 = unsafe { e1.into_sealed_new() };
 
-            let rset = be.create(&CID_ZERO, vec![e1.clone()]).unwrap();
+            let rset = be.create(&CID_ZERO, vec![e1]).unwrap();
             let mut rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             let e1 = rset.pop().unwrap();
 
@@ -2406,7 +2406,7 @@ mod tests {
             // == Now we reap_tombstones, and assert we removed the items.
             let e1_ts = unsafe { e1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
             assert!(be
-                .modify(&CID_ONE, &vec![e1.clone()], &vec![e1_ts.clone()])
+                .modify(&CID_ONE, &[e1], &[e1_ts])
                 .is_ok());
             be.reap_tombstones(&CID_TWO).unwrap();
 
@@ -2454,7 +2454,7 @@ mod tests {
             let e3 = unsafe { e3.into_sealed_new() };
 
             let mut rset = be
-                .create(&CID_ZERO, vec![e1.clone(), e2.clone(), e3.clone()])
+                .create(&CID_ZERO, vec![e1, e2, e3])
                 .unwrap();
             rset.remove(1);
             let mut rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
@@ -2467,8 +2467,8 @@ mod tests {
             assert!(be
                 .modify(
                     &CID_ONE,
-                    &vec![e1.clone(), e3.clone()],
-                    &vec![e1_ts.clone(), e3_ts.clone()]
+                    &[e1, e3],
+                    &[e1_ts, e3_ts]
                 )
                 .is_ok());
             be.reap_tombstones(&CID_TWO).unwrap();
@@ -2520,7 +2520,7 @@ mod tests {
             e1.add_ava("ta", Value::from("test"));
             let e1 = unsafe { e1.into_sealed_new() };
 
-            let rset = be.create(&CID_ZERO, vec![e1.clone()]).unwrap();
+            let rset = be.create(&CID_ZERO, vec![e1]).unwrap();
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
             let mut ce1 = unsafe { rset[0].as_ref().clone().into_invalid() };
@@ -2534,7 +2534,7 @@ mod tests {
 
             let ce1 = unsafe { ce1.into_sealed_committed() };
 
-            be.modify(&CID_ZERO, &rset, &vec![ce1]).unwrap();
+            be.modify(&CID_ZERO, &rset, &[ce1]).unwrap();
 
             // Now check the idls
             idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![1]));
@@ -2565,7 +2565,7 @@ mod tests {
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e1 = unsafe { e1.into_sealed_new() };
 
-            let rset = be.create(&CID_ZERO, vec![e1.clone()]).unwrap();
+            let rset = be.create(&CID_ZERO, vec![e1]).unwrap();
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
             let mut ce1 = unsafe { rset[0].as_ref().clone().into_invalid() };
@@ -2575,7 +2575,7 @@ mod tests {
             ce1.add_ava("uuid", Value::from("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8"));
             let ce1 = unsafe { ce1.into_sealed_committed() };
 
-            be.modify(&CID_ZERO, &rset, &vec![ce1]).unwrap();
+            be.modify(&CID_ZERO, &rset, &[ce1]).unwrap();
 
             idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![1]));
 
@@ -2628,7 +2628,7 @@ mod tests {
             e2.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"));
             let e2 = unsafe { e2.into_sealed_new() };
 
-            let _rset = be.create(&CID_ZERO, vec![e1.clone(), e2.clone()]).unwrap();
+            let _rset = be.create(&CID_ZERO, vec![e1, e2]).unwrap();
             // Test fully unindexed
             let f_un =
                 unsafe { filter_resolved!(f_eq("no-index", PartialValue::new_utf8s("william"))) };
@@ -2946,7 +2946,7 @@ mod tests {
             let e3 = unsafe { e3.into_sealed_new() };
 
             let _rset = be
-                .create(&CID_ZERO, vec![e1.clone(), e2.clone(), e3.clone()])
+                .create(&CID_ZERO, vec![e1, e2, e3])
                 .unwrap();
 
             // If the slopes haven't been generated yet, there are some hardcoded values
@@ -3035,7 +3035,7 @@ mod tests {
 
             assert!(single_result.is_ok());
             let filt = unsafe {
-                e.filter_from_attrs(&vec![AttrString::from("nonexist")])
+                e.filter_from_attrs(&[AttrString::from("nonexist")])
                     .expect("failed to generate filter")
                     .into_valid_resolved()
             };
@@ -3071,7 +3071,7 @@ mod tests {
             assert!(single_result.is_ok());
 
             let filt = unsafe {
-                e.filter_from_attrs(&vec![AttrString::from("nonexist")])
+                e.filter_from_attrs(&[AttrString::from("nonexist")])
                     .expect("failed to generate filter")
                     .into_valid_resolved()
             };
@@ -3125,7 +3125,7 @@ mod tests {
             e.add_ava("nonexist", Value::from("x"));
             e.add_ava("nonexist", Value::from("y"));
             let e = unsafe { e.into_sealed_new() };
-            let single_result = be.create(&CID_ZERO, vec![e.clone()]);
+            let single_result = be.create(&CID_ZERO, vec![e]);
             assert!(single_result.is_ok());
 
             // Reindex so we have things in place for our query
@@ -3170,7 +3170,7 @@ mod tests {
 
     #[test]
     fn test_be_mulitple_create() {
-        let _ = sketching::test_init();
+        sketching::test_init();
 
         // This is a demo idxmeta, purely for testing.
         let idxmeta = vec![IdxKey {
@@ -3195,7 +3195,7 @@ mod tests {
         e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
         let e = unsafe { e.into_sealed_new() };
 
-        let single_result = be_a_txn.create(&CID_ZERO, vec![e.clone()]);
+        let single_result = be_a_txn.create(&CID_ZERO, vec![e]);
 
         assert!(single_result.is_ok());
 
@@ -3208,7 +3208,7 @@ mod tests {
         assert!(r.expect("Search failed!").len() == 1);
 
         let r = be_b_txn.search(&lims, &filt);
-        assert!(r.expect("Search failed!").len() == 0);
+        assert!(r.expect("Search failed!").is_empty());
 
         // Create into B
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
@@ -3216,7 +3216,7 @@ mod tests {
         e.add_ava("uuid", Value::from("0c680959-0944-47d6-9dea-53304d124266"));
         let e = unsafe { e.into_sealed_new() };
 
-        let single_result = be_b_txn.create(&CID_ZERO, vec![e.clone()]);
+        let single_result = be_b_txn.create(&CID_ZERO, vec![e]);
 
         assert!(single_result.is_ok());
 
@@ -3226,7 +3226,7 @@ mod tests {
         let lims = Limits::unlimited();
 
         let r = be_a_txn.search(&lims, &filt);
-        assert!(r.expect("Search failed!").len() == 0);
+        assert!(r.expect("Search failed!").is_empty());
 
         let r = be_b_txn.search(&lims, &filt);
         assert!(r.expect("Search failed!").len() == 1);

@@ -422,12 +422,12 @@ impl MemberOf {
 mod tests {
     use crate::prelude::*;
 
-    const UUID_A: &'static str = "aaaaaaaa-f82e-4484-a407-181aa03bda5c";
-    const UUID_B: &'static str = "bbbbbbbb-2438-4384-9891-48f4c8172e9b";
-    const UUID_C: &'static str = "cccccccc-9b01-423f-9ba6-51aa4bbd5dd2";
-    const UUID_D: &'static str = "dddddddd-2ab3-48e3-938d-1b4754cd2984";
+    const UUID_A: &str = "aaaaaaaa-f82e-4484-a407-181aa03bda5c";
+    const UUID_B: &str = "bbbbbbbb-2438-4384-9891-48f4c8172e9b";
+    const UUID_C: &str = "cccccccc-9b01-423f-9ba6-51aa4bbd5dd2";
+    const UUID_D: &str = "dddddddd-2ab3-48e3-938d-1b4754cd2984";
 
-    const EA: &'static str = r#"{
+    const EA: &str = r#"{
             "attrs": {
                 "class": ["group", "memberof"],
                 "name": ["testgroup_a"],
@@ -435,7 +435,7 @@ mod tests {
             }
         }"#;
 
-    const EB: &'static str = r#"{
+    const EB: &str = r#"{
             "attrs": {
                 "class": ["group", "memberof"],
                 "name": ["testgroup_b"],
@@ -443,7 +443,7 @@ mod tests {
             }
         }"#;
 
-    const EC: &'static str = r#"{
+    const EC: &str = r#"{
             "attrs": {
                 "class": ["group", "memberof"],
                 "name": ["testgroup_c"],
@@ -451,7 +451,7 @@ mod tests {
             }
         }"#;
 
-    const ED: &'static str = r#"{
+    const ED: &str = r#"{
             "attrs": {
                 "class": ["group", "memberof"],
                 "name": ["testgroup_d"],
@@ -524,7 +524,7 @@ mod tests {
 
         let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("member", Value::new_refer_s(UUID_B).unwrap());
 
         let preload = Vec::new();
         let create = vec![ea, eb];
@@ -554,8 +554,8 @@ mod tests {
 
         let ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
+        ea.add_ava("member", Value::new_refer_s(UUID_B).unwrap());
+        eb.add_ava("member", Value::new_refer_s(UUID_C).unwrap());
 
         let preload = Vec::new();
         let create = vec![ea, eb, ec];
@@ -605,9 +605,9 @@ mod tests {
 
         let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("member", Value::new_refer_s(UUID_B).unwrap());
+        eb.add_ava("member", Value::new_refer_s(UUID_C).unwrap());
+        ec.add_ava("member", Value::new_refer_s(UUID_A).unwrap());
 
         let preload = Vec::new();
         let create = vec![ea, eb, ec];
@@ -659,13 +659,13 @@ mod tests {
 
         let mut ed: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(ED);
 
-        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
+        ea.add_ava("member", Value::new_refer_s(UUID_B).unwrap());
+        eb.add_ava("member", Value::new_refer_s(UUID_C).unwrap());
 
-        ec.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("member", Value::new_refer_s(&UUID_D).unwrap());
+        ec.add_ava("member", Value::new_refer_s(UUID_A).unwrap());
+        ec.add_ava("member", Value::new_refer_s(UUID_D).unwrap());
 
-        ed.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
+        ed.add_ava("member", Value::new_refer_s(UUID_A).unwrap());
 
         let preload = Vec::new();
         let create = vec![ea, eb, ec, ed];
@@ -733,10 +733,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(&UUID_A).unwrap())),
+            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_A).unwrap())),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("member"),
-                Value::new_refer_s(&UUID_B).unwrap()
+                Value::new_refer_s(UUID_B).unwrap()
             )]),
             None,
             |_| {},
@@ -763,16 +763,16 @@ mod tests {
 
         let ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("member", Value::new_refer_s(UUID_C).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(&UUID_A).unwrap())),
+            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_A).unwrap())),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("member"),
-                Value::new_refer_s(&UUID_B).unwrap()
+                Value::new_refer_s(UUID_B).unwrap()
             )]),
             None,
             |_| {},
@@ -817,16 +817,16 @@ mod tests {
 
         let ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("member", Value::new_refer_s(UUID_B).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(&UUID_B).unwrap())),
+            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_B).unwrap())),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("member"),
-                Value::new_refer_s(&UUID_C).unwrap()
+                Value::new_refer_s(UUID_C).unwrap()
             )]),
             None,
             |_| {},
@@ -873,17 +873,17 @@ mod tests {
 
         let ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
+        ea.add_ava("member", Value::new_refer_s(UUID_B).unwrap());
+        eb.add_ava("member", Value::new_refer_s(UUID_C).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(&UUID_C).unwrap())),
+            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_C).unwrap())),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("member"),
-                Value::new_refer_s(&UUID_A).unwrap()
+                Value::new_refer_s(UUID_A).unwrap()
             )]),
             None,
             |_| {},
@@ -936,21 +936,21 @@ mod tests {
 
         let ed: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(ED);
 
-        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("member", Value::new_refer_s(&UUID_D).unwrap());
+        ea.add_ava("member", Value::new_refer_s(UUID_B).unwrap());
+        eb.add_ava("member", Value::new_refer_s(UUID_C).unwrap());
+        ec.add_ava("member", Value::new_refer_s(UUID_D).unwrap());
 
         let preload = vec![ea, eb, ec, ed];
         run_modify_test!(
             Ok(()),
             preload,
             filter!(f_or!([
-                f_eq("uuid", PartialValue::new_uuid_s(&UUID_C).unwrap()),
-                f_eq("uuid", PartialValue::new_uuid_s(&UUID_D).unwrap()),
+                f_eq("uuid", PartialValue::new_uuid_s(UUID_C).unwrap()),
+                f_eq("uuid", PartialValue::new_uuid_s(UUID_D).unwrap()),
             ])),
             ModifyList::new_list(vec![Modify::Present(
                 AttrString::from("member"),
-                Value::new_refer_s(&UUID_A).unwrap()
+                Value::new_refer_s(UUID_A).unwrap()
             )]),
             None,
             |_| {},
@@ -1009,17 +1009,17 @@ mod tests {
 
         let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("member", Value::new_refer_s(UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
 
         let preload = vec![ea, eb];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(&UUID_A).unwrap())),
+            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_A).unwrap())),
             ModifyList::new_list(vec![Modify::Removed(
                 AttrString::from("member"),
-                PartialValue::new_refer_s(&UUID_B).unwrap()
+                PartialValue::new_refer_s(UUID_B).unwrap()
             )]),
             None,
             |_| {},
@@ -1046,19 +1046,19 @@ mod tests {
 
         let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
-        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("member", Value::new_refer_s(UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
+        eb.add_ava("member", Value::new_refer_s(UUID_C).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(&UUID_A).unwrap())),
+            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_A).unwrap())),
             ModifyList::new_list(vec![Modify::Removed(
                 AttrString::from("member"),
-                PartialValue::new_refer_s(&UUID_B).unwrap()
+                PartialValue::new_refer_s(UUID_B).unwrap()
             )]),
             None,
             |_| {},
@@ -1103,20 +1103,20 @@ mod tests {
 
         let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
-        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("member", Value::new_refer_s(UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
+        eb.add_ava("member", Value::new_refer_s(UUID_C).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(&UUID_B).unwrap())),
+            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_B).unwrap())),
             ModifyList::new_list(vec![Modify::Removed(
                 AttrString::from("member"),
-                PartialValue::new_refer_s(&UUID_C).unwrap()
+                PartialValue::new_refer_s(UUID_C).unwrap()
             )]),
             None,
             |_| {},
@@ -1162,29 +1162,29 @@ mod tests {
 
         let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
-        ea.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
-        ea.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
-        ea.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("member", Value::new_refer_s(UUID_B).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(UUID_C).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
 
-        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        eb.add_ava("member", Value::new_refer_s(UUID_C).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_C).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
 
-        ec.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("member", Value::new_refer_s(UUID_A).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_C).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(&UUID_C).unwrap())),
+            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_C).unwrap())),
             ModifyList::new_list(vec![Modify::Removed(
                 AttrString::from("member"),
-                PartialValue::new_refer_s(&UUID_A).unwrap()
+                PartialValue::new_refer_s(UUID_A).unwrap()
             )]),
             None,
             |_| {},
@@ -1238,44 +1238,44 @@ mod tests {
 
         let mut ed: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(ED);
 
-        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
-        ea.add_ava("memberof", Value::new_refer_s(&UUID_D).unwrap());
-        ea.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
-        ea.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
-        ea.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("member", Value::new_refer_s(UUID_B).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(UUID_D).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(UUID_C).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
 
-        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_D).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        eb.add_ava("member", Value::new_refer_s(UUID_C).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_D).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_C).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
 
-        ec.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("member", Value::new_refer_s(&UUID_D).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_D).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("member", Value::new_refer_s(UUID_A).unwrap());
+        ec.add_ava("member", Value::new_refer_s(UUID_D).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_D).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_C).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
 
-        ed.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
-        ed.add_ava("memberof", Value::new_refer_s(&UUID_D).unwrap());
-        ed.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
-        ed.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
-        ed.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        ed.add_ava("member", Value::new_refer_s(UUID_A).unwrap());
+        ed.add_ava("memberof", Value::new_refer_s(UUID_D).unwrap());
+        ed.add_ava("memberof", Value::new_refer_s(UUID_C).unwrap());
+        ed.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
+        ed.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
 
         let preload = vec![ea, eb, ec, ed];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(&UUID_C).unwrap())),
+            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_C).unwrap())),
             ModifyList::new_list(vec![
                 Modify::Removed(
                     AttrString::from("member"),
-                    PartialValue::new_refer_s(&UUID_A).unwrap()
+                    PartialValue::new_refer_s(UUID_A).unwrap()
                 ),
                 Modify::Removed(
                     AttrString::from("member"),
-                    PartialValue::new_refer_s(&UUID_D).unwrap()
+                    PartialValue::new_refer_s(UUID_D).unwrap()
                 ),
             ]),
             None,
@@ -1333,14 +1333,14 @@ mod tests {
 
         let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("member", Value::new_refer_s(UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
 
         let preload = vec![ea, eb];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(&UUID_A).unwrap())),
+            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_A).unwrap())),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1363,18 +1363,18 @@ mod tests {
 
         let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("member", Value::new_refer_s(UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
 
-        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("member", Value::new_refer_s(UUID_C).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(&UUID_A).unwrap())),
+            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_A).unwrap())),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1407,18 +1407,18 @@ mod tests {
 
         let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("member", Value::new_refer_s(UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
 
-        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("member", Value::new_refer_s(UUID_C).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(&UUID_B).unwrap())),
+            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_B).unwrap())),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1452,26 +1452,26 @@ mod tests {
 
         let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
-        ea.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
-        ea.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
-        ea.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
+        ea.add_ava("member", Value::new_refer_s(UUID_B).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(UUID_C).unwrap());
 
-        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("member", Value::new_refer_s(UUID_C).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_C).unwrap());
 
-        ec.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("member", Value::new_refer_s(UUID_A).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_C).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(&UUID_A).unwrap())),
+            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_A).unwrap())),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1508,36 +1508,36 @@ mod tests {
 
         let mut ed: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(ED);
 
-        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
-        ea.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
-        ea.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
-        ea.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
-        ea.add_ava("memberof", Value::new_refer_s(&UUID_D).unwrap());
+        ea.add_ava("member", Value::new_refer_s(UUID_B).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(UUID_C).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(UUID_D).unwrap());
 
-        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
-        eb.add_ava("memberof", Value::new_refer_s(&UUID_D).unwrap());
+        eb.add_ava("member", Value::new_refer_s(UUID_C).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_C).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(UUID_D).unwrap());
 
-        ec.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("member", Value::new_refer_s(&UUID_D).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("memberof", Value::new_refer_s(&UUID_D).unwrap());
+        ec.add_ava("member", Value::new_refer_s(UUID_A).unwrap());
+        ec.add_ava("member", Value::new_refer_s(UUID_D).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_C).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(UUID_D).unwrap());
 
-        ed.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
-        ed.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
-        ed.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
-        ed.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
-        ed.add_ava("memberof", Value::new_refer_s(&UUID_D).unwrap());
+        ed.add_ava("member", Value::new_refer_s(UUID_A).unwrap());
+        ed.add_ava("memberof", Value::new_refer_s(UUID_A).unwrap());
+        ed.add_ava("memberof", Value::new_refer_s(UUID_B).unwrap());
+        ed.add_ava("memberof", Value::new_refer_s(UUID_C).unwrap());
+        ed.add_ava("memberof", Value::new_refer_s(UUID_D).unwrap());
 
         let preload = vec![ea, eb, ec, ed];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuid_s(&UUID_B).unwrap())),
+            filter!(f_eq("uuid", PartialValue::new_uuid_s(UUID_B).unwrap())),
             None,
             |qs: &mut QueryServerWriteTransaction| {
                 //                      V-- this uuid is

@@ -697,7 +697,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = duration_from_epoch_now();
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
             let target_uuid = Uuid::new_v4();
 

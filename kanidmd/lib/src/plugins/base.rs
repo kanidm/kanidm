@@ -352,7 +352,7 @@ mod tests {
         }"#,
         );
 
-        let create = vec![e.clone()];
+        let create = vec![e];
 
         run_create_test!(
             Err(OperationError::InvalidAttribute("uuid".to_string())),
@@ -413,7 +413,7 @@ mod tests {
         }"#,
         );
 
-        let create = vec![e.clone()];
+        let create = vec![e];
 
         run_create_test!(
             Ok(()),
@@ -449,7 +449,7 @@ mod tests {
         }"#,
         );
 
-        let create = vec![e.clone()];
+        let create = vec![e];
 
         run_create_test!(
             Err(OperationError::Plugin(PluginError::Base(
@@ -647,7 +647,7 @@ mod tests {
         }"#,
         );
 
-        let create = vec![e.clone()];
+        let create = vec![e];
 
         run_create_test!(
             Err(OperationError::Plugin(PluginError::Base(
@@ -679,7 +679,7 @@ mod tests {
         }"#,
         );
 
-        let create = vec![e.clone()];
+        let create = vec![e];
 
         run_create_test!(
             Err(OperationError::Plugin(PluginError::Base(
@@ -709,7 +709,7 @@ mod tests {
         }"#,
         );
 
-        let create = vec![e.clone()];
+        let create = vec![e];
 
         run_create_test!(
             Err(OperationError::Plugin(PluginError::Base(

@@ -212,7 +212,7 @@ async fn test_server_rest_group_lifecycle(rsclient: KanidmClient) {
         .await
         .unwrap();
     let members = rsclient.idm_group_get_members("demo_group").await.unwrap();
-    assert!(members == None);
+    assert!(members.is_none());
 
     // Delete the group
     rsclient.idm_group_delete("demo_group").await.unwrap();

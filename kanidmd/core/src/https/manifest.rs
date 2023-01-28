@@ -128,7 +128,7 @@ pub async fn manifest(req: tide::Request<AppState>) -> tide::Result {
     ];
 
     let start_url = match req.host() {
-        Some(value) => format!("https://{}/", value).clone(),
+        Some(value) => format!("https://{}/", value),
         None => String::from("/"),
     };
 

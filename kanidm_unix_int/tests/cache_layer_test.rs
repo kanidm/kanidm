@@ -40,7 +40,7 @@ where
 }
 
 async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
-    let _ = sketching::test_init();
+    sketching::test_init();
 
     let mut counter = 0;
     let port = loop {
@@ -183,7 +183,7 @@ async fn test_cache_sshkey() {
         .get_sshkeys("testaccount1")
         .await
         .expect("Failed to get from cache.");
-    assert!(sk.len() == 0);
+    assert!(sk.is_empty());
 
     // Bring ourselves online.
     cachelayer.attempt_online().await;
@@ -228,7 +228,7 @@ async fn test_cache_account() {
     assert!(ut.is_some());
 
     // #392: Check that a `shell=None` is set to `default_shell`.
-    assert!(ut.unwrap().shell == DEFAULT_SHELL.to_string());
+    assert!(ut.unwrap().shell == *DEFAULT_SHELL);
 
     // go offline
     cachelayer.mark_offline().await;
@@ -277,7 +277,7 @@ async fn test_cache_group() {
     assert!(gt.is_some());
     // And check we have no members in the group. Members are an artifact of
     // user lookups!
-    assert!(gt.unwrap().members.len() == 0);
+    assert!(gt.unwrap().members.is_empty());
 
     // clear cache, go online
     assert!(cachelayer.invalidate().await.is_ok());
@@ -465,7 +465,7 @@ async fn test_cache_account_password() {
         .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
         .await
         .expect("failed to authenticate");
-    assert!(a7 == None);
+    assert!(a7.is_none());
 
     // go online
     cachelayer.attempt_online().await;
@@ -520,13 +520,13 @@ async fn test_cache_account_pam_nonexist() {
         .pam_account_allowed("NO_SUCH_ACCOUNT")
         .await
         .expect("failed to authenticate");
-    assert!(a1 == None);
+    assert!(a1.is_none());
 
     let a2 = cachelayer
         .pam_account_authenticate("NO_SUCH_ACCOUNT", TESTACCOUNT1_PASSWORD_B)
         .await
         .expect("failed to authenticate");
-    assert!(a2 == None);
+    assert!(a2.is_none());
 
     cachelayer.mark_offline().await;
 
@@ -534,13 +534,13 @@ async fn test_cache_account_pam_nonexist() {
         .pam_account_allowed("NO_SUCH_ACCOUNT")
         .await
         .expect("failed to authenticate");
-    assert!(a1 == None);
+    assert!(a1.is_none());
 
     let a2 = cachelayer
         .pam_account_authenticate("NO_SUCH_ACCOUNT", TESTACCOUNT1_PASSWORD_B)
         .await
         .expect("failed to authenticate");
-    assert!(a2 == None);
+    assert!(a2.is_none());
 }
 
 #[tokio::test]
@@ -579,7 +579,7 @@ async fn test_cache_account_expiry() {
         .get_sshkeys("testaccount1")
         .await
         .expect("Failed to get from cache.");
-    assert!(sk.len() == 0);
+    assert!(sk.is_empty());
 
     // Pam account allowed should be denied.
     let a3 = cachelayer
@@ -603,7 +603,7 @@ async fn test_cache_account_expiry() {
         .get_sshkeys("testaccount1")
         .await
         .expect("Failed to get from cache.");
-    assert!(sk.len() == 0);
+    assert!(sk.is_empty());
 
     // Pam account allowed should be denied.
     let a5 = cachelayer

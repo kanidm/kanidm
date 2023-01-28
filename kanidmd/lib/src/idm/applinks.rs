@@ -84,7 +84,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = duration_from_epoch_now();
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
 
             // Create an RS, the user and a group..
             let usr_uuid = Uuid::new_v4();
@@ -150,7 +150,7 @@ mod tests {
             drop(idms_prox_read);
 
             // Add them to the group.
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct.clone()));
+            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
             let me_inv_m = unsafe {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("uuid", PartialValue::Refer(grp_uuid))),

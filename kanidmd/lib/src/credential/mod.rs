@@ -1283,7 +1283,7 @@ mod tests {
 
     #[test]
     fn test_password_from_ipa_nt_hash() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         // Base64 no pad
         let im_pw = "ipaNTHash: iEb36u6PsRetBr3YMLdYbA";
         let password = "password";
@@ -1304,7 +1304,7 @@ mod tests {
 
     #[test]
     fn test_password_from_samba_nt_hash() {
-        let _ = sketching::test_init();
+        sketching::test_init();
         // Base64 no pad
         let im_pw = "sambaNTPassword: 8846F7EAEE8FB117AD06BDD830B7586C";
         let password = "password";

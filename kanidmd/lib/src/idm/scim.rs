@@ -1576,7 +1576,7 @@ mod tests {
             let (token_id, issued_at) = sync_tokens
                 .iter()
                 .next()
-                .map(|(k, v)| (*k, v.issued_at.clone()))
+                .map(|(k, v)| (*k, v.issued_at))
                 .expect("No sync tokens present");
 
             let purpose = ApiTokenPurpose::ReadWrite;
@@ -1690,7 +1690,7 @@ mod tests {
                 .scim_sync_apply_phase_1(&sse, &changes)
                 .expect("Failed to run phase 1");
 
-            let _ = idms_prox_write
+            idms_prox_write
                 .scim_sync_apply_phase_2(&change_entries, sync_uuid)
                 .expect("Failed to run phase 2");
 
@@ -2246,7 +2246,7 @@ mod tests {
                 testgroup.get_ava_single_iutf8("sync_external_id")
                     == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
             );
-            assert!(testgroup.get_ava_single_uint32("gidnumber") == None);
+            assert!(testgroup.get_ava_single_uint32("gidnumber").is_none());
 
             let testposix = get_single_entry("testposix", &mut idms_prox_write);
             assert!(
@@ -2262,7 +2262,7 @@ mod tests {
                         "cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
                     )
             );
-            assert!(testexternal.get_ava_single_uint32("gidnumber") == None);
+            assert!(testexternal.get_ava_single_uint32("gidnumber").is_none());
 
             let testuser = get_single_entry("testuser", &mut idms_prox_write);
             assert!(
@@ -2320,7 +2320,7 @@ mod tests {
                         "cn=testexternal2,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
                     )
             );
-            assert!(testexternal.get_ava_single_uint32("gidnumber") == None);
+            assert!(testexternal.get_ava_single_uint32("gidnumber").is_none());
 
             let testuser = get_single_entry("testuser", &mut idms_prox_write);
 
@@ -2366,7 +2366,7 @@ mod tests {
                 testgroup.get_ava_single_iutf8("sync_external_id")
                     == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
             );
-            assert!(testgroup.get_ava_single_uint32("gidnumber") == None);
+            assert!(testgroup.get_ava_single_uint32("gidnumber").is_none());
 
             let testposix = get_single_entry("testposix", &mut idms_prox_write);
             assert!(
@@ -2382,7 +2382,7 @@ mod tests {
                         "cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
                     )
             );
-            assert!(testexternal.get_ava_single_uint32("gidnumber") == None);
+            assert!(testexternal.get_ava_single_uint32("gidnumber").is_none());
 
             let testuser = get_single_entry("testuser", &mut idms_prox_write);
             assert!(
@@ -2431,7 +2431,7 @@ mod tests {
                 testgroup.get_ava_single_iutf8("sync_external_id")
                     == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
             );
-            assert!(testgroup.get_ava_single_uint32("gidnumber") == None);
+            assert!(testgroup.get_ava_single_uint32("gidnumber").is_none());
 
             let testuser = get_single_entry("testuser", &mut idms_prox_write);
             assert!(
