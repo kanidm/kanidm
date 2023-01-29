@@ -2431,4 +2431,53 @@ mod tests {
         // Test Fails due to protected from sync object
         test_acp_create!(&ce_admin, vec![acp.clone()], &r2_set, false);
     }
+
+    #[test]
+    fn test_access_sync_authority_delete() {
+        sketching::test_init();
+
+        let ev1 = unsafe {
+            entry_init!(
+                ("class", CLASS_ACCOUNT.clone()),
+                ("name", Value::new_iname("testperson1")),
+                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            )
+            .into_sealed_committed()
+        };
+        let r1_set = vec![Arc::new(ev1)];
+
+        let ev2 = unsafe {
+            entry_init!(
+                ("class", CLASS_ACCOUNT.clone()),
+                ("class", CLASS_SYNC_OBJECT.clone()),
+                ("name", Value::new_iname("testperson1")),
+                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            )
+            .into_sealed_committed()
+        };
+        let r2_set = vec![Arc::new(ev2)];
+
+        let de_admin = unsafe {
+            DeleteEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            )
+        };
+
+        let acp = unsafe {
+            AccessControlDelete::from_raw(
+                "test_delete",
+                Uuid::new_v4(),
+                // Apply to admin
+                UUID_TEST_GROUP_1,
+                // To delete testperson
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            )
+        };
+
+        // Test allowed to delete
+        test_acp_delete!(&de_admin, vec![acp.clone()], &r1_set, true);
+        // Test reject delete
+        test_acp_delete!(&de_admin, vec![acp], &r2_set, false);
+    }
 }
