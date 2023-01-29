@@ -16,7 +16,7 @@ help:
 .PHONY: buildx/kanidmd/x86_64_v3
 buildx/kanidmd/x86_64_v3: ## build multiarch server images
 buildx/kanidmd/x86_64_v3:
-	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) --pull --push --platform "linux/amd64" \
+	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) --pull --push --platform "linux/amd64/v3" \
 		-f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:x86_64_$(IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_x86_64_v3" \
 		--build-arg "KANIDM_FEATURES=" \

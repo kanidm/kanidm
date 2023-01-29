@@ -233,7 +233,7 @@ pub trait AccessControlsTransaction<'a> {
             .collect();
 
         if allowed_entries.is_empty() {
-            security_access!("denied ❌");
+            security_access!("denied ❌ - no entries were released");
         } else {
             security_access!("allowed {} entries ✅", allowed_entries.len());
         }
@@ -488,7 +488,7 @@ pub trait AccessControlsTransaction<'a> {
         if r {
             security_access!("allowed ✅");
         } else {
-            security_access!("denied ❌");
+            security_access!("denied ❌ - modifications may not proceed");
         }
         Ok(r)
     }
@@ -621,7 +621,7 @@ pub trait AccessControlsTransaction<'a> {
         if r {
             security_access!("allowed ✅");
         } else {
-            security_access!("denied ❌");
+            security_access!("denied ❌ - modifications may not proceed");
         }
         Ok(r)
     }
@@ -674,7 +674,7 @@ pub trait AccessControlsTransaction<'a> {
         if r {
             security_access!("allowed ✅");
         } else {
-            security_access!("denied ❌");
+            security_access!("denied ❌ - create may not proceed");
         }
 
         Ok(r)
@@ -737,7 +737,7 @@ pub trait AccessControlsTransaction<'a> {
         if r {
             security_access!("allowed ✅");
         } else {
-            security_access!("denied ❌");
+            security_access!("denied ❌ - delete may not proceed");
         }
         Ok(r)
     }

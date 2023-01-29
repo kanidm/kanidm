@@ -93,7 +93,8 @@ impl CredImport {
                 }
             };
 
-            // TOTP IMPORT
+            // TOTP IMPORT - Must be subsequent to password import to allow primary cred to
+            // be created.
             if let Some(vs) = e.pop_ava("totp_import") {
                 // Get the map.
                 let totps = vs.as_totp_map().ok_or_else(|| {
