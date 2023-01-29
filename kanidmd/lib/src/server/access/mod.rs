@@ -2480,4 +2480,127 @@ mod tests {
         // Test reject delete
         test_acp_delete!(&de_admin, vec![acp], &r2_set, false);
     }
+
+    #[test]
+    fn test_access_sync_authority_modify() {
+        sketching::test_init();
+
+        let ev1 = unsafe {
+            entry_init!(
+                ("class", CLASS_ACCOUNT.clone()),
+                ("name", Value::new_iname("testperson1")),
+                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            )
+            .into_sealed_committed()
+        };
+        let r1_set = vec![Arc::new(ev1)];
+
+        let ev2 = unsafe {
+            entry_init!(
+                ("class", CLASS_ACCOUNT.clone()),
+                ("class", CLASS_SYNC_OBJECT.clone()),
+                ("name", Value::new_iname("testperson1")),
+                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            )
+            .into_sealed_committed()
+        };
+        let r2_set = vec![Arc::new(ev2)];
+
+        // Allow name and class, class is account
+        let acp_allow = unsafe {
+            AccessControlModify::from_raw(
+                "test_modify_allow",
+                Uuid::new_v4(),
+                // Apply to admin
+                UUID_TEST_GROUP_1,
+                // To modify testperson
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                // Allow pres user_auth_token_session
+                "user_auth_token_session name",
+                // Allow user_auth_token_session
+                "user_auth_token_session name",
+                // And the class allowed is account, we don't use it though.
+                "account",
+            )
+        };
+
+        // NOTE! Syntax doesn't matter here, we just need to assert if the attr exists
+        // and is being modified.
+        // Name present
+        let me_pres = unsafe {
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                modlist!([m_pres(
+                    "user_auth_token_session",
+                    &Value::new_iname("value")
+                )]),
+            )
+        };
+        // Name rem
+        let me_rem = unsafe {
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                modlist!([m_remove(
+                    "user_auth_token_session",
+                    &PartialValue::new_iname("value")
+                )]),
+            )
+        };
+        // Name purge
+        let me_purge = unsafe {
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                modlist!([m_purge("user_auth_token_session")]),
+            )
+        };
+
+        // Test allowed pres
+        test_acp_modify!(&me_pres, vec![acp_allow.clone()], &r1_set, true);
+        // test allowed rem
+        test_acp_modify!(&me_rem, vec![acp_allow.clone()], &r1_set, true);
+        // test allowed purge
+        test_acp_modify!(&me_purge, vec![acp_allow.clone()], &r1_set, true);
+
+        // Test allow pres
+        test_acp_modify!(&me_pres, vec![acp_allow.clone()], &r2_set, true);
+        // Test allow rem
+        test_acp_modify!(&me_rem, vec![acp_allow.clone()], &r2_set, true);
+        // Test allow purge
+        test_acp_modify!(&me_purge, vec![acp_allow.clone()], &r2_set, true);
+
+        // But other attrs are blocked.
+        let me_pres = unsafe {
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                modlist!([m_pres("name", &Value::new_iname("value"))]),
+            )
+        };
+        // Name rem
+        let me_rem = unsafe {
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                modlist!([m_remove("name", &PartialValue::new_iname("value"))]),
+            )
+        };
+        // Name purge
+        let me_purge = unsafe {
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                modlist!([m_purge("name")]),
+            )
+        };
+
+        // Test reject pres
+        test_acp_modify!(&me_pres, vec![acp_allow.clone()], &r2_set, false);
+        // Test reject rem
+        test_acp_modify!(&me_rem, vec![acp_allow.clone()], &r2_set, false);
+        // Test reject purge
+        test_acp_modify!(&me_purge, vec![acp_allow.clone()], &r2_set, false);
+    }
 }

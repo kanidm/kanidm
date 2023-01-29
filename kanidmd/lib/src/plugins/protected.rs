@@ -102,8 +102,6 @@ impl Plugin for Protected {
             if cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
                 || cand.attribute_equality("class", &PVCLASS_RECYCLED)
                 || cand.attribute_equality("class", &PVCLASS_DYNGROUP)
-                // Temporary until I move this into access.rs
-                || cand.attribute_equality("class", &PVCLASS_SYNC_OBJECT)
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
@@ -182,8 +180,6 @@ impl Plugin for Protected {
             if cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
                 || cand.attribute_equality("class", &PVCLASS_RECYCLED)
                 || cand.attribute_equality("class", &PVCLASS_DYNGROUP)
-                // Temporary until I move this into access.rs
-                || cand.attribute_equality("class", &PVCLASS_SYNC_OBJECT)
             {
                 Err(OperationError::SystemProtectedObject)
             } else {
