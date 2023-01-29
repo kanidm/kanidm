@@ -721,17 +721,20 @@ fn ipa_to_scim_entry(
             // pw hash formats in 389-ds we don't support!
             .or_else(|| entry.remove_ava_single("userpassword"));
 
-        if !totp.is_empty() {
+        let totp_import = if !totp.is_empty() {
             if password_import.is_some() {
                 // If there are TOTP's, convert them to something sensible.
-                let totp_import = totp.iter().filter_map(ipa_to_totp).collect();
+                totp.iter().filter_map(ipa_to_totp).collect()
             } else {
                 warn!(
                     "Skipping totp for {} as password is not available to import.",
                     dn
                 );
+                Vec::default()
             }
-        }
+        } else {
+            Vec::default()
+        };
 
         let login_shell = entry.remove_ava_single("loginshell");
         let external_id = Some(entry.dn);
