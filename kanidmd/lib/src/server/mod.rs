@@ -1585,10 +1585,7 @@ mod tests {
         assert!(r3 == Ok(Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))));
 
         // test attr reference already resolved.
-        let r4 = server_txn.clone_value(
-            "member",
-            "cc8e95b4-c24f-4d68-ba54-8bed76f63930",
-        );
+        let r4 = server_txn.clone_value("member", "cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
         debug!("{:?}", r4);
         assert!(r4 == Ok(Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))));

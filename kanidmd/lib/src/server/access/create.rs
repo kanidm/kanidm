@@ -22,6 +22,12 @@ pub(super) fn apply_create_access<'a>(
     let mut denied = false;
     let mut grant = false;
 
+    // This module can never yield a grant.
+    match protected_filter_entry(ident, entry) {
+        IResult::Denied => denied = true,
+        IResult::Grant | IResult::Ignore => {}
+    }
+
     match create_filter_entry(ident, related_acp, entry) {
         IResult::Denied => denied = true,
         IResult::Grant => grant = true,
@@ -134,5 +140,35 @@ fn create_filter_entry<'a>(
         IResult::Grant
     } else {
         IResult::Ignore
+    }
+}
+
+fn protected_filter_entry<'a>(ident: &Identity, entry: &'a Entry<EntryInit, EntryNew>) -> IResult {
+    match &ident.origin {
+        IdentType::Internal => {
+            trace!("Internal operation, protected rules do not apply.");
+            IResult::Ignore
+        }
+        IdentType::Synch(_) => {
+            security_access!("sync agreements may not directly create entities");
+            IResult::Denied
+        }
+        IdentType::User(_) => {
+            // Now check things ...
+
+            // For now we just block create on sync object
+            if let Some(classes) = entry.get_ava_set("class") {
+                if classes.contains(&PVCLASS_SYNC_OBJECT) {
+                    // Block the mod
+                    security_access!("attempt to create with protected class type");
+                    IResult::Denied
+                } else {
+                    IResult::Ignore
+                }
+            } else {
+                // Nothing to check.
+                IResult::Ignore
+            }
+        }
     }
 }

@@ -2384,4 +2384,51 @@ mod tests {
             }]
         )
     }
+
+    #[test]
+    fn test_access_sync_authority_create() {
+        sketching::test_init();
+
+        let ce_admin = CreateEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
+            vec![],
+        );
+
+        // We can create without a sync class.
+        let ev1 = entry_init!(
+            ("class", CLASS_ACCOUNT.clone()),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+        );
+        let r1_set = vec![ev1];
+
+        let ev2 = entry_init!(
+            ("class", CLASS_ACCOUNT.clone()),
+            ("class", CLASS_SYNC_OBJECT.clone()),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+        );
+        let r2_set = vec![ev2];
+
+        let acp = unsafe {
+            AccessControlCreate::from_raw(
+                "test_create",
+                Uuid::new_v4(),
+                // Apply to admin
+                UUID_TEST_GROUP_1,
+                // To create matching filter testperson
+                // Can this be empty?
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                // classes
+                "account sync_object",
+                // attrs
+                "class name uuid",
+            )
+        };
+
+        // Test allowed to create
+        test_acp_create!(&ce_admin, vec![acp.clone()], &r1_set, true);
+        // Test Fails due to protected from sync object
+        test_acp_create!(&ce_admin, vec![acp.clone()], &r2_set, false);
+    }
 }

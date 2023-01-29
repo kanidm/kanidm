@@ -367,12 +367,7 @@ mod tests {
     fn totp_allow_one_previous() {
         let key = vec![0x00, 0xaa, 0xbb, 0xcc];
         let secs = 1585369780;
-        let otp = Totp::new(
-            key,
-            TOTP_DEFAULT_STEP,
-            TotpAlgo::Sha512,
-            TotpDigits::Six,
-        );
+        let otp = Totp::new(key, TOTP_DEFAULT_STEP, TotpAlgo::Sha512, TotpDigits::Six);
         let d = Duration::from_secs(secs);
         // Step
         assert!(otp.verify(952181, &d));

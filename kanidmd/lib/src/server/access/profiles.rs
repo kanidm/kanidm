@@ -56,10 +56,7 @@ impl AccessControlSearch {
                 receiver: Some(receiver),
                 targetscope,
             },
-            attrs: attrs
-                .split_whitespace()
-                .map(AttrString::from)
-                .collect(),
+            attrs: attrs.split_whitespace().map(AttrString::from).collect(),
         }
     }
 }
@@ -222,18 +219,9 @@ impl AccessControlModify {
                 receiver: Some(receiver),
                 targetscope,
             },
-            classes: classes
-                .split_whitespace()
-                .map(AttrString::from)
-                .collect(),
-            presattrs: presattrs
-                .split_whitespace()
-                .map(AttrString::from)
-                .collect(),
-            remattrs: remattrs
-                .split_whitespace()
-                .map(AttrString::from)
-                .collect(),
+            classes: classes.split_whitespace().map(AttrString::from).collect(),
+            presattrs: presattrs.split_whitespace().map(AttrString::from).collect(),
+            remattrs: remattrs.split_whitespace().map(AttrString::from).collect(),
         }
     }
 }

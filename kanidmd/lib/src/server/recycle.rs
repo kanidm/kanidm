@@ -811,13 +811,11 @@ mod tests {
             )
         };
         assert!(server_txn.revive_recycled(&rev3).is_ok());
-        assert!(
-            !check_entry_has_mo(
-                &mut server_txn,
-                "u3",
-                "36048117-e479-45ed-aeb5-611e8d83d5b1"
-            )
-        );
+        assert!(!check_entry_has_mo(
+            &mut server_txn,
+            "u3",
+            "36048117-e479-45ed-aeb5-611e8d83d5b1"
+        ));
 
         // Revive u4, should NOT have the MO.
         let rev4a = unsafe {
@@ -827,13 +825,11 @@ mod tests {
             )
         };
         assert!(server_txn.revive_recycled(&rev4a).is_ok());
-        assert!(
-            !check_entry_has_mo(
-                &mut server_txn,
-                "u4",
-                "d5c59ac6-c533-4b00-989f-d0e183f07bab"
-            )
-        );
+        assert!(!check_entry_has_mo(
+            &mut server_txn,
+            "u4",
+            "d5c59ac6-c533-4b00-989f-d0e183f07bab"
+        ));
 
         // Now revive g4, should allow MO onto u4.
         let rev4b = unsafe {
@@ -843,13 +839,11 @@ mod tests {
             )
         };
         assert!(server_txn.revive_recycled(&rev4b).is_ok());
-        assert!(
-            !check_entry_has_mo(
-                &mut server_txn,
-                "u4",
-                "d5c59ac6-c533-4b00-989f-d0e183f07bab"
-            )
-        );
+        assert!(!check_entry_has_mo(
+            &mut server_txn,
+            "u4",
+            "d5c59ac6-c533-4b00-989f-d0e183f07bab"
+        ));
 
         assert!(server_txn.commit().is_ok());
     }

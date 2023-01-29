@@ -1998,9 +1998,7 @@ mod tests {
             let vr2 = unsafe { r2.into_sealed_committed() };
 
             // Modify single
-            assert!(be
-                .modify(&CID_ZERO, &[pre1], &[vr1.clone()])
-                .is_ok());
+            assert!(be.modify(&CID_ZERO, &[pre1], &[vr1.clone()]).is_ok());
             // Assert no other changes
             assert!(entry_attr_pres!(be, vr1, "desc"));
             assert!(!entry_attr_pres!(be, vr2, "desc"));
@@ -2064,19 +2062,13 @@ mod tests {
             // This sets up the RUV with the changes.
             let r1_ts = unsafe { r1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
 
-            assert!(be
-                .modify(&CID_ONE, &[r1], &[r1_ts.clone()])
-                .is_ok());
+            assert!(be.modify(&CID_ONE, &[r1], &[r1_ts.clone()]).is_ok());
 
             let r2_ts = unsafe { r2.to_tombstone(CID_TWO.clone()).into_sealed_committed() };
             let r3_ts = unsafe { r3.to_tombstone(CID_TWO.clone()).into_sealed_committed() };
 
             assert!(be
-                .modify(
-                    &CID_TWO,
-                    &[r2, r3],
-                    &[r2_ts.clone(), r3_ts.clone()]
-                )
+                .modify(&CID_TWO, &[r2, r3], &[r2_ts.clone(), r3_ts.clone()])
                 .is_ok());
 
             // The entry are now tombstones, but is still in the ruv. This is because we
@@ -2405,9 +2397,7 @@ mod tests {
 
             // == Now we reap_tombstones, and assert we removed the items.
             let e1_ts = unsafe { e1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
-            assert!(be
-                .modify(&CID_ONE, &[e1], &[e1_ts])
-                .is_ok());
+            assert!(be.modify(&CID_ONE, &[e1], &[e1_ts]).is_ok());
             be.reap_tombstones(&CID_TWO).unwrap();
 
             idl_state!(be, "name", IndexType::Equality, "william", Some(Vec::new()));
@@ -2453,9 +2443,7 @@ mod tests {
             e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
             let e3 = unsafe { e3.into_sealed_new() };
 
-            let mut rset = be
-                .create(&CID_ZERO, vec![e1, e2, e3])
-                .unwrap();
+            let mut rset = be.create(&CID_ZERO, vec![e1, e2, e3]).unwrap();
             rset.remove(1);
             let mut rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             let e1 = rset.pop().unwrap();
@@ -2464,13 +2452,7 @@ mod tests {
             // Now remove e1, e3.
             let e1_ts = unsafe { e1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
             let e3_ts = unsafe { e3.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
-            assert!(be
-                .modify(
-                    &CID_ONE,
-                    &[e1, e3],
-                    &[e1_ts, e3_ts]
-                )
-                .is_ok());
+            assert!(be.modify(&CID_ONE, &[e1, e3], &[e1_ts, e3_ts]).is_ok());
             be.reap_tombstones(&CID_TWO).unwrap();
 
             idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![2]));
@@ -2945,9 +2927,7 @@ mod tests {
             e3.add_ava("tb", Value::from("2"));
             let e3 = unsafe { e3.into_sealed_new() };
 
-            let _rset = be
-                .create(&CID_ZERO, vec![e1, e2, e3])
-                .unwrap();
+            let _rset = be.create(&CID_ZERO, vec![e1, e2, e3]).unwrap();
 
             // If the slopes haven't been generated yet, there are some hardcoded values
             // that we can use instead. They aren't generated until a first re-index.
