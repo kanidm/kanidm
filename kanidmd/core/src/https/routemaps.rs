@@ -76,13 +76,10 @@ pub struct RouteInfo {
     pub method: http_types::Method,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[derive(Default)]
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
 pub struct RouteMap {
     pub routelist: Vec<RouteInfo>,
 }
-
-
 
 impl RouteMap {
     // Serializes the object out to a pretty JSON blob

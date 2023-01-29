@@ -715,10 +715,23 @@ fn ipa_to_scim_entry(
 
         let password_import = entry
             .remove_ava_single("ipanthash")
-            .map(|s| format!("ipaNTHash: {}", s));
+            .map(|s| format!("ipaNTHash: {}", s))
+            // If we don't have this, try one of the other hashes that *might* work
+            // The reason we don't do this by default is there are multiple
+            // pw hash formats in 389-ds we don't support!
+            .or_else(|| entry.remove_ava_single("userpassword"));
 
-        // If there are TOTP's, convert them to something sensible.
-        let totp_import = totp.iter().filter_map(ipa_to_totp).collect();
+        if !totp.is_empty() {
+            if password_import.is_some() {
+                // If there are TOTP's, convert them to something sensible.
+                let totp_import = totp.iter().filter_map(ipa_to_totp).collect();
+            } else {
+                warn!(
+                    "Skipping totp for {} as password is not available to import.",
+                    dn
+                );
+            }
+        }
 
         let login_shell = entry.remove_ava_single("loginshell");
         let external_id = Some(entry.dn);
