@@ -446,8 +446,7 @@
                 <span class="comment">// does the entry have a primary cred?
                 </span><span class="kw">match </span>e.get_ava_single_credential(<span class="string">&quot;primary_credential&quot;</span>) {
                     <span class="prelude-val">Some</span>(c) =&gt; {
-                        <span class="comment">// This is the major diff to create, we can update in place!
-                        </span><span class="kw">let </span>c = c.update_password(pw);
+                        <span class="kw">let </span>c = c.update_password(pw);
                         e.set_ava(
                             <span class="string">&quot;primary_credential&quot;</span>,
                             once(Value::new_credential(<span class="string">&quot;primary&quot;</span>, c)),
@@ -464,7 +463,8 @@
                 }
             };
 
-            <span class="comment">// TOTP IMPORT
+            <span class="comment">// TOTP IMPORT - Must be subsequent to password import to allow primary cred to
+            // be created.
             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(vs) = e.pop_ava(<span class="string">&quot;totp_import&quot;</span>) {
                 <span class="comment">// Get the map.
                 </span><span class="kw">let </span>totps = vs.as_totp_map().ok_or_else(|| {

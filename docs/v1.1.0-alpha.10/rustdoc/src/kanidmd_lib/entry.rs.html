@@ -3042,9 +3042,6 @@
 <a href="#3042" id="3042">3042</a>
 <a href="#3043" id="3043">3043</a>
 <a href="#3044" id="3044">3044</a>
-<a href="#3045" id="3045">3045</a>
-<a href="#3046" id="3046">3046</a>
-<a href="#3047" id="3047">3047</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Entries are the base unit of object storage in the server. This is one of the three foundational
 //! concepts along with [`filter`]s and [`schema`] that everything else builds upon.
 //!
@@ -3606,9 +3603,7 @@
         <span class="kw">let </span>cid = Cid::new_zero();
         <span class="self">self</span>.set_last_changed(cid.clone());
         <span class="kw">let </span>eclog = EntryChangelog::new_without_schema(cid, <span class="self">self</span>.attrs.clone());
-        <span class="kw">let </span>uuid = <span class="self">self
-            </span>.get_uuid()
-            .unwrap_or_else(Uuid::new_v4);
+        <span class="kw">let </span>uuid = <span class="self">self</span>.get_uuid().unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntrySealed { uuid, eclog },
             state: EntryCommitted { id: <span class="number">0 </span>},
@@ -3997,9 +3992,7 @@
 
     <span class="attr">#[cfg(test)]
     </span><span class="kw">pub unsafe fn </span>into_sealed_committed(<span class="self">self</span>) -&gt; Entry&lt;EntrySealed, EntryCommitted&gt; {
-        <span class="kw">let </span>uuid = <span class="self">self
-            </span>.get_uuid()
-            .unwrap_or_else(Uuid::new_v4);
+        <span class="kw">let </span>uuid = <span class="self">self</span>.get_uuid().unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntrySealed {
                 uuid,
@@ -4030,9 +4023,7 @@
 
     </span><span class="attr">#[cfg(test)]
     </span><span class="kw">pub unsafe fn </span>into_valid_committed(<span class="self">self</span>) -&gt; Entry&lt;EntryValid, EntryCommitted&gt; {
-        <span class="kw">let </span>uuid = <span class="self">self
-            </span>.get_uuid()
-            .unwrap_or_else(Uuid::new_v4);
+        <span class="kw">let </span>uuid = <span class="self">self</span>.get_uuid().unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntryValid {
                 cid: <span class="self">self</span>.valid.cid,
@@ -4048,9 +4039,7 @@
 <span class="kw">impl </span>Entry&lt;EntryInvalid, EntryCommitted&gt; {
     <span class="attr">#[cfg(test)]
     </span><span class="kw">pub unsafe fn </span>into_sealed_committed(<span class="self">self</span>) -&gt; Entry&lt;EntrySealed, EntryCommitted&gt; {
-        <span class="kw">let </span>uuid = <span class="self">self
-            </span>.get_uuid()
-            .unwrap_or_else(Uuid::new_v4);
+        <span class="kw">let </span>uuid = <span class="self">self</span>.get_uuid().unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntrySealed {
                 uuid,
@@ -4942,6 +4931,11 @@
     <span class="attr">#[inline(always)]
     </span><span class="kw">pub fn </span>get_ava_as_iutf8_iter(<span class="kw-2">&amp;</span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>str&gt;&gt; {
         <span class="self">self</span>.attrs.get(attr).and_then(|vs| vs.as_iutf8_iter())
+    }
+
+    <span class="attr">#[inline(always)]
+    </span><span class="kw">pub fn </span>get_ava_as_iutf8(<span class="kw-2">&amp;</span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeSet&lt;String&gt;&gt; {
+        <span class="self">self</span>.attrs.get(attr).and_then(|vs| vs.as_iutf8_set())
     }
 
     <span class="attr">#[inline(always)]

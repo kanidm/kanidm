@@ -1746,9 +1746,6 @@
 <a href="#1746" id="1746">1746</a>
 <a href="#1747" id="1747">1747</a>
 <a href="#1748" id="1748">1748</a>
-<a href="#1749" id="1749">1749</a>
-<a href="#1750" id="1750">1750</a>
-<a href="#1751" id="1751">1751</a>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
@@ -3336,10 +3333,7 @@
         <span class="macro">assert!</span>(r3 == <span class="prelude-val">Ok</span>(Value::Refer(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))));
 
         <span class="comment">// test attr reference already resolved.
-        </span><span class="kw">let </span>r4 = server_txn.clone_value(
-            <span class="string">&quot;member&quot;</span>,
-            <span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>,
-        );
+        </span><span class="kw">let </span>r4 = server_txn.clone_value(<span class="string">&quot;member&quot;</span>, <span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>);
 
         <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, r4);
         <span class="macro">assert!</span>(r4 == <span class="prelude-val">Ok</span>(Value::Refer(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>))));

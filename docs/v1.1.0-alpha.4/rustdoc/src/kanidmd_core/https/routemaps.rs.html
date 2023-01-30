@@ -92,9 +92,6 @@
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
 </pre><pre class="rust"><code><span class="doccomment">///! Route-mapping magic for tide
 ///
 /// Instead of adding routes with (for example) the .post method you add them with .mapped_post, passing an instance of [RouteMap] and it&#39;ll do the rest...
@@ -173,13 +170,10 @@
     <span class="kw">pub </span>method: http_types::Method,
 }
 
-<span class="attr">#[derive(Clone, Debug, Deserialize, Serialize)]
-#[derive(Default)]
+<span class="attr">#[derive(Clone, Debug, Deserialize, Serialize, Default)]
 </span><span class="kw">pub struct </span>RouteMap {
     <span class="kw">pub </span>routelist: Vec&lt;RouteInfo&gt;,
 }
-
-
 
 <span class="kw">impl </span>RouteMap {
     <span class="comment">// Serializes the object out to a pretty JSON blob

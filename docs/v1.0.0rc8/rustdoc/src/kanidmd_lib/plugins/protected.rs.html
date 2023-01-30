@@ -586,12 +586,6 @@
 <a href="#586" id="586">586</a>
 <a href="#587" id="587">587</a>
 <a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
 </pre><pre class="rust"><code><span class="comment">// System protected objects. Items matching specific requirements
 // may only have certain modifications performed.
 
@@ -651,7 +645,6 @@
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_TOMBSTONE)
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_RECYCLED)
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DYNGROUP)
-                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT)
             {
                 <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject)
             } <span class="kw">else </span>{
@@ -697,8 +690,6 @@
             <span class="kw">if </span>cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_TOMBSTONE)
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_RECYCLED)
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DYNGROUP)
-                <span class="comment">// Temporary until I move this into access.rs
-                </span>|| cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT)
             {
                 <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject)
             } <span class="kw">else </span>{
@@ -777,8 +768,6 @@
             <span class="kw">if </span>cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_TOMBSTONE)
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_RECYCLED)
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DYNGROUP)
-                <span class="comment">// Temporary until I move this into access.rs
-                </span>|| cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT)
             {
                 <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject)
             } <span class="kw">else </span>{
@@ -841,7 +830,6 @@
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_TOMBSTONE)
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_RECYCLED)
                 || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DYNGROUP)
-                || cand.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT)
             {
                 <span class="prelude-val">Err</span>(OperationError::SystemProtectedObject)
             } <span class="kw">else </span>{

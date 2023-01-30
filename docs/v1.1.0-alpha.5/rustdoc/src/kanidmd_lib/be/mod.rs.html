@@ -3212,26 +3212,6 @@
 <a href="#3212" id="3212">3212</a>
 <a href="#3213" id="3213">3213</a>
 <a href="#3214" id="3214">3214</a>
-<a href="#3215" id="3215">3215</a>
-<a href="#3216" id="3216">3216</a>
-<a href="#3217" id="3217">3217</a>
-<a href="#3218" id="3218">3218</a>
-<a href="#3219" id="3219">3219</a>
-<a href="#3220" id="3220">3220</a>
-<a href="#3221" id="3221">3221</a>
-<a href="#3222" id="3222">3222</a>
-<a href="#3223" id="3223">3223</a>
-<a href="#3224" id="3224">3224</a>
-<a href="#3225" id="3225">3225</a>
-<a href="#3226" id="3226">3226</a>
-<a href="#3227" id="3227">3227</a>
-<a href="#3228" id="3228">3228</a>
-<a href="#3229" id="3229">3229</a>
-<a href="#3230" id="3230">3230</a>
-<a href="#3231" id="3231">3231</a>
-<a href="#3232" id="3232">3232</a>
-<a href="#3233" id="3233">3233</a>
-<a href="#3234" id="3234">3234</a>
 </pre><pre class="rust"><code><span class="doccomment">//! The backend. This contains the &quot;low level&quot; storage and query code, which is
 //! implemented as a json-like kv document database. This has no rules about content
 //! of the server, which are all enforced at higher levels. The role of the backend
@@ -5232,9 +5212,7 @@
             <span class="kw">let </span>vr2 = <span class="kw">unsafe </span>{ r2.into_sealed_committed() };
 
             <span class="comment">// Modify single
-            </span><span class="macro">assert!</span>(be
-                .modify(<span class="kw-2">&amp;</span>CID_ZERO, <span class="kw-2">&amp;</span>[pre1], <span class="kw-2">&amp;</span>[vr1.clone()])
-                .is_ok());
+            </span><span class="macro">assert!</span>(be.modify(<span class="kw-2">&amp;</span>CID_ZERO, <span class="kw-2">&amp;</span>[pre1], <span class="kw-2">&amp;</span>[vr1.clone()]).is_ok());
             <span class="comment">// Assert no other changes
             </span><span class="macro">assert!</span>(<span class="macro">entry_attr_pres!</span>(be, vr1, <span class="string">&quot;desc&quot;</span>));
             <span class="macro">assert!</span>(!<span class="macro">entry_attr_pres!</span>(be, vr2, <span class="string">&quot;desc&quot;</span>));
@@ -5298,19 +5276,13 @@
             // This sets up the RUV with the changes.
             </span><span class="kw">let </span>r1_ts = <span class="kw">unsafe </span>{ r1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
 
-            <span class="macro">assert!</span>(be
-                .modify(<span class="kw-2">&amp;</span>CID_ONE, <span class="kw-2">&amp;</span>[r1], <span class="kw-2">&amp;</span>[r1_ts.clone()])
-                .is_ok());
+            <span class="macro">assert!</span>(be.modify(<span class="kw-2">&amp;</span>CID_ONE, <span class="kw-2">&amp;</span>[r1], <span class="kw-2">&amp;</span>[r1_ts.clone()]).is_ok());
 
             <span class="kw">let </span>r2_ts = <span class="kw">unsafe </span>{ r2.to_tombstone(CID_TWO.clone()).into_sealed_committed() };
             <span class="kw">let </span>r3_ts = <span class="kw">unsafe </span>{ r3.to_tombstone(CID_TWO.clone()).into_sealed_committed() };
 
             <span class="macro">assert!</span>(be
-                .modify(
-                    <span class="kw-2">&amp;</span>CID_TWO,
-                    <span class="kw-2">&amp;</span>[r2, r3],
-                    <span class="kw-2">&amp;</span>[r2_ts.clone(), r3_ts.clone()]
-                )
+                .modify(<span class="kw-2">&amp;</span>CID_TWO, <span class="kw-2">&amp;</span>[r2, r3], <span class="kw-2">&amp;</span>[r2_ts.clone(), r3_ts.clone()])
                 .is_ok());
 
             <span class="comment">// The entry are now tombstones, but is still in the ruv. This is because we
@@ -5639,9 +5611,7 @@
 
             <span class="comment">// == Now we reap_tombstones, and assert we removed the items.
             </span><span class="kw">let </span>e1_ts = <span class="kw">unsafe </span>{ e1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
-            <span class="macro">assert!</span>(be
-                .modify(<span class="kw-2">&amp;</span>CID_ONE, <span class="kw-2">&amp;</span>[e1], <span class="kw-2">&amp;</span>[e1_ts])
-                .is_ok());
+            <span class="macro">assert!</span>(be.modify(<span class="kw-2">&amp;</span>CID_ONE, <span class="kw-2">&amp;</span>[e1], <span class="kw-2">&amp;</span>[e1_ts]).is_ok());
             be.reap_tombstones(<span class="kw-2">&amp;</span>CID_TWO).unwrap();
 
             <span class="macro">idl_state!</span>(be, <span class="string">&quot;name&quot;</span>, IndexType::Equality, <span class="string">&quot;william&quot;</span>, <span class="prelude-val">Some</span>(Vec::new()));
@@ -5687,9 +5657,7 @@
             e3.add_ava(<span class="string">&quot;uuid&quot;</span>, Value::from(<span class="string">&quot;7b23c99d-c06b-4a9a-a958-3afa56383e1d&quot;</span>));
             <span class="kw">let </span>e3 = <span class="kw">unsafe </span>{ e3.into_sealed_new() };
 
-            <span class="kw">let </span><span class="kw-2">mut </span>rset = be
-                .create(<span class="kw-2">&amp;</span>CID_ZERO, <span class="macro">vec!</span>[e1, e2, e3])
-                .unwrap();
+            <span class="kw">let </span><span class="kw-2">mut </span>rset = be.create(<span class="kw-2">&amp;</span>CID_ZERO, <span class="macro">vec!</span>[e1, e2, e3]).unwrap();
             rset.remove(<span class="number">1</span>);
             <span class="kw">let </span><span class="kw-2">mut </span>rset: Vec&lt;<span class="kw">_</span>&gt; = rset.into_iter().map(Arc::new).collect();
             <span class="kw">let </span>e1 = rset.pop().unwrap();
@@ -5698,13 +5666,7 @@
             <span class="comment">// Now remove e1, e3.
             </span><span class="kw">let </span>e1_ts = <span class="kw">unsafe </span>{ e1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
             <span class="kw">let </span>e3_ts = <span class="kw">unsafe </span>{ e3.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
-            <span class="macro">assert!</span>(be
-                .modify(
-                    <span class="kw-2">&amp;</span>CID_ONE,
-                    <span class="kw-2">&amp;</span>[e1, e3],
-                    <span class="kw-2">&amp;</span>[e1_ts, e3_ts]
-                )
-                .is_ok());
+            <span class="macro">assert!</span>(be.modify(<span class="kw-2">&amp;</span>CID_ONE, <span class="kw-2">&amp;</span>[e1, e3], <span class="kw-2">&amp;</span>[e1_ts, e3_ts]).is_ok());
             be.reap_tombstones(<span class="kw-2">&amp;</span>CID_TWO).unwrap();
 
             <span class="macro">idl_state!</span>(be, <span class="string">&quot;name&quot;</span>, IndexType::Equality, <span class="string">&quot;claire&quot;</span>, <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">2</span>]));
@@ -6179,9 +6141,7 @@
             e3.add_ava(<span class="string">&quot;tb&quot;</span>, Value::from(<span class="string">&quot;2&quot;</span>));
             <span class="kw">let </span>e3 = <span class="kw">unsafe </span>{ e3.into_sealed_new() };
 
-            <span class="kw">let </span>_rset = be
-                .create(<span class="kw-2">&amp;</span>CID_ZERO, <span class="macro">vec!</span>[e1, e2, e3])
-                .unwrap();
+            <span class="kw">let </span>_rset = be.create(<span class="kw-2">&amp;</span>CID_ZERO, <span class="macro">vec!</span>[e1, e2, e3]).unwrap();
 
             <span class="comment">// If the slopes haven&#39;t been generated yet, there are some hardcoded values
             // that we can use instead. They aren&#39;t generated until a first re-index.

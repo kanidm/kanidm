@@ -848,12 +848,6 @@
 <a href="#848" id="848">848</a>
 <a href="#849" id="849">849</a>
 <a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a>
-<a href="#856" id="856">856</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::modify::ModifyPartial;
 <span class="kw">use </span><span class="kw">crate</span>::event::ReviveRecycledEvent;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
@@ -1667,13 +1661,11 @@
             )
         };
         <span class="macro">assert!</span>(server_txn.revive_recycled(<span class="kw-2">&amp;</span>rev3).is_ok());
-        <span class="macro">assert!</span>(
-            !check_entry_has_mo(
-                <span class="kw-2">&amp;mut </span>server_txn,
-                <span class="string">&quot;u3&quot;</span>,
-                <span class="string">&quot;36048117-e479-45ed-aeb5-611e8d83d5b1&quot;
-            </span>)
-        );
+        <span class="macro">assert!</span>(!check_entry_has_mo(
+            <span class="kw-2">&amp;mut </span>server_txn,
+            <span class="string">&quot;u3&quot;</span>,
+            <span class="string">&quot;36048117-e479-45ed-aeb5-611e8d83d5b1&quot;
+        </span>));
 
         <span class="comment">// Revive u4, should NOT have the MO.
         </span><span class="kw">let </span>rev4a = <span class="kw">unsafe </span>{
@@ -1683,13 +1675,11 @@
             )
         };
         <span class="macro">assert!</span>(server_txn.revive_recycled(<span class="kw-2">&amp;</span>rev4a).is_ok());
-        <span class="macro">assert!</span>(
-            !check_entry_has_mo(
-                <span class="kw-2">&amp;mut </span>server_txn,
-                <span class="string">&quot;u4&quot;</span>,
-                <span class="string">&quot;d5c59ac6-c533-4b00-989f-d0e183f07bab&quot;
-            </span>)
-        );
+        <span class="macro">assert!</span>(!check_entry_has_mo(
+            <span class="kw-2">&amp;mut </span>server_txn,
+            <span class="string">&quot;u4&quot;</span>,
+            <span class="string">&quot;d5c59ac6-c533-4b00-989f-d0e183f07bab&quot;
+        </span>));
 
         <span class="comment">// Now revive g4, should allow MO onto u4.
         </span><span class="kw">let </span>rev4b = <span class="kw">unsafe </span>{
@@ -1699,13 +1689,11 @@
             )
         };
         <span class="macro">assert!</span>(server_txn.revive_recycled(<span class="kw-2">&amp;</span>rev4b).is_ok());
-        <span class="macro">assert!</span>(
-            !check_entry_has_mo(
-                <span class="kw-2">&amp;mut </span>server_txn,
-                <span class="string">&quot;u4&quot;</span>,
-                <span class="string">&quot;d5c59ac6-c533-4b00-989f-d0e183f07bab&quot;
-            </span>)
-        );
+        <span class="macro">assert!</span>(!check_entry_has_mo(
+            <span class="kw-2">&amp;mut </span>server_txn,
+            <span class="string">&quot;u4&quot;</span>,
+            <span class="string">&quot;d5c59ac6-c533-4b00-989f-d0e183f07bab&quot;
+        </span>));
 
         <span class="macro">assert!</span>(server_txn.commit().is_ok());
     }

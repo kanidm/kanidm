@@ -95,6 +95,41 @@
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::profiles::AccessControlDelete;
 <span class="kw">use </span><span class="kw">crate</span>::filter::FilterValidResolved;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
@@ -118,6 +153,11 @@
 ) -&gt; DeleteResult {
     <span class="kw">let </span><span class="kw-2">mut </span>denied = <span class="bool-val">false</span>;
     <span class="kw">let </span><span class="kw-2">mut </span>grant = <span class="bool-val">false</span>;
+
+    <span class="kw">match </span>protected_filter_entry(ident, entry) {
+        IResult::Denied =&gt; denied = <span class="bool-val">true</span>,
+        IResult::Grant | IResult::Ignore =&gt; {}
+    }
 
     <span class="kw">match </span>delete_filter_entry(ident, related_acp, entry) {
         IResult::Denied =&gt; denied = <span class="bool-val">true</span>,
@@ -190,6 +230,36 @@
         IResult::Grant
     } <span class="kw">else </span>{
         IResult::Ignore
+    }
+}
+
+<span class="kw">fn </span>protected_filter_entry&lt;<span class="lifetime">&#39;a</span>&gt;(ident: <span class="kw-2">&amp;</span>Identity, entry: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Arc&lt;EntrySealedCommitted&gt;) -&gt; IResult {
+    <span class="kw">match </span><span class="kw-2">&amp;</span>ident.origin {
+        IdentType::Internal =&gt; {
+            <span class="macro">trace!</span>(<span class="string">&quot;Internal operation, protected rules do not apply.&quot;</span>);
+            IResult::Ignore
+        }
+        IdentType::Synch(<span class="kw">_</span>) =&gt; {
+            <span class="macro">security_access!</span>(<span class="string">&quot;sync agreements may not directly delete entities&quot;</span>);
+            IResult::Denied
+        }
+        IdentType::User(<span class="kw">_</span>) =&gt; {
+            <span class="comment">// Now check things ...
+
+            // For now we just block create on sync object
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(classes) = entry.get_ava_set(<span class="string">&quot;class&quot;</span>) {
+                <span class="kw">if </span>classes.contains(<span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT) {
+                    <span class="comment">// Block the mod
+                    </span><span class="macro">security_access!</span>(<span class="string">&quot;attempt to delete with protected class type&quot;</span>);
+                    IResult::Denied
+                } <span class="kw">else </span>{
+                    IResult::Ignore
+                }
+            } <span class="kw">else </span>{
+                <span class="comment">// Nothing to check.
+                </span>IResult::Ignore
+            }
+        }
     }
 }
 </code></pre></div>
