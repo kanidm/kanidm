@@ -559,9 +559,7 @@ impl Entry<EntryInit, EntryNew> {
         let cid = Cid::new_zero();
         self.set_last_changed(cid.clone());
         let eclog = EntryChangelog::new_without_schema(cid, self.attrs.clone());
-        let uuid = self
-            .get_uuid()
-            .unwrap_or_else(Uuid::new_v4);
+        let uuid = self.get_uuid().unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntrySealed { uuid, eclog },
             state: EntryCommitted { id: 0 },
@@ -950,9 +948,7 @@ impl Entry<EntryInvalid, EntryNew> {
 
     #[cfg(test)]
     pub unsafe fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
-        let uuid = self
-            .get_uuid()
-            .unwrap_or_else(Uuid::new_v4);
+        let uuid = self.get_uuid().unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntrySealed {
                 uuid,
@@ -983,9 +979,7 @@ impl Entry<EntryInvalid, EntryNew> {
 
     #[cfg(test)]
     pub unsafe fn into_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
-        let uuid = self
-            .get_uuid()
-            .unwrap_or_else(Uuid::new_v4);
+        let uuid = self.get_uuid().unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntryValid {
                 cid: self.valid.cid,
@@ -1001,9 +995,7 @@ impl Entry<EntryInvalid, EntryNew> {
 impl Entry<EntryInvalid, EntryCommitted> {
     #[cfg(test)]
     pub unsafe fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
-        let uuid = self
-            .get_uuid()
-            .unwrap_or_else(Uuid::new_v4);
+        let uuid = self.get_uuid().unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntrySealed {
                 uuid,
@@ -1895,6 +1887,11 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     #[inline(always)]
     pub fn get_ava_as_iutf8_iter(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
         self.attrs.get(attr).and_then(|vs| vs.as_iutf8_iter())
+    }
+
+    #[inline(always)]
+    pub fn get_ava_as_iutf8(&self, attr: &str) -> Option<&BTreeSet<String>> {
+        self.attrs.get(attr).and_then(|vs| vs.as_iutf8_set())
     }
 
     #[inline(always)]

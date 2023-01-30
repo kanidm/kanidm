@@ -233,7 +233,7 @@ pub trait AccessControlsTransaction<'a> {
             .collect();
 
         if allowed_entries.is_empty() {
-            security_access!("denied ❌");
+            security_access!("denied ❌ - no entries were released");
         } else {
             security_access!("allowed {} entries ✅", allowed_entries.len());
         }
@@ -488,7 +488,7 @@ pub trait AccessControlsTransaction<'a> {
         if r {
             security_access!("allowed ✅");
         } else {
-            security_access!("denied ❌");
+            security_access!("denied ❌ - modifications may not proceed");
         }
         Ok(r)
     }
@@ -621,7 +621,7 @@ pub trait AccessControlsTransaction<'a> {
         if r {
             security_access!("allowed ✅");
         } else {
-            security_access!("denied ❌");
+            security_access!("denied ❌ - modifications may not proceed");
         }
         Ok(r)
     }
@@ -674,7 +674,7 @@ pub trait AccessControlsTransaction<'a> {
         if r {
             security_access!("allowed ✅");
         } else {
-            security_access!("denied ❌");
+            security_access!("denied ❌ - create may not proceed");
         }
 
         Ok(r)
@@ -737,7 +737,7 @@ pub trait AccessControlsTransaction<'a> {
         if r {
             security_access!("allowed ✅");
         } else {
-            security_access!("denied ❌");
+            security_access!("denied ❌ - delete may not proceed");
         }
         Ok(r)
     }
@@ -2383,5 +2383,224 @@ mod tests {
                 modify_class: Access::Allow(btreeset![AttrString::from("object")]),
             }]
         )
+    }
+
+    #[test]
+    fn test_access_sync_authority_create() {
+        sketching::test_init();
+
+        let ce_admin = CreateEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
+            vec![],
+        );
+
+        // We can create without a sync class.
+        let ev1 = entry_init!(
+            ("class", CLASS_ACCOUNT.clone()),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+        );
+        let r1_set = vec![ev1];
+
+        let ev2 = entry_init!(
+            ("class", CLASS_ACCOUNT.clone()),
+            ("class", CLASS_SYNC_OBJECT.clone()),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+        );
+        let r2_set = vec![ev2];
+
+        let acp = unsafe {
+            AccessControlCreate::from_raw(
+                "test_create",
+                Uuid::new_v4(),
+                // Apply to admin
+                UUID_TEST_GROUP_1,
+                // To create matching filter testperson
+                // Can this be empty?
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                // classes
+                "account sync_object",
+                // attrs
+                "class name uuid",
+            )
+        };
+
+        // Test allowed to create
+        test_acp_create!(&ce_admin, vec![acp.clone()], &r1_set, true);
+        // Test Fails due to protected from sync object
+        test_acp_create!(&ce_admin, vec![acp.clone()], &r2_set, false);
+    }
+
+    #[test]
+    fn test_access_sync_authority_delete() {
+        sketching::test_init();
+
+        let ev1 = unsafe {
+            entry_init!(
+                ("class", CLASS_ACCOUNT.clone()),
+                ("name", Value::new_iname("testperson1")),
+                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            )
+            .into_sealed_committed()
+        };
+        let r1_set = vec![Arc::new(ev1)];
+
+        let ev2 = unsafe {
+            entry_init!(
+                ("class", CLASS_ACCOUNT.clone()),
+                ("class", CLASS_SYNC_OBJECT.clone()),
+                ("name", Value::new_iname("testperson1")),
+                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            )
+            .into_sealed_committed()
+        };
+        let r2_set = vec![Arc::new(ev2)];
+
+        let de_admin = unsafe {
+            DeleteEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            )
+        };
+
+        let acp = unsafe {
+            AccessControlDelete::from_raw(
+                "test_delete",
+                Uuid::new_v4(),
+                // Apply to admin
+                UUID_TEST_GROUP_1,
+                // To delete testperson
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            )
+        };
+
+        // Test allowed to delete
+        test_acp_delete!(&de_admin, vec![acp.clone()], &r1_set, true);
+        // Test reject delete
+        test_acp_delete!(&de_admin, vec![acp], &r2_set, false);
+    }
+
+    #[test]
+    fn test_access_sync_authority_modify() {
+        sketching::test_init();
+
+        let ev1 = unsafe {
+            entry_init!(
+                ("class", CLASS_ACCOUNT.clone()),
+                ("name", Value::new_iname("testperson1")),
+                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            )
+            .into_sealed_committed()
+        };
+        let r1_set = vec![Arc::new(ev1)];
+
+        let ev2 = unsafe {
+            entry_init!(
+                ("class", CLASS_ACCOUNT.clone()),
+                ("class", CLASS_SYNC_OBJECT.clone()),
+                ("name", Value::new_iname("testperson1")),
+                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+            )
+            .into_sealed_committed()
+        };
+        let r2_set = vec![Arc::new(ev2)];
+
+        // Allow name and class, class is account
+        let acp_allow = unsafe {
+            AccessControlModify::from_raw(
+                "test_modify_allow",
+                Uuid::new_v4(),
+                // Apply to admin
+                UUID_TEST_GROUP_1,
+                // To modify testperson
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                // Allow pres user_auth_token_session
+                "user_auth_token_session name",
+                // Allow user_auth_token_session
+                "user_auth_token_session name",
+                // And the class allowed is account, we don't use it though.
+                "account",
+            )
+        };
+
+        // NOTE! Syntax doesn't matter here, we just need to assert if the attr exists
+        // and is being modified.
+        // Name present
+        let me_pres = unsafe {
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                modlist!([m_pres(
+                    "user_auth_token_session",
+                    &Value::new_iname("value")
+                )]),
+            )
+        };
+        // Name rem
+        let me_rem = unsafe {
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                modlist!([m_remove(
+                    "user_auth_token_session",
+                    &PartialValue::new_iname("value")
+                )]),
+            )
+        };
+        // Name purge
+        let me_purge = unsafe {
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                modlist!([m_purge("user_auth_token_session")]),
+            )
+        };
+
+        // Test allowed pres
+        test_acp_modify!(&me_pres, vec![acp_allow.clone()], &r1_set, true);
+        // test allowed rem
+        test_acp_modify!(&me_rem, vec![acp_allow.clone()], &r1_set, true);
+        // test allowed purge
+        test_acp_modify!(&me_purge, vec![acp_allow.clone()], &r1_set, true);
+
+        // Test allow pres
+        test_acp_modify!(&me_pres, vec![acp_allow.clone()], &r2_set, true);
+        // Test allow rem
+        test_acp_modify!(&me_rem, vec![acp_allow.clone()], &r2_set, true);
+        // Test allow purge
+        test_acp_modify!(&me_purge, vec![acp_allow.clone()], &r2_set, true);
+
+        // But other attrs are blocked.
+        let me_pres = unsafe {
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                modlist!([m_pres("name", &Value::new_iname("value"))]),
+            )
+        };
+        // Name rem
+        let me_rem = unsafe {
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                modlist!([m_remove("name", &PartialValue::new_iname("value"))]),
+            )
+        };
+        // Name purge
+        let me_purge = unsafe {
+            ModifyEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                modlist!([m_purge("name")]),
+            )
+        };
+
+        // Test reject pres
+        test_acp_modify!(&me_pres, vec![acp_allow.clone()], &r2_set, false);
+        // Test reject rem
+        test_acp_modify!(&me_rem, vec![acp_allow.clone()], &r2_set, false);
+        // Test reject purge
+        test_acp_modify!(&me_purge, vec![acp_allow.clone()], &r2_set, false);
     }
 }

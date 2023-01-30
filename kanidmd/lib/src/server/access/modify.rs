@@ -19,6 +19,7 @@ pub(super) enum ModifyResult<'a> {
 pub(super) fn apply_modify_access<'a>(
     ident: &Identity,
     related_acp: &'a [(&AccessControlModify, Filter<FilterValidResolved>)],
+    // may need sync agreements later.
     entry: &'a Arc<EntrySealedCommitted>,
 ) -> ModifyResult<'a> {
     let mut denied = false;
@@ -42,6 +43,22 @@ pub(super) fn apply_modify_access<'a>(
     }
 
     if !grant && !denied {
+        // Check with protected if we should proceed.
+
+        // If it's a sync entry, constrain it.
+        match modify_sync_constrain(ident, entry) {
+            AccessResult::Denied => denied = true,
+            AccessResult::Constrain(mut set) => {
+                constrain_rem.extend(set.iter().copied());
+                constrain_pres.append(&mut set)
+            }
+            // Can't grant.
+            AccessResult::Grant |
+            // Can't allow
+            AccessResult::Allow(_) |
+            AccessResult::Ignore => {}
+        }
+
         // Setup the acp's here
         let scoped_acp: Vec<&AccessControlModify> = related_acp
             .iter()
@@ -166,4 +183,37 @@ fn modify_cls_test<'a>(scoped_acp: &[&'a AccessControlModify]) -> AccessResult<'
         .flat_map(|acp| acp.classes.iter().map(|v| v.as_str()))
         .collect();
     AccessResult::Allow(allowed_classes)
+}
+
+fn modify_sync_constrain<'a>(
+    ident: &Identity,
+    entry: &'a Arc<EntrySealedCommitted>,
+) -> AccessResult<'a> {
+    match &ident.origin {
+        IdentType::Internal => AccessResult::Ignore,
+        IdentType::Synch(_) => {
+            // Allowed to mod sync objects. Later we'll probably need to check the limits of what
+            // it can do if we go that way.
+            AccessResult::Ignore
+        }
+        IdentType::User(_) => {
+            if let Some(classes) = entry.get_ava_set("class") {
+                // If the entry is sync object.
+                if classes.contains(&PVCLASS_SYNC_OBJECT) {
+                    // Constrain to a limited set of attributes.
+                    AccessResult::Constrain(btreeset![
+                        "user_auth_token_session",
+                        "oauth2_session",
+                        "oauth2_consent_scope_map",
+                        "credential_update_intent_token"
+                    ])
+                } else {
+                    AccessResult::Ignore
+                }
+            } else {
+                // Nothing to check.
+                AccessResult::Ignore
+            }
+        }
+    }
 }

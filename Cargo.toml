@@ -143,7 +143,8 @@ tokio-util = "^0.7.4"
 
 toml = "^0.5.11"
 touch = "^0.0.1"
-tracing = { version = "^0.1.37", features = ["max_level_trace", "release_max_level_debug"] }
+# tracing = { version = "^0.1.37", features = ["max_level_trace", "release_max_level_debug"] }
+tracing = { version = "^0.1.37" }
 tracing-subscriber = { version = "^0.3.16", features = ["env-filter"] }
 
 # tracing-forest = { path = "/Users/william/development/tracing-forest/tracing-forest" }

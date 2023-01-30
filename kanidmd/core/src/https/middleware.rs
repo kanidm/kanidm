@@ -113,8 +113,6 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictRes
 #[derive(Default)]
 struct StrictRequestMiddleware;
 
-
-
 #[async_trait::async_trait]
 impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictRequestMiddleware {
     async fn handle(

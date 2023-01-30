@@ -123,6 +123,9 @@ pub const JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &str = r#"
       "multivalue": [
         "false"
       ],
+      "sync_allowed": [
+        "true"
+      ],
       "attributename": [
         "primary_credential"
       ],

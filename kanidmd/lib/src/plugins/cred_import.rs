@@ -75,7 +75,6 @@ impl CredImport {
                 // does the entry have a primary cred?
                 match e.get_ava_single_credential("primary_credential") {
                     Some(c) => {
-                        // This is the major diff to create, we can update in place!
                         let c = c.update_password(pw);
                         e.set_ava(
                             "primary_credential",
@@ -93,7 +92,8 @@ impl CredImport {
                 }
             };
 
-            // TOTP IMPORT
+            // TOTP IMPORT - Must be subsequent to password import to allow primary cred to
+            // be created.
             if let Some(vs) = e.pop_ava("totp_import") {
                 // Get the map.
                 let totps = vs.as_totp_map().ok_or_else(|| {

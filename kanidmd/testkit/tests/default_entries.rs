@@ -219,12 +219,7 @@ async fn login_account_via_admin(rsclient: &KanidmClient, id: &str) {
     login_account(rsclient, id).await
 }
 
-async fn test_read_attrs(
-    rsclient: &KanidmClient,
-    id: &str,
-    attrs: &[&str],
-    is_readable: bool,
-) {
+async fn test_read_attrs(rsclient: &KanidmClient, id: &str, attrs: &[&str], is_readable: bool) {
     println!("Test read to {}, is readable: {}", id, is_readable);
     let rset = rsclient
         .search(Filter::Eq("name".to_string(), id.to_string()))
@@ -246,12 +241,7 @@ async fn test_read_attrs(
     }
 }
 
-async fn test_write_attrs(
-    rsclient: &KanidmClient,
-    id: &str,
-    attrs: &[&str],
-    is_writeable: bool,
-) {
+async fn test_write_attrs(rsclient: &KanidmClient, id: &str, attrs: &[&str], is_writeable: bool) {
     println!("Test write to {}, is writeable: {}", id, is_writeable);
     for attr in attrs.iter() {
         println!("Writing to {}", attr);
@@ -260,11 +250,7 @@ async fn test_write_attrs(
     }
 }
 
-async fn test_modify_group(
-    rsclient: &KanidmClient,
-    group_names: &[&str],
-    is_modificable: bool,
-) {
+async fn test_modify_group(rsclient: &KanidmClient, group_names: &[&str], is_modificable: bool) {
     // need user test created to be added as test part
     for group in group_names.iter() {
         println!("Testing group: {}", group);

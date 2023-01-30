@@ -505,9 +505,7 @@ async fn main() {
                     debug!("Request: {req:?}");
                     println!("OK")
                 }
-                KanidmdOpt::Version(_) => {
-                    
-                }
+                KanidmdOpt::Version(_) => {}
             }
         })
         .await;

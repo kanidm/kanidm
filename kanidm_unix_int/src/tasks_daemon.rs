@@ -87,10 +87,7 @@ fn create_home_directory(
     use_etc_skel: bool,
 ) -> Result<(), String> {
     // Final sanity check to prevent certain classes of attacks.
-    let name = info
-        .name
-        .trim_start_matches('.')
-        .replace(['/', '\\'], "");
+    let name = info.name.trim_start_matches('.').replace(['/', '\\'], "");
 
     let home_prefix_path = Path::new(home_prefix);
 
@@ -151,9 +148,7 @@ fn create_home_directory(
     for alias in info.aliases.iter() {
         // Sanity check the alias.
         // let alias = alias.replace(".", "").replace("/", "").replace("\\", "");
-        let alias = alias
-            .trim_start_matches('.')
-            .replace(['/', '\\'], "");
+        let alias = alias.trim_start_matches('.').replace(['/', '\\'], "");
         let alias_path_raw = format!("{}{}", home_prefix, alias);
         let alias_path = Path::new(&alias_path_raw);
 

@@ -22,6 +22,11 @@ pub(super) fn apply_delete_access<'a>(
     let mut denied = false;
     let mut grant = false;
 
+    match protected_filter_entry(ident, entry) {
+        IResult::Denied => denied = true,
+        IResult::Grant | IResult::Ignore => {}
+    }
+
     match delete_filter_entry(ident, related_acp, entry) {
         IResult::Denied => denied = true,
         IResult::Grant => grant = true,
@@ -93,5 +98,35 @@ fn delete_filter_entry<'a>(
         IResult::Grant
     } else {
         IResult::Ignore
+    }
+}
+
+fn protected_filter_entry<'a>(ident: &Identity, entry: &'a Arc<EntrySealedCommitted>) -> IResult {
+    match &ident.origin {
+        IdentType::Internal => {
+            trace!("Internal operation, protected rules do not apply.");
+            IResult::Ignore
+        }
+        IdentType::Synch(_) => {
+            security_access!("sync agreements may not directly delete entities");
+            IResult::Denied
+        }
+        IdentType::User(_) => {
+            // Now check things ...
+
+            // For now we just block create on sync object
+            if let Some(classes) = entry.get_ava_set("class") {
+                if classes.contains(&PVCLASS_SYNC_OBJECT) {
+                    // Block the mod
+                    security_access!("attempt to delete with protected class type");
+                    IResult::Denied
+                } else {
+                    IResult::Ignore
+                }
+            } else {
+                // Nothing to check.
+                IResult::Ignore
+            }
+        }
     }
 }
