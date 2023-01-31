@@ -63,6 +63,7 @@ pub enum ConsistencyError {
     BackendAllIdsSync,
     BackendIndexSync,
     ChangelogDesynchronised(u64),
+    ChangeStateDesynchronised(u64),
     RuvInconsistent(String),
 }
 

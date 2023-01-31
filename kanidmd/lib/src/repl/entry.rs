@@ -99,7 +99,6 @@ impl EntryChangeState {
     }
 
     pub fn cid_iter(&self) -> Vec<&Cid> {
-        // Not deduped, not ordered!
         match &self.st {
             State::Live { changes } => {
                 let mut v: Vec<_> = changes.values().collect();
@@ -115,10 +114,42 @@ impl EntryChangeState {
     pub fn verify(
         &self,
         _schema: &dyn SchemaTransaction,
-        _expected_attrs: &Eattrs,
-        _entry_id: u64,
-        _results: &mut Vec<Result<(), ConsistencyError>>,
+        expected_attrs: &Eattrs,
+        entry_id: u64,
+        results: &mut Vec<Result<(), ConsistencyError>>,
     ) {
-        todo!();
+        let class = expected_attrs.get("class");
+        let is_ts = class
+            .as_ref()
+            .map(|c| c.contains(&PVCLASS_TOMBSTONE as &PartialValue))
+            .unwrap_or(false);
+
+        match (&self.st, is_ts) {
+            (State::Live { changes }, false) => {
+                // Check that all attrs from expected, have a value in our changes.
+                let inconsistent: Vec<_> = expected_attrs
+                    .keys()
+                    .filter(|attr| !changes.contains_key(*attr))
+                    .collect();
+
+                if inconsistent.is_empty() {
+                    trace!("changestate is synchronised");
+                } else {
+                    warn!("changestate has desynchronised! Missing state attrs {inconsistent:?}");
+                    results.push(Err(ConsistencyError::ChangeStateDesynchronised(entry_id)));
+                }
+            }
+            (State::Tombstone { .. }, true) => {
+                trace!("changestate is synchronised");
+            }
+            (State::Live { .. }, true) => {
+                warn!("changestate has desynchronised! State Live when tombstone is true");
+                results.push(Err(ConsistencyError::ChangeStateDesynchronised(entry_id)));
+            }
+            (State::Tombstone { .. }, false) => {
+                warn!("changestate has desynchronised! State Tombstone when tombstone is false");
+                results.push(Err(ConsistencyError::ChangeStateDesynchronised(entry_id)));
+            }
+        }
     }
 }
