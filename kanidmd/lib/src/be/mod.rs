@@ -965,7 +965,7 @@ impl<'a> BackendWriteTransaction<'a> {
         // Check that every entry has a change associated
         // that matches the cid?
         entries.iter().try_for_each(|e| {
-            if e.get_changelog().contains_tail_cid(cid) {
+            if e.get_changestate().contains_tail_cid(cid) {
                 Ok(())
             } else {
                 admin_error!(
@@ -1019,7 +1019,7 @@ impl<'a> BackendWriteTransaction<'a> {
         assert!(post_entries.len() == pre_entries.len());
 
         post_entries.iter().try_for_each(|e| {
-            if e.get_changelog().contains_tail_cid(cid) {
+            if e.get_changestate().contains_tail_cid(cid) {
                 Ok(())
             } else {
                 admin_error!(
@@ -1070,32 +1070,22 @@ impl<'a> BackendWriteTransaction<'a> {
         // Now that we have a list of entries we need to partition them into
         // two sets. The entries that are tombstoned and ready to reap_tombstones, and
         // the entries that need to have their change logs trimmed.
+        //
+        // Remember, these tombstones can be reaped because they were tombstoned at time
+        // point 'cid', and since we are now "past" that minimum cid, then other servers
+        // will also be trimming these out.
+        //
+        // Note unlike a changelog impl, we don't need to trim changestates here. We
+        // only need the RUV trimmed so that we know if other servers are laggin behind!
 
-        // First we trim changelogs. Go through each entry, and trim the CL, and write it back.
-        let mut entries: Vec<_> = entries.iter().map(|er| er.as_ref().clone()).collect();
+        // What entries are tombstones and ready to be deleted?
 
-        entries
-            .iter_mut()
-            .try_for_each(|e| e.get_changelog_mut().trim_up_to(cid))?;
-
-        // Write down the cl trims
-        self.get_idlayer().write_identries(entries.iter())?;
-
-        let (tombstones, leftover): (Vec<_>, Vec<_>) = entries
+        let tombstones: Vec<_> = entries
             .into_iter()
-            .partition(|e| e.get_changelog().can_delete());
+            .filter(|e| e.mask_tombstone().is_none())
+            .collect();
 
-        // Assert that anything leftover still either is *alive* OR is a tombstone
-        // and has entries in the RUV!
         let ruv_idls = self.get_ruv().ruv_idls();
-
-        if !leftover
-            .iter()
-            .all(|e| e.get_changelog().is_live() || ruv_idls.contains(e.get_id()))
-        {
-            admin_error!("Left over entries may be orphaned due to missing RUV entries");
-            return Err(OperationError::ReplInvalidRUVState);
-        }
 
         // Now setup to reap_tombstones the tombstones. Remember, in the post cleanup, it's could
         // now have been trimmed to a point we can purge them!
@@ -1106,7 +1096,7 @@ impl<'a> BackendWriteTransaction<'a> {
         // Ensure nothing here exists in the RUV index, else it means
         // we didn't trim properly, or some other state violation has occurred.
         if !((&ruv_idls & &id_list).is_empty()) {
-            admin_error!("RUV still contains entries that are going to be removed.");
+            admin_error!("RUV still contains tombstone entries that are going to be removed.");
             return Err(OperationError::ReplInvalidRUVState);
         }
 
@@ -1114,7 +1104,8 @@ impl<'a> BackendWriteTransaction<'a> {
         let sz = id_list.len();
         self.get_idlayer().delete_identry(id_list.into_iter())?;
 
-        // Finally, purge the indexes from the entries we removed.
+        // Finally, purge the indexes from the entries we removed. These still have
+        // indexes due to class=tombstone.
         tombstones
             .iter()
             .try_for_each(|e| self.entry_index(Some(e), None))?;

@@ -51,7 +51,10 @@ use crate::idm::ldap::ldap_vattr_map;
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
-use crate::repl::entry::EntryChangelog;
+
+// use crate::repl::entry::EntryChangelog;
+use crate::repl::entry::EntryChangeState;
+
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::value::{
     IndexType, IntentTokenState, Oauth2Session, PartialValue, Session, SyntaxType, Value,
@@ -129,7 +132,8 @@ pub struct EntryInit;
 #[derive(Clone, Debug)]
 pub struct EntryInvalid {
     cid: Cid,
-    eclog: EntryChangelog,
+    // eclog: EntryChangelog,
+    ecstate: EntryChangeState,
 }
 
 /*  |
@@ -142,7 +146,8 @@ pub struct EntryValid {
     // Asserted with schema, so we know it has a UUID now ...
     uuid: Uuid,
     cid: Cid,
-    eclog: EntryChangelog,
+    // eclog: EntryChangelog,
+    ecstate: EntryChangeState,
 }
 
 /*  |
@@ -154,7 +159,8 @@ pub struct EntryValid {
 #[derive(Clone, Debug)]
 pub struct EntrySealed {
     uuid: Uuid,
-    eclog: EntryChangelog,
+    // eclog: EntryChangelog,
+    ecstate: EntryChangeState,
 }
 
 /*  |
@@ -509,10 +515,11 @@ impl Entry<EntryInit, EntryNew> {
          * This is because we need to capture the set_last_changed attribute in
          * the create transition.
          */
-        let eclog = EntryChangelog::new(cid.clone(), self.attrs.clone(), schema);
+        // let eclog = EntryChangelog::new(cid.clone(), self.attrs.clone(), schema);
+        let ecstate = EntryChangeState::new(cid.clone(), &self.attrs, schema);
 
         Entry {
-            valid: EntryInvalid { cid, eclog },
+            valid: EntryInvalid { cid, ecstate },
             state: EntryNew,
             attrs: self.attrs,
         }
@@ -528,10 +535,11 @@ impl Entry<EntryInit, EntryNew> {
         let cid = Cid::new_zero();
         self.set_last_changed(cid.clone());
 
-        let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
+        // let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
+        let ecstate = EntryChangeState::new_without_schema(cid.clone(), &self.attrs);
 
         Entry {
-            valid: EntryInvalid { cid, eclog },
+            valid: EntryInvalid { cid, ecstate },
             state: EntryNew,
             attrs: self.attrs,
         }
@@ -541,12 +549,13 @@ impl Entry<EntryInit, EntryNew> {
     pub unsafe fn into_valid_new(mut self) -> Entry<EntryValid, EntryNew> {
         let cid = Cid::new_zero();
         self.set_last_changed(cid.clone());
-        let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
+        // let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
+        let ecstate = EntryChangeState::new_without_schema(cid.clone(), &self.attrs);
 
         Entry {
             valid: EntryValid {
                 cid,
-                eclog,
+                ecstate,
                 uuid: self.get_uuid().expect("Invalid uuid"),
             },
             state: EntryNew,
@@ -558,10 +567,11 @@ impl Entry<EntryInit, EntryNew> {
     pub unsafe fn into_sealed_committed(mut self) -> Entry<EntrySealed, EntryCommitted> {
         let cid = Cid::new_zero();
         self.set_last_changed(cid.clone());
-        let eclog = EntryChangelog::new_without_schema(cid, self.attrs.clone());
+        // let eclog = EntryChangelog::new_without_schema(cid, self.attrs.clone());
+        let ecstate = EntryChangeState::new_without_schema(cid, &self.attrs);
         let uuid = self.get_uuid().unwrap_or_else(Uuid::new_v4);
         Entry {
-            valid: EntrySealed { uuid, eclog },
+            valid: EntrySealed { uuid, ecstate },
             state: EntryCommitted { id: 0 },
             attrs: self.attrs,
         }
@@ -571,12 +581,13 @@ impl Entry<EntryInit, EntryNew> {
     pub unsafe fn into_sealed_new(mut self) -> Entry<EntrySealed, EntryNew> {
         let cid = Cid::new_zero();
         self.set_last_changed(cid.clone());
-        let eclog = EntryChangelog::new_without_schema(cid, self.attrs.clone());
+        // let eclog = EntryChangelog::new_without_schema(cid, self.attrs.clone());
+        let ecstate = EntryChangeState::new_without_schema(cid, &self.attrs);
 
         Entry {
             valid: EntrySealed {
                 uuid: self.get_uuid().expect("Invalid uuid"),
-                eclog,
+                ecstate,
             },
             state: EntryNew,
             attrs: self.attrs,
@@ -634,7 +645,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             valid: EntryValid {
                 uuid,
                 cid: self.valid.cid,
-                eclog: self.valid.eclog,
+                ecstate: self.valid.ecstate,
             },
             state: self.state,
             attrs: self.attrs,
@@ -892,7 +903,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
             valid: EntryValid {
                 cid: self.valid.cid,
                 uuid,
-                eclog: self.valid.eclog,
+                ecstate: self.valid.ecstate,
             },
             state: EntryNew,
             attrs: self.attrs,
@@ -905,7 +916,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
         self.add_ava("class", Value::new_class("recycled"));
 
         // Last step before we proceed.
-        self.valid.eclog.recycled(&self.valid.cid);
+        self.valid.ecstate.recycled(&self.valid.cid);
 
         Entry {
             valid: self.valid,
@@ -920,7 +931,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
         self.remove_ava("class", &PVCLASS_RECYCLED);
 
         // Last step before we proceed.
-        self.valid.eclog.revive(&self.valid.cid);
+        self.valid.ecstate.revive(&self.valid.cid);
 
         Entry {
             valid: self.valid,
@@ -939,7 +950,7 @@ impl Entry<EntryInvalid, EntryNew> {
             valid: EntryValid {
                 cid: self.valid.cid,
                 uuid,
-                eclog: self.valid.eclog,
+                ecstate: self.valid.ecstate,
             },
             state: EntryNew,
             attrs: self.attrs,
@@ -952,7 +963,7 @@ impl Entry<EntryInvalid, EntryNew> {
         Entry {
             valid: EntrySealed {
                 uuid,
-                eclog: self.valid.eclog,
+                ecstate: self.valid.ecstate,
             },
             state: EntryCommitted { id: 0 },
             attrs: self.attrs,
@@ -984,7 +995,7 @@ impl Entry<EntryInvalid, EntryNew> {
             valid: EntryValid {
                 cid: self.valid.cid,
                 uuid,
-                eclog: self.valid.eclog,
+                ecstate: self.valid.ecstate,
             },
             state: EntryCommitted { id: 0 },
             attrs: self.attrs,
@@ -999,7 +1010,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
         Entry {
             valid: EntrySealed {
                 uuid,
-                eclog: self.valid.eclog,
+                ecstate: self.valid.ecstate,
             },
             state: self.state,
             attrs: self.attrs,
@@ -1059,9 +1070,11 @@ impl Entry<EntrySealed, EntryCommitted> {
         self
     }
 
+    /*
     pub fn get_changelog_mut(&mut self) -> &mut EntryChangelog {
         &mut self.valid.eclog
     }
+    */
 
     /// Insert a claim to this entry. This claim can NOT be persisted to disk, this is only
     /// used during a single Event session.
@@ -1535,10 +1548,11 @@ impl Entry<EntrySealed, EntryCommitted> {
             .and_then(|vs| vs.as_cid_set())
             .and_then(|set| set.iter().next().cloned())?;
 
-        let eclog = EntryChangelog::new_without_schema(cid, attrs.clone());
+        // let eclog = EntryChangelog::new_without_schema(cid, attrs.clone());
+        let ecstate = EntryChangeState::new_without_schema(cid, &attrs);
 
         Some(Entry {
-            valid: EntrySealed { uuid, eclog },
+            valid: EntrySealed { uuid, ecstate },
             state: EntryCommitted { id },
             attrs,
         })
@@ -1593,7 +1607,7 @@ impl Entry<EntrySealed, EntryCommitted> {
 
     /// Convert this recycled entry, into a tombstone ready for reaping.
     pub fn to_tombstone(&self, cid: Cid) -> Entry<EntryInvalid, EntryCommitted> {
-        let mut eclog = self.valid.eclog.clone();
+        let mut ecstate = self.valid.ecstate.clone();
         // Duplicate this to a tombstone entry
         let class_ava = vs_iutf8!["object", "tombstone"];
         let last_mod_ava = vs_cid![cid.clone()];
@@ -1605,22 +1619,23 @@ impl Entry<EntrySealed, EntryCommitted> {
         attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);
 
         // ⚠️  No return from this point!
-        eclog.tombstone(&cid, attrs_new.clone());
+        // Don't we actually need the full attr set? How to make this correct ...
+        ecstate.tombstone(&cid, &attrs_new);
 
         Entry {
-            valid: EntryInvalid { cid, eclog },
+            valid: EntryInvalid { cid, ecstate },
             state: self.state.clone(),
             attrs: attrs_new,
         }
     }
 
     /// Given a current transaction change identifier, mark this entry as valid and committed.
-    pub fn into_valid(self, cid: Cid, eclog: EntryChangelog) -> Entry<EntryValid, EntryCommitted> {
+    pub fn into_valid(self, cid: Cid, ecstate: EntryChangeState) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: EntryValid {
                 uuid: self.valid.uuid,
                 cid,
-                eclog,
+                ecstate,
             },
             state: self.state,
             attrs: self.attrs,
@@ -1633,17 +1648,17 @@ impl Entry<EntrySealed, EntryCommitted> {
         results: &mut Vec<Result<(), ConsistencyError>>,
     ) {
         self.valid
-            .eclog
+            .ecstate
             .verify(schema, &self.attrs, self.state.id, results);
     }
 }
 
 impl<STATE> Entry<EntryValid, STATE> {
-    pub fn invalidate(self, eclog: EntryChangelog) -> Entry<EntryInvalid, STATE> {
+    pub fn invalidate(self, ecstate: EntryChangeState) -> Entry<EntryInvalid, STATE> {
         Entry {
             valid: EntryInvalid {
                 cid: self.valid.cid,
-                eclog,
+                ecstate,
             },
             state: self.state,
             attrs: self.attrs,
@@ -1654,11 +1669,11 @@ impl<STATE> Entry<EntryValid, STATE> {
         let EntryValid {
             cid: _,
             uuid,
-            eclog,
+            ecstate,
         } = self.valid;
 
         Entry {
-            valid: EntrySealed { uuid, eclog },
+            valid: EntrySealed { uuid, ecstate },
             state: self.state,
             attrs: self.attrs,
         }
@@ -1677,7 +1692,7 @@ impl<STATE> Entry<EntrySealed, STATE> {
         Entry {
             valid: EntryInvalid {
                 cid,
-                eclog: self.valid.eclog,
+                ecstate: self.valid.ecstate,
             },
             state: self.state,
             attrs: self.attrs,
@@ -1688,8 +1703,14 @@ impl<STATE> Entry<EntrySealed, STATE> {
         self.valid.uuid
     }
 
+    /*
     pub fn get_changelog(&self) -> &EntryChangelog {
         &self.valid.eclog
+    }
+    */
+
+    pub fn get_changestate(&self) -> &EntryChangeState {
+        &self.valid.ecstate
     }
 
     #[cfg(test)]
@@ -1697,10 +1718,11 @@ impl<STATE> Entry<EntrySealed, STATE> {
         let cid = Cid::new_zero();
         self.set_last_changed(cid.clone());
 
-        let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
+        // let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
+        let ecstate = EntryChangeState::new_without_schema(cid.clone(), &self.attrs);
 
         Entry {
-            valid: EntryInvalid { cid, eclog },
+            valid: EntryInvalid { cid, ecstate },
             state: self.state,
             attrs: self.attrs,
         }
@@ -2349,16 +2371,22 @@ where
     // If this already exists, we silently drop the event. This is because
     // we need this to be *state* based where we assert presence.
     pub fn add_ava(&mut self, attr: &str, value: Value) {
+        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        /*
         self.valid
             .eclog
             .add_ava_iter(&self.valid.cid, attr, std::iter::once(value.clone()));
+        */
         self.add_ava_int(attr, value)
     }
 
     fn assert_ava(&mut self, attr: &str, value: &PartialValue) -> Result<(), OperationError> {
+        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        /*
         self.valid
             .eclog
             .assert_ava(&self.valid.cid, attr, value.clone());
+        */
         if self.attribute_equality(attr, value) {
             Ok(())
         } else {
@@ -2369,9 +2397,12 @@ where
     /// Remove an attribute-value pair from this entry. If the ava doesn't exist, we
     /// don't do anything else since we are asserting the absence of a value.
     pub(crate) fn remove_ava(&mut self, attr: &str, value: &PartialValue) {
+        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        /*
         self.valid
             .eclog
             .remove_ava_iter(&self.valid.cid, attr, std::iter::once(value.clone()));
+        */
 
         let rm = if let Some(vs) = self.attrs.get_mut(attr) {
             vs.remove(value);
@@ -2385,9 +2416,12 @@ where
     }
 
     pub(crate) fn remove_avas(&mut self, attr: &str, values: &BTreeSet<PartialValue>) {
+        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        /*
         self.valid
             .eclog
             .remove_ava_iter(&self.valid.cid, attr, values.iter().cloned());
+        */
 
         let rm = if let Some(vs) = self.attrs.get_mut(attr) {
             values.iter().for_each(|k| {
@@ -2405,13 +2439,15 @@ where
     /// Remove all values of this attribute from the entry. If it doesn't exist, this
     /// asserts that no content of that attribute exist.
     pub(crate) fn purge_ava(&mut self, attr: &str) {
-        self.valid.eclog.purge_ava(&self.valid.cid, attr);
+        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        // self.valid.eclog.purge_ava(&self.valid.cid, attr);
         self.attrs.remove(attr);
     }
 
     /// Remove all values of this attribute from the entry, and return their content.
     pub fn pop_ava(&mut self, attr: &str) -> Option<ValueSet> {
-        self.valid.eclog.purge_ava(&self.valid.cid, attr);
+        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        // self.valid.eclog.purge_ava(&self.valid.cid, attr);
         self.attrs.remove(attr)
     }
 
@@ -2421,18 +2457,24 @@ where
     where
         T: Clone + IntoIterator<Item = Value>,
     {
+        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        /*
         self.valid.eclog.purge_ava(&self.valid.cid, attr);
         self.valid
             .eclog
             .add_ava_iter(&self.valid.cid, attr, iter.clone());
+        */
         self.set_ava_int(attr, iter)
     }
 
     pub fn set_ava_set(&mut self, attr: &str, vs: ValueSet) {
+        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        /*
         self.valid.eclog.purge_ava(&self.valid.cid, attr);
         self.valid
             .eclog
             .add_ava_iter(&self.valid.cid, attr, vs.to_value_iter());
+        */
         self.attrs.insert(AttrString::from(attr), vs);
     }
 

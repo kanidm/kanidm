@@ -59,10 +59,10 @@ pub trait ReplicationUpdateVectorTransaction {
         for entry in entries {
             // The DB id we need.
             let eid = entry.get_id();
-            let eclog = entry.get_changelog();
+            let ecstate = entry.get_changestate();
             // We don't need the details of the change - only the cid of the
             // change that this entry was involved in.
-            for cid in eclog.cid_iter() {
+            for cid in ecstate.cid_iter() {
                 if let Some(idl) = check_ruv.get_mut(cid) {
                     // We can't guarantee id order, so we have to do this properly.
                     idl.insert_id(eid);
@@ -162,10 +162,10 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         for entry in entries {
             // The DB id we need.
             let eid = entry.get_id();
-            let eclog = entry.get_changelog();
+            let ecstate = entry.get_changestate();
             // We don't need the details of the change - only the cid of the
             // change that this entry was involved in.
-            for cid in eclog.cid_iter() {
+            for cid in ecstate.cid_iter() {
                 if let Some(idl) = rebuild_ruv.get_mut(cid) {
                     // We can't guarantee id order, so we have to do this properly.
                     idl.insert_id(eid);
