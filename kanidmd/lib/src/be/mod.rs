@@ -1080,12 +1080,22 @@ impl<'a> BackendWriteTransaction<'a> {
 
         // What entries are tombstones and ready to be deleted?
 
-        let tombstones: Vec<_> = entries
+        let (tombstones, leftover): (Vec<_>, Vec<_>) = entries
             .into_iter()
-            .filter(|e| e.mask_tombstone().is_none())
-            .collect();
+            .partition(|e| e.get_changestate().can_delete(cid));
 
         let ruv_idls = self.get_ruv().ruv_idls();
+
+        // Assert that anything leftover still either is *alive* OR is a tombstone
+        // and has entries in the RUV!
+
+        if !leftover
+            .iter()
+            .all(|e| e.get_changestate().is_live() || ruv_idls.contains(e.get_id()))
+        {
+            admin_error!("Left over entries may be orphaned due to missing RUV entries");
+            return Err(OperationError::ReplInvalidRUVState);
+        }
 
         // Now setup to reap_tombstones the tombstones. Remember, in the post cleanup, it's could
         // now have been trimmed to a point we can purge them!
@@ -1096,7 +1106,7 @@ impl<'a> BackendWriteTransaction<'a> {
         // Ensure nothing here exists in the RUV index, else it means
         // we didn't trim properly, or some other state violation has occurred.
         if !((&ruv_idls & &id_list).is_empty()) {
-            admin_error!("RUV still contains tombstone entries that are going to be removed.");
+            admin_error!("RUV still contains entries that are going to be removed.");
             return Err(OperationError::ReplInvalidRUVState);
         }
 

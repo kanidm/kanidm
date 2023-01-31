@@ -516,7 +516,7 @@ impl Entry<EntryInit, EntryNew> {
          * the create transition.
          */
         // let eclog = EntryChangelog::new(cid.clone(), self.attrs.clone(), schema);
-        let ecstate = EntryChangeState::new(cid.clone(), &self.attrs, schema);
+        let ecstate = EntryChangeState::new(&cid, &self.attrs, schema);
 
         Entry {
             valid: EntryInvalid { cid, ecstate },
@@ -536,7 +536,7 @@ impl Entry<EntryInit, EntryNew> {
         self.set_last_changed(cid.clone());
 
         // let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
-        let ecstate = EntryChangeState::new_without_schema(cid.clone(), &self.attrs);
+        let ecstate = EntryChangeState::new_without_schema(&cid, &self.attrs);
 
         Entry {
             valid: EntryInvalid { cid, ecstate },
@@ -550,7 +550,7 @@ impl Entry<EntryInit, EntryNew> {
         let cid = Cid::new_zero();
         self.set_last_changed(cid.clone());
         // let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
-        let ecstate = EntryChangeState::new_without_schema(cid.clone(), &self.attrs);
+        let ecstate = EntryChangeState::new_without_schema(&cid, &self.attrs);
 
         Entry {
             valid: EntryValid {
@@ -568,7 +568,7 @@ impl Entry<EntryInit, EntryNew> {
         let cid = Cid::new_zero();
         self.set_last_changed(cid.clone());
         // let eclog = EntryChangelog::new_without_schema(cid, self.attrs.clone());
-        let ecstate = EntryChangeState::new_without_schema(cid, &self.attrs);
+        let ecstate = EntryChangeState::new_without_schema(&cid, &self.attrs);
         let uuid = self.get_uuid().unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntrySealed { uuid, ecstate },
@@ -582,7 +582,7 @@ impl Entry<EntryInit, EntryNew> {
         let cid = Cid::new_zero();
         self.set_last_changed(cid.clone());
         // let eclog = EntryChangelog::new_without_schema(cid, self.attrs.clone());
-        let ecstate = EntryChangeState::new_without_schema(cid, &self.attrs);
+        let ecstate = EntryChangeState::new_without_schema(&cid, &self.attrs);
 
         Entry {
             valid: EntrySealed {
@@ -915,8 +915,8 @@ impl Entry<EntryInvalid, EntryCommitted> {
         // This will put the modify ahead of the recycle transition.
         self.add_ava("class", Value::new_class("recycled"));
 
-        // Last step before we proceed.
-        self.valid.ecstate.recycled(&self.valid.cid);
+        // Change state repl doesn't need this flag
+        // self.valid.ecstate.recycled(&self.valid.cid);
 
         Entry {
             valid: self.valid,
@@ -930,8 +930,8 @@ impl Entry<EntryInvalid, EntryCommitted> {
         // This will put the modify ahead of the revive transition.
         self.remove_ava("class", &PVCLASS_RECYCLED);
 
-        // Last step before we proceed.
-        self.valid.ecstate.revive(&self.valid.cid);
+        // Change state repl doesn't need this flag
+        // self.valid.ecstate.revive(&self.valid.cid);
 
         Entry {
             valid: self.valid,
@@ -1549,7 +1549,7 @@ impl Entry<EntrySealed, EntryCommitted> {
             .and_then(|set| set.iter().next().cloned())?;
 
         // let eclog = EntryChangelog::new_without_schema(cid, attrs.clone());
-        let ecstate = EntryChangeState::new_without_schema(cid, &attrs);
+        let ecstate = EntryChangeState::new_without_schema(&cid, &attrs);
 
         Some(Entry {
             valid: EntrySealed { uuid, ecstate },
@@ -1609,18 +1609,17 @@ impl Entry<EntrySealed, EntryCommitted> {
     pub fn to_tombstone(&self, cid: Cid) -> Entry<EntryInvalid, EntryCommitted> {
         let mut ecstate = self.valid.ecstate.clone();
         // Duplicate this to a tombstone entry
+        let mut attrs_new: Eattrs = Map::new();
+
         let class_ava = vs_iutf8!["object", "tombstone"];
         let last_mod_ava = vs_cid![cid.clone()];
-
-        let mut attrs_new: Eattrs = Map::new();
 
         attrs_new.insert(AttrString::from("uuid"), vs_uuid![self.get_uuid()]);
         attrs_new.insert(AttrString::from("class"), class_ava);
         attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);
 
         // ⚠️  No return from this point!
-        // Don't we actually need the full attr set? How to make this correct ...
-        ecstate.tombstone(&cid, &attrs_new);
+        ecstate.tombstone(&cid);
 
         Entry {
             valid: EntryInvalid { cid, ecstate },
@@ -1723,7 +1722,7 @@ impl<STATE> Entry<EntrySealed, STATE> {
         self.set_last_changed(cid.clone());
 
         // let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
-        let ecstate = EntryChangeState::new_without_schema(cid.clone(), &self.attrs);
+        let ecstate = EntryChangeState::new_without_schema(&cid, &self.attrs);
 
         Entry {
             valid: EntryInvalid { cid, ecstate },

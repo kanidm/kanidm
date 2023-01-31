@@ -4,53 +4,111 @@ use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 // use crate::valueset;
 
+use std::collections::BTreeMap;
+
 #[derive(Debug, Clone)]
-pub struct EntryChangeState {}
+enum State {
+    Live { changes: BTreeMap<AttrString, Cid> },
+    Tombstone { at: Cid },
+}
+
+#[derive(Debug, Clone)]
+pub struct EntryChangeState {
+    st: State,
+}
 
 impl EntryChangeState {
-    pub fn new(_cid: Cid, _attrs: &Eattrs, _schema: &dyn SchemaTransaction) -> Self {
-        todo!();
+    pub fn new(cid: &Cid, attrs: &Eattrs, _schema: &dyn SchemaTransaction) -> Self {
+        let changes = attrs
+            .keys()
+            .cloned()
+            .map(|attr| (attr, cid.clone()))
+            .collect();
+
+        let st = State::Live { changes };
+
+        EntryChangeState { st }
     }
 
-    pub fn new_without_schema(_cid: Cid, _attrs: &Eattrs) -> Self {
-        todo!();
-    }
+    pub fn new_without_schema(cid: &Cid, attrs: &Eattrs) -> Self {
+        let class = attrs.get("class");
+        let st = if class
+            .as_ref()
+            .map(|c| c.contains(&PVCLASS_TOMBSTONE as &PartialValue))
+            .unwrap_or(false)
+        {
+            State::Tombstone { at: cid.clone() }
+        } else {
+            let changes = attrs
+                .keys()
+                .cloned()
+                .map(|attr| (attr, cid.clone()))
+                .collect();
 
-    pub fn change_ava(&mut self, _cid: &Cid, _attr: &str) {
-        todo!();
-    }
-
-    pub fn recycled(&mut self, _cid: &Cid) {
-        todo!();
-    }
-
-    pub fn revive(&mut self, _cid: &Cid) {
-        todo!();
-    }
-
-    pub fn tombstone(&mut self, _cid: &Cid, _attrs: &Eattrs) {
-        todo!();
-    }
-
-    pub fn contains_tail_cid(&self, _cid: &Cid) -> bool {
-        todo!();
-        /*
-        if let Some(tail_cid) = self.changes.keys().next_back() {
-            if tail_cid == cid {
-                return true;
-            }
+            State::Live { changes }
         };
-        false
-        */
+
+        EntryChangeState { st }
     }
 
-    pub fn cid_iter(&self) -> impl Iterator<Item = &Cid> {
-        // self.changes.keys()
-        None.iter()
+    pub fn change_ava(&mut self, cid: &Cid, attr: &str) {
+        match &mut self.st {
+            State::Live { ref mut changes } => {
+                if let Some(change) = changes.get_mut(attr) {
+                    // Update the cid.
+                    if change != cid {
+                        *change = cid.clone()
+                    }
+                } else {
+                    changes.insert(attr.into(), cid.clone());
+                }
+            }
+            State::Tombstone { .. } => {
+                assert!(false)
+            }
+        }
+    }
+
+    pub fn tombstone(&mut self, cid: &Cid) {
+        match &mut self.st {
+            State::Live { changes: _ } => self.st = State::Tombstone { at: cid.clone() },
+            State::Tombstone { .. } => {} // no-op
+        };
+    }
+
+    pub fn can_delete(&self, cid: &Cid) -> bool {
+        match &self.st {
+            State::Live { .. } => false,
+            State::Tombstone { at } => at < cid,
+        }
     }
 
     pub fn is_live(&self) -> bool {
-        todo!()
+        match &self.st {
+            State::Live { .. } => true,
+            State::Tombstone { .. } => false,
+        }
+    }
+
+    pub fn contains_tail_cid(&self, cid: &Cid) -> bool {
+        // This is slow? Is it needed?
+        match &self.st {
+            State::Live { changes } => changes.values().any(|change| change == cid),
+            State::Tombstone { at } => at == cid,
+        }
+    }
+
+    pub fn cid_iter(&self) -> Vec<&Cid> {
+        // Not deduped, not ordered!
+        match &self.st {
+            State::Live { changes } => {
+                let mut v: Vec<_> = changes.values().collect();
+                v.sort_unstable();
+                v.dedup();
+                v
+            }
+            State::Tombstone { at } => vec![&at],
+        }
     }
 
     #[instrument(level = "trace", name = "verify", skip_all)]

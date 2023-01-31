@@ -9,6 +9,7 @@ use kanidm_proto::v1::ConsistencyError;
 
 use crate::prelude::*;
 use crate::repl::cid::Cid;
+use std::fmt;
 
 pub struct ReplicationUpdateVector {
     // This sorts by time. Should we look up by IDL or by UUID?
@@ -40,6 +41,15 @@ impl ReplicationUpdateVector {
 
 pub struct ReplicationUpdateVectorWriteTransaction<'a> {
     data: BptreeMapWriteTxn<'a, Cid, IDLBitRange>,
+}
+
+impl<'a> fmt::Debug for ReplicationUpdateVectorWriteTransaction<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "RUV DUMP")?;
+        self.data
+            .iter()
+            .try_for_each(|(cid, idl)| writeln!(f, "* [{} {:?}]", cid, idl))
+    }
 }
 
 pub struct ReplicationUpdateVectorReadTransaction<'a> {

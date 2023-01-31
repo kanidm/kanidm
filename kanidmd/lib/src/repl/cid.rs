@@ -15,7 +15,13 @@ pub struct Cid {
 
 impl fmt::Display for Cid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}-{}-{}", self.ts.as_nanos(), self.d_uuid, self.s_uuid)
+        write!(
+            f,
+            "{}--{}--{}",
+            self.ts.as_nanos(),
+            self.d_uuid,
+            self.s_uuid
+        )
     }
 }
 
