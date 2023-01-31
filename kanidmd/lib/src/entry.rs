@@ -1630,7 +1630,11 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     /// Given a current transaction change identifier, mark this entry as valid and committed.
-    pub fn into_valid(self, cid: Cid, ecstate: EntryChangeState) -> Entry<EntryValid, EntryCommitted> {
+    pub fn into_valid(
+        self,
+        cid: Cid,
+        ecstate: EntryChangeState,
+    ) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: EntryValid {
                 uuid: self.valid.uuid,

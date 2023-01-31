@@ -1,13 +1,11 @@
-use crate::prelude::*;
 use super::cid::Cid;
 use crate::entry::Eattrs;
+use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 // use crate::valueset;
 
 #[derive(Debug, Clone)]
-pub struct EntryChangeState {
-
-}
+pub struct EntryChangeState {}
 
 impl EntryChangeState {
     pub fn new(_cid: Cid, _attrs: &Eattrs, _schema: &dyn SchemaTransaction) -> Self {
@@ -55,11 +53,7 @@ impl EntryChangeState {
         todo!()
     }
 
-    #[instrument(
-        level = "trace",
-        name = "verify",
-        skip_all
-    )]
+    #[instrument(level = "trace", name = "verify", skip_all)]
     pub fn verify(
         &self,
         _schema: &dyn SchemaTransaction,
