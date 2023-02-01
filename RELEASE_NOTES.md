@@ -14,6 +14,37 @@ report it to our [issue tracker].
 
 # Release Notes
 
+## 2023-02-01 - Kanidm 1.1.0-alpha11
+
+This is the eleventh alpha series release of the Kanidm Identity Management project. Alpha releases are
+to help get feedback and ideas from the community on how we can continue to make this project better
+for a future supported release.
+
+The project is shaping up very nicely, and a beta will be coming soon! The main reason we haven't done
+so yet is we haven't decided if we want to commit to the current API layout and freeze it yet. There
+are still things we want to change there. Otherwise the server is stable and reliable.
+
+### Release Highlights
+
+- Support /etc/skel home dir templates in kanidm-unixd
+- Improve warning messages for openssl when a cryptographic routine is not supported
+- Support windows for server tests
+- Add a kanidm tools container
+- Initial support for live sync/import of users and groups from FreeIPA
+- Oauth2 session logout and global logout support
+- UI polish based on hint flags to dynamically enable/disable elements
+- Oauth2 single sign on application portal
+- Support dn=token for ldap client binds
+- Trap more signals for daemons
+- Mail read permission group
+- Oauth2 add a groups claim
+- LDAP support for mail primary and alternate address selectors in queries
+- Fix handling of virtual attrs with '\*' searches in ldap
+- Support multiple TOTP on accounts
+- Add kanidmd healthcheck for containers
+- Improve the access control module to evaluate access in a clearer way
+- Allow synced users to correct modify their local sessions
+
 ## 2022-11-01 - Kanidm 1.1.0-alpha10
 
 This is the tenth alpha series release of the Kanidm Identity Management project. Alpha releases are

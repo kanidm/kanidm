@@ -25,12 +25,12 @@ members = [
 ]
 
 [workspace.package]
-version = "1.1.0-alpha.11-dev"
+version = "1.1.0-alpha.11"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
     ]
-rust-version = "1.64"
+rust-version = "1.66"
 edition = "2021"
 license = "MPL-2.0"
 homepage = "https://github.com/kanidm/kanidm/"

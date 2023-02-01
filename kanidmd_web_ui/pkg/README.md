@@ -99,7 +99,9 @@ of resource overhead and difficulty for administration.
 
 Kanidm aims to have the features richness of FreeIPA, but without the resource and administration
 overheads. If you want a complete IDM package, but in a lighter footprint and easier to manage, then
-Kanidm is probably for you.
+Kanidm is probably for you. In testing with 3000 users + 1500 groups, Kanidm is 3 times faster for
+search operations and 5 times faster for modification and addition of entries (your results may
+differ however, but generally Kanidm is much faster than FreeIPA).
 
 ## Developer Getting Started
 
