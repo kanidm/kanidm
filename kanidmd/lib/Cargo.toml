@@ -24,7 +24,7 @@ async-std.workspace = true
 async-trait.workspace = true
 base64.workspace = true
 base64urlsafedata.workspace = true
-compact_jwt.workspace = true
+compact_jwt = { workspace = true, features = ["openssl"] }
 concread.workspace = true
 dyn-clone.workspace = true
 fernet = { workspace = true, features = ["fernet_danger_timestamps"] }

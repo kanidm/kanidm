@@ -57,7 +57,8 @@ cargo install cargo-outdated
 ### Docker
 
 - [ ] docker buildx use cluster
-- [ ] `make buildx/kanidmd/x86_64_v3 buildx/kanidmd buildx/radiusd`
+- [ ] `make buildx/kanidmd/x86_64_v3 buildx/kanidmd buildx/kanidm_tools buildx/radiusd`
+- [ ] `IMAGE_VERSION=latest make buildx/kanidmd/x86_64_v3 buildx/kanidmd buildx/kanidm_tools buildx/radiusd`
 - [ ] Update the readme on docker https://hub.docker.com/repository/docker/kanidm/server
 
 ### Distro
@@ -71,4 +72,3 @@ cargo install cargo-outdated
 - [ ] git branch YYYYMMDD-dev-version
 - [ ] update version in ./kanidmd\_web\_ui/Cargo.toml
 - [ ] update version in ./Cargo.toml
-- [ ] build wasm components with debug profile

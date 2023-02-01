@@ -25,7 +25,7 @@ members = [
 ]
 
 [workspace.package]
-version = "1.1.0-alpha.11"
+version = "1.1.0-alpha.12-dev"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
@@ -47,7 +47,7 @@ clap = { version = "^3.2", features = ["derive"] }
 clap_complete = "^3.2.5"
 # Forced by saffron/cron
 chrono = "^0.4.23"
-compact_jwt = "^0.2.3"
+compact_jwt = { version = "^0.2.3", default-features = false }
 # compact_jwt = { path = "../compact_jwt" }
 concread = "^0.4.1"
 # concread = { path = "../concread" }

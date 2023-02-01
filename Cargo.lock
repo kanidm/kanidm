@@ -1161,7 +1161,7 @@ dependencies = [
 
 [[package]]
 name = "daemon"
-version = "1.1.0-alpha.11"
+version = "1.1.0-alpha.12-dev"
 dependencies = [
  "clap",
  "clap_complete",
@@ -2250,7 +2250,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm-ipa-sync"
-version = "1.1.0-alpha.11"
+version = "1.1.0-alpha.12-dev"
 dependencies = [
  "base64urlsafedata",
  "chrono",
@@ -2274,7 +2274,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_client"
-version = "1.1.0-alpha.11"
+version = "1.1.0-alpha.12-dev"
 dependencies = [
  "kanidm_proto",
  "reqwest",
@@ -2291,7 +2291,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_proto"
-version = "1.1.0-alpha.11"
+version = "1.1.0-alpha.12-dev"
 dependencies = [
  "base32",
  "base64urlsafedata",
@@ -2310,7 +2310,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_tools"
-version = "1.1.0-alpha.11"
+version = "1.1.0-alpha.12-dev"
 dependencies = [
  "clap",
  "clap_complete",
@@ -2337,7 +2337,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_unix_int"
-version = "1.1.0-alpha.11"
+version = "1.1.0-alpha.12-dev"
 dependencies = [
  "bytes",
  "clap",
@@ -2369,7 +2369,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_core"
-version = "1.1.0-alpha.11"
+version = "1.1.0-alpha.12-dev"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2402,7 +2402,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_lib"
-version = "1.1.0-alpha.11"
+version = "1.1.0-alpha.12-dev"
 dependencies = [
  "async-std",
  "async-trait",
@@ -2471,7 +2471,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_testkit"
-version = "1.1.0-alpha.11"
+version = "1.1.0-alpha.12-dev"
 dependencies = [
  "compact_jwt",
  "futures",
@@ -2493,7 +2493,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_web_ui"
-version = "1.1.0-alpha.11"
+version = "1.1.0-alpha.12-dev"
 dependencies = [
  "compact_jwt",
  "gloo",
@@ -2884,7 +2884,7 @@ dependencies = [
 
 [[package]]
 name = "nss_kanidm"
-version = "1.1.0-alpha.11"
+version = "1.1.0-alpha.12-dev"
 dependencies = [
  "kanidm_unix_int",
  "lazy_static",
@@ -3091,7 +3091,7 @@ dependencies = [
 
 [[package]]
 name = "orca"
-version = "1.1.0-alpha.11"
+version = "1.1.0-alpha.12-dev"
 dependencies = [
  "clap",
  "crossbeam",
@@ -3131,7 +3131,7 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
 name = "pam_kanidm"
-version = "1.1.0-alpha.11"
+version = "1.1.0-alpha.12-dev"
 dependencies = [
  "kanidm_unix_int",
  "libc",
@@ -3420,7 +3420,7 @@ dependencies = [
 
 [[package]]
 name = "profiles"
-version = "1.1.0-alpha.11"
+version = "1.1.0-alpha.12-dev"
 dependencies = [
  "base64 0.13.1",
  "serde",
@@ -4126,7 +4126,7 @@ dependencies = [
 
 [[package]]
 name = "sketching"
-version = "1.1.0-alpha.11"
+version = "1.1.0-alpha.12-dev"
 dependencies = [
  "async-trait",
  "num_enum",
