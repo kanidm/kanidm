@@ -27,7 +27,7 @@ path = "src/ssh_authorizedkeys.rs"
 
 [dependencies]
 clap = { workspace = true, features = ["derive", "env"] }
-compact_jwt.workspace = true
+compact_jwt = { workspace = true, features = ["openssl"] }
 dialoguer.workspace = true
 futures-concurrency.workspace = true
 libc.workspace = true

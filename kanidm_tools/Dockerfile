@@ -42,8 +42,15 @@ RUN if [ -z "${KANIDM_FEATURES}" ]; then \
   cargo build -p kanidm_tools ${KANIDM_BUILD_OPTIONS} \
     --target-dir="/usr/src/kanidm/target/" \
     --release; \
+  cargo build -p kanidm-ipa-sync ${KANIDM_BUILD_OPTIONS} \
+    --target-dir="/usr/src/kanidm/target/" \
+    --release; \
 else \
   cargo build -p kanidm_tools ${KANIDM_BUILD_OPTIONS} \
+    --target-dir="/usr/src/kanidm/target/" \
+    --features="${KANIDM_FEATURES}" \
+    --release; \
+  cargo build -p kanidm-ipa-sync ${KANIDM_BUILD_OPTIONS} \
     --target-dir="/usr/src/kanidm/target/" \
     --features="${KANIDM_FEATURES}" \
     --release; \
