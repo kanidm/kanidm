@@ -1,3 +1,4 @@
+# Build the main Kanidmd server
 ARG BASE_IMAGE=opensuse/tumbleweed:latest
 FROM ${BASE_IMAGE} AS repos
 RUN zypper refresh --force
@@ -5,56 +6,59 @@ RUN zypper dup -y
 
 # ======================
 FROM repos AS builder
+ARG KANIDM_FEATURES
+ARG KANIDM_BUILD_PROFILE="container_generic"
+ARG KANIDM_BUILD_OPTIONS=""
 
-RUN zypper install -y \
+RUN echo Profile $KANIDM_BUILD_PROFILE
+RUN echo Features $KANIDM_FEATURES
+
+RUN zypper install -y --no-recommends \
         rustup \
-        wasm-pack \
-        clang lld \
+        clang \
         make automake autoconf \
-        libopenssl-devel pam-devel \
+        libopenssl-3-devel pam-devel \
         sqlite3-devel \
-        gcc \
         rsync \
         findutils \
-        which
+        which \
+        mold
+# wasm-pack \
+# lld
+
 RUN zypper clean -a
 RUN rustup default stable
 
 COPY . /usr/src/kanidm
 
-ARG KANIDM_FEATURES
-ARG KANIDM_BUILD_PROFILE="container_generic"
-ARG KANIDM_BUILD_OPTIONS=""
-
-RUN mkdir /scratch
-RUN echo $KANIDM_BUILD_PROFILE
-RUN echo $KANIDM_FEATURES
-
-ENV CARGO_HOME=/scratch/.cargo
+RUN mkdir -p /usr/src/kanidm/.cargo
+RUN cp /usr/src/kanidm/cargo_vendor_config /usr/src/kanidm/.cargo/config.toml
 
 # ======================
 
-WORKDIR /usr/src/kanidm/kanidmd_web_ui
+# WORKDIR /usr/src/kanidm/kanidmd_web_ui
 # # This can't be used in the wasm build for now.
 # # ENV RUSTFLAGS="-Clinker=clang"
-RUN ./build_wasm.sh
+# RUN ./build_wasm.sh
 
 # ======================
 
 WORKDIR /usr/src/kanidm/kanidmd/daemon
 
 # Set the build profile
-ENV KANIDM_BUILD_PROFILE="${KANIDM_BUILD_PROFILE}"
-ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.lld"
+ENV KANIDM_BUILD_PROFILE=${KANIDM_BUILD_PROFILE:-container_generic}
+ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.mold"
 
 # Exports don't persist through RUN statements.
 RUN export CC="/usr/bin/clang"; \
 if [ -z "${KANIDM_FEATURES}" ]; then \
   cargo build -p daemon ${KANIDM_BUILD_OPTIONS} \
+    --locked --offline \
     --target-dir="/usr/src/kanidm/target/" \
     --release; \
 else \
   cargo build -p daemon ${KANIDM_BUILD_OPTIONS} \
+    --locked --offline \
     --target-dir="/usr/src/kanidm/target/" \
     --features="${KANIDM_FEATURES}" \
     --release; \
@@ -68,6 +72,7 @@ FROM repos
 
 RUN zypper install -y \
         timezone \
+        openssl-3 \
         sqlite3 \
         pam
 RUN zypper clean -a

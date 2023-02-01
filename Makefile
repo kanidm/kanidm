@@ -15,7 +15,7 @@ help:
 
 .PHONY: buildx/kanidmd/x86_64_v3
 buildx/kanidmd/x86_64_v3: ## build multiarch server images
-buildx/kanidmd/x86_64_v3:
+buildx/kanidmd/x86_64_v3: vendor
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) --pull --push --platform "linux/amd64/v3" \
 		-f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:x86_64_$(IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_x86_64_v3" \
@@ -25,7 +25,7 @@ buildx/kanidmd/x86_64_v3:
 
 .PHONY: buildx/kanidmd
 buildx/kanidmd: ## Build multiarch kanidm server images and push to docker hub
-buildx/kanidmd:
+buildx/kanidmd: vendor
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f kanidmd/Dockerfile \
@@ -37,7 +37,7 @@ buildx/kanidmd:
 
 .PHONY: buildx/kanidm_tools
 buildx/kanidm_tools: ## Build multiarch kanidm tool images and push to docker hub
-buildx/kanidm_tools:
+buildx/kanidm_tools: vendor
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f kanidm_tools/Dockerfile \
@@ -103,7 +103,7 @@ precommit: test codespell test/pykanidm doc/format
 
 .PHONY: vendor
 vendor:
-	cargo vendor
+	cargo vendor > cargo_vendor_config
 
 .PHONY: vendor-prep
 vendor-prep: vendor
