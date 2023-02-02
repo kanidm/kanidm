@@ -250,6 +250,7 @@ pub enum OperationError {
     ReplReplayFailure,
     ReplEntryNotChanged,
     ReplInvalidRUVState,
+    ReplDomainLevelUnsatisfiable,
 }
 
 impl PartialEq for OperationError {

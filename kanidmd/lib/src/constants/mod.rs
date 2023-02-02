@@ -39,13 +39,15 @@ pub const SYSTEM_INDEX_VERSION: i64 = 28;
  * who don't muck with the levels, but it means that we can do mixed version
  * upgrades.
  */
-pub const DOMAIN_LEVEL_1: u32 = 1;
+pub type DomainVersion = u32;
+
+pub const DOMAIN_LEVEL_1: DomainVersion = 1;
 // The minimum supported domain functional level
-pub const DOMAIN_MIN_LEVEL: u32 = DOMAIN_LEVEL_1;
+pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_LEVEL_1;
 // The target supported domain functional level
-pub const DOMAIN_TGT_LEVEL: u32 = DOMAIN_LEVEL_1;
+pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_1;
 // The maximum supported domain functional level
-pub const DOMAIN_MAX_LEVEL: u32 = DOMAIN_LEVEL_1;
+pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_1;
 
 // On test builds, define to 60 seconds
 #[cfg(test)]

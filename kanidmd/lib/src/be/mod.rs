@@ -1605,6 +1605,12 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(nsid)
     }
 
+    /// Manually set a new domain UUID and store it into the DB. This is used
+    /// as part of a replication refresh.
+    pub fn set_db_d_uuid(&mut self, nsid: Uuid) -> Result<(), OperationError> {
+        self.get_idlayer().write_db_d_uuid(nsid)
+    }
+
     /// This pulls the domain UUID from the database
     pub fn get_db_d_uuid(&mut self) -> Uuid {
         #[allow(clippy::expect_used)]

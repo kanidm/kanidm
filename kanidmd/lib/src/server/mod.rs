@@ -56,17 +56,18 @@ enum ServerPhase {
 }
 
 #[derive(Debug, Clone)]
-struct DomainInfo {
-    d_uuid: Uuid,
-    d_name: String,
-    d_display: String,
+pub struct DomainInfo {
+    pub(crate) d_uuid: Uuid,
+    pub(crate) d_name: String,
+    pub(crate) d_display: String,
+    pub(crate) d_vers: DomainVersion,
 }
 
 #[derive(Clone)]
 pub struct QueryServer {
     phase: Arc<CowCell<ServerPhase>>,
     s_uuid: Uuid,
-    d_info: Arc<CowCell<DomainInfo>>,
+    pub(crate) d_info: Arc<CowCell<DomainInfo>>,
     be: Backend,
     schema: Arc<Schema>,
     accesscontrols: Arc<AccessControls>,
@@ -81,7 +82,7 @@ pub struct QueryServerReadTransaction<'a> {
     be_txn: BackendReadTransaction<'a>,
     // Anything else? In the future, we'll need to have a schema transaction
     // type, maybe others?
-    d_info: CowCellReadTxn<DomainInfo>,
+    pub(crate) d_info: CowCellReadTxn<DomainInfo>,
     schema: SchemaReadTransaction,
     accesscontrols: AccessControlsReadTransaction<'a>,
     _db_ticket: SemaphorePermit<'a>,
@@ -99,18 +100,18 @@ pub struct QueryServerWriteTransaction<'a> {
     d_info: CowCellWriteTxn<'a, DomainInfo>,
     curtime: Duration,
     cid: Cid,
-    be_txn: BackendWriteTransaction<'a>,
+    pub(crate) be_txn: BackendWriteTransaction<'a>,
     schema: SchemaWriteTransaction<'a>,
     accesscontrols: AccessControlsWriteTransaction<'a>,
     // We store a set of flags that indicate we need a reload of
     // schema or acp, which is tested by checking the classes of the
     // changing content.
-    changed_schema: bool,
-    changed_acp: bool,
-    changed_oauth2: bool,
-    changed_domain: bool,
+    pub(crate) changed_schema: bool,
+    pub(crate) changed_acp: bool,
+    pub(crate) changed_oauth2: bool,
+    pub(crate) changed_domain: bool,
     // Store the list of changed uuids for other invalidation needs?
-    changed_uuid: HashSet<Uuid>,
+    pub(crate) changed_uuid: HashSet<Uuid>,
     _db_ticket: SemaphorePermit<'a>,
     _write_ticket: SemaphorePermit<'a>,
     resolve_filter_cache:
@@ -926,6 +927,9 @@ impl QueryServer {
 
         let d_info = Arc::new(CowCell::new(DomainInfo {
             d_uuid,
+            // Start with our minimum supported level.
+            // This will be reloaded from the DB shortly :)
+            d_vers: DOMAIN_MIN_LEVEL,
             d_name: domain_name.clone(),
             // we set the domain_display_name to the configuration file's domain_name
             // here because the database is not started, so we cannot pull it from there.
@@ -1054,7 +1058,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     #[instrument(level = "debug", name = "reload_schema", skip(self))]
-    fn reload_schema(&mut self) -> Result<(), OperationError> {
+    pub(crate) fn reload_schema(&mut self) -> Result<(), OperationError> {
         // supply entries to the writable schema to reload from.
         // find all attributes.
         let filt = filter!(f_eq("class", PVCLASS_ATTRIBUTETYPE.clone()));
@@ -1266,7 +1270,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     /// Pulls the domain name from the database and updates the DomainInfo data in memory
     #[instrument(level = "debug", skip_all)]
-    fn reload_domain_info(&mut self) -> Result<(), OperationError> {
+    pub(crate) fn reload_domain_info(&mut self) -> Result<(), OperationError> {
         let domain_name = self.get_db_domain_name()?;
         let display_name = self.get_db_domain_display_name()?;
         let mut_d_info = self.d_info.get_mut();
@@ -1401,23 +1405,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Write the cid to the db. If this fails, we can't assume replication
         // will be stable, so return if it fails.
         be_txn.set_db_ts_max(cid.ts)?;
-        // Validate the schema as we just loaded it.
-        let r = schema.validate();
 
-        if r.is_empty() {
-            // Schema has been validated, so we can go ahead and commit it with the be
-            // because both are consistent.
-            schema
-                .commit()
-                .map(|_| d_info.commit())
-                .map(|_| phase.commit())
-                .map(|_| dyngroup_cache.commit())
-                .and_then(|_| accesscontrols.commit())
-                .and_then(|_| be_txn.commit())
-        } else {
-            Err(OperationError::ConsistencyError(r))
-        }
-        // Audit done
+        // Point of no return - everything has been validated and reloaded.
+        //
+        // = Lets commit =
+
+        schema
+            .commit()
+            .map(|_| d_info.commit())
+            .map(|_| phase.commit())
+            .map(|_| dyngroup_cache.commit())
+            .and_then(|_| accesscontrols.commit())
+            .and_then(|_| be_txn.commit())
     }
 }
 

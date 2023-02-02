@@ -103,6 +103,10 @@ impl QueryServer {
             ts_write_3.commit()
         })?;
 
+        // Here is where in the future we will need to apply domain version increments.
+        // The actually migrations are done in a transaction though, this just needs to
+        // bump the version in it's own transaction.
+
         admin_debug!("Database version check and migrations success! ☀️  ");
         Ok(())
     }
