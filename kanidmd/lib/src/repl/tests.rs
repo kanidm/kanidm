@@ -18,9 +18,18 @@ async fn test_repl_refresh_basic(server_a: &QueryServer, server_b: &QueryServer)
     // Apply it to the server
     assert!(server_a_txn
         .consumer_apply_refresh(&refresh_context)
+        .and_then(|_| server_a_txn.commit())
         .is_ok());
 
     // Verify the content of server_a and server_b are identical.
+    let _server_a_txn = server_a.read().await;
+
+    // Need same d_uuid
+    // Same d_vers / domain info.
+    // Same system info
+
+    // Check the admin account details?
+    //     can we go over all entries?
 
     // Both servers will be post-test validated.
 }
