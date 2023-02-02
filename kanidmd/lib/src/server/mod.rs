@@ -1009,7 +1009,7 @@ impl QueryServer {
         let ts_max = be_txn
             .get_db_ts_max(curtime)
             .expect("Unable to get db_ts_max");
-        let cid = Cid::new_lamport(self.s_uuid, d_info.d_uuid, curtime, &ts_max);
+        let cid = Cid::new_lamport(self.s_uuid, curtime, &ts_max);
 
         QueryServerWriteTransaction {
             // I think this is *not* needed, because commit is mut self which should

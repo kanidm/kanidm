@@ -26,7 +26,6 @@ impl ValueSetCid {
         let set = data
             .into_iter()
             .map(|dc| Cid {
-                d_uuid: dc.domain_id,
                 s_uuid: dc.server_id,
                 ts: dc.timestamp,
             })
@@ -105,11 +104,7 @@ impl ValueSetT for ValueSetCid {
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(
-            self.set
-                .iter()
-                .map(|c| format!("{:?}_{}_{}", c.ts, c.d_uuid, c.s_uuid)),
-        )
+        Box::new(self.set.iter().map(|c| format!("{:?}_{}", c.ts, c.s_uuid)))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -117,7 +112,6 @@ impl ValueSetT for ValueSetCid {
             self.set
                 .iter()
                 .map(|c| DbCidV1 {
-                    domain_id: c.d_uuid,
                     server_id: c.s_uuid,
                     timestamp: c.ts,
                 })

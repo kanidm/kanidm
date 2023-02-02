@@ -9,35 +9,28 @@ use serde::{Deserialize, Serialize};
 pub struct Cid {
     // Mental note: Derive ord always checks in order of struct fields.
     pub ts: Duration,
-    pub d_uuid: Uuid,
     pub s_uuid: Uuid,
 }
 
 impl fmt::Display for Cid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}--{}--{}",
-            self.ts.as_nanos(),
-            self.d_uuid,
-            self.s_uuid
-        )
+        write!(f, "{:032}-{}", self.ts.as_nanos(), self.s_uuid)
     }
 }
 
 impl Cid {
     #[cfg(test)]
-    pub(crate) fn new(d_uuid: Uuid, s_uuid: Uuid, ts: Duration) -> Self {
-        Cid { d_uuid, s_uuid, ts }
+    pub(crate) fn new(s_uuid: Uuid, ts: Duration) -> Self {
+        Cid { s_uuid, ts }
     }
 
-    pub fn new_lamport(d_uuid: Uuid, s_uuid: Uuid, ts: Duration, max_ts: &Duration) -> Self {
+    pub fn new_lamport(s_uuid: Uuid, ts: Duration, max_ts: &Duration) -> Self {
         let ts = if ts > *max_ts {
             ts
         } else {
             *max_ts + Duration::from_nanos(1)
         };
-        Cid { ts, d_uuid, s_uuid }
+        Cid { ts, s_uuid }
     }
 
     #[cfg(test)]
@@ -48,7 +41,6 @@ impl Cid {
     #[cfg(test)]
     pub unsafe fn new_count(c: u64) -> Self {
         Cid {
-            d_uuid: uuid!("00000000-0000-0000-0000-000000000000"),
             s_uuid: uuid!("00000000-0000-0000-0000-000000000000"),
             ts: Duration::new(c, 0),
         }
@@ -57,7 +49,6 @@ impl Cid {
     #[cfg(test)]
     pub fn new_random_s_d(ts: Duration) -> Self {
         Cid {
-            d_uuid: Uuid::new_v4(),
             s_uuid: Uuid::new_v4(),
             ts,
         }
@@ -68,7 +59,6 @@ impl Cid {
         self.ts
             .checked_sub(Duration::from_secs(secs))
             .map(|r| Cid {
-                d_uuid: uuid!("00000000-0000-0000-0000-000000000000"),
                 s_uuid: uuid!("00000000-0000-0000-0000-000000000000"),
                 ts: r,
             })
@@ -89,11 +79,9 @@ mod tests {
         // Check diff ts
         let cid_a = Cid::new(
             uuid!("00000000-0000-0000-0000-000000000001"),
-            uuid!("00000000-0000-0000-0000-000000000001"),
             Duration::new(5, 0),
         );
         let cid_b = Cid::new(
-            uuid!("00000000-0000-0000-0000-000000000001"),
             uuid!("00000000-0000-0000-0000-000000000001"),
             Duration::new(15, 0),
         );
@@ -102,30 +90,12 @@ mod tests {
         assert!(cid_a.cmp(&cid_b) == Ordering::Less);
         assert!(cid_b.cmp(&cid_a) == Ordering::Greater);
 
-        // check same ts diff d_uuid
-        let cid_c = Cid::new(
-            uuid!("00000000-0000-0000-0000-000000000000"),
-            uuid!("00000000-0000-0000-0000-000000000001"),
-            Duration::new(5, 0),
-        );
-        let cid_d = Cid::new(
-            uuid!("00000000-0000-0000-0000-000000000001"),
-            uuid!("00000000-0000-0000-0000-000000000001"),
-            Duration::new(5, 0),
-        );
-
-        assert!(cid_c.cmp(&cid_c) == Ordering::Equal);
-        assert!(cid_c.cmp(&cid_d) == Ordering::Less);
-        assert!(cid_d.cmp(&cid_c) == Ordering::Greater);
-
         // check same ts, d_uuid, diff s_uuid
         let cid_e = Cid::new(
-            uuid!("00000000-0000-0000-0000-000000000001"),
             uuid!("00000000-0000-0000-0000-000000000000"),
             Duration::new(5, 0),
         );
         let cid_f = Cid::new(
-            uuid!("00000000-0000-0000-0000-000000000001"),
             uuid!("00000000-0000-0000-0000-000000000001"),
             Duration::new(5, 0),
         );
@@ -137,8 +107,7 @@ mod tests {
 
     #[test]
     fn test_cid_lamport() {
-        let d_uuid = uuid!("00000000-0000-0000-0000-000000000001");
-        let s_uuid = d_uuid;
+        let s_uuid = uuid!("00000000-0000-0000-0000-000000000001");
 
         let ts5 = Duration::new(5, 0);
         let ts10 = Duration::new(10, 0);
@@ -146,12 +115,12 @@ mod tests {
 
         let cid_z = unsafe { Cid::new_zero() };
 
-        let cid_a = Cid::new_lamport(d_uuid, s_uuid, ts5, &ts5);
+        let cid_a = Cid::new_lamport(s_uuid, ts5, &ts5);
         assert!(cid_a.cmp(&cid_z) == Ordering::Greater);
-        let cid_b = Cid::new_lamport(d_uuid, s_uuid, ts15, &ts10);
+        let cid_b = Cid::new_lamport(s_uuid, ts15, &ts10);
         assert!(cid_b.cmp(&cid_a) == Ordering::Greater);
         // Even with an older ts, we should still step forward.
-        let cid_c = Cid::new_lamport(d_uuid, s_uuid, ts10, &ts15);
+        let cid_c = Cid::new_lamport(s_uuid, ts10, &ts15);
         assert!(cid_c.cmp(&cid_b) == Ordering::Greater);
     }
 }
