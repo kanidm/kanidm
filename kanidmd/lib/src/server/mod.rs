@@ -1273,7 +1273,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub(crate) fn reload_domain_info(&mut self) -> Result<(), OperationError> {
         let domain_name = self.get_db_domain_name()?;
         let display_name = self.get_db_domain_display_name()?;
+        let domain_uuid = self.be_txn.get_db_d_uuid();
         let mut_d_info = self.d_info.get_mut();
+        if mut_d_info.d_uuid != domain_uuid {
+            admin_warn!(
+                "Using domain uuid from the database {} - was {} in memory",
+                domain_name,
+                mut_d_info.d_name,
+            );
+            mut_d_info.d_uuid = domain_uuid;
+        }
         if mut_d_info.d_name != domain_name {
             admin_warn!(
                 "Using domain name from the database {} - was {} in memory",
