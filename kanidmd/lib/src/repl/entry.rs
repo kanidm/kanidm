@@ -153,3 +153,22 @@ impl EntryChangeState {
         }
     }
 }
+
+impl PartialEq for EntryChangeState {
+    fn eq(&self, rhs: &Self) -> bool {
+        match (&self.st, &rhs.st) {
+            (
+                State::Live {
+                    changes: changes_left,
+                },
+                State::Live {
+                    changes: changes_right,
+                },
+            ) => changes_left.eq(changes_right),
+            (State::Tombstone { at: at_left }, State::Tombstone { at: at_right }) => {
+                at_left.eq(at_right)
+            }
+            (_, _) => false,
+        }
+    }
+}

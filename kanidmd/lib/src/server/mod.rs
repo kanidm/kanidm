@@ -55,7 +55,7 @@ enum ServerPhase {
     Running,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DomainInfo {
     pub(crate) d_uuid: Uuid,
     pub(crate) d_name: String,
