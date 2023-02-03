@@ -50,7 +50,7 @@ async fn test_repl_refresh_basic(server_a: &QueryServer, server_b: &QueryServer)
     // There is some metadata here we should also consider testing such as key
     // reloads? These are done at the IDM level, but this is QS level, so do we need to change
     // these tests? Or should they be seperate repl tests later?
-    assert_eq!(server_a_txn.d_info, server_b_txn.d_info);
+    assert_eq!(*server_a_txn.d_info, *server_b_txn.d_info);
 
     // Now assert everything else in the db matches.
 
