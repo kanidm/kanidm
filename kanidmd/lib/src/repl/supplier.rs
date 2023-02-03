@@ -28,11 +28,54 @@ impl<'a> QueryServerReadTransaction<'a> {
         // - We must exclude certain entries and attributes!
         //   * schema defines what we exclude!
 
-        let schema_entries = Vec::default();
-        let meta_entries = Vec::default();
-        let entries = Vec::default();
+        let schema_filter = filter!(f_or!([
+            f_eq("class", PVCLASS_ATTRIBUTETYPE.clone()),
+            f_eq("class", PVCLASS_CLASSTYPE.clone()),
+        ]));
 
-        Ok(ReplRefreshContext {
+        let meta_filter = filter!(f_or!([
+            f_eq("uuid", PVUUID_DOMAIN_INFO.clone()),
+            f_eq("uuid", PVUUID_SYSTEM_INFO.clone()),
+            f_eq("uuid", PVUUID_SYSTEM_CONFIG.clone()),
+        ]));
+
+        let entry_filter = filter!(f_and!([
+            f_pres("class"),
+            f_andnot(f_or(vec![
+                // These are from above!
+                f_eq("class", PVCLASS_ATTRIBUTETYPE.clone()),
+                f_eq("class", PVCLASS_CLASSTYPE.clone()),
+                f_eq("uuid", PVUUID_DOMAIN_INFO.clone()),
+                f_eq("uuid", PVUUID_SYSTEM_INFO.clone()),
+                f_eq("uuid", PVUUID_SYSTEM_CONFIG.clone()),
+            ])),
+        ]));
+
+        let schema_entries = self
+            .internal_search(schema_filter)
+            .map(|ent| ent.into_iter().map(|e| e.as_ref().into()).collect())
+            .map_err(|e| {
+                error!("Failed to access schema entries");
+                e
+            })?;
+
+        let meta_entries = self
+            .internal_search(meta_filter)
+            .map(|ent| ent.into_iter().map(|e| e.as_ref().into()).collect())
+            .map_err(|e| {
+                error!("Failed to access meta entries");
+                e
+            })?;
+
+        let entries = self
+            .internal_search(entry_filter)
+            .map(|ent| ent.into_iter().map(|e| e.as_ref().into()).collect())
+            .map_err(|e| {
+                error!("Failed to access entries");
+                e
+            })?;
+
+        Ok(ReplRefreshContext::V1 {
             domain_version,
             domain_uuid,
             schema_entries,
