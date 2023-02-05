@@ -34,7 +34,7 @@ jobs:
         if: ${{ github.ref == 'refs/heads/master' }}
       - name: Build and push radius
         id: docker_build_radius
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           push: ${{ github.ref == 'refs/heads/master' }}
           platforms: linux/arm64,linux/amd64
