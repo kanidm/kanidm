@@ -8,16 +8,22 @@ pub struct ReplCidV1 {}
 // From / Into CID
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub enum ReplAttrV1 {}
+pub enum ReplAttrV1 {
+
+}
 
 // From / Into ValueSet
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct ReplAttrStateV1 {
+    cid: ReplCidV1,
+    attr: Option<ReplAttrV1>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum ReplStateV1 {
     Live {
-        changes: BTreeMap<String, ReplCidV1>,
-        // Attrs
-        attrs: BTreeMap<String, ReplAttrV1>,
+        attrs: BTreeMap<String, ReplAttrStateV1>,
     },
     Tombstone {
         at: ReplCidV1,
