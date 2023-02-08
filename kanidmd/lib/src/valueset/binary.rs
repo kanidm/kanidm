@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use smolset::SmolSet;
 
 use crate::prelude::*;
+use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
@@ -93,6 +94,12 @@ impl ValueSetT for ValueSetPrivateBinary {
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::PrivateBinary(self.set.iter().cloned().collect())
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::PrivateBinary {
+            set: self.set.iter().cloned().map(|b| b.into()).collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
@@ -241,6 +248,16 @@ impl ValueSetT for ValueSetPublicBinary {
                 .map(|(tag, bin)| (tag.clone(), bin.clone()))
                 .collect(),
         )
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::PublicBinary {
+            set: self
+                .map
+                .iter()
+                .map(|(tag, bin)| (tag.clone(), bin.clone().into()))
+                .collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

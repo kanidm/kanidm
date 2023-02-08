@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::be::dbvalue::DbValueOauthScopeMapV1;
 use crate::prelude::*;
+use crate::repl::proto::{ReplAttrV1, ReplOauthScopeMapV1};
 use crate::schema::SchemaAttribute;
 use crate::value::OAUTHSCOPE_RE;
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
@@ -102,6 +103,12 @@ impl ValueSetT for ValueSetOauthScope {
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::OauthScope(self.set.iter().cloned().collect())
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::OauthScope {
+            set: self.set.iter().cloned().collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
@@ -279,6 +286,19 @@ impl ValueSetT for ValueSetOauthScopeMap {
                 })
                 .collect(),
         )
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::OauthScopeMap {
+            set: self
+                .map
+                .iter()
+                .map(|(u, m)| ReplOauthScopeMapV1 {
+                    refer: *u,
+                    data: m.iter().cloned().collect(),
+                })
+                .collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

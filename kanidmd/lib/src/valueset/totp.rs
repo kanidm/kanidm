@@ -5,6 +5,7 @@ use crate::credential::totp::Totp;
 use crate::prelude::*;
 
 use crate::be::dbvalue::DbTotpV1;
+use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
@@ -116,6 +117,16 @@ impl ValueSetT for ValueSetTotpSecret {
                 .map(|(label, totp)| (label.clone(), totp.to_dbtotpv1()))
                 .collect(),
         )
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::TotpSecret {
+            set: self
+                .map
+                .iter()
+                .map(|(label, totp)| (label.clone(), totp.to_repl_v1()))
+                .collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

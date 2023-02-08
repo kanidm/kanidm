@@ -7,7 +7,7 @@ use crate::schema::SchemaTransaction;
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone)]
-enum State {
+pub enum State {
     Live { changes: BTreeMap<AttrString, Cid> },
     Tombstone { at: Cid },
 }
@@ -49,6 +49,10 @@ impl EntryChangeState {
         };
 
         EntryChangeState { st }
+    }
+
+    pub fn current(&self) -> &State {
+        &self.st
     }
 
     pub fn change_ava(&mut self, cid: &Cid, attr: &str) {

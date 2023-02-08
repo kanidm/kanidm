@@ -7,6 +7,9 @@ use crate::be::dbvalue::{
     DbValueAccessScopeV1, DbValueIdentityId, DbValueOauth2Session, DbValueSession,
 };
 use crate::prelude::*;
+use crate::repl::proto::{
+    ReplAccessScopeV1, ReplAttrV1, ReplIdentityIdV1, ReplOauth2SessionV1, ReplSessionV1,
+};
 use crate::schema::SchemaAttribute;
 use crate::value::{Oauth2Session, Session};
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
@@ -214,6 +217,38 @@ impl ValueSetT for ValueSetSession {
                 })
                 .collect(),
         )
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::Session {
+            set: self
+                .map
+                .iter()
+                .map(|(u, m)| ReplSessionV1 {
+                    refer: *u,
+                    label: m.label.clone(),
+                    expiry: m.expiry.map(|odt| {
+                        debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                        odt.format(time::Format::Rfc3339)
+                    }),
+                    issued_at: {
+                        debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
+                        m.issued_at.format(time::Format::Rfc3339)
+                    },
+                    issued_by: match m.issued_by {
+                        IdentityId::Internal => ReplIdentityIdV1::Internal,
+                        IdentityId::User(u) => ReplIdentityIdV1::Uuid(u),
+                        IdentityId::Synch(u) => ReplIdentityIdV1::Synch(u),
+                    },
+                    scope: match m.scope {
+                        AccessScope::IdentityOnly => ReplAccessScopeV1::IdentityOnly,
+                        AccessScope::ReadOnly => ReplAccessScopeV1::ReadOnly,
+                        AccessScope::ReadWrite => ReplAccessScopeV1::ReadWrite,
+                        AccessScope::Synchronise => ReplAccessScopeV1::Synchronise,
+                    },
+                })
+                .collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
@@ -473,6 +508,28 @@ impl ValueSetT for ValueSetOauth2Session {
                 })
                 .collect(),
         )
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::Oauth2Session {
+            set: self
+                .map
+                .iter()
+                .map(|(u, m)| ReplOauth2SessionV1 {
+                    refer: *u,
+                    parent: m.parent,
+                    expiry: m.expiry.map(|odt| {
+                        debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                        odt.format(time::Format::Rfc3339)
+                    }),
+                    issued_at: {
+                        debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
+                        m.issued_at.format(time::Format::Rfc3339)
+                    },
+                    rs_uuid: m.rs_uuid,
+                })
+                .collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

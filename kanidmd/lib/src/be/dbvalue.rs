@@ -12,8 +12,6 @@ use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbCidV1 {
-    // #[serde(rename = "d")]
-    // pub domain_id: Uuid,
     #[serde(rename = "s")]
     pub server_id: Uuid,
     #[serde(rename = "t")]

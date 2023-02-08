@@ -13,6 +13,9 @@ use webauthn_rs::prelude::{AuthenticationResult, Passkey, SecurityKey};
 use webauthn_rs_core::proto::{Credential as WebauthnCredential, CredentialV3};
 
 use crate::be::dbvalue::{DbBackupCodeV1, DbCred, DbPasswordV1};
+use crate::repl::proto::{
+    ReplBackupCodeV1, ReplCredV1, ReplPasskeyV4V1, ReplPasswordV1, ReplSecurityKeyV4V1,
+};
 
 pub mod policy;
 pub mod softlock;
@@ -420,6 +423,33 @@ impl Password {
         }
     }
 
+    pub fn to_repl_v1(&self) -> ReplPasswordV1 {
+        match &self.material {
+            Kdf::PBKDF2(cost, salt, hash) => ReplPasswordV1::PBKDF2 {
+                cost: *cost,
+                salt: salt.clone().into(),
+                hash: hash.clone().into(),
+            },
+            Kdf::PBKDF2_SHA1(cost, salt, hash) => ReplPasswordV1::PBKDF2_SHA1 {
+                cost: *cost,
+                salt: salt.clone().into(),
+                hash: hash.clone().into(),
+            },
+            Kdf::PBKDF2_SHA512(cost, salt, hash) => ReplPasswordV1::PBKDF2_SHA512 {
+                cost: *cost,
+                salt: salt.clone().into(),
+                hash: hash.clone().into(),
+            },
+            Kdf::SSHA512(salt, hash) => ReplPasswordV1::SSHA512 {
+                salt: salt.clone().into(),
+                hash: hash.clone().into(),
+            },
+            Kdf::NT_MD4(hash) => ReplPasswordV1::NT_MD4 {
+                hash: hash.clone().into(),
+            },
+        }
+    }
+
     pub fn requires_upgrade(&self) -> bool {
         match &self.material {
             Kdf::PBKDF2_SHA512(cost, salt, hash) | Kdf::PBKDF2(cost, salt, hash) => {
@@ -463,6 +493,12 @@ impl BackupCodes {
     pub fn to_dbbackupcodev1(&self) -> DbBackupCodeV1 {
         DbBackupCodeV1 {
             code_set: self.code_set.clone(),
+        }
+    }
+
+    pub fn to_repl_v1(&self) -> ReplBackupCodeV1 {
+        ReplBackupCodeV1 {
+            codes: self.code_set.iter().cloned().collect(),
         }
     }
 }
@@ -969,6 +1005,51 @@ impl Credential {
             CredentialType::Webauthn(map) => DbCred::TmpWn {
                 webauthn: map.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
                 uuid,
+            },
+        }
+    }
+
+    /// Extract this credential into it's Serialisable Replication form
+    pub fn to_repl_v1(&self, tag: String) -> ReplCredV1 {
+        let uuid = self.uuid;
+        match &self.type_ {
+            CredentialType::Password(pw) => ReplCredV1::Password {
+                tag,
+                password: pw.to_repl_v1(),
+                uuid,
+            },
+            CredentialType::GeneratedPassword(pw) => ReplCredV1::GenPassword {
+                tag,
+                password: pw.to_repl_v1(),
+                uuid,
+            },
+            CredentialType::PasswordMfa(pw, totp, map, backup_code) => ReplCredV1::PasswordMfa {
+                tag,
+                password: pw.to_repl_v1(),
+                totp: totp
+                    .iter()
+                    .map(|(l, t)| (l.clone(), t.to_repl_v1()))
+                    .collect(),
+                backup_code: backup_code.as_ref().map(|b| b.to_repl_v1()),
+                webauthn: map
+                    .iter()
+                    .map(|(k, v)| ReplSecurityKeyV4V1 {
+                        tag: k.clone(),
+                        key: v.clone(),
+                    })
+                    .collect(),
+                uuid,
+            },
+            CredentialType::Webauthn(map) => ReplCredV1::TmpWn {
+                tag,
+                set: map
+                    .iter()
+                    .map(|(k, v)| ReplPasskeyV4V1 {
+                        uuid,
+                        tag: k.clone(),
+                        key: v.clone(),
+                    })
+                    .collect(),
             },
         }
     }

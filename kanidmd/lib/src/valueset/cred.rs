@@ -8,6 +8,7 @@ use crate::be::dbvalue::{
 };
 use crate::credential::Credential;
 use crate::prelude::*;
+use crate::repl::proto::{ReplAttrV1, ReplDeviceKeyV4V1, ReplIntentTokenV1, ReplPasskeyV4V1};
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, IntentTokenState, ValueSet};
 
@@ -123,6 +124,16 @@ impl ValueSetT for ValueSetCredential {
                 })
                 .collect(),
         )
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::Credential {
+            set: self
+                .map
+                .iter()
+                .map(|(tag, cred)| cred.to_repl_v1(tag.clone()))
+                .collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
@@ -317,6 +328,35 @@ impl ValueSetT for ValueSetIntentToken {
         )
     }
 
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::IntentToken {
+            set: self
+                .map
+                .iter()
+                .map(|(u, s)| match s {
+                    IntentTokenState::Valid { max_ttl } => ReplIntentTokenV1::Valid {
+                        token_id: u.clone(),
+                        max_ttl: *max_ttl,
+                    },
+                    IntentTokenState::InProgress {
+                        max_ttl,
+                        session_id,
+                        session_ttl,
+                    } => ReplIntentTokenV1::InProgress {
+                        token_id: u.clone(),
+                        max_ttl: *max_ttl,
+                        session_id: *session_id,
+                        session_ttl: *session_ttl,
+                    },
+                    IntentTokenState::Consumed { max_ttl } => ReplIntentTokenV1::Consumed {
+                        token_id: u.clone(),
+                        max_ttl: *max_ttl,
+                    },
+                })
+                .collect(),
+        }
+    }
+
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
         Box::new(self.map.keys().cloned().map(PartialValue::IntentToken))
     }
@@ -465,6 +505,20 @@ impl ValueSetT for ValueSetPasskey {
                 })
                 .collect(),
         )
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::Passkey {
+            set: self
+                .map
+                .iter()
+                .map(|(u, (t, k))| ReplPasskeyV4V1 {
+                    uuid: *u,
+                    tag: t.clone(),
+                    key: k.clone(),
+                })
+                .collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
@@ -624,6 +678,20 @@ impl ValueSetT for ValueSetDeviceKey {
                 })
                 .collect(),
         )
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::DeviceKey {
+            set: self
+                .map
+                .iter()
+                .map(|(u, (t, k))| ReplDeviceKeyV4V1 {
+                    uuid: *u,
+                    tag: t.clone(),
+                    key: k.clone(),
+                })
+                .collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

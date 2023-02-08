@@ -2,6 +2,7 @@ use kanidm_proto::v1::Filter as ProtoFilter;
 use smolset::SmolSet;
 
 use crate::prelude::*;
+use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
@@ -121,6 +122,20 @@ impl ValueSetT for ValueSetJsonFilter {
                 })
                 .collect(),
         )
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::JsonFilter {
+            set: self
+                .set
+                .iter()
+                .map(|s| {
+                    #[allow(clippy::expect_used)]
+                    serde_json::to_string(s)
+                        .expect("A json filter value was corrupted during run-time")
+                })
+                .collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

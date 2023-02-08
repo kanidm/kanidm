@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use crate::prelude::*;
+use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
@@ -88,6 +89,12 @@ impl ValueSetT for ValueSetUiHint {
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::UiHint(self.set.iter().map(|u| *u as u16).collect())
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::UiHint {
+            set: self.set.iter().map(|u| *u as u16).collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

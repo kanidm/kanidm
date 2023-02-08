@@ -14,7 +14,7 @@ use webauthn_rs::prelude::Passkey as PasskeyV4;
 use crate::be::dbvalue::DbValueSetV2;
 use crate::credential::{totp::Totp, Credential};
 use crate::prelude::*;
-use crate::repl::cid::Cid;
+use crate::repl::{cid::Cid, proto::ReplAttrV1};
 use crate::schema::SchemaAttribute;
 use crate::value::{Address, IntentTokenState, Oauth2Session, Session};
 
@@ -106,6 +106,8 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_>;
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2;
+
+    fn to_repl_v1(&self) -> ReplAttrV1;
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_>;
 

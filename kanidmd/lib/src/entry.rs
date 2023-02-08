@@ -1891,13 +1891,16 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attrs.keys().map(|a| a.as_str())
     }
 
-    /*
     #[inline(always)]
     /// Get an iterator over the current set of values for an attribute name.
-    pub fn get_ava(&self, attr: &str) -> Option<impl Iterator<Item = &Value>> {
-        self.attrs.get(attr).map(|vs| vs.iter())
+    pub fn get_ava(&self) -> &Eattrs {
+        &self.attrs
     }
-    */
+
+    #[inline(always)]
+    pub fn get_ava_iter(&self) -> impl Iterator<Item = (&AttrString, &ValueSet)> {
+        self.attrs.iter()
+    }
 
     #[inline(always)]
     /// Return a reference to the current set of values that are associated to this attribute.

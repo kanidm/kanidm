@@ -1,18 +1,330 @@
+use super::cid::Cid;
+use super::entry::State;
 use crate::prelude::*;
+use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
+
+use webauthn_rs::prelude::{
+    DeviceKey as DeviceKeyV4, Passkey as PasskeyV4, SecurityKey as SecurityKeyV4,
+};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct ReplCidV1 {}
+pub struct ReplCidV1 {
+    #[serde(rename = "t")]
+    pub ts: Duration,
+    #[serde(rename = "s")]
+    pub s_uuid: Uuid,
+}
 
 // From / Into CID
+impl From<&Cid> for ReplCidV1 {
+    fn from(cid: &Cid) -> Self {
+        ReplCidV1 {
+            ts: cid.ts,
+            s_uuid: cid.s_uuid,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct ReplAddressV1 {
+    #[serde(rename = "f")]
+    pub formatted: String,
+    #[serde(rename = "s")]
+    pub street_address: String,
+    #[serde(rename = "l")]
+    pub locality: String,
+    #[serde(rename = "r")]
+    pub region: String,
+    #[serde(rename = "p")]
+    pub postal_code: String,
+    #[serde(rename = "c")]
+    pub country: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub enum ReplTotpAlgoV1 {
+    S1,
+    S256,
+    S512,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct ReplTotpV1 {
+    pub key: Base64UrlSafeData,
+    pub step: u64,
+    pub algo: ReplTotpAlgoV1,
+    pub digits: u8,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[allow(non_camel_case_types)]
+pub enum ReplPasswordV1 {
+    PBKDF2 {
+        cost: usize,
+        salt: Base64UrlSafeData,
+        hash: Base64UrlSafeData,
+    },
+    PBKDF2_SHA1 {
+        cost: usize,
+        salt: Base64UrlSafeData,
+        hash: Base64UrlSafeData,
+    },
+    PBKDF2_SHA512 {
+        cost: usize,
+        salt: Base64UrlSafeData,
+        hash: Base64UrlSafeData,
+    },
+    SSHA512 {
+        salt: Base64UrlSafeData,
+        hash: Base64UrlSafeData,
+    },
+    NT_MD4 {
+        hash: Base64UrlSafeData,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct ReplBackupCodeV1 {
+    pub codes: BTreeSet<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub enum ReplCredV1 {
+    TmpWn {
+        tag: String,
+        set: Vec<ReplPasskeyV4V1>,
+    },
+    Password {
+        tag: String,
+        password: ReplPasswordV1,
+        uuid: Uuid,
+    },
+    GenPassword {
+        tag: String,
+        password: ReplPasswordV1,
+        uuid: Uuid,
+    },
+    PasswordMfa {
+        tag: String,
+        password: ReplPasswordV1,
+        totp: Vec<(String, ReplTotpV1)>,
+        backup_code: Option<ReplBackupCodeV1>,
+        webauthn: Vec<ReplSecurityKeyV4V1>,
+        uuid: Uuid,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub enum ReplIntentTokenV1 {
+    Valid {
+        token_id: String,
+        max_ttl: Duration,
+    },
+    InProgress {
+        token_id: String,
+        max_ttl: Duration,
+        session_id: Uuid,
+        session_ttl: Duration,
+    },
+    Consumed {
+        token_id: String,
+        max_ttl: Duration,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ReplSecurityKeyV4V1 {
+    pub tag: String,
+    pub key: SecurityKeyV4,
+}
+
+impl Eq for ReplSecurityKeyV4V1 {}
+
+impl PartialEq for ReplSecurityKeyV4V1 {
+    fn eq(&self, other: &Self) -> bool {
+        self.key.cred_id() == other.key.cred_id()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ReplPasskeyV4V1 {
+    pub uuid: Uuid,
+    pub tag: String,
+    pub key: PasskeyV4,
+}
+
+impl Eq for ReplPasskeyV4V1 {}
+
+impl PartialEq for ReplPasskeyV4V1 {
+    fn eq(&self, other: &Self) -> bool {
+        self.uuid == other.uuid && self.key.cred_id() == other.key.cred_id()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ReplDeviceKeyV4V1 {
+    pub uuid: Uuid,
+    pub tag: String,
+    pub key: DeviceKeyV4,
+}
+
+impl Eq for ReplDeviceKeyV4V1 {}
+
+impl PartialEq for ReplDeviceKeyV4V1 {
+    fn eq(&self, other: &Self) -> bool {
+        self.uuid == other.uuid && self.key.cred_id() == other.key.cred_id()
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct ReplOauthScopeMapV1 {
+    pub refer: Uuid,
+    pub data: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct ReplOauth2SessionV1 {
+    pub refer: Uuid,
+    pub parent: Uuid,
+    pub expiry: Option<String>,
+    pub issued_at: String,
+    pub rs_uuid: Uuid,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Default)]
+pub enum ReplAccessScopeV1 {
+    IdentityOnly,
+    #[default]
+    ReadOnly,
+    ReadWrite,
+    Synchronise,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub enum ReplIdentityIdV1 {
+    Internal,
+    Uuid(Uuid),
+    Synch(Uuid),
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct ReplSessionV1 {
+    pub refer: Uuid,
+    pub label: String,
+    pub expiry: Option<String>,
+    pub issued_at: String,
+    pub issued_by: ReplIdentityIdV1,
+    pub scope: ReplAccessScopeV1,
+}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum ReplAttrV1 {
-
+    Address {
+        set: Vec<ReplAddressV1>,
+    },
+    EmailAddress {
+        primary: String,
+        set: String,
+    },
+    PublicBinary {
+        set: Vec<(String, Base64UrlSafeData)>,
+    },
+    PrivateBinary {
+        set: Vec<Base64UrlSafeData>,
+    },
+    Bool {
+        set: Vec<bool>,
+    },
+    Cid {
+        set: Vec<ReplCidV1>,
+    },
+    Credential {
+        set: Vec<ReplCredV1>,
+    },
+    IntentToken {
+        set: Vec<ReplIntentTokenV1>,
+    },
+    Passkey {
+        set: Vec<ReplPasskeyV4V1>,
+    },
+    DeviceKey {
+        set: Vec<ReplDeviceKeyV4V1>,
+    },
+    DateTime {
+        set: Vec<String>,
+    },
+    Iname {
+        set: Vec<String>,
+    },
+    IndexType {
+        set: Vec<u16>,
+    },
+    Iutf8 {
+        set: Vec<String>,
+    },
+    JsonFilter {
+        set: Vec<String>,
+    },
+    JwsKeyEs256 {
+        set: Vec<Base64UrlSafeData>,
+    },
+    JwsKeyRs256 {
+        set: Vec<Base64UrlSafeData>,
+    },
+    NsUniqueId {
+        set: Vec<String>,
+    },
+    SecretValue {
+        set: Vec<String>,
+    },
+    RestrictedString {
+        set: Vec<String>,
+    },
+    Uint32 {
+        set: Vec<u32>,
+    },
+    Url {
+        set: Vec<Url>,
+    },
+    Utf8 {
+        set: Vec<String>,
+    },
+    Uuid {
+        set: Vec<Uuid>,
+    },
+    Reference {
+        set: Vec<Uuid>,
+    },
+    SyntaxType {
+        set: Vec<u16>,
+    },
+    Spn {
+        set: Vec<(String, String)>,
+    },
+    UiHint {
+        set: Vec<u16>,
+    },
+    SshKey {
+        set: Vec<(String, String)>,
+    },
+    OauthScope {
+        set: Vec<String>,
+    },
+    OauthScopeMap {
+        set: Vec<ReplOauthScopeMapV1>,
+    },
+    Oauth2Session {
+        set: Vec<ReplOauth2SessionV1>,
+    },
+    Session {
+        set: Vec<ReplSessionV1>,
+    },
+    TotpSecret {
+        set: Vec<(String, ReplTotpV1)>,
+    },
 }
-
-// From / Into ValueSet
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ReplAttrStateV1 {
@@ -42,13 +354,30 @@ pub struct ReplEntryV1 {
 impl From<&EntrySealedCommitted> for ReplEntryV1 {
     fn from(entry: &EntrySealedCommitted) -> ReplEntryV1 {
         let cs = entry.get_changestate();
+        let uuid = entry.get_uuid();
 
-        if cs.is_live() {
-            let attrs = entry.get_ava_iter();
-            todo!();
-        } else {
-            todo!();
-        }
+        let st = match cs.current() {
+            State::Live { changes } => {
+                let live_attrs = entry.get_ava();
+
+                let attrs = changes
+                    .iter()
+                    .map(|(attr_name, cid)| {
+                        let live_attr = live_attrs.get(attr_name.as_str());
+
+                        let cid = cid.into();
+                        let attr = live_attr.map(|maybe| maybe.to_repl_v1());
+
+                        (attr_name.to_string(), ReplAttrStateV1 { cid, attr })
+                    })
+                    .collect();
+
+                ReplStateV1::Live { attrs }
+            }
+            State::Tombstone { at } => ReplStateV1::Tombstone { at: at.into() },
+        };
+
+        ReplEntryV1 { uuid, st }
     }
 }
 

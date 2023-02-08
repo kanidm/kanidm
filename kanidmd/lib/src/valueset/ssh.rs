@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 
 use crate::be::dbvalue::DbValueTaggedStringV1;
 use crate::prelude::*;
+use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
@@ -110,6 +111,16 @@ impl ValueSetT for ValueSetSshKey {
                 })
                 .collect(),
         )
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::SshKey {
+            set: self
+                .map
+                .iter()
+                .map(|(tag, key)| (tag.clone(), key.clone()))
+                .collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

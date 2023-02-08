@@ -2,6 +2,7 @@ use smolset::SmolSet;
 use time::OffsetDateTime;
 
 use crate::prelude::*;
+use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
@@ -121,6 +122,19 @@ impl ValueSetT for ValueSetDateTime {
                 })
                 .collect(),
         )
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::DateTime {
+            set: self
+                .set
+                .iter()
+                .map(|odt| {
+                    debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                    odt.format(time::Format::Rfc3339)
+                })
+                .collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
