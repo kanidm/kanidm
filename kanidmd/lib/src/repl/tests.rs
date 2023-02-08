@@ -5,6 +5,9 @@ use std::collections::BTreeMap;
 async fn test_repl_refresh_basic(server_a: &QueryServer, server_b: &QueryServer) {
     // Rebuild / refresh the content of server a with the content from b.
 
+    // To ensure we have a spectrum of content, we do some setup here such as creating
+    // tombstones.
+
     let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
 
     let mut server_b_txn = server_b.read().await;
@@ -15,6 +18,7 @@ async fn test_repl_refresh_basic(server_a: &QueryServer, server_b: &QueryServer)
         .expect("Failed to build refresh");
 
     // Verify content of the refresh
+    // eprintln!("{:#?}", refresh_context);
 
     // Apply it to the server
     assert!(server_a_txn

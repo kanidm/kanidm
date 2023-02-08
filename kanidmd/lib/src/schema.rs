@@ -486,6 +486,26 @@ pub trait SchemaTransaction {
         res
     }
 
+    fn is_replicated(&self, attr: &str) -> bool {
+        match self.get_attributes().get(attr) {
+            Some(a_schema) => {
+                // We'll likely add more conditions here later.
+                if a_schema.phantom {
+                    false
+                } else {
+                    true
+                }
+            }
+            None => {
+                warn!(
+                    "Attribute {} was not found in schema during replication request",
+                    attr
+                );
+                false
+            }
+        }
+    }
+
     fn is_multivalue(&self, attr: &str) -> Result<bool, SchemaError> {
         match self.get_attributes().get(attr) {
             Some(a_schema) => Ok(a_schema.multivalue),

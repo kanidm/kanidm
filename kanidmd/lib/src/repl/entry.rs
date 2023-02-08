@@ -14,7 +14,7 @@ pub enum State {
 
 #[derive(Debug, Clone)]
 pub struct EntryChangeState {
-    st: State,
+    pub(super) st: State,
 }
 
 impl EntryChangeState {

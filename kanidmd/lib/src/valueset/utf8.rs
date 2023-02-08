@@ -25,6 +25,11 @@ impl ValueSetUtf8 {
         let set = data.into_iter().collect();
         Ok(Box::new(ValueSetUtf8 { set }))
     }
+
+    pub fn from_repl_v1(data: &[String]) -> Result<ValueSet, OperationError> {
+        let set = data.iter().cloned().collect();
+        Ok(Box::new(ValueSetUtf8 { set }))
+    }
 }
 
 impl ValueSetT for ValueSetUtf8 {

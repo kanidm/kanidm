@@ -101,7 +101,7 @@ pub struct QueryServerWriteTransaction<'a> {
     curtime: Duration,
     cid: Cid,
     pub(crate) be_txn: BackendWriteTransaction<'a>,
-    schema: SchemaWriteTransaction<'a>,
+    pub(crate) schema: SchemaWriteTransaction<'a>,
     accesscontrols: AccessControlsWriteTransaction<'a>,
     // We store a set of flags that indicate we need a reload of
     // schema or acp, which is tested by checking the classes of the

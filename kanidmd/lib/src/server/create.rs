@@ -67,7 +67,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Now, normalise AND validate!
 
-        let res: Result<Vec<Entry<EntrySealed, EntryNew>>, OperationError> = candidates
+        let norm_cand = candidates
             .into_iter()
             .map(|e| {
                 e.validate(&self.schema)
@@ -80,9 +80,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         e.seal(&self.schema)
                     })
             })
-            .collect();
-
-        let norm_cand: Vec<Entry<_, _>> = res?;
+            .collect::<Result<Vec<EntrySealedNew>, _>>()?;
 
         // Run any pre-create plugins now with schema validated entries.
         // This is important for normalisation of certain types IE class

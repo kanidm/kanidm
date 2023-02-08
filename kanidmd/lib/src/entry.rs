@@ -51,6 +51,7 @@ use crate::idm::ldap::ldap_vattr_map;
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
+use crate::repl::proto::ReplEntryV1;
 
 // use crate::repl::entry::EntryChangelog;
 use crate::repl::entry::EntryChangeState;
@@ -61,38 +62,9 @@ use crate::value::{
 };
 use crate::valueset::{self, ValueSet};
 
-// use std::convert::TryFrom;
-// use std::str::FromStr;
-
-// make a trait entry for everything to adhere to?
-//  * How to get indexes out?
-//  * How to track pending diffs?
-
-// Entry is really similar to serde Value, but limits the possibility
-// of what certain types could be.
-//
-// The idea of an entry is that we have
-// an entry that looks like:
-//
-// {
-//    'class': ['object', ...],
-//    'attr': ['value', ...],
-//    'attr': ['value', ...],
-//    ...
-// }
-//
-// When we send this as a result to clients, we could embed other objects as:
-//
-// {
-//    'attr': [
-//        'value': {
-//        },
-//    ],
-// }
-//
-
 pub type EntryInitNew = Entry<EntryInit, EntryNew>;
 pub type EntryInvalidNew = Entry<EntryInvalid, EntryNew>;
+pub type EntryRefreshNew = Entry<EntryRefresh, EntryNew>;
 pub type EntrySealedNew = Entry<EntrySealed, EntryNew>;
 pub type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
 pub type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
@@ -136,6 +108,12 @@ pub struct EntryInvalid {
     ecstate: EntryChangeState,
 }
 
+// Alternate path - this entry came from a full refresh, and already has an entry change state.
+#[derive(Clone, Debug)]
+pub struct EntryRefresh {
+    ecstate: EntryChangeState,
+}
+
 /*  |
  *  | The changes made within this entry are validated by the schema.
  *  V
@@ -145,7 +123,6 @@ pub struct EntryInvalid {
 pub struct EntryValid {
     // Asserted with schema, so we know it has a UUID now ...
     uuid: Uuid,
-    cid: Cid,
     // eclog: EntryChangelog,
     ecstate: EntryChangeState,
 }
@@ -554,7 +531,6 @@ impl Entry<EntryInit, EntryNew> {
 
         Entry {
             valid: EntryValid {
-                cid,
                 ecstate,
                 uuid: self.get_uuid().expect("Invalid uuid"),
             },
@@ -616,21 +592,24 @@ impl Entry<EntryInit, EntryNew> {
     }
 }
 
-impl<STATE> Entry<EntryInvalid, STATE> {
-    // This is only used in tests today, but I don't want to cfg test it.
-    pub(crate) fn get_uuid(&self) -> Option<Uuid> {
-        self.attrs.get("uuid").and_then(|vs| vs.to_uuid_single())
-    }
+impl Entry<EntryRefresh, EntryNew> {
+    pub fn from_repl_entry_v1(repl_entry: &ReplEntryV1) -> Result<Self, OperationError> {
+        // From the entry, we have to rebuild the ecstate and the attrs.
+        let (ecstate, attrs) = repl_entry.rehydrate()?;
 
-    /// Validate that this entry and its attribute-value sets are conformant to the system's'
-    /// schema and the relevant syntaxes.
+        Ok(Entry {
+            valid: EntryRefresh { ecstate },
+            state: EntryNew,
+            attrs,
+        })
+    }
+}
+
+impl<STATE> Entry<EntryRefresh, STATE> {
     pub fn validate(
         self,
         schema: &dyn SchemaTransaction,
     ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
-        let schema_classes = schema.get_classes();
-        let schema_attributes = schema.get_attributes();
-
         let uuid: Uuid = self
             .attrs
             .get("uuid")
@@ -644,235 +623,48 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         let ne = Entry {
             valid: EntryValid {
                 uuid,
-                cid: self.valid.cid,
                 ecstate: self.valid.ecstate,
             },
             state: self.state,
             attrs: self.attrs,
         };
-        // Now validate it!
-        trace!(?ne.attrs, "Entry::validate -> target");
 
-        // We scope here to limit the time of borrow of ne.
-        {
-            // First, check we have class on the object ....
-            if !ne.attribute_pres("class") {
-                // lrequest_error!("Missing attribute class");
-                return Err(SchemaError::NoClassFound);
-            }
+        ne.validate(schema)
+    }
+}
 
-            // Do we have extensible?
-            let extensible = ne.attribute_equality("class", &PVCLASS_EXTENSIBLE);
+impl<STATE> Entry<EntryInvalid, STATE> {
+    // This is only used in tests today, but I don't want to cfg test it.
+    pub(crate) fn get_uuid(&self) -> Option<Uuid> {
+        self.attrs.get("uuid").and_then(|vs| vs.to_uuid_single())
+    }
 
-            let entry_classes = ne.get_ava_set("class").ok_or_else(|| {
-                admin_debug!("Attribute 'class' missing from entry");
-                SchemaError::NoClassFound
+    /// Validate that this entry and its attribute-value sets are conformant to the system's'
+    /// schema and the relevant syntaxes.
+    pub fn validate(
+        self,
+        schema: &dyn SchemaTransaction,
+    ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
+        let uuid: Uuid = self
+            .attrs
+            .get("uuid")
+            .ok_or_else(|| SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
+            .and_then(|vs| {
+                vs.to_uuid_single()
+                    .ok_or_else(|| SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
             })?;
-            let mut invalid_classes = Vec::with_capacity(0);
 
-            let mut classes: Vec<&SchemaClass> = Vec::with_capacity(entry_classes.len());
+        // Build the new valid entry ...
+        let ne = Entry {
+            valid: EntryValid {
+                uuid,
+                ecstate: self.valid.ecstate,
+            },
+            state: self.state,
+            attrs: self.attrs,
+        };
 
-            // We need to keep the btreeset of entry classes here so we can check the
-            // requires and excludes.
-            let entry_classes = if let Some(ec) = entry_classes.as_iutf8_set() {
-                ec.iter()
-                    .for_each(|s| match schema_classes.get(s.as_str()) {
-                        Some(x) => classes.push(x),
-                        None => {
-                            admin_debug!("invalid class: {:?}", s);
-                            invalid_classes.push(s.to_string())
-                        }
-                    });
-                ec
-            } else {
-                admin_debug!("corrupt class attribute");
-                return Err(SchemaError::NoClassFound);
-            };
-
-            if !invalid_classes.is_empty() {
-                return Err(SchemaError::InvalidClass(invalid_classes));
-            };
-
-            // Now determine the set of excludes and requires we have, and then
-            // assert we don't violate them.
-
-            let supplements_classes: Vec<_> = classes
-                .iter()
-                .flat_map(|cls| cls.systemsupplements.iter().chain(cls.supplements.iter()))
-                .collect();
-
-            // So long as one supplement is present we can continue.
-            let valid_supplements = if supplements_classes.is_empty() {
-                // No need to check.
-                true
-            } else {
-                supplements_classes
-                    .iter()
-                    .any(|class| entry_classes.contains(class.as_str()))
-            };
-
-            if !valid_supplements {
-                admin_warn!(
-                    "Validation error, the following possible supplement classes are missing - {:?}",
-                    supplements_classes
-                );
-                let supplements_classes =
-                    supplements_classes.iter().map(|s| s.to_string()).collect();
-                return Err(SchemaError::SupplementsNotSatisfied(supplements_classes));
-            }
-
-            let excludes_classes: Vec<_> = classes
-                .iter()
-                .flat_map(|cls| cls.systemexcludes.iter().chain(cls.excludes.iter()))
-                .collect();
-
-            let mut invalid_excludes = Vec::with_capacity(0);
-
-            excludes_classes.iter().for_each(|class| {
-                if entry_classes.contains(class.as_str()) {
-                    invalid_excludes.push(class.to_string())
-                }
-            });
-
-            if !invalid_excludes.is_empty() {
-                admin_warn!(
-                    "Validation error, the following excluded classes are present - {:?}",
-                    invalid_excludes
-                );
-                return Err(SchemaError::ExcludesNotSatisfied(invalid_excludes));
-            }
-
-            // What this is really doing is taking a set of classes, and building an
-            // "overall" class that describes this exact object for checking. IE we
-            // build a super must/may set from the small class must/may sets.
-
-            //   for each class
-            //      add systemmust/must and systemmay/may to their lists
-            //      add anything from must also into may
-
-            // Now from the set of valid classes make a list of must/may
-            //
-            // NOTE: We still need this on extensible, because we still need to satisfy
-            // our other must conditions as well!
-            let must: Result<Vec<&SchemaAttribute>, _> = classes
-                .iter()
-                // Join our class systemmmust + must into one iter
-                .flat_map(|cls| cls.systemmust.iter().chain(cls.must.iter()))
-                .map(|s| {
-                    // This should NOT fail - if it does, it means our schema is
-                    // in an invalid state!
-                    schema_attributes.get(s).ok_or(SchemaError::Corrupted)
-                })
-                .collect();
-
-            let must = must?;
-
-            // Check that all must are inplace
-            //   for each attr in must, check it's present on our ent
-            let mut missing_must = Vec::with_capacity(0);
-            must.iter().for_each(|attr| {
-                let avas = ne.get_ava_set(&attr.name);
-                if avas.is_none() {
-                    missing_must.push(attr.name.to_string());
-                }
-            });
-
-            if !missing_must.is_empty() {
-                admin_warn!(
-                    "Validation error, the following required (must) attributes are missing - {:?}",
-                    missing_must
-                );
-                return Err(SchemaError::MissingMustAttribute(missing_must));
-            }
-
-            if extensible {
-                ne.attrs.iter().try_for_each(|(attr_name, avas)| {
-                    match schema_attributes.get(attr_name) {
-                        Some(a_schema) => {
-                            // Now, for each type we do a *full* check of the syntax
-                            // and validity of the ava.
-                            if a_schema.phantom {
-                                admin_warn!(
-                                    "Rejecting attempt to add phantom attribute to extensible object: {}",
-                                    attr_name
-                                );
-                                Err(SchemaError::PhantomAttribute(attr_name.to_string()))
-                            } else {
-                                a_schema.validate_ava(attr_name.as_str(), avas)
-                                // .map_err(|e| lrequest_error!("Failed to validate: {}", attr_name);)
-                            }
-                        }
-                        None => {
-                            admin_error!(
-                                "Invalid Attribute {}, undefined in schema_attributes",
-                                attr_name.to_string()
-                            );
-                            Err(SchemaError::InvalidAttribute(
-                                attr_name.to_string()
-                            ))
-                        }
-                    }
-                })?;
-            } else {
-                // Note - we do NOT need to check phantom attributes here because they are
-                // not allowed to exist in the class, which means a phantom attribute can't
-                // be in the may/must set, and would FAIL our normal checks anyway.
-
-                // The set of "may" is a combination of may and must, since we have already
-                // asserted that all must requirements are fulfilled. This allows us to
-                // perform extended attribute checking in a single pass.
-                let may: Result<Map<&AttrString, &SchemaAttribute>, _> = classes
-                    .iter()
-                    // Join our class systemmmust + must + systemmay + may into one.
-                    .flat_map(|cls| {
-                        cls.systemmust
-                            .iter()
-                            .chain(cls.must.iter())
-                            .chain(cls.systemmay.iter())
-                            .chain(cls.may.iter())
-                    })
-                    .map(|s| {
-                        // This should NOT fail - if it does, it means our schema is
-                        // in an invalid state!
-                        Ok((s, schema_attributes.get(s).ok_or(SchemaError::Corrupted)?))
-                    })
-                    .collect();
-
-                let may = may?;
-
-                // TODO #70: Error needs to say what is missing
-                // We need to return *all* missing attributes, not just the first error
-                // we find. This will probably take a rewrite of the function definition
-                // to return a result<_, vec<schemaerror>> and for the schema errors to take
-                // information about what is invalid. It's pretty nontrivial.
-
-                // Check that any other attributes are in may
-                //   for each attr on the object, check it's in the may+must set
-                ne.attrs.iter().try_for_each(|(attr_name, avas)| {
-                    match may.get(attr_name) {
-                        Some(a_schema) => {
-                            // Now, for each type we do a *full* check of the syntax
-                            // and validity of the ava.
-                            a_schema.validate_ava(attr_name.as_str(), avas)
-                            // .map_err(|e| lrequest_error!("Failed to validate: {}", attr_name);
-                        }
-                        None => {
-                            admin_error!(
-                                "{} - not found in the list of valid attributes for this set of classes - valid attributes are {:?}",
-                                attr_name.to_string(),
-                                may.keys().collect::<Vec<_>>()
-                            );
-                            Err(SchemaError::AttributeNotValidForClass(
-                                attr_name.to_string()
-                            ))
-                        }
-                    }
-                })?;
-            }
-        } // unborrow ne.
-
-        // Well, we got here, so okay!
-        Ok(ne)
+        ne.validate(schema)
     }
 }
 
@@ -901,7 +693,6 @@ impl Entry<EntryInvalid, EntryCommitted> {
         let uuid = self.get_uuid().expect("Invalid uuid");
         Entry {
             valid: EntryValid {
-                cid: self.valid.cid,
                 uuid,
                 ecstate: self.valid.ecstate,
             },
@@ -948,7 +739,6 @@ impl Entry<EntryInvalid, EntryNew> {
         let uuid = self.get_uuid().expect("Invalid uuid");
         Entry {
             valid: EntryValid {
-                cid: self.valid.cid,
                 uuid,
                 ecstate: self.valid.ecstate,
             },
@@ -993,7 +783,6 @@ impl Entry<EntryInvalid, EntryNew> {
         let uuid = self.get_uuid().unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntryValid {
-                cid: self.valid.cid,
                 uuid,
                 ecstate: self.valid.ecstate,
             },
@@ -1629,15 +1418,10 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     /// Given a current transaction change identifier, mark this entry as valid and committed.
-    pub fn into_valid(
-        self,
-        cid: Cid,
-        ecstate: EntryChangeState,
-    ) -> Entry<EntryValid, EntryCommitted> {
+    pub fn into_valid(self, ecstate: EntryChangeState) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: EntryValid {
                 uuid: self.valid.uuid,
-                cid,
                 ecstate,
             },
             state: self.state,
@@ -1657,23 +1441,244 @@ impl Entry<EntrySealed, EntryCommitted> {
 }
 
 impl<STATE> Entry<EntryValid, STATE> {
-    pub fn invalidate(self, ecstate: EntryChangeState) -> Entry<EntryInvalid, STATE> {
+    fn validate(
+        self,
+        schema: &dyn SchemaTransaction,
+    ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
+        let schema_classes = schema.get_classes();
+        let schema_attributes = schema.get_attributes();
+
+        // Now validate it!
+        trace!(?self.attrs, "Entry::validate -> target");
+
+        // First, check we have class on the object ....
+        if !self.attribute_pres("class") {
+            // lrequest_error!("Missing attribute class");
+            return Err(SchemaError::NoClassFound);
+        }
+
+        // Do we have extensible?
+        let extensible = self.attribute_equality("class", &PVCLASS_EXTENSIBLE);
+
+        let entry_classes = self.get_ava_set("class").ok_or_else(|| {
+            admin_debug!("Attribute 'class' missing from entry");
+            SchemaError::NoClassFound
+        })?;
+        let mut invalid_classes = Vec::with_capacity(0);
+
+        let mut classes: Vec<&SchemaClass> = Vec::with_capacity(entry_classes.len());
+
+        // We need to keep the btreeset of entry classes here so we can check the
+        // requires and excludes.
+        let entry_classes = if let Some(ec) = entry_classes.as_iutf8_set() {
+            ec.iter()
+                .for_each(|s| match schema_classes.get(s.as_str()) {
+                    Some(x) => classes.push(x),
+                    None => {
+                        admin_debug!("invalid class: {:?}", s);
+                        invalid_classes.push(s.to_string())
+                    }
+                });
+            ec
+        } else {
+            admin_debug!("corrupt class attribute");
+            return Err(SchemaError::NoClassFound);
+        };
+
+        if !invalid_classes.is_empty() {
+            return Err(SchemaError::InvalidClass(invalid_classes));
+        };
+
+        // Now determine the set of excludes and requires we have, and then
+        // assert we don't violate them.
+
+        let supplements_classes: Vec<_> = classes
+            .iter()
+            .flat_map(|cls| cls.systemsupplements.iter().chain(cls.supplements.iter()))
+            .collect();
+
+        // So long as one supplement is present we can continue.
+        let valid_supplements = if supplements_classes.is_empty() {
+            // No need to check.
+            true
+        } else {
+            supplements_classes
+                .iter()
+                .any(|class| entry_classes.contains(class.as_str()))
+        };
+
+        if !valid_supplements {
+            admin_warn!(
+                "Validation error, the following possible supplement classes are missing - {:?}",
+                supplements_classes
+            );
+            let supplements_classes = supplements_classes.iter().map(|s| s.to_string()).collect();
+            return Err(SchemaError::SupplementsNotSatisfied(supplements_classes));
+        }
+
+        let excludes_classes: Vec<_> = classes
+            .iter()
+            .flat_map(|cls| cls.systemexcludes.iter().chain(cls.excludes.iter()))
+            .collect();
+
+        let mut invalid_excludes = Vec::with_capacity(0);
+
+        excludes_classes.iter().for_each(|class| {
+            if entry_classes.contains(class.as_str()) {
+                invalid_excludes.push(class.to_string())
+            }
+        });
+
+        if !invalid_excludes.is_empty() {
+            admin_warn!(
+                "Validation error, the following excluded classes are present - {:?}",
+                invalid_excludes
+            );
+            return Err(SchemaError::ExcludesNotSatisfied(invalid_excludes));
+        }
+
+        // What this is really doing is taking a set of classes, and building an
+        // "overall" class that describes this exact object for checking. IE we
+        // build a super must/may set from the small class must/may sets.
+
+        //   for each class
+        //      add systemmust/must and systemmay/may to their lists
+        //      add anything from must also into may
+
+        // Now from the set of valid classes make a list of must/may
+        //
+        // NOTE: We still need this on extensible, because we still need to satisfy
+        // our other must conditions as well!
+        let must: Result<Vec<&SchemaAttribute>, _> = classes
+            .iter()
+            // Join our class systemmmust + must into one iter
+            .flat_map(|cls| cls.systemmust.iter().chain(cls.must.iter()))
+            .map(|s| {
+                // This should NOT fail - if it does, it means our schema is
+                // in an invalid state!
+                schema_attributes.get(s).ok_or(SchemaError::Corrupted)
+            })
+            .collect();
+
+        let must = must?;
+
+        // Check that all must are inplace
+        //   for each attr in must, check it's present on our ent
+        let mut missing_must = Vec::with_capacity(0);
+        must.iter().for_each(|attr| {
+            let avas = self.get_ava_set(&attr.name);
+            if avas.is_none() {
+                missing_must.push(attr.name.to_string());
+            }
+        });
+
+        if !missing_must.is_empty() {
+            admin_warn!(
+                "Validation error, the following required (must) attributes are missing - {:?}",
+                missing_must
+            );
+            return Err(SchemaError::MissingMustAttribute(missing_must));
+        }
+
+        if extensible {
+            self.attrs.iter().try_for_each(|(attr_name, avas)| {
+                    match schema_attributes.get(attr_name) {
+                        Some(a_schema) => {
+                            // Now, for each type we do a *full* check of the syntax
+                            // and validity of the ava.
+                            if a_schema.phantom {
+                                admin_warn!(
+                                    "Rejecting attempt to add phantom attribute to extensible object: {}",
+                                    attr_name
+                                );
+                                Err(SchemaError::PhantomAttribute(attr_name.to_string()))
+                            } else {
+                                a_schema.validate_ava(attr_name.as_str(), avas)
+                                // .map_err(|e| lrequest_error!("Failed to validate: {}", attr_name);)
+                            }
+                        }
+                        None => {
+                            admin_error!(
+                                "Invalid Attribute {}, undefined in schema_attributes",
+                                attr_name.to_string()
+                            );
+                            Err(SchemaError::InvalidAttribute(
+                                attr_name.to_string()
+                            ))
+                        }
+                    }
+                })?;
+        } else {
+            // Note - we do NOT need to check phantom attributes here because they are
+            // not allowed to exist in the class, which means a phantom attribute can't
+            // be in the may/must set, and would FAIL our normal checks anyway.
+
+            // The set of "may" is a combination of may and must, since we have already
+            // asserted that all must requirements are fulfilled. This allows us to
+            // perform extended attribute checking in a single pass.
+            let may: Result<Map<&AttrString, &SchemaAttribute>, _> = classes
+                .iter()
+                // Join our class systemmmust + must + systemmay + may into one.
+                .flat_map(|cls| {
+                    cls.systemmust
+                        .iter()
+                        .chain(cls.must.iter())
+                        .chain(cls.systemmay.iter())
+                        .chain(cls.may.iter())
+                })
+                .map(|s| {
+                    // This should NOT fail - if it does, it means our schema is
+                    // in an invalid state!
+                    Ok((s, schema_attributes.get(s).ok_or(SchemaError::Corrupted)?))
+                })
+                .collect();
+
+            let may = may?;
+
+            // TODO #70: Error needs to say what is missing
+            // We need to return *all* missing attributes, not just the first error
+            // we find. This will probably take a rewrite of the function definition
+            // to return a result<_, vec<schemaerror>> and for the schema errors to take
+            // information about what is invalid. It's pretty nontrivial.
+
+            // Check that any other attributes are in may
+            //   for each attr on the object, check it's in the may+must set
+            self.attrs.iter().try_for_each(|(attr_name, avas)| {
+                    match may.get(attr_name) {
+                        Some(a_schema) => {
+                            // Now, for each type we do a *full* check of the syntax
+                            // and validity of the ava.
+                            a_schema.validate_ava(attr_name.as_str(), avas)
+                            // .map_err(|e| lrequest_error!("Failed to validate: {}", attr_name);
+                        }
+                        None => {
+                            admin_error!(
+                                "{} - not found in the list of valid attributes for this set of classes - valid attributes are {:?}",
+                                attr_name.to_string(),
+                                may.keys().collect::<Vec<_>>()
+                            );
+                            Err(SchemaError::AttributeNotValidForClass(
+                                attr_name.to_string()
+                            ))
+                        }
+                    }
+                })?;
+        }
+
+        // Well, we got here, so okay!
+        Ok(self)
+    }
+
+    pub fn invalidate(self, cid: Cid, ecstate: EntryChangeState) -> Entry<EntryInvalid, STATE> {
         Entry {
-            valid: EntryInvalid {
-                cid: self.valid.cid,
-                ecstate,
-            },
+            valid: EntryInvalid { cid, ecstate },
             state: self.state,
             attrs: self.attrs,
         }
     }
 
     pub fn seal(self, _schema: &dyn SchemaTransaction) -> Entry<EntrySealed, STATE> {
-        let EntryValid {
-            cid: _,
-            uuid,
-            ecstate,
-        } = self.valid;
+        let EntryValid { uuid, ecstate } = self.valid;
 
         Entry {
             valid: EntrySealed { uuid, ecstate },

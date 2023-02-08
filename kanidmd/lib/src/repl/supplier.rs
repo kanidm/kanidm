@@ -1,4 +1,4 @@
-use super::proto::ReplRefreshContext;
+use super::proto::{ReplEntryV1, ReplRefreshContext};
 use crate::prelude::*;
 
 impl<'a> QueryServerReadTransaction<'a> {
@@ -16,6 +16,9 @@ impl<'a> QueryServerReadTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     pub fn supplier_provide_refresh(&mut self) -> Result<ReplRefreshContext, OperationError> {
+        // Get the current schema. We use this for attribute and entry filtering.
+        let schema = self.get_schema();
+
         // A refresh must provide
         //
         // * the current domain version
@@ -53,7 +56,11 @@ impl<'a> QueryServerReadTransaction<'a> {
 
         let schema_entries = self
             .internal_search(schema_filter)
-            .map(|ent| ent.into_iter().map(|e| e.as_ref().into()).collect())
+            .map(|ent| {
+                ent.into_iter()
+                    .map(|e| ReplEntryV1::new(e.as_ref(), schema))
+                    .collect()
+            })
             .map_err(|e| {
                 error!("Failed to access schema entries");
                 e
@@ -61,7 +68,11 @@ impl<'a> QueryServerReadTransaction<'a> {
 
         let meta_entries = self
             .internal_search(meta_filter)
-            .map(|ent| ent.into_iter().map(|e| e.as_ref().into()).collect())
+            .map(|ent| {
+                ent.into_iter()
+                    .map(|e| ReplEntryV1::new(e.as_ref(), schema))
+                    .collect()
+            })
             .map_err(|e| {
                 error!("Failed to access meta entries");
                 e
@@ -69,7 +80,11 @@ impl<'a> QueryServerReadTransaction<'a> {
 
         let entries = self
             .internal_search(entry_filter)
-            .map(|ent| ent.into_iter().map(|e| e.as_ref().into()).collect())
+            .map(|ent| {
+                ent.into_iter()
+                    .map(|e| ReplEntryV1::new(e.as_ref(), schema))
+                    .collect()
+            })
             .map_err(|e| {
                 error!("Failed to access entries");
                 e

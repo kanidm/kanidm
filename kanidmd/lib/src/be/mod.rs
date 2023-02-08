@@ -1004,6 +1004,42 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(c_entries)
     }
 
+    #[instrument(level = "debug", name = "be::create", skip_all)]
+    /// This is similar to create, but used in the replication path as it skips the
+    /// modification of the RUV and the checking of CIDs since these actions are not
+    /// required during a replication refresh (else we'd create an infinite replication
+    /// loop.)
+    pub fn refresh(
+        &mut self,
+        entries: Vec<Entry<EntrySealed, EntryNew>>,
+    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+        if entries.is_empty() {
+            admin_error!("No entries provided to BE to create, invalid server call!");
+            return Err(OperationError::EmptyRequest);
+        }
+
+        // Assign id's to all the new entries.
+        let mut id_max = self.idlayer.get_id2entry_max_id()?;
+        let c_entries: Vec<_> = entries
+            .into_iter()
+            .map(|e| {
+                id_max += 1;
+                e.into_sealed_committed_id(id_max)
+            })
+            .collect();
+
+        self.idlayer.write_identries(c_entries.iter())?;
+
+        self.idlayer.set_id2entry_max_id(id_max);
+
+        // Now update the indexes as required.
+        for e in c_entries.iter() {
+            self.entry_index(None, Some(e))?
+        }
+
+        Ok(c_entries)
+    }
+
     #[instrument(level = "debug", name = "be::modify", skip_all)]
     pub fn modify(
         &mut self,
@@ -1443,9 +1479,16 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(())
     }
 
-    #[cfg(test)]
-    pub fn purge_idxs(&mut self) -> Result<(), OperationError> {
+    fn purge_idxs(&mut self) -> Result<(), OperationError> {
         unsafe { self.get_idlayer().purge_idxs() }
+    }
+
+    pub(crate) fn danger_delete_all_db_content(&mut self) -> Result<(), OperationError> {
+        unsafe {
+            self.get_idlayer()
+                .purge_id2entry()
+                .and_then(|_| self.purge_idxs())
+        }
     }
 
     #[cfg(test)]

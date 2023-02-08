@@ -688,3 +688,14 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         }
     }
 }
+
+pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
+    match rv1 {
+        ReplAttrV1::Iutf8 { set } => ValueSetIutf8::from_repl_v1(set),
+        ReplAttrV1::Utf8 { set } => ValueSetUtf8::from_repl_v1(set),
+        t => {
+            trace!("{:#?}", t);
+            todo!();
+        }
+    }
+}

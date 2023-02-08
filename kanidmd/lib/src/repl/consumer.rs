@@ -52,7 +52,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &mut self,
         ctx_domain_version: DomainVersion,
         ctx_domain_uuid: Uuid,
-        _ctx_schema_entries: &[ReplEntryV1],
+        ctx_schema_entries: &[ReplEntryV1],
         _ctx_meta_entries: &[ReplEntryV1],
         _ctx_entries: &[ReplEntryV1],
     ) -> Result<(), OperationError> {
@@ -86,8 +86,54 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Delete all entries - *proper delete, not just tombstone!*
 
-        // Apply the schema entries first - this works because the "former schema" is still in memory
-        // and has just enough to govern the addition of the new schema to be added.
+        self.be_txn.danger_delete_all_db_content().map_err(|e| {
+            error!("Failed to clear existing server database content");
+            e
+        })?;
+
+        // Reset this transactions schema to a completely clean slate.
+        self.schema.generate_in_memory().map_err(|e| {
+            error!("Failed to reset in memory schema to clean state");
+            e
+        })?;
+
+        // Apply the schema entries first. This is the foundation that everything
+        // else will build upon!
+
+        let candidates = ctx_schema_entries
+            .iter()
+            .map(EntryRefreshNew::from_repl_entry_v1)
+            .collect::<Result<Vec<EntryRefreshNew>, _>>()
+            .map_err(|e| {
+                error!("Failed to convert entries from supplier");
+                e
+            })?;
+
+        // No need to assign CID's since this is a repl import.
+        let norm_cand = candidates
+            .into_iter()
+            .map(|e| {
+                e.validate(&self.schema)
+                    .map_err(|e| {
+                        admin_error!("Schema Violation in create validate {:?}", e);
+                        OperationError::SchemaViolation(e)
+                    })
+                    .map(|e| {
+                        // Then seal the changes?
+                        e.seal(&self.schema)
+                    })
+            })
+            .collect::<Result<Vec<EntrySealedNew>, _>>()?;
+
+        // Do not run plugs!
+
+        let commit_cand = self.be_txn.refresh(norm_cand).map_err(|e| {
+            admin_error!("betxn create failure {:?}", e);
+            e
+        })?;
+
+        self.changed_uuid
+            .extend(commit_cand.iter().map(|e| e.get_uuid()));
 
         // We need to reload schema now!
         self.reload_schema().map_err(|e| {

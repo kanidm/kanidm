@@ -69,8 +69,8 @@ pub mod prelude {
     pub use crate::constants::*;
     pub use crate::entry::{
         Entry, EntryCommitted, EntryInit, EntryInitNew, EntryInvalid, EntryInvalidCommitted,
-        EntryInvalidNew, EntryNew, EntryReduced, EntryReducedCommitted, EntrySealed,
-        EntrySealedCommitted, EntrySealedNew, EntryTuple, EntryValid,
+        EntryInvalidNew, EntryNew, EntryReduced, EntryReducedCommitted, EntryRefresh,
+        EntryRefreshNew, EntrySealed, EntrySealedCommitted, EntrySealedNew, EntryTuple, EntryValid,
     };
     pub use crate::event::{CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, SearchEvent};
     pub use crate::filter::{

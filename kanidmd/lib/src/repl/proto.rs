@@ -1,6 +1,10 @@
 use super::cid::Cid;
+use super::entry::EntryChangeState;
 use super::entry::State;
+use crate::entry::Eattrs;
 use crate::prelude::*;
+use crate::schema::{SchemaReadTransaction, SchemaTransaction};
+use crate::valueset;
 use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -21,6 +25,24 @@ pub struct ReplCidV1 {
 impl From<&Cid> for ReplCidV1 {
     fn from(cid: &Cid) -> Self {
         ReplCidV1 {
+            ts: cid.ts,
+            s_uuid: cid.s_uuid,
+        }
+    }
+}
+
+impl From<ReplCidV1> for Cid {
+    fn from(cid: ReplCidV1) -> Self {
+        Cid {
+            ts: cid.ts,
+            s_uuid: cid.s_uuid,
+        }
+    }
+}
+
+impl From<&ReplCidV1> for Cid {
+    fn from(cid: &ReplCidV1) -> Self {
+        Cid {
             ts: cid.ts,
             s_uuid: cid.s_uuid,
         }
@@ -344,15 +366,15 @@ pub enum ReplStateV1 {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-// This can be a partial entry too
+// I think partial entries should be seperate? This clearly implies a refresh.
 pub struct ReplEntryV1 {
     uuid: Uuid,
     // Change State
     st: ReplStateV1,
 }
 
-impl From<&EntrySealedCommitted> for ReplEntryV1 {
-    fn from(entry: &EntrySealedCommitted) -> ReplEntryV1 {
+impl ReplEntryV1 {
+    pub fn new(entry: &EntrySealedCommitted, schema: &SchemaReadTransaction) -> ReplEntryV1 {
         let cs = entry.get_changestate();
         let uuid = entry.get_uuid();
 
@@ -362,13 +384,30 @@ impl From<&EntrySealedCommitted> for ReplEntryV1 {
 
                 let attrs = changes
                     .iter()
-                    .map(|(attr_name, cid)| {
-                        let live_attr = live_attrs.get(attr_name.as_str());
+                    .filter_map(|(attr_name, cid)| {
+                        if schema.is_replicated(attr_name) {
+                            let live_attr = live_attrs.get(attr_name.as_str());
 
-                        let cid = cid.into();
-                        let attr = live_attr.map(|maybe| maybe.to_repl_v1());
+                            let cid = cid.into();
+                            let attr = live_attr.and_then(|maybe|
+                                // There is a quirk in the way we currently handle certain
+                                // types of adds/deletes that it may be possible to have an
+                                // empty value set still in memory on a supplier. In the future
+                                // we may make it so in memory valuesets can be empty and sent
+                                // but for now, if it's an empty set in any capacity, we map
+                                // to None and just send the Cid since they have the same result
+                                // on how the entry/attr state looks at each end.
+                                if maybe.len() > 0 {
+                                    Some(maybe.to_repl_v1())
+                                } else {
+                                    None
+                                }
+                            );
 
-                        (attr_name.to_string(), ReplAttrStateV1 { cid, attr })
+                            Some((attr_name.to_string(), ReplAttrStateV1 { cid, attr }))
+                        } else {
+                            None
+                        }
                     })
                     .collect();
 
@@ -378,6 +417,53 @@ impl From<&EntrySealedCommitted> for ReplEntryV1 {
         };
 
         ReplEntryV1 { uuid, st }
+    }
+
+    pub fn rehydrate(&self) -> Result<(EntryChangeState, Eattrs), OperationError> {
+        match &self.st {
+            ReplStateV1::Live { attrs } => {
+                trace!("{:#?}", attrs);
+                // We need to build two sets, one for the Entry Change States, and one for the
+                // Eattrs.
+                let mut changes = BTreeMap::default();
+                let mut eattrs = Eattrs::default();
+
+                for (attr_name, ReplAttrStateV1 { cid, attr }) in attrs.iter() {
+                    let astring: AttrString = attr_name.as_str().into();
+                    let cid: Cid = cid.into();
+
+                    if let Some(attr_value) = attr {
+                        let v = valueset::from_repl_v1(attr_value).map_err(|e| {
+                            error!("Unable to restore valueset for {}", attr_name);
+                            e
+                        })?;
+                        if eattrs.insert(astring.clone(), v).is_some() {
+                            error!(
+                                "Impossible eattrs state, attribute {} appears to be duplicated!",
+                                attr_name
+                            );
+                            return Err(OperationError::InvalidEntryState);
+                        }
+                    }
+
+                    if changes.insert(astring, cid).is_some() {
+                        error!(
+                            "Impossible changes state, attribute {} appears to be duplicated!",
+                            attr_name
+                        );
+                        return Err(OperationError::InvalidEntryState);
+                    }
+                }
+
+                let ecstate = EntryChangeState {
+                    st: State::Live { changes },
+                };
+                Ok((ecstate, eattrs))
+            }
+            ReplStateV1::Tombstone { at: _ } => {
+                unreachable!()
+            }
+        }
     }
 }
 
