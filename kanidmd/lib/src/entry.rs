@@ -1677,8 +1677,13 @@ impl<STATE> Entry<EntryValid, STATE> {
         }
     }
 
-    pub fn seal(self, _schema: &dyn SchemaTransaction) -> Entry<EntrySealed, STATE> {
-        let EntryValid { uuid, ecstate } = self.valid;
+    pub fn seal(self, schema: &dyn SchemaTransaction) -> Entry<EntrySealed, STATE> {
+        let EntryValid { uuid, mut ecstate } = self.valid;
+
+        // Remove anything from the ecstate that is not a replicated attribute in the schema.
+        // This is to allow ecstate equality to work, but also to just prevent ruv updates and
+        // replicating things that only touched or changed phantom attrs.
+        ecstate.retain(|k, _| schema.is_replicated(k));
 
         Entry {
             valid: EntrySealed { uuid, ecstate },

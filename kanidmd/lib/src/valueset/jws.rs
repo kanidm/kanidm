@@ -1,3 +1,4 @@
+use base64urlsafedata::Base64UrlSafeData;
 use compact_jwt::{JwaAlg, JwsSigner};
 use hashbrown::HashSet;
 
@@ -29,6 +30,19 @@ impl ValueSetJwsKeyEs256 {
             .iter()
             .map(|b| {
                 JwsSigner::from_es256_der(b).map_err(|e| {
+                    debug!(?e, "Error occurred parsing ES256 DER");
+                    OperationError::InvalidValueState
+                })
+            })
+            .collect::<Result<HashSet<_>, _>>()?;
+        Ok(Box::new(ValueSetJwsKeyEs256 { set }))
+    }
+
+    pub fn from_repl_v1(data: &[Base64UrlSafeData]) -> Result<ValueSet, OperationError> {
+        let set = data
+            .iter()
+            .map(|b| {
+                JwsSigner::from_es256_der(b.0.as_slice()).map_err(|e| {
                     debug!(?e, "Error occurred parsing ES256 DER");
                     OperationError::InvalidValueState
                 })

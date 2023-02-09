@@ -26,6 +26,11 @@ impl ValueSetUint32 {
         Ok(Box::new(ValueSetUint32 { set }))
     }
 
+    pub fn from_repl_v1(data: &[u32]) -> Result<ValueSet, OperationError> {
+        let set = data.iter().copied().collect();
+        Ok(Box::new(ValueSetUint32 { set }))
+    }
+
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
     // types, and u32 is foreign.
     #[allow(clippy::should_implement_trait)]

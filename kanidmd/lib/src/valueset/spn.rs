@@ -26,6 +26,11 @@ impl ValueSetSpn {
         Ok(Box::new(ValueSetSpn { set }))
     }
 
+    pub fn from_repl_v1(data: &[(String, String)]) -> Result<ValueSet, OperationError> {
+        let set = data.iter().map(|(a, b)| (a.clone(), b.clone())).collect();
+        Ok(Box::new(ValueSetSpn { set }))
+    }
+
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
     // types, and tuples are always foreign.
     #[allow(clippy::should_implement_trait)]

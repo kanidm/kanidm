@@ -45,6 +45,10 @@ async fn test_repl_refresh_basic(server_a: &QueryServer, server_b: &QueryServer)
 
     // Same d_vers / domain info.
     assert_eq!(domain_entry_a, domain_entry_b);
+
+    trace!("a {:#?}", domain_entry_a.get_changestate());
+    trace!("b {:#?}", domain_entry_b.get_changestate());
+
     // Compare that their change states are identical too.
     assert_eq!(
         domain_entry_a.get_changestate(),

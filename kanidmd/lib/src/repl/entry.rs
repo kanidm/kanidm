@@ -114,6 +114,16 @@ impl EntryChangeState {
         }
     }
 
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&AttrString, &mut Cid) -> bool,
+    {
+        match &mut self.st {
+            State::Live { changes } => changes.retain(f),
+            State::Tombstone { .. } => {}
+        }
+    }
+
     #[instrument(level = "trace", name = "verify", skip_all)]
     pub fn verify(
         &self,

@@ -1,3 +1,4 @@
+use base64urlsafedata::Base64UrlSafeData;
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
 
@@ -26,6 +27,11 @@ impl ValueSetPrivateBinary {
 
     pub fn from_dbvs2(data: Vec<Vec<u8>>) -> Result<ValueSet, OperationError> {
         let set = data.into_iter().collect();
+        Ok(Box::new(ValueSetPrivateBinary { set }))
+    }
+
+    pub fn from_repl_v1(data: &[Base64UrlSafeData]) -> Result<ValueSet, OperationError> {
+        let set = data.iter().map(|b| b.0.clone()).collect();
         Ok(Box::new(ValueSetPrivateBinary { set }))
     }
 

@@ -661,7 +661,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::RestrictedString(set) => ValueSetRestricted::from_dbvs2(set),
         DbValueSetV2::Spn(set) => ValueSetSpn::from_dbvs2(set),
         DbValueSetV2::Cid(set) => ValueSetCid::from_dbvs2(set),
-        DbValueSetV2::JsonFilter(set) => ValueSetJsonFilter::from_dbvs2(set),
+        DbValueSetV2::JsonFilter(set) => ValueSetJsonFilter::from_dbvs2(&set),
         DbValueSetV2::NsUniqueId(set) => ValueSetNsUniqueId::from_dbvs2(set),
         DbValueSetV2::Url(set) => ValueSetUrl::from_dbvs2(set),
         DbValueSetV2::DateTime(set) => ValueSetDateTime::from_dbvs2(set),
@@ -693,6 +693,20 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
     match rv1 {
         ReplAttrV1::Iutf8 { set } => ValueSetIutf8::from_repl_v1(set),
         ReplAttrV1::Utf8 { set } => ValueSetUtf8::from_repl_v1(set),
+        ReplAttrV1::IndexType { set } => ValueSetIndex::from_repl_v1(set),
+        ReplAttrV1::SyntaxType { set } => ValueSetSyntax::from_repl_v1(set),
+        ReplAttrV1::Cid { set } => ValueSetCid::from_repl_v1(set),
+        ReplAttrV1::Bool { set } => ValueSetBool::from_repl_v1(set),
+        ReplAttrV1::Uuid { set } => ValueSetUuid::from_repl_v1(set),
+        ReplAttrV1::Uint32 { set } => ValueSetUint32::from_repl_v1(set),
+        ReplAttrV1::Iname { set } => ValueSetIname::from_repl_v1(set),
+        ReplAttrV1::PrivateBinary { set } => ValueSetPrivateBinary::from_repl_v1(set),
+        ReplAttrV1::SecretValue { set } => ValueSetSecret::from_repl_v1(set),
+        ReplAttrV1::Reference { set } => ValueSetRefer::from_repl_v1(set),
+        ReplAttrV1::JwsKeyEs256 { set } => ValueSetJwsKeyEs256::from_repl_v1(set),
+        ReplAttrV1::Spn { set } => ValueSetSpn::from_repl_v1(set),
+        ReplAttrV1::JsonFilter { set } => ValueSetJsonFilter::from_repl_v1(set),
+        ReplAttrV1::UiHint { set } => ValueSetUiHint::from_repl_v1(set),
         t => {
             trace!("{:#?}", t);
             todo!();

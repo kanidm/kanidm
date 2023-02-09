@@ -22,7 +22,15 @@ impl ValueSetJsonFilter {
         self.set.insert(b)
     }
 
-    pub fn from_dbvs2(data: Vec<String>) -> Result<ValueSet, OperationError> {
+    pub fn from_dbvs2(data: &[String]) -> Result<ValueSet, OperationError> {
+        let set = data
+            .into_iter()
+            .map(|s| serde_json::from_str(&s).map_err(|_| OperationError::SerdeJsonError))
+            .collect::<Result<_, _>>()?;
+        Ok(Box::new(ValueSetJsonFilter { set }))
+    }
+
+    pub fn from_repl_v1(data: &[String]) -> Result<ValueSet, OperationError> {
         let set = data
             .into_iter()
             .map(|s| serde_json::from_str(&s).map_err(|_| OperationError::SerdeJsonError))

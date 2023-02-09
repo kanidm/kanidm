@@ -28,6 +28,11 @@ impl ValueSetUuid {
         Ok(Box::new(ValueSetUuid { set }))
     }
 
+    pub fn from_repl_v1(data: &[Uuid]) -> Result<ValueSet, OperationError> {
+        let set = data.iter().copied().collect();
+        Ok(Box::new(ValueSetUuid { set }))
+    }
+
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
     // types, and uuid is foreign.
     #[allow(clippy::should_implement_trait)]
@@ -176,6 +181,11 @@ impl ValueSetRefer {
 
     pub fn from_dbvs2(data: Vec<Uuid>) -> Result<ValueSet, OperationError> {
         let set = data.into_iter().collect();
+        Ok(Box::new(ValueSetRefer { set }))
+    }
+
+    pub fn from_repl_v1(data: &[Uuid]) -> Result<ValueSet, OperationError> {
+        let set = data.iter().copied().collect();
         Ok(Box::new(ValueSetRefer { set }))
     }
 

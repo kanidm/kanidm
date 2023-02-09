@@ -27,6 +27,12 @@ impl ValueSetIndex {
         Ok(Box::new(ValueSetIndex { set }))
     }
 
+    pub fn from_repl_v1(data: &[u16]) -> Result<ValueSet, OperationError> {
+        let set: Result<_, _> = data.iter().copied().map(IndexType::try_from).collect();
+        let set = set.map_err(|_| OperationError::InvalidValueState)?;
+        Ok(Box::new(ValueSetIndex { set }))
+    }
+
     // We need to allow this, because there seems to be a bug using it fromiterator in entry.rs
     #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<ValueSetIndex>>

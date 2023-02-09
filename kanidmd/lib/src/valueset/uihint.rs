@@ -28,6 +28,12 @@ impl ValueSetUiHint {
         let set = set.map_err(|_| OperationError::InvalidValueState)?;
         Ok(Box::new(ValueSetUiHint { set }))
     }
+
+    pub fn from_repl_v1(data: &[u16]) -> Result<ValueSet, OperationError> {
+        let set: Result<_, _> = data.into_iter().copied().map(UiHint::try_from).collect();
+        let set = set.map_err(|_| OperationError::InvalidValueState)?;
+        Ok(Box::new(ValueSetUiHint { set }))
+    }
 }
 
 impl ValueSetT for ValueSetUiHint {

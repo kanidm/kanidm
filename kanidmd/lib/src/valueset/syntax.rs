@@ -26,6 +26,12 @@ impl ValueSetSyntax {
         let set = set.map_err(|_| OperationError::InvalidValueState)?;
         Ok(Box::new(ValueSetSyntax { set }))
     }
+
+    pub fn from_repl_v1(data: &[u16]) -> Result<ValueSet, OperationError> {
+        let set: Result<_, _> = data.iter().copied().map(SyntaxType::try_from).collect();
+        let set = set.map_err(|_| OperationError::InvalidValueState)?;
+        Ok(Box::new(ValueSetSyntax { set }))
+    }
 }
 
 impl FromIterator<SyntaxType> for Option<Box<ValueSetSyntax>> {

@@ -26,6 +26,11 @@ impl ValueSetBool {
         Ok(Box::new(ValueSetBool { set }))
     }
 
+    pub fn from_repl_v1(data: &[bool]) -> Result<ValueSet, OperationError> {
+        let set = data.iter().copied().collect();
+        Ok(Box::new(ValueSetBool { set }))
+    }
+
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
     // types, and bool is foreign.
     #[allow(clippy::should_implement_trait)]
