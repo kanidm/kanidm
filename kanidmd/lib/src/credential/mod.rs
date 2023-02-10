@@ -876,7 +876,7 @@ impl Credential {
                 let v_password = Password::try_from(password)?;
 
                 let v_totp = totp
-                    .into_iter()
+                    .iter()
                     .map(|(l, dbt)| Totp::try_from(dbt).map(|t| (l.clone(), t)))
                     .collect::<Result<Map<_, _>, _>>()?;
 
@@ -956,8 +956,7 @@ impl Credential {
                 let mut nmap = map.clone();
                 if nmap.insert(label.clone(), cred).is_some() {
                     return Err(OperationError::InvalidAttribute(format!(
-                        "Webauthn label '{:?}' already exists",
-                        label
+                        "Webauthn label '{label:?}' already exists"
                     )));
                 }
                 CredentialType::PasswordMfa(pw.clone(), totp.clone(), nmap, backup_code.clone())
@@ -987,8 +986,7 @@ impl Credential {
                 let mut nmap = map.clone();
                 if nmap.remove(label).is_none() {
                     return Err(OperationError::InvalidAttribute(format!(
-                        "Removing Webauthn token with label '{:?}': does not exist",
-                        label
+                        "Removing Webauthn token with label '{label:?}': does not exist"
                     )));
                 }
                 if nmap.is_empty() {

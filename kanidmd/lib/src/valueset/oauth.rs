@@ -187,7 +187,7 @@ impl ValueSetOauthScopeMap {
 
     pub fn from_repl_v1(data: &[ReplOauthScopeMapV1]) -> Result<ValueSet, OperationError> {
         let map = data
-            .into_iter()
+            .iter()
             .map(|ReplOauthScopeMapV1 { refer, data }| (*refer, data.clone()))
             .collect();
         Ok(Box::new(ValueSetOauthScopeMap { map }))

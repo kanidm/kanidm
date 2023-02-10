@@ -379,7 +379,7 @@ pub trait IdlSqliteTransaction {
                     .or_else(|e| serde_cbor::from_slice(d.as_slice()).map_err(|_| e))
                     .map_err(|e| {
                         admin_error!(immediate = true, ?e, "CRITICAL: Serde CBOR Error");
-                        eprintln!("CRITICAL: Serde CBOR Error -> {:?}", e);
+                        eprintln!("CRITICAL: Serde CBOR Error -> {e:?}");
                         OperationError::SerdeCborError
                     })?,
             ),
@@ -410,7 +410,7 @@ pub trait IdlSqliteTransaction {
                     .or_else(|e| serde_cbor::from_slice(d.as_slice()).map_err(|_| e))
                     .map_err(|e| {
                         admin_error!(immediate = true, ?e, "CRITICAL: Serde CBOR Error");
-                        eprintln!("CRITICAL: Serde CBOR Error -> {:?}", e);
+                        eprintln!("CRITICAL: Serde CBOR Error -> {e:?}");
                         OperationError::SerdeCborError
                     })?,
             ),
@@ -442,7 +442,7 @@ pub trait IdlSqliteTransaction {
                     .or_else(|_| serde_cbor::from_slice(d.as_slice()))
                     .map_err(|e| {
                         admin_error!(immediate = true, ?e, "CRITICAL: Serde JSON Error");
-                        eprintln!("CRITICAL: Serde JSON Error -> {:?}", e);
+                        eprintln!("CRITICAL: Serde JSON Error -> {e:?}");
                         OperationError::SerdeJsonError
                     })?,
             ),
@@ -500,7 +500,7 @@ pub trait IdlSqliteTransaction {
             .ok_or(OperationError::InvalidEntryId)
             .and_then(|data| {
                 data.into_dbentry()
-                    .map(|(id, db_e)| (id, format!("{:?}", db_e)))
+                    .map(|(id, db_e)| (id, format!("{db_e:?}")))
             })
     }
 
@@ -511,7 +511,7 @@ pub trait IdlSqliteTransaction {
         // TODO: Once we have slopes we can add .exists_table, and assert
         // it's an idx table.
 
-        let query = format!("SELECT key, idl FROM {}", index_name);
+        let query = format!("SELECT key, idl FROM {index_name}");
         let mut stmt = self
             .get_conn()
             .prepare(query.as_str())
@@ -1117,7 +1117,7 @@ impl IdlSqliteWriteTransaction {
                 .map(|_| ())
                 .map_err(|e| {
                     admin_error!(immediate = true, ?e, "CRITICAL: rusqlite error");
-                    eprintln!("CRITICAL: rusqlite error {:?}", e);
+                    eprintln!("CRITICAL: rusqlite error {e:?}");
                     OperationError::SqliteError
                 })
         })
@@ -1165,7 +1165,7 @@ impl IdlSqliteWriteTransaction {
     pub fn write_db_s_uuid(&self, nsid: Uuid) -> Result<(), OperationError> {
         let data = serde_json::to_vec(&nsid).map_err(|e| {
             admin_error!(immediate = true, ?e, "CRITICAL: Serde JSON Error");
-            eprintln!("CRITICAL: Serde JSON Error -> {:?}", e);
+            eprintln!("CRITICAL: Serde JSON Error -> {e:?}");
             OperationError::SerdeJsonError
         })?;
 
@@ -1183,7 +1183,7 @@ impl IdlSqliteWriteTransaction {
             .map(|_| ())
             .map_err(|e| {
                 admin_error!(immediate = true, ?e, "CRITICAL: ruslite error");
-                eprintln!("CRITICAL: rusqlite error {:?}", e);
+                eprintln!("CRITICAL: rusqlite error {e:?}");
                 OperationError::SqliteError
             })
     }
@@ -1191,7 +1191,7 @@ impl IdlSqliteWriteTransaction {
     pub fn write_db_d_uuid(&self, nsid: Uuid) -> Result<(), OperationError> {
         let data = serde_json::to_vec(&nsid).map_err(|e| {
             admin_error!(immediate = true, ?e, "CRITICAL: Serde JSON Error");
-            eprintln!("CRITICAL: Serde JSON Error -> {:?}", e);
+            eprintln!("CRITICAL: Serde JSON Error -> {e:?}");
             OperationError::SerdeJsonError
         })?;
 
@@ -1209,7 +1209,7 @@ impl IdlSqliteWriteTransaction {
             .map(|_| ())
             .map_err(|e| {
                 admin_error!(immediate = true, ?e, "CRITICAL: rusqlite error");
-                eprintln!("CRITICAL: rusqlite error {:?}", e);
+                eprintln!("CRITICAL: rusqlite error {e:?}");
                 OperationError::SqliteError
             })
     }
@@ -1217,7 +1217,7 @@ impl IdlSqliteWriteTransaction {
     pub fn set_db_ts_max(&self, ts: Duration) -> Result<(), OperationError> {
         let data = serde_json::to_vec(&ts).map_err(|e| {
             admin_error!(immediate = true, ?e, "CRITICAL: Serde JSON Error");
-            eprintln!("CRITICAL: Serde JSON Error -> {:?}", e);
+            eprintln!("CRITICAL: Serde JSON Error -> {e:?}");
             OperationError::SerdeJsonError
         })?;
 
@@ -1235,7 +1235,7 @@ impl IdlSqliteWriteTransaction {
             .map(|_| ())
             .map_err(|e| {
                 admin_error!(immediate = true, ?e, "CRITICAL: rusqlite error");
-                eprintln!("CRITICAL: rusqlite error {:?}", e);
+                eprintln!("CRITICAL: rusqlite error {e:?}");
                 OperationError::SqliteError
             })
     }
@@ -1280,7 +1280,7 @@ impl IdlSqliteWriteTransaction {
     pub(crate) fn set_db_index_version(&self, v: i64) -> Result<(), OperationError> {
         self.set_db_version_key(DBV_INDEXV, v).map_err(|e| {
             admin_error!(immediate = true, ?e, "CRITICAL: rusqlite error");
-            eprintln!("CRITICAL: rusqlite error {:?}", e);
+            eprintln!("CRITICAL: rusqlite error {e:?}");
             OperationError::SqliteError
         })
     }
@@ -1515,11 +1515,10 @@ impl IdlSqlite {
             .with_init(move |c| {
                 c.execute_batch(
                     format!(
-                        "PRAGMA page_size={};
+                        "PRAGMA page_size={fs_page_size};
                              PRAGMA journal_mode=WAL;
-                             PRAGMA wal_autocheckpoint={};
-                             PRAGMA wal_checkpoint(RESTART);",
-                        fs_page_size, checkpoint_pages
+                             PRAGMA wal_autocheckpoint={checkpoint_pages};
+                             PRAGMA wal_checkpoint(RESTART);"
                     )
                     .as_str(),
                 )

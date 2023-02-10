@@ -643,7 +643,7 @@ pub trait QueryServerTransaction<'a> {
                         Some(v) => v.to_proto_string_clone(),
                         None => uuid_to_proto_string(*u),
                     };
-                    Ok(format!("{}: {:?}", u, m))
+                    Ok(format!("{u}: {m:?}"))
                 })
                 .collect();
             v
@@ -664,7 +664,7 @@ pub trait QueryServerTransaction<'a> {
                 .copied()
                 .map(|ur| {
                     let rdn = self.uuid_to_rdn(ur)?;
-                    Ok(format!("{},{}", rdn, basedn).into_bytes())
+                    Ok(format!("{rdn},{basedn}").into_bytes())
                 })
                 .collect();
             v
@@ -1518,7 +1518,7 @@ mod tests {
         assert!(r1 == Ok(None));
         // Name does exist
         let r3 = server_txn.uuid_to_spn(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"));
-        println!("{:?}", r3);
+        println!("{r3:?}");
         assert!(r3.unwrap().unwrap() == Value::new_spn_str("testperson1", "example.com"));
         // Name is not syntax normalised (but exists)
         let r4 = server_txn.uuid_to_spn(uuid!("CC8E95B4-C24F-4D68-BA54-8BED76F63930"));
@@ -1551,7 +1551,7 @@ mod tests {
         assert!(r1.unwrap() == "uuid=bae3f507-e6c3-44ba-ad01-f8ff1083534a");
         // Name does exist
         let r3 = server_txn.uuid_to_rdn(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"));
-        println!("{:?}", r3);
+        println!("{r3:?}");
         assert!(r3.unwrap() == "spn=testperson1@example.com");
         // Uuid is not syntax normalised (but exists)
         let r4 = server_txn.uuid_to_rdn(uuid!("CC8E95B4-C24F-4D68-BA54-8BED76F63930"));

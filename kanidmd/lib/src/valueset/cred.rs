@@ -239,7 +239,7 @@ impl ValueSetIntentToken {
 
     pub fn from_repl_v1(data: &[ReplIntentTokenV1]) -> Result<ValueSet, OperationError> {
         let map = data
-            .into_iter()
+            .iter()
             .map(|dits| match dits {
                 ReplIntentTokenV1::Valid { token_id, max_ttl } => (
                     token_id.clone(),

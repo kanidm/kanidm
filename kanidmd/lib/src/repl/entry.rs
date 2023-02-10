@@ -110,7 +110,7 @@ impl EntryChangeState {
                 v.dedup();
                 v
             }
-            State::Tombstone { at } => vec![&at],
+            State::Tombstone { at } => vec![at],
         }
     }
 

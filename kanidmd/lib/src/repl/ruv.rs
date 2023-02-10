@@ -48,7 +48,7 @@ impl<'a> fmt::Debug for ReplicationUpdateVectorWriteTransaction<'a> {
         writeln!(f, "RUV DUMP")?;
         self.data
             .iter()
-            .try_for_each(|(cid, idl)| writeln!(f, "* [{} {:?}]", cid, idl))
+            .try_for_each(|(cid, idl)| writeln!(f, "* [{cid} {idl:?}]"))
     }
 }
 

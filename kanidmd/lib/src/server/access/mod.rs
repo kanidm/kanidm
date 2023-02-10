@@ -2429,7 +2429,7 @@ mod tests {
         // Test allowed to create
         test_acp_create!(&ce_admin, vec![acp.clone()], &r1_set, true);
         // Test Fails due to protected from sync object
-        test_acp_create!(&ce_admin, vec![acp.clone()], &r2_set, false);
+        test_acp_create!(&ce_admin, vec![acp], &r2_set, false);
     }
 
     #[test]
@@ -2601,6 +2601,6 @@ mod tests {
         // Test reject rem
         test_acp_modify!(&me_rem, vec![acp_allow.clone()], &r2_set, false);
         // Test reject purge
-        test_acp_modify!(&me_purge, vec![acp_allow.clone()], &r2_set, false);
+        test_acp_modify!(&me_purge, vec![acp_allow], &r2_set, false);
     }
 }

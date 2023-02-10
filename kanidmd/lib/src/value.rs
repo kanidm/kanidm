@@ -684,7 +684,7 @@ impl PartialValue {
             | PartialValue::SshKey(tag) => tag.to_string(),
             // This will never match as we never index radius creds! See generate_idx_eq_keys
             PartialValue::SecretValue | PartialValue::PrivateBinary => "_".to_string(),
-            PartialValue::Spn(name, realm) => format!("{}@{}", name, realm),
+            PartialValue::Spn(name, realm) => format!("{name}@{realm}"),
             PartialValue::Uint32(u) => u.to_string(),
             // This will never work, we don't allow equality searching on Cid's
             PartialValue::Cid(_) => "_".to_string(),
@@ -1503,10 +1503,10 @@ impl Value {
                         let fp = spk.fingerprint();
                         format!("{}: {}", tag, fp.hash)
                     }
-                    Err(_) => format!("{}: corrupted ssh public key", tag),
+                    Err(_) => format!("{tag}: corrupted ssh public key"),
                 }
             }
-            Value::Spn(n, r) => format!("{}@{}", n, r),
+            Value::Spn(n, r) => format!("{n}@{r}"),
             _ => unreachable!(),
         }
     }

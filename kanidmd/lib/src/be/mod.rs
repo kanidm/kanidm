@@ -2162,7 +2162,7 @@ mod tests {
             "{}/.backup_test.json",
             option_env!("OUT_DIR").unwrap_or("/tmp")
         );
-        eprintln!(" ⚠️   {}", db_backup_file_name);
+        eprintln!(" ⚠️   {db_backup_file_name}");
         run_test!(|be: &mut BackendWriteTransaction| {
             // Important! Need db metadata setup!
             be.reset_db_s_uuid().unwrap();
@@ -2218,7 +2218,7 @@ mod tests {
             "{}/.backup2_test.json",
             option_env!("OUT_DIR").unwrap_or("/tmp")
         );
-        eprintln!(" ⚠️   {}", db_backup_file_name);
+        eprintln!(" ⚠️   {db_backup_file_name}");
         run_test!(|be: &mut BackendWriteTransaction| {
             // Important! Need db metadata setup!
             be.reset_db_s_uuid().unwrap();

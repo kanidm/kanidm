@@ -941,11 +941,11 @@ impl Entry<EntrySealed, EntryCommitted> {
     pub(crate) fn get_uuid2rdn(&self) -> String {
         self.attrs
             .get("spn")
-            .and_then(|vs| vs.to_proto_string_single().map(|v| format!("spn={}", v)))
+            .and_then(|vs| vs.to_proto_string_single().map(|v| format!("spn={v}")))
             .or_else(|| {
                 self.attrs
                     .get("name")
-                    .and_then(|vs| vs.to_proto_string_single().map(|v| format!("name={}", v)))
+                    .and_then(|vs| vs.to_proto_string_single().map(|v| format!("name={v}")))
             })
             .unwrap_or_else(|| format!("uuid={}", self.get_uuid().as_hyphenated()))
     }
@@ -1771,7 +1771,7 @@ impl Entry<EntryReduced, EntryCommitted> {
     ) -> Result<LdapSearchResultEntry, OperationError> {
         let rdn = qs.uuid_to_rdn(self.get_uuid())?;
 
-        let dn = format!("{},{}", rdn, basedn);
+        let dn = format!("{rdn},{basedn}");
 
         // Everything in our attrs set is "what was requested". So we can transform that now
         // so they are all in "ldap forms" which makes our next stage a bit easier.
@@ -2831,13 +2831,13 @@ mod tests {
 
         // When we do None, None, we get nothing back.
         let r1 = Entry::idx_diff(&idxmeta, None, None);
-        eprintln!("{:?}", r1);
+        eprintln!("{r1:?}");
         assert!(r1 == Vec::new());
 
         // Check generating a delete diff
         let mut del_r = Entry::idx_diff(&idxmeta, Some(&e1), None);
         del_r.sort_unstable();
-        eprintln!("del_r {:?}", del_r);
+        eprintln!("del_r {del_r:?}");
         assert!(
             del_r[0]
                 == Err((
@@ -2858,7 +2858,7 @@ mod tests {
         // Check generating an add diff
         let mut add_r = Entry::idx_diff(&idxmeta, None, Some(&e1));
         add_r.sort_unstable();
-        eprintln!("{:?}", add_r);
+        eprintln!("{add_r:?}");
         assert!(
             add_r[0]
                 == Ok((
@@ -2907,7 +2907,7 @@ mod tests {
         // Change an attribute.
         let mut chg_r = Entry::idx_diff(&idxmeta, Some(&e1), Some(&e2));
         chg_r.sort_unstable();
-        eprintln!("{:?}", chg_r);
+        eprintln!("{chg_r:?}");
         assert!(
             chg_r[1]
                 == Err((

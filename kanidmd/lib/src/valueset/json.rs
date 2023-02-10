@@ -24,16 +24,16 @@ impl ValueSetJsonFilter {
 
     pub fn from_dbvs2(data: &[String]) -> Result<ValueSet, OperationError> {
         let set = data
-            .into_iter()
-            .map(|s| serde_json::from_str(&s).map_err(|_| OperationError::SerdeJsonError))
+            .iter()
+            .map(|s| serde_json::from_str(s).map_err(|_| OperationError::SerdeJsonError))
             .collect::<Result<_, _>>()?;
         Ok(Box::new(ValueSetJsonFilter { set }))
     }
 
     pub fn from_repl_v1(data: &[String]) -> Result<ValueSet, OperationError> {
         let set = data
-            .into_iter()
-            .map(|s| serde_json::from_str(&s).map_err(|_| OperationError::SerdeJsonError))
+            .iter()
+            .map(|s| serde_json::from_str(s).map_err(|_| OperationError::SerdeJsonError))
             .collect::<Result<_, _>>()?;
         Ok(Box::new(ValueSetJsonFilter { set }))
     }

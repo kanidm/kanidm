@@ -36,7 +36,7 @@ impl ValueSetDateTime {
 
     pub fn from_repl_v1(data: &[String]) -> Result<ValueSet, OperationError> {
         let set = data
-            .into_iter()
+            .iter()
             .map(|s| {
                 OffsetDateTime::parse(s, time::Format::Rfc3339)
                     .map(|odt| odt.to_offset(time::UtcOffset::UTC))

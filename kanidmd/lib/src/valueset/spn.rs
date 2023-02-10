@@ -90,7 +90,7 @@ impl ValueSetT for ValueSetSpn {
     fn generate_idx_eq_keys(&self) -> Vec<String> {
         self.set
             .iter()
-            .map(|(n, d)| format!("{}@{}", n, d))
+            .map(|(n, d)| format!("{n}@{d}"))
             .collect()
     }
 
@@ -103,7 +103,7 @@ impl ValueSetT for ValueSetSpn {
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(self.set.iter().map(|(n, d)| format!("{}@{}", n, d)))
+        Box::new(self.set.iter().map(|(n, d)| format!("{n}@{d}")))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

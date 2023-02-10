@@ -179,7 +179,7 @@ impl IdmServer {
                 let valid = url.domain().map(|effective_domain| {
                     // We need to prepend the '.' here to ensure that myexample.com != example.com,
                     // rather than just ends with.
-                    effective_domain.ends_with(&format!(".{}", rp_id))
+                    effective_domain.ends_with(&format!(".{rp_id}"))
                     || effective_domain == rp_id
                 }).unwrap_or(false);
 

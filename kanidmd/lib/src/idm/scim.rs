@@ -788,8 +788,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let attr_schema = schema.get_attributes().get(scim_attr_name).ok_or_else(|| {
             OperationError::InvalidAttribute(format!(
-                "No such attribute in schema - {}",
-                scim_attr_name
+                "No such attribute in schema - {scim_attr_name}"
             ))
         })?;
 
@@ -820,16 +819,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .ok_or_else(|| {
                     error!("Invalid value - not a valid unsigned integer");
                     OperationError::InvalidAttribute(format!(
-                        "Invalid unsigned integer - {}",
-                        scim_attr_name
+                        "Invalid unsigned integer - {scim_attr_name}"
                     ))
                 })
                 .and_then(|i| {
                     u32::try_from(i).map_err(|_| {
                         error!("Invalid value - not within the bounds of a u32");
                         OperationError::InvalidAttribute(format!(
-                            "Out of bounds unsigned integer - {}",
-                            scim_attr_name
+                            "Out of bounds unsigned integer - {scim_attr_name}"
                         ))
                     })
                 })
@@ -849,8 +846,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     let external_id = complex.attrs.get("external_id").ok_or_else(|| {
                         error!("Invalid scim complex attr - missing required key external_id");
                         OperationError::InvalidAttribute(format!(
-                            "missing required key external_id - {}",
-                            scim_attr_name
+                            "missing required key external_id - {scim_attr_name}"
                         ))
                     })?;
 
@@ -859,8 +855,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         _ => {
                             error!("Invalid external_id attribute - must be scim simple string");
                             Err(OperationError::InvalidAttribute(format!(
-                                "external_id must be scim simple string - {}",
-                                scim_attr_name
+                                "external_id must be scim simple string - {scim_attr_name}"
                             )))
                         }
                     }?;
@@ -889,8 +884,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         .ok_or_else(|| {
                             error!("Invalid scim complex attr - missing required key external_id");
                             OperationError::InvalidAttribute(format!(
-                                "missing required key external_id - {}",
-                                scim_attr_name
+                                "missing required key external_id - {scim_attr_name}"
                             ))
                         })
                         .and_then(|external_id| match external_id {
@@ -900,8 +894,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                                     "Invalid external_id attribute - must be scim simple string"
                                 );
                                 Err(OperationError::InvalidAttribute(format!(
-                                    "external_id must be scim simple string - {}",
-                                    scim_attr_name
+                                    "external_id must be scim simple string - {scim_attr_name}"
                                 )))
                             }
                         })?;
@@ -912,8 +905,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         .ok_or_else(|| {
                             error!("Invalid scim complex attr - missing required key secret");
                             OperationError::InvalidAttribute(format!(
-                                "missing required key secret - {}",
-                                scim_attr_name
+                                "missing required key secret - {scim_attr_name}"
                             ))
                         })
                         .and_then(|secret| match secret {
@@ -923,16 +915,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                                     .map_err(|_| {
                                         error!("Invalid secret attribute - must be base64 string");
                                         OperationError::InvalidAttribute(format!(
-                                            "secret must be base64 string - {}",
-                                            scim_attr_name
+                                            "secret must be base64 string - {scim_attr_name}"
                                         ))
                                     })
                             }
                             _ => {
                                 error!("Invalid secret attribute - must be scim simple string");
                                 Err(OperationError::InvalidAttribute(format!(
-                                    "secret must be scim simple string - {}",
-                                    scim_attr_name
+                                    "secret must be scim simple string - {scim_attr_name}"
                                 )))
                             }
                         })?;
@@ -941,8 +931,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         .ok_or_else(|| {
                             error!("Invalid scim complex attr - missing required key algo");
                             OperationError::InvalidAttribute(format!(
-                                "missing required key algo - {}",
-                                scim_attr_name
+                                "missing required key algo - {scim_attr_name}"
                             ))
                         })
                         .and_then(|algo_str| {
@@ -955,8 +944,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                                         _ => {
                                             error!("Invalid algo attribute - must be one of sha1, sha256 or sha512");
                                             Err(OperationError::InvalidAttribute(format!(
-                                                "algo must be one of sha1, sha256 or sha512 - {}",
-                                                scim_attr_name
+                                                "algo must be one of sha1, sha256 or sha512 - {scim_attr_name}"
                                             )))
                                         }
                                     }
@@ -964,8 +952,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                                 _ => {
                                     error!("Invalid algo attribute - must be scim simple string");
                                     Err(OperationError::InvalidAttribute(format!(
-                                        "algo must be scim simple string - {}",
-                                        scim_attr_name
+                                        "algo must be scim simple string - {scim_attr_name}"
                                     )))
                                 }
                             }
@@ -974,8 +961,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     let step = complex.attrs.get("step").ok_or_else(|| {
                         error!("Invalid scim complex attr - missing required key step");
                         OperationError::InvalidAttribute(format!(
-                            "missing required key step - {}",
-                            scim_attr_name
+                            "missing required key step - {scim_attr_name}"
                         ))
                     }).and_then(|step| {
                         match step {
@@ -984,16 +970,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                                     Some(s) if s >= 30 => Ok(s),
                                     _ =>
                                         Err(OperationError::InvalidAttribute(format!(
-                                            "step must be a positive integer value equal to or greater than 30 - {}",
-                                            scim_attr_name
+                                            "step must be a positive integer value equal to or greater than 30 - {scim_attr_name}"
                                         ))),
                                 }
                             }
                             _ => {
                                 error!("Invalid step attribute - must be scim simple number");
                                 Err(OperationError::InvalidAttribute(format!(
-                                    "step must be scim simple number - {}",
-                                    scim_attr_name
+                                    "step must be scim simple number - {scim_attr_name}"
                                 )))
                             }
                         }
@@ -1005,8 +989,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         .ok_or_else(|| {
                             error!("Invalid scim complex attr - missing required key digits");
                             OperationError::InvalidAttribute(format!(
-                                "missing required key digits - {}",
-                                scim_attr_name
+                                "missing required key digits - {scim_attr_name}"
                             ))
                         })
                         .and_then(|digits| match digits {
@@ -1014,15 +997,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                                 Some(6) => Ok(TotpDigits::Six),
                                 Some(8) => Ok(TotpDigits::Eight),
                                 _ => Err(OperationError::InvalidAttribute(format!(
-                                    "digits must be a positive integer value of 6 OR 8 - {}",
-                                    scim_attr_name
+                                    "digits must be a positive integer value of 6 OR 8 - {scim_attr_name}"
                                 ))),
                             },
                             _ => {
                                 error!("Invalid digits attribute - must be scim simple number");
                                 Err(OperationError::InvalidAttribute(format!(
-                                    "digits must be scim simple number - {}",
-                                    scim_attr_name
+                                    "digits must be scim simple number - {scim_attr_name}"
                                 )))
                             }
                         })?;
@@ -1035,8 +1016,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             (syn, mv, sa) => {
                 error!(?syn, ?mv, ?sa, "Unsupported scim attribute conversion. This may be a syntax error in your import, or a missing feature in Kanidm.");
                 Err(OperationError::InvalidAttribute(format!(
-                    "Unsupported attribute conversion - {}",
-                    scim_attr_name
+                    "Unsupported attribute conversion - {scim_attr_name}"
                 )))
             }
         }
@@ -1951,7 +1931,7 @@ mod tests {
             assert!(task::block_on(apply_phase_3_test(
                 idms,
                 vec![ScimEntry {
-                    schemas: vec![format!("{}system", SCIM_SCHEMA_SYNC)],
+                    schemas: vec![format!("{SCIM_SCHEMA_SYNC}system")],
                     id: user_sync_uuid,
                     external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                     meta: None,

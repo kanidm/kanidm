@@ -32,10 +32,10 @@ pub enum AuthState {
 impl fmt::Debug for AuthState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AuthState::Choose(mechs) => write!(f, "AuthState::Choose({:?})", mechs),
-            AuthState::Continue(allow) => write!(f, "AuthState::Continue({:?})", allow),
-            AuthState::Denied(reason) => write!(f, "AuthState::Denied({:?})", reason),
-            AuthState::Success(_token, issue) => write!(f, "AuthState::Success({:?})", issue),
+            AuthState::Choose(mechs) => write!(f, "AuthState::Choose({mechs:?})"),
+            AuthState::Continue(allow) => write!(f, "AuthState::Continue({allow:?})"),
+            AuthState::Denied(reason) => write!(f, "AuthState::Denied({reason:?})"),
+            AuthState::Success(_token, issue) => write!(f, "AuthState::Success({issue:?})"),
         }
     }
 }

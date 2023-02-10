@@ -71,7 +71,7 @@ impl fmt::Debug for MfaRegState {
             MfaRegState::TotpInvalidSha1(_, _, _) => "MfaRegState::TotpInvalidSha1",
             MfaRegState::Passkey(_, _) => "MfaRegState::Passkey",
         };
-        write!(f, "{}", t)
+        write!(f, "{t}")
     }
 }
 
@@ -168,7 +168,7 @@ impl fmt::Debug for MfaRegStateStatus {
             MfaRegStateStatus::BackupCodes(_) => "MfaRegStateStatus::BackupCodes",
             MfaRegStateStatus::Passkey(_) => "MfaRegStateStatus::Passkey",
         };
-        write!(f, "{}", t)
+        write!(f, "{t}")
     }
 }
 

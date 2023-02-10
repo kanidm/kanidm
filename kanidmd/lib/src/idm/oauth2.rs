@@ -143,10 +143,10 @@ impl fmt::Display for Oauth2TokenType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Oauth2TokenType::Access { session_id, .. } => {
-                write!(f, "access_token ({}) ", session_id)
+                write!(f, "access_token ({session_id}) ")
             }
             Oauth2TokenType::Refresh { session_id, .. } => {
-                write!(f, "refresh_token ({}) ", session_id)
+                write!(f, "refresh_token ({session_id}) ")
             }
         }
     }
@@ -389,13 +389,13 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     token_endpoint.set_path("/oauth2/token");
 
                     let mut userinfo_endpoint = self.inner.origin.clone();
-                    userinfo_endpoint.set_path(&format!("/oauth2/openid/{}/userinfo", name));
+                    userinfo_endpoint.set_path(&format!("/oauth2/openid/{name}/userinfo"));
 
                     let mut jwks_uri = self.inner.origin.clone();
-                    jwks_uri.set_path(&format!("/oauth2/openid/{}/public_key.jwk", name));
+                    jwks_uri.set_path(&format!("/oauth2/openid/{name}/public_key.jwk"));
 
                     let mut iss = self.inner.origin.clone();
-                    iss.set_path(&format!("/oauth2/openid/{}", name));
+                    iss.set_path(&format!("/oauth2/openid/{name}"));
 
                     let scopes_supported: BTreeSet<String> =
                     scope_maps
@@ -2193,7 +2193,7 @@ mod tests {
                 );
 
                 //  * doesn't have :
-                let client_authz = Some(base64::encode(format!("test_resource_server {}", secret)));
+                let client_authz = Some(base64::encode(format!("test_resource_server {secret}")));
                 assert!(
                     idms_prox_read
                         .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
@@ -2202,7 +2202,7 @@ mod tests {
                 );
 
                 //  * invalid client_id
-                let client_authz = Some(base64::encode(format!("NOT A REAL SERVER:{}", secret)));
+                let client_authz = Some(base64::encode(format!("NOT A REAL SERVER:{secret}")));
                 assert!(
                     idms_prox_read
                         .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
@@ -2220,7 +2220,7 @@ mod tests {
                 );
 
                 // ✅ Now the valid client_authz is in place.
-                let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
+                let client_authz = Some(base64::encode(format!("test_resource_server:{secret}")));
                 //  * expired exchange code (took too long)
                 assert!(
                     idms_prox_read
@@ -2304,7 +2304,7 @@ mod tests {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
                 let (secret, uat, ident, _) =
                     setup_oauth2_resource_server(idms, ct, true, false, false);
-                let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
+                let client_authz = Some(base64::encode(format!("test_resource_server:{secret}")));
 
                 let mut idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -2370,7 +2370,7 @@ mod tests {
                     )
                     .expect("Failed to inspect token");
 
-                eprintln!("👉  {:?}", intr_response);
+                eprintln!("👉  {intr_response:?}");
                 assert!(intr_response.active);
                 assert!(intr_response.scope.as_deref() == Some("openid supplement"));
                 assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));
@@ -2419,7 +2419,7 @@ mod tests {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
                 let (secret, uat, ident, _) =
                     setup_oauth2_resource_server(idms, ct, true, false, false);
-                let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
+                let client_authz = Some(base64::encode(format!("test_resource_server:{secret}")));
 
                 let mut idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -2496,7 +2496,7 @@ mod tests {
                         ct,
                     )
                     .expect("Failed to inspect token");
-                eprintln!("👉  {:?}", intr_response);
+                eprintln!("👉  {intr_response:?}");
                 assert!(intr_response.active);
                 drop(idms_prox_read);
 
@@ -2600,7 +2600,7 @@ mod tests {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
                 let (secret, uat, ident, _) =
                     setup_oauth2_resource_server(idms, ct, true, false, false);
-                let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
+                let client_authz = Some(base64::encode(format!("test_resource_server:{secret}")));
 
                 let mut idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -2943,7 +2943,7 @@ mod tests {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
                 let (secret, uat, ident, _) =
                     setup_oauth2_resource_server(idms, ct, true, false, false);
-                let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
+                let client_authz = Some(base64::encode(format!("test_resource_server:{secret}")));
 
                 let mut idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -3081,7 +3081,7 @@ mod tests {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
                 let (secret, uat, ident, _) =
                     setup_oauth2_resource_server(idms, ct, true, false, true);
-                let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
+                let client_authz = Some(base64::encode(format!("test_resource_server:{secret}")));
 
                 let mut idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -3178,7 +3178,7 @@ mod tests {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
                 let (secret, uat, ident, _) =
                     setup_oauth2_resource_server(idms, ct, true, false, true);
-                let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
+                let client_authz = Some(base64::encode(format!("test_resource_server:{secret}")));
 
                 let mut idms_prox_read = task::block_on(idms.proxy_read());
 

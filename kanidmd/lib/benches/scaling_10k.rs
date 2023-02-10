@@ -21,7 +21,7 @@ pub fn scaling_user_create_single(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, &size| {
             b.iter_custom(|iters| {
                 let mut elapsed = Duration::from_secs(0);
-                println!("iters, size -> {:?}, {:?}", iters, size);
+                println!("iters, size -> {iters:?}, {size:?}");
 
                 for _i in 0..iters {
                     let mut rt = tokio::runtime::Builder::new_current_thread();
@@ -37,7 +37,7 @@ pub fn scaling_user_create_single(c: &mut Criterion) {
                             let start = Instant::now();
                             for counter in 0..size {
                                 let mut idms_prox_write = idms.proxy_write(ct).await;
-                                let name = format!("testperson_{}", counter);
+                                let name = format!("testperson_{counter}");
                                 let e1 = entry_init!(
                                     ("class", Value::new_class("object")),
                                     ("class", Value::new_class("person")),
@@ -74,12 +74,12 @@ pub fn scaling_user_create_batched(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, &size| {
             b.iter_custom(|iters| {
                 let mut elapsed = Duration::from_secs(0);
-                println!("iters, size -> {:?}, {:?}", iters, size);
+                println!("iters, size -> {iters:?}, {size:?}");
 
                 let data: Vec<_> = (0..size)
                     .into_iter()
                     .map(|i| {
-                        let name = format!("testperson_{}", i);
+                        let name = format!("testperson_{i}");
                         entry_init!(
                             ("class", Value::new_class("object")),
                             ("class", Value::new_class("person")),
