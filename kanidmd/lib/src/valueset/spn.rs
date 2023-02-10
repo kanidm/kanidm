@@ -88,10 +88,7 @@ impl ValueSetT for ValueSetSpn {
     }
 
     fn generate_idx_eq_keys(&self) -> Vec<String> {
-        self.set
-            .iter()
-            .map(|(n, d)| format!("{n}@{d}"))
-            .collect()
+        self.set.iter().map(|(n, d)| format!("{n}@{d}")).collect()
     }
 
     fn syntax(&self) -> SyntaxType {

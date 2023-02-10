@@ -460,16 +460,25 @@ impl ReplEntryV1 {
                 };
                 Ok((ecstate, eattrs))
             }
-            ReplStateV1::Tombstone { at: _ } => {
-                unreachable!()
+            ReplStateV1::Tombstone { at } => {
+                let at: Cid = at.into();
+
+                let mut eattrs = Eattrs::default();
+
+                let class_ava = vs_iutf8!["object", "tombstone"];
+                let last_mod_ava = vs_cid![at.clone()];
+
+                eattrs.insert(AttrString::from("uuid"), vs_uuid![self.uuid]);
+                eattrs.insert(AttrString::from("class"), class_ava);
+                eattrs.insert(AttrString::from("last_modified_cid"), last_mod_ava);
+
+                let ecstate = EntryChangeState {
+                    st: State::Tombstone { at },
+                };
+
+                Ok((ecstate, eattrs))
             }
         }
-    }
-}
-
-impl Into<EntryInvalidNew> for &ReplEntryV1 {
-    fn into(self) -> EntryInvalidNew {
-        todo!();
     }
 }
 
