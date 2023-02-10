@@ -173,6 +173,11 @@ impl ValueSetPublicBinary {
         Ok(Box::new(ValueSetPublicBinary { map }))
     }
 
+    pub fn from_repl_v1(data: &[(String, Base64UrlSafeData)]) -> Result<ValueSet, OperationError> {
+        let map = data.iter().map(|(k, v)| (k.clone(), v.0.clone())).collect();
+        Ok(Box::new(ValueSetPublicBinary { map }))
+    }
+
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
     // types, and tuples are always foreign.
     #[allow(clippy::should_implement_trait)]

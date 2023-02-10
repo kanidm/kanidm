@@ -704,9 +704,28 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::SecretValue { set } => ValueSetSecret::from_repl_v1(set),
         ReplAttrV1::Reference { set } => ValueSetRefer::from_repl_v1(set),
         ReplAttrV1::JwsKeyEs256 { set } => ValueSetJwsKeyEs256::from_repl_v1(set),
+        ReplAttrV1::JwsKeyRs256 { set } => ValueSetJwsKeyRs256::from_repl_v1(set),
         ReplAttrV1::Spn { set } => ValueSetSpn::from_repl_v1(set),
         ReplAttrV1::JsonFilter { set } => ValueSetJsonFilter::from_repl_v1(set),
         ReplAttrV1::UiHint { set } => ValueSetUiHint::from_repl_v1(set),
-        _ => todo!(),
+        ReplAttrV1::Address { set } => ValueSetAddress::from_repl_v1(set),
+        ReplAttrV1::EmailAddress { primary, set } => {
+            ValueSetEmailAddress::from_repl_v1(primary, set)
+        }
+        ReplAttrV1::PublicBinary { set } => ValueSetPublicBinary::from_repl_v1(set),
+        ReplAttrV1::Credential { set } => ValueSetCredential::from_repl_v1(set),
+        ReplAttrV1::IntentToken { set } => ValueSetIntentToken::from_repl_v1(set),
+        ReplAttrV1::Passkey { set } => ValueSetPasskey::from_repl_v1(set),
+        ReplAttrV1::DeviceKey { set } => ValueSetDeviceKey::from_repl_v1(set),
+        ReplAttrV1::DateTime { set } => ValueSetDateTime::from_repl_v1(set),
+        ReplAttrV1::Url { set } => ValueSetUrl::from_repl_v1(set),
+        ReplAttrV1::NsUniqueId { set } => ValueSetNsUniqueId::from_repl_v1(set),
+        ReplAttrV1::RestrictedString { set } => ValueSetRestricted::from_repl_v1(set),
+        ReplAttrV1::SshKey { set } => ValueSetSshKey::from_repl_v1(set),
+        ReplAttrV1::OauthScope { set } => ValueSetOauthScope::from_repl_v1(set),
+        ReplAttrV1::OauthScopeMap { set } => ValueSetOauthScopeMap::from_repl_v1(set),
+        ReplAttrV1::Oauth2Session { set } => ValueSetOauth2Session::from_repl_v1(set),
+        ReplAttrV1::Session { set } => ValueSetSession::from_repl_v1(set),
+        ReplAttrV1::TotpSecret { set } => ValueSetTotpSecret::from_repl_v1(set),
     }
 }

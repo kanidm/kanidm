@@ -34,6 +34,18 @@ impl ValueSetDateTime {
         Ok(Box::new(ValueSetDateTime { set }))
     }
 
+    pub fn from_repl_v1(data: &[String]) -> Result<ValueSet, OperationError> {
+        let set = data
+            .into_iter()
+            .map(|s| {
+                OffsetDateTime::parse(s, time::Format::Rfc3339)
+                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                    .map_err(|_| OperationError::InvalidValueState)
+            })
+            .collect::<Result<_, _>>()?;
+        Ok(Box::new(ValueSetDateTime { set }))
+    }
+
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
     // types, and offset date time is foreign
     #[allow(clippy::should_implement_trait)]

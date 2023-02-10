@@ -28,6 +28,14 @@ impl ValueSetSshKey {
         Ok(Box::new(ValueSetSshKey { map }))
     }
 
+    pub fn from_repl_v1(data: &[(String, String)]) -> Result<ValueSet, OperationError> {
+        let map = data
+            .iter()
+            .map(|(tag, data)| (tag.clone(), data.clone()))
+            .collect();
+        Ok(Box::new(ValueSetSshKey { map }))
+    }
+
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
     // types, and tuples are always foreign.
     #[allow(clippy::should_implement_trait)]

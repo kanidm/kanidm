@@ -26,6 +26,11 @@ impl ValueSetRestricted {
         Ok(Box::new(ValueSetRestricted { set }))
     }
 
+    pub fn from_repl_v1(data: &[String]) -> Result<ValueSet, OperationError> {
+        let set = data.iter().cloned().collect();
+        Ok(Box::new(ValueSetRestricted { set }))
+    }
+
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
     // types, and String is foreign.
     #[allow(clippy::should_implement_trait)]

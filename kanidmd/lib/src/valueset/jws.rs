@@ -219,6 +219,19 @@ impl ValueSetJwsKeyRs256 {
         Ok(Box::new(ValueSetJwsKeyRs256 { set }))
     }
 
+    pub fn from_repl_v1(data: &[Base64UrlSafeData]) -> Result<ValueSet, OperationError> {
+        let set = data
+            .iter()
+            .map(|b| {
+                JwsSigner::from_rs256_der(b.0.as_slice()).map_err(|e| {
+                    debug!(?e, "Error occurred parsing RS256 DER");
+                    OperationError::InvalidValueState
+                })
+            })
+            .collect::<Result<HashSet<_>, _>>()?;
+        Ok(Box::new(ValueSetJwsKeyRs256 { set }))
+    }
+
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
     // types, and jwssigner is foreign
     #[allow(clippy::should_implement_trait)]

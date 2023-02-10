@@ -29,6 +29,11 @@ impl ValueSetOauthScope {
         Ok(Box::new(ValueSetOauthScope { set }))
     }
 
+    pub fn from_repl_v1(data: &[String]) -> Result<ValueSet, OperationError> {
+        let set = data.iter().cloned().collect();
+        Ok(Box::new(ValueSetOauthScope { set }))
+    }
+
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
     // types, and String is foreign.
     #[allow(clippy::should_implement_trait)]
@@ -175,11 +180,15 @@ impl ValueSetOauthScopeMap {
     pub fn from_dbvs2(data: Vec<DbValueOauthScopeMapV1>) -> Result<ValueSet, OperationError> {
         let map = data
             .into_iter()
-            .map(|dbv| {
-                let u = dbv.refer;
-                let m = dbv.data.into_iter().collect();
-                (u, m)
-            })
+            .map(|DbValueOauthScopeMapV1 { refer, data }| (refer, data.into_iter().collect()))
+            .collect();
+        Ok(Box::new(ValueSetOauthScopeMap { map }))
+    }
+
+    pub fn from_repl_v1(data: &[ReplOauthScopeMapV1]) -> Result<ValueSet, OperationError> {
+        let map = data
+            .into_iter()
+            .map(|ReplOauthScopeMapV1 { refer, data }| (*refer, data.clone()))
             .collect();
         Ok(Box::new(ValueSetOauthScopeMap { map }))
     }

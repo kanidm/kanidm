@@ -104,6 +104,30 @@ impl TryFrom<DbPasswordV1> for Password {
     }
 }
 
+impl TryFrom<&ReplPasswordV1> for Password {
+    type Error = ();
+
+    fn try_from(value: &ReplPasswordV1) -> Result<Self, Self::Error> {
+        match value {
+            ReplPasswordV1::PBKDF2 { cost, salt, hash } => Ok(Password {
+                material: Kdf::PBKDF2(*cost, salt.0.clone(), hash.0.clone()),
+            }),
+            ReplPasswordV1::PBKDF2_SHA1 { cost, salt, hash } => Ok(Password {
+                material: Kdf::PBKDF2_SHA1(*cost, salt.0.clone(), hash.0.clone()),
+            }),
+            ReplPasswordV1::PBKDF2_SHA512 { cost, salt, hash } => Ok(Password {
+                material: Kdf::PBKDF2_SHA512(*cost, salt.0.clone(), hash.0.clone()),
+            }),
+            ReplPasswordV1::SSHA512 { salt, hash } => Ok(Password {
+                material: Kdf::SSHA512(salt.0.clone(), hash.0.clone()),
+            }),
+            ReplPasswordV1::NT_MD4 { hash } => Ok(Password {
+                material: Kdf::NT_MD4(hash.0.clone()),
+            }),
+        }
+    }
+}
+
 // OpenLDAP based their PBKDF2 implementation on passlib from python, that uses a
 // non-standard base64 altchar set and padding that is not supported by
 // anything else in the world. To manage this, we only ever encode to base64 with
@@ -477,6 +501,16 @@ impl TryFrom<DbBackupCodeV1> for BackupCodes {
     }
 }
 
+impl TryFrom<&ReplBackupCodeV1> for BackupCodes {
+    type Error = ();
+
+    fn try_from(value: &ReplBackupCodeV1) -> Result<Self, Self::Error> {
+        Ok(BackupCodes {
+            code_set: value.codes.iter().cloned().collect(),
+        })
+    }
+}
+
 impl BackupCodes {
     pub fn new(code_set: HashSet<String>) -> Self {
         BackupCodes { code_set }
@@ -789,6 +823,85 @@ impl TryFrom<DbCred> for Credential {
 }
 
 impl Credential {
+    pub fn try_from_repl_v1(rc: &ReplCredV1) -> Result<(String, Self), ()> {
+        match rc {
+            ReplCredV1::TmpWn { tag, set } => {
+                let m_uuid: Option<Uuid> = set.get(0).map(|v| v.uuid);
+
+                let v_webauthn = set
+                    .iter()
+                    .map(|passkey| (passkey.tag.clone(), passkey.key.clone()))
+                    .collect();
+                let type_ = CredentialType::Webauthn(v_webauthn);
+
+                match (m_uuid, type_.is_valid()) {
+                    (Some(uuid), true) => Ok((tag.clone(), Credential { type_, uuid })),
+                    _ => Err(()),
+                }
+            }
+            ReplCredV1::Password {
+                tag,
+                password,
+                uuid,
+            } => {
+                let v_password = Password::try_from(password)?;
+                let type_ = CredentialType::Password(v_password);
+                if type_.is_valid() {
+                    Ok((tag.clone(), Credential { type_, uuid: *uuid }))
+                } else {
+                    Err(())
+                }
+            }
+            ReplCredV1::GenPassword {
+                tag,
+                password,
+                uuid,
+            } => {
+                let v_password = Password::try_from(password)?;
+                let type_ = CredentialType::GeneratedPassword(v_password);
+                if type_.is_valid() {
+                    Ok((tag.clone(), Credential { type_, uuid: *uuid }))
+                } else {
+                    Err(())
+                }
+            }
+            ReplCredV1::PasswordMfa {
+                tag,
+                password,
+                totp,
+                backup_code,
+                webauthn,
+                uuid,
+            } => {
+                let v_password = Password::try_from(password)?;
+
+                let v_totp = totp
+                    .into_iter()
+                    .map(|(l, dbt)| Totp::try_from(dbt).map(|t| (l.clone(), t)))
+                    .collect::<Result<Map<_, _>, _>>()?;
+
+                let v_backup_code = match backup_code {
+                    Some(rbc) => Some(BackupCodes::try_from(rbc)?),
+                    None => None,
+                };
+
+                let v_webauthn = webauthn
+                    .iter()
+                    .map(|sk| (sk.tag.clone(), sk.key.clone()))
+                    .collect();
+
+                let type_ =
+                    CredentialType::PasswordMfa(v_password, v_totp, v_webauthn, v_backup_code);
+
+                if type_.is_valid() {
+                    Ok((tag.clone(), Credential { type_, uuid: *uuid }))
+                } else {
+                    Err(())
+                }
+            }
+        }
+    }
+
     /// Create a new credential that contains a CredentialType::Password
     pub fn new_password_only(
         policy: &CryptoPolicy,

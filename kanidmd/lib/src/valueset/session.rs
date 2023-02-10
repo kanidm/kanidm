@@ -108,6 +108,83 @@ impl ValueSetSession {
         Ok(Box::new(ValueSetSession { map }))
     }
 
+    pub fn from_repl_v1(data: &[ReplSessionV1]) -> Result<ValueSet, OperationError> {
+        let map = data
+            .iter()
+            .filter_map(
+                |ReplSessionV1 {
+                     refer,
+                     label,
+                     expiry,
+                     issued_at,
+                     issued_by,
+                     scope,
+                 }| {
+                    // Convert things.
+                    let issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)
+                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                        .map_err(|e| {
+                            admin_error!(
+                                ?e,
+                                "Invalidating session {} due to invalid issued_at timestamp",
+                                refer
+                            )
+                        })
+                        .ok()?;
+
+                    // This is a bit annoying. In the case we can't parse the optional
+                    // expiry, we need to NOT return the session so that it's immediately
+                    // invalidated. To do this we have to invert some of the options involved
+                    // here.
+                    let expiry = expiry
+                        .as_ref()
+                        .map(|e_inner| {
+                            OffsetDateTime::parse(e_inner, time::Format::Rfc3339)
+                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                            // We now have an
+                            // Option<Result<ODT, _>>
+                        })
+                        .transpose()
+                        // Result<Option<ODT>, _>
+                        .map_err(|e| {
+                            admin_error!(
+                                ?e,
+                                "Invalidating session {} due to invalid expiry timestamp",
+                                refer
+                            )
+                        })
+                        // Option<Option<ODT>>
+                        .ok()?;
+
+                    let issued_by = match issued_by {
+                        ReplIdentityIdV1::Internal => IdentityId::Internal,
+                        ReplIdentityIdV1::Uuid(u) => IdentityId::User(*u),
+                        ReplIdentityIdV1::Synch(u) => IdentityId::Synch(*u),
+                    };
+
+                    let scope = match scope {
+                        ReplAccessScopeV1::IdentityOnly => AccessScope::IdentityOnly,
+                        ReplAccessScopeV1::ReadOnly => AccessScope::ReadOnly,
+                        ReplAccessScopeV1::ReadWrite => AccessScope::ReadWrite,
+                        ReplAccessScopeV1::Synchronise => AccessScope::Synchronise,
+                    };
+
+                    Some((
+                        *refer,
+                        Session {
+                            label: label.to_string(),
+                            expiry,
+                            issued_at,
+                            issued_by,
+                            scope,
+                        },
+                    ))
+                },
+            )
+            .collect();
+        Ok(Box::new(ValueSetSession { map }))
+    }
+
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
     // types, and tuples are always foreign.
     #[allow(clippy::should_implement_trait)]
@@ -378,6 +455,71 @@ impl ValueSetOauth2Session {
             })
             .collect();
         Ok(Box::new(ValueSetOauth2Session { map, rs_filter }))
+    }
+
+    pub fn from_repl_v1(data: &[ReplOauth2SessionV1]) -> Result<ValueSet, OperationError> {
+        let mut rs_filter = BTreeSet::new();
+        let map = data
+            .iter()
+            .filter_map(
+                |ReplOauth2SessionV1 {
+                     refer,
+                     parent,
+                     expiry,
+                     issued_at,
+                     rs_uuid,
+                 }| {
+                    // Convert things.
+                    let issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)
+                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                        .map_err(|e| {
+                            admin_error!(
+                                ?e,
+                                "Invalidating session {} due to invalid issued_at timestamp",
+                                refer
+                            )
+                        })
+                        .ok()?;
+
+                    // This is a bit annoying. In the case we can't parse the optional
+                    // expiry, we need to NOT return the session so that it's immediately
+                    // invalidated. To do this we have to invert some of the options involved
+                    // here.
+                    let expiry = expiry
+                        .as_ref()
+                        .map(|e_inner| {
+                            OffsetDateTime::parse(e_inner, time::Format::Rfc3339)
+                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                            // We now have an
+                            // Option<Result<ODT, _>>
+                        })
+                        .transpose()
+                        // Result<Option<ODT>, _>
+                        .map_err(|e| {
+                            admin_error!(
+                                ?e,
+                                "Invalidating session {} due to invalid expiry timestamp",
+                                refer
+                            )
+                        })
+                        // Option<Option<ODT>>
+                        .ok()?;
+
+                    // Insert to the rs_filter.
+                    rs_filter.insert(*rs_uuid);
+                    Some((
+                        *refer,
+                        Oauth2Session {
+                            parent: *parent,
+                            expiry,
+                            issued_at,
+                            rs_uuid: *rs_uuid,
+                        },
+                    ))
+                },
+            )
+            .collect();
+        Ok(Box::new(ValueSetOauth2Session { rs_filter, map }))
     }
 
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign

@@ -116,6 +116,27 @@ impl TryFrom<DbTotpV1> for Totp {
     }
 }
 
+impl TryFrom<&ReplTotpV1> for Totp {
+    type Error = ();
+
+    fn try_from(value: &ReplTotpV1) -> Result<Self, Self::Error> {
+        let algo = match value.algo {
+            ReplTotpAlgoV1::S1 => TotpAlgo::Sha1,
+            ReplTotpAlgoV1::S256 => TotpAlgo::Sha256,
+            ReplTotpAlgoV1::S512 => TotpAlgo::Sha512,
+        };
+
+        let digits = TotpDigits::try_from(value.digits)?;
+
+        Ok(Totp {
+            secret: value.key.0.clone(),
+            step: value.step,
+            algo,
+            digits,
+        })
+    }
+}
+
 impl TryFrom<ProtoTotp> for Totp {
     type Error = ();
 

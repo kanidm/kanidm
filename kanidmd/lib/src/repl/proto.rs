@@ -49,7 +49,7 @@ impl From<&ReplCidV1> for Cid {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct ReplAddressV1 {
     #[serde(rename = "f")]
     pub formatted: String,
@@ -170,7 +170,7 @@ impl PartialEq for ReplSecurityKeyV4V1 {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ReplPasskeyV4V1 {
     pub uuid: Uuid,
     pub tag: String,
@@ -185,7 +185,7 @@ impl PartialEq for ReplPasskeyV4V1 {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ReplDeviceKeyV4V1 {
     pub uuid: Uuid,
     pub tag: String,
@@ -203,7 +203,7 @@ impl PartialEq for ReplDeviceKeyV4V1 {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ReplOauthScopeMapV1 {
     pub refer: Uuid,
-    pub data: Vec<String>,
+    pub data: BTreeSet<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -248,7 +248,7 @@ pub enum ReplAttrV1 {
     },
     EmailAddress {
         primary: String,
-        set: String,
+        set: Vec<String>,
     },
     PublicBinary {
         set: Vec<(String, Base64UrlSafeData)>,

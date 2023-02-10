@@ -50,6 +50,33 @@ impl ValueSetAddress {
             .collect();
         Ok(Box::new(ValueSetAddress { set }))
     }
+
+    pub fn from_repl_v1(data: &[ReplAddressV1]) -> Result<ValueSet, OperationError> {
+        let set = data
+            .iter()
+            .cloned()
+            .map(
+                |ReplAddressV1 {
+                     formatted,
+                     street_address,
+                     locality,
+                     region,
+                     postal_code,
+                     country,
+                 }| {
+                    Address {
+                        formatted,
+                        street_address,
+                        locality,
+                        region,
+                        postal_code,
+                        country,
+                    }
+                },
+            )
+            .collect();
+        Ok(Box::new(ValueSetAddress { set }))
+    }
 }
 
 impl FromIterator<Address> for Option<Box<ValueSetAddress>> {
@@ -230,6 +257,19 @@ impl ValueSetEmailAddress {
 
         if set.contains(&primary) {
             Ok(Box::new(ValueSetEmailAddress { primary, set }))
+        } else {
+            Err(OperationError::InvalidValueState)
+        }
+    }
+
+    pub fn from_repl_v1(primary: &String, data: &[String]) -> Result<ValueSet, OperationError> {
+        let set: BTreeSet<_> = data.iter().cloned().collect();
+
+        if set.contains(primary) {
+            Ok(Box::new(ValueSetEmailAddress {
+                primary: primary.clone(),
+                set,
+            }))
         } else {
             Err(OperationError::InvalidValueState)
         }
