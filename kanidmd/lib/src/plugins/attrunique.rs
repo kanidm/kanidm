@@ -58,16 +58,12 @@ fn enforce_unique<STATE>(
     cand: &[Entry<EntryInvalid, STATE>],
     attr: &str,
 ) -> Result<(), OperationError> {
-    trace!(?attr);
-
     // Build a set of all the value -> uuid for the cands.
     // If already exist, reject due to dup.
     let cand_attr = get_cand_attr_set(cand, attr).map_err(|e| {
-        admin_error!(err = ?e, "failed to get cand attr set");
+        admin_error!(err = ?e, ?attr, "failed to get cand attr set");
         e
     })?;
-
-    trace!(?cand_attr);
 
     // No candidates to check!
     if cand_attr.is_empty() {

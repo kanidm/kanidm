@@ -707,9 +707,6 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::Spn { set } => ValueSetSpn::from_repl_v1(set),
         ReplAttrV1::JsonFilter { set } => ValueSetJsonFilter::from_repl_v1(set),
         ReplAttrV1::UiHint { set } => ValueSetUiHint::from_repl_v1(set),
-        t => {
-            trace!("{:#?}", t);
-            todo!();
-        }
+        _ => todo!(),
     }
 }

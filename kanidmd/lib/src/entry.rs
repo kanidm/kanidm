@@ -2547,6 +2547,7 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
 
         let multivalue_v = vs_bool![s.multivalue];
         let sync_allowed_v = vs_bool![s.sync_allowed];
+        let replicated_v = vs_bool![s.replicated];
         let phantom_v = vs_bool![s.phantom];
         let unique_v = vs_bool![s.unique];
 
@@ -2563,6 +2564,7 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         attrs.insert(AttrString::from("multivalue"), multivalue_v);
         attrs.insert(AttrString::from("phantom"), phantom_v);
         attrs.insert(AttrString::from("sync_allowed"), sync_allowed_v);
+        attrs.insert(AttrString::from("replicated"), replicated_v);
         attrs.insert(AttrString::from("unique"), unique_v);
         if let Some(vs) = index_v {
             attrs.insert(AttrString::from("index"), vs);

@@ -127,7 +127,7 @@ impl EntryChangeState {
     #[instrument(level = "trace", name = "verify", skip_all)]
     pub fn verify(
         &self,
-        _schema: &dyn SchemaTransaction,
+        schema: &dyn SchemaTransaction,
         expected_attrs: &Eattrs,
         entry_id: u64,
         results: &mut Vec<Result<(), ConsistencyError>>,
@@ -143,7 +143,29 @@ impl EntryChangeState {
                 // Check that all attrs from expected, have a value in our changes.
                 let inconsistent: Vec<_> = expected_attrs
                     .keys()
-                    .filter(|attr| !changes.contains_key(*attr))
+                    .filter(|attr| {
+                        /*
+                         * If the attribute is a replicated attribute, and it is NOT present
+                         * in the change state then we are in a desync state.
+                         *
+                         * However, we don't check the inverse - if an entry is in the change state
+                         * but is NOT replicated by schema. This is because there is is a way to
+                         * delete an attribute in schema which will then prevent future replications
+                         * of that value. However the value, while not being updated, will retain
+                         * a state entry in the change state.
+                         *
+                         * For the entry to then be replicated once more, it would require it's schema
+                         * attributes to be re-added and then the replication will resume from whatever
+                         * receives the changes first. Generally there are lots of desync and edge
+                         * cases here, which is why we pretty much don't allow schema to be deleted
+                         * but we have to handle it here due to a test case that simulates this.
+                         */
+                        let desync = schema.is_replicated(attr) && !changes.contains_key(*attr);
+                        if desync {
+                            debug!(%entry_id, %attr, %desync);
+                        }
+                        desync
+                    })
                     .collect();
 
                 if inconsistent.is_empty() {
