@@ -219,17 +219,17 @@ impl Component for Oauth2App {
         let location = ctx
             .link()
             .location()
-            .expect_throw("Can't access current location");
+            .expect_throw("Can't access browser current location");
 
         let query: Option<AuthorisationRequest> = location
             .query()
             .map_err(|e| {
-                let e_msg = format!("lstorage error -> {:?}", e);
+                let e_msg = format!("failed to decode authorisation request url parameters -> {:?}", e);
                 console::error!(e_msg.as_str());
             })
             .ok()
             .or_else(|| {
-                console::error!("pop_oauth2_authorisation_request");
+                console::log!("using previously storage oauth2 authorisation request if possible");
                 models::pop_oauth2_authorisation_request()
             });
 
@@ -253,7 +253,8 @@ impl Component for Oauth2App {
         if let Some(login_hint) = query.oidc_ext.login_hint.clone() {
             models::push_login_hint(login_hint)
         }
-        // Push the request down. This covers if we move to LoginRequired.
+        // Push the request down. This covers if we move to LoginRequired so we can restore where
+        // we were / what we were doing.
         models::push_oauth2_authorisation_request(query);
 
         // Start the fetch req.
