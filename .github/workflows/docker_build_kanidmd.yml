@@ -35,7 +35,7 @@ jobs:
         if: ${{ github.ref == 'refs/heads/master' }}
       - name: Build and push kanidmd
         id: docker_build_kanidmd
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           push: ${{ github.ref == 'refs/heads/master' }}
           platforms: linux/amd64
