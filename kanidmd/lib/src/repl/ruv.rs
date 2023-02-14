@@ -120,7 +120,7 @@ pub trait ReplicationUpdateVectorTransaction {
                     snap_next = snap_iter.next();
                 }
                 Ordering::Less => {
-                    // Due to deletes, it can be that the check ruv is mising whole entries
+                    // Due to deletes, it can be that the check ruv is missing whole entries
                     // in a rebuild.
                     admin_warn!("{:?} is NOT consistent! CID missing from RUV", ck);
                     // debug_assert!(false);

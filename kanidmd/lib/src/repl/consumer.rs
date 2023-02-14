@@ -184,7 +184,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 e
             })?;
 
-        // NOTE: The domain info we recieve here will have the domain version populated!
+        // NOTE: The domain info we receive here will have the domain version populated!
         // That's okay though, because all the incoming data is already at the right
         // version!
         self.reload_domain_info().map_err(|e| {

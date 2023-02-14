@@ -366,7 +366,7 @@ pub enum ReplStateV1 {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
-// I think partial entries should be seperate? This clearly implies a refresh.
+// I think partial entries should be separate? This clearly implies a refresh.
 pub struct ReplEntryV1 {
     uuid: Uuid,
     // Change State
