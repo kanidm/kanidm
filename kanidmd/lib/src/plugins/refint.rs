@@ -109,6 +109,14 @@ impl Plugin for ReferentialIntegrity {
         Self::post_modify_inner(qs, cand)
     }
 
+    #[instrument(level = "debug", name = "refint_post_repl_refresh", skip_all)]
+    fn post_repl_refresh(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &[EntrySealedCommitted],
+    ) -> Result<(), OperationError> {
+        Self::post_modify_inner(qs, cand)
+    }
+
     #[instrument(level = "debug", name = "refint_post_delete", skip_all)]
     fn post_delete(
         qs: &mut QueryServerWriteTransaction,

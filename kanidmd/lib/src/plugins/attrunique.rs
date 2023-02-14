@@ -21,6 +21,9 @@ fn get_cand_attr_set<VALID, STATE>(
     cand: &[Entry<VALID, STATE>],
     attr: &str,
 ) -> Result<BTreeMap<PartialValue, Uuid>, OperationError> {
+    // This is building both the set of values to search for uniqueness, but ALSO
+    // is detecting if any modified or current entries in the cand set also duplicated
+    // do to the ennforcing that the PartialValue must be unique in the cand_attr set.
     let mut cand_attr: BTreeMap<PartialValue, Uuid> = BTreeMap::new();
 
     cand.iter()
@@ -53,9 +56,9 @@ fn get_cand_attr_set<VALID, STATE>(
         .map(|()| cand_attr)
 }
 
-fn enforce_unique<STATE>(
+fn enforce_unique<VALID, STATE>(
     qs: &mut QueryServerWriteTransaction,
-    cand: &[Entry<EntryInvalid, STATE>],
+    cand: &[Entry<VALID, STATE>],
     attr: &str,
 ) -> Result<(), OperationError> {
     // Build a set of all the value -> uuid for the cands.
@@ -219,6 +222,21 @@ impl Plugin for AttrUnique {
         qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &BatchModifyEvent,
+    ) -> Result<(), OperationError> {
+        let uniqueattrs = {
+            let schema = qs.get_schema();
+            schema.get_attributes_unique()
+        };
+
+        let r: Result<(), OperationError> = uniqueattrs
+            .iter()
+            .try_for_each(|attr| enforce_unique(qs, cand, attr.as_str()));
+        r
+    }
+
+    fn pre_repl_refresh(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &[EntryRefreshNew],
     ) -> Result<(), OperationError> {
         let uniqueattrs = {
             let schema = qs.get_schema();

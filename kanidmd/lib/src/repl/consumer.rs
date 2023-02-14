@@ -1,4 +1,5 @@
 use super::proto::*;
+use crate::plugins::Plugins;
 use crate::prelude::*;
 
 impl<'a> QueryServerReadTransaction<'a> {
@@ -60,6 +61,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 e
             })?;
 
+        Plugins::run_pre_repl_refresh(self, candidates.as_slice()).map_err(|e| {
+            admin_error!(
+                "Refresh operation failed (pre_repl_refresh plugin), {:?}",
+                e
+            );
+            e
+        })?;
+
         // No need to assign CID's since this is a repl import.
         let norm_cand = candidates
             .into_iter()
@@ -80,6 +89,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         let commit_cand = self.be_txn.refresh(norm_cand).map_err(|e| {
             admin_error!("betxn create failure {:?}", e);
+            e
+        })?;
+
+        Plugins::run_post_repl_refresh(self, &commit_cand).map_err(|e| {
+            admin_error!(
+                "Refresh operation failed (post_repl_refresh plugin), {:?}",
+                e
+            );
             e
         })?;
 
