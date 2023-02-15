@@ -437,9 +437,9 @@ impl std::fmt::Debug for DbEntry {
             DbEntryVers::V1(dbe_v1) => {
                 write!(f, "v1 - {{ ")?;
                 for (k, vs) in dbe_v1.attrs.iter() {
-                    write!(f, "{} - [", k)?;
+                    write!(f, "{k} - [")?;
                     for v in vs {
-                        write!(f, "{:?}, ", v)?;
+                        write!(f, "{v:?}, ")?;
                     }
                     write!(f, "], ")?;
                 }
@@ -448,8 +448,8 @@ impl std::fmt::Debug for DbEntry {
             DbEntryVers::V2(dbe_v2) => {
                 write!(f, "v2 - {{ ")?;
                 for (k, vs) in dbe_v2.attrs.iter() {
-                    write!(f, "{} - [", k)?;
-                    write!(f, "{:?}, ", vs)?;
+                    write!(f, "{k} - [")?;
+                    write!(f, "{vs:?}, ")?;
                     write!(f, "], ")?;
                 }
                 write!(f, "}}")
@@ -466,24 +466,24 @@ impl std::fmt::Display for DbEntry {
                 match dbe_v1.attrs.get("uuid") {
                     Some(uuids) => {
                         for uuid in uuids {
-                            write!(f, "{:?}, ", uuid)?;
+                            write!(f, "{uuid:?}, ")?;
                         }
                     }
                     None => write!(f, "Uuid(INVALID), ")?,
                 };
                 if let Some(names) = dbe_v1.attrs.get("name") {
                     for name in names {
-                        write!(f, "{:?}, ", name)?;
+                        write!(f, "{name:?}, ")?;
                     }
                 }
                 if let Some(names) = dbe_v1.attrs.get("attributename") {
                     for name in names {
-                        write!(f, "{:?}, ", name)?;
+                        write!(f, "{name:?}, ")?;
                     }
                 }
                 if let Some(names) = dbe_v1.attrs.get("classname") {
                     for name in names {
-                        write!(f, "{:?}, ", name)?;
+                        write!(f, "{name:?}, ")?;
                     }
                 }
                 write!(f, "}}")
@@ -492,18 +492,18 @@ impl std::fmt::Display for DbEntry {
                 write!(f, "v2 - {{ ")?;
                 match dbe_v2.attrs.get("uuid") {
                     Some(uuids) => {
-                        write!(f, "{:?}, ", uuids)?;
+                        write!(f, "{uuids:?}, ")?;
                     }
                     None => write!(f, "Uuid(INVALID), ")?,
                 };
                 if let Some(names) = dbe_v2.attrs.get("name") {
-                    write!(f, "{:?}, ", names)?;
+                    write!(f, "{names:?}, ")?;
                 }
                 if let Some(names) = dbe_v2.attrs.get("attributename") {
-                    write!(f, "{:?}, ", names)?;
+                    write!(f, "{names:?}, ")?;
                 }
                 if let Some(names) = dbe_v2.attrs.get("classname") {
-                    write!(f, "{:?}, ", names)?;
+                    write!(f, "{names:?}, ")?;
                 }
                 write!(f, "}}")
             }

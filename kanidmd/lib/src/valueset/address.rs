@@ -4,6 +4,7 @@ use smolset::SmolSet;
 
 use crate::be::dbvalue::DbValueAddressV1;
 use crate::prelude::*;
+use crate::repl::proto::{ReplAddressV1, ReplAttrV1};
 use crate::schema::SchemaAttribute;
 use crate::value::Address;
 use crate::valueset::{DbValueSetV2, ValueSet};
@@ -29,6 +30,33 @@ impl ValueSetAddress {
             .into_iter()
             .map(
                 |DbValueAddressV1 {
+                     formatted,
+                     street_address,
+                     locality,
+                     region,
+                     postal_code,
+                     country,
+                 }| {
+                    Address {
+                        formatted,
+                        street_address,
+                        locality,
+                        region,
+                        postal_code,
+                        country,
+                    }
+                },
+            )
+            .collect();
+        Ok(Box::new(ValueSetAddress { set }))
+    }
+
+    pub fn from_repl_v1(data: &[ReplAddressV1]) -> Result<ValueSet, OperationError> {
+        let set = data
+            .iter()
+            .cloned()
+            .map(
+                |ReplAddressV1 {
                      formatted,
                      street_address,
                      locality,
@@ -142,6 +170,23 @@ impl ValueSetT for ValueSetAddress {
         )
     }
 
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::Address {
+            set: self
+                .set
+                .iter()
+                .map(|a| ReplAddressV1 {
+                    formatted: a.formatted.clone(),
+                    street_address: a.street_address.clone(),
+                    locality: a.locality.clone(),
+                    region: a.region.clone(),
+                    postal_code: a.postal_code.clone(),
+                    country: a.country.clone(),
+                })
+                .collect(),
+        }
+    }
+
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
         Box::new(
             self.set
@@ -212,6 +257,19 @@ impl ValueSetEmailAddress {
 
         if set.contains(&primary) {
             Ok(Box::new(ValueSetEmailAddress { primary, set }))
+        } else {
+            Err(OperationError::InvalidValueState)
+        }
+    }
+
+    pub fn from_repl_v1(primary: &String, data: &[String]) -> Result<ValueSet, OperationError> {
+        let set: BTreeSet<_> = data.iter().cloned().collect();
+
+        if set.contains(primary) {
+            Ok(Box::new(ValueSetEmailAddress {
+                primary: primary.clone(),
+                set,
+            }))
         } else {
             Err(OperationError::InvalidValueState)
         }
@@ -335,6 +393,13 @@ impl ValueSetT for ValueSetEmailAddress {
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::EmailAddress(self.primary.clone(), self.set.iter().cloned().collect())
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::EmailAddress {
+            primary: self.primary.clone(),
+            set: self.set.iter().cloned().collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

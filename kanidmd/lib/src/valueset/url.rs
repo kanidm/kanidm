@@ -1,6 +1,7 @@
 use smolset::SmolSet;
 
 use crate::prelude::*;
+use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
@@ -22,6 +23,11 @@ impl ValueSetUrl {
 
     pub fn from_dbvs2(data: Vec<Url>) -> Result<ValueSet, OperationError> {
         let set = data.into_iter().collect();
+        Ok(Box::new(ValueSetUrl { set }))
+    }
+
+    pub fn from_repl_v1(data: &[Url]) -> Result<ValueSet, OperationError> {
+        let set = data.iter().cloned().collect();
         Ok(Box::new(ValueSetUrl { set }))
     }
 
@@ -96,6 +102,12 @@ impl ValueSetT for ValueSetUrl {
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Url(self.set.iter().cloned().collect())
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::Url {
+            set: self.set.iter().cloned().collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

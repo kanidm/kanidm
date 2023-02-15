@@ -3,6 +3,7 @@ use smolset::SmolSet;
 use crate::be::dbvalue::DbCidV1;
 use crate::prelude::*;
 use crate::repl::cid::Cid;
+use crate::repl::proto::{ReplAttrV1, ReplCidV1};
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
@@ -26,11 +27,15 @@ impl ValueSetCid {
         let set = data
             .into_iter()
             .map(|dc| Cid {
-                d_uuid: dc.domain_id,
                 s_uuid: dc.server_id,
                 ts: dc.timestamp,
             })
             .collect();
+        Ok(Box::new(ValueSetCid { set }))
+    }
+
+    pub fn from_repl_v1(data: &[ReplCidV1]) -> Result<ValueSet, OperationError> {
+        let set = data.iter().map(|dc| dc.into()).collect();
         Ok(Box::new(ValueSetCid { set }))
     }
 }
@@ -105,11 +110,7 @@ impl ValueSetT for ValueSetCid {
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(
-            self.set
-                .iter()
-                .map(|c| format!("{:?}_{}_{}", c.ts, c.d_uuid, c.s_uuid)),
-        )
+        Box::new(self.set.iter().map(|c| format!("{:?}_{}", c.ts, c.s_uuid)))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -117,12 +118,17 @@ impl ValueSetT for ValueSetCid {
             self.set
                 .iter()
                 .map(|c| DbCidV1 {
-                    domain_id: c.d_uuid,
                     server_id: c.s_uuid,
                     timestamp: c.ts,
                 })
                 .collect(),
         )
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::Cid {
+            set: self.set.iter().map(|c| c.into()).collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

@@ -288,18 +288,6 @@ macro_rules! run_delete_test {
     }};
 }
 
-#[cfg(test)]
-macro_rules! run_entrychangelog_test {
-    ($test_fn:expr) => {{
-        let _ = sketching::test_init();
-        let schema_outer = Schema::new().expect("Failed to init schema");
-
-        let schema_txn = schema_outer.read();
-
-        $test_fn(&schema_txn)
-    }};
-}
-
 #[allow(unused_macros)]
 #[macro_export]
 macro_rules! modlist {

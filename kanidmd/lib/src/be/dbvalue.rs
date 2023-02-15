@@ -12,8 +12,6 @@ use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbCidV1 {
-    #[serde(rename = "d")]
-    pub domain_id: Uuid,
     #[serde(rename = "s")]
     pub server_id: Uuid,
     #[serde(rename = "t")]
@@ -276,8 +274,8 @@ impl fmt::Display for DbCred {
             DbCred::TmpWn { webauthn, uuid } => {
                 write!(f, "TmpWn ( w {}, u {} )", webauthn.len(), uuid)
             }
-            DbCred::V2Password { password: _, uuid } => write!(f, "V2Pw ( u {} )", uuid),
-            DbCred::V2GenPassword { password: _, uuid } => write!(f, "V2GPw ( u {} )", uuid),
+            DbCred::V2Password { password: _, uuid } => write!(f, "V2Pw ( u {uuid} )"),
+            DbCred::V2GenPassword { password: _, uuid } => write!(f, "V2GPw ( u {uuid} )"),
             DbCred::V2PasswordMfa {
                 password: _,
                 totp,
@@ -688,7 +686,7 @@ mod tests {
         let x = vec![dbcred];
 
         let json = serde_json::to_string(&x).unwrap();
-        eprintln!("{}", json);
+        eprintln!("{json}");
 
         let _e_dbcred: Vec<DbCred> = serde_json::from_str(&json).unwrap();
 

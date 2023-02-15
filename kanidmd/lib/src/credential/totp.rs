@@ -8,6 +8,7 @@ use openssl::sign::Signer;
 use rand::prelude::*;
 
 use crate::be::dbvalue::{DbTotpAlgoV1, DbTotpV1};
+use crate::repl::proto::{ReplTotpAlgoV1, ReplTotpV1};
 
 // This is 64 bits of entropy, as the examples in https://tools.ietf.org/html/rfc6238 show.
 const SECRET_SIZE_BYTES: usize = 8;
@@ -115,6 +116,27 @@ impl TryFrom<DbTotpV1> for Totp {
     }
 }
 
+impl TryFrom<&ReplTotpV1> for Totp {
+    type Error = ();
+
+    fn try_from(value: &ReplTotpV1) -> Result<Self, Self::Error> {
+        let algo = match value.algo {
+            ReplTotpAlgoV1::S1 => TotpAlgo::Sha1,
+            ReplTotpAlgoV1::S256 => TotpAlgo::Sha256,
+            ReplTotpAlgoV1::S512 => TotpAlgo::Sha512,
+        };
+
+        let digits = TotpDigits::try_from(value.digits)?;
+
+        Ok(Totp {
+            secret: value.key.0.clone(),
+            step: value.step,
+            algo,
+            digits,
+        })
+    }
+}
+
 impl TryFrom<ProtoTotp> for Totp {
     type Error = ();
 
@@ -167,6 +189,19 @@ impl Totp {
                 TotpAlgo::Sha512 => DbTotpAlgoV1::S512,
             },
             digits: Some(self.digits.into()),
+        }
+    }
+
+    pub(crate) fn to_repl_v1(&self) -> ReplTotpV1 {
+        ReplTotpV1 {
+            key: self.secret.clone().into(),
+            step: self.step,
+            algo: match self.algo {
+                TotpAlgo::Sha1 => ReplTotpAlgoV1::S1,
+                TotpAlgo::Sha256 => ReplTotpAlgoV1::S256,
+                TotpAlgo::Sha512 => ReplTotpAlgoV1::S512,
+            },
+            digits: self.digits.into(),
         }
     }
 

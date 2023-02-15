@@ -1,6 +1,7 @@
 use smolset::SmolSet;
 
 use crate::prelude::*;
+use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
@@ -22,6 +23,12 @@ impl ValueSetIndex {
 
     pub fn from_dbvs2(data: Vec<u16>) -> Result<ValueSet, OperationError> {
         let set: Result<_, _> = data.into_iter().map(IndexType::try_from).collect();
+        let set = set.map_err(|_| OperationError::InvalidValueState)?;
+        Ok(Box::new(ValueSetIndex { set }))
+    }
+
+    pub fn from_repl_v1(data: &[u16]) -> Result<ValueSet, OperationError> {
+        let set: Result<_, _> = data.iter().copied().map(IndexType::try_from).collect();
         let set = set.map_err(|_| OperationError::InvalidValueState)?;
         Ok(Box::new(ValueSetIndex { set }))
     }
@@ -99,6 +106,12 @@ impl ValueSetT for ValueSetIndex {
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::IndexType(self.set.iter().map(|s| *s as u16).collect())
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::IndexType {
+            set: self.set.iter().map(|s| *s as u16).collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

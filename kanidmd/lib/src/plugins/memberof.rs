@@ -216,27 +216,16 @@ impl Plugin for MemberOf {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        let dyngroup_change = super::dyngroup::DynGroup::post_create(qs, cand, &ce.ident)?;
+        Self::post_create_inner(qs, cand, &ce.ident)
+    }
 
-        let group_affect = cand
-            .iter()
-            .map(|e| e.get_uuid())
-            .chain(dyngroup_change.into_iter())
-            .chain(
-                cand.iter()
-                    .filter_map(|e| {
-                        // Is it a group?
-                        if e.attribute_equality("class", &PVCLASS_GROUP) {
-                            e.get_ava_as_refuuid("member")
-                        } else {
-                            None
-                        }
-                    })
-                    .flatten(),
-            )
-            .collect();
-
-        apply_memberof(qs, group_affect)
+    #[instrument(level = "debug", name = "memberof_post_repl_refresh", skip_all)]
+    fn post_repl_refresh(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &[Entry<EntrySealed, EntryCommitted>],
+    ) -> Result<(), OperationError> {
+        let ident = Identity::from_internal();
+        Self::post_create_inner(qs, cand, &ident)
     }
 
     #[instrument(level = "debug", name = "memberof_post_modify", skip_all)]
@@ -376,6 +365,34 @@ impl Plugin for MemberOf {
 }
 
 impl MemberOf {
+    fn post_create_inner(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &[Entry<EntrySealed, EntryCommitted>],
+        ident: &Identity,
+    ) -> Result<(), OperationError> {
+        let dyngroup_change = super::dyngroup::DynGroup::post_create(qs, cand, ident)?;
+
+        let group_affect = cand
+            .iter()
+            .map(|e| e.get_uuid())
+            .chain(dyngroup_change.into_iter())
+            .chain(
+                cand.iter()
+                    .filter_map(|e| {
+                        // Is it a group?
+                        if e.attribute_equality("class", &PVCLASS_GROUP) {
+                            e.get_ava_as_refuuid("member")
+                        } else {
+                            None
+                        }
+                    })
+                    .flatten(),
+            )
+            .collect();
+
+        apply_memberof(qs, group_affect)
+    }
+
     fn post_modify_inner(
         qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<EntrySealedCommitted>],

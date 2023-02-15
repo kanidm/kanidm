@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::be::dbvalue::DbValueOauthScopeMapV1;
 use crate::prelude::*;
+use crate::repl::proto::{ReplAttrV1, ReplOauthScopeMapV1};
 use crate::schema::SchemaAttribute;
 use crate::value::OAUTHSCOPE_RE;
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
@@ -25,6 +26,11 @@ impl ValueSetOauthScope {
 
     pub fn from_dbvs2(data: Vec<String>) -> Result<ValueSet, OperationError> {
         let set = data.into_iter().collect();
+        Ok(Box::new(ValueSetOauthScope { set }))
+    }
+
+    pub fn from_repl_v1(data: &[String]) -> Result<ValueSet, OperationError> {
+        let set = data.iter().cloned().collect();
         Ok(Box::new(ValueSetOauthScope { set }))
     }
 
@@ -104,6 +110,12 @@ impl ValueSetT for ValueSetOauthScope {
         DbValueSetV2::OauthScope(self.set.iter().cloned().collect())
     }
 
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::OauthScope {
+            set: self.set.iter().cloned().collect(),
+        }
+    }
+
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
         Box::new(self.set.iter().cloned().map(PartialValue::OauthScope))
     }
@@ -168,11 +180,15 @@ impl ValueSetOauthScopeMap {
     pub fn from_dbvs2(data: Vec<DbValueOauthScopeMapV1>) -> Result<ValueSet, OperationError> {
         let map = data
             .into_iter()
-            .map(|dbv| {
-                let u = dbv.refer;
-                let m = dbv.data.into_iter().collect();
-                (u, m)
-            })
+            .map(|DbValueOauthScopeMapV1 { refer, data }| (refer, data.into_iter().collect()))
+            .collect();
+        Ok(Box::new(ValueSetOauthScopeMap { map }))
+    }
+
+    pub fn from_repl_v1(data: &[ReplOauthScopeMapV1]) -> Result<ValueSet, OperationError> {
+        let map = data
+            .iter()
+            .map(|ReplOauthScopeMapV1 { refer, data }| (*refer, data.clone()))
             .collect();
         Ok(Box::new(ValueSetOauthScopeMap { map }))
     }
@@ -279,6 +295,19 @@ impl ValueSetT for ValueSetOauthScopeMap {
                 })
                 .collect(),
         )
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::OauthScopeMap {
+            set: self
+                .map
+                .iter()
+                .map(|(u, m)| ReplOauthScopeMapV1 {
+                    refer: *u,
+                    data: m.iter().cloned().collect(),
+                })
+                .collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

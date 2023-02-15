@@ -1,7 +1,9 @@
+use base64urlsafedata::Base64UrlSafeData;
 use compact_jwt::{JwaAlg, JwsSigner};
 use hashbrown::HashSet;
 
 use crate::prelude::*;
+use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
@@ -28,6 +30,19 @@ impl ValueSetJwsKeyEs256 {
             .iter()
             .map(|b| {
                 JwsSigner::from_es256_der(b).map_err(|e| {
+                    debug!(?e, "Error occurred parsing ES256 DER");
+                    OperationError::InvalidValueState
+                })
+            })
+            .collect::<Result<HashSet<_>, _>>()?;
+        Ok(Box::new(ValueSetJwsKeyEs256 { set }))
+    }
+
+    pub fn from_repl_v1(data: &[Base64UrlSafeData]) -> Result<ValueSet, OperationError> {
+        let set = data
+            .iter()
+            .map(|b| {
+                JwsSigner::from_es256_der(b.0.as_slice()).map_err(|e| {
                     debug!(?e, "Error occurred parsing ES256 DER");
                     OperationError::InvalidValueState
                 })
@@ -109,12 +124,24 @@ impl ValueSetT for ValueSetJwsKeyEs256 {
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::JwsKeyEs256(self.set.iter()
-            .filter_map(|k| k.private_key_to_der()
-                .map_err(|e| {
-                    error!(?e, "Unable to process private key to der, likely corrupted - this key will be LOST");
-                })
-                .ok())
-                .collect())
+            .map(|k| {
+                #[allow(clippy::expect_used)]
+                k.private_key_to_der()
+                    .expect("Unable to process private key to der, likely corrupted. You must restore from backup.")
+            })
+            .collect())
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::JwsKeyEs256 { set: self.set.iter()
+            .map(|k| {
+                #[allow(clippy::expect_used)]
+                k.private_key_to_der()
+                    .expect("Unable to process private key to der, likely corrupted. You must restore from backup.")
+            })
+            .map(|b| b.into())
+            .collect()
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
@@ -184,6 +211,19 @@ impl ValueSetJwsKeyRs256 {
             .iter()
             .map(|b| {
                 JwsSigner::from_rs256_der(b).map_err(|e| {
+                    debug!(?e, "Error occurred parsing RS256 DER");
+                    OperationError::InvalidValueState
+                })
+            })
+            .collect::<Result<HashSet<_>, _>>()?;
+        Ok(Box::new(ValueSetJwsKeyRs256 { set }))
+    }
+
+    pub fn from_repl_v1(data: &[Base64UrlSafeData]) -> Result<ValueSet, OperationError> {
+        let set = data
+            .iter()
+            .map(|b| {
+                JwsSigner::from_rs256_der(b.0.as_slice()).map_err(|e| {
                     debug!(?e, "Error occurred parsing RS256 DER");
                     OperationError::InvalidValueState
                 })
@@ -265,12 +305,24 @@ impl ValueSetT for ValueSetJwsKeyRs256 {
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::JwsKeyRs256(self.set.iter()
-            .filter_map(|k| k.private_key_to_der()
-                .map_err(|e| {
-                    error!(?e, "Unable to process private key to der, likely corrupted - this key will be LOST");
-                })
-                .ok())
-                .collect())
+            .map(|k| {
+                #[allow(clippy::expect_used)]
+                k.private_key_to_der()
+                    .expect("Unable to process private key to der, likely corrupted. You must restore from backup.")
+            })
+            .collect())
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::JwsKeyRs256 { set: self.set.iter()
+            .map(|k| {
+                #[allow(clippy::expect_used)]
+                k.private_key_to_der()
+                    .expect("Unable to process private key to der, likely corrupted. You must restore from backup.")
+            })
+            .map(|b| b.into())
+            .collect()
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

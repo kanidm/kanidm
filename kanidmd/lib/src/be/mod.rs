@@ -965,7 +965,7 @@ impl<'a> BackendWriteTransaction<'a> {
         // Check that every entry has a change associated
         // that matches the cid?
         entries.iter().try_for_each(|e| {
-            if e.get_changelog().contains_tail_cid(cid) {
+            if e.get_changestate().contains_tail_cid(cid) {
                 Ok(())
             } else {
                 admin_error!(
@@ -1004,6 +1004,42 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(c_entries)
     }
 
+    #[instrument(level = "debug", name = "be::create", skip_all)]
+    /// This is similar to create, but used in the replication path as it skips the
+    /// modification of the RUV and the checking of CIDs since these actions are not
+    /// required during a replication refresh (else we'd create an infinite replication
+    /// loop.)
+    pub fn refresh(
+        &mut self,
+        entries: Vec<Entry<EntrySealed, EntryNew>>,
+    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+        if entries.is_empty() {
+            admin_error!("No entries provided to BE to create, invalid server call!");
+            return Err(OperationError::EmptyRequest);
+        }
+
+        // Assign id's to all the new entries.
+        let mut id_max = self.idlayer.get_id2entry_max_id()?;
+        let c_entries: Vec<_> = entries
+            .into_iter()
+            .map(|e| {
+                id_max += 1;
+                e.into_sealed_committed_id(id_max)
+            })
+            .collect();
+
+        self.idlayer.write_identries(c_entries.iter())?;
+
+        self.idlayer.set_id2entry_max_id(id_max);
+
+        // Now update the indexes as required.
+        for e in c_entries.iter() {
+            self.entry_index(None, Some(e))?
+        }
+
+        Ok(c_entries)
+    }
+
     #[instrument(level = "debug", name = "be::modify", skip_all)]
     pub fn modify(
         &mut self,
@@ -1019,7 +1055,7 @@ impl<'a> BackendWriteTransaction<'a> {
         assert!(post_entries.len() == pre_entries.len());
 
         post_entries.iter().try_for_each(|e| {
-            if e.get_changelog().contains_tail_cid(cid) {
+            if e.get_changestate().contains_tail_cid(cid) {
                 Ok(())
             } else {
                 admin_error!(
@@ -1070,28 +1106,28 @@ impl<'a> BackendWriteTransaction<'a> {
         // Now that we have a list of entries we need to partition them into
         // two sets. The entries that are tombstoned and ready to reap_tombstones, and
         // the entries that need to have their change logs trimmed.
+        //
+        // Remember, these tombstones can be reaped because they were tombstoned at time
+        // point 'cid', and since we are now "past" that minimum cid, then other servers
+        // will also be trimming these out.
+        //
+        // Note unlike a changelog impl, we don't need to trim changestates here. We
+        // only need the RUV trimmed so that we know if other servers are laggin behind!
 
-        // First we trim changelogs. Go through each entry, and trim the CL, and write it back.
-        let mut entries: Vec<_> = entries.iter().map(|er| er.as_ref().clone()).collect();
-
-        entries
-            .iter_mut()
-            .try_for_each(|e| e.get_changelog_mut().trim_up_to(cid))?;
-
-        // Write down the cl trims
-        self.get_idlayer().write_identries(entries.iter())?;
+        // What entries are tombstones and ready to be deleted?
 
         let (tombstones, leftover): (Vec<_>, Vec<_>) = entries
             .into_iter()
-            .partition(|e| e.get_changelog().can_delete());
+            .partition(|e| e.get_changestate().can_delete(cid));
+
+        let ruv_idls = self.get_ruv().ruv_idls();
 
         // Assert that anything leftover still either is *alive* OR is a tombstone
         // and has entries in the RUV!
-        let ruv_idls = self.get_ruv().ruv_idls();
 
         if !leftover
             .iter()
-            .all(|e| e.get_changelog().is_live() || ruv_idls.contains(e.get_id()))
+            .all(|e| e.get_changestate().is_live() || ruv_idls.contains(e.get_id()))
         {
             admin_error!("Left over entries may be orphaned due to missing RUV entries");
             return Err(OperationError::ReplInvalidRUVState);
@@ -1114,7 +1150,8 @@ impl<'a> BackendWriteTransaction<'a> {
         let sz = id_list.len();
         self.get_idlayer().delete_identry(id_list.into_iter())?;
 
-        // Finally, purge the indexes from the entries we removed.
+        // Finally, purge the indexes from the entries we removed. These still have
+        // indexes due to class=tombstone.
         tombstones
             .iter()
             .try_for_each(|e| self.entry_index(Some(e), None))?;
@@ -1442,9 +1479,16 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(())
     }
 
-    #[cfg(test)]
-    pub fn purge_idxs(&mut self) -> Result<(), OperationError> {
+    fn purge_idxs(&mut self) -> Result<(), OperationError> {
         unsafe { self.get_idlayer().purge_idxs() }
+    }
+
+    pub(crate) fn danger_delete_all_db_content(&mut self) -> Result<(), OperationError> {
+        unsafe {
+            self.get_idlayer()
+                .purge_id2entry()
+                .and_then(|_| self.purge_idxs())
+        }
     }
 
     #[cfg(test)]
@@ -1602,6 +1646,12 @@ impl<'a> BackendWriteTransaction<'a> {
         let nsid = Uuid::new_v4();
         self.get_idlayer().write_db_d_uuid(nsid)?;
         Ok(nsid)
+    }
+
+    /// Manually set a new domain UUID and store it into the DB. This is used
+    /// as part of a replication refresh.
+    pub fn set_db_d_uuid(&mut self, nsid: Uuid) -> Result<(), OperationError> {
+        self.get_idlayer().write_db_d_uuid(nsid)
     }
 
     /// This pulls the domain UUID from the database
@@ -2112,7 +2162,7 @@ mod tests {
             "{}/.backup_test.json",
             option_env!("OUT_DIR").unwrap_or("/tmp")
         );
-        eprintln!(" ⚠️   {}", db_backup_file_name);
+        eprintln!(" ⚠️   {db_backup_file_name}");
         run_test!(|be: &mut BackendWriteTransaction| {
             // Important! Need db metadata setup!
             be.reset_db_s_uuid().unwrap();
@@ -2168,7 +2218,7 @@ mod tests {
             "{}/.backup2_test.json",
             option_env!("OUT_DIR").unwrap_or("/tmp")
         );
-        eprintln!(" ⚠️   {}", db_backup_file_name);
+        eprintln!(" ⚠️   {db_backup_file_name}");
         run_test!(|be: &mut BackendWriteTransaction| {
             // Important! Need db metadata setup!
             be.reset_db_s_uuid().unwrap();

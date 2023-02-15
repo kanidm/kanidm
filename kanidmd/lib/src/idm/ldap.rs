@@ -75,10 +75,10 @@ impl LdapServer {
 
         let basedn = ldap_domain_to_dc(domain_name.as_str());
 
-        let dnre = Regex::new(format!("^((?P<attr>[^=]+)=(?P<val>[^=]+),)?{}$", basedn).as_str())
+        let dnre = Regex::new(format!("^((?P<attr>[^=]+)=(?P<val>[^=]+),)?{basedn}$").as_str())
             .map_err(|_| OperationError::InvalidEntryState)?;
 
-        let binddnre = Regex::new(format!("^(([^=,]+)=)?(?P<val>[^=,]+)(,{})?$", basedn).as_str())
+        let binddnre = Regex::new(format!("^(([^=,]+)=)?(?P<val>[^=,]+)(,{basedn})?$").as_str())
             .map_err(|_| OperationError::InvalidEntryState)?;
 
         let rootdse = LdapSearchResultEntry {
@@ -513,7 +513,7 @@ impl LdapServer {
                     wr.gen_success(format!("u: {}", u.spn).as_str()),
                 )),
                 None => Ok(LdapResponseState::Respond(
-                    wr.gen_operror(format!("Unbound Connection {}", eventid).as_str()),
+                    wr.gen_operror(format!("Unbound Connection {eventid}").as_str()),
                 )),
             },
         } // end match server op
@@ -542,9 +542,9 @@ fn operationerr_to_ldapresultcode(e: OperationError) -> (LdapResultCode, String)
             (LdapResultCode::InvalidAttributeSyntax, s)
         }
         OperationError::SchemaViolation(se) => {
-            (LdapResultCode::UnwillingToPerform, format!("{:?}", se))
+            (LdapResultCode::UnwillingToPerform, format!("{se:?}"))
         }
-        e => (LdapResultCode::Other, format!("{:?}", e)),
+        e => (LdapResultCode::Other, format!("{e:?}")),
     }
 }
 
@@ -685,7 +685,7 @@ mod tests {
                 assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
-                    format!("uuid={},dc=example,dc=com", STR_UUID_ADMIN).as_str(),
+                    format!("uuid={STR_UUID_ADMIN},dc=example,dc=com").as_str(),
                     TEST_PASSWORD,
                 ))
                 .unwrap()
@@ -703,7 +703,7 @@ mod tests {
                 assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
-                    format!("uuid={}", STR_UUID_ADMIN).as_str(),
+                    format!("uuid={STR_UUID_ADMIN}").as_str(),
                     TEST_PASSWORD,
                 ))
                 .unwrap()
@@ -725,7 +725,7 @@ mod tests {
                 assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
                 let admin_t = task::block_on(ldaps.do_bind(
                     idms,
-                    format!("{},dc=example,dc=com", STR_UUID_ADMIN).as_str(),
+                    format!("{STR_UUID_ADMIN},dc=example,dc=com").as_str(),
                     TEST_PASSWORD,
                 ))
                 .unwrap()

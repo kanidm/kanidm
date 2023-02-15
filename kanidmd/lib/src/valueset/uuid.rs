@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 use smolset::SmolSet;
 
 use crate::prelude::*;
+use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
 
@@ -24,6 +25,11 @@ impl ValueSetUuid {
 
     pub fn from_dbvs2(data: Vec<Uuid>) -> Result<ValueSet, OperationError> {
         let set = data.into_iter().collect();
+        Ok(Box::new(ValueSetUuid { set }))
+    }
+
+    pub fn from_repl_v1(data: &[Uuid]) -> Result<ValueSet, OperationError> {
+        let set = data.iter().copied().collect();
         Ok(Box::new(ValueSetUuid { set }))
     }
 
@@ -106,6 +112,12 @@ impl ValueSetT for ValueSetUuid {
         DbValueSetV2::Uuid(self.set.iter().cloned().collect())
     }
 
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::Uuid {
+            set: self.set.iter().cloned().collect(),
+        }
+    }
+
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
         Box::new(self.set.iter().copied().map(PartialValue::Uuid))
     }
@@ -169,6 +181,11 @@ impl ValueSetRefer {
 
     pub fn from_dbvs2(data: Vec<Uuid>) -> Result<ValueSet, OperationError> {
         let set = data.into_iter().collect();
+        Ok(Box::new(ValueSetRefer { set }))
+    }
+
+    pub fn from_repl_v1(data: &[Uuid]) -> Result<ValueSet, OperationError> {
+        let set = data.iter().copied().collect();
         Ok(Box::new(ValueSetRefer { set }))
     }
 
@@ -253,6 +270,12 @@ impl ValueSetT for ValueSetRefer {
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Reference(self.set.iter().cloned().collect())
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::Reference {
+            set: self.set.iter().cloned().collect(),
+        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

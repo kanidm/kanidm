@@ -79,8 +79,8 @@ impl QueryServer {
         admin_debug!(?system_info_version);
 
         if system_info_version > 0 {
-            if system_info_version <= 6 {
-                error!("Your instance of Kanidm is version 1.1.0-alpha.9 or lower, and you are trying to perform a skip upgrade. This will not work.");
+            if system_info_version <= 9 {
+                error!("Your instance of Kanidm is version 1.1.0-alpha.10 or lower, and you are trying to perform a skip upgrade. This will not work.");
                 error!("You need to upgrade one version at a time to ensure upgrade migrations are performed in the correct order.");
                 return Err(OperationError::InvalidState);
             }
@@ -102,6 +102,10 @@ impl QueryServer {
             ts_write_3.set_phase(ServerPhase::Running);
             ts_write_3.commit()
         })?;
+
+        // Here is where in the future we will need to apply domain version increments.
+        // The actually migrations are done in a transaction though, this just needs to
+        // bump the version in it's own transaction.
 
         admin_debug!("Database version check and migrations success! ☀️  ");
         Ok(())

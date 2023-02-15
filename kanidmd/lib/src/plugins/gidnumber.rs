@@ -35,8 +35,7 @@ fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), Opera
         // assert the value is greater than the system range.
         if gid < GID_SYSTEM_NUMBER_MIN {
             return Err(OperationError::InvalidAttribute(format!(
-                "gidnumber {} may overlap with system range {}",
-                gid, GID_SYSTEM_NUMBER_MIN
+                "gidnumber {gid} may overlap with system range {GID_SYSTEM_NUMBER_MIN}"
             )));
         }
 
@@ -48,8 +47,7 @@ fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), Opera
         // If they provided us with a gid number, ensure it's in a safe range.
         if gid <= GID_SAFETY_NUMBER_MIN {
             Err(OperationError::InvalidAttribute(format!(
-                "gidnumber {} overlaps into system secure range {}",
-                gid, GID_SAFETY_NUMBER_MIN
+                "gidnumber {gid} overlaps into system secure range {GID_SAFETY_NUMBER_MIN}"
             )))
         } else {
             Ok(())

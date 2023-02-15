@@ -63,6 +63,7 @@ pub enum ConsistencyError {
     BackendAllIdsSync,
     BackendIndexSync,
     ChangelogDesynchronised(u64),
+    ChangeStateDesynchronised(u64),
     RuvInconsistent(String),
 }
 
@@ -249,6 +250,7 @@ pub enum OperationError {
     ReplReplayFailure,
     ReplEntryNotChanged,
     ReplInvalidRUVState,
+    ReplDomainLevelUnsatisfiable,
 }
 
 impl PartialEq for OperationError {
