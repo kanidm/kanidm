@@ -13,30 +13,26 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             }
         };
 
-        // Do an internal search
-        // ⚠️  Safety Notes - We perform an internal search here which bypasses
-        // access controls. Why? Users normally can't read the oauth2_rs_scope_maps
-        // since that could (?) disclose access rules. It's probably not a risk, but
-        // we just don't show them by default.
+        // Formerly we did an internal search here, but we no longer need to since we have
+        // the access control module setup so that we can search for and see rs that we
+        // have access to.
         //
-        // This IS safe because we control *all* inputs (the uuids and memberof) and
-        // they come from the cryptographically verified UAT. we also control all
-        // outputs and ONLY output data that IS visible by default for an oauth2
-        // resource server.
-        //
-        // This is kind of a limitation of the kani search system, where the ability to
-        // compare an attribute, also allows you to read it. In this case we want compare
-        // without read, but it's not really possible, and it's a silly concept generally
-        // anyway because publicly allowing that allows retrieval of the values to bruteforce.
-        let f = filter!(f_or(
+        // We do this weird looking f_executed/f_intent shenanigans to actually search
+        // on what we have access to, but we apply access as though we did a search on
+        // class=oauth2_resource_server instead, and we still apply access here.
+        let f_executed = filter!(f_or(
             ident_mo
                 .iter()
                 .copied()
                 .map(|uuid| { f_eq("oauth2_rs_scope_map", PartialValue::Refer(uuid)) })
                 .collect()
         ));
+        let f_intent = filter!(f_eq("class", PVCLASS_OAUTH2_RS.clone()));
 
-        let oauth2_related = self.qs_read.internal_search(f)?;
+        // _ext reduces the entries based on access.
+        let oauth2_related = self
+            .qs_read
+            .impersonate_search_ext(f_executed, f_intent, ident)?;
         trace!(?oauth2_related);
 
         // Aggregate results to a Vec of AppLink

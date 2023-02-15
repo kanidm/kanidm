@@ -2681,7 +2681,8 @@ mod tests {
                 (
                     "oauth2_rs_sup_scope_map",
                     Value::new_oauthscopemap(
-                        UUID_SYSTEM_ADMINS,
+                        // This is NOT the scope map that is access checked!
+                        UUID_TEST_GROUP_1,
                         btreeset!["supplement".to_string()]
                     )
                     .expect("invalid oauthscope")

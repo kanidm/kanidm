@@ -132,7 +132,7 @@ fn search_oauth2_filter_entry<'a>(
                     .map(|(maps, mo)| maps.keys().any(|k| mo.contains(k)))
                     .unwrap_or(false)
                 {
-                    trace!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a memberof a group granted an oauth2 scope by this entry");
+                    security_access!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a memberof a group granted an oauth2 scope by this entry");
 
                     return AccessResult::Allow(btreeset!(
                         "class",
