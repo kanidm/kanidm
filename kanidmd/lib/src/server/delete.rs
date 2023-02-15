@@ -156,6 +156,25 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let de = DeleteEvent::new_internal(f_valid);
         self.delete(&de)
     }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn internal_delete_uuid_if_exists(
+        &mut self,
+        target_uuid: Uuid,
+    ) -> Result<(), OperationError> {
+        let filter = filter!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
+        let f_valid = filter
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+
+        let ee = ExistsEvent::new_internal(f_valid.clone());
+        // Submit it
+        if self.exists(&ee)? {
+            let de = DeleteEvent::new_internal(f_valid);
+            self.delete(&de)?;
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]

@@ -1270,6 +1270,9 @@ pub const JSON_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1: &str = r#"{
     }
 }"#;
 
+/*
+// Removed in favour of a dynamic check inside of access.rs that is based on membership to an
+// oauth2 rs.
 pub const JSON_IDM_ACP_OAUTH2_READ_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
@@ -1294,6 +1297,7 @@ pub const JSON_IDM_ACP_OAUTH2_READ_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
+*/
 
 pub const JSON_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {

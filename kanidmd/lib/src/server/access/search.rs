@@ -34,6 +34,14 @@ pub(super) fn apply_search_access<'a>(
         AccessResult::Allow(mut set) => allow.append(&mut set),
     };
 
+    match search_oauth2_filter_entry(ident, entry) {
+        AccessResult::Denied => denied = true,
+        AccessResult::Grant => grant = true,
+        AccessResult::Ignore => {}
+        AccessResult::Constrain(mut set) => constrain.append(&mut set),
+        AccessResult::Allow(mut set) => allow.append(&mut set),
+    };
+
     // We'll add more modules later.
 
     // Now finalise the decision.
@@ -101,4 +109,42 @@ fn search_filter_entry<'a>(
         .collect();
 
     AccessResult::Allow(allowed_attrs)
+}
+
+fn search_oauth2_filter_entry<'a>(
+    ident: &Identity,
+    entry: &'a Arc<EntrySealedCommitted>,
+) -> AccessResult<'a> {
+    match &ident.origin {
+        IdentType::Internal | IdentType::Synch(_) => AccessResult::Ignore,
+        IdentType::User(iuser) => {
+            if entry
+                .get_ava_as_iutf8("class")
+                .map(|set| {
+                    trace!(?set);
+                    set.contains("oauth2_resource_server")
+                })
+                .unwrap_or(false)
+            {
+                if entry
+                    .get_ava_as_oauthscopemaps("oauth2_rs_scope_map")
+                    .and_then(|maps| ident.get_memberof().map(|mo| (maps, mo)))
+                    .map(|(maps, mo)| maps.keys().any(|k| mo.contains(k)))
+                    .unwrap_or(false)
+                {
+                    trace!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a memberof a group granted an oauth2 scope by this entry");
+
+                    return AccessResult::Allow(btreeset!(
+                        "class",
+                        "displayname",
+                        "uuid",
+                        "oauth2_rs_name",
+                        "oauth2_rs_origin",
+                        "oauth2_rs_origin_landing"
+                    ));
+                }
+            }
+            AccessResult::Ignore
+        }
+    }
 }

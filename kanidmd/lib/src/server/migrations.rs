@@ -502,7 +502,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1,
             JSON_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1,
             JSON_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1,
-            JSON_IDM_ACP_OAUTH2_READ_PRIV_V1,
+            // JSON_IDM_ACP_OAUTH2_READ_PRIV_V1,
             JSON_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1,
         ];
 
@@ -526,6 +526,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let res: Result<(), _> = idm_entries
             .into_iter()
             .try_for_each(|entry| self.internal_migrate_or_create(entry));
+        if res.is_ok() {
+            admin_debug!("initialise_idm -> result Ok!");
+        } else {
+            admin_error!(?res, "initialise_idm p3 -> result");
+        }
+        debug_assert!(res.is_ok());
+        res?;
+
+        // Delete entries that no longer need to exist.
+        let delete_entries = [UUID_IDM_ACP_OAUTH2_READ_PRIV_V1];
+
+        let res: Result<(), _> = delete_entries
+            .into_iter()
+            .try_for_each(|entry_uuid| self.internal_delete_uuid_if_exists(entry_uuid));
         if res.is_ok() {
             admin_debug!("initialise_idm -> result Ok!");
         } else {
