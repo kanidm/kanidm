@@ -12,7 +12,6 @@ use std::path::Path;
 use std::str::FromStr;
 
 use kanidm_proto::messages::ConsoleOutputMode;
-use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -125,7 +124,6 @@ pub struct Configuration {
     pub secure_cookies: bool,
     pub trust_x_forward_for: bool,
     pub tls_config: Option<TlsConfiguration>,
-    pub cookie_key: [u8; 32],
     pub integration_test_config: Option<Box<IntegrationTestConfig>>,
     pub online_backup: Option<OnlineBackup>,
     pub domain: String,
@@ -171,7 +169,7 @@ impl fmt::Display for Configuration {
 
 impl Configuration {
     pub fn new() -> Self {
-        let mut c = Configuration {
+        Configuration {
             address: String::from("127.0.0.1:8080"),
             ldapaddress: None,
             threads: std::thread::available_parallelism()
@@ -189,17 +187,13 @@ impl Configuration {
             secure_cookies: !cfg!(test),
             trust_x_forward_for: false,
             tls_config: None,
-            cookie_key: [0; 32],
             integration_test_config: None,
             online_backup: None,
             domain: "idm.example.com".to_string(),
             origin: "https://idm.example.com".to_string(),
             role: ServerRole::WriteReplica,
             output_mode: ConsoleOutputMode::default(),
-        };
-        let mut rng = StdRng::from_entropy();
-        rng.fill(&mut c.cookie_key);
-        c
+        }
     }
 
     pub fn update_online_backup(&mut self, cfg: &Option<OnlineBackup>) {

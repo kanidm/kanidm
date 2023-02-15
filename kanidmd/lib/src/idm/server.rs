@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -81,6 +82,7 @@ pub struct IdmServer {
     uat_jwt_signer: Arc<CowCell<JwsSigner>>,
     uat_jwt_validator: Arc<CowCell<JwsValidator>>,
     token_enc_key: Arc<CowCell<Fernet>>,
+    cookie_key: Arc<CowCell<[u8; 32]>>,
 }
 
 /// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
@@ -130,6 +132,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     pw_badlist_cache: CowCellWriteTxn<'a, HashSet<String>>,
     uat_jwt_signer: CowCellWriteTxn<'a, JwsSigner>,
     uat_jwt_validator: CowCellWriteTxn<'a, JwsValidator>,
+    cookie_key: CowCellWriteTxn<'a, [u8; 32]>,
     pub(crate) token_enc_key: CowCellWriteTxn<'a, Fernet>,
     pub(crate) oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
 }
@@ -156,13 +159,22 @@ impl IdmServer {
         let (async_tx, async_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
-        let (rp_id, rp_name, fernet_private_key, es256_private_key, pw_badlist_set, oauth2rs_set) = {
+        let (
+            rp_id,
+            rp_name,
+            fernet_private_key,
+            es256_private_key,
+            cookie_key,
+            pw_badlist_set,
+            oauth2rs_set,
+        ) = {
             let mut qs_read = task::block_on(qs.read());
             (
                 qs_read.get_domain_name().to_string(),
                 qs_read.get_domain_display_name().to_string(),
                 qs_read.get_domain_fernet_private_key()?,
                 qs_read.get_domain_es256_private_key()?,
+                qs_read.get_domain_cookie_key()?,
                 qs_read.get_password_badlist()?,
                 // Add a read/reload of all oauth2 configurations.
                 qs_read.get_oauth2rs_set()?,
@@ -220,6 +232,8 @@ impl IdmServer {
         let uat_jwt_signer = Arc::new(CowCell::new(jwt_signer));
         let uat_jwt_validator = Arc::new(CowCell::new(jwt_validator));
 
+        let cookie_key = Arc::new(CowCell::new(cookie_key));
+
         let oauth2rs =
             Oauth2ResourceServers::try_from((oauth2rs_set, origin_url)).map_err(|e| {
                 admin_error!("Failed to load oauth2 resource servers - {:?}", e);
@@ -240,10 +254,15 @@ impl IdmServer {
                 uat_jwt_signer,
                 uat_jwt_validator,
                 token_enc_key,
+                cookie_key,
                 oauth2rs: Arc::new(oauth2rs),
             },
             IdmServerDelayed { async_rx },
         ))
+    }
+
+    pub fn get_cookie_key(&self) -> [u8; 32] {
+        *self.cookie_key.read().deref()
     }
 
     #[cfg(test)]
@@ -301,6 +320,7 @@ impl IdmServer {
             uat_jwt_signer: self.uat_jwt_signer.write(),
             uat_jwt_validator: self.uat_jwt_validator.write(),
             token_enc_key: self.token_enc_key.write(),
+            cookie_key: self.cookie_key.write(),
             oauth2rs: self.oauth2rs.write(),
         }
     }
@@ -2203,11 +2223,17 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     *self.uat_jwt_signer = new_signer;
                     *self.uat_jwt_validator = new_validator;
                 })?;
+            self.qs_write
+                .get_domain_cookie_key()
+                .map(|new_cookie_key| {
+                    *self.cookie_key = new_cookie_key;
+                })?;
         }
         // Commit everything.
         self.oauth2rs.commit();
         self.uat_jwt_signer.commit();
         self.uat_jwt_validator.commit();
+        self.cookie_key.commit();
         self.token_enc_key.commit();
         self.pw_badlist_cache.commit();
         self.cred_update_sessions.commit();

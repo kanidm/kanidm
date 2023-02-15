@@ -33,7 +33,7 @@ enum TotpState {
 }
 
 enum LoginState {
-    Init(bool),
+    Init { enable: bool, remember_me: bool },
     // Select between different cred types, either password (and MFA) or Passkey
     Select(Vec<AuthMech>),
     // The choices of authentication mechanism.
@@ -246,7 +246,10 @@ impl LoginApp {
     fn view_state(&self, ctx: &Context<Self>) -> Html {
         let inputvalue = self.inputvalue.clone();
         match &self.state {
-            LoginState::Init(enable) => {
+            LoginState::Init {
+                enable,
+                remember_me,
+            } => {
                 html! {
                     <>
                     <div class="container">
@@ -271,6 +274,18 @@ impl LoginApp {
                                 autocomplete="username"
                                 value={ inputvalue }
                             />
+                        </div>
+
+                        <div class="mb-3 form-check form-switch">
+                            <input
+                                type="checkbox"
+                                class="form-check-input"
+                                role="switch"
+                                id="remember_me_check"
+                                disabled={ !enable }
+                                checked={ *remember_me }
+                            />
+                            <label class="form-check-label" for="remember_me_check">{ "Remember my Username" }</label>
                         </div>
 
                         <div class={CLASS_DIV_LOGIN_BUTTON}>
@@ -564,7 +579,10 @@ impl Component for LoginApp {
         // -- clear the bearer to prevent conflict
         models::clear_bearer_token();
         // Do we have a login hint?
-        let inputvalue = models::pop_login_hint().unwrap_or_default();
+        let (inputvalue, remember_me) = models::pop_login_hint()
+            .map(|user| (user, false))
+            .or_else(|| models::get_login_remember_me().map(|user| (user, true)))
+            .unwrap_or_default();
 
         #[cfg(debug_assertions)]
         {
@@ -581,7 +599,10 @@ impl Component for LoginApp {
         // Clean any cookies.
         // TODO: actually check that it's cleaning the cookies.
 
-        let state = LoginState::Init(true);
+        let state = LoginState::Init {
+            enable: true,
+            remember_me,
+        };
 
         add_body_form_classes!();
 
@@ -603,10 +624,17 @@ impl Component for LoginApp {
                 true
             }
             LoginAppMsg::Restart => {
-                // Clear any leftover input
-                self.inputvalue = "".to_string();
+                // Clear any leftover input. Reset to the remembered username if any.
+                let (inputvalue, remember_me) = models::get_login_remember_me()
+                    .map(|user| (user, true))
+                    .unwrap_or_default();
+
+                self.inputvalue = inputvalue;
                 self.session_id = "".to_string();
-                self.state = LoginState::Init(true);
+                self.state = LoginState::Init {
+                    enable: true,
+                    remember_me,
+                };
                 true
             }
             LoginAppMsg::Begin => {
@@ -614,13 +642,35 @@ impl Component for LoginApp {
                 console::debug!(format!("begin -> {:?}", self.inputvalue));
                 // Disable the button?
                 let username = self.inputvalue.clone();
+                // If the remember-me was checked, stash it here.
+                // If it was false, clear existing data.
+
+                let remember_me = if utils::get_inputelement_by_id("remember_me_check")
+                    .map(|element| element.checked())
+                    .unwrap_or(false)
+                {
+                    models::push_login_remember_me(username.clone());
+                    true
+                } else {
+                    models::pop_login_remember_me();
+                    false
+                };
+
+                #[cfg(debug_assertions)]
+                console::debug!(format!("begin remember_me -> {:?}", remember_me));
+
                 ctx.link().send_future(async {
                     match Self::auth_init(username).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
                 });
-                self.state = LoginState::Init(false);
+
+                self.state = LoginState::Init {
+                    enable: false,
+                    remember_me,
+                };
+
                 true
             }
             LoginAppMsg::PasswordSubmit => {

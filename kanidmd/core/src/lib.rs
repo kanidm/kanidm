@@ -669,6 +669,8 @@ pub async fn create_server_core(
         }
     };
 
+    let cookie_key: [u8; 32] = idms.get_cookie_key();
+
     // Any pre-start tasks here.
     match &config.integration_test_config {
         Some(itc) => {
@@ -781,8 +783,6 @@ pub async fn create_server_core(
     // TODO: Remove these when we go to auth bearer!
     // Copy the max size
     let _secure_cookies = config.secure_cookies;
-    // domain will come from the qs now!
-    let cookie_key: [u8; 32] = config.cookie_key;
 
     let maybe_http_acceptor_handle = if config_test {
         admin_info!("this config rocks! 🪨 ");

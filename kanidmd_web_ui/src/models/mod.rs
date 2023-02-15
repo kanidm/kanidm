@@ -69,6 +69,25 @@ pub fn pop_login_hint() -> Option<String> {
     l.ok()
 }
 
+pub fn push_login_remember_me(r: String) {
+    PersistentStorage::set("login_remember_me", r).expect_throw("failed to set login remember me");
+}
+
+pub fn get_login_remember_me() -> Option<String> {
+    let l: Result<String, _> = PersistentStorage::get("login_remember_me");
+    #[cfg(debug_assertions)]
+    console::debug!(format!("login_hint::pop_login_remember_me -> {:?}", l).as_str());
+    l.ok()
+}
+
+pub fn pop_login_remember_me() -> Option<String> {
+    let l: Result<String, _> = PersistentStorage::get("login_remember_me");
+    #[cfg(debug_assertions)]
+    console::debug!(format!("login_hint::pop_login_remember_me -> {:?}", l).as_str());
+    PersistentStorage::delete("login_remember_me");
+    l.ok()
+}
+
 /// Pushes the "cred_update_session" element into the browser's temporary storage
 pub fn push_cred_update_session(s: (CUSessionToken, CUStatus)) {
     TemporaryStorage::set("cred_update_session", s)

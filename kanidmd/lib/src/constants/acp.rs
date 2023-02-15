@@ -993,6 +993,7 @@ pub const JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &str = r#"{
             "domain_uuid",
             "es256_private_key_der",
             "fernet_private_key_str",
+            "cookie_private_key",
             "name",
             "uuid"
         ],
@@ -1000,6 +1001,7 @@ pub const JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &str = r#"{
             "domain_display_name",
             "domain_ssid",
             "es256_private_key_der",
+            "cookie_private_key",
             "fernet_private_key_str"
         ],
         "acp_modify_presentattr": [

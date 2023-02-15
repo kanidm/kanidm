@@ -57,11 +57,11 @@ pub fn get_value_from_input_event(e: InputEvent) -> String {
 //         .and_then(|element| element.dyn_into::<web_sys::HtmlButtonElement>().ok())
 // }
 
-// pub fn get_inputelement_by_id(id: &str) -> Option<HtmlInputElement> {
-//     document()
-//         .get_element_by_id(id)
-//         .and_then(|element| element.dyn_into::<web_sys::HtmlInputElement>().ok())
-// }
+pub fn get_inputelement_by_id(id: &str) -> Option<HtmlInputElement> {
+    document()
+        .get_element_by_id(id)
+        .and_then(|element| element.dyn_into::<web_sys::HtmlInputElement>().ok())
+}
 
 pub fn get_value_from_element_id(id: &str) -> Option<String> {
     document()

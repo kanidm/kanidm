@@ -8,6 +8,7 @@ use std::iter::once;
 
 use compact_jwt::JwsSigner;
 use kanidm_proto::v1::OperationError;
+use rand::prelude::*;
 use tracing::trace;
 
 use crate::event::{CreateEvent, ModifyEvent};
@@ -91,6 +92,7 @@ impl Domain {
                     let v = Value::new_secret_str(&k);
                     e.add_ava("fernet_private_key_str", v);
                 }
+
                 if !e.attribute_pres("es256_private_key_der") {
                     security_info!("regenerating domain es256 private key");
                     let der = JwsSigner::generate_es256()
@@ -102,6 +104,16 @@ impl Domain {
                     let v = Value::new_privatebinary(&der);
                     e.add_ava("es256_private_key_der", v);
                 }
+
+                if !e.attribute_pres("private_cookie_key") {
+                    security_info!("regenerating domain cookie key");
+                    let mut key = [0; 32];
+                    let mut rng = StdRng::from_entropy();
+                    rng.fill(&mut key);
+                    let v = Value::new_privatebinary(&key);
+                    e.add_ava("private_cookie_key", v);
+                }
+
                 trace!(?e);
                 Ok(())
             } else {
