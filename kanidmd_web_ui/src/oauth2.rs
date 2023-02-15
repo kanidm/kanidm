@@ -224,7 +224,10 @@ impl Component for Oauth2App {
         let query: Option<AuthorisationRequest> = location
             .query()
             .map_err(|e| {
-                let e_msg = format!("failed to decode authorisation request url parameters -> {:?}", e);
+                let e_msg = format!(
+                    "failed to decode authorisation request url parameters -> {:?}",
+                    e
+                );
                 console::error!(e_msg.as_str());
             })
             .ok()

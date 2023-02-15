@@ -2603,4 +2603,124 @@ mod tests {
         // Test reject purge
         test_acp_modify!(&me_purge, vec![acp_allow], &r2_set, false);
     }
+
+    #[test]
+    fn test_access_ouath2_dyn_search() {
+        sketching::test_init();
+        // Test that an account that is granted a scope to an oauth2 rs is granted
+        // the ability to search that rs.
+        let rs_uuid = Uuid::new_v4();
+        let ev1 = unsafe {
+            entry_init!(
+                ("class", CLASS_OBJECT.clone()),
+                ("class", Value::new_class("oauth2_resource_server")),
+                ("class", Value::new_class("oauth2_resource_server_basic")),
+                ("uuid", Value::Uuid(rs_uuid)),
+                ("oauth2_rs_name", Value::new_iname("test_resource_server")),
+                ("displayname", Value::new_utf8s("test_resource_server")),
+                (
+                    "oauth2_rs_origin",
+                    Value::new_url_s("https://demo.example.com").unwrap()
+                ),
+                (
+                    "oauth2_rs_scope_map",
+                    Value::new_oauthscopemap(UUID_TEST_GROUP_1, btreeset!["groups".to_string()])
+                        .expect("invalid oauthscope")
+                ),
+                (
+                    "oauth2_rs_sup_scope_map",
+                    Value::new_oauthscopemap(
+                        UUID_TEST_GROUP_1,
+                        btreeset!["supplement".to_string()]
+                    )
+                    .expect("invalid oauthscope")
+                ),
+                (
+                    "oauth2_allow_insecure_client_disable_pkce",
+                    Value::new_bool(true)
+                ),
+                ("oauth2_jwt_legacy_crypto_enable", Value::new_bool(false)),
+                ("oauth2_prefer_short_username", Value::new_bool(false))
+            )
+            .into_sealed_committed()
+        };
+
+        let ev1_reduced = unsafe {
+            entry_init!(
+                ("class", CLASS_OBJECT.clone()),
+                ("class", Value::new_class("oauth2_resource_server")),
+                ("class", Value::new_class("oauth2_resource_server_basic")),
+                ("uuid", Value::Uuid(rs_uuid)),
+                ("oauth2_rs_name", Value::new_iname("test_resource_server")),
+                ("displayname", Value::new_utf8s("test_resource_server")),
+                (
+                    "oauth2_rs_origin",
+                    Value::new_url_s("https://demo.example.com").unwrap()
+                )
+            )
+            .into_sealed_committed()
+        };
+
+        let ev2 = unsafe {
+            entry_init!(
+                ("class", CLASS_OBJECT.clone()),
+                ("class", Value::new_class("oauth2_resource_server")),
+                ("class", Value::new_class("oauth2_resource_server_basic")),
+                ("uuid", Value::Uuid(Uuid::new_v4())),
+                ("oauth2_rs_name", Value::new_iname("second_resource_server")),
+                ("displayname", Value::new_utf8s("second_resource_server")),
+                (
+                    "oauth2_rs_origin",
+                    Value::new_url_s("https://noaccess.example.com").unwrap()
+                ),
+                (
+                    "oauth2_rs_scope_map",
+                    Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["groups".to_string()])
+                        .expect("invalid oauthscope")
+                ),
+                (
+                    "oauth2_rs_sup_scope_map",
+                    Value::new_oauthscopemap(
+                        // This is NOT the scope map that is access checked!
+                        UUID_TEST_GROUP_1,
+                        btreeset!["supplement".to_string()]
+                    )
+                    .expect("invalid oauthscope")
+                ),
+                (
+                    "oauth2_allow_insecure_client_disable_pkce",
+                    Value::new_bool(true)
+                ),
+                ("oauth2_jwt_legacy_crypto_enable", Value::new_bool(false)),
+                ("oauth2_prefer_short_username", Value::new_bool(false))
+            )
+            .into_sealed_committed()
+        };
+
+        let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2)];
+
+        let se_a = unsafe {
+            SearchEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_1.clone(),
+                filter_all!(f_pres("oauth2_rs_name")),
+            )
+        };
+        let ex_a = vec![Arc::new(ev1)];
+        let ex_a_reduced = vec![ev1_reduced];
+
+        let se_b = unsafe {
+            SearchEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_2.clone(),
+                filter_all!(f_pres("oauth2_rs_name")),
+            )
+        };
+        let ex_b = vec![];
+
+        // Check the authorisation search event, and that it reduces correctly.
+        test_acp_search!(&se_a, vec![], r_set.clone(), ex_a);
+        test_acp_search_reduce!(&se_a, vec![], r_set.clone(), ex_a_reduced);
+
+        // Check the deny case.
+        test_acp_search!(&se_b, vec![], r_set, ex_b);
+    }
 }
