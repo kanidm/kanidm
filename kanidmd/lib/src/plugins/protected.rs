@@ -316,6 +316,10 @@ mod tests {
                 "acp_modify_removedattr",
                 Value::new_iutf8("es256_private_key_der")
             ),
+            (
+                "acp_modify_removedattr",
+                Value::new_iutf8("private_cookie_key")
+            ),
             ("acp_modify_presentattr", Value::new_iutf8("class")),
             ("acp_modify_presentattr", Value::new_iutf8("displayname")),
             ("acp_modify_presentattr", Value::new_iutf8("may")),
@@ -335,6 +339,10 @@ mod tests {
                 "acp_modify_presentattr",
                 Value::new_iutf8("es256_private_key_der")
             ),
+            (
+                "acp_modify_presentattr",
+                Value::new_iutf8("private_cookie_key")
+            ),
             ("acp_create_class", Value::new_iutf8("object")),
             ("acp_create_class", Value::new_iutf8("person")),
             ("acp_create_class", Value::new_iutf8("system")),
@@ -353,6 +361,7 @@ mod tests {
                 Value::new_iutf8("fernet_private_key_str")
             ),
             ("acp_create_attr", Value::new_iutf8("es256_private_key_der")),
+            ("acp_create_attr", Value::new_iutf8("private_cookie_key")),
             ("acp_create_attr", Value::new_iutf8("version"))
         );
         pub static ref PRELOAD: Vec<EntryInitNew> =
@@ -492,6 +501,7 @@ mod tests {
                 "domain_ssid": ["Example_Wifi"],
                 "fernet_private_key_str": ["ABCD"],
                 "es256_private_key_der" : ["MTIz"],
+                "private_cookie_key" : ["MTIz"],
                 "version": ["1"]
             }
         }"#,
@@ -534,6 +544,7 @@ mod tests {
                 "domain_ssid": ["Example_Wifi"],
                 "fernet_private_key_str": ["ABCD"],
                 "es256_private_key_der" : ["MTIz"],
+                "private_cookie_key" : ["MTIz"],
                 "version": ["1"]
             }
         }"#,
@@ -566,6 +577,7 @@ mod tests {
                 "domain_ssid": ["Example_Wifi"],
                 "fernet_private_key_str": ["ABCD"],
                 "es256_private_key_der" : ["MTIz"],
+                "private_cookie_key" : ["MTIz"],
                 "version": ["1"]
             }
         }"#,

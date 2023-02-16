@@ -967,6 +967,35 @@ pub const JSON_SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_PRIVATE_COOKIE_KEY: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "An private cookie hmac key"
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "private_cookie_key"
+      ],
+      "syntax": [
+        "PRIVATE_BINARY"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000130"
+      ]
+    }
+}"#;
+
 pub const JSON_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: &str = r#"{
     "attrs": {
       "class": [
@@ -1630,6 +1659,7 @@ pub const JSON_SCHEMA_CLASS_DOMAIN_INFO: &str = r#"
         "domain_display_name",
         "fernet_private_key_str",
         "es256_private_key_der",
+        "private_cookie_key",
         "version"
       ],
       "uuid": [

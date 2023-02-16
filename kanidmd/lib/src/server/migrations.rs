@@ -364,6 +364,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_CLASS_OAUTH2_RS,
             JSON_SCHEMA_CLASS_OAUTH2_RS_BASIC,
             JSON_SCHEMA_CLASS_SYNC_ACCOUNT,
+            JSON_SCHEMA_ATTR_PRIVATE_COOKIE_KEY,
         ];
 
         let r = idm_schema

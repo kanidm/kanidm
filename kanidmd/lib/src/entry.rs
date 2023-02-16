@@ -451,7 +451,7 @@ impl Entry<EntryInit, EntryNew> {
                             vs.into_iter().map(|v| Value::new_secret_str(&v))
                         )
                     }
-                    "es256_private_key_der" => {
+                    "es256_private_key_der" | "private_cookie_key" => {
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_privatebinary_base64(&v))
                         )
