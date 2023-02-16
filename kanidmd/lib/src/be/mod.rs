@@ -1714,9 +1714,9 @@ impl Backend {
         idxkeys: Vec<IdxKey>,
         vacuum: bool,
     ) -> Result<Self, OperationError> {
-        debug!("DB tickets -> {:?}", cfg.pool_size);
-        debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
-        debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
+        info!("DB tickets -> {:?}", cfg.pool_size);
+        info!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
+        info!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
 
         // If in memory, reduce pool to 1
         if cfg.path.is_empty() {

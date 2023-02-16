@@ -114,11 +114,6 @@ install-tools: ## install kanidm_tools in your local environment
 install-tools:
 	cd kanidm_tools && cargo install --path . --force
 
-.PHONY: prep
-prep:
-	cargo outdated -R
-	cargo audit
-
 .PHONY: codespell
 codespell:
 	codespell -c \
@@ -215,6 +210,11 @@ docs/pykanidm/serve:
 
 ########################################################################
 
+.PHONY: release/prep
+prep:
+	cargo outdated -R
+	cargo audit
+
 .PHONY: release/kanidm
 release/kanidm: ## Build the Kanidm CLI - ensure you include the environment variable KANIDM_BUILD_PROFILE
 	cargo build -p kanidm_tools --bin kanidm --release
@@ -240,7 +240,6 @@ release/kanidm-unixd:
 		--bin kanidm_unixd_tasks \
 		--bin kanidm_cache_clear \
 		--bin kanidm_cache_invalidate
-
 
 # cert things
 
