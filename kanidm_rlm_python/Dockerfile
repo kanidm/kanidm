@@ -4,7 +4,8 @@ EXPOSE 1812 1813
 
 # These all need to be on one line else the rpm cache ends
 # up in the layers.
-RUN zypper refresh --force && \
+RUN \
+    --mount=type=cache,id=zypp,target=/var/cache/zypp \
     zypper install -y \
     freeradius-client \
     freeradius-server \
@@ -18,8 +19,7 @@ RUN zypper refresh --force && \
     iproute2 \
     iputils \
     openssl \
-    curl && \
-    zypper clean
+    curl
 
 ADD kanidm_rlm_python/mods-available/ /etc/raddb/mods-available/
 COPY kanidm_rlm_python/sites-available/ /etc/raddb/sites-available/

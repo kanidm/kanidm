@@ -1,8 +1,9 @@
 # Build the main Kanidmd server
 ARG BASE_IMAGE=opensuse/tumbleweed:latest
 FROM ${BASE_IMAGE} AS repos
-RUN zypper refresh --force
-RUN zypper dup -y
+RUN \
+    --mount=type=cache,id=zypp,target=/var/cache/zypp \
+    zypper dup -y
 
 # ======================
 FROM repos AS builder
@@ -13,8 +14,10 @@ ARG KANIDM_BUILD_OPTIONS=""
 RUN echo Profile $KANIDM_BUILD_PROFILE
 RUN echo Features $KANIDM_FEATURES
 
-RUN zypper install -y --no-recommends \
-        rustup \
+RUN \
+    --mount=type=cache,id=zypp,target=/var/cache/zypp \
+    zypper install -y --no-recommends \
+        cargo \
         clang \
         make automake autoconf \
         libopenssl-3-devel pam-devel \
@@ -23,11 +26,6 @@ RUN zypper install -y --no-recommends \
         findutils \
         which \
         mold
-# wasm-pack \
-# lld
-
-RUN zypper clean -a
-RUN rustup default stable
 
 COPY . /usr/src/kanidm
 
@@ -70,12 +68,13 @@ RUN ls -al /usr/src/kanidm/target/release
 
 FROM repos
 
-RUN zypper install -y \
+RUN \
+    --mount=type=cache,id=zypp,target=/var/cache/zypp \
+    zypper install -y \
         timezone \
         openssl-3 \
         sqlite3 \
         pam
-RUN zypper clean -a
 
 COPY --from=builder /usr/src/kanidm/target/release/kanidmd /sbin/
 COPY --from=builder /usr/src/kanidm/kanidmd_web_ui/pkg /pkg
