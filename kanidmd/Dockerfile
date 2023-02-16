@@ -3,6 +3,9 @@ ARG BASE_IMAGE=opensuse/tumbleweed:latest
 FROM ${BASE_IMAGE} AS repos
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
+    zypper mr -k repo-oss && \
+    zypper mr -k repo-non-oss && \
+    zypper mr -k repo-update && \
     zypper dup -y
 
 # ======================
@@ -11,12 +14,14 @@ ARG KANIDM_FEATURES
 ARG KANIDM_BUILD_PROFILE="container_generic"
 ARG KANIDM_BUILD_OPTIONS=""
 
-RUN echo Profile $KANIDM_BUILD_PROFILE
-RUN echo Features $KANIDM_FEATURES
+# Set the build profile
+ENV KANIDM_BUILD_PROFILE=${KANIDM_BUILD_PROFILE:-container_generic}
+ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.mold"
 
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
     zypper install -y --no-recommends \
+        sccache \
         cargo \
         clang \
         make automake autoconf \
@@ -43,26 +48,18 @@ RUN cp /usr/src/kanidm/cargo_vendor_config /usr/src/kanidm/.cargo/config.toml
 
 WORKDIR /usr/src/kanidm/kanidmd/daemon
 
-# Set the build profile
-ENV KANIDM_BUILD_PROFILE=${KANIDM_BUILD_PROFILE:-container_generic}
-ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.mold"
-
 # Exports don't persist through RUN statements.
-RUN export CC="/usr/bin/clang"; \
-if [ -z "${KANIDM_FEATURES}" ]; then \
-  cargo build -p daemon ${KANIDM_BUILD_OPTIONS} \
-    --locked --offline \
-    --target-dir="/usr/src/kanidm/target/" \
-    --release; \
-else \
-  cargo build -p daemon ${KANIDM_BUILD_OPTIONS} \
-    --locked --offline \
-    --target-dir="/usr/src/kanidm/target/" \
-    --features="${KANIDM_FEATURES}" \
-    --release; \
-fi
-
-RUN ls -al /usr/src/kanidm/target/release
+RUN \
+--mount=type=cache,id=sccache,target=/sccache \
+export SCCACHE_DIR=/sccache; \
+export RUSTC_WRAPPER=/usr/bin/sccache; \
+export CC="/usr/bin/clang"; \
+    cargo build -p daemon ${KANIDM_BUILD_OPTIONS} \
+        --locked --offline \
+        --target-dir="/usr/src/kanidm/target/" \
+        --features="${KANIDM_FEATURES}" \
+        --release; \
+    sccache -s
 
 # ======================
 

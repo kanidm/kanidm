@@ -1,4 +1,14 @@
-FROM opensuse/tumbleweed:latest
+ARG BASE_IMAGE=opensuse/tumbleweed:latest
+FROM ${BASE_IMAGE} AS repos
+RUN \
+    --mount=type=cache,id=zypp,target=/var/cache/zypp \
+    zypper mr -k repo-oss && \
+    zypper mr -k repo-non-oss && \
+    zypper mr -k repo-update && \
+    zypper dup -y
+
+# ======================
+FROM repos
 
 EXPOSE 1812 1813
 
@@ -28,29 +38,30 @@ COPY kanidm_rlm_python/sites-available/ /etc/raddb/sites-available/
 WORKDIR /etc/raddb
 
 # Enable the python and cache module.
-RUN ln -s /etc/raddb/mods-available/python3 /etc/raddb/mods-enabled/python3
-RUN ln -s /etc/raddb/sites-available/check-eap-tls /etc/raddb/sites-enabled/check-eap-tls
+RUN ln -s /etc/raddb/mods-available/python3 /etc/raddb/mods-enabled/python3 && \
+    ln -s /etc/raddb/sites-available/check-eap-tls /etc/raddb/sites-enabled/check-eap-tls
 
 # disable auth via methods we don't support!
-RUN rm /etc/raddb/mods-available/sql
-RUN rm /etc/raddb/mods-enabled/{passwd,totp}
+RUN rm /etc/raddb/mods-available/sql && \
+    rm /etc/raddb/mods-enabled/{passwd,totp}
 
 # Allows the radiusd user to write to the directory
-RUN chown -R radiusd: /etc/raddb
-RUN chmod 775 /etc/raddb/certs
-RUN chmod 640 /etc/raddb/clients.conf
+RUN chown -R radiusd: /etc/raddb && \
+    chmod 775 /etc/raddb/certs && \
+    chmod 640 /etc/raddb/clients.conf
 
 RUN mkdir -p /pkg/pykanidm/
 COPY pykanidm/ /pkg/pykanidm/
 
 # install the package and its dependencies
-RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/pykanidm
-# clean up after install
-RUN rm -rf /pkg/*
+RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/pykanidm && \
+    rm -rf /pkg/*
 
-USER radiusd
+COPY kanidm_rlm_python/radius_entrypoint.py /radius_entrypoint.py
+
 ENV LD_PRELOAD=/usr/lib64/libpython3.so
 ENV KANIDM_CONFIG_FILE="/data/kanidm"
 
-COPY kanidm_rlm_python/radius_entrypoint.py /radius_entrypoint.py
+USER radiusd
+
 CMD [ "/usr/bin/python3", "/radius_entrypoint.py" ]
