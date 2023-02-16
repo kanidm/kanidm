@@ -33,14 +33,13 @@ RUN \
 
 COPY . /usr/src/kanidm
 
-RUN mkdir -p /usr/src/kanidm/.cargo
-RUN cp /usr/src/kanidm/cargo_vendor_config /usr/src/kanidm/.cargo/config.toml
-
 WORKDIR /usr/src/kanidm/
 
 # build the CLI
 RUN \
+--mount=type=cache,id=cargo,target=/cargo \
 --mount=type=cache,id=sccache,target=/sccache \
+export CARGO_HOME=/cargo; \
 export SCCACHE_DIR=/sccache; \
 export RUSTC_WRAPPER=/usr/bin/sccache; \
 export CC="/usr/bin/clang"; \
