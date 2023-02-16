@@ -23,7 +23,6 @@ buildx/kanidmd/x86_64_v3:
 		--build-arg "KANIDM_BUILD_PROFILE=container_x86_64_v3" \
 		--build-arg "KANIDM_FEATURES=" \
 		$(CONTAINER_BUILD_ARGS) .
-	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
 
 .PHONY: buildx/kanidmd
 buildx/kanidmd: ## Build multiarch kanidm server images and push to docker hub
@@ -36,7 +35,6 @@ buildx/kanidmd:
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
 		$(CONTAINER_BUILD_ARGS) .
-	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
 
 .PHONY: buildx/kanidm_tools
 buildx/kanidm_tools: ## Build multiarch kanidm tool images and push to docker hub
@@ -49,7 +47,6 @@ buildx/kanidm_tools:
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
 		$(CONTAINER_BUILD_ARGS) .
-	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/tools:$(IMAGE_VERSION)
 
 .PHONY: buildx/radiusd
 buildx/radiusd: ## Build multi-arch radius docker images and push to docker hub
@@ -57,10 +54,8 @@ buildx/radiusd:
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f kanidm_rlm_python/Dockerfile \
+		--progress $(BUILDKIT_PROGRESS) \
 		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
-		--progress $(BUILDKIT_PROGRESS) \
-		--progress $(BUILDKIT_PROGRESS) \
-	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/radius:$(IMAGE_VERSION)
 
 .PHONY: buildx
 buildx: buildx/kanidmd/x86_64_v3 buildx/kanidmd buildx/kanidm_tools buildx/radiusd
