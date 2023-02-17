@@ -8,6 +8,7 @@ RUN \
     zypper mr -k repo-update && \
     zypper dup -y
 
+# ======================
 FROM repos AS builder
 ARG KANIDM_FEATURES
 ARG KANIDM_BUILD_PROFILE
@@ -16,6 +17,9 @@ ARG KANIDM_BUILD_OPTIONS=""
 # Set the build profile
 ENV KANIDM_BUILD_PROFILE=${KANIDM_BUILD_PROFILE:-container_generic}
 ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.mold"
+
+# fixing the issue with getting OOMKilled in BuildKit
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \

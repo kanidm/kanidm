@@ -17,6 +17,9 @@ ARG KANIDM_BUILD_OPTIONS=""
 ENV KANIDM_BUILD_PROFILE=${KANIDM_BUILD_PROFILE:-container_generic}
 ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.mold"
 
+# fixing the issue with getting OOMKilled in BuildKit
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
     zypper install -y --no-recommends \
