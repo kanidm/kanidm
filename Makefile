@@ -5,6 +5,7 @@ IMAGE_ARCH ?= "linux/amd64,linux/arm64"
 CONTAINER_BUILD_ARGS ?=
 MARKDOWN_FORMAT_ARGS ?= --options-line-width=100
 CONTAINER_TOOL ?= docker
+BUILDKIT_PROGRESS ?= plain
 
 BOOK_VERSION ?= master
 
@@ -15,37 +16,37 @@ help:
 
 .PHONY: buildx/kanidmd/x86_64_v3
 buildx/kanidmd/x86_64_v3: ## build multiarch server images
-buildx/kanidmd/x86_64_v3: vendor
+buildx/kanidmd/x86_64_v3:
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) --pull --push --platform "linux/amd64/v3" \
 		-f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:x86_64_$(IMAGE_VERSION) \
+		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_x86_64_v3" \
 		--build-arg "KANIDM_FEATURES=" \
 		$(CONTAINER_BUILD_ARGS) .
-	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
 
 .PHONY: buildx/kanidmd
 buildx/kanidmd: ## Build multiarch kanidm server images and push to docker hub
-buildx/kanidmd: vendor
+buildx/kanidmd:
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f kanidmd/Dockerfile \
 		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
+		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
 		$(CONTAINER_BUILD_ARGS) .
-	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
 
 .PHONY: buildx/kanidm_tools
 buildx/kanidm_tools: ## Build multiarch kanidm tool images and push to docker hub
-buildx/kanidm_tools: vendor
+buildx/kanidm_tools:
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f kanidm_tools/Dockerfile \
 		-t $(IMAGE_BASE)/tools:$(IMAGE_VERSION) \
+		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
 		$(CONTAINER_BUILD_ARGS) .
-	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/tools:$(IMAGE_VERSION)
 
 .PHONY: buildx/radiusd
 buildx/radiusd: ## Build multi-arch radius docker images and push to docker hub
@@ -53,8 +54,8 @@ buildx/radiusd:
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f kanidm_rlm_python/Dockerfile \
+		--progress $(BUILDKIT_PROGRESS) \
 		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
-	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/radius:$(IMAGE_VERSION)
 
 .PHONY: buildx
 buildx: buildx/kanidmd/x86_64_v3 buildx/kanidmd buildx/kanidm_tools buildx/radiusd
@@ -113,11 +114,6 @@ vendor-prep: vendor
 install-tools: ## install kanidm_tools in your local environment
 install-tools:
 	cd kanidm_tools && cargo install --path . --force
-
-.PHONY: prep
-prep:
-	cargo outdated -R
-	cargo audit
 
 .PHONY: codespell
 codespell:
@@ -215,6 +211,11 @@ docs/pykanidm/serve:
 
 ########################################################################
 
+.PHONY: release/prep
+prep:
+	cargo outdated -R
+	cargo audit
+
 .PHONY: release/kanidm
 release/kanidm: ## Build the Kanidm CLI - ensure you include the environment variable KANIDM_BUILD_PROFILE
 	cargo build -p kanidm_tools --bin kanidm --release
@@ -240,7 +241,6 @@ release/kanidm-unixd:
 		--bin kanidm_unixd_tasks \
 		--bin kanidm_cache_clear \
 		--bin kanidm_cache_invalidate
-
 
 # cert things
 

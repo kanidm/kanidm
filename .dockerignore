@@ -1,10 +1,12 @@
 .git
 .github
 .gitignore
+.mypy_cache
 .vscode
 *.md
+**/__pycache__/**
+docs
+kanidmd/sampledata
 Makefile
 target
-docs
 test.db
-kanidmd/sampledata

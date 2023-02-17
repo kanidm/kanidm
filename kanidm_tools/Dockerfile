@@ -1,19 +1,27 @@
 # This builds the kanidm CLI tools
 ARG BASE_IMAGE=opensuse/tumbleweed:latest
 FROM ${BASE_IMAGE} AS repos
-RUN zypper refresh --force
-RUN zypper dup -y
+RUN \
+    --mount=type=cache,id=zypp,target=/var/cache/zypp \
+    zypper mr -k repo-oss && \
+    zypper mr -k repo-non-oss && \
+    zypper mr -k repo-update && \
+    zypper dup -y
 
 FROM repos AS builder
 ARG KANIDM_FEATURES
 ARG KANIDM_BUILD_PROFILE
 ARG KANIDM_BUILD_OPTIONS=""
 
-RUN echo Profile $KANIDM_BUILD_PROFILE
-RUN echo Features $KANIDM_FEATURES
+# Set the build profile
+ENV KANIDM_BUILD_PROFILE=${KANIDM_BUILD_PROFILE:-container_generic}
+ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.mold"
 
-RUN zypper install -y --no-recommends \
-        rustup wasm-pack \
+RUN \
+    --mount=type=cache,id=zypp,target=/var/cache/zypp \
+    zypper install -y --no-recommends \
+        sccache \
+        cargo \
         clang \
         make automake autoconf \
         libopenssl-3-devel \
@@ -23,55 +31,44 @@ RUN zypper install -y --no-recommends \
         rsync \
         mold
 
-RUN zypper clean -a
-RUN rustup default stable
-
 COPY . /usr/src/kanidm
-
-RUN mkdir -p /usr/src/kanidm/.cargo
-RUN cp /usr/src/kanidm/cargo_vendor_config /usr/src/kanidm/.cargo/config.toml
 
 WORKDIR /usr/src/kanidm/
 
-# Set the build profile
-ENV KANIDM_BUILD_PROFILE=${KANIDM_BUILD_PROFILE:-container_generic}
-ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.mold"
-
 # build the CLI
-RUN if [ -z "${KANIDM_FEATURES}" ]; then \
-  cargo build -p kanidm_tools ${KANIDM_BUILD_OPTIONS} \
-    --target-dir="/usr/src/kanidm/target/" \
-    --release; \
-  cargo build -p kanidm-ipa-sync ${KANIDM_BUILD_OPTIONS} \
-    --target-dir="/usr/src/kanidm/target/" \
-    --release; \
-else \
-  cargo build -p kanidm_tools ${KANIDM_BUILD_OPTIONS} \
-    --target-dir="/usr/src/kanidm/target/" \
-    --features="${KANIDM_FEATURES}" \
-    --release; \
-  cargo build -p kanidm-ipa-sync ${KANIDM_BUILD_OPTIONS} \
-    --target-dir="/usr/src/kanidm/target/" \
-    --features="${KANIDM_FEATURES}" \
-    --release; \
-fi
-
-RUN ls -al /usr/src/kanidm/target/release
+RUN \
+--mount=type=cache,id=cargo,target=/cargo \
+--mount=type=cache,id=sccache,target=/sccache \
+export CARGO_HOME=/cargo; \
+export SCCACHE_DIR=/sccache; \
+export RUSTC_WRAPPER=/usr/bin/sccache; \
+export CC="/usr/bin/clang"; \
+    cargo build -p kanidm_tools ${KANIDM_BUILD_OPTIONS} \
+        --target-dir="/usr/src/kanidm/target/" \
+        --features="${KANIDM_FEATURES}" \
+        --release; \
+    cargo build -p kanidm-ipa-sync ${KANIDM_BUILD_OPTIONS} \
+        --target-dir="/usr/src/kanidm/target/" \
+        --features="${KANIDM_FEATURES}" \
+        --release; \
+    sccache -s
 
 # == Construct the tools container
 FROM repos
 
-RUN zypper install -y timezone busybox-adduser openssl-3 && \
-    zypper clean -a
+ENV RUST_BACKTRACE 1
+
+RUN \
+    --mount=type=cache,id=zypp,target=/var/cache/zypp \
+    zypper install -y timezone busybox-adduser openssl-3
 
 COPY --from=builder /usr/src/kanidm/target/release/kanidm /sbin/
 COPY --from=builder /usr/src/kanidm/target/release/kanidm-ipa-sync /sbin/
 RUN chmod +x /sbin/kanidm
 RUN chmod +x /sbin/kanidm-ipa-sync
-ENV RUST_BACKTRACE 1
 
-RUN adduser -D -H kanidm
-RUN mkdir /etc/kanidm && \
+RUN adduser -D -H kanidm && \
+    mkdir /etc/kanidm && \
     touch /etc/kanidm/config
 
 USER kanidm

@@ -1,2 +1,3 @@
 web_ui_pkg_path = "/usr/share/kanidm/ui/pkg"
-cpu_flags = "none"
+# Don't set the value for autodetect
+# cpu_flags = "none"

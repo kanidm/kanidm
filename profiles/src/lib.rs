@@ -7,8 +7,21 @@ use serde::Deserialize;
 enum CpuOptLevel {
     none,
     native,
-    x86_64_v1,
+    neon_v8,
+    x86_64_v2,
     x86_64_v3,
+}
+
+impl Default for CpuOptLevel {
+    fn default() -> Self {
+        if cfg!(target_arch = "x86_64") {
+            CpuOptLevel::x86_64_v2
+        } else if cfg!(target_arch = "aarch64") {
+            CpuOptLevel::neon_v8
+        } else {
+            CpuOptLevel::none
+        }
+    }
 }
 
 impl std::fmt::Display for CpuOptLevel {
@@ -16,7 +29,8 @@ impl std::fmt::Display for CpuOptLevel {
         match &self {
             CpuOptLevel::none => write!(f, "none"),
             CpuOptLevel::native => write!(f, "native"),
-            CpuOptLevel::x86_64_v1 => write!(f, "x86_64_v1"),
+            CpuOptLevel::neon_v8 => write!(f, "neon_v8"),
+            CpuOptLevel::x86_64_v2 => write!(f, "x86_64_v2"),
             CpuOptLevel::x86_64_v3 => write!(f, "x86_64_v3"),
         }
     }
@@ -25,6 +39,7 @@ impl std::fmt::Display for CpuOptLevel {
 #[derive(Debug, Deserialize)]
 struct ProfileConfig {
     web_ui_pkg_path: String,
+    #[serde(default)]
     cpu_flags: CpuOptLevel,
 }
 
@@ -43,17 +58,12 @@ pub fn apply_profile() {
     let profile_cfg: ProfileConfig = toml::from_slice(&data)
         .unwrap_or_else(|_| panic!("Failed to parse profile - {} - {}", profile, contents));
 
-    /*
-     *  x86-64: CMOV, CMPXCHG8B, FPU, FXSR, MMX, FXSR, SCE, SSE, SSE2
-     *  x86-64-v2: (close to Nehalem) CMPXCHG16B, LAHF-SAHF, POPCNT, SSE3, SSE4.1, SSE4.2, SSSE3
-     *  x86-64-v3: (close to Haswell) AVX, AVX2, BMI1, BMI2, F16C, FMA, LZCNT, MOVBE, XSAVE
-     */
-
     match profile_cfg.cpu_flags {
         CpuOptLevel::none => {}
         CpuOptLevel::native => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=native"),
-        CpuOptLevel::x86_64_v1 => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-feature=+cmov,+cx8,+fxsr,+mmx,+sse,+sse2"),
-        CpuOptLevel::x86_64_v3 => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-feature=+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+cx16,+sahf,+popcnt,+sse3,+sse4.1,+sse4.2,+avx,+avx2,+bmi,+bmi2,+f16c,+fma,+lzcnt,+movbe,+xsave"),
+        CpuOptLevel::neon_v8 => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-features=+neon,+fp-armv8"),
+        CpuOptLevel::x86_64_v2 => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=x86-64-v2"),
+        CpuOptLevel::x86_64_v3 => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=x86-64-v3"),
     }
     println!("cargo:rustc-env=KANIDM_PROFILE_NAME={}", profile);
     println!("cargo:rustc-env=KANIDM_CPU_FLAGS={}", profile_cfg.cpu_flags);
