@@ -232,7 +232,7 @@ impl IdmServer {
             uat_jwt_signer,
             uat_jwt_validator,
             token_enc_key,
-            cookie_key
+            cookie_key,
         }));
 
         let oauth2rs =
