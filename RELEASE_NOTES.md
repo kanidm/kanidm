@@ -16,13 +16,13 @@ report it to our [issue tracker].
 
 ## 2023-02-01 - Kanidm 1.1.0-alpha11
 
-This is the eleventh alpha series release of the Kanidm Identity Management project. Alpha releases are
-to help get feedback and ideas from the community on how we can continue to make this project better
-for a future supported release.
+This is the eleventh alpha series release of the Kanidm Identity Management project. Alpha releases
+are to help get feedback and ideas from the community on how we can continue to make this project
+better for a future supported release.
 
-The project is shaping up very nicely, and a beta will be coming soon! The main reason we haven't done
-so yet is we haven't decided if we want to commit to the current API layout and freeze it yet. There
-are still things we want to change there. Otherwise the server is stable and reliable.
+The project is shaping up very nicely, and a beta will be coming soon! The main reason we haven't
+done so yet is we haven't decided if we want to commit to the current API layout and freeze it yet.
+There are still things we want to change there. Otherwise the server is stable and reliable.
 
 ### Release Highlights
 

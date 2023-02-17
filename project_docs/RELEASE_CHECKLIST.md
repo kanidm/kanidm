@@ -47,8 +47,8 @@ cargo install cargo-outdated
 - [ ] git push origin 1.1.0-alpha.x
 - [ ] git push origin 1.1.0-alpha.x --tags
 
-- [ ] github -> create new release based on tag (not branch)
-      - use tag because then tools will get the tag + patches we apply.
+- [ ] github -> create new release based on tag (not branch) - use tag because then tools will get
+      the tag + patches we apply.
 
 ### Cargo publish
 
