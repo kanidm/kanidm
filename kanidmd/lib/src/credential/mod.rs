@@ -968,7 +968,8 @@ impl Credential {
         // Check stuff
         Ok(Credential {
             type_,
-            uuid: self.uuid,
+            // Rotate the credential id on any change to invalidate sessions.
+            uuid: Uuid::new_v4(),
         })
     }
 
@@ -1010,7 +1011,8 @@ impl Credential {
         // Check stuff
         Ok(Credential {
             type_,
-            uuid: self.uuid,
+            // Rotate the credential id on any change to invalidate sessions.
+            uuid: Uuid::new_v4(),
         })
     }
 
@@ -1047,7 +1049,8 @@ impl Credential {
 
         Ok(Some(Credential {
             type_,
-            uuid: self.uuid,
+            // Rotate the credential id on any change to invalidate sessions.
+            uuid: Uuid::new_v4(),
         }))
     }
 
@@ -1178,7 +1181,8 @@ impl Credential {
         };
         Credential {
             type_,
-            uuid: self.uuid,
+            // Rotate the credential id on any change to invalidate sessions.
+            uuid: Uuid::new_v4(),
         }
     }
 
@@ -1207,7 +1211,8 @@ impl Credential {
         };
         Credential {
             type_,
-            uuid: self.uuid,
+            // Rotate the credential id on any change to invalidate sessions.
+            uuid: Uuid::new_v4(),
         }
     }
 
@@ -1229,7 +1234,8 @@ impl Credential {
         };
         Credential {
             type_,
-            uuid: self.uuid,
+            // Rotate the credential id on any change to invalidate sessions.
+            uuid: Uuid::new_v4(),
         }
     }
 
@@ -1284,7 +1290,8 @@ impl Credential {
                     wan.clone(),
                     Some(backup_codes),
                 ),
-                uuid: self.uuid,
+                // Rotate the credential id on any change to invalidate sessions.
+                uuid: Uuid::new_v4(),
             }),
             _ => Err(OperationError::InvalidAccountState(
                 "Non-MFA credential type".to_string(),
@@ -1303,6 +1310,8 @@ impl Credential {
                         backup_codes.remove(code_to_remove);
                         Ok(Credential {
                             type_: CredentialType::PasswordMfa(pw, totp, wan, Some(backup_codes)),
+                            // Don't rotate uuid here since this is a consumption of a backup
+                            // code.
                             uuid: self.uuid,
                         })
                     }
@@ -1321,7 +1330,8 @@ impl Credential {
         match &self.type_ {
             CredentialType::PasswordMfa(pw, totp, wan, _) => Ok(Credential {
                 type_: CredentialType::PasswordMfa(pw.clone(), totp.clone(), wan.clone(), None),
-                uuid: self.uuid,
+                // Rotate the credential id on any change to invalidate sessions.
+                uuid: Uuid::new_v4(),
             }),
             _ => Err(OperationError::InvalidAccountState(
                 "Non-MFA credential type".to_string(),

@@ -65,6 +65,7 @@ pub struct Oauth2ConsentGrant {
 pub struct AuthSessionRecord {
     pub target_uuid: Uuid,
     pub session_id: Uuid,
+    pub cred_id: Uuid,
     pub label: String,
     pub expiry: Option<OffsetDateTime>,
     pub issued_at: OffsetDateTime,

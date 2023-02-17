@@ -2084,6 +2084,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 issued_at: asr.issued_at,
                 // Who actually created this?
                 issued_by: asr.issued_by.clone(),
+                // Which credential was used?
+                cred_id: asr.cred_id,
                 // What is the access scope of this session? This is
                 // for auditing purposes.
                 scope: asr.scope,
@@ -3676,6 +3678,7 @@ mod tests {
 
             let session_a = Uuid::new_v4();
             let session_b = Uuid::new_v4();
+            let cred_id = Uuid::new_v4();
 
             // Assert no sessions present
             let mut idms_prox_read = task::block_on(idms.proxy_read());
@@ -3690,6 +3693,7 @@ mod tests {
             let da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
                 target_uuid: UUID_ADMIN,
                 session_id: session_a,
+                cred_id,
                 label: "Test Session A".to_string(),
                 expiry: Some(OffsetDateTime::unix_epoch() + expiry_a),
                 issued_at: OffsetDateTime::unix_epoch() + ct,
@@ -3724,6 +3728,7 @@ mod tests {
             let da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
                 target_uuid: UUID_ADMIN,
                 session_id: session_b,
+                cred_id,
                 label: "Test Session B".to_string(),
                 expiry: Some(OffsetDateTime::unix_epoch() + expiry_b),
                 issued_at: OffsetDateTime::unix_epoch() + ct,

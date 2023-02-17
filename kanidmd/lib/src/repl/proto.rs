@@ -238,6 +238,7 @@ pub struct ReplSessionV1 {
     pub expiry: Option<String>,
     pub issued_at: String,
     pub issued_by: ReplIdentityIdV1,
+    pub cred_id: Uuid,
     pub scope: ReplAccessScopeV1,
 }
 

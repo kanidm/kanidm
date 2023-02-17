@@ -35,12 +35,17 @@ impl ValueSetSession {
             .into_iter()
             .filter_map(|dbv| {
                 match dbv {
+                    // Skip due to lack of credential id
                     DbValueSession::V1 {
+                        ..
+                    } => None,
+                    DbValueSession::V2 {
                         refer,
                         label,
                         expiry,
                         issued_at,
                         issued_by,
+                        cred_id,
                         scope,
                     } => {
                         // Convert things.
@@ -98,6 +103,7 @@ impl ValueSetSession {
                                 expiry,
                                 issued_at,
                                 issued_by,
+                                cred_id,
                                 scope,
                             },
                         ))
@@ -118,6 +124,7 @@ impl ValueSetSession {
                      expiry,
                      issued_at,
                      issued_by,
+                     cred_id,
                      scope,
                  }| {
                     // Convert things.
@@ -176,6 +183,7 @@ impl ValueSetSession {
                             expiry,
                             issued_at,
                             issued_by,
+                            cred_id: *cred_id,
                             scope,
                         },
                     ))
@@ -269,7 +277,7 @@ impl ValueSetT for ValueSetSession {
         DbValueSetV2::Session(
             self.map
                 .iter()
-                .map(|(u, m)| DbValueSession::V1 {
+                .map(|(u, m)| DbValueSession::V2 {
                     refer: *u,
                     label: m.label.clone(),
                     expiry: m.expiry.map(|odt| {
@@ -285,6 +293,7 @@ impl ValueSetT for ValueSetSession {
                         IdentityId::User(u) => DbValueIdentityId::V1Uuid(u),
                         IdentityId::Synch(u) => DbValueIdentityId::V1Sync(u),
                     },
+                    cred_id: m.cred_id,
                     scope: match m.scope {
                         AccessScope::IdentityOnly => DbValueAccessScopeV1::IdentityOnly,
                         AccessScope::ReadOnly => DbValueAccessScopeV1::ReadOnly,
@@ -317,6 +326,7 @@ impl ValueSetT for ValueSetSession {
                         IdentityId::User(u) => ReplIdentityIdV1::Uuid(u),
                         IdentityId::Synch(u) => ReplIdentityIdV1::Synch(u),
                     },
+                    cred_id: m.cred_id,
                     scope: match m.scope {
                         AccessScope::IdentityOnly => ReplAccessScopeV1::IdentityOnly,
                         AccessScope::ReadOnly => ReplAccessScopeV1::ReadOnly,

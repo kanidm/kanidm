@@ -817,6 +817,7 @@ mod tests {
         // Create a fake session and oauth2 session.
 
         let session_id = Uuid::new_v4();
+        let cred_id = Uuid::new_v4();
         let pv_session_id = PartialValue::Refer(session_id);
 
         let parent = Uuid::new_v4();
@@ -853,6 +854,7 @@ mod tests {
                         issued_at,
                         // Who actually created this?
                         issued_by,
+                        cred_id,
                         // What is the access scope of this session? This is
                         // for auditing purposes.
                         scope,

@@ -129,6 +129,8 @@ mod tests {
         let curtime = duration_from_epoch_now();
         let curtime_odt = OffsetDateTime::unix_epoch() + curtime;
 
+        let cred_id = Uuid::new_v4();
+
         let exp_curtime = curtime + Duration::from_secs(60);
         let exp_curtime_odt = OffsetDateTime::unix_epoch() + exp_curtime;
 
@@ -168,6 +170,7 @@ mod tests {
                 issued_at,
                 // Who actually created this?
                 issued_by,
+                cred_id,
                 // What is the access scope of this session? This is
                 // for auditing purposes.
                 scope,
@@ -258,6 +261,7 @@ mod tests {
         // Create a fake session and oauth2 session.
 
         let session_id = Uuid::new_v4();
+        let cred_id = Uuid::new_v4();
         let pv_session_id = PartialValue::Refer(session_id);
 
         let parent = Uuid::new_v4();
@@ -295,6 +299,7 @@ mod tests {
                         issued_at,
                         // Who actually created this?
                         issued_by,
+                        cred_id,
                         // What is the access scope of this session? This is
                         // for auditing purposes.
                         scope,
@@ -387,6 +392,7 @@ mod tests {
         // Create a fake session and oauth2 session.
 
         let session_id = Uuid::new_v4();
+        let cred_id = Uuid::new_v4();
         let pv_session_id = PartialValue::Refer(session_id);
 
         let parent = Uuid::new_v4();
@@ -423,6 +429,7 @@ mod tests {
                         issued_at,
                         // Who actually created this?
                         issued_by,
+                        cred_id,
                         // What is the access scope of this session? This is
                         // for auditing purposes.
                         scope,
