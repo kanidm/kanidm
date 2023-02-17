@@ -19,7 +19,8 @@ use uuid::Uuid;
 // use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
 use webauthn_rs::prelude::Passkey as PasskeyV4;
 use webauthn_rs::prelude::{
-    PasskeyAuthentication, RequestChallengeResponse, SecurityKeyAuthentication, Webauthn, CredentialID
+    CredentialID, PasskeyAuthentication, RequestChallengeResponse, SecurityKeyAuthentication,
+    Webauthn,
 };
 
 use crate::credential::totp::Totp;
@@ -47,10 +48,7 @@ const PW_BADLIST_MSG: &str = "password is in badlist";
 
 /// A response type to indicate the progress and potential result of an authentication attempt.
 enum CredState {
-    Success {
-        auth_type: AuthType,
-        cred_id: Uuid,
-    },
+    Success { auth_type: AuthType, cred_id: Uuid },
     Continue(Vec<AuthAllowed>),
     Denied(&'static str),
 }
@@ -88,18 +86,18 @@ struct CredWebauthn {
 #[derive(Clone, Debug)]
 enum CredHandler {
     Anonymous {
-        cred_id: Uuid
+        cred_id: Uuid,
     },
-    Password { 
+    Password {
         pw: Password,
         generated: bool,
         cred_id: Uuid,
     },
-    PasswordMfa { 
+    PasswordMfa {
         cmfa: Box<CredMfa>,
         cred_id: Uuid,
     },
-    Passkey { 
+    Passkey {
         c_wan: CredWebauthn,
         cred_ids: BTreeMap<CredentialID, Uuid>,
     },
@@ -117,12 +115,12 @@ impl TryFrom<(&Credential, &Webauthn)> for CredHandler {
             CredentialType::Password(pw) => Ok(CredHandler::Password {
                 pw: pw.clone(),
                 generated: false,
-                cred_id: c.uuid
+                cred_id: c.uuid,
             }),
             CredentialType::GeneratedPassword(pw) => Ok(CredHandler::Password {
                 pw: pw.clone(),
                 generated: true,
-                cred_id: c.uuid
+                cred_id: c.uuid,
             }),
             CredentialType::PasswordMfa(pw, maybe_totp, maybe_wan, maybe_backup_code) => {
                 let wan = if !maybe_wan.is_empty() {
@@ -165,20 +163,19 @@ impl TryFrom<(&Credential, &Webauthn)> for CredHandler {
             }
             CredentialType::Webauthn(wan) => {
                 let pks: Vec<_> = wan.values().cloned().collect();
-                let cred_ids: BTreeMap<_, _> = pks.iter()
+                let cred_ids: BTreeMap<_, _> = pks
+                    .iter()
                     .map(|pk| (pk.cred_id().clone(), c.uuid))
                     .collect();
                 webauthn
                     .start_passkey_authentication(&pks)
-                    .map(|(chal, wan_state)| {
-                        CredHandler::Passkey {
-                            c_wan: CredWebauthn {
-                                chal,
-                                wan_state,
-                                state: CredVerifyState::Init,
-                            },
-                            cred_ids,
-                        }
+                    .map(|(chal, wan_state)| CredHandler::Passkey {
+                        c_wan: CredWebauthn {
+                            chal,
+                            wan_state,
+                            state: CredVerifyState::Init,
+                        },
+                        cred_ids,
                     })
                     .map_err(|e| {
                         security_info!(?e, "Unable to create webauthn authentication challenge");
@@ -205,19 +202,20 @@ impl TryFrom<(&BTreeMap<Uuid, (String, PasskeyV4)>, &Webauthn)> for CredHandler 
         }
 
         let pks: Vec<_> = wan.values().map(|(_, k)| k).cloned().collect();
-        let cred_ids: BTreeMap<_, _> = wan.iter().map(|(u, (_, k))| (k.cred_id().clone(), *u)).collect();
+        let cred_ids: BTreeMap<_, _> = wan
+            .iter()
+            .map(|(u, (_, k))| (k.cred_id().clone(), *u))
+            .collect();
 
         webauthn
             .start_passkey_authentication(&pks)
-            .map(|(chal, wan_state)| {
-                CredHandler::Passkey {
-                    c_wan: CredWebauthn {
-                        chal,
-                        wan_state,
-                        state: CredVerifyState::Init,
-                    },
-                    cred_ids,
-                }
+            .map(|(chal, wan_state)| CredHandler::Passkey {
+                c_wan: CredWebauthn {
+                    chal,
+                    wan_state,
+                    state: CredVerifyState::Init,
+                },
+                cred_ids,
             })
             .map_err(|e| {
                 security_info!(
@@ -496,12 +494,14 @@ impl CredHandler {
                             // async from r.
                             if auth_result.needs_update() {
                                 // Do async
-                                if let Err(_e) = async_tx.send(DelayedAction::WebauthnCounterIncrement(
-                                    WebauthnCounterIncrement {
-                                        target_uuid: who,
-                                        auth_result,
-                                    },
-                                )) {
+                                if let Err(_e) =
+                                    async_tx.send(DelayedAction::WebauthnCounterIncrement(
+                                        WebauthnCounterIncrement {
+                                            target_uuid: who,
+                                            auth_result,
+                                        },
+                                    ))
+                                {
                                     admin_warn!("unable to queue delayed webauthn property update, continuing ... ");
                                 };
                             };
@@ -546,14 +546,20 @@ impl CredHandler {
         pw_badlist_set: Option<&HashSet<String>>,
     ) -> CredState {
         match self {
-            CredHandler::Anonymous {
-                cred_id
-            } => Self::validate_anonymous(cred, *cred_id),
+            CredHandler::Anonymous { cred_id } => Self::validate_anonymous(cred, *cred_id),
             CredHandler::Password {
-                ref mut pw, generated, cred_id
-            } => {
-                Self::validate_password(cred, *cred_id, pw, *generated, who, async_tx, pw_badlist_set)
-            }
+                ref mut pw,
+                generated,
+                cred_id,
+            } => Self::validate_password(
+                cred,
+                *cred_id,
+                pw,
+                *generated,
+                who,
+                async_tx,
+                pw_badlist_set,
+            ),
             CredHandler::PasswordMfa {
                 ref mut cmfa,
                 cred_id,
@@ -570,9 +576,7 @@ impl CredHandler {
             CredHandler::Passkey {
                 ref mut c_wan,
                 cred_ids,
-            } => {
-                Self::validate_webauthn(cred, cred_ids, c_wan, webauthn, who, async_tx)
-            }
+            } => Self::validate_webauthn(cred, cred_ids, c_wan, webauthn, who, async_tx),
         }
     }
 
@@ -582,10 +586,7 @@ impl CredHandler {
         match &self {
             CredHandler::Anonymous { .. } => vec![AuthAllowed::Anonymous],
             CredHandler::Password { .. } => vec![AuthAllowed::Password],
-            CredHandler::PasswordMfa {
-                ref cmfa,
-                ..
-            } => cmfa
+            CredHandler::PasswordMfa { ref cmfa, .. } => cmfa
                 .backup_code
                 .iter()
                 .map(|_| AuthAllowed::BackupCode)
@@ -595,25 +596,22 @@ impl CredHandler {
                 .chain(cmfa.totp.iter().next().map(|_| AuthAllowed::Totp))
                 // This iter is over an option so it's there or not.
                 .chain(
-                    cmfa
-                        .wan
+                    cmfa.wan
                         .iter()
                         .map(|(chal, _)| AuthAllowed::SecurityKey(chal.clone())),
                 )
                 .collect(),
-            CredHandler::Passkey {
-                c_wan, ..
-            } => vec![AuthAllowed::Passkey(c_wan.chal.clone())],
+            CredHandler::Passkey { c_wan, .. } => vec![AuthAllowed::Passkey(c_wan.chal.clone())],
         }
     }
 
     /// Determine which mechanismes can proceed given the requested mechanism.
     fn can_proceed(&self, mech: &AuthMech) -> bool {
         match (self, mech) {
-            (CredHandler::Anonymous { .. } , AuthMech::Anonymous)
+            (CredHandler::Anonymous { .. }, AuthMech::Anonymous)
             | (CredHandler::Password { .. }, AuthMech::Password)
             | (CredHandler::PasswordMfa { .. }, AuthMech::PasswordMfa)
-            | (CredHandler::Passkey{ .. }, AuthMech::Passkey) => true,
+            | (CredHandler::Passkey { .. }, AuthMech::Passkey) => true,
             (_, _) => false,
         }
     }
@@ -692,7 +690,7 @@ impl AuthSession {
             // and interact with the account more?
             if account.is_anonymous() {
                 AuthSessionState::Init(vec![CredHandler::Anonymous {
-                    cred_id: account.uuid
+                    cred_id: account.uuid,
                 }])
             } else {
                 // What's valid to use in this context?
@@ -752,7 +750,7 @@ impl AuthSession {
     pub fn get_credential_uuid(&self) -> Result<Option<Uuid>, OperationError> {
         match &self.state {
             AuthSessionState::InProgress(CredHandler::Password { cred_id, .. })
-            | AuthSessionState::InProgress(CredHandler::PasswordMfa { cred_id,  .. }) => {
+            | AuthSessionState::InProgress(CredHandler::PasswordMfa { cred_id, .. }) => {
                 Ok(Some(*cred_id))
             }
             AuthSessionState::InProgress(CredHandler::Anonymous { .. })
@@ -853,10 +851,7 @@ impl AuthSession {
                     webauthn,
                     pw_badlist_set,
                 ) {
-                    CredState::Success {
-                        auth_type,
-                        cred_id,
-                    }=> {
+                    CredState::Success { auth_type, cred_id } => {
                         security_info!("Successful cred handling");
                         let session_id = Uuid::new_v4();
                         let issue = self.issue;

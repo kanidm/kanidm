@@ -2457,9 +2457,10 @@ mod tests {
         )
     }
 
-    async fn init_admin_w_password(qs: &QueryServer, pw: &str) -> Result<(), OperationError> {
+    async fn init_admin_w_password(qs: &QueryServer, pw: &str) -> Result<Uuid, OperationError> {
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, pw)?;
+        let cred_id = cred.uuid;
         let v_cred = Value::new_credential("primary", cred);
         let mut qs_write = qs.write(duration_from_epoch_now()).await;
 
@@ -2476,7 +2477,7 @@ mod tests {
         // go!
         assert!(qs_write.modify(&me_inv_m).is_ok());
 
-        qs_write.commit()
+        qs_write.commit().map(|()| cred_id)
     }
 
     fn init_admin_authsession_sid(idms: &IdmServer, ct: Duration, name: &str) -> Uuid {
@@ -3669,95 +3670,98 @@ mod tests {
 
     #[test]
     fn test_idm_expired_auth_session_cleanup() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let expiry_a = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
-            let expiry_b = ct + Duration::from_secs((AUTH_SESSION_EXPIRY + 1) * 2);
+        run_idm_test!(
+            |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
+                let expiry_a = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
+                let expiry_b = ct + Duration::from_secs((AUTH_SESSION_EXPIRY + 1) * 2);
 
-            let session_a = Uuid::new_v4();
-            let session_b = Uuid::new_v4();
-            let cred_id = Uuid::new_v4();
+                let session_a = Uuid::new_v4();
+                let session_b = Uuid::new_v4();
 
-            // Assert no sessions present
-            let mut idms_prox_read = task::block_on(idms.proxy_read());
-            let admin = idms_prox_read
-                .qs_read
-                .internal_search_uuid(UUID_ADMIN)
-                .expect("failed");
-            let sessions = admin.get_ava_as_session_map("user_auth_token_session");
-            assert!(sessions.is_none());
-            drop(idms_prox_read);
+                // We need to put the credential on the admin.
+                let cred_id = task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
+                    .expect("Failed to setup admin account");
 
-            let da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
-                target_uuid: UUID_ADMIN,
-                session_id: session_a,
-                cred_id,
-                label: "Test Session A".to_string(),
-                expiry: Some(OffsetDateTime::unix_epoch() + expiry_a),
-                issued_at: OffsetDateTime::unix_epoch() + ct,
-                issued_by: IdentityId::User(UUID_ADMIN),
-                scope: AccessScope::IdentityOnly,
-            });
-            // Persist it.
-            let r = task::block_on(idms.delayed_action(ct, da));
-            assert!(Ok(true) == r);
+                // Assert no sessions present
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
+                let admin = idms_prox_read
+                    .qs_read
+                    .internal_search_uuid(UUID_ADMIN)
+                    .expect("failed");
+                let sessions = admin.get_ava_as_session_map("user_auth_token_session");
+                assert!(sessions.is_none());
+                drop(idms_prox_read);
 
-            // Check it was written, and check
-            let mut idms_prox_read = task::block_on(idms.proxy_read());
-            let admin = idms_prox_read
-                .qs_read
-                .internal_search_uuid(UUID_ADMIN)
-                .expect("failed");
-            let sessions = admin
-                .get_ava_as_session_map("user_auth_token_session")
-                .expect("Sessions must be present!");
-            assert!(sessions.len() == 1);
-            let session_id_a = sessions
-                .keys()
-                .copied()
-                .next()
-                .expect("Could not access session id");
-            assert!(session_id_a == session_a);
+                let da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
+                    target_uuid: UUID_ADMIN,
+                    session_id: session_a,
+                    cred_id,
+                    label: "Test Session A".to_string(),
+                    expiry: Some(OffsetDateTime::unix_epoch() + expiry_a),
+                    issued_at: OffsetDateTime::unix_epoch() + ct,
+                    issued_by: IdentityId::User(UUID_ADMIN),
+                    scope: AccessScope::IdentityOnly,
+                });
+                // Persist it.
+                let r = task::block_on(idms.delayed_action(ct, da));
+                assert!(Ok(true) == r);
 
-            drop(idms_prox_read);
+                // Check it was written, and check
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
+                let admin = idms_prox_read
+                    .qs_read
+                    .internal_search_uuid(UUID_ADMIN)
+                    .expect("failed");
+                let sessions = admin
+                    .get_ava_as_session_map("user_auth_token_session")
+                    .expect("Sessions must be present!");
+                assert!(sessions.len() == 1);
+                let session_id_a = sessions
+                    .keys()
+                    .copied()
+                    .next()
+                    .expect("Could not access session id");
+                assert!(session_id_a == session_a);
 
-            // When we re-auth, this is what triggers the session cleanup via the delayed action.
+                drop(idms_prox_read);
 
-            let da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
-                target_uuid: UUID_ADMIN,
-                session_id: session_b,
-                cred_id,
-                label: "Test Session B".to_string(),
-                expiry: Some(OffsetDateTime::unix_epoch() + expiry_b),
-                issued_at: OffsetDateTime::unix_epoch() + ct,
-                issued_by: IdentityId::User(UUID_ADMIN),
-                scope: AccessScope::IdentityOnly,
-            });
-            // Persist it.
-            let r = task::block_on(idms.delayed_action(expiry_a, da));
-            assert!(Ok(true) == r);
+                // When we re-auth, this is what triggers the session cleanup via the delayed action.
 
-            let mut idms_prox_read = task::block_on(idms.proxy_read());
-            let admin = idms_prox_read
-                .qs_read
-                .internal_search_uuid(UUID_ADMIN)
-                .expect("failed");
-            let sessions = admin
-                .get_ava_as_session_map("user_auth_token_session")
-                .expect("Sessions must be present!");
-            trace!(?sessions);
-            assert!(sessions.len() == 1);
-            let session_id_b = sessions
-                .keys()
-                .copied()
-                .next()
-                .expect("Could not access session id");
-            assert!(session_id_b == session_b);
+                let da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
+                    target_uuid: UUID_ADMIN,
+                    session_id: session_b,
+                    cred_id,
+                    label: "Test Session B".to_string(),
+                    expiry: Some(OffsetDateTime::unix_epoch() + expiry_b),
+                    issued_at: OffsetDateTime::unix_epoch() + ct,
+                    issued_by: IdentityId::User(UUID_ADMIN),
+                    scope: AccessScope::IdentityOnly,
+                });
+                // Persist it.
+                let r = task::block_on(idms.delayed_action(expiry_a, da));
+                assert!(Ok(true) == r);
 
-            assert!(session_id_a != session_id_b);
-        })
+                let mut idms_prox_read = task::block_on(idms.proxy_read());
+                let admin = idms_prox_read
+                    .qs_read
+                    .internal_search_uuid(UUID_ADMIN)
+                    .expect("failed");
+                let sessions = admin
+                    .get_ava_as_session_map("user_auth_token_session")
+                    .expect("Sessions must be present!");
+                trace!(?sessions);
+                assert!(sessions.len() == 1);
+                let session_id_b = sessions
+                    .keys()
+                    .copied()
+                    .next()
+                    .expect("Could not access session id");
+                assert!(session_id_b == session_b);
+
+                assert!(session_id_a != session_id_b);
+            }
+        )
     }
 
     #[test]

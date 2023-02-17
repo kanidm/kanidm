@@ -36,9 +36,7 @@ impl ValueSetSession {
             .filter_map(|dbv| {
                 match dbv {
                     // Skip due to lack of credential id
-                    DbValueSession::V1 {
-                        ..
-                    } => None,
+                    DbValueSession::V1 { .. } => None,
                     DbValueSession::V2 {
                         refer,
                         label,

@@ -264,6 +264,9 @@ mod tests {
     use time::OffsetDateTime;
     use uuid::uuid;
 
+    use crate::credential::policy::CryptoPolicy;
+    use crate::credential::Credential;
+
     // The create references a uuid that doesn't exist - reject
     #[test]
     fn test_create_uuid_reference_not_exist() {
@@ -776,6 +779,10 @@ mod tests {
         let curtime = duration_from_epoch_now();
         let curtime_odt = OffsetDateTime::unix_epoch() + curtime;
 
+        let p = CryptoPolicy::minimum();
+        let cred = Credential::new_password_only(&p, "test_password").unwrap();
+        let cred_id = cred.uuid;
+
         // Create a user
         let mut server_txn = server.write(curtime).await;
 
@@ -789,7 +796,11 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(tuuid)),
             ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
+            ("displayname", Value::new_utf8s("testperson1")),
+            (
+                "primary_credential",
+                Value::Cred("primary".to_string(), cred.clone())
+            )
         );
 
         let e2 = entry_init!(
@@ -817,7 +828,6 @@ mod tests {
         // Create a fake session and oauth2 session.
 
         let session_id = Uuid::new_v4();
-        let cred_id = Uuid::new_v4();
         let pv_session_id = PartialValue::Refer(session_id);
 
         let parent = Uuid::new_v4();
