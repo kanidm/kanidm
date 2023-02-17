@@ -38,7 +38,9 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           push: ${{ github.ref == 'refs/heads/master' }}
-          platforms: linux/arm64,linux/amd64
+          platforms: "linux/arm64,linux/amd64"
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: ghcr.io/kanidm/kanidmd:devel
           # build-args: |
           #   "KANIDM_BUILD_OPTIONS=-j1"
