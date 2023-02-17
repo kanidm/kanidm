@@ -413,7 +413,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             OperationError::SerdeJsonError
         })?;
 
-        let token_enc = self.token_enc_key.encrypt(&token_data);
+        let token_enc = self.domain_keys.token_enc_key.encrypt(&token_data);
 
         // Point of no return
 
@@ -726,6 +726,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         OperationError,
     > {
         let session_token: CredentialUpdateSessionTokenInner = self
+            .domain_keys
             .token_enc_key
             .decrypt(&cust.token_enc)
             .map_err(|e| {
@@ -944,6 +945,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         ct: Duration,
     ) -> Result<CredentialUpdateSessionMutex, OperationError> {
         let session_token: CredentialUpdateSessionTokenInner = self
+            .domain_keys
             .token_enc_key
             .decrypt(&cust.token_enc)
             .map_err(|e| {
