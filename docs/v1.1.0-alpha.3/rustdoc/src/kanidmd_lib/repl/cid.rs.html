@@ -124,31 +124,6 @@
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt;
 <span class="kw">use </span>std::time::Duration;
 
@@ -160,29 +135,28 @@
 </span><span class="kw">pub struct </span>Cid {
     <span class="comment">// Mental note: Derive ord always checks in order of struct fields.
     </span><span class="kw">pub </span>ts: Duration,
-    <span class="kw">pub </span>d_uuid: Uuid,
     <span class="kw">pub </span>s_uuid: Uuid,
 }
 
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>Cid {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}-{}-{}&quot;</span>, <span class="self">self</span>.ts.as_nanos(), <span class="self">self</span>.d_uuid, <span class="self">self</span>.s_uuid)
+        <span class="macro">write!</span>(f, <span class="string">&quot;{:032}-{}&quot;</span>, <span class="self">self</span>.ts.as_nanos(), <span class="self">self</span>.s_uuid)
     }
 }
 
 <span class="kw">impl </span>Cid {
     <span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(d_uuid: Uuid, s_uuid: Uuid, ts: Duration) -&gt; <span class="self">Self </span>{
-        Cid { d_uuid, s_uuid, ts }
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(s_uuid: Uuid, ts: Duration) -&gt; <span class="self">Self </span>{
+        Cid { s_uuid, ts }
     }
 
-    <span class="kw">pub fn </span>new_lamport(d_uuid: Uuid, s_uuid: Uuid, ts: Duration, max_ts: <span class="kw-2">&amp;</span>Duration) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new_lamport(s_uuid: Uuid, ts: Duration, max_ts: <span class="kw-2">&amp;</span>Duration) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>ts = <span class="kw">if </span>ts &gt; <span class="kw-2">*</span>max_ts {
             ts
         } <span class="kw">else </span>{
             <span class="kw-2">*</span>max_ts + Duration::from_nanos(<span class="number">1</span>)
         };
-        Cid { ts, d_uuid, s_uuid }
+        Cid { ts, s_uuid }
     }
 
     <span class="attr">#[cfg(test)]
@@ -193,7 +167,6 @@
     <span class="attr">#[cfg(test)]
     </span><span class="kw">pub unsafe fn </span>new_count(c: u64) -&gt; <span class="self">Self </span>{
         Cid {
-            d_uuid: <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>),
             s_uuid: <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>),
             ts: Duration::new(c, <span class="number">0</span>),
         }
@@ -202,7 +175,6 @@
     <span class="attr">#[cfg(test)]
     </span><span class="kw">pub fn </span>new_random_s_d(ts: Duration) -&gt; <span class="self">Self </span>{
         Cid {
-            d_uuid: Uuid::new_v4(),
             s_uuid: Uuid::new_v4(),
             ts,
         }
@@ -213,7 +185,6 @@
         <span class="self">self</span>.ts
             .checked_sub(Duration::from_secs(secs))
             .map(|r| Cid {
-                d_uuid: <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>),
                 s_uuid: <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>),
                 ts: r,
             })
@@ -234,11 +205,9 @@
         <span class="comment">// Check diff ts
         </span><span class="kw">let </span>cid_a = Cid::new(
             <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
-            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
             Duration::new(<span class="number">5</span>, <span class="number">0</span>),
         );
         <span class="kw">let </span>cid_b = Cid::new(
-            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
             <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
             Duration::new(<span class="number">15</span>, <span class="number">0</span>),
         );
@@ -247,30 +216,12 @@
         <span class="macro">assert!</span>(cid_a.cmp(<span class="kw-2">&amp;</span>cid_b) == Ordering::Less);
         <span class="macro">assert!</span>(cid_b.cmp(<span class="kw-2">&amp;</span>cid_a) == Ordering::Greater);
 
-        <span class="comment">// check same ts diff d_uuid
-        </span><span class="kw">let </span>cid_c = Cid::new(
-            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>),
-            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
-            Duration::new(<span class="number">5</span>, <span class="number">0</span>),
-        );
-        <span class="kw">let </span>cid_d = Cid::new(
-            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
-            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
-            Duration::new(<span class="number">5</span>, <span class="number">0</span>),
-        );
-
-        <span class="macro">assert!</span>(cid_c.cmp(<span class="kw-2">&amp;</span>cid_c) == Ordering::Equal);
-        <span class="macro">assert!</span>(cid_c.cmp(<span class="kw-2">&amp;</span>cid_d) == Ordering::Less);
-        <span class="macro">assert!</span>(cid_d.cmp(<span class="kw-2">&amp;</span>cid_c) == Ordering::Greater);
-
         <span class="comment">// check same ts, d_uuid, diff s_uuid
         </span><span class="kw">let </span>cid_e = Cid::new(
-            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
             <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000000&quot;</span>),
             Duration::new(<span class="number">5</span>, <span class="number">0</span>),
         );
         <span class="kw">let </span>cid_f = Cid::new(
-            <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
             <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>),
             Duration::new(<span class="number">5</span>, <span class="number">0</span>),
         );
@@ -282,8 +233,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_cid_lamport() {
-        <span class="kw">let </span>d_uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>);
-        <span class="kw">let </span>s_uuid = d_uuid;
+        <span class="kw">let </span>s_uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000001&quot;</span>);
 
         <span class="kw">let </span>ts5 = Duration::new(<span class="number">5</span>, <span class="number">0</span>);
         <span class="kw">let </span>ts10 = Duration::new(<span class="number">10</span>, <span class="number">0</span>);
@@ -291,14 +241,14 @@
 
         <span class="kw">let </span>cid_z = <span class="kw">unsafe </span>{ Cid::new_zero() };
 
-        <span class="kw">let </span>cid_a = Cid::new_lamport(d_uuid, s_uuid, ts5, <span class="kw-2">&amp;</span>ts5);
+        <span class="kw">let </span>cid_a = Cid::new_lamport(s_uuid, ts5, <span class="kw-2">&amp;</span>ts5);
         <span class="macro">assert!</span>(cid_a.cmp(<span class="kw-2">&amp;</span>cid_z) == Ordering::Greater);
-        <span class="kw">let </span>cid_b = Cid::new_lamport(d_uuid, s_uuid, ts15, <span class="kw-2">&amp;</span>ts10);
+        <span class="kw">let </span>cid_b = Cid::new_lamport(s_uuid, ts15, <span class="kw-2">&amp;</span>ts10);
         <span class="macro">assert!</span>(cid_b.cmp(<span class="kw-2">&amp;</span>cid_a) == Ordering::Greater);
         <span class="comment">// Even with an older ts, we should still step forward.
-        </span><span class="kw">let </span>cid_c = Cid::new_lamport(d_uuid, s_uuid, ts10, <span class="kw-2">&amp;</span>ts15);
+        </span><span class="kw">let </span>cid_c = Cid::new_lamport(s_uuid, ts10, <span class="kw-2">&amp;</span>ts15);
         <span class="macro">assert!</span>(cid_c.cmp(<span class="kw-2">&amp;</span>cid_b) == Ordering::Greater);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

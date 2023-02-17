@@ -281,12 +281,6 @@
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
 <a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
 </pre><pre class="rust"><code><span class="doccomment">//! The server configuration as processed from the startup wrapper. This controls a number of
 //! variables that determine how our backends, query server, and frontends are configured.
 //!
@@ -301,7 +295,6 @@
 <span class="kw">use </span>std::str::FromStr;
 
 <span class="kw">use </span>kanidm_proto::messages::ConsoleOutputMode;
-<span class="kw">use </span>rand::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="attr">#[derive(Serialize, Deserialize, Debug)]
@@ -414,7 +407,6 @@
     <span class="kw">pub </span>secure_cookies: bool,
     <span class="kw">pub </span>trust_x_forward_for: bool,
     <span class="kw">pub </span>tls_config: <span class="prelude-ty">Option</span>&lt;TlsConfiguration&gt;,
-    <span class="kw">pub </span>cookie_key: [u8; <span class="number">32</span>],
     <span class="kw">pub </span>integration_test_config: <span class="prelude-ty">Option</span>&lt;Box&lt;IntegrationTestConfig&gt;&gt;,
     <span class="kw">pub </span>online_backup: <span class="prelude-ty">Option</span>&lt;OnlineBackup&gt;,
     <span class="kw">pub </span>domain: String,
@@ -460,7 +452,7 @@
 
 <span class="kw">impl </span>Configuration {
     <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>c = Configuration {
+        Configuration {
             address: String::from(<span class="string">&quot;127.0.0.1:8080&quot;</span>),
             ldapaddress: <span class="prelude-val">None</span>,
             threads: std::thread::available_parallelism()
@@ -478,17 +470,13 @@
             </span>secure_cookies: !<span class="macro">cfg!</span>(test),
             trust_x_forward_for: <span class="bool-val">false</span>,
             tls_config: <span class="prelude-val">None</span>,
-            cookie_key: [<span class="number">0</span>; <span class="number">32</span>],
             integration_test_config: <span class="prelude-val">None</span>,
             online_backup: <span class="prelude-val">None</span>,
             domain: <span class="string">&quot;idm.example.com&quot;</span>.to_string(),
             origin: <span class="string">&quot;https://idm.example.com&quot;</span>.to_string(),
             role: ServerRole::WriteReplica,
             output_mode: ConsoleOutputMode::default(),
-        };
-        <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_entropy();
-        rng.fill(<span class="kw-2">&amp;mut </span>c.cookie_key);
-        c
+        }
     }
 
     <span class="kw">pub fn </span>update_online_backup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cfg: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;OnlineBackup&gt;) {
@@ -577,4 +565,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidmd_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidmd_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

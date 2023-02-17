@@ -89,6 +89,25 @@
 <a href="#89" id="89">89</a>
 <a href="#90" id="90">90</a>
 <a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
 </pre><pre class="rust"><code><span class="attr">#[cfg(debug_assertions)]
 </span><span class="kw">use </span>gloo::console;
 <span class="kw">use </span>gloo::storage::{
@@ -160,6 +179,25 @@
     l.ok()
 }
 
+<span class="kw">pub fn </span>push_login_remember_me(r: String) {
+    PersistentStorage::set(<span class="string">&quot;login_remember_me&quot;</span>, r).expect_throw(<span class="string">&quot;failed to set login remember me&quot;</span>);
+}
+
+<span class="kw">pub fn </span>get_login_remember_me() -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+    <span class="kw">let </span>l: <span class="prelude-ty">Result</span>&lt;String, <span class="kw">_</span>&gt; = PersistentStorage::get(<span class="string">&quot;login_remember_me&quot;</span>);
+    <span class="attr">#[cfg(debug_assertions)]
+    </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;login_hint::pop_login_remember_me -&gt; {:?}&quot;</span>, l).as_str());
+    l.ok()
+}
+
+<span class="kw">pub fn </span>pop_login_remember_me() -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+    <span class="kw">let </span>l: <span class="prelude-ty">Result</span>&lt;String, <span class="kw">_</span>&gt; = PersistentStorage::get(<span class="string">&quot;login_remember_me&quot;</span>);
+    <span class="attr">#[cfg(debug_assertions)]
+    </span><span class="macro">console::debug!</span>(<span class="macro">format!</span>(<span class="string">&quot;login_hint::pop_login_remember_me -&gt; {:?}&quot;</span>, l).as_str());
+    PersistentStorage::delete(<span class="string">&quot;login_remember_me&quot;</span>);
+    l.ok()
+}
+
 <span class="doccomment">/// Pushes the &quot;cred_update_session&quot; element into the browser&#39;s temporary storage
 </span><span class="kw">pub fn </span>push_cred_update_session(s: (CUSessionToken, CUStatus)) {
     TemporaryStorage::set(<span class="string">&quot;cred_update_session&quot;</span>, s)
@@ -181,4 +219,4 @@ pub fn pop_cred_update_session() -&gt; Option&lt;(CUSessionToken, CUStatus)&gt; 
 }
 */
 </span></code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_web_ui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_web_ui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

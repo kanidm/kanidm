@@ -693,8 +693,6 @@
 <a href="#693" id="693">693</a>
 <a href="#694" id="694">694</a>
 <a href="#695" id="695">695</a>
-<a href="#696" id="696">696</a>
-<a href="#697" id="697">697</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt;
 <span class="kw">use </span>std::time::Duration;
 
@@ -709,8 +707,6 @@
 
 <span class="attr">#[derive(Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>DbCidV1 {
-    <span class="attr">#[serde(rename = <span class="string">&quot;d&quot;</span>)]
-    </span><span class="kw">pub </span>domain_id: Uuid,
     <span class="attr">#[serde(rename = <span class="string">&quot;s&quot;</span>)]
     </span><span class="kw">pub </span>server_id: Uuid,
     <span class="attr">#[serde(rename = <span class="string">&quot;t&quot;</span>)]
@@ -973,8 +969,8 @@
             DbCred::TmpWn { webauthn, uuid } =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;TmpWn ( w {}, u {} )&quot;</span>, webauthn.len(), uuid)
             }
-            DbCred::V2Password { password: <span class="kw">_</span>, uuid } =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;V2Pw ( u {} )&quot;</span>, uuid),
-            DbCred::V2GenPassword { password: <span class="kw">_</span>, uuid } =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;V2GPw ( u {} )&quot;</span>, uuid),
+            DbCred::V2Password { password: <span class="kw">_</span>, uuid } =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;V2Pw ( u {uuid} )&quot;</span>),
+            DbCred::V2GenPassword { password: <span class="kw">_</span>, uuid } =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;V2GPw ( u {uuid} )&quot;</span>),
             DbCred::V2PasswordMfa {
                 password: <span class="kw">_</span>,
                 totp,
@@ -1385,7 +1381,7 @@
         </span><span class="kw">let </span>x = <span class="macro">vec!</span>[dbcred];
 
         <span class="kw">let </span>json = serde_json::to_string(<span class="kw-2">&amp;</span>x).unwrap();
-        <span class="macro">eprintln!</span>(<span class="string">&quot;{}&quot;</span>, json);
+        <span class="macro">eprintln!</span>(<span class="string">&quot;{json}&quot;</span>);
 
         <span class="kw">let </span>_e_dbcred: Vec&lt;DbCred&gt; = serde_json::from_str(<span class="kw-2">&amp;</span>json).unwrap();
 
@@ -1393,4 +1389,4 @@
     </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

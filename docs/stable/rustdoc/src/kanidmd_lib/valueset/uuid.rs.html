@@ -297,11 +297,35 @@
 <a href="#297" id="297">297</a>
 <a href="#298" id="298">298</a>
 <a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
 
 <span class="kw">use </span>smolset::SmolSet;
 
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::repl::proto::ReplAttrV1;
 <span class="kw">use </span><span class="kw">crate</span>::schema::SchemaAttribute;
 <span class="kw">use </span><span class="kw">crate</span>::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
 
@@ -323,6 +347,11 @@
 
     <span class="kw">pub fn </span>from_dbvs2(data: Vec&lt;Uuid&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
         <span class="kw">let </span>set = data.into_iter().collect();
+        <span class="prelude-val">Ok</span>(Box::new(ValueSetUuid { set }))
+    }
+
+    <span class="kw">pub fn </span>from_repl_v1(data: <span class="kw-2">&amp;</span>[Uuid]) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+        <span class="kw">let </span>set = data.iter().copied().collect();
         <span class="prelude-val">Ok</span>(Box::new(ValueSetUuid { set }))
     }
 
@@ -405,6 +434,12 @@
         DbValueSetV2::Uuid(<span class="self">self</span>.set.iter().cloned().collect())
     }
 
+    <span class="kw">fn </span>to_repl_v1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ReplAttrV1 {
+        ReplAttrV1::Uuid {
+            set: <span class="self">self</span>.set.iter().cloned().collect(),
+        }
+    }
+
     <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
         Box::new(<span class="self">self</span>.set.iter().copied().map(PartialValue::Uuid))
     }
@@ -468,6 +503,11 @@
 
     <span class="kw">pub fn </span>from_dbvs2(data: Vec&lt;Uuid&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
         <span class="kw">let </span>set = data.into_iter().collect();
+        <span class="prelude-val">Ok</span>(Box::new(ValueSetRefer { set }))
+    }
+
+    <span class="kw">pub fn </span>from_repl_v1(data: <span class="kw-2">&amp;</span>[Uuid]) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+        <span class="kw">let </span>set = data.iter().copied().collect();
         <span class="prelude-val">Ok</span>(Box::new(ValueSetRefer { set }))
     }
 
@@ -554,6 +594,12 @@
         DbValueSetV2::Reference(<span class="self">self</span>.set.iter().cloned().collect())
     }
 
+    <span class="kw">fn </span>to_repl_v1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ReplAttrV1 {
+        ReplAttrV1::Reference {
+            set: <span class="self">self</span>.set.iter().cloned().collect(),
+        }
+    }
+
     <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
         Box::new(<span class="self">self</span>.set.iter().copied().map(PartialValue::Refer))
     }
@@ -597,4 +643,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

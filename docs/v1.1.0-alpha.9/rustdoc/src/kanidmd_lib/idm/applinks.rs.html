@@ -186,10 +186,6 @@
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
 <a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::idm::server::IdmServerProxyReadTransaction;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>kanidm_proto::internal::AppLink;
@@ -205,30 +201,26 @@
             }
         };
 
-        <span class="comment">// Do an internal search
-        // ⚠️  Safety Notes - We perform an internal search here which bypasses
-        // access controls. Why? Users normally can&#39;t read the oauth2_rs_scope_maps
-        // since that could (?) disclose access rules. It&#39;s probably not a risk, but
-        // we just don&#39;t show them by default.
+        <span class="comment">// Formerly we did an internal search here, but we no longer need to since we have
+        // the access control module setup so that we can search for and see rs that we
+        // have access to.
         //
-        // This IS safe because we control *all* inputs (the uuids and memberof) and
-        // they come from the cryptographically verified UAT. we also control all
-        // outputs and ONLY output data that IS visible by default for an oauth2
-        // resource server.
-        //
-        // This is kind of a limitation of the kani search system, where the ability to
-        // compare an attribute, also allows you to read it. In this case we want compare
-        // without read, but it&#39;s not really possible, and it&#39;s a silly concept generally
-        // anyway because publicly allowing that allows retrieval of the values to bruteforce.
-        </span><span class="kw">let </span>f = <span class="macro">filter!</span>(f_or(
+        // We do this weird looking f_executed/f_intent shenanigans to actually search
+        // on what we have access to, but we apply access as though we did a search on
+        // class=oauth2_resource_server instead, and we still apply access here.
+        </span><span class="kw">let </span>f_executed = <span class="macro">filter!</span>(f_or(
             ident_mo
                 .iter()
                 .copied()
                 .map(|uuid| { f_eq(<span class="string">&quot;oauth2_rs_scope_map&quot;</span>, PartialValue::Refer(uuid)) })
                 .collect()
         ));
+        <span class="kw">let </span>f_intent = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;class&quot;</span>, PVCLASS_OAUTH2_RS.clone()));
 
-        <span class="kw">let </span>oauth2_related = <span class="self">self</span>.qs_read.internal_search(f)<span class="question-mark">?</span>;
+        <span class="comment">// _ext reduces the entries based on access.
+        </span><span class="kw">let </span>oauth2_related = <span class="self">self
+            </span>.qs_read
+            .impersonate_search_ext(f_executed, f_intent, ident)<span class="question-mark">?</span>;
         <span class="macro">trace!</span>(<span class="question-mark">?</span>oauth2_related);
 
         <span class="comment">// Aggregate results to a Vec of AppLink
@@ -383,4 +375,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

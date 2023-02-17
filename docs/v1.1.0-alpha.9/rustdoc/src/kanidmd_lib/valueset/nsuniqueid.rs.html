@@ -142,9 +142,22 @@
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
 </pre><pre class="rust"><code><span class="kw">use </span>smolset::SmolSet;
 
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::repl::proto::ReplAttrV1;
 <span class="kw">use </span><span class="kw">crate</span>::schema::SchemaAttribute;
 <span class="kw">use </span><span class="kw">crate</span>::value::NSUNIQUEID_RE;
 <span class="kw">use </span><span class="kw">crate</span>::valueset::{DbValueSetV2, ValueSet};
@@ -167,6 +180,11 @@
 
     <span class="kw">pub fn </span>from_dbvs2(data: Vec&lt;String&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
         <span class="kw">let </span>set = data.into_iter().collect();
+        <span class="prelude-val">Ok</span>(Box::new(ValueSetNsUniqueId { set }))
+    }
+
+    <span class="kw">pub fn </span>from_repl_v1(data: <span class="kw-2">&amp;</span>[String]) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+        <span class="kw">let </span>set = data.iter().cloned().collect();
         <span class="prelude-val">Ok</span>(Box::new(ValueSetNsUniqueId { set }))
     }
 
@@ -246,6 +264,12 @@
         DbValueSetV2::NsUniqueId(<span class="self">self</span>.set.iter().cloned().collect())
     }
 
+    <span class="kw">fn </span>to_repl_v1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ReplAttrV1 {
+        ReplAttrV1::NsUniqueId {
+            set: <span class="self">self</span>.set.iter().cloned().collect(),
+        }
+    }
+
     <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
         Box::new(<span class="self">self</span>.set.iter().cloned().map(PartialValue::Nsuniqueid))
     }
@@ -287,4 +311,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

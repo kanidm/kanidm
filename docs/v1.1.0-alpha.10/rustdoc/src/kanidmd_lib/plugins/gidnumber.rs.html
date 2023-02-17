@@ -341,8 +341,6 @@
 <a href="#341" id="341">341</a>
 <a href="#342" id="342">342</a>
 <a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
 </pre><pre class="rust"><code><span class="comment">// A plugin that generates gid numbers on types that require them for posix
 // support.
 
@@ -380,9 +378,8 @@
         <span class="comment">// assert the value is greater than the system range.
         </span><span class="kw">if </span>gid &lt; GID_SYSTEM_NUMBER_MIN {
             <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                <span class="string">&quot;gidnumber {} may overlap with system range {}&quot;</span>,
-                gid, GID_SYSTEM_NUMBER_MIN
-            )));
+                <span class="string">&quot;gidnumber {gid} may overlap with system range {GID_SYSTEM_NUMBER_MIN}&quot;
+            </span>)));
         }
 
         <span class="kw">let </span>gid_v = Value::new_uint32(gid);
@@ -393,9 +390,8 @@
         <span class="comment">// If they provided us with a gid number, ensure it&#39;s in a safe range.
         </span><span class="kw">if </span>gid &lt;= GID_SAFETY_NUMBER_MIN {
             <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                <span class="string">&quot;gidnumber {} overlaps into system secure range {}&quot;</span>,
-                gid, GID_SAFETY_NUMBER_MIN
-            )))
+                <span class="string">&quot;gidnumber {gid} overlaps into system secure range {GID_SAFETY_NUMBER_MIN}&quot;
+            </span>)))
         } <span class="kw">else </span>{
             <span class="prelude-val">Ok</span>(())
         }
@@ -689,4 +685,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

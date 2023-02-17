@@ -277,12 +277,42 @@
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::collections::btree_map::Entry <span class="kw">as </span>BTreeEntry;
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+</pre><pre class="rust"><code><span class="kw">use </span>base64urlsafedata::Base64UrlSafeData;
+<span class="kw">use </span>std::collections::btree_map::Entry <span class="kw">as </span>BTreeEntry;
 <span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use </span>smolset::SmolSet;
 
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::repl::proto::ReplAttrV1;
 <span class="kw">use </span><span class="kw">crate</span>::schema::SchemaAttribute;
 <span class="kw">use </span><span class="kw">crate</span>::valueset::{DbValueSetV2, ValueSet};
 
@@ -304,6 +334,11 @@
 
     <span class="kw">pub fn </span>from_dbvs2(data: Vec&lt;Vec&lt;u8&gt;&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
         <span class="kw">let </span>set = data.into_iter().collect();
+        <span class="prelude-val">Ok</span>(Box::new(ValueSetPrivateBinary { set }))
+    }
+
+    <span class="kw">pub fn </span>from_repl_v1(data: <span class="kw-2">&amp;</span>[Base64UrlSafeData]) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+        <span class="kw">let </span>set = data.iter().map(|b| b.<span class="number">0</span>.clone()).collect();
         <span class="prelude-val">Ok</span>(Box::new(ValueSetPrivateBinary { set }))
     }
 
@@ -374,6 +409,12 @@
         DbValueSetV2::PrivateBinary(<span class="self">self</span>.set.iter().cloned().collect())
     }
 
+    <span class="kw">fn </span>to_repl_v1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ReplAttrV1 {
+        ReplAttrV1::PrivateBinary {
+            set: <span class="self">self</span>.set.iter().cloned().map(|b| b.into()).collect(),
+        }
+    }
+
     <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
         Box::new(
             <span class="self">self</span>.set
@@ -436,6 +477,11 @@
 
     <span class="kw">pub fn </span>from_dbvs2(data: Vec&lt;(String, Vec&lt;u8&gt;)&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
         <span class="kw">let </span>map = data.into_iter().collect();
+        <span class="prelude-val">Ok</span>(Box::new(ValueSetPublicBinary { map }))
+    }
+
+    <span class="kw">pub fn </span>from_repl_v1(data: <span class="kw-2">&amp;</span>[(String, Base64UrlSafeData)]) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+        <span class="kw">let </span>map = data.iter().map(|(k, v)| (k.clone(), v.<span class="number">0</span>.clone())).collect();
         <span class="prelude-val">Ok</span>(Box::new(ValueSetPublicBinary { map }))
     }
 
@@ -522,6 +568,16 @@
         )
     }
 
+    <span class="kw">fn </span>to_repl_v1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ReplAttrV1 {
+        ReplAttrV1::PublicBinary {
+            set: <span class="self">self
+                </span>.map
+                .iter()
+                .map(|(tag, bin)| (tag.clone(), bin.clone().into()))
+                .collect(),
+        }
+    }
+
     <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
         Box::new(<span class="self">self</span>.map.keys().cloned().map(PartialValue::PublicBinary))
     }
@@ -557,4 +613,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

@@ -538,6 +538,10 @@
 <a href="#538" id="538">538</a>
 <a href="#539" id="539">539</a>
 <a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
 </pre><pre class="rust"><code><span class="comment">// use anyhow::Error;
 </span><span class="kw">use </span>gloo::console;
 <span class="kw">pub use </span>kanidm_proto::oauth2::{
@@ -759,17 +763,20 @@
         </span><span class="kw">let </span>location = ctx
             .link()
             .location()
-            .expect_throw(<span class="string">&quot;Can&#39;t access current location&quot;</span>);
+            .expect_throw(<span class="string">&quot;Can&#39;t access browser current location&quot;</span>);
 
         <span class="kw">let </span>query: <span class="prelude-ty">Option</span>&lt;AuthorisationRequest&gt; = location
             .query()
             .map_err(|e| {
-                <span class="kw">let </span>e_msg = <span class="macro">format!</span>(<span class="string">&quot;lstorage error -&gt; {:?}&quot;</span>, e);
+                <span class="kw">let </span>e_msg = <span class="macro">format!</span>(
+                    <span class="string">&quot;failed to decode authorisation request url parameters -&gt; {:?}&quot;</span>,
+                    e
+                );
                 <span class="macro">console::error!</span>(e_msg.as_str());
             })
             .ok()
             .or_else(|| {
-                <span class="macro">console::error!</span>(<span class="string">&quot;pop_oauth2_authorisation_request&quot;</span>);
+                <span class="macro">console::log!</span>(<span class="string">&quot;using previously storage oauth2 authorisation request if possible&quot;</span>);
                 models::pop_oauth2_authorisation_request()
             });
 
@@ -793,7 +800,8 @@
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(login_hint) = query.oidc_ext.login_hint.clone() {
             models::push_login_hint(login_hint)
         }
-        <span class="comment">// Push the request down. This covers if we move to LoginRequired.
+        <span class="comment">// Push the request down. This covers if we move to LoginRequired so we can restore where
+        // we were / what we were doing.
         </span>models::push_oauth2_authorisation_request(query);
 
         <span class="comment">// Start the fetch req.
@@ -1079,4 +1087,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidmd_web_ui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidmd_web_ui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

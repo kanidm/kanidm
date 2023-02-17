@@ -2802,26 +2802,6 @@
 <a href="#2802" id="2802">2802</a>
 <a href="#2803" id="2803">2803</a>
 <a href="#2804" id="2804">2804</a>
-<a href="#2805" id="2805">2805</a>
-<a href="#2806" id="2806">2806</a>
-<a href="#2807" id="2807">2807</a>
-<a href="#2808" id="2808">2808</a>
-<a href="#2809" id="2809">2809</a>
-<a href="#2810" id="2810">2810</a>
-<a href="#2811" id="2811">2811</a>
-<a href="#2812" id="2812">2812</a>
-<a href="#2813" id="2813">2813</a>
-<a href="#2814" id="2814">2814</a>
-<a href="#2815" id="2815">2815</a>
-<a href="#2816" id="2816">2816</a>
-<a href="#2817" id="2817">2817</a>
-<a href="#2818" id="2818">2818</a>
-<a href="#2819" id="2819">2819</a>
-<a href="#2820" id="2820">2820</a>
-<a href="#2821" id="2821">2821</a>
-<a href="#2822" id="2822">2822</a>
-<a href="#2823" id="2823">2823</a>
-<a href="#2824" id="2824">2824</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>base64urlsafedata::Base64UrlSafeData;
@@ -3612,9 +3592,8 @@
 
         <span class="kw">let </span>attr_schema = schema.get_attributes().get(scim_attr_name).ok_or_else(|| {
             OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                <span class="string">&quot;No such attribute in schema - {}&quot;</span>,
-                scim_attr_name
-            ))
+                <span class="string">&quot;No such attribute in schema - {scim_attr_name}&quot;
+            </span>))
         })<span class="question-mark">?</span>;
 
         <span class="kw">match </span>(attr_schema.syntax, attr_schema.multivalue, scim_attr) {
@@ -3644,17 +3623,15 @@
                 .ok_or_else(|| {
                     <span class="macro">error!</span>(<span class="string">&quot;Invalid value - not a valid unsigned integer&quot;</span>);
                     OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                        <span class="string">&quot;Invalid unsigned integer - {}&quot;</span>,
-                        scim_attr_name
-                    ))
+                        <span class="string">&quot;Invalid unsigned integer - {scim_attr_name}&quot;
+                    </span>))
                 })
                 .and_then(|i| {
                     u32::try_from(i).map_err(|<span class="kw">_</span>| {
                         <span class="macro">error!</span>(<span class="string">&quot;Invalid value - not within the bounds of a u32&quot;</span>);
                         OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                            <span class="string">&quot;Out of bounds unsigned integer - {}&quot;</span>,
-                            scim_attr_name
-                        ))
+                            <span class="string">&quot;Out of bounds unsigned integer - {scim_attr_name}&quot;
+                        </span>))
                     })
                 })
                 .map(|value| <span class="macro">vec!</span>[Value::Uint32(value)]),
@@ -3673,9 +3650,8 @@
                     <span class="kw">let </span>external_id = complex.attrs.get(<span class="string">&quot;external_id&quot;</span>).ok_or_else(|| {
                         <span class="macro">error!</span>(<span class="string">&quot;Invalid scim complex attr - missing required key external_id&quot;</span>);
                         OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                            <span class="string">&quot;missing required key external_id - {}&quot;</span>,
-                            scim_attr_name
-                        ))
+                            <span class="string">&quot;missing required key external_id - {scim_attr_name}&quot;
+                        </span>))
                     })<span class="question-mark">?</span>;
 
                     <span class="kw">let </span>value = <span class="kw">match </span>external_id {
@@ -3683,9 +3659,8 @@
                         <span class="kw">_ </span>=&gt; {
                             <span class="macro">error!</span>(<span class="string">&quot;Invalid external_id attribute - must be scim simple string&quot;</span>);
                             <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                                <span class="string">&quot;external_id must be scim simple string - {}&quot;</span>,
-                                scim_attr_name
-                            )))
+                                <span class="string">&quot;external_id must be scim simple string - {scim_attr_name}&quot;
+                            </span>)))
                         }
                     }<span class="question-mark">?</span>;
 
@@ -3713,9 +3688,8 @@
                         .ok_or_else(|| {
                             <span class="macro">error!</span>(<span class="string">&quot;Invalid scim complex attr - missing required key external_id&quot;</span>);
                             OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                                <span class="string">&quot;missing required key external_id - {}&quot;</span>,
-                                scim_attr_name
-                            ))
+                                <span class="string">&quot;missing required key external_id - {scim_attr_name}&quot;
+                            </span>))
                         })
                         .and_then(|external_id| <span class="kw">match </span>external_id {
                             ScimSimpleAttr::String(value) =&gt; <span class="prelude-val">Ok</span>(value.clone()),
@@ -3724,9 +3698,8 @@
                                     <span class="string">&quot;Invalid external_id attribute - must be scim simple string&quot;
                                 </span>);
                                 <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                                    <span class="string">&quot;external_id must be scim simple string - {}&quot;</span>,
-                                    scim_attr_name
-                                )))
+                                    <span class="string">&quot;external_id must be scim simple string - {scim_attr_name}&quot;
+                                </span>)))
                             }
                         })<span class="question-mark">?</span>;
 
@@ -3736,9 +3709,8 @@
                         .ok_or_else(|| {
                             <span class="macro">error!</span>(<span class="string">&quot;Invalid scim complex attr - missing required key secret&quot;</span>);
                             OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                                <span class="string">&quot;missing required key secret - {}&quot;</span>,
-                                scim_attr_name
-                            ))
+                                <span class="string">&quot;missing required key secret - {scim_attr_name}&quot;
+                            </span>))
                         })
                         .and_then(|secret| <span class="kw">match </span>secret {
                             ScimSimpleAttr::String(value) =&gt; {
@@ -3747,17 +3719,15 @@
                                     .map_err(|<span class="kw">_</span>| {
                                         <span class="macro">error!</span>(<span class="string">&quot;Invalid secret attribute - must be base64 string&quot;</span>);
                                         OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                                            <span class="string">&quot;secret must be base64 string - {}&quot;</span>,
-                                            scim_attr_name
-                                        ))
+                                            <span class="string">&quot;secret must be base64 string - {scim_attr_name}&quot;
+                                        </span>))
                                     })
                             }
                             <span class="kw">_ </span>=&gt; {
                                 <span class="macro">error!</span>(<span class="string">&quot;Invalid secret attribute - must be scim simple string&quot;</span>);
                                 <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                                    <span class="string">&quot;secret must be scim simple string - {}&quot;</span>,
-                                    scim_attr_name
-                                )))
+                                    <span class="string">&quot;secret must be scim simple string - {scim_attr_name}&quot;
+                                </span>)))
                             }
                         })<span class="question-mark">?</span>;
 
@@ -3765,9 +3735,8 @@
                         .ok_or_else(|| {
                             <span class="macro">error!</span>(<span class="string">&quot;Invalid scim complex attr - missing required key algo&quot;</span>);
                             OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                                <span class="string">&quot;missing required key algo - {}&quot;</span>,
-                                scim_attr_name
-                            ))
+                                <span class="string">&quot;missing required key algo - {scim_attr_name}&quot;
+                            </span>))
                         })
                         .and_then(|algo_str| {
                             <span class="kw">match </span>algo_str {
@@ -3779,18 +3748,16 @@
                                         <span class="kw">_ </span>=&gt; {
                                             <span class="macro">error!</span>(<span class="string">&quot;Invalid algo attribute - must be one of sha1, sha256 or sha512&quot;</span>);
                                             <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                                                <span class="string">&quot;algo must be one of sha1, sha256 or sha512 - {}&quot;</span>,
-                                                scim_attr_name
-                                            )))
+                                                <span class="string">&quot;algo must be one of sha1, sha256 or sha512 - {scim_attr_name}&quot;
+                                            </span>)))
                                         }
                                     }
                                 }
                                 <span class="kw">_ </span>=&gt; {
                                     <span class="macro">error!</span>(<span class="string">&quot;Invalid algo attribute - must be scim simple string&quot;</span>);
                                     <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                                        <span class="string">&quot;algo must be scim simple string - {}&quot;</span>,
-                                        scim_attr_name
-                                    )))
+                                        <span class="string">&quot;algo must be scim simple string - {scim_attr_name}&quot;
+                                    </span>)))
                                 }
                             }
                         })<span class="question-mark">?</span>;
@@ -3798,9 +3765,8 @@
                     <span class="kw">let </span>step = complex.attrs.get(<span class="string">&quot;step&quot;</span>).ok_or_else(|| {
                         <span class="macro">error!</span>(<span class="string">&quot;Invalid scim complex attr - missing required key step&quot;</span>);
                         OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                            <span class="string">&quot;missing required key step - {}&quot;</span>,
-                            scim_attr_name
-                        ))
+                            <span class="string">&quot;missing required key step - {scim_attr_name}&quot;
+                        </span>))
                     }).and_then(|step| {
                         <span class="kw">match </span>step {
                             ScimSimpleAttr::Number(value) =&gt; {
@@ -3808,17 +3774,15 @@
                                     <span class="prelude-val">Some</span>(s) <span class="kw">if </span>s &gt;= <span class="number">30 </span>=&gt; <span class="prelude-val">Ok</span>(s),
                                     <span class="kw">_ </span>=&gt;
                                         <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                                            <span class="string">&quot;step must be a positive integer value equal to or greater than 30 - {}&quot;</span>,
-                                            scim_attr_name
-                                        ))),
+                                            <span class="string">&quot;step must be a positive integer value equal to or greater than 30 - {scim_attr_name}&quot;
+                                        </span>))),
                                 }
                             }
                             <span class="kw">_ </span>=&gt; {
                                 <span class="macro">error!</span>(<span class="string">&quot;Invalid step attribute - must be scim simple number&quot;</span>);
                                 <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                                    <span class="string">&quot;step must be scim simple number - {}&quot;</span>,
-                                    scim_attr_name
-                                )))
+                                    <span class="string">&quot;step must be scim simple number - {scim_attr_name}&quot;
+                                </span>)))
                             }
                         }
                     })<span class="question-mark">?</span>;
@@ -3829,25 +3793,22 @@
                         .ok_or_else(|| {
                             <span class="macro">error!</span>(<span class="string">&quot;Invalid scim complex attr - missing required key digits&quot;</span>);
                             OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                                <span class="string">&quot;missing required key digits - {}&quot;</span>,
-                                scim_attr_name
-                            ))
+                                <span class="string">&quot;missing required key digits - {scim_attr_name}&quot;
+                            </span>))
                         })
                         .and_then(|digits| <span class="kw">match </span>digits {
                             ScimSimpleAttr::Number(value) =&gt; <span class="kw">match </span>value.as_u64() {
                                 <span class="prelude-val">Some</span>(<span class="number">6</span>) =&gt; <span class="prelude-val">Ok</span>(TotpDigits::Six),
                                 <span class="prelude-val">Some</span>(<span class="number">8</span>) =&gt; <span class="prelude-val">Ok</span>(TotpDigits::Eight),
                                 <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                                    <span class="string">&quot;digits must be a positive integer value of 6 OR 8 - {}&quot;</span>,
-                                    scim_attr_name
-                                ))),
+                                    <span class="string">&quot;digits must be a positive integer value of 6 OR 8 - {scim_attr_name}&quot;
+                                </span>))),
                             },
                             <span class="kw">_ </span>=&gt; {
                                 <span class="macro">error!</span>(<span class="string">&quot;Invalid digits attribute - must be scim simple number&quot;</span>);
                                 <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                                    <span class="string">&quot;digits must be scim simple number - {}&quot;</span>,
-                                    scim_attr_name
-                                )))
+                                    <span class="string">&quot;digits must be scim simple number - {scim_attr_name}&quot;
+                                </span>)))
                             }
                         })<span class="question-mark">?</span>;
 
@@ -3859,9 +3820,8 @@
             (syn, mv, sa) =&gt; {
                 <span class="macro">error!</span>(<span class="question-mark">?</span>syn, <span class="question-mark">?</span>mv, <span class="question-mark">?</span>sa, <span class="string">&quot;Unsupported scim attribute conversion. This may be a syntax error in your import, or a missing feature in Kanidm.&quot;</span>);
                 <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="macro">format!</span>(
-                    <span class="string">&quot;Unsupported attribute conversion - {}&quot;</span>,
-                    scim_attr_name
-                )))
+                    <span class="string">&quot;Unsupported attribute conversion - {scim_attr_name}&quot;
+                </span>)))
             }
         }
     }
@@ -4775,7 +4735,7 @@
             <span class="macro">assert!</span>(task::block_on(apply_phase_3_test(
                 idms,
                 <span class="macro">vec!</span>[ScimEntry {
-                    schemas: <span class="macro">vec!</span>[<span class="macro">format!</span>(<span class="string">&quot;{}system&quot;</span>, SCIM_SCHEMA_SYNC)],
+                    schemas: <span class="macro">vec!</span>[<span class="macro">format!</span>(<span class="string">&quot;{SCIM_SCHEMA_SYNC}system&quot;</span>)],
                     id: user_sync_uuid,
                     external_id: <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,ou=people,dc=test&quot;</span>.to_string()),
                     meta: <span class="prelude-val">None</span>,
@@ -5647,4 +5607,4 @@
     &quot;#</span>;
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

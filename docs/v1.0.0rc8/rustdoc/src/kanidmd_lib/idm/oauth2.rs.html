@@ -4062,10 +4062,10 @@
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
             Oauth2TokenType::Access { session_id, .. } =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;access_token ({}) &quot;</span>, session_id)
+                <span class="macro">write!</span>(f, <span class="string">&quot;access_token ({session_id}) &quot;</span>)
             }
             Oauth2TokenType::Refresh { session_id, .. } =&gt; {
-                <span class="macro">write!</span>(f, <span class="string">&quot;refresh_token ({}) &quot;</span>, session_id)
+                <span class="macro">write!</span>(f, <span class="string">&quot;refresh_token ({session_id}) &quot;</span>)
             }
         }
     }
@@ -4308,13 +4308,13 @@
                     token_endpoint.set_path(<span class="string">&quot;/oauth2/token&quot;</span>);
 
                     <span class="kw">let </span><span class="kw-2">mut </span>userinfo_endpoint = <span class="self">self</span>.inner.origin.clone();
-                    userinfo_endpoint.set_path(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/oauth2/openid/{}/userinfo&quot;</span>, name));
+                    userinfo_endpoint.set_path(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/oauth2/openid/{name}/userinfo&quot;</span>));
 
                     <span class="kw">let </span><span class="kw-2">mut </span>jwks_uri = <span class="self">self</span>.inner.origin.clone();
-                    jwks_uri.set_path(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/oauth2/openid/{}/public_key.jwk&quot;</span>, name));
+                    jwks_uri.set_path(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/oauth2/openid/{name}/public_key.jwk&quot;</span>));
 
                     <span class="kw">let </span><span class="kw-2">mut </span>iss = <span class="self">self</span>.inner.origin.clone();
-                    iss.set_path(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/oauth2/openid/{}&quot;</span>, name));
+                    iss.set_path(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/oauth2/openid/{name}&quot;</span>));
 
                     <span class="kw">let </span>scopes_supported: BTreeSet&lt;String&gt; =
                     scope_maps
@@ -6112,7 +6112,7 @@
                 );
 
                 <span class="comment">//  * doesn&#39;t have :
-                </span><span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server {}&quot;</span>, secret)));
+                </span><span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server {secret}&quot;</span>)));
                 <span class="macro">assert!</span>(
                     idms_prox_read
                         .check_oauth2_token_exchange(client_authz.as_deref(), <span class="kw-2">&amp;</span>token_req, ct)
@@ -6121,7 +6121,7 @@
                 );
 
                 <span class="comment">//  * invalid client_id
-                </span><span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;NOT A REAL SERVER:{}&quot;</span>, secret)));
+                </span><span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;NOT A REAL SERVER:{secret}&quot;</span>)));
                 <span class="macro">assert!</span>(
                     idms_prox_read
                         .check_oauth2_token_exchange(client_authz.as_deref(), <span class="kw-2">&amp;</span>token_req, ct)
@@ -6139,7 +6139,7 @@
                 );
 
                 <span class="comment">// ✅ Now the valid client_authz is in place.
-                </span><span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
+                </span><span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
                 <span class="comment">//  * expired exchange code (took too long)
                 </span><span class="macro">assert!</span>(
                     idms_prox_read
@@ -6223,7 +6223,7 @@
                 <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
                 <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
                     setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
-                <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
+                <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
 
                 <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -6289,7 +6289,7 @@
                     )
                     .expect(<span class="string">&quot;Failed to inspect token&quot;</span>);
 
-                <span class="macro">eprintln!</span>(<span class="string">&quot;👉  {:?}&quot;</span>, intr_response);
+                <span class="macro">eprintln!</span>(<span class="string">&quot;👉  {intr_response:?}&quot;</span>);
                 <span class="macro">assert!</span>(intr_response.active);
                 <span class="macro">assert!</span>(intr_response.scope.as_deref() == <span class="prelude-val">Some</span>(<span class="string">&quot;openid supplement&quot;</span>));
                 <span class="macro">assert!</span>(intr_response.client_id.as_deref() == <span class="prelude-val">Some</span>(<span class="string">&quot;test_resource_server&quot;</span>));
@@ -6338,7 +6338,7 @@
                 </span><span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
                 <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
                     setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
-                <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
+                <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
 
                 <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -6415,7 +6415,7 @@
                         ct,
                     )
                     .expect(<span class="string">&quot;Failed to inspect token&quot;</span>);
-                <span class="macro">eprintln!</span>(<span class="string">&quot;👉  {:?}&quot;</span>, intr_response);
+                <span class="macro">eprintln!</span>(<span class="string">&quot;👉  {intr_response:?}&quot;</span>);
                 <span class="macro">assert!</span>(intr_response.active);
                 drop(idms_prox_read);
 
@@ -6519,7 +6519,7 @@
                 </span><span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
                 <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
                     setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
-                <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
+                <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
 
                 <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -6862,7 +6862,7 @@
                 <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
                 <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
                     setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
-                <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
+                <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
 
                 <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -7000,7 +7000,7 @@
                 </span><span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
                 <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
                     setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>);
-                <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
+                <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
 
                 <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -7097,7 +7097,7 @@
                 </span><span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
                 <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
                     setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>);
-                <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{}&quot;</span>, secret)));
+                <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
 
                 <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
 
@@ -7837,4 +7837,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

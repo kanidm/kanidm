@@ -162,6 +162,29 @@
 <a href="#162" id="162">162</a>
 <a href="#163" id="163">163</a>
 <a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::btree_map::Entry <span class="kw">as </span>BTreeEntry;
 <span class="kw">use </span>std::collections::BTreeMap;
 
@@ -169,6 +192,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 
 <span class="kw">use </span><span class="kw">crate</span>::be::dbvalue::DbTotpV1;
+<span class="kw">use </span><span class="kw">crate</span>::repl::proto::{ReplAttrV1, ReplTotpV1};
 <span class="kw">use </span><span class="kw">crate</span>::schema::SchemaAttribute;
 <span class="kw">use </span><span class="kw">crate</span>::valueset::{DbValueSetV2, ValueSet};
 
@@ -195,6 +219,18 @@
                 Totp::try_from(data)
                     .map_err(|()| OperationError::InvalidValueState)
                     .map(|t| (l, t))
+            })
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(Box::new(ValueSetTotpSecret { map }))
+    }
+
+    <span class="kw">pub fn </span>from_repl_v1(data: <span class="kw-2">&amp;</span>[(String, ReplTotpV1)]) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+        <span class="kw">let </span>map = data
+            .iter()
+            .map(|(l, data)| {
+                Totp::try_from(data)
+                    .map_err(|()| OperationError::InvalidValueState)
+                    .map(|t| (l.clone(), t))
             })
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(Box::new(ValueSetTotpSecret { map }))
@@ -282,6 +318,16 @@
         )
     }
 
+    <span class="kw">fn </span>to_repl_v1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ReplAttrV1 {
+        ReplAttrV1::TotpSecret {
+            set: <span class="self">self
+                </span>.map
+                .iter()
+                .map(|(label, totp)| (label.clone(), totp.to_repl_v1()))
+                .collect(),
+        }
+    }
+
     <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
         Box::new(<span class="self">self</span>.map.keys().cloned().map(PartialValue::Utf8))
     }
@@ -327,4 +373,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

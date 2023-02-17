@@ -171,11 +171,18 @@
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
 </pre><pre class="rust"><code><span class="kw">use </span>smolset::SmolSet;
 
 <span class="kw">use </span><span class="kw">crate</span>::be::dbvalue::DbCidV1;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::repl::cid::Cid;
+<span class="kw">use </span><span class="kw">crate</span>::repl::proto::{ReplAttrV1, ReplCidV1};
 <span class="kw">use </span><span class="kw">crate</span>::schema::SchemaAttribute;
 <span class="kw">use </span><span class="kw">crate</span>::valueset::{DbValueSetV2, ValueSet};
 
@@ -199,11 +206,15 @@
         <span class="kw">let </span>set = data
             .into_iter()
             .map(|dc| Cid {
-                d_uuid: dc.domain_id,
                 s_uuid: dc.server_id,
                 ts: dc.timestamp,
             })
             .collect();
+        <span class="prelude-val">Ok</span>(Box::new(ValueSetCid { set }))
+    }
+
+    <span class="kw">pub fn </span>from_repl_v1(data: <span class="kw-2">&amp;</span>[ReplCidV1]) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+        <span class="kw">let </span>set = data.iter().map(|dc| dc.into()).collect();
         <span class="prelude-val">Ok</span>(Box::new(ValueSetCid { set }))
     }
 }
@@ -278,11 +289,7 @@
     </span>}
 
     <span class="kw">fn </span>to_proto_string_clone_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = String&gt; + <span class="lifetime">&#39;_</span>&gt; {
-        Box::new(
-            <span class="self">self</span>.set
-                .iter()
-                .map(|c| <span class="macro">format!</span>(<span class="string">&quot;{:?}_{}_{}&quot;</span>, c.ts, c.d_uuid, c.s_uuid)),
-        )
+        Box::new(<span class="self">self</span>.set.iter().map(|c| <span class="macro">format!</span>(<span class="string">&quot;{:?}_{}&quot;</span>, c.ts, c.s_uuid)))
     }
 
     <span class="kw">fn </span>to_db_valueset_v2(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DbValueSetV2 {
@@ -290,12 +297,17 @@
             <span class="self">self</span>.set
                 .iter()
                 .map(|c| DbCidV1 {
-                    domain_id: c.d_uuid,
                     server_id: c.s_uuid,
                     timestamp: c.ts,
                 })
                 .collect(),
         )
+    }
+
+    <span class="kw">fn </span>to_repl_v1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ReplAttrV1 {
+        ReplAttrV1::Cid {
+            set: <span class="self">self</span>.set.iter().map(|c| c.into()).collect(),
+        }
     }
 
     <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
@@ -345,4 +357,4 @@
     */
 </span>}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

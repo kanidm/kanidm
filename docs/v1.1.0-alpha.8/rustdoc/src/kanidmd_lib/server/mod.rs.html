@@ -1746,6 +1746,35 @@
 <a href="#1746" id="1746">1746</a>
 <a href="#1747" id="1747">1747</a>
 <a href="#1748" id="1748">1748</a>
+<a href="#1749" id="1749">1749</a>
+<a href="#1750" id="1750">1750</a>
+<a href="#1751" id="1751">1751</a>
+<a href="#1752" id="1752">1752</a>
+<a href="#1753" id="1753">1753</a>
+<a href="#1754" id="1754">1754</a>
+<a href="#1755" id="1755">1755</a>
+<a href="#1756" id="1756">1756</a>
+<a href="#1757" id="1757">1757</a>
+<a href="#1758" id="1758">1758</a>
+<a href="#1759" id="1759">1759</a>
+<a href="#1760" id="1760">1760</a>
+<a href="#1761" id="1761">1761</a>
+<a href="#1762" id="1762">1762</a>
+<a href="#1763" id="1763">1763</a>
+<a href="#1764" id="1764">1764</a>
+<a href="#1765" id="1765">1765</a>
+<a href="#1766" id="1766">1766</a>
+<a href="#1767" id="1767">1767</a>
+<a href="#1768" id="1768">1768</a>
+<a href="#1769" id="1769">1769</a>
+<a href="#1770" id="1770">1770</a>
+<a href="#1771" id="1771">1771</a>
+<a href="#1772" id="1772">1772</a>
+<a href="#1773" id="1773">1773</a>
+<a href="#1774" id="1774">1774</a>
+<a href="#1775" id="1775">1775</a>
+<a href="#1776" id="1776">1776</a>
+<a href="#1777" id="1777">1777</a>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
@@ -1803,18 +1832,19 @@
     Running,
 }
 
-<span class="attr">#[derive(Debug, Clone)]
-</span><span class="kw">struct </span>DomainInfo {
-    d_uuid: Uuid,
-    d_name: String,
-    d_display: String,
+<span class="attr">#[derive(Debug, Clone, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>DomainInfo {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) d_uuid: Uuid,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) d_name: String,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) d_display: String,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) d_vers: DomainVersion,
 }
 
 <span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>QueryServer {
     phase: Arc&lt;CowCell&lt;ServerPhase&gt;&gt;,
     s_uuid: Uuid,
-    d_info: Arc&lt;CowCell&lt;DomainInfo&gt;&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) d_info: Arc&lt;CowCell&lt;DomainInfo&gt;&gt;,
     be: Backend,
     schema: Arc&lt;Schema&gt;,
     accesscontrols: Arc&lt;AccessControls&gt;,
@@ -1829,7 +1859,7 @@
     be_txn: BackendReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
     <span class="comment">// Anything else? In the future, we&#39;ll need to have a schema transaction
     // type, maybe others?
-    </span>d_info: CowCellReadTxn&lt;DomainInfo&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) d_info: CowCellReadTxn&lt;DomainInfo&gt;,
     schema: SchemaReadTransaction,
     accesscontrols: AccessControlsReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
     _db_ticket: SemaphorePermit&lt;<span class="lifetime">&#39;a</span>&gt;,
@@ -1847,18 +1877,18 @@
     d_info: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, DomainInfo&gt;,
     curtime: Duration,
     cid: Cid,
-    be_txn: BackendWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
-    schema: SchemaWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) be_txn: BackendWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) schema: SchemaWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
     accesscontrols: AccessControlsWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
     <span class="comment">// We store a set of flags that indicate we need a reload of
     // schema or acp, which is tested by checking the classes of the
     // changing content.
-    </span>changed_schema: bool,
-    changed_acp: bool,
-    changed_oauth2: bool,
-    changed_domain: bool,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) changed_schema: bool,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) changed_acp: bool,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) changed_oauth2: bool,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) changed_domain: bool,
     <span class="comment">// Store the list of changed uuids for other invalidation needs?
-    </span>changed_uuid: HashSet&lt;Uuid&gt;,
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) changed_uuid: HashSet&lt;Uuid&gt;,
     _db_ticket: SemaphorePermit&lt;<span class="lifetime">&#39;a</span>&gt;,
     _write_ticket: SemaphorePermit&lt;<span class="lifetime">&#39;a</span>&gt;,
     resolve_filter_cache:
@@ -2390,7 +2420,7 @@
                         <span class="prelude-val">Some</span>(v) =&gt; v.to_proto_string_clone(),
                         <span class="prelude-val">None </span>=&gt; uuid_to_proto_string(<span class="kw-2">*</span>u),
                     };
-                    <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">&quot;{}: {:?}&quot;</span>, u, m))
+                    <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">&quot;{u}: {m:?}&quot;</span>))
                 })
                 .collect();
             v
@@ -2411,7 +2441,7 @@
                 .copied()
                 .map(|ur| {
                     <span class="kw">let </span>rdn = <span class="self">self</span>.uuid_to_rdn(ur)<span class="question-mark">?</span>;
-                    <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">&quot;{},{}&quot;</span>, rdn, basedn).into_bytes())
+                    <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">&quot;{rdn},{basedn}&quot;</span>).into_bytes())
                 })
                 .collect();
             v
@@ -2464,6 +2494,27 @@
             })
             .map_err(|e| {
                 <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Error getting domain es256 key&quot;</span>);
+                e
+            })
+    }
+
+    <span class="kw">fn </span>get_domain_cookie_key(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;[u8; <span class="number">32</span>], OperationError&gt; {
+        <span class="self">self</span>.internal_search_uuid(UUID_DOMAIN_INFO)
+            .and_then(|e| {
+                e.get_ava_single_private_binary(<span class="string">&quot;private_cookie_key&quot;</span>)
+                    .and_then(|s| {
+                        <span class="kw">let </span><span class="kw-2">mut </span>x = [<span class="number">0</span>; <span class="number">32</span>];
+                        <span class="kw">if </span>s.len() == x.len() {
+                            x.copy_from_slice(s);
+                            <span class="prelude-val">Some</span>(x)
+                        } <span class="kw">else </span>{
+                            <span class="prelude-val">None
+                        </span>}
+                    })
+                    .ok_or(OperationError::InvalidEntryState)
+            })
+            .map_err(|e| {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Error getting domain cookie key&quot;</span>);
                 e
             })
     }
@@ -2674,6 +2725,9 @@
 
         <span class="kw">let </span>d_info = Arc::new(CowCell::new(DomainInfo {
             d_uuid,
+            <span class="comment">// Start with our minimum supported level.
+            // This will be reloaded from the DB shortly :)
+            </span>d_vers: DOMAIN_MIN_LEVEL,
             d_name: domain_name.clone(),
             <span class="comment">// we set the domain_display_name to the configuration file&#39;s domain_name
             // here because the database is not started, so we cannot pull it from there.
@@ -2757,7 +2811,7 @@
         </span><span class="kw">let </span>ts_max = be_txn
             .get_db_ts_max(curtime)
             .expect(<span class="string">&quot;Unable to get db_ts_max&quot;</span>);
-        <span class="kw">let </span>cid = Cid::new_lamport(<span class="self">self</span>.s_uuid, d_info.d_uuid, curtime, <span class="kw-2">&amp;</span>ts_max);
+        <span class="kw">let </span>cid = Cid::new_lamport(<span class="self">self</span>.s_uuid, curtime, <span class="kw-2">&amp;</span>ts_max);
 
         QueryServerWriteTransaction {
             <span class="comment">// I think this is *not* needed, because commit is mut self which should
@@ -2802,7 +2856,7 @@
     }
 
     <span class="attr">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;reload_schema&quot;</span>, skip(<span class="self">self</span>))]
-    </span><span class="kw">fn </span>reload_schema(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>reload_schema(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="comment">// supply entries to the writable schema to reload from.
         // find all attributes.
         </span><span class="kw">let </span>filt = <span class="macro">filter!</span>(f_eq(<span class="string">&quot;class&quot;</span>, PVCLASS_ATTRIBUTETYPE.clone()));
@@ -3014,10 +3068,19 @@
 
     <span class="doccomment">/// Pulls the domain name from the database and updates the DomainInfo data in memory
     </span><span class="attr">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip_all)]
-    </span><span class="kw">fn </span>reload_domain_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>reload_domain_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="kw">let </span>domain_name = <span class="self">self</span>.get_db_domain_name()<span class="question-mark">?</span>;
         <span class="kw">let </span>display_name = <span class="self">self</span>.get_db_domain_display_name()<span class="question-mark">?</span>;
+        <span class="kw">let </span>domain_uuid = <span class="self">self</span>.be_txn.get_db_d_uuid();
         <span class="kw">let </span>mut_d_info = <span class="self">self</span>.d_info.get_mut();
+        <span class="kw">if </span>mut_d_info.d_uuid != domain_uuid {
+            <span class="macro">admin_warn!</span>(
+                <span class="string">&quot;Using domain uuid from the database {} - was {} in memory&quot;</span>,
+                domain_name,
+                mut_d_info.d_name,
+            );
+            mut_d_info.d_uuid = domain_uuid;
+        }
         <span class="kw">if </span>mut_d_info.d_name != domain_name {
             <span class="macro">admin_warn!</span>(
                 <span class="string">&quot;Using domain name from the database {} - was {} in memory&quot;</span>,
@@ -3149,24 +3212,19 @@
         <span class="comment">// Write the cid to the db. If this fails, we can&#39;t assume replication
         // will be stable, so return if it fails.
         </span>be_txn.set_db_ts_max(cid.ts)<span class="question-mark">?</span>;
-        <span class="comment">// Validate the schema as we just loaded it.
-        </span><span class="kw">let </span>r = schema.validate();
 
-        <span class="kw">if </span>r.is_empty() {
-            <span class="comment">// Schema has been validated, so we can go ahead and commit it with the be
-            // because both are consistent.
-            </span>schema
-                .commit()
-                .map(|<span class="kw">_</span>| d_info.commit())
-                .map(|<span class="kw">_</span>| phase.commit())
-                .map(|<span class="kw">_</span>| dyngroup_cache.commit())
-                .and_then(|<span class="kw">_</span>| accesscontrols.commit())
-                .and_then(|<span class="kw">_</span>| be_txn.commit())
-        } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(OperationError::ConsistencyError(r))
-        }
-        <span class="comment">// Audit done
-    </span>}
+        <span class="comment">// Point of no return - everything has been validated and reloaded.
+        //
+        // = Lets commit =
+
+        </span>schema
+            .commit()
+            .map(|<span class="kw">_</span>| d_info.commit())
+            .map(|<span class="kw">_</span>| phase.commit())
+            .map(|<span class="kw">_</span>| dyngroup_cache.commit())
+            .and_then(|<span class="kw">_</span>| accesscontrols.commit())
+            .and_then(|<span class="kw">_</span>| be_txn.commit())
+    }
 }
 
 <span class="attr">#[cfg(test)]
@@ -3258,7 +3316,7 @@
         </span><span class="macro">assert!</span>(r1 == <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>));
         <span class="comment">// Name does exist
         </span><span class="kw">let </span>r3 = server_txn.uuid_to_spn(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>));
-        <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, r3);
+        <span class="macro">println!</span>(<span class="string">&quot;{r3:?}&quot;</span>);
         <span class="macro">assert!</span>(r3.unwrap().unwrap() == Value::new_spn_str(<span class="string">&quot;testperson1&quot;</span>, <span class="string">&quot;example.com&quot;</span>));
         <span class="comment">// Name is not syntax normalised (but exists)
         </span><span class="kw">let </span>r4 = server_txn.uuid_to_spn(<span class="macro">uuid!</span>(<span class="string">&quot;CC8E95B4-C24F-4D68-BA54-8BED76F63930&quot;</span>));
@@ -3291,7 +3349,7 @@
         </span><span class="macro">assert!</span>(r1.unwrap() == <span class="string">&quot;uuid=bae3f507-e6c3-44ba-ad01-f8ff1083534a&quot;</span>);
         <span class="comment">// Name does exist
         </span><span class="kw">let </span>r3 = server_txn.uuid_to_rdn(<span class="macro">uuid!</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>));
-        <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, r3);
+        <span class="macro">println!</span>(<span class="string">&quot;{r3:?}&quot;</span>);
         <span class="macro">assert!</span>(r3.unwrap() == <span class="string">&quot;spn=testperson1@example.com&quot;</span>);
         <span class="comment">// Uuid is not syntax normalised (but exists)
         </span><span class="kw">let </span>r4 = server_txn.uuid_to_rdn(<span class="macro">uuid!</span>(<span class="string">&quot;CC8E95B4-C24F-4D68-BA54-8BED76F63930&quot;</span>));
@@ -3495,4 +3553,4 @@
     </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

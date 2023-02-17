@@ -1586,7 +1586,6 @@
 <a href="#1586" id="1586">1586</a>
 <a href="#1587" id="1587">1587</a>
 <a href="#1588" id="1588">1588</a>
-<a href="#1589" id="1589">1589</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::{TryFrom, TryInto};
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::time::Duration;
@@ -1968,7 +1967,7 @@
                     .or_else(|e| serde_cbor::from_slice(d.as_slice()).map_err(|<span class="kw">_</span>| e))
                     .map_err(|e| {
                         <span class="macro">admin_error!</span>(immediate = <span class="bool-val">true</span>, <span class="question-mark">?</span>e, <span class="string">&quot;CRITICAL: Serde CBOR Error&quot;</span>);
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde CBOR Error -&gt; {:?}&quot;</span>, e);
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde CBOR Error -&gt; {e:?}&quot;</span>);
                         OperationError::SerdeCborError
                     })<span class="question-mark">?</span>,
             ),
@@ -1999,7 +1998,7 @@
                     .or_else(|e| serde_cbor::from_slice(d.as_slice()).map_err(|<span class="kw">_</span>| e))
                     .map_err(|e| {
                         <span class="macro">admin_error!</span>(immediate = <span class="bool-val">true</span>, <span class="question-mark">?</span>e, <span class="string">&quot;CRITICAL: Serde CBOR Error&quot;</span>);
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde CBOR Error -&gt; {:?}&quot;</span>, e);
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde CBOR Error -&gt; {e:?}&quot;</span>);
                         OperationError::SerdeCborError
                     })<span class="question-mark">?</span>,
             ),
@@ -2031,7 +2030,7 @@
                     .or_else(|<span class="kw">_</span>| serde_cbor::from_slice(d.as_slice()))
                     .map_err(|e| {
                         <span class="macro">admin_error!</span>(immediate = <span class="bool-val">true</span>, <span class="question-mark">?</span>e, <span class="string">&quot;CRITICAL: Serde JSON Error&quot;</span>);
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde JSON Error -&gt; {:?}&quot;</span>, e);
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde JSON Error -&gt; {e:?}&quot;</span>);
                         OperationError::SerdeJsonError
                     })<span class="question-mark">?</span>,
             ),
@@ -2089,7 +2088,7 @@
             .ok_or(OperationError::InvalidEntryId)
             .and_then(|data| {
                 data.into_dbentry()
-                    .map(|(id, db_e)| (id, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, db_e)))
+                    .map(|(id, db_e)| (id, <span class="macro">format!</span>(<span class="string">&quot;{db_e:?}&quot;</span>)))
             })
     }
 
@@ -2100,7 +2099,7 @@
         <span class="comment">// TODO: Once we have slopes we can add .exists_table, and assert
         // it&#39;s an idx table.
 
-        </span><span class="kw">let </span>query = <span class="macro">format!</span>(<span class="string">&quot;SELECT key, idl FROM {}&quot;</span>, index_name);
+        </span><span class="kw">let </span>query = <span class="macro">format!</span>(<span class="string">&quot;SELECT key, idl FROM {index_name}&quot;</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>stmt = <span class="self">self
             </span>.get_conn()
             .prepare(query.as_str())
@@ -2706,7 +2705,7 @@
                 .map(|<span class="kw">_</span>| ())
                 .map_err(|e| {
                     <span class="macro">admin_error!</span>(immediate = <span class="bool-val">true</span>, <span class="question-mark">?</span>e, <span class="string">&quot;CRITICAL: rusqlite error&quot;</span>);
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: rusqlite error {:?}&quot;</span>, e);
+                    <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: rusqlite error {e:?}&quot;</span>);
                     OperationError::SqliteError
                 })
         })
@@ -2754,7 +2753,7 @@
     <span class="kw">pub fn </span>write_db_s_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>, nsid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="kw">let </span>data = serde_json::to_vec(<span class="kw-2">&amp;</span>nsid).map_err(|e| {
             <span class="macro">admin_error!</span>(immediate = <span class="bool-val">true</span>, <span class="question-mark">?</span>e, <span class="string">&quot;CRITICAL: Serde JSON Error&quot;</span>);
-            <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde JSON Error -&gt; {:?}&quot;</span>, e);
+            <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde JSON Error -&gt; {e:?}&quot;</span>);
             OperationError::SerdeJsonError
         })<span class="question-mark">?</span>;
 
@@ -2772,7 +2771,7 @@
             .map(|<span class="kw">_</span>| ())
             .map_err(|e| {
                 <span class="macro">admin_error!</span>(immediate = <span class="bool-val">true</span>, <span class="question-mark">?</span>e, <span class="string">&quot;CRITICAL: ruslite error&quot;</span>);
-                <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: rusqlite error {:?}&quot;</span>, e);
+                <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: rusqlite error {e:?}&quot;</span>);
                 OperationError::SqliteError
             })
     }
@@ -2780,7 +2779,7 @@
     <span class="kw">pub fn </span>write_db_d_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>, nsid: Uuid) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="kw">let </span>data = serde_json::to_vec(<span class="kw-2">&amp;</span>nsid).map_err(|e| {
             <span class="macro">admin_error!</span>(immediate = <span class="bool-val">true</span>, <span class="question-mark">?</span>e, <span class="string">&quot;CRITICAL: Serde JSON Error&quot;</span>);
-            <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde JSON Error -&gt; {:?}&quot;</span>, e);
+            <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde JSON Error -&gt; {e:?}&quot;</span>);
             OperationError::SerdeJsonError
         })<span class="question-mark">?</span>;
 
@@ -2798,7 +2797,7 @@
             .map(|<span class="kw">_</span>| ())
             .map_err(|e| {
                 <span class="macro">admin_error!</span>(immediate = <span class="bool-val">true</span>, <span class="question-mark">?</span>e, <span class="string">&quot;CRITICAL: rusqlite error&quot;</span>);
-                <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: rusqlite error {:?}&quot;</span>, e);
+                <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: rusqlite error {e:?}&quot;</span>);
                 OperationError::SqliteError
             })
     }
@@ -2806,7 +2805,7 @@
     <span class="kw">pub fn </span>set_db_ts_max(<span class="kw-2">&amp;</span><span class="self">self</span>, ts: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="kw">let </span>data = serde_json::to_vec(<span class="kw-2">&amp;</span>ts).map_err(|e| {
             <span class="macro">admin_error!</span>(immediate = <span class="bool-val">true</span>, <span class="question-mark">?</span>e, <span class="string">&quot;CRITICAL: Serde JSON Error&quot;</span>);
-            <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde JSON Error -&gt; {:?}&quot;</span>, e);
+            <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde JSON Error -&gt; {e:?}&quot;</span>);
             OperationError::SerdeJsonError
         })<span class="question-mark">?</span>;
 
@@ -2824,7 +2823,7 @@
             .map(|<span class="kw">_</span>| ())
             .map_err(|e| {
                 <span class="macro">admin_error!</span>(immediate = <span class="bool-val">true</span>, <span class="question-mark">?</span>e, <span class="string">&quot;CRITICAL: rusqlite error&quot;</span>);
-                <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: rusqlite error {:?}&quot;</span>, e);
+                <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: rusqlite error {e:?}&quot;</span>);
                 OperationError::SqliteError
             })
     }
@@ -2869,7 +2868,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>set_db_index_version(<span class="kw-2">&amp;</span><span class="self">self</span>, v: i64) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="self">self</span>.set_db_version_key(DBV_INDEXV, v).map_err(|e| {
             <span class="macro">admin_error!</span>(immediate = <span class="bool-val">true</span>, <span class="question-mark">?</span>e, <span class="string">&quot;CRITICAL: rusqlite error&quot;</span>);
-            <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: rusqlite error {:?}&quot;</span>, e);
+            <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: rusqlite error {e:?}&quot;</span>);
             OperationError::SqliteError
         })
     }
@@ -3104,12 +3103,11 @@
             .with_init(<span class="kw">move </span>|c| {
                 c.execute_batch(
                     <span class="macro">format!</span>(
-                        <span class="string">&quot;PRAGMA page_size={};
+                        <span class="string">&quot;PRAGMA page_size={fs_page_size};
                              PRAGMA journal_mode=WAL;
-                             PRAGMA wal_autocheckpoint={};
-                             PRAGMA wal_checkpoint(RESTART);&quot;</span>,
-                        fs_page_size, checkpoint_pages
-                    )
+                             PRAGMA wal_autocheckpoint={checkpoint_pages};
+                             PRAGMA wal_checkpoint(RESTART);&quot;
+                    </span>)
                     .as_str(),
                 )
             })
@@ -3177,4 +3175,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

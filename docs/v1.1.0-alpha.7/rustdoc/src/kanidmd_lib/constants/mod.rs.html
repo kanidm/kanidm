@@ -85,6 +85,8 @@
 <a href="#85" id="85">85</a>
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
 </pre><pre class="rust"><code><span class="comment">// Re-export as needed
 
 </span><span class="kw">pub mod </span>acp;
@@ -126,13 +128,15 @@
  * who don&#39;t muck with the levels, but it means that we can do mixed version
  * upgrades.
  */
-</span><span class="kw">pub const </span>DOMAIN_LEVEL_1: u32 = <span class="number">1</span>;
+</span><span class="kw">pub type </span>DomainVersion = u32;
+
+<span class="kw">pub const </span>DOMAIN_LEVEL_1: DomainVersion = <span class="number">1</span>;
 <span class="comment">// The minimum supported domain functional level
-</span><span class="kw">pub const </span>DOMAIN_MIN_LEVEL: u32 = DOMAIN_LEVEL_1;
+</span><span class="kw">pub const </span>DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_LEVEL_1;
 <span class="comment">// The target supported domain functional level
-</span><span class="kw">pub const </span>DOMAIN_TGT_LEVEL: u32 = DOMAIN_LEVEL_1;
+</span><span class="kw">pub const </span>DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_1;
 <span class="comment">// The maximum supported domain functional level
-</span><span class="kw">pub const </span>DOMAIN_MAX_LEVEL: u32 = DOMAIN_LEVEL_1;
+</span><span class="kw">pub const </span>DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_1;
 
 <span class="comment">// On test builds, define to 60 seconds
 </span><span class="attr">#[cfg(test)]
@@ -173,4 +177,4 @@
 /// of the refresh token, which is bound to the issuing session.
 </span><span class="kw">pub const </span>OAUTH2_ACCESS_TOKEN_EXPIRY: u32 = <span class="number">4 </span>* <span class="number">3600</span>;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

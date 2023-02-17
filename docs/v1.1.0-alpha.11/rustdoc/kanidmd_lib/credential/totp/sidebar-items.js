@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":[["TOTP_DEFAULT_STEP",""]],"enum":[["TotpAlgo",""],["TotpDigits",""],["TotpError",""]],"struct":[["Totp","https://tools.ietf.org/html/rfc6238 which relies on https://tools.ietf.org/html/rfc4226"]]};

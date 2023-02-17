@@ -320,11 +320,41 @@
 <a href="#320" id="320">320</a>
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::btree_map::Entry <span class="kw">as </span>BTreeEntry;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 
 <span class="kw">use </span><span class="kw">crate</span>::be::dbvalue::DbValueOauthScopeMapV1;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::repl::proto::{ReplAttrV1, ReplOauthScopeMapV1};
 <span class="kw">use </span><span class="kw">crate</span>::schema::SchemaAttribute;
 <span class="kw">use </span><span class="kw">crate</span>::value::OAUTHSCOPE_RE;
 <span class="kw">use </span><span class="kw">crate</span>::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
@@ -347,6 +377,11 @@
 
     <span class="kw">pub fn </span>from_dbvs2(data: Vec&lt;String&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
         <span class="kw">let </span>set = data.into_iter().collect();
+        <span class="prelude-val">Ok</span>(Box::new(ValueSetOauthScope { set }))
+    }
+
+    <span class="kw">pub fn </span>from_repl_v1(data: <span class="kw-2">&amp;</span>[String]) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+        <span class="kw">let </span>set = data.iter().cloned().collect();
         <span class="prelude-val">Ok</span>(Box::new(ValueSetOauthScope { set }))
     }
 
@@ -426,6 +461,12 @@
         DbValueSetV2::OauthScope(<span class="self">self</span>.set.iter().cloned().collect())
     }
 
+    <span class="kw">fn </span>to_repl_v1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ReplAttrV1 {
+        ReplAttrV1::OauthScope {
+            set: <span class="self">self</span>.set.iter().cloned().collect(),
+        }
+    }
+
     <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
         Box::new(<span class="self">self</span>.set.iter().cloned().map(PartialValue::OauthScope))
     }
@@ -490,11 +531,15 @@
     <span class="kw">pub fn </span>from_dbvs2(data: Vec&lt;DbValueOauthScopeMapV1&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
         <span class="kw">let </span>map = data
             .into_iter()
-            .map(|dbv| {
-                <span class="kw">let </span>u = dbv.refer;
-                <span class="kw">let </span>m = dbv.data.into_iter().collect();
-                (u, m)
-            })
+            .map(|DbValueOauthScopeMapV1 { refer, data }| (refer, data.into_iter().collect()))
+            .collect();
+        <span class="prelude-val">Ok</span>(Box::new(ValueSetOauthScopeMap { map }))
+    }
+
+    <span class="kw">pub fn </span>from_repl_v1(data: <span class="kw-2">&amp;</span>[ReplOauthScopeMapV1]) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+        <span class="kw">let </span>map = data
+            .iter()
+            .map(|ReplOauthScopeMapV1 { refer, data }| (<span class="kw-2">*</span>refer, data.clone()))
             .collect();
         <span class="prelude-val">Ok</span>(Box::new(ValueSetOauthScopeMap { map }))
     }
@@ -603,6 +648,19 @@
         )
     }
 
+    <span class="kw">fn </span>to_repl_v1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ReplAttrV1 {
+        ReplAttrV1::OauthScopeMap {
+            set: <span class="self">self
+                </span>.map
+                .iter()
+                .map(|(u, m)| ReplOauthScopeMapV1 {
+                    refer: <span class="kw-2">*</span>u,
+                    data: m.iter().cloned().collect(),
+                })
+                .collect(),
+        }
+    }
+
     <span class="kw">fn </span>to_partialvalue_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = PartialValue&gt; + <span class="lifetime">&#39;_</span>&gt; {
         Box::new(<span class="self">self</span>.map.keys().cloned().map(PartialValue::Refer))
     }
@@ -643,4 +701,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

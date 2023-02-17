@@ -949,9 +949,9 @@
             DbEntryVers::V1(dbe_v1) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;v1 - {{ &quot;</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(k, vs) <span class="kw">in </span>dbe_v1.attrs.iter() {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{} - [&quot;</span>, k)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">&quot;{k} - [&quot;</span>)<span class="question-mark">?</span>;
                     <span class="kw">for </span>v <span class="kw">in </span>vs {
-                        <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, v)<span class="question-mark">?</span>;
+                        <span class="macro">write!</span>(f, <span class="string">&quot;{v:?}, &quot;</span>)<span class="question-mark">?</span>;
                     }
                     <span class="macro">write!</span>(f, <span class="string">&quot;], &quot;</span>)<span class="question-mark">?</span>;
                 }
@@ -960,8 +960,8 @@
             DbEntryVers::V2(dbe_v2) =&gt; {
                 <span class="macro">write!</span>(f, <span class="string">&quot;v2 - {{ &quot;</span>)<span class="question-mark">?</span>;
                 <span class="kw">for </span>(k, vs) <span class="kw">in </span>dbe_v2.attrs.iter() {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{} - [&quot;</span>, k)<span class="question-mark">?</span>;
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, vs)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">&quot;{k} - [&quot;</span>)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">&quot;{vs:?}, &quot;</span>)<span class="question-mark">?</span>;
                     <span class="macro">write!</span>(f, <span class="string">&quot;], &quot;</span>)<span class="question-mark">?</span>;
                 }
                 <span class="macro">write!</span>(f, <span class="string">&quot;}}&quot;</span>)
@@ -978,24 +978,24 @@
                 <span class="kw">match </span>dbe_v1.attrs.get(<span class="string">&quot;uuid&quot;</span>) {
                     <span class="prelude-val">Some</span>(uuids) =&gt; {
                         <span class="kw">for </span>uuid <span class="kw">in </span>uuids {
-                            <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, uuid)<span class="question-mark">?</span>;
+                            <span class="macro">write!</span>(f, <span class="string">&quot;{uuid:?}, &quot;</span>)<span class="question-mark">?</span>;
                         }
                     }
                     <span class="prelude-val">None </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Uuid(INVALID), &quot;</span>)<span class="question-mark">?</span>,
                 };
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(names) = dbe_v1.attrs.get(<span class="string">&quot;name&quot;</span>) {
                     <span class="kw">for </span>name <span class="kw">in </span>names {
-                        <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, name)<span class="question-mark">?</span>;
+                        <span class="macro">write!</span>(f, <span class="string">&quot;{name:?}, &quot;</span>)<span class="question-mark">?</span>;
                     }
                 }
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(names) = dbe_v1.attrs.get(<span class="string">&quot;attributename&quot;</span>) {
                     <span class="kw">for </span>name <span class="kw">in </span>names {
-                        <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, name)<span class="question-mark">?</span>;
+                        <span class="macro">write!</span>(f, <span class="string">&quot;{name:?}, &quot;</span>)<span class="question-mark">?</span>;
                     }
                 }
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(names) = dbe_v1.attrs.get(<span class="string">&quot;classname&quot;</span>) {
                     <span class="kw">for </span>name <span class="kw">in </span>names {
-                        <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, name)<span class="question-mark">?</span>;
+                        <span class="macro">write!</span>(f, <span class="string">&quot;{name:?}, &quot;</span>)<span class="question-mark">?</span>;
                     }
                 }
                 <span class="macro">write!</span>(f, <span class="string">&quot;}}&quot;</span>)
@@ -1004,18 +1004,18 @@
                 <span class="macro">write!</span>(f, <span class="string">&quot;v2 - {{ &quot;</span>)<span class="question-mark">?</span>;
                 <span class="kw">match </span>dbe_v2.attrs.get(<span class="string">&quot;uuid&quot;</span>) {
                     <span class="prelude-val">Some</span>(uuids) =&gt; {
-                        <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, uuids)<span class="question-mark">?</span>;
+                        <span class="macro">write!</span>(f, <span class="string">&quot;{uuids:?}, &quot;</span>)<span class="question-mark">?</span>;
                     }
                     <span class="prelude-val">None </span>=&gt; <span class="macro">write!</span>(f, <span class="string">&quot;Uuid(INVALID), &quot;</span>)<span class="question-mark">?</span>,
                 };
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(names) = dbe_v2.attrs.get(<span class="string">&quot;name&quot;</span>) {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, names)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">&quot;{names:?}, &quot;</span>)<span class="question-mark">?</span>;
                 }
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(names) = dbe_v2.attrs.get(<span class="string">&quot;attributename&quot;</span>) {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, names)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">&quot;{names:?}, &quot;</span>)<span class="question-mark">?</span>;
                 }
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(names) = dbe_v2.attrs.get(<span class="string">&quot;classname&quot;</span>) {
-                    <span class="macro">write!</span>(f, <span class="string">&quot;{:?}, &quot;</span>, names)<span class="question-mark">?</span>;
+                    <span class="macro">write!</span>(f, <span class="string">&quot;{names:?}, &quot;</span>)<span class="question-mark">?</span>;
                 }
                 <span class="macro">write!</span>(f, <span class="string">&quot;}}&quot;</span>)
             }
@@ -1023,4 +1023,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

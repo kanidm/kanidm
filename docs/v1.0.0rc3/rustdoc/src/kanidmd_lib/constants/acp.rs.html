@@ -1342,6 +1342,12 @@
 <a href="#1342" id="1342">1342</a>
 <a href="#1343" id="1343">1343</a>
 <a href="#1344" id="1344">1344</a>
+<a href="#1345" id="1345">1345</a>
+<a href="#1346" id="1346">1346</a>
+<a href="#1347" id="1347">1347</a>
+<a href="#1348" id="1348">1348</a>
+<a href="#1349" id="1349">1349</a>
+<a href="#1350" id="1350">1350</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::constants::uuids::<span class="kw-2">*</span>;
 <span class="doccomment">///! Constant Entries for the IDM
 </span><span class="kw">use </span><span class="kw">crate</span>::constants::values::<span class="kw-2">*</span>;
@@ -2337,6 +2343,7 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;domain_uuid&quot;,
             &quot;es256_private_key_der&quot;,
             &quot;fernet_private_key_str&quot;,
+            &quot;cookie_private_key&quot;,
             &quot;name&quot;,
             &quot;uuid&quot;
         ],
@@ -2344,6 +2351,7 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;domain_display_name&quot;,
             &quot;domain_ssid&quot;,
             &quot;es256_private_key_der&quot;,
+            &quot;cookie_private_key&quot;,
             &quot;fernet_private_key_str&quot;
         ],
         &quot;acp_modify_presentattr&quot;: [
@@ -2614,7 +2622,10 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
     }
 }&quot;#</span>;
 
-<span class="kw">pub const </span>JSON_IDM_ACP_OAUTH2_READ_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
+<span class="comment">/*
+// Removed in favour of a dynamic check inside of access.rs that is based on membership to an
+// oauth2 rs.
+pub const JSON_IDM_ACP_OAUTH2_READ_PRIV_V1: &amp;str = r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [
             &quot;object&quot;,
@@ -2637,9 +2648,10 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;oauth2_rs_origin_landing&quot;
         ]
     }
-}&quot;#</span>;
+}&quot;#;
+*/
 
-<span class="kw">pub const </span>JSON_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
+</span><span class="kw">pub const </span>JSON_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [
             &quot;object&quot;,
@@ -2687,4 +2699,4 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
     }
 }&quot;#</span>;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

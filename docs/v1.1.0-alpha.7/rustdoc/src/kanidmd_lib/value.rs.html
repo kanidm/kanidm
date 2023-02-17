@@ -2474,7 +2474,7 @@
             | PartialValue::SshKey(tag) =&gt; tag.to_string(),
             <span class="comment">// This will never match as we never index radius creds! See generate_idx_eq_keys
             </span>PartialValue::SecretValue | PartialValue::PrivateBinary =&gt; <span class="string">&quot;_&quot;</span>.to_string(),
-            PartialValue::Spn(name, realm) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{}@{}&quot;</span>, name, realm),
+            PartialValue::Spn(name, realm) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{name}@{realm}&quot;</span>),
             PartialValue::Uint32(u) =&gt; u.to_string(),
             <span class="comment">// This will never work, we don&#39;t allow equality searching on Cid&#39;s
             </span>PartialValue::Cid(<span class="kw">_</span>) =&gt; <span class="string">&quot;_&quot;</span>.to_string(),
@@ -3293,10 +3293,10 @@
                         <span class="kw">let </span>fp = spk.fingerprint();
                         <span class="macro">format!</span>(<span class="string">&quot;{}: {}&quot;</span>, tag, fp.hash)
                     }
-                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{}: corrupted ssh public key&quot;</span>, tag),
+                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{tag}: corrupted ssh public key&quot;</span>),
                 }
             }
-            Value::Spn(n, r) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{}@{}&quot;</span>, n, r),
+            Value::Spn(n, r) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{n}@{r}&quot;</span>),
             <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
         }
     }
@@ -3579,4 +3579,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

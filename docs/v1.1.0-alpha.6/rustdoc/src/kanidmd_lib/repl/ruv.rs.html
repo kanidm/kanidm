@@ -243,6 +243,26 @@
 <a href="#243" id="243">243</a>
 <a href="#244" id="244">244</a>
 <a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::ops::Bound::<span class="kw-2">*</span>;
@@ -254,6 +274,7 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::repl::cid::Cid;
+<span class="kw">use </span>std::fmt;
 
 <span class="kw">pub struct </span>ReplicationUpdateVector {
     <span class="comment">// This sorts by time. Should we look up by IDL or by UUID?
@@ -287,6 +308,15 @@
     data: BptreeMapWriteTxn&lt;<span class="lifetime">&#39;a</span>, Cid, IDLBitRange&gt;,
 }
 
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; fmt::Debug <span class="kw">for </span>ReplicationUpdateVectorWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;RUV DUMP&quot;</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.data
+            .iter()
+            .try_for_each(|(cid, idl)| <span class="macro">writeln!</span>(f, <span class="string">&quot;* [{cid} {idl:?}]&quot;</span>))
+    }
+}
+
 <span class="kw">pub struct </span>ReplicationUpdateVectorReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
     data: BptreeMapReadTxn&lt;<span class="lifetime">&#39;a</span>, Cid, IDLBitRange&gt;,
 }
@@ -304,10 +334,10 @@
         <span class="kw">for </span>entry <span class="kw">in </span>entries {
             <span class="comment">// The DB id we need.
             </span><span class="kw">let </span>eid = entry.get_id();
-            <span class="kw">let </span>eclog = entry.get_changelog();
+            <span class="kw">let </span>ecstate = entry.get_changestate();
             <span class="comment">// We don&#39;t need the details of the change - only the cid of the
             // change that this entry was involved in.
-            </span><span class="kw">for </span>cid <span class="kw">in </span>eclog.cid_iter() {
+            </span><span class="kw">for </span>cid <span class="kw">in </span>ecstate.cid_iter() {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(idl) = check_ruv.get_mut(cid) {
                     <span class="comment">// We can&#39;t guarantee id order, so we have to do this properly.
                     </span>idl.insert_id(eid);
@@ -336,7 +366,15 @@
         <span class="kw">while let </span>(<span class="prelude-val">Some</span>((ck, cv)), <span class="prelude-val">Some</span>((sk, sv))) = (<span class="kw-2">&amp;</span>check_next, <span class="kw-2">&amp;</span>snap_next) {
             <span class="kw">match </span>ck.cmp(sk) {
                 Ordering::Equal =&gt; {
-                    <span class="kw">if </span>cv == sv {
+                    <span class="comment">// Counter intuitive, but here we check that the check set is a *subset*
+                    // of the ruv snapshot. This is because when we have an entry that is
+                    // tombstoned, all it&#39;s CID interactions are &quot;lost&quot; and it&#39;s cid becomes
+                    // that of when it was tombstoned. So the &quot;rebuilt&quot; ruv will miss that
+                    // entry.
+                    //
+                    // In the future the RUV concept may be ditched entirely anyway, thoughts needed.
+                    </span><span class="kw">let </span>intersect = <span class="kw-2">*</span>cv &amp; <span class="kw-2">*</span>sv;
+                    <span class="kw">if </span><span class="kw-2">*</span>cv == <span class="kw-2">&amp;</span>intersect {
                         <span class="macro">trace!</span>(<span class="string">&quot;{:?} is consistent!&quot;</span>, ck);
                     } <span class="kw">else </span>{
                         <span class="macro">admin_warn!</span>(<span class="string">&quot;{:?} is NOT consistent! IDL&#39;s differ&quot;</span>, ck);
@@ -347,32 +385,34 @@
                     snap_next = snap_iter.next();
                 }
                 Ordering::Less =&gt; {
-                    <span class="macro">admin_warn!</span>(<span class="string">&quot;{:?} is NOT consistent! CID missing from RUV&quot;</span>, ck);
-                    <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-                    results.push(<span class="prelude-val">Err</span>(ConsistencyError::RuvInconsistent(ck.to_string())));
-                    check_next = check_iter.next();
+                    <span class="comment">// Due to deletes, it can be that the check ruv is missing whole entries
+                    // in a rebuild.
+                    </span><span class="macro">admin_warn!</span>(<span class="string">&quot;{:?} is NOT consistent! CID missing from RUV&quot;</span>, ck);
+                    <span class="comment">// debug_assert!(false);
+                    // results.push(Err(ConsistencyError::RuvInconsistent(ck.to_string())));
+                    </span>check_next = check_iter.next();
                 }
                 Ordering::Greater =&gt; {
                     <span class="macro">admin_warn!</span>(<span class="string">&quot;{:?} is NOT consistent! CID should not exist in RUV&quot;</span>, sk);
-                    <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-                    results.push(<span class="prelude-val">Err</span>(ConsistencyError::RuvInconsistent(sk.to_string())));
-                    snap_next = snap_iter.next();
+                    <span class="comment">// debug_assert!(false);
+                    // results.push(Err(ConsistencyError::RuvInconsistent(sk.to_string())));
+                    </span>snap_next = snap_iter.next();
                 }
             }
         }
 
         <span class="kw">while let </span><span class="prelude-val">Some</span>((ck, _cv)) = <span class="kw-2">&amp;</span>check_next {
             <span class="macro">admin_warn!</span>(<span class="string">&quot;{:?} is NOT consistent! CID missing from RUV&quot;</span>, ck);
-            <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-            results.push(<span class="prelude-val">Err</span>(ConsistencyError::RuvInconsistent(ck.to_string())));
-            check_next = check_iter.next();
+            <span class="comment">// debug_assert!(false);
+            // results.push(Err(ConsistencyError::RuvInconsistent(ck.to_string())));
+            </span>check_next = check_iter.next();
         }
 
         <span class="kw">while let </span><span class="prelude-val">Some</span>((sk, _sv)) = <span class="kw-2">&amp;</span>snap_next {
             <span class="macro">admin_warn!</span>(<span class="string">&quot;{:?} is NOT consistent! CID should not exist in RUV&quot;</span>, sk);
-            <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
-            results.push(<span class="prelude-val">Err</span>(ConsistencyError::RuvInconsistent(sk.to_string())));
-            snap_next = snap_iter.next();
+            <span class="comment">// debug_assert!(false);
+            // results.push(Err(ConsistencyError::RuvInconsistent(sk.to_string())));
+            </span>snap_next = snap_iter.next();
         }
 
         <span class="comment">// Done!
@@ -407,10 +447,10 @@
         <span class="kw">for </span>entry <span class="kw">in </span>entries {
             <span class="comment">// The DB id we need.
             </span><span class="kw">let </span>eid = entry.get_id();
-            <span class="kw">let </span>eclog = entry.get_changelog();
+            <span class="kw">let </span>ecstate = entry.get_changestate();
             <span class="comment">// We don&#39;t need the details of the change - only the cid of the
             // change that this entry was involved in.
-            </span><span class="kw">for </span>cid <span class="kw">in </span>eclog.cid_iter() {
+            </span><span class="kw">for </span>cid <span class="kw">in </span>ecstate.cid_iter() {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(idl) = rebuild_ruv.get_mut(cid) {
                     <span class="comment">// We can&#39;t guarantee id order, so we have to do this properly.
                     </span>idl.insert_id(eid);
@@ -489,4 +529,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

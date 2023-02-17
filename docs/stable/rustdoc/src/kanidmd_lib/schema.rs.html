@@ -2682,6 +2682,98 @@
 <a href="#2682" id="2682">2682</a>
 <a href="#2683" id="2683">2683</a>
 <a href="#2684" id="2684">2684</a>
+<a href="#2685" id="2685">2685</a>
+<a href="#2686" id="2686">2686</a>
+<a href="#2687" id="2687">2687</a>
+<a href="#2688" id="2688">2688</a>
+<a href="#2689" id="2689">2689</a>
+<a href="#2690" id="2690">2690</a>
+<a href="#2691" id="2691">2691</a>
+<a href="#2692" id="2692">2692</a>
+<a href="#2693" id="2693">2693</a>
+<a href="#2694" id="2694">2694</a>
+<a href="#2695" id="2695">2695</a>
+<a href="#2696" id="2696">2696</a>
+<a href="#2697" id="2697">2697</a>
+<a href="#2698" id="2698">2698</a>
+<a href="#2699" id="2699">2699</a>
+<a href="#2700" id="2700">2700</a>
+<a href="#2701" id="2701">2701</a>
+<a href="#2702" id="2702">2702</a>
+<a href="#2703" id="2703">2703</a>
+<a href="#2704" id="2704">2704</a>
+<a href="#2705" id="2705">2705</a>
+<a href="#2706" id="2706">2706</a>
+<a href="#2707" id="2707">2707</a>
+<a href="#2708" id="2708">2708</a>
+<a href="#2709" id="2709">2709</a>
+<a href="#2710" id="2710">2710</a>
+<a href="#2711" id="2711">2711</a>
+<a href="#2712" id="2712">2712</a>
+<a href="#2713" id="2713">2713</a>
+<a href="#2714" id="2714">2714</a>
+<a href="#2715" id="2715">2715</a>
+<a href="#2716" id="2716">2716</a>
+<a href="#2717" id="2717">2717</a>
+<a href="#2718" id="2718">2718</a>
+<a href="#2719" id="2719">2719</a>
+<a href="#2720" id="2720">2720</a>
+<a href="#2721" id="2721">2721</a>
+<a href="#2722" id="2722">2722</a>
+<a href="#2723" id="2723">2723</a>
+<a href="#2724" id="2724">2724</a>
+<a href="#2725" id="2725">2725</a>
+<a href="#2726" id="2726">2726</a>
+<a href="#2727" id="2727">2727</a>
+<a href="#2728" id="2728">2728</a>
+<a href="#2729" id="2729">2729</a>
+<a href="#2730" id="2730">2730</a>
+<a href="#2731" id="2731">2731</a>
+<a href="#2732" id="2732">2732</a>
+<a href="#2733" id="2733">2733</a>
+<a href="#2734" id="2734">2734</a>
+<a href="#2735" id="2735">2735</a>
+<a href="#2736" id="2736">2736</a>
+<a href="#2737" id="2737">2737</a>
+<a href="#2738" id="2738">2738</a>
+<a href="#2739" id="2739">2739</a>
+<a href="#2740" id="2740">2740</a>
+<a href="#2741" id="2741">2741</a>
+<a href="#2742" id="2742">2742</a>
+<a href="#2743" id="2743">2743</a>
+<a href="#2744" id="2744">2744</a>
+<a href="#2745" id="2745">2745</a>
+<a href="#2746" id="2746">2746</a>
+<a href="#2747" id="2747">2747</a>
+<a href="#2748" id="2748">2748</a>
+<a href="#2749" id="2749">2749</a>
+<a href="#2750" id="2750">2750</a>
+<a href="#2751" id="2751">2751</a>
+<a href="#2752" id="2752">2752</a>
+<a href="#2753" id="2753">2753</a>
+<a href="#2754" id="2754">2754</a>
+<a href="#2755" id="2755">2755</a>
+<a href="#2756" id="2756">2756</a>
+<a href="#2757" id="2757">2757</a>
+<a href="#2758" id="2758">2758</a>
+<a href="#2759" id="2759">2759</a>
+<a href="#2760" id="2760">2760</a>
+<a href="#2761" id="2761">2761</a>
+<a href="#2762" id="2762">2762</a>
+<a href="#2763" id="2763">2763</a>
+<a href="#2764" id="2764">2764</a>
+<a href="#2765" id="2765">2765</a>
+<a href="#2766" id="2766">2766</a>
+<a href="#2767" id="2767">2767</a>
+<a href="#2768" id="2768">2768</a>
+<a href="#2769" id="2769">2769</a>
+<a href="#2770" id="2770">2770</a>
+<a href="#2771" id="2771">2771</a>
+<a href="#2772" id="2772">2772</a>
+<a href="#2773" id="2773">2773</a>
+<a href="#2774" id="2774">2774</a>
+<a href="#2775" id="2775">2775</a>
+<a href="#2776" id="2776">2776</a>
 </pre><pre class="rust"><code><span class="doccomment">//! [`Schema`] is one of the foundational concepts of the server. It provides a
 //! set of rules to enforce that [`Entries`] ava&#39;s must be compliant to, to be
 //! considered valid for commit to the database. This allows us to provide
@@ -2774,6 +2866,7 @@
     <span class="kw">pub </span>unique: bool,
     <span class="kw">pub </span>phantom: bool,
     <span class="kw">pub </span>sync_allowed: bool,
+    <span class="kw">pub </span>replicated: bool,
     <span class="kw">pub </span>index: Vec&lt;IndexType&gt;,
     <span class="kw">pub </span>syntax: SyntaxType,
 }
@@ -2820,9 +2913,14 @@
             <span class="macro">admin_error!</span>(<span class="string">&quot;missing unique - {}&quot;</span>, name);
             OperationError::InvalidSchemaState(<span class="string">&quot;missing unique&quot;</span>.to_string())
         })<span class="question-mark">?</span>;
+
         <span class="kw">let </span>phantom = value.get_ava_single_bool(<span class="string">&quot;phantom&quot;</span>).unwrap_or(<span class="bool-val">false</span>);
 
         <span class="kw">let </span>sync_allowed = value.get_ava_single_bool(<span class="string">&quot;sync_allowed&quot;</span>).unwrap_or(<span class="bool-val">false</span>);
+
+        <span class="comment">// Default, all attributes are replicated unless you opt in for them to NOT be.
+        // Generally this is internal to the server only, so we don&#39;t advertise it.
+        </span><span class="kw">let </span>replicated = value.get_ava_single_bool(<span class="string">&quot;replicated&quot;</span>).unwrap_or(<span class="bool-val">true</span>);
 
         <span class="comment">// index vec
         // even if empty, it SHOULD be present ... (is that valid to put an empty set?)
@@ -2845,6 +2943,7 @@
             unique,
             phantom,
             sync_allowed,
+            replicated,
             index,
             syntax,
         })
@@ -3170,6 +3269,22 @@
         </span>res
     }
 
+    <span class="kw">fn </span>is_replicated(<span class="kw-2">&amp;</span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str) -&gt; bool {
+        <span class="kw">match </span><span class="self">self</span>.get_attributes().get(attr) {
+            <span class="prelude-val">Some</span>(a_schema) =&gt; {
+                <span class="comment">// We&#39;ll likely add more conditions here later.
+                </span>!(a_schema.phantom || !a_schema.replicated)
+            }
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="macro">warn!</span>(
+                    <span class="string">&quot;Attribute {} was not found in schema during replication request&quot;</span>,
+                    attr
+                );
+                <span class="bool-val">false
+            </span>}
+        }
+    }
+
     <span class="kw">fn </span>is_multivalue(<span class="kw-2">&amp;</span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;bool, SchemaError&gt; {
         <span class="kw">match </span><span class="self">self</span>.get_attributes().get(attr) {
             <span class="prelude-val">Some</span>(a_schema) =&gt; <span class="prelude-val">Ok</span>(a_schema.multivalue),
@@ -3356,6 +3471,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality, IndexType::Presence],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -3372,6 +3488,7 @@
                 </span>unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality, IndexType::Presence],
                 syntax: SyntaxType::Uuid,
             },
@@ -3388,6 +3505,7 @@
                 </span>unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Cid,
             },
@@ -3402,6 +3520,7 @@
                 unique: <span class="bool-val">true</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">true</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality, IndexType::Presence],
                 syntax: SyntaxType::Utf8StringIname,
             },
@@ -3418,6 +3537,7 @@
                 unique: <span class="bool-val">true</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality],
                 syntax: SyntaxType::SecurityPrincipalName,
             },
@@ -3432,6 +3552,7 @@
                 unique: <span class="bool-val">true</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -3446,6 +3567,7 @@
                 unique: <span class="bool-val">true</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -3460,6 +3582,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">true</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Utf8String,
             },
@@ -3472,6 +3595,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Boolean,
             });
@@ -3483,6 +3607,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Boolean,
             });
@@ -3494,6 +3619,19 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
+                index: <span class="macro">vec!</span>[],
+                syntax: SyntaxType::Boolean,
+            });
+        <span class="self">self</span>.attributes.insert(AttrString::from(<span class="string">&quot;replicated&quot;</span>), SchemaAttribute {
+                name: AttrString::from(<span class="string">&quot;replicated&quot;</span>),
+                uuid: UUID_SCHEMA_ATTR_REPLICATED,
+                description: String::from(<span class="string">&quot;If true, this attribute or class can by replicated between nodes in the topology&quot;</span>),
+                multivalue: <span class="bool-val">false</span>,
+                unique: <span class="bool-val">false</span>,
+                phantom: <span class="bool-val">false</span>,
+                sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Boolean,
             });
@@ -3509,6 +3647,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Boolean,
             },
@@ -3525,6 +3664,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::IndexId,
             },
@@ -3541,6 +3681,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality],
                 syntax: SyntaxType::SyntaxId,
             },
@@ -3557,6 +3698,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -3573,6 +3715,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -3589,6 +3732,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -3605,6 +3749,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -3620,7 +3765,8 @@
                     multivalue: <span class="bool-val">true</span>,
                     unique: <span class="bool-val">false</span>,
                     phantom: <span class="bool-val">false</span>,
-                sync_allowed: <span class="bool-val">false</span>,
+                    sync_allowed: <span class="bool-val">false</span>,
+                    replicated: <span class="bool-val">true</span>,
                     index: <span class="macro">vec!</span>[],
                     syntax: SyntaxType::Utf8StringInsensitive,
                 },
@@ -3636,7 +3782,8 @@
                     multivalue: <span class="bool-val">true</span>,
                     unique: <span class="bool-val">false</span>,
                     phantom: <span class="bool-val">false</span>,
-                sync_allowed: <span class="bool-val">false</span>,
+                    sync_allowed: <span class="bool-val">false</span>,
+                    replicated: <span class="bool-val">true</span>,
                     index: <span class="macro">vec!</span>[],
                     syntax: SyntaxType::Utf8StringInsensitive,
                 },
@@ -3653,6 +3800,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -3668,7 +3816,8 @@
                     multivalue: <span class="bool-val">true</span>,
                     unique: <span class="bool-val">false</span>,
                     phantom: <span class="bool-val">false</span>,
-                sync_allowed: <span class="bool-val">false</span>,
+                    sync_allowed: <span class="bool-val">false</span>,
+                    replicated: <span class="bool-val">true</span>,
                     index: <span class="macro">vec!</span>[],
                     syntax: SyntaxType::Utf8StringInsensitive,
                 },
@@ -3685,7 +3834,8 @@
                     multivalue: <span class="bool-val">false</span>,
                     unique: <span class="bool-val">false</span>,
                     phantom: <span class="bool-val">false</span>,
-                sync_allowed: <span class="bool-val">false</span>,
+                    sync_allowed: <span class="bool-val">false</span>,
+                    replicated: <span class="bool-val">true</span>,
                     index: <span class="macro">vec!</span>[IndexType::Equality],
                     syntax: SyntaxType::Boolean,
                 },
@@ -3703,6 +3853,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality, IndexType::SubString],
                 syntax: SyntaxType::JsonFilter,
             },
@@ -3719,6 +3870,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality],
                 syntax: SyntaxType::ReferenceUuid,
             },
@@ -3736,6 +3888,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality, IndexType::SubString],
                 syntax: SyntaxType::JsonFilter,
             },
@@ -3752,6 +3905,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -3766,6 +3920,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -3782,6 +3937,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -3799,6 +3955,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -3815,6 +3972,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -3828,7 +3986,8 @@
                     multivalue: <span class="bool-val">true</span>,
                     unique: <span class="bool-val">false</span>,
                     phantom: <span class="bool-val">false</span>,
-                sync_allowed: <span class="bool-val">false</span>,
+                    sync_allowed: <span class="bool-val">false</span>,
+                    replicated: <span class="bool-val">true</span>,
                     index: <span class="macro">vec!</span>[IndexType::Equality],
                     syntax: SyntaxType::Utf8StringInsensitive,
                 },
@@ -3844,6 +4003,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">false</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality],
                 syntax: SyntaxType::ReferenceUuid,
             },
@@ -3858,6 +4018,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">false</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality],
                 syntax: SyntaxType::ReferenceUuid,
             },
@@ -3872,6 +4033,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">true</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality],
                 syntax: SyntaxType::ReferenceUuid,
             },
@@ -3889,6 +4051,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Uint32,
             },
@@ -3904,6 +4067,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality],
                 syntax: SyntaxType::Utf8StringIname,
             },
@@ -3920,6 +4084,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">true</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -3936,6 +4101,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">true</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -3954,6 +4120,7 @@
                 unique: <span class="bool-val">true</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -3970,6 +4137,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[IndexType::Equality],
                 syntax: SyntaxType::ReferenceUuid,
             },
@@ -3984,6 +4152,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">false</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">true</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -3999,6 +4168,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">true</span>,
                 sync_allowed: <span class="bool-val">true</span>,
+                replicated: <span class="bool-val">false</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Utf8String,
             },
@@ -4014,6 +4184,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">true</span>,
                 sync_allowed: <span class="bool-val">true</span>,
+                replicated: <span class="bool-val">false</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::TotpSecret,
             },
@@ -4030,6 +4201,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">true</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">false</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -4044,6 +4216,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">true</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">false</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -4058,6 +4231,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">true</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">false</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Uuid,
             },
@@ -4072,6 +4246,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">true</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">false</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Utf8StringInsensitive,
             },
@@ -4086,6 +4261,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">true</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">false</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Utf8StringIname,
             },
@@ -4100,6 +4276,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">true</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">false</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::SshKey,
             },
@@ -4114,6 +4291,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">true</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">false</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::SshKey,
             },
@@ -4128,6 +4306,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">true</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">false</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::EmailAddress,
             },
@@ -4142,6 +4321,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">true</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">false</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::EmailAddress,
             },
@@ -4156,6 +4336,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">true</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">false</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::EmailAddress,
             },
@@ -4170,6 +4351,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">true</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">false</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::EmailAddress,
             },
@@ -4184,6 +4366,7 @@
                 unique: <span class="bool-val">false</span>,
                 phantom: <span class="bool-val">true</span>,
                 sync_allowed: <span class="bool-val">false</span>,
+                replicated: <span class="bool-val">false</span>,
                 index: <span class="macro">vec!</span>[],
                 syntax: SyntaxType::Uint32,
             },
@@ -4197,6 +4380,7 @@
                 uuid: UUID_SCHEMA_CLASS_ATTRIBUTETYPE,
                 description: String::from(<span class="string">&quot;Definition of a schema attribute&quot;</span>),
                 systemmay: <span class="macro">vec!</span>[
+                    AttrString::from(<span class="string">&quot;replicated&quot;</span>),
                     AttrString::from(<span class="string">&quot;phantom&quot;</span>),
                     AttrString::from(<span class="string">&quot;sync_allowed&quot;</span>),
                     AttrString::from(<span class="string">&quot;index&quot;</span>),
@@ -5367,4 +5551,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

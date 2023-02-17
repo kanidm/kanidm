@@ -175,13 +175,13 @@
 //         .and_then(|element| element.dyn_into::&lt;web_sys::HtmlButtonElement&gt;().ok())
 // }
 
-// pub fn get_inputelement_by_id(id: &amp;str) -&gt; Option&lt;HtmlInputElement&gt; {
-//     document()
-//         .get_element_by_id(id)
-//         .and_then(|element| element.dyn_into::&lt;web_sys::HtmlInputElement&gt;().ok())
-// }
+</span><span class="kw">pub fn </span>get_inputelement_by_id(id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;HtmlInputElement&gt; {
+    document()
+        .get_element_by_id(id)
+        .and_then(|element| element.dyn_into::&lt;web_sys::HtmlInputElement&gt;().ok())
+}
 
-</span><span class="kw">pub fn </span>get_value_from_element_id(id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+<span class="kw">pub fn </span>get_value_from_element_id(id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
     document()
         .get_element_by_id(id)
         .and_then(|element| element.dyn_into::&lt;web_sys::HtmlInputElement&gt;().ok())
@@ -235,4 +235,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidmd_web_ui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidmd_web_ui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

@@ -62,6 +62,16 @@
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::env;
 
 <span class="kw">use </span>serde::Deserialize;
@@ -71,8 +81,21 @@
 </span><span class="kw">enum </span>CpuOptLevel {
     none,
     native,
-    x86_64_v1,
+    neon_v8,
+    x86_64_v2,
     x86_64_v3,
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>CpuOptLevel {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="kw">if </span><span class="macro">cfg!</span>(target_arch = <span class="string">&quot;x86_64&quot;</span>) {
+            CpuOptLevel::x86_64_v2
+        } <span class="kw">else if </span><span class="macro">cfg!</span>(target_arch = <span class="string">&quot;aarch64&quot;</span>) {
+            CpuOptLevel::neon_v8
+        } <span class="kw">else </span>{
+            CpuOptLevel::none
+        }
+    }
 }
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>CpuOptLevel {
@@ -80,7 +103,8 @@
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self </span>{
             CpuOptLevel::none =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;none&quot;</span>),
             CpuOptLevel::native =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;native&quot;</span>),
-            CpuOptLevel::x86_64_v1 =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;x86_64_v1&quot;</span>),
+            CpuOptLevel::neon_v8 =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;neon_v8&quot;</span>),
+            CpuOptLevel::x86_64_v2 =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;x86_64_v2&quot;</span>),
             CpuOptLevel::x86_64_v3 =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;x86_64_v3&quot;</span>),
         }
     }
@@ -89,7 +113,8 @@
 <span class="attr">#[derive(Debug, Deserialize)]
 </span><span class="kw">struct </span>ProfileConfig {
     web_ui_pkg_path: String,
-    cpu_flags: CpuOptLevel,
+    <span class="attr">#[serde(default)]
+    </span>cpu_flags: CpuOptLevel,
 }
 
 <span class="kw">pub fn </span>apply_profile() {
@@ -107,17 +132,12 @@
     <span class="kw">let </span>profile_cfg: ProfileConfig = toml::from_slice(<span class="kw-2">&amp;</span>data)
         .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;Failed to parse profile - {} - {}&quot;</span>, profile, contents));
 
-    <span class="comment">/*
-     *  x86-64: CMOV, CMPXCHG8B, FPU, FXSR, MMX, FXSR, SCE, SSE, SSE2
-     *  x86-64-v2: (close to Nehalem) CMPXCHG16B, LAHF-SAHF, POPCNT, SSE3, SSE4.1, SSE4.2, SSSE3
-     *  x86-64-v3: (close to Haswell) AVX, AVX2, BMI1, BMI2, F16C, FMA, LZCNT, MOVBE, XSAVE
-     */
-
-    </span><span class="kw">match </span>profile_cfg.cpu_flags {
+    <span class="kw">match </span>profile_cfg.cpu_flags {
         CpuOptLevel::none =&gt; {}
         CpuOptLevel::native =&gt; <span class="macro">println!</span>(<span class="string">&quot;cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=native&quot;</span>),
-        CpuOptLevel::x86_64_v1 =&gt; <span class="macro">println!</span>(<span class="string">&quot;cargo:rustc-env=RUSTFLAGS=-Ctarget-feature=+cmov,+cx8,+fxsr,+mmx,+sse,+sse2&quot;</span>),
-        CpuOptLevel::x86_64_v3 =&gt; <span class="macro">println!</span>(<span class="string">&quot;cargo:rustc-env=RUSTFLAGS=-Ctarget-feature=+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+cx16,+sahf,+popcnt,+sse3,+sse4.1,+sse4.2,+avx,+avx2,+bmi,+bmi2,+f16c,+fma,+lzcnt,+movbe,+xsave&quot;</span>),
+        CpuOptLevel::neon_v8 =&gt; <span class="macro">println!</span>(<span class="string">&quot;cargo:rustc-env=RUSTFLAGS=-Ctarget-features=+neon,+fp-armv8&quot;</span>),
+        CpuOptLevel::x86_64_v2 =&gt; <span class="macro">println!</span>(<span class="string">&quot;cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=x86-64-v2&quot;</span>),
+        CpuOptLevel::x86_64_v3 =&gt; <span class="macro">println!</span>(<span class="string">&quot;cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=x86-64-v3&quot;</span>),
     }
     <span class="macro">println!</span>(<span class="string">&quot;cargo:rustc-env=KANIDM_PROFILE_NAME={}&quot;</span>, profile);
     <span class="macro">println!</span>(<span class="string">&quot;cargo:rustc-env=KANIDM_CPU_FLAGS={}&quot;</span>, profile_cfg.cpu_flags);
@@ -127,4 +147,4 @@
     );
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="profiles" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="profiles" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

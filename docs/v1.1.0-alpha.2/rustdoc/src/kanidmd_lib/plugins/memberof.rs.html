@@ -1575,6 +1575,23 @@
 <a href="#1575" id="1575">1575</a>
 <a href="#1576" id="1576">1576</a>
 <a href="#1577" id="1577">1577</a>
+<a href="#1578" id="1578">1578</a>
+<a href="#1579" id="1579">1579</a>
+<a href="#1580" id="1580">1580</a>
+<a href="#1581" id="1581">1581</a>
+<a href="#1582" id="1582">1582</a>
+<a href="#1583" id="1583">1583</a>
+<a href="#1584" id="1584">1584</a>
+<a href="#1585" id="1585">1585</a>
+<a href="#1586" id="1586">1586</a>
+<a href="#1587" id="1587">1587</a>
+<a href="#1588" id="1588">1588</a>
+<a href="#1589" id="1589">1589</a>
+<a href="#1590" id="1590">1590</a>
+<a href="#1591" id="1591">1591</a>
+<a href="#1592" id="1592">1592</a>
+<a href="#1593" id="1593">1593</a>
+<a href="#1594" id="1594">1594</a>
 </pre><pre class="rust"><code><span class="comment">// Member Of
 //
 // Generate reverse relationships for groups to their members.
@@ -1793,27 +1810,16 @@
         cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
         ce: <span class="kw-2">&amp;</span>CreateEvent,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="kw">let </span>dyngroup_change = <span class="kw">super</span>::dyngroup::DynGroup::post_create(qs, cand, <span class="kw-2">&amp;</span>ce.ident)<span class="question-mark">?</span>;
+        <span class="self">Self</span>::post_create_inner(qs, cand, <span class="kw-2">&amp;</span>ce.ident)
+    }
 
-        <span class="kw">let </span>group_affect = cand
-            .iter()
-            .map(|e| e.get_uuid())
-            .chain(dyngroup_change.into_iter())
-            .chain(
-                cand.iter()
-                    .filter_map(|e| {
-                        <span class="comment">// Is it a group?
-                        </span><span class="kw">if </span>e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_GROUP) {
-                            e.get_ava_as_refuuid(<span class="string">&quot;member&quot;</span>)
-                        } <span class="kw">else </span>{
-                            <span class="prelude-val">None
-                        </span>}
-                    })
-                    .flatten(),
-            )
-            .collect();
-
-        apply_memberof(qs, group_affect)
+    <span class="attr">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;memberof_post_repl_refresh&quot;</span>, skip_all)]
+    </span><span class="kw">fn </span>post_repl_refresh(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">let </span>ident = Identity::from_internal();
+        <span class="self">Self</span>::post_create_inner(qs, cand, <span class="kw-2">&amp;</span>ident)
     }
 
     <span class="attr">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;memberof_post_modify&quot;</span>, skip_all)]
@@ -1953,6 +1959,34 @@
 }
 
 <span class="kw">impl </span>MemberOf {
+    <span class="kw">fn </span>post_create_inner(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;</span>[Entry&lt;EntrySealed, EntryCommitted&gt;],
+        ident: <span class="kw-2">&amp;</span>Identity,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">let </span>dyngroup_change = <span class="kw">super</span>::dyngroup::DynGroup::post_create(qs, cand, ident)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>group_affect = cand
+            .iter()
+            .map(|e| e.get_uuid())
+            .chain(dyngroup_change.into_iter())
+            .chain(
+                cand.iter()
+                    .filter_map(|e| {
+                        <span class="comment">// Is it a group?
+                        </span><span class="kw">if </span>e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_GROUP) {
+                            e.get_ava_as_refuuid(<span class="string">&quot;member&quot;</span>)
+                        } <span class="kw">else </span>{
+                            <span class="prelude-val">None
+                        </span>}
+                    })
+                    .flatten(),
+            )
+            .collect();
+
+        apply_memberof(qs, group_affect)
+    }
+
     <span class="kw">fn </span>post_modify_inner(
         qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         pre_cand: <span class="kw-2">&amp;</span>[Arc&lt;EntrySealedCommitted&gt;],
@@ -3153,4 +3187,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

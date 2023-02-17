@@ -308,6 +308,8 @@
 <a href="#308" id="308">308</a>
 <a href="#309" id="309">309</a>
 <a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
 </pre><pre class="rust"><code><span class="attr">#![allow(clippy::unwrap_used)]
 
 </span><span class="kw">use </span>uuid::{uuid, Uuid};
@@ -533,6 +535,8 @@
 <span class="kw">pub const </span>UUID_SCHEMA_ATTR_EMAILPRIMARY: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000126&quot;</span>);
 <span class="kw">pub const </span>UUID_SCHEMA_ATTR_EMAILALTERNATIVE: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000127&quot;</span>);
 <span class="kw">pub const </span>UUID_SCHEMA_ATTR_TOTP_IMPORT: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000128&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_REPLICATED: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000129&quot;</span>);
+<span class="kw">pub const </span>UUID_SCHEMA_ATTR_PRIVATE_COOKIE_KEY: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000130&quot;</span>);
 
 <span class="comment">// System and domain infos
 // I&#39;d like to strongly criticise william of the past for making poor choices about these allocations.
@@ -609,7 +613,7 @@
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000041&quot;</span>);
 <span class="kw">pub const </span>_UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000042&quot;</span>);
-<span class="kw">pub const </span>_UUID_IDM_ACP_OAUTH2_READ_PRIV_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000043&quot;</span>);
+<span class="kw">pub const </span>UUID_IDM_ACP_OAUTH2_READ_PRIV_V1: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000043&quot;</span>);
 <span class="kw">pub const </span>_UUID_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1: Uuid =
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000044&quot;</span>);
 <span class="kw">pub const </span>UUID_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1: Uuid =
@@ -619,4 +623,4 @@
 </span><span class="kw">pub const </span>UUID_DOES_NOT_EXIST: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-fffffffffffe&quot;</span>);
 <span class="kw">pub const </span>UUID_ANONYMOUS: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffffffffff&quot;</span>);
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

@@ -4005,7 +4005,34 @@
 <a href="#4005" id="4005">4005</a>
 <a href="#4006" id="4006">4006</a>
 <a href="#4007" id="4007">4007</a>
+<a href="#4008" id="4008">4008</a>
+<a href="#4009" id="4009">4009</a>
+<a href="#4010" id="4010">4010</a>
+<a href="#4011" id="4011">4011</a>
+<a href="#4012" id="4012">4012</a>
+<a href="#4013" id="4013">4013</a>
+<a href="#4014" id="4014">4014</a>
+<a href="#4015" id="4015">4015</a>
+<a href="#4016" id="4016">4016</a>
+<a href="#4017" id="4017">4017</a>
+<a href="#4018" id="4018">4018</a>
+<a href="#4019" id="4019">4019</a>
+<a href="#4020" id="4020">4020</a>
+<a href="#4021" id="4021">4021</a>
+<a href="#4022" id="4022">4022</a>
+<a href="#4023" id="4023">4023</a>
+<a href="#4024" id="4024">4024</a>
+<a href="#4025" id="4025">4025</a>
+<a href="#4026" id="4026">4026</a>
+<a href="#4027" id="4027">4027</a>
+<a href="#4028" id="4028">4028</a>
+<a href="#4029" id="4029">4029</a>
+<a href="#4030" id="4030">4030</a>
+<a href="#4031" id="4031">4031</a>
+<a href="#4032" id="4032">4032</a>
+<a href="#4033" id="4033">4033</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::TryFrom;
+<span class="kw">use </span>std::ops::Deref;
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::time::Duration;
@@ -4088,6 +4115,7 @@
     uat_jwt_signer: Arc&lt;CowCell&lt;JwsSigner&gt;&gt;,
     uat_jwt_validator: Arc&lt;CowCell&lt;JwsValidator&gt;&gt;,
     token_enc_key: Arc&lt;CowCell&lt;Fernet&gt;&gt;,
+    cookie_key: Arc&lt;CowCell&lt;[u8; <span class="number">32</span>]&gt;&gt;,
 }
 
 <span class="doccomment">/// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
@@ -4137,6 +4165,7 @@
     pw_badlist_cache: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, HashSet&lt;String&gt;&gt;,
     uat_jwt_signer: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, JwsSigner&gt;,
     uat_jwt_validator: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, JwsValidator&gt;,
+    cookie_key: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, [u8; <span class="number">32</span>]&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) token_enc_key: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, Fernet&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) oauth2rs: Oauth2ResourceServersWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
 }
@@ -4163,13 +4192,22 @@
         <span class="kw">let </span>(async_tx, async_rx) = unbounded();
 
         <span class="comment">// Get the domain name, as the relying party id.
-        </span><span class="kw">let </span>(rp_id, rp_name, fernet_private_key, es256_private_key, pw_badlist_set, oauth2rs_set) = {
+        </span><span class="kw">let </span>(
+            rp_id,
+            rp_name,
+            fernet_private_key,
+            es256_private_key,
+            cookie_key,
+            pw_badlist_set,
+            oauth2rs_set,
+        ) = {
             <span class="kw">let </span><span class="kw-2">mut </span>qs_read = task::block_on(qs.read());
             (
                 qs_read.get_domain_name().to_string(),
                 qs_read.get_domain_display_name().to_string(),
                 qs_read.get_domain_fernet_private_key()<span class="question-mark">?</span>,
                 qs_read.get_domain_es256_private_key()<span class="question-mark">?</span>,
+                qs_read.get_domain_cookie_key()<span class="question-mark">?</span>,
                 qs_read.get_password_badlist()<span class="question-mark">?</span>,
                 <span class="comment">// Add a read/reload of all oauth2 configurations.
                 </span>qs_read.get_oauth2rs_set()<span class="question-mark">?</span>,
@@ -4186,7 +4224,7 @@
                 <span class="kw">let </span>valid = url.domain().map(|effective_domain| {
                     <span class="comment">// We need to prepend the &#39;.&#39; here to ensure that myexample.com != example.com,
                     // rather than just ends with.
-                    </span>effective_domain.ends_with(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;.{}&quot;</span>, rp_id))
+                    </span>effective_domain.ends_with(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;.{rp_id}&quot;</span>))
                     || effective_domain == rp_id
                 }).unwrap_or(<span class="bool-val">false</span>);
 
@@ -4227,6 +4265,8 @@
         <span class="kw">let </span>uat_jwt_signer = Arc::new(CowCell::new(jwt_signer));
         <span class="kw">let </span>uat_jwt_validator = Arc::new(CowCell::new(jwt_validator));
 
+        <span class="kw">let </span>cookie_key = Arc::new(CowCell::new(cookie_key));
+
         <span class="kw">let </span>oauth2rs =
             Oauth2ResourceServers::try_from((oauth2rs_set, origin_url)).map_err(|e| {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to load oauth2 resource servers - {:?}&quot;</span>, e);
@@ -4247,10 +4287,15 @@
                 uat_jwt_signer,
                 uat_jwt_validator,
                 token_enc_key,
+                cookie_key,
                 oauth2rs: Arc::new(oauth2rs),
             },
             IdmServerDelayed { async_rx },
         ))
+    }
+
+    <span class="kw">pub fn </span>get_cookie_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [u8; <span class="number">32</span>] {
+        <span class="kw-2">*</span><span class="self">self</span>.cookie_key.read().deref()
     }
 
     <span class="attr">#[cfg(test)]
@@ -4308,6 +4353,7 @@
             uat_jwt_signer: <span class="self">self</span>.uat_jwt_signer.write(),
             uat_jwt_validator: <span class="self">self</span>.uat_jwt_validator.write(),
             token_enc_key: <span class="self">self</span>.token_enc_key.write(),
+            cookie_key: <span class="self">self</span>.cookie_key.write(),
             oauth2rs: <span class="self">self</span>.oauth2rs.write(),
         }
     }
@@ -6210,11 +6256,17 @@
                     <span class="kw-2">*</span><span class="self">self</span>.uat_jwt_signer = new_signer;
                     <span class="kw-2">*</span><span class="self">self</span>.uat_jwt_validator = new_validator;
                 })<span class="question-mark">?</span>;
+            <span class="self">self</span>.qs_write
+                .get_domain_cookie_key()
+                .map(|new_cookie_key| {
+                    <span class="kw-2">*</span><span class="self">self</span>.cookie_key = new_cookie_key;
+                })<span class="question-mark">?</span>;
         }
         <span class="comment">// Commit everything.
         </span><span class="self">self</span>.oauth2rs.commit();
         <span class="self">self</span>.uat_jwt_signer.commit();
         <span class="self">self</span>.uat_jwt_validator.commit();
+        <span class="self">self</span>.cookie_key.commit();
         <span class="self">self</span>.token_enc_key.commit();
         <span class="self">self</span>.pw_badlist_cache.commit();
         <span class="self">self</span>.cred_update_sessions.commit();
@@ -8013,4 +8065,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

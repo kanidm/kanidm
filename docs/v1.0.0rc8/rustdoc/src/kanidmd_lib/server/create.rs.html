@@ -255,8 +255,6 @@
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::server::CreateEvent;
 <span class="kw">use </span><span class="kw">crate</span>::server::Plugins;
@@ -326,7 +324,7 @@
 
         // Now, normalise AND validate!
 
-        </span><span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;Vec&lt;Entry&lt;EntrySealed, EntryNew&gt;&gt;, OperationError&gt; = candidates
+        </span><span class="kw">let </span>norm_cand = candidates
             .into_iter()
             .map(|e| {
                 e.validate(<span class="kw-2">&amp;</span><span class="self">self</span>.schema)
@@ -339,9 +337,7 @@
                         </span>e.seal(<span class="kw-2">&amp;</span><span class="self">self</span>.schema)
                     })
             })
-            .collect();
-
-        <span class="kw">let </span>norm_cand: Vec&lt;Entry&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt; = res<span class="question-mark">?</span>;
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;EntrySealedNew&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
 
         <span class="comment">// Run any pre-create plugins now with schema validated entries.
         // This is important for normalisation of certain types IE class
@@ -517,4 +513,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

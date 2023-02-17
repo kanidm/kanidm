@@ -73,12 +73,12 @@
 <span class="kw">impl </span>fmt::Debug <span class="kw">for </span>AuthState {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
-            AuthState::Choose(mechs) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;AuthState::Choose({:?})&quot;</span>, mechs),
-            AuthState::Continue(allow) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;AuthState::Continue({:?})&quot;</span>, allow),
-            AuthState::Denied(reason) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;AuthState::Denied({:?})&quot;</span>, reason),
-            AuthState::Success(_token, issue) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;AuthState::Success({:?})&quot;</span>, issue),
+            AuthState::Choose(mechs) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;AuthState::Choose({mechs:?})&quot;</span>),
+            AuthState::Continue(allow) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;AuthState::Continue({allow:?})&quot;</span>),
+            AuthState::Denied(reason) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;AuthState::Denied({reason:?})&quot;</span>),
+            AuthState::Success(_token, issue) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;AuthState::Success({issue:?})&quot;</span>),
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

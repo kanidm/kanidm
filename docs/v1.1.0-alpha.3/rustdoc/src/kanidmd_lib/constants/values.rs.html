@@ -56,7 +56,9 @@
 <a href="#56" id="56">56</a>
 <a href="#57" id="57">57</a>
 <a href="#58" id="58">58</a>
-</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::uuids::UUID_DOMAIN_INFO;
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::uuids::{UUID_DOMAIN_INFO, UUID_SYSTEM_CONFIG, UUID_SYSTEM_INFO};
 <span class="kw">use </span><span class="kw">crate</span>::value::{PartialValue, Value};
 <span class="kw">use </span>url::Url;
 
@@ -95,6 +97,8 @@
     <span class="kw">pub static </span><span class="kw-2">ref </span>PVCLASS_SYSTEM_CONFIG: PartialValue = PartialValue::new_class(<span class="string">&quot;system_config&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>PVCLASS_TOMBSTONE: PartialValue = PartialValue::new_class(<span class="string">&quot;tombstone&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>PVUUID_DOMAIN_INFO: PartialValue = PartialValue::Uuid(UUID_DOMAIN_INFO);
+    <span class="kw">pub static </span><span class="kw-2">ref </span>PVUUID_SYSTEM_CONFIG: PartialValue = PartialValue::Uuid(UUID_SYSTEM_CONFIG);
+    <span class="kw">pub static </span><span class="kw-2">ref </span>PVUUID_SYSTEM_INFO: PartialValue = PartialValue::Uuid(UUID_SYSTEM_INFO);
     <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_ACCESS_CONTROL_PROFILE: Value = Value::new_class(<span class="string">&quot;access_control_profile&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_ACCESS_CONTROL_SEARCH: Value = Value::new_class(<span class="string">&quot;access_control_search&quot;</span>);
     <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_ACCOUNT: Value = Value::new_class(<span class="string">&quot;account&quot;</span>);
@@ -115,4 +119,4 @@
     <span class="kw">pub static </span><span class="kw-2">ref </span>CLASS_TOMBSTONE: Value = Value::new_class(<span class="string">&quot;tombstone&quot;</span>);
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

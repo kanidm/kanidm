@@ -128,6 +128,18 @@
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
 </pre><pre class="rust"><code><span class="comment">// Manage and generate domain uuid&#39;s and/or trust related domain
 // management.
 
@@ -138,6 +150,7 @@
 
 <span class="kw">use </span>compact_jwt::JwsSigner;
 <span class="kw">use </span>kanidm_proto::v1::OperationError;
+<span class="kw">use </span>rand::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>tracing::trace;
 
 <span class="kw">use </span><span class="kw">crate</span>::event::{CreateEvent, ModifyEvent};
@@ -221,6 +234,7 @@
                     <span class="kw">let </span>v = Value::new_secret_str(<span class="kw-2">&amp;</span>k);
                     e.add_ava(<span class="string">&quot;fernet_private_key_str&quot;</span>, v);
                 }
+
                 <span class="kw">if </span>!e.attribute_pres(<span class="string">&quot;es256_private_key_der&quot;</span>) {
                     <span class="macro">security_info!</span>(<span class="string">&quot;regenerating domain es256 private key&quot;</span>);
                     <span class="kw">let </span>der = JwsSigner::generate_es256()
@@ -232,6 +246,16 @@
                     <span class="kw">let </span>v = Value::new_privatebinary(<span class="kw-2">&amp;</span>der);
                     e.add_ava(<span class="string">&quot;es256_private_key_der&quot;</span>, v);
                 }
+
+                <span class="kw">if </span>!e.attribute_pres(<span class="string">&quot;private_cookie_key&quot;</span>) {
+                    <span class="macro">security_info!</span>(<span class="string">&quot;regenerating domain cookie key&quot;</span>);
+                    <span class="kw">let </span><span class="kw-2">mut </span>key = [<span class="number">0</span>; <span class="number">32</span>];
+                    <span class="kw">let </span><span class="kw-2">mut </span>rng = StdRng::from_entropy();
+                    rng.fill(<span class="kw-2">&amp;mut </span>key);
+                    <span class="kw">let </span>v = Value::new_privatebinary(<span class="kw-2">&amp;</span>key);
+                    e.add_ava(<span class="string">&quot;private_cookie_key&quot;</span>, v);
+                }
+
                 <span class="macro">trace!</span>(<span class="question-mark">?</span>e);
                 <span class="prelude-val">Ok</span>(())
             } <span class="kw">else </span>{
@@ -259,4 +283,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

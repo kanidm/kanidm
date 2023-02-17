@@ -3042,6 +3042,66 @@
 <a href="#3042" id="3042">3042</a>
 <a href="#3043" id="3043">3043</a>
 <a href="#3044" id="3044">3044</a>
+<a href="#3045" id="3045">3045</a>
+<a href="#3046" id="3046">3046</a>
+<a href="#3047" id="3047">3047</a>
+<a href="#3048" id="3048">3048</a>
+<a href="#3049" id="3049">3049</a>
+<a href="#3050" id="3050">3050</a>
+<a href="#3051" id="3051">3051</a>
+<a href="#3052" id="3052">3052</a>
+<a href="#3053" id="3053">3053</a>
+<a href="#3054" id="3054">3054</a>
+<a href="#3055" id="3055">3055</a>
+<a href="#3056" id="3056">3056</a>
+<a href="#3057" id="3057">3057</a>
+<a href="#3058" id="3058">3058</a>
+<a href="#3059" id="3059">3059</a>
+<a href="#3060" id="3060">3060</a>
+<a href="#3061" id="3061">3061</a>
+<a href="#3062" id="3062">3062</a>
+<a href="#3063" id="3063">3063</a>
+<a href="#3064" id="3064">3064</a>
+<a href="#3065" id="3065">3065</a>
+<a href="#3066" id="3066">3066</a>
+<a href="#3067" id="3067">3067</a>
+<a href="#3068" id="3068">3068</a>
+<a href="#3069" id="3069">3069</a>
+<a href="#3070" id="3070">3070</a>
+<a href="#3071" id="3071">3071</a>
+<a href="#3072" id="3072">3072</a>
+<a href="#3073" id="3073">3073</a>
+<a href="#3074" id="3074">3074</a>
+<a href="#3075" id="3075">3075</a>
+<a href="#3076" id="3076">3076</a>
+<a href="#3077" id="3077">3077</a>
+<a href="#3078" id="3078">3078</a>
+<a href="#3079" id="3079">3079</a>
+<a href="#3080" id="3080">3080</a>
+<a href="#3081" id="3081">3081</a>
+<a href="#3082" id="3082">3082</a>
+<a href="#3083" id="3083">3083</a>
+<a href="#3084" id="3084">3084</a>
+<a href="#3085" id="3085">3085</a>
+<a href="#3086" id="3086">3086</a>
+<a href="#3087" id="3087">3087</a>
+<a href="#3088" id="3088">3088</a>
+<a href="#3089" id="3089">3089</a>
+<a href="#3090" id="3090">3090</a>
+<a href="#3091" id="3091">3091</a>
+<a href="#3092" id="3092">3092</a>
+<a href="#3093" id="3093">3093</a>
+<a href="#3094" id="3094">3094</a>
+<a href="#3095" id="3095">3095</a>
+<a href="#3096" id="3096">3096</a>
+<a href="#3097" id="3097">3097</a>
+<a href="#3098" id="3098">3098</a>
+<a href="#3099" id="3099">3099</a>
+<a href="#3100" id="3100">3100</a>
+<a href="#3101" id="3101">3101</a>
+<a href="#3102" id="3102">3102</a>
+<a href="#3103" id="3103">3103</a>
+<a href="#3104" id="3104">3104</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Entries are the base unit of object storage in the server. This is one of the three foundational
 //! concepts along with [`filter`]s and [`schema`] that everything else builds upon.
 //!
@@ -3095,45 +3155,20 @@
 <span class="kw">use </span><span class="kw">crate</span>::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::repl::cid::Cid;
-<span class="kw">use </span><span class="kw">crate</span>::repl::entry::EntryChangelog;
+<span class="kw">use </span><span class="kw">crate</span>::repl::proto::ReplEntryV1;
+
+<span class="comment">// use crate::repl::entry::EntryChangelog;
+</span><span class="kw">use </span><span class="kw">crate</span>::repl::entry::EntryChangeState;
+
 <span class="kw">use </span><span class="kw">crate</span>::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 <span class="kw">use </span><span class="kw">crate</span>::value::{
     IndexType, IntentTokenState, Oauth2Session, PartialValue, Session, SyntaxType, Value,
 };
 <span class="kw">use </span><span class="kw">crate</span>::valueset::{<span class="self">self</span>, ValueSet};
 
-<span class="comment">// use std::convert::TryFrom;
-// use std::str::FromStr;
-
-// make a trait entry for everything to adhere to?
-//  * How to get indexes out?
-//  * How to track pending diffs?
-
-// Entry is really similar to serde Value, but limits the possibility
-// of what certain types could be.
-//
-// The idea of an entry is that we have
-// an entry that looks like:
-//
-// {
-//    &#39;class&#39;: [&#39;object&#39;, ...],
-//    &#39;attr&#39;: [&#39;value&#39;, ...],
-//    &#39;attr&#39;: [&#39;value&#39;, ...],
-//    ...
-// }
-//
-// When we send this as a result to clients, we could embed other objects as:
-//
-// {
-//    &#39;attr&#39;: [
-//        &#39;value&#39;: {
-//        },
-//    ],
-// }
-//
-
-</span><span class="kw">pub type </span>EntryInitNew = Entry&lt;EntryInit, EntryNew&gt;;
+<span class="kw">pub type </span>EntryInitNew = Entry&lt;EntryInit, EntryNew&gt;;
 <span class="kw">pub type </span>EntryInvalidNew = Entry&lt;EntryInvalid, EntryNew&gt;;
+<span class="kw">pub type </span>EntryRefreshNew = Entry&lt;EntryRefresh, EntryNew&gt;;
 <span class="kw">pub type </span>EntrySealedNew = Entry&lt;EntrySealed, EntryNew&gt;;
 <span class="kw">pub type </span>EntrySealedCommitted = Entry&lt;EntrySealed, EntryCommitted&gt;;
 <span class="kw">pub type </span>EntryInvalidCommitted = Entry&lt;EntryInvalid, EntryCommitted&gt;;
@@ -3173,7 +3208,14 @@
 </span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>EntryInvalid {
     cid: Cid,
-    eclog: EntryChangelog,
+    <span class="comment">// eclog: EntryChangelog,
+    </span>ecstate: EntryChangeState,
+}
+
+<span class="comment">// Alternate path - this entry came from a full refresh, and already has an entry change state.
+</span><span class="attr">#[derive(Clone, Debug)]
+</span><span class="kw">pub struct </span>EntryRefresh {
+    ecstate: EntryChangeState,
 }
 
 <span class="comment">/*  |
@@ -3185,8 +3227,8 @@
 </span><span class="kw">pub struct </span>EntryValid {
     <span class="comment">// Asserted with schema, so we know it has a UUID now ...
     </span>uuid: Uuid,
-    cid: Cid,
-    eclog: EntryChangelog,
+    <span class="comment">// eclog: EntryChangelog,
+    </span>ecstate: EntryChangeState,
 }
 
 <span class="comment">/*  |
@@ -3198,7 +3240,8 @@
 </span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>EntrySealed {
     uuid: Uuid,
-    eclog: EntryChangelog,
+    <span class="comment">// eclog: EntryChangelog,
+    </span>ecstate: EntryChangeState,
 }
 
 <span class="comment">/*  |
@@ -3512,7 +3555,7 @@
                             vs.into_iter().map(|v| Value::new_secret_str(<span class="kw-2">&amp;</span>v))
                         )
                     }
-                    <span class="string">&quot;es256_private_key_der&quot; </span>=&gt; {
+                    <span class="string">&quot;es256_private_key_der&quot; </span>| <span class="string">&quot;private_cookie_key&quot; </span>=&gt; {
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_privatebinary_base64(<span class="kw-2">&amp;</span>v))
                         )
@@ -3553,10 +3596,11 @@
          * This is because we need to capture the set_last_changed attribute in
          * the create transition.
          */
-        </span><span class="kw">let </span>eclog = EntryChangelog::new(cid.clone(), <span class="self">self</span>.attrs.clone(), schema);
+        // let eclog = EntryChangelog::new(cid.clone(), self.attrs.clone(), schema);
+        </span><span class="kw">let </span>ecstate = EntryChangeState::new(<span class="kw-2">&amp;</span>cid, <span class="kw-2">&amp;</span><span class="self">self</span>.attrs, schema);
 
         Entry {
-            valid: EntryInvalid { cid, eclog },
+            valid: EntryInvalid { cid, ecstate },
             state: EntryNew,
             attrs: <span class="self">self</span>.attrs,
         }
@@ -3572,10 +3616,11 @@
         <span class="kw">let </span>cid = Cid::new_zero();
         <span class="self">self</span>.set_last_changed(cid.clone());
 
-        <span class="kw">let </span>eclog = EntryChangelog::new_without_schema(cid.clone(), <span class="self">self</span>.attrs.clone());
+        <span class="comment">// let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
+        </span><span class="kw">let </span>ecstate = EntryChangeState::new_without_schema(<span class="kw-2">&amp;</span>cid, <span class="kw-2">&amp;</span><span class="self">self</span>.attrs);
 
         Entry {
-            valid: EntryInvalid { cid, eclog },
+            valid: EntryInvalid { cid, ecstate },
             state: EntryNew,
             attrs: <span class="self">self</span>.attrs,
         }
@@ -3585,12 +3630,12 @@
     </span><span class="kw">pub unsafe fn </span>into_valid_new(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; Entry&lt;EntryValid, EntryNew&gt; {
         <span class="kw">let </span>cid = Cid::new_zero();
         <span class="self">self</span>.set_last_changed(cid.clone());
-        <span class="kw">let </span>eclog = EntryChangelog::new_without_schema(cid.clone(), <span class="self">self</span>.attrs.clone());
+        <span class="comment">// let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
+        </span><span class="kw">let </span>ecstate = EntryChangeState::new_without_schema(<span class="kw-2">&amp;</span>cid, <span class="kw-2">&amp;</span><span class="self">self</span>.attrs);
 
         Entry {
             valid: EntryValid {
-                cid,
-                eclog,
+                ecstate,
                 uuid: <span class="self">self</span>.get_uuid().expect(<span class="string">&quot;Invalid uuid&quot;</span>),
             },
             state: EntryNew,
@@ -3602,10 +3647,11 @@
     </span><span class="kw">pub unsafe fn </span>into_sealed_committed(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; Entry&lt;EntrySealed, EntryCommitted&gt; {
         <span class="kw">let </span>cid = Cid::new_zero();
         <span class="self">self</span>.set_last_changed(cid.clone());
-        <span class="kw">let </span>eclog = EntryChangelog::new_without_schema(cid, <span class="self">self</span>.attrs.clone());
+        <span class="comment">// let eclog = EntryChangelog::new_without_schema(cid, self.attrs.clone());
+        </span><span class="kw">let </span>ecstate = EntryChangeState::new_without_schema(<span class="kw-2">&amp;</span>cid, <span class="kw-2">&amp;</span><span class="self">self</span>.attrs);
         <span class="kw">let </span>uuid = <span class="self">self</span>.get_uuid().unwrap_or_else(Uuid::new_v4);
         Entry {
-            valid: EntrySealed { uuid, eclog },
+            valid: EntrySealed { uuid, ecstate },
             state: EntryCommitted { id: <span class="number">0 </span>},
             attrs: <span class="self">self</span>.attrs,
         }
@@ -3615,12 +3661,13 @@
     </span><span class="kw">pub unsafe fn </span>into_sealed_new(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; Entry&lt;EntrySealed, EntryNew&gt; {
         <span class="kw">let </span>cid = Cid::new_zero();
         <span class="self">self</span>.set_last_changed(cid.clone());
-        <span class="kw">let </span>eclog = EntryChangelog::new_without_schema(cid, <span class="self">self</span>.attrs.clone());
+        <span class="comment">// let eclog = EntryChangelog::new_without_schema(cid, self.attrs.clone());
+        </span><span class="kw">let </span>ecstate = EntryChangeState::new_without_schema(<span class="kw-2">&amp;</span>cid, <span class="kw-2">&amp;</span><span class="self">self</span>.attrs);
 
         Entry {
             valid: EntrySealed {
                 uuid: <span class="self">self</span>.get_uuid().expect(<span class="string">&quot;Invalid uuid&quot;</span>),
-                eclog,
+                ecstate,
             },
             state: EntryNew,
             attrs: <span class="self">self</span>.attrs,
@@ -3649,21 +3696,24 @@
     }
 }
 
-<span class="kw">impl</span>&lt;STATE&gt; Entry&lt;EntryInvalid, STATE&gt; {
-    <span class="comment">// This is only used in tests today, but I don&#39;t want to cfg test it.
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Uuid&gt; {
-        <span class="self">self</span>.attrs.get(<span class="string">&quot;uuid&quot;</span>).and_then(|vs| vs.to_uuid_single())
-    }
+<span class="kw">impl </span>Entry&lt;EntryRefresh, EntryNew&gt; {
+    <span class="kw">pub fn </span>from_repl_entry_v1(repl_entry: <span class="kw-2">&amp;</span>ReplEntryV1) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, OperationError&gt; {
+        <span class="comment">// From the entry, we have to rebuild the ecstate and the attrs.
+        </span><span class="kw">let </span>(ecstate, attrs) = repl_entry.rehydrate()<span class="question-mark">?</span>;
 
-    <span class="doccomment">/// Validate that this entry and its attribute-value sets are conformant to the system&#39;s&#39;
-    /// schema and the relevant syntaxes.
-    </span><span class="kw">pub fn </span>validate(
+        <span class="prelude-val">Ok</span>(Entry {
+            valid: EntryRefresh { ecstate },
+            state: EntryNew,
+            attrs,
+        })
+    }
+}
+
+<span class="kw">impl</span>&lt;STATE&gt; Entry&lt;EntryRefresh, STATE&gt; {
+    <span class="kw">pub fn </span>validate(
         <span class="self">self</span>,
         schema: <span class="kw-2">&amp;</span><span class="kw">dyn </span>SchemaTransaction,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Entry&lt;EntryValid, STATE&gt;, SchemaError&gt; {
-        <span class="kw">let </span>schema_classes = schema.get_classes();
-        <span class="kw">let </span>schema_attributes = schema.get_attributes();
-
         <span class="kw">let </span>uuid: Uuid = <span class="self">self
             </span>.attrs
             .get(<span class="string">&quot;uuid&quot;</span>)
@@ -3677,235 +3727,48 @@
         </span><span class="kw">let </span>ne = Entry {
             valid: EntryValid {
                 uuid,
-                cid: <span class="self">self</span>.valid.cid,
-                eclog: <span class="self">self</span>.valid.eclog,
+                ecstate: <span class="self">self</span>.valid.ecstate,
             },
             state: <span class="self">self</span>.state,
             attrs: <span class="self">self</span>.attrs,
         };
-        <span class="comment">// Now validate it!
-        </span><span class="macro">trace!</span>(<span class="question-mark">?</span>ne.attrs, <span class="string">&quot;Entry::validate -&gt; target&quot;</span>);
 
-        <span class="comment">// We scope here to limit the time of borrow of ne.
-        </span>{
-            <span class="comment">// First, check we have class on the object ....
-            </span><span class="kw">if </span>!ne.attribute_pres(<span class="string">&quot;class&quot;</span>) {
-                <span class="comment">// lrequest_error!(&quot;Missing attribute class&quot;);
-                </span><span class="kw">return </span><span class="prelude-val">Err</span>(SchemaError::NoClassFound);
-            }
+        ne.validate(schema)
+    }
+}
 
-            <span class="comment">// Do we have extensible?
-            </span><span class="kw">let </span>extensible = ne.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_EXTENSIBLE);
+<span class="kw">impl</span>&lt;STATE&gt; Entry&lt;EntryInvalid, STATE&gt; {
+    <span class="comment">// This is only used in tests today, but I don&#39;t want to cfg test it.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Uuid&gt; {
+        <span class="self">self</span>.attrs.get(<span class="string">&quot;uuid&quot;</span>).and_then(|vs| vs.to_uuid_single())
+    }
 
-            <span class="kw">let </span>entry_classes = ne.get_ava_set(<span class="string">&quot;class&quot;</span>).ok_or_else(|| {
-                <span class="macro">admin_debug!</span>(<span class="string">&quot;Attribute &#39;class&#39; missing from entry&quot;</span>);
-                SchemaError::NoClassFound
+    <span class="doccomment">/// Validate that this entry and its attribute-value sets are conformant to the system&#39;s&#39;
+    /// schema and the relevant syntaxes.
+    </span><span class="kw">pub fn </span>validate(
+        <span class="self">self</span>,
+        schema: <span class="kw-2">&amp;</span><span class="kw">dyn </span>SchemaTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Entry&lt;EntryValid, STATE&gt;, SchemaError&gt; {
+        <span class="kw">let </span>uuid: Uuid = <span class="self">self
+            </span>.attrs
+            .get(<span class="string">&quot;uuid&quot;</span>)
+            .ok_or_else(|| SchemaError::MissingMustAttribute(<span class="macro">vec!</span>[<span class="string">&quot;uuid&quot;</span>.to_string()]))
+            .and_then(|vs| {
+                vs.to_uuid_single()
+                    .ok_or_else(|| SchemaError::MissingMustAttribute(<span class="macro">vec!</span>[<span class="string">&quot;uuid&quot;</span>.to_string()]))
             })<span class="question-mark">?</span>;
-            <span class="kw">let </span><span class="kw-2">mut </span>invalid_classes = Vec::with_capacity(<span class="number">0</span>);
 
-            <span class="kw">let </span><span class="kw-2">mut </span>classes: Vec&lt;<span class="kw-2">&amp;</span>SchemaClass&gt; = Vec::with_capacity(entry_classes.len());
+        <span class="comment">// Build the new valid entry ...
+        </span><span class="kw">let </span>ne = Entry {
+            valid: EntryValid {
+                uuid,
+                ecstate: <span class="self">self</span>.valid.ecstate,
+            },
+            state: <span class="self">self</span>.state,
+            attrs: <span class="self">self</span>.attrs,
+        };
 
-            <span class="comment">// We need to keep the btreeset of entry classes here so we can check the
-            // requires and excludes.
-            </span><span class="kw">let </span>entry_classes = <span class="kw">if let </span><span class="prelude-val">Some</span>(ec) = entry_classes.as_iutf8_set() {
-                ec.iter()
-                    .for_each(|s| <span class="kw">match </span>schema_classes.get(s.as_str()) {
-                        <span class="prelude-val">Some</span>(x) =&gt; classes.push(x),
-                        <span class="prelude-val">None </span>=&gt; {
-                            <span class="macro">admin_debug!</span>(<span class="string">&quot;invalid class: {:?}&quot;</span>, s);
-                            invalid_classes.push(s.to_string())
-                        }
-                    });
-                ec
-            } <span class="kw">else </span>{
-                <span class="macro">admin_debug!</span>(<span class="string">&quot;corrupt class attribute&quot;</span>);
-                <span class="kw">return </span><span class="prelude-val">Err</span>(SchemaError::NoClassFound);
-            };
-
-            <span class="kw">if </span>!invalid_classes.is_empty() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(SchemaError::InvalidClass(invalid_classes));
-            };
-
-            <span class="comment">// Now determine the set of excludes and requires we have, and then
-            // assert we don&#39;t violate them.
-
-            </span><span class="kw">let </span>supplements_classes: Vec&lt;<span class="kw">_</span>&gt; = classes
-                .iter()
-                .flat_map(|cls| cls.systemsupplements.iter().chain(cls.supplements.iter()))
-                .collect();
-
-            <span class="comment">// So long as one supplement is present we can continue.
-            </span><span class="kw">let </span>valid_supplements = <span class="kw">if </span>supplements_classes.is_empty() {
-                <span class="comment">// No need to check.
-                </span><span class="bool-val">true
-            </span>} <span class="kw">else </span>{
-                supplements_classes
-                    .iter()
-                    .any(|class| entry_classes.contains(class.as_str()))
-            };
-
-            <span class="kw">if </span>!valid_supplements {
-                <span class="macro">admin_warn!</span>(
-                    <span class="string">&quot;Validation error, the following possible supplement classes are missing - {:?}&quot;</span>,
-                    supplements_classes
-                );
-                <span class="kw">let </span>supplements_classes =
-                    supplements_classes.iter().map(|s| s.to_string()).collect();
-                <span class="kw">return </span><span class="prelude-val">Err</span>(SchemaError::SupplementsNotSatisfied(supplements_classes));
-            }
-
-            <span class="kw">let </span>excludes_classes: Vec&lt;<span class="kw">_</span>&gt; = classes
-                .iter()
-                .flat_map(|cls| cls.systemexcludes.iter().chain(cls.excludes.iter()))
-                .collect();
-
-            <span class="kw">let </span><span class="kw-2">mut </span>invalid_excludes = Vec::with_capacity(<span class="number">0</span>);
-
-            excludes_classes.iter().for_each(|class| {
-                <span class="kw">if </span>entry_classes.contains(class.as_str()) {
-                    invalid_excludes.push(class.to_string())
-                }
-            });
-
-            <span class="kw">if </span>!invalid_excludes.is_empty() {
-                <span class="macro">admin_warn!</span>(
-                    <span class="string">&quot;Validation error, the following excluded classes are present - {:?}&quot;</span>,
-                    invalid_excludes
-                );
-                <span class="kw">return </span><span class="prelude-val">Err</span>(SchemaError::ExcludesNotSatisfied(invalid_excludes));
-            }
-
-            <span class="comment">// What this is really doing is taking a set of classes, and building an
-            // &quot;overall&quot; class that describes this exact object for checking. IE we
-            // build a super must/may set from the small class must/may sets.
-
-            //   for each class
-            //      add systemmust/must and systemmay/may to their lists
-            //      add anything from must also into may
-
-            // Now from the set of valid classes make a list of must/may
-            //
-            // NOTE: We still need this on extensible, because we still need to satisfy
-            // our other must conditions as well!
-            </span><span class="kw">let </span>must: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw-2">&amp;</span>SchemaAttribute&gt;, <span class="kw">_</span>&gt; = classes
-                .iter()
-                <span class="comment">// Join our class systemmmust + must into one iter
-                </span>.flat_map(|cls| cls.systemmust.iter().chain(cls.must.iter()))
-                .map(|s| {
-                    <span class="comment">// This should NOT fail - if it does, it means our schema is
-                    // in an invalid state!
-                    </span>schema_attributes.get(s).ok_or(SchemaError::Corrupted)
-                })
-                .collect();
-
-            <span class="kw">let </span>must = must<span class="question-mark">?</span>;
-
-            <span class="comment">// Check that all must are inplace
-            //   for each attr in must, check it&#39;s present on our ent
-            </span><span class="kw">let </span><span class="kw-2">mut </span>missing_must = Vec::with_capacity(<span class="number">0</span>);
-            must.iter().for_each(|attr| {
-                <span class="kw">let </span>avas = ne.get_ava_set(<span class="kw-2">&amp;</span>attr.name);
-                <span class="kw">if </span>avas.is_none() {
-                    missing_must.push(attr.name.to_string());
-                }
-            });
-
-            <span class="kw">if </span>!missing_must.is_empty() {
-                <span class="macro">admin_warn!</span>(
-                    <span class="string">&quot;Validation error, the following required (must) attributes are missing - {:?}&quot;</span>,
-                    missing_must
-                );
-                <span class="kw">return </span><span class="prelude-val">Err</span>(SchemaError::MissingMustAttribute(missing_must));
-            }
-
-            <span class="kw">if </span>extensible {
-                ne.attrs.iter().try_for_each(|(attr_name, avas)| {
-                    <span class="kw">match </span>schema_attributes.get(attr_name) {
-                        <span class="prelude-val">Some</span>(a_schema) =&gt; {
-                            <span class="comment">// Now, for each type we do a *full* check of the syntax
-                            // and validity of the ava.
-                            </span><span class="kw">if </span>a_schema.phantom {
-                                <span class="macro">admin_warn!</span>(
-                                    <span class="string">&quot;Rejecting attempt to add phantom attribute to extensible object: {}&quot;</span>,
-                                    attr_name
-                                );
-                                <span class="prelude-val">Err</span>(SchemaError::PhantomAttribute(attr_name.to_string()))
-                            } <span class="kw">else </span>{
-                                a_schema.validate_ava(attr_name.as_str(), avas)
-                                <span class="comment">// .map_err(|e| lrequest_error!(&quot;Failed to validate: {}&quot;, attr_name);)
-                            </span>}
-                        }
-                        <span class="prelude-val">None </span>=&gt; {
-                            <span class="macro">admin_error!</span>(
-                                <span class="string">&quot;Invalid Attribute {}, undefined in schema_attributes&quot;</span>,
-                                attr_name.to_string()
-                            );
-                            <span class="prelude-val">Err</span>(SchemaError::InvalidAttribute(
-                                attr_name.to_string()
-                            ))
-                        }
-                    }
-                })<span class="question-mark">?</span>;
-            } <span class="kw">else </span>{
-                <span class="comment">// Note - we do NOT need to check phantom attributes here because they are
-                // not allowed to exist in the class, which means a phantom attribute can&#39;t
-                // be in the may/must set, and would FAIL our normal checks anyway.
-
-                // The set of &quot;may&quot; is a combination of may and must, since we have already
-                // asserted that all must requirements are fulfilled. This allows us to
-                // perform extended attribute checking in a single pass.
-                </span><span class="kw">let </span>may: <span class="prelude-ty">Result</span>&lt;Map&lt;<span class="kw-2">&amp;</span>AttrString, <span class="kw-2">&amp;</span>SchemaAttribute&gt;, <span class="kw">_</span>&gt; = classes
-                    .iter()
-                    <span class="comment">// Join our class systemmmust + must + systemmay + may into one.
-                    </span>.flat_map(|cls| {
-                        cls.systemmust
-                            .iter()
-                            .chain(cls.must.iter())
-                            .chain(cls.systemmay.iter())
-                            .chain(cls.may.iter())
-                    })
-                    .map(|s| {
-                        <span class="comment">// This should NOT fail - if it does, it means our schema is
-                        // in an invalid state!
-                        </span><span class="prelude-val">Ok</span>((s, schema_attributes.get(s).ok_or(SchemaError::Corrupted)<span class="question-mark">?</span>))
-                    })
-                    .collect();
-
-                <span class="kw">let </span>may = may<span class="question-mark">?</span>;
-
-                <span class="comment">// TODO #70: Error needs to say what is missing
-                // We need to return *all* missing attributes, not just the first error
-                // we find. This will probably take a rewrite of the function definition
-                // to return a result&lt;_, vec&lt;schemaerror&gt;&gt; and for the schema errors to take
-                // information about what is invalid. It&#39;s pretty nontrivial.
-
-                // Check that any other attributes are in may
-                //   for each attr on the object, check it&#39;s in the may+must set
-                </span>ne.attrs.iter().try_for_each(|(attr_name, avas)| {
-                    <span class="kw">match </span>may.get(attr_name) {
-                        <span class="prelude-val">Some</span>(a_schema) =&gt; {
-                            <span class="comment">// Now, for each type we do a *full* check of the syntax
-                            // and validity of the ava.
-                            </span>a_schema.validate_ava(attr_name.as_str(), avas)
-                            <span class="comment">// .map_err(|e| lrequest_error!(&quot;Failed to validate: {}&quot;, attr_name);
-                        </span>}
-                        <span class="prelude-val">None </span>=&gt; {
-                            <span class="macro">admin_error!</span>(
-                                <span class="string">&quot;{} - not found in the list of valid attributes for this set of classes - valid attributes are {:?}&quot;</span>,
-                                attr_name.to_string(),
-                                may.keys().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-                            );
-                            <span class="prelude-val">Err</span>(SchemaError::AttributeNotValidForClass(
-                                attr_name.to_string()
-                            ))
-                        }
-                    }
-                })<span class="question-mark">?</span>;
-            }
-        } <span class="comment">// unborrow ne.
-
-        // Well, we got here, so okay!
-        </span><span class="prelude-val">Ok</span>(ne)
+        ne.validate(schema)
     }
 }
 
@@ -3934,9 +3797,8 @@
         <span class="kw">let </span>uuid = <span class="self">self</span>.get_uuid().expect(<span class="string">&quot;Invalid uuid&quot;</span>);
         Entry {
             valid: EntryValid {
-                cid: <span class="self">self</span>.valid.cid,
                 uuid,
-                eclog: <span class="self">self</span>.valid.eclog,
+                ecstate: <span class="self">self</span>.valid.ecstate,
             },
             state: EntryNew,
             attrs: <span class="self">self</span>.attrs,
@@ -3948,10 +3810,10 @@
         <span class="comment">// This will put the modify ahead of the recycle transition.
         </span><span class="self">self</span>.add_ava(<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;recycled&quot;</span>));
 
-        <span class="comment">// Last step before we proceed.
-        </span><span class="self">self</span>.valid.eclog.recycled(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid);
+        <span class="comment">// Change state repl doesn&#39;t need this flag
+        // self.valid.ecstate.recycled(&amp;self.valid.cid);
 
-        Entry {
+        </span>Entry {
             valid: <span class="self">self</span>.valid,
             state: <span class="self">self</span>.state,
             attrs: <span class="self">self</span>.attrs,
@@ -3963,10 +3825,10 @@
         <span class="comment">// This will put the modify ahead of the revive transition.
         </span><span class="self">self</span>.remove_ava(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_RECYCLED);
 
-        <span class="comment">// Last step before we proceed.
-        </span><span class="self">self</span>.valid.eclog.revive(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid);
+        <span class="comment">// Change state repl doesn&#39;t need this flag
+        // self.valid.ecstate.revive(&amp;self.valid.cid);
 
-        Entry {
+        </span>Entry {
             valid: <span class="self">self</span>.valid,
             state: <span class="self">self</span>.state,
             attrs: <span class="self">self</span>.attrs,
@@ -3981,9 +3843,8 @@
         <span class="kw">let </span>uuid = <span class="self">self</span>.get_uuid().expect(<span class="string">&quot;Invalid uuid&quot;</span>);
         Entry {
             valid: EntryValid {
-                cid: <span class="self">self</span>.valid.cid,
                 uuid,
-                eclog: <span class="self">self</span>.valid.eclog,
+                ecstate: <span class="self">self</span>.valid.ecstate,
             },
             state: EntryNew,
             attrs: <span class="self">self</span>.attrs,
@@ -3996,7 +3857,7 @@
         Entry {
             valid: EntrySealed {
                 uuid,
-                eclog: <span class="self">self</span>.valid.eclog,
+                ecstate: <span class="self">self</span>.valid.ecstate,
             },
             state: EntryCommitted { id: <span class="number">0 </span>},
             attrs: <span class="self">self</span>.attrs,
@@ -4026,9 +3887,8 @@
         <span class="kw">let </span>uuid = <span class="self">self</span>.get_uuid().unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntryValid {
-                cid: <span class="self">self</span>.valid.cid,
                 uuid,
-                eclog: <span class="self">self</span>.valid.eclog,
+                ecstate: <span class="self">self</span>.valid.ecstate,
             },
             state: EntryCommitted { id: <span class="number">0 </span>},
             attrs: <span class="self">self</span>.attrs,
@@ -4043,7 +3903,7 @@
         Entry {
             valid: EntrySealed {
                 uuid,
-                eclog: <span class="self">self</span>.valid.eclog,
+                ecstate: <span class="self">self</span>.valid.ecstate,
             },
             state: <span class="self">self</span>.state,
             attrs: <span class="self">self</span>.attrs,
@@ -4103,11 +3963,13 @@
         </span><span class="self">self
     </span>}
 
-    <span class="kw">pub fn </span>get_changelog_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>EntryChangelog {
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>.valid.eclog
+    <span class="comment">/*
+    pub fn get_changelog_mut(&amp;mut self) -&gt; &amp;mut EntryChangelog {
+        &amp;mut self.valid.eclog
     }
+    */
 
-    <span class="doccomment">/// Insert a claim to this entry. This claim can NOT be persisted to disk, this is only
+    </span><span class="doccomment">/// Insert a claim to this entry. This claim can NOT be persisted to disk, this is only
     /// used during a single Event session.
     </span><span class="kw">pub fn </span>insert_claim(<span class="kw-2">&amp;mut </span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>str) {
         <span class="self">self</span>.add_ava_int(<span class="string">&quot;claim&quot;</span>, Value::new_iutf8(value));
@@ -4183,11 +4045,11 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_uuid2rdn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="self">self</span>.attrs
             .get(<span class="string">&quot;spn&quot;</span>)
-            .and_then(|vs| vs.to_proto_string_single().map(|v| <span class="macro">format!</span>(<span class="string">&quot;spn={}&quot;</span>, v)))
+            .and_then(|vs| vs.to_proto_string_single().map(|v| <span class="macro">format!</span>(<span class="string">&quot;spn={v}&quot;</span>)))
             .or_else(|| {
                 <span class="self">self</span>.attrs
                     .get(<span class="string">&quot;name&quot;</span>)
-                    .and_then(|vs| vs.to_proto_string_single().map(|v| <span class="macro">format!</span>(<span class="string">&quot;name={}&quot;</span>, v)))
+                    .and_then(|vs| vs.to_proto_string_single().map(|v| <span class="macro">format!</span>(<span class="string">&quot;name={v}&quot;</span>)))
             })
             .unwrap_or_else(|| <span class="macro">format!</span>(<span class="string">&quot;uuid={}&quot;</span>, <span class="self">self</span>.get_uuid().as_hyphenated()))
     }
@@ -4579,10 +4441,11 @@
             .and_then(|vs| vs.as_cid_set())
             .and_then(|set| set.iter().next().cloned())<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>eclog = EntryChangelog::new_without_schema(cid, attrs.clone());
+        <span class="comment">// let eclog = EntryChangelog::new_without_schema(cid, attrs.clone());
+        </span><span class="kw">let </span>ecstate = EntryChangeState::new_without_schema(<span class="kw-2">&amp;</span>cid, <span class="kw-2">&amp;</span>attrs);
 
         <span class="prelude-val">Some</span>(Entry {
-            valid: EntrySealed { uuid, eclog },
+            valid: EntrySealed { uuid, ecstate },
             state: EntryCommitted { id },
             attrs,
         })
@@ -4637,34 +4500,33 @@
 
     <span class="doccomment">/// Convert this recycled entry, into a tombstone ready for reaping.
     </span><span class="kw">pub fn </span>to_tombstone(<span class="kw-2">&amp;</span><span class="self">self</span>, cid: Cid) -&gt; Entry&lt;EntryInvalid, EntryCommitted&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>eclog = <span class="self">self</span>.valid.eclog.clone();
+        <span class="kw">let </span><span class="kw-2">mut </span>ecstate = <span class="self">self</span>.valid.ecstate.clone();
         <span class="comment">// Duplicate this to a tombstone entry
-        </span><span class="kw">let </span>class_ava = <span class="macro">vs_iutf8!</span>[<span class="string">&quot;object&quot;</span>, <span class="string">&quot;tombstone&quot;</span>];
-        <span class="kw">let </span>last_mod_ava = <span class="macro">vs_cid!</span>[cid.clone()];
+        </span><span class="kw">let </span><span class="kw-2">mut </span>attrs_new: Eattrs = Map::new();
 
-        <span class="kw">let </span><span class="kw-2">mut </span>attrs_new: Eattrs = Map::new();
+        <span class="kw">let </span>class_ava = <span class="macro">vs_iutf8!</span>[<span class="string">&quot;object&quot;</span>, <span class="string">&quot;tombstone&quot;</span>];
+        <span class="kw">let </span>last_mod_ava = <span class="macro">vs_cid!</span>[cid.clone()];
 
         attrs_new.insert(AttrString::from(<span class="string">&quot;uuid&quot;</span>), <span class="macro">vs_uuid!</span>[<span class="self">self</span>.get_uuid()]);
         attrs_new.insert(AttrString::from(<span class="string">&quot;class&quot;</span>), class_ava);
         attrs_new.insert(AttrString::from(<span class="string">&quot;last_modified_cid&quot;</span>), last_mod_ava);
 
         <span class="comment">// ⚠️  No return from this point!
-        </span>eclog.tombstone(<span class="kw-2">&amp;</span>cid, attrs_new.clone());
+        </span>ecstate.tombstone(<span class="kw-2">&amp;</span>cid);
 
         Entry {
-            valid: EntryInvalid { cid, eclog },
+            valid: EntryInvalid { cid, ecstate },
             state: <span class="self">self</span>.state.clone(),
             attrs: attrs_new,
         }
     }
 
     <span class="doccomment">/// Given a current transaction change identifier, mark this entry as valid and committed.
-    </span><span class="kw">pub fn </span>into_valid(<span class="self">self</span>, cid: Cid, eclog: EntryChangelog) -&gt; Entry&lt;EntryValid, EntryCommitted&gt; {
+    </span><span class="kw">pub fn </span>into_valid(<span class="self">self</span>, ecstate: EntryChangeState) -&gt; Entry&lt;EntryValid, EntryCommitted&gt; {
         Entry {
             valid: EntryValid {
                 uuid: <span class="self">self</span>.valid.uuid,
-                cid,
-                eclog,
+                ecstate,
             },
             state: <span class="self">self</span>.state,
             attrs: <span class="self">self</span>.attrs,
@@ -4677,32 +4539,258 @@
         results: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="prelude-ty">Result</span>&lt;(), ConsistencyError&gt;&gt;,
     ) {
         <span class="self">self</span>.valid
-            .eclog
+            .ecstate
             .verify(schema, <span class="kw-2">&amp;</span><span class="self">self</span>.attrs, <span class="self">self</span>.state.id, results);
     }
 }
 
 <span class="kw">impl</span>&lt;STATE&gt; Entry&lt;EntryValid, STATE&gt; {
-    <span class="kw">pub fn </span>invalidate(<span class="self">self</span>, eclog: EntryChangelog) -&gt; Entry&lt;EntryInvalid, STATE&gt; {
+    <span class="kw">fn </span>validate(
+        <span class="self">self</span>,
+        schema: <span class="kw-2">&amp;</span><span class="kw">dyn </span>SchemaTransaction,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Entry&lt;EntryValid, STATE&gt;, SchemaError&gt; {
+        <span class="kw">let </span>schema_classes = schema.get_classes();
+        <span class="kw">let </span>schema_attributes = schema.get_attributes();
+
+        <span class="comment">// Now validate it!
+        </span><span class="macro">trace!</span>(<span class="question-mark">?</span><span class="self">self</span>.attrs, <span class="string">&quot;Entry::validate -&gt; target&quot;</span>);
+
+        <span class="comment">// First, check we have class on the object ....
+        </span><span class="kw">if </span>!<span class="self">self</span>.attribute_pres(<span class="string">&quot;class&quot;</span>) {
+            <span class="comment">// lrequest_error!(&quot;Missing attribute class&quot;);
+            </span><span class="kw">return </span><span class="prelude-val">Err</span>(SchemaError::NoClassFound);
+        }
+
+        <span class="comment">// Do we have extensible?
+        </span><span class="kw">let </span>extensible = <span class="self">self</span>.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_EXTENSIBLE);
+
+        <span class="kw">let </span>entry_classes = <span class="self">self</span>.get_ava_set(<span class="string">&quot;class&quot;</span>).ok_or_else(|| {
+            <span class="macro">admin_debug!</span>(<span class="string">&quot;Attribute &#39;class&#39; missing from entry&quot;</span>);
+            SchemaError::NoClassFound
+        })<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>invalid_classes = Vec::with_capacity(<span class="number">0</span>);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>classes: Vec&lt;<span class="kw-2">&amp;</span>SchemaClass&gt; = Vec::with_capacity(entry_classes.len());
+
+        <span class="comment">// We need to keep the btreeset of entry classes here so we can check the
+        // requires and excludes.
+        </span><span class="kw">let </span>entry_classes = <span class="kw">if let </span><span class="prelude-val">Some</span>(ec) = entry_classes.as_iutf8_set() {
+            ec.iter()
+                .for_each(|s| <span class="kw">match </span>schema_classes.get(s.as_str()) {
+                    <span class="prelude-val">Some</span>(x) =&gt; classes.push(x),
+                    <span class="prelude-val">None </span>=&gt; {
+                        <span class="macro">admin_debug!</span>(<span class="string">&quot;invalid class: {:?}&quot;</span>, s);
+                        invalid_classes.push(s.to_string())
+                    }
+                });
+            ec
+        } <span class="kw">else </span>{
+            <span class="macro">admin_debug!</span>(<span class="string">&quot;corrupt class attribute&quot;</span>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(SchemaError::NoClassFound);
+        };
+
+        <span class="kw">if </span>!invalid_classes.is_empty() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(SchemaError::InvalidClass(invalid_classes));
+        };
+
+        <span class="comment">// Now determine the set of excludes and requires we have, and then
+        // assert we don&#39;t violate them.
+
+        </span><span class="kw">let </span>supplements_classes: Vec&lt;<span class="kw">_</span>&gt; = classes
+            .iter()
+            .flat_map(|cls| cls.systemsupplements.iter().chain(cls.supplements.iter()))
+            .collect();
+
+        <span class="comment">// So long as one supplement is present we can continue.
+        </span><span class="kw">let </span>valid_supplements = <span class="kw">if </span>supplements_classes.is_empty() {
+            <span class="comment">// No need to check.
+            </span><span class="bool-val">true
+        </span>} <span class="kw">else </span>{
+            supplements_classes
+                .iter()
+                .any(|class| entry_classes.contains(class.as_str()))
+        };
+
+        <span class="kw">if </span>!valid_supplements {
+            <span class="macro">admin_warn!</span>(
+                <span class="string">&quot;Validation error, the following possible supplement classes are missing - {:?}&quot;</span>,
+                supplements_classes
+            );
+            <span class="kw">let </span>supplements_classes = supplements_classes.iter().map(|s| s.to_string()).collect();
+            <span class="kw">return </span><span class="prelude-val">Err</span>(SchemaError::SupplementsNotSatisfied(supplements_classes));
+        }
+
+        <span class="kw">let </span>excludes_classes: Vec&lt;<span class="kw">_</span>&gt; = classes
+            .iter()
+            .flat_map(|cls| cls.systemexcludes.iter().chain(cls.excludes.iter()))
+            .collect();
+
+        <span class="kw">let </span><span class="kw-2">mut </span>invalid_excludes = Vec::with_capacity(<span class="number">0</span>);
+
+        excludes_classes.iter().for_each(|class| {
+            <span class="kw">if </span>entry_classes.contains(class.as_str()) {
+                invalid_excludes.push(class.to_string())
+            }
+        });
+
+        <span class="kw">if </span>!invalid_excludes.is_empty() {
+            <span class="macro">admin_warn!</span>(
+                <span class="string">&quot;Validation error, the following excluded classes are present - {:?}&quot;</span>,
+                invalid_excludes
+            );
+            <span class="kw">return </span><span class="prelude-val">Err</span>(SchemaError::ExcludesNotSatisfied(invalid_excludes));
+        }
+
+        <span class="comment">// What this is really doing is taking a set of classes, and building an
+        // &quot;overall&quot; class that describes this exact object for checking. IE we
+        // build a super must/may set from the small class must/may sets.
+
+        //   for each class
+        //      add systemmust/must and systemmay/may to their lists
+        //      add anything from must also into may
+
+        // Now from the set of valid classes make a list of must/may
+        //
+        // NOTE: We still need this on extensible, because we still need to satisfy
+        // our other must conditions as well!
+        </span><span class="kw">let </span>must: <span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw-2">&amp;</span>SchemaAttribute&gt;, <span class="kw">_</span>&gt; = classes
+            .iter()
+            <span class="comment">// Join our class systemmmust + must into one iter
+            </span>.flat_map(|cls| cls.systemmust.iter().chain(cls.must.iter()))
+            .map(|s| {
+                <span class="comment">// This should NOT fail - if it does, it means our schema is
+                // in an invalid state!
+                </span>schema_attributes.get(s).ok_or(SchemaError::Corrupted)
+            })
+            .collect();
+
+        <span class="kw">let </span>must = must<span class="question-mark">?</span>;
+
+        <span class="comment">// Check that all must are inplace
+        //   for each attr in must, check it&#39;s present on our ent
+        </span><span class="kw">let </span><span class="kw-2">mut </span>missing_must = Vec::with_capacity(<span class="number">0</span>);
+        must.iter().for_each(|attr| {
+            <span class="kw">let </span>avas = <span class="self">self</span>.get_ava_set(<span class="kw-2">&amp;</span>attr.name);
+            <span class="kw">if </span>avas.is_none() {
+                missing_must.push(attr.name.to_string());
+            }
+        });
+
+        <span class="kw">if </span>!missing_must.is_empty() {
+            <span class="macro">admin_warn!</span>(
+                <span class="string">&quot;Validation error, the following required (must) attributes are missing - {:?}&quot;</span>,
+                missing_must
+            );
+            <span class="kw">return </span><span class="prelude-val">Err</span>(SchemaError::MissingMustAttribute(missing_must));
+        }
+
+        <span class="kw">if </span>extensible {
+            <span class="self">self</span>.attrs.iter().try_for_each(|(attr_name, avas)| {
+                    <span class="kw">match </span>schema_attributes.get(attr_name) {
+                        <span class="prelude-val">Some</span>(a_schema) =&gt; {
+                            <span class="comment">// Now, for each type we do a *full* check of the syntax
+                            // and validity of the ava.
+                            </span><span class="kw">if </span>a_schema.phantom {
+                                <span class="macro">admin_warn!</span>(
+                                    <span class="string">&quot;Rejecting attempt to add phantom attribute to extensible object: {}&quot;</span>,
+                                    attr_name
+                                );
+                                <span class="prelude-val">Err</span>(SchemaError::PhantomAttribute(attr_name.to_string()))
+                            } <span class="kw">else </span>{
+                                a_schema.validate_ava(attr_name.as_str(), avas)
+                                <span class="comment">// .map_err(|e| lrequest_error!(&quot;Failed to validate: {}&quot;, attr_name);)
+                            </span>}
+                        }
+                        <span class="prelude-val">None </span>=&gt; {
+                            <span class="macro">admin_error!</span>(
+                                <span class="string">&quot;Invalid Attribute {}, undefined in schema_attributes&quot;</span>,
+                                attr_name.to_string()
+                            );
+                            <span class="prelude-val">Err</span>(SchemaError::InvalidAttribute(
+                                attr_name.to_string()
+                            ))
+                        }
+                    }
+                })<span class="question-mark">?</span>;
+        } <span class="kw">else </span>{
+            <span class="comment">// Note - we do NOT need to check phantom attributes here because they are
+            // not allowed to exist in the class, which means a phantom attribute can&#39;t
+            // be in the may/must set, and would FAIL our normal checks anyway.
+
+            // The set of &quot;may&quot; is a combination of may and must, since we have already
+            // asserted that all must requirements are fulfilled. This allows us to
+            // perform extended attribute checking in a single pass.
+            </span><span class="kw">let </span>may: <span class="prelude-ty">Result</span>&lt;Map&lt;<span class="kw-2">&amp;</span>AttrString, <span class="kw-2">&amp;</span>SchemaAttribute&gt;, <span class="kw">_</span>&gt; = classes
+                .iter()
+                <span class="comment">// Join our class systemmmust + must + systemmay + may into one.
+                </span>.flat_map(|cls| {
+                    cls.systemmust
+                        .iter()
+                        .chain(cls.must.iter())
+                        .chain(cls.systemmay.iter())
+                        .chain(cls.may.iter())
+                })
+                .map(|s| {
+                    <span class="comment">// This should NOT fail - if it does, it means our schema is
+                    // in an invalid state!
+                    </span><span class="prelude-val">Ok</span>((s, schema_attributes.get(s).ok_or(SchemaError::Corrupted)<span class="question-mark">?</span>))
+                })
+                .collect();
+
+            <span class="kw">let </span>may = may<span class="question-mark">?</span>;
+
+            <span class="comment">// TODO #70: Error needs to say what is missing
+            // We need to return *all* missing attributes, not just the first error
+            // we find. This will probably take a rewrite of the function definition
+            // to return a result&lt;_, vec&lt;schemaerror&gt;&gt; and for the schema errors to take
+            // information about what is invalid. It&#39;s pretty nontrivial.
+
+            // Check that any other attributes are in may
+            //   for each attr on the object, check it&#39;s in the may+must set
+            </span><span class="self">self</span>.attrs.iter().try_for_each(|(attr_name, avas)| {
+                    <span class="kw">match </span>may.get(attr_name) {
+                        <span class="prelude-val">Some</span>(a_schema) =&gt; {
+                            <span class="comment">// Now, for each type we do a *full* check of the syntax
+                            // and validity of the ava.
+                            </span>a_schema.validate_ava(attr_name.as_str(), avas)
+                            <span class="comment">// .map_err(|e| lrequest_error!(&quot;Failed to validate: {}&quot;, attr_name);
+                        </span>}
+                        <span class="prelude-val">None </span>=&gt; {
+                            <span class="macro">admin_error!</span>(
+                                <span class="string">&quot;{} - not found in the list of valid attributes for this set of classes - valid attributes are {:?}&quot;</span>,
+                                attr_name.to_string(),
+                                may.keys().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+                            );
+                            <span class="prelude-val">Err</span>(SchemaError::AttributeNotValidForClass(
+                                attr_name.to_string()
+                            ))
+                        }
+                    }
+                })<span class="question-mark">?</span>;
+        }
+
+        <span class="comment">// Well, we got here, so okay!
+        </span><span class="prelude-val">Ok</span>(<span class="self">self</span>)
+    }
+
+    <span class="kw">pub fn </span>invalidate(<span class="self">self</span>, cid: Cid, ecstate: EntryChangeState) -&gt; Entry&lt;EntryInvalid, STATE&gt; {
         Entry {
-            valid: EntryInvalid {
-                cid: <span class="self">self</span>.valid.cid,
-                eclog,
-            },
+            valid: EntryInvalid { cid, ecstate },
             state: <span class="self">self</span>.state,
             attrs: <span class="self">self</span>.attrs,
         }
     }
 
-    <span class="kw">pub fn </span>seal(<span class="self">self</span>, _schema: <span class="kw-2">&amp;</span><span class="kw">dyn </span>SchemaTransaction) -&gt; Entry&lt;EntrySealed, STATE&gt; {
-        <span class="kw">let </span>EntryValid {
-            cid: <span class="kw">_</span>,
-            uuid,
-            eclog,
-        } = <span class="self">self</span>.valid;
+    <span class="kw">pub fn </span>seal(<span class="self">self</span>, schema: <span class="kw-2">&amp;</span><span class="kw">dyn </span>SchemaTransaction) -&gt; Entry&lt;EntrySealed, STATE&gt; {
+        <span class="kw">let </span>EntryValid { uuid, <span class="kw-2">mut </span>ecstate } = <span class="self">self</span>.valid;
+
+        <span class="comment">// Remove anything from the ecstate that is not a replicated attribute in the schema.
+        // This is to allow ecstate equality to work, but also to just prevent ruv updates and
+        // replicating things that only touched or changed phantom attrs.
+        </span>ecstate.retain(|k, <span class="kw">_</span>| schema.is_replicated(k));
 
         Entry {
-            valid: EntrySealed { uuid, eclog },
+            valid: EntrySealed { uuid, ecstate },
             state: <span class="self">self</span>.state,
             attrs: <span class="self">self</span>.attrs,
         }
@@ -4721,7 +4809,7 @@
         Entry {
             valid: EntryInvalid {
                 cid,
-                eclog: <span class="self">self</span>.valid.eclog,
+                ecstate: <span class="self">self</span>.valid.ecstate,
             },
             state: <span class="self">self</span>.state,
             attrs: <span class="self">self</span>.attrs,
@@ -4732,8 +4820,14 @@
         <span class="self">self</span>.valid.uuid
     }
 
-    <span class="kw">pub fn </span>get_changelog(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>EntryChangelog {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.valid.eclog
+    <span class="comment">/*
+    pub fn get_changelog(&amp;self) -&gt; &amp;EntryChangelog {
+        &amp;self.valid.eclog
+    }
+    */
+
+    </span><span class="kw">pub fn </span>get_changestate(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>EntryChangeState {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.valid.ecstate
     }
 
     <span class="attr">#[cfg(test)]
@@ -4741,10 +4835,11 @@
         <span class="kw">let </span>cid = Cid::new_zero();
         <span class="self">self</span>.set_last_changed(cid.clone());
 
-        <span class="kw">let </span>eclog = EntryChangelog::new_without_schema(cid.clone(), <span class="self">self</span>.attrs.clone());
+        <span class="comment">// let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
+        </span><span class="kw">let </span>ecstate = EntryChangeState::new_without_schema(<span class="kw-2">&amp;</span>cid, <span class="kw-2">&amp;</span><span class="self">self</span>.attrs);
 
         Entry {
-            valid: EntryInvalid { cid, eclog },
+            valid: EntryInvalid { cid, ecstate },
             state: <span class="self">self</span>.state,
             attrs: <span class="self">self</span>.attrs,
         }
@@ -4780,7 +4875,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;LdapSearchResultEntry, OperationError&gt; {
         <span class="kw">let </span>rdn = qs.uuid_to_rdn(<span class="self">self</span>.get_uuid())<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>dn = <span class="macro">format!</span>(<span class="string">&quot;{},{}&quot;</span>, rdn, basedn);
+        <span class="kw">let </span>dn = <span class="macro">format!</span>(<span class="string">&quot;{rdn},{basedn}&quot;</span>);
 
         <span class="comment">// Everything in our attrs set is &quot;what was requested&quot;. So we can transform that now
         // so they are all in &quot;ldap forms&quot; which makes our next stage a bit easier.
@@ -4910,15 +5005,18 @@
         </span><span class="self">self</span>.attrs.keys().map(|a| a.as_str())
     }
 
-    <span class="comment">/*
-    #[inline(always)]
-    /// Get an iterator over the current set of values for an attribute name.
-    pub fn get_ava(&amp;self, attr: &amp;str) -&gt; Option&lt;impl Iterator&lt;Item = &amp;Value&gt;&gt; {
-        self.attrs.get(attr).map(|vs| vs.iter())
+    <span class="attr">#[inline(always)]
+    </span><span class="doccomment">/// Get an iterator over the current set of values for an attribute name.
+    </span><span class="kw">pub fn </span>get_ava(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Eattrs {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.attrs
     }
-    */
 
-    </span><span class="attr">#[inline(always)]
+    <span class="attr">#[inline(always)]
+    </span><span class="kw">pub fn </span>get_ava_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (<span class="kw-2">&amp;</span>AttrString, <span class="kw-2">&amp;</span>ValueSet)&gt; {
+        <span class="self">self</span>.attrs.iter()
+    }
+
+    <span class="attr">#[inline(always)]
     </span><span class="doccomment">/// Return a reference to the current set of values that are associated to this attribute.
     </span><span class="kw">pub fn </span>get_ava_set(<span class="kw-2">&amp;</span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ValueSet&gt; {
         <span class="self">self</span>.attrs.get(attr)
@@ -5393,17 +5491,23 @@
     // If this already exists, we silently drop the event. This is because
     // we need this to be *state* based where we assert presence.
     </span><span class="kw">pub fn </span>add_ava(<span class="kw-2">&amp;mut </span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str, value: Value) {
-        <span class="self">self</span>.valid
+        <span class="self">self</span>.valid.ecstate.change_ava(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr);
+        <span class="comment">/*
+        self.valid
             .eclog
-            .add_ava_iter(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr, std::iter::once(value.clone()));
-        <span class="self">self</span>.add_ava_int(attr, value)
+            .add_ava_iter(&amp;self.valid.cid, attr, std::iter::once(value.clone()));
+        */
+        </span><span class="self">self</span>.add_ava_int(attr, value)
     }
 
     <span class="kw">fn </span>assert_ava(<span class="kw-2">&amp;mut </span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str, value: <span class="kw-2">&amp;</span>PartialValue) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="self">self</span>.valid
+        <span class="self">self</span>.valid.ecstate.change_ava(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr);
+        <span class="comment">/*
+        self.valid
             .eclog
-            .assert_ava(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr, value.clone());
-        <span class="kw">if </span><span class="self">self</span>.attribute_equality(attr, value) {
+            .assert_ava(&amp;self.valid.cid, attr, value.clone());
+        */
+        </span><span class="kw">if </span><span class="self">self</span>.attribute_equality(attr, value) {
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else </span>{
             <span class="prelude-val">Err</span>(OperationError::ModifyAssertionFailed)
@@ -5413,11 +5517,14 @@
     <span class="doccomment">/// Remove an attribute-value pair from this entry. If the ava doesn&#39;t exist, we
     /// don&#39;t do anything else since we are asserting the absence of a value.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>remove_ava(<span class="kw-2">&amp;mut </span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str, value: <span class="kw-2">&amp;</span>PartialValue) {
-        <span class="self">self</span>.valid
+        <span class="self">self</span>.valid.ecstate.change_ava(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr);
+        <span class="comment">/*
+        self.valid
             .eclog
-            .remove_ava_iter(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr, std::iter::once(value.clone()));
+            .remove_ava_iter(&amp;self.valid.cid, attr, std::iter::once(value.clone()));
+        */
 
-        <span class="kw">let </span>rm = <span class="kw">if let </span><span class="prelude-val">Some</span>(vs) = <span class="self">self</span>.attrs.get_mut(attr) {
+        </span><span class="kw">let </span>rm = <span class="kw">if let </span><span class="prelude-val">Some</span>(vs) = <span class="self">self</span>.attrs.get_mut(attr) {
             vs.remove(value);
             vs.is_empty()
         } <span class="kw">else </span>{
@@ -5429,11 +5536,14 @@
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>remove_avas(<span class="kw-2">&amp;mut </span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str, values: <span class="kw-2">&amp;</span>BTreeSet&lt;PartialValue&gt;) {
-        <span class="self">self</span>.valid
+        <span class="self">self</span>.valid.ecstate.change_ava(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr);
+        <span class="comment">/*
+        self.valid
             .eclog
-            .remove_ava_iter(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr, values.iter().cloned());
+            .remove_ava_iter(&amp;self.valid.cid, attr, values.iter().cloned());
+        */
 
-        <span class="kw">let </span>rm = <span class="kw">if let </span><span class="prelude-val">Some</span>(vs) = <span class="self">self</span>.attrs.get_mut(attr) {
+        </span><span class="kw">let </span>rm = <span class="kw">if let </span><span class="prelude-val">Some</span>(vs) = <span class="self">self</span>.attrs.get_mut(attr) {
             values.iter().for_each(|k| {
                 vs.remove(k);
             });
@@ -5449,14 +5559,16 @@
     <span class="doccomment">/// Remove all values of this attribute from the entry. If it doesn&#39;t exist, this
     /// asserts that no content of that attribute exist.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>purge_ava(<span class="kw-2">&amp;mut </span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str) {
-        <span class="self">self</span>.valid.eclog.purge_ava(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr);
-        <span class="self">self</span>.attrs.remove(attr);
+        <span class="self">self</span>.valid.ecstate.change_ava(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr);
+        <span class="comment">// self.valid.eclog.purge_ava(&amp;self.valid.cid, attr);
+        </span><span class="self">self</span>.attrs.remove(attr);
     }
 
     <span class="doccomment">/// Remove all values of this attribute from the entry, and return their content.
     </span><span class="kw">pub fn </span>pop_ava(<span class="kw-2">&amp;mut </span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;ValueSet&gt; {
-        <span class="self">self</span>.valid.eclog.purge_ava(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr);
-        <span class="self">self</span>.attrs.remove(attr)
+        <span class="self">self</span>.valid.ecstate.change_ava(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr);
+        <span class="comment">// self.valid.eclog.purge_ava(&amp;self.valid.cid, attr);
+        </span><span class="self">self</span>.attrs.remove(attr)
     }
 
     <span class="doccomment">/// Replace the content of this attribute with a new value set. Effectively this is
@@ -5465,19 +5577,25 @@
     <span class="kw">where
         </span>T: Clone + IntoIterator&lt;Item = Value&gt;,
     {
-        <span class="self">self</span>.valid.eclog.purge_ava(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr);
-        <span class="self">self</span>.valid
+        <span class="self">self</span>.valid.ecstate.change_ava(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr);
+        <span class="comment">/*
+        self.valid.eclog.purge_ava(&amp;self.valid.cid, attr);
+        self.valid
             .eclog
-            .add_ava_iter(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr, iter.clone());
-        <span class="self">self</span>.set_ava_int(attr, iter)
+            .add_ava_iter(&amp;self.valid.cid, attr, iter.clone());
+        */
+        </span><span class="self">self</span>.set_ava_int(attr, iter)
     }
 
     <span class="kw">pub fn </span>set_ava_set(<span class="kw-2">&amp;mut </span><span class="self">self</span>, attr: <span class="kw-2">&amp;</span>str, vs: ValueSet) {
-        <span class="self">self</span>.valid.eclog.purge_ava(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr);
-        <span class="self">self</span>.valid
+        <span class="self">self</span>.valid.ecstate.change_ava(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr);
+        <span class="comment">/*
+        self.valid.eclog.purge_ava(&amp;self.valid.cid, attr);
+        self.valid
             .eclog
-            .add_ava_iter(<span class="kw-2">&amp;</span><span class="self">self</span>.valid.cid, attr, vs.to_value_iter());
-        <span class="self">self</span>.attrs.insert(AttrString::from(attr), vs);
+            .add_ava_iter(&amp;self.valid.cid, attr, vs.to_value_iter());
+        */
+        </span><span class="self">self</span>.attrs.insert(AttrString::from(attr), vs);
     }
 
     <span class="doccomment">/// Apply the content of this modlist to this entry, enforcing the expressed state.
@@ -5533,6 +5651,7 @@
 
         <span class="kw">let </span>multivalue_v = <span class="macro">vs_bool!</span>[s.multivalue];
         <span class="kw">let </span>sync_allowed_v = <span class="macro">vs_bool!</span>[s.sync_allowed];
+        <span class="kw">let </span>replicated_v = <span class="macro">vs_bool!</span>[s.replicated];
         <span class="kw">let </span>phantom_v = <span class="macro">vs_bool!</span>[s.phantom];
         <span class="kw">let </span>unique_v = <span class="macro">vs_bool!</span>[s.unique];
 
@@ -5549,6 +5668,7 @@
         attrs.insert(AttrString::from(<span class="string">&quot;multivalue&quot;</span>), multivalue_v);
         attrs.insert(AttrString::from(<span class="string">&quot;phantom&quot;</span>), phantom_v);
         attrs.insert(AttrString::from(<span class="string">&quot;sync_allowed&quot;</span>), sync_allowed_v);
+        attrs.insert(AttrString::from(<span class="string">&quot;replicated&quot;</span>), replicated_v);
         attrs.insert(AttrString::from(<span class="string">&quot;unique&quot;</span>), unique_v);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(vs) = index_v {
             attrs.insert(AttrString::from(<span class="string">&quot;index&quot;</span>), vs);
@@ -5815,13 +5935,13 @@
 
         <span class="comment">// When we do None, None, we get nothing back.
         </span><span class="kw">let </span>r1 = Entry::idx_diff(<span class="kw-2">&amp;</span>idxmeta, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
-        <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, r1);
+        <span class="macro">eprintln!</span>(<span class="string">&quot;{r1:?}&quot;</span>);
         <span class="macro">assert!</span>(r1 == Vec::new());
 
         <span class="comment">// Check generating a delete diff
         </span><span class="kw">let </span><span class="kw-2">mut </span>del_r = Entry::idx_diff(<span class="kw-2">&amp;</span>idxmeta, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>e1), <span class="prelude-val">None</span>);
         del_r.sort_unstable();
-        <span class="macro">eprintln!</span>(<span class="string">&quot;del_r {:?}&quot;</span>, del_r);
+        <span class="macro">eprintln!</span>(<span class="string">&quot;del_r {del_r:?}&quot;</span>);
         <span class="macro">assert!</span>(
             del_r[<span class="number">0</span>]
                 == <span class="prelude-val">Err</span>((
@@ -5842,7 +5962,7 @@
         <span class="comment">// Check generating an add diff
         </span><span class="kw">let </span><span class="kw-2">mut </span>add_r = Entry::idx_diff(<span class="kw-2">&amp;</span>idxmeta, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>e1));
         add_r.sort_unstable();
-        <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, add_r);
+        <span class="macro">eprintln!</span>(<span class="string">&quot;{add_r:?}&quot;</span>);
         <span class="macro">assert!</span>(
             add_r[<span class="number">0</span>]
                 == <span class="prelude-val">Ok</span>((
@@ -5891,7 +6011,7 @@
         <span class="comment">// Change an attribute.
         </span><span class="kw">let </span><span class="kw-2">mut </span>chg_r = Entry::idx_diff(<span class="kw-2">&amp;</span>idxmeta, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>e1), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>e2));
         chg_r.sort_unstable();
-        <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, chg_r);
+        <span class="macro">eprintln!</span>(<span class="string">&quot;{chg_r:?}&quot;</span>);
         <span class="macro">assert!</span>(
             chg_r[<span class="number">1</span>]
                 == <span class="prelude-val">Err</span>((
@@ -6087,4 +6207,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

@@ -430,6 +430,20 @@
 <a href="#430" id="430">430</a>
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
 </pre><pre class="rust"><code><span class="comment">// Attribute uniqueness plugin. We read the schema and determine if the
 // value should be unique, and how to handle if it is not. This will
 // matter a lot when it comes to replication based on first-wins or
@@ -453,7 +467,10 @@
     cand: <span class="kw-2">&amp;</span>[Entry&lt;VALID, STATE&gt;],
     attr: <span class="kw-2">&amp;</span>str,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeMap&lt;PartialValue, Uuid&gt;, OperationError&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>cand_attr: BTreeMap&lt;PartialValue, Uuid&gt; = BTreeMap::new();
+    <span class="comment">// This is building both the set of values to search for uniqueness, but ALSO
+    // is detecting if any modified or current entries in the cand set also duplicated
+    // do to the ennforcing that the PartialValue must be unique in the cand_attr set.
+    </span><span class="kw">let </span><span class="kw-2">mut </span>cand_attr: BTreeMap&lt;PartialValue, Uuid&gt; = BTreeMap::new();
 
     cand.iter()
         .try_for_each(|e| {
@@ -485,21 +502,17 @@
         .map(|()| cand_attr)
 }
 
-<span class="kw">fn </span>enforce_unique&lt;STATE&gt;(
+<span class="kw">fn </span>enforce_unique&lt;VALID, STATE&gt;(
     qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
-    cand: <span class="kw-2">&amp;</span>[Entry&lt;EntryInvalid, STATE&gt;],
+    cand: <span class="kw-2">&amp;</span>[Entry&lt;VALID, STATE&gt;],
     attr: <span class="kw-2">&amp;</span>str,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-    <span class="macro">trace!</span>(<span class="question-mark">?</span>attr);
-
     <span class="comment">// Build a set of all the value -&gt; uuid for the cands.
     // If already exist, reject due to dup.
     </span><span class="kw">let </span>cand_attr = get_cand_attr_set(cand, attr).map_err(|e| {
-        <span class="macro">admin_error!</span>(err = <span class="question-mark">?</span>e, <span class="string">&quot;failed to get cand attr set&quot;</span>);
+        <span class="macro">admin_error!</span>(err = <span class="question-mark">?</span>e, <span class="question-mark">?</span>attr, <span class="string">&quot;failed to get cand attr set&quot;</span>);
         e
     })<span class="question-mark">?</span>;
-
-    <span class="macro">trace!</span>(<span class="question-mark">?</span>cand_attr);
 
     <span class="comment">// No candidates to check!
     </span><span class="kw">if </span>cand_attr.is_empty() {
@@ -655,6 +668,21 @@
         qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
         cand: <span class="kw-2">&amp;mut </span>Vec&lt;Entry&lt;EntryInvalid, EntryCommitted&gt;&gt;,
         _me: <span class="kw-2">&amp;</span>BatchModifyEvent,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+        <span class="kw">let </span>uniqueattrs = {
+            <span class="kw">let </span>schema = qs.get_schema();
+            schema.get_attributes_unique()
+        };
+
+        <span class="kw">let </span>r: <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; = uniqueattrs
+            .iter()
+            .try_for_each(|attr| enforce_unique(qs, cand, attr.as_str()));
+        r
+    }
+
+    <span class="kw">fn </span>pre_repl_refresh(
+        qs: <span class="kw-2">&amp;mut </span>QueryServerWriteTransaction,
+        cand: <span class="kw-2">&amp;</span>[EntryRefreshNew],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="kw">let </span>uniqueattrs = {
             <span class="kw">let </span>schema = qs.get_schema();
@@ -863,4 +891,4 @@
     </span>}
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

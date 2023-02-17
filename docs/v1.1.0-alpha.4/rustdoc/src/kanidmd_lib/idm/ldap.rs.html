@@ -1247,10 +1247,10 @@
 
         <span class="kw">let </span>basedn = ldap_domain_to_dc(domain_name.as_str());
 
-        <span class="kw">let </span>dnre = Regex::new(<span class="macro">format!</span>(<span class="string">&quot;^((?P&lt;attr&gt;[^=]+)=(?P&lt;val&gt;[^=]+),)?{}$&quot;</span>, basedn).as_str())
+        <span class="kw">let </span>dnre = Regex::new(<span class="macro">format!</span>(<span class="string">&quot;^((?P&lt;attr&gt;[^=]+)=(?P&lt;val&gt;[^=]+),)?{basedn}$&quot;</span>).as_str())
             .map_err(|<span class="kw">_</span>| OperationError::InvalidEntryState)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>binddnre = Regex::new(<span class="macro">format!</span>(<span class="string">&quot;^(([^=,]+)=)?(?P&lt;val&gt;[^=,]+)(,{})?$&quot;</span>, basedn).as_str())
+        <span class="kw">let </span>binddnre = Regex::new(<span class="macro">format!</span>(<span class="string">&quot;^(([^=,]+)=)?(?P&lt;val&gt;[^=,]+)(,{basedn})?$&quot;</span>).as_str())
             .map_err(|<span class="kw">_</span>| OperationError::InvalidEntryState)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>rootdse = LdapSearchResultEntry {
@@ -1685,7 +1685,7 @@
                     wr.gen_success(<span class="macro">format!</span>(<span class="string">&quot;u: {}&quot;</span>, u.spn).as_str()),
                 )),
                 <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Ok</span>(LdapResponseState::Respond(
-                    wr.gen_operror(<span class="macro">format!</span>(<span class="string">&quot;Unbound Connection {}&quot;</span>, eventid).as_str()),
+                    wr.gen_operror(<span class="macro">format!</span>(<span class="string">&quot;Unbound Connection {eventid}&quot;</span>).as_str()),
                 )),
             },
         } <span class="comment">// end match server op
@@ -1714,9 +1714,9 @@
             (LdapResultCode::InvalidAttributeSyntax, s)
         }
         OperationError::SchemaViolation(se) =&gt; {
-            (LdapResultCode::UnwillingToPerform, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, se))
+            (LdapResultCode::UnwillingToPerform, <span class="macro">format!</span>(<span class="string">&quot;{se:?}&quot;</span>))
         }
-        e =&gt; (LdapResultCode::Other, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, e)),
+        e =&gt; (LdapResultCode::Other, <span class="macro">format!</span>(<span class="string">&quot;{e:?}&quot;</span>)),
     }
 }
 
@@ -1857,7 +1857,7 @@
                 <span class="macro">assert!</span>(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
                 <span class="kw">let </span>admin_t = task::block_on(ldaps.do_bind(
                     idms,
-                    <span class="macro">format!</span>(<span class="string">&quot;uuid={},dc=example,dc=com&quot;</span>, STR_UUID_ADMIN).as_str(),
+                    <span class="macro">format!</span>(<span class="string">&quot;uuid={STR_UUID_ADMIN},dc=example,dc=com&quot;</span>).as_str(),
                     TEST_PASSWORD,
                 ))
                 .unwrap()
@@ -1875,7 +1875,7 @@
                 <span class="macro">assert!</span>(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
                 <span class="kw">let </span>admin_t = task::block_on(ldaps.do_bind(
                     idms,
-                    <span class="macro">format!</span>(<span class="string">&quot;uuid={}&quot;</span>, STR_UUID_ADMIN).as_str(),
+                    <span class="macro">format!</span>(<span class="string">&quot;uuid={STR_UUID_ADMIN}&quot;</span>).as_str(),
                     TEST_PASSWORD,
                 ))
                 .unwrap()
@@ -1897,7 +1897,7 @@
                 <span class="macro">assert!</span>(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
                 <span class="kw">let </span>admin_t = task::block_on(ldaps.do_bind(
                     idms,
-                    <span class="macro">format!</span>(<span class="string">&quot;{},dc=example,dc=com&quot;</span>, STR_UUID_ADMIN).as_str(),
+                    <span class="macro">format!</span>(<span class="string">&quot;{STR_UUID_ADMIN},dc=example,dc=com&quot;</span>).as_str(),
                     TEST_PASSWORD,
                 ))
                 .unwrap()
@@ -2343,4 +2343,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

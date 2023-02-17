@@ -686,18 +686,6 @@
 <a href="#686" id="686">686</a>
 <a href="#687" id="687">687</a>
 <a href="#688" id="688">688</a>
-<a href="#689" id="689">689</a>
-<a href="#690" id="690">690</a>
-<a href="#691" id="691">691</a>
-<a href="#692" id="692">692</a>
-<a href="#693" id="693">693</a>
-<a href="#694" id="694">694</a>
-<a href="#695" id="695">695</a>
-<a href="#696" id="696">696</a>
-<a href="#697" id="697">697</a>
-<a href="#698" id="698">698</a>
-<a href="#699" id="699">699</a>
-<a href="#700" id="700">700</a>
 </pre><pre class="rust"><code><span class="attr">#[cfg(test)]
 </span><span class="macro">macro_rules! </span>setup_test {
     () =&gt; {{
@@ -985,18 +973,6 @@
         <span class="kw">let </span>ver = async_std::task::block_on(qs.verify());
         <span class="macro">trace!</span>(<span class="string">&quot;verification -&gt; {:?}&quot;</span>, ver);
         <span class="macro">assert!</span>(ver.len() == <span class="number">0</span>);
-    }};
-}
-
-<span class="attr">#[cfg(test)]
-</span><span class="macro">macro_rules! </span>run_entrychangelog_test {
-    (<span class="macro-nonterminal">$test_fn</span>:expr) =&gt; {{
-        <span class="kw">let _ </span>= sketching::test_init();
-        <span class="kw">let </span>schema_outer = Schema::new().expect(<span class="string">&quot;Failed to init schema&quot;</span>);
-
-        <span class="kw">let </span>schema_txn = schema_outer.read();
-
-        <span class="macro-nonterminal">$test_fn</span>(<span class="kw-2">&amp;</span>schema_txn)
     }};
 }
 
@@ -1399,4 +1375,4 @@
     })
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

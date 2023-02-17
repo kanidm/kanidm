@@ -586,6 +586,18 @@
 <a href="#586" id="586">586</a>
 <a href="#587" id="587">587</a>
 <a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
 </pre><pre class="rust"><code><span class="comment">// System protected objects. Items matching specific requirements
 // may only have certain modifications performed.
 
@@ -904,6 +916,10 @@
                 <span class="string">&quot;acp_modify_removedattr&quot;</span>,
                 Value::new_iutf8(<span class="string">&quot;es256_private_key_der&quot;</span>)
             ),
+            (
+                <span class="string">&quot;acp_modify_removedattr&quot;</span>,
+                Value::new_iutf8(<span class="string">&quot;private_cookie_key&quot;</span>)
+            ),
             (<span class="string">&quot;acp_modify_presentattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;class&quot;</span>)),
             (<span class="string">&quot;acp_modify_presentattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;displayname&quot;</span>)),
             (<span class="string">&quot;acp_modify_presentattr&quot;</span>, Value::new_iutf8(<span class="string">&quot;may&quot;</span>)),
@@ -923,6 +939,10 @@
                 <span class="string">&quot;acp_modify_presentattr&quot;</span>,
                 Value::new_iutf8(<span class="string">&quot;es256_private_key_der&quot;</span>)
             ),
+            (
+                <span class="string">&quot;acp_modify_presentattr&quot;</span>,
+                Value::new_iutf8(<span class="string">&quot;private_cookie_key&quot;</span>)
+            ),
             (<span class="string">&quot;acp_create_class&quot;</span>, Value::new_iutf8(<span class="string">&quot;object&quot;</span>)),
             (<span class="string">&quot;acp_create_class&quot;</span>, Value::new_iutf8(<span class="string">&quot;person&quot;</span>)),
             (<span class="string">&quot;acp_create_class&quot;</span>, Value::new_iutf8(<span class="string">&quot;system&quot;</span>)),
@@ -941,6 +961,7 @@
                 Value::new_iutf8(<span class="string">&quot;fernet_private_key_str&quot;</span>)
             ),
             (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;es256_private_key_der&quot;</span>)),
+            (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;private_cookie_key&quot;</span>)),
             (<span class="string">&quot;acp_create_attr&quot;</span>, Value::new_iutf8(<span class="string">&quot;version&quot;</span>))
         );
         <span class="kw">pub static </span><span class="kw-2">ref </span>PRELOAD: Vec&lt;EntryInitNew&gt; =
@@ -1080,6 +1101,7 @@
                 &quot;domain_ssid&quot;: [&quot;Example_Wifi&quot;],
                 &quot;fernet_private_key_str&quot;: [&quot;ABCD&quot;],
                 &quot;es256_private_key_der&quot; : [&quot;MTIz&quot;],
+                &quot;private_cookie_key&quot; : [&quot;MTIz&quot;],
                 &quot;version&quot;: [&quot;1&quot;]
             }
         }&quot;#</span>,
@@ -1122,6 +1144,7 @@
                 &quot;domain_ssid&quot;: [&quot;Example_Wifi&quot;],
                 &quot;fernet_private_key_str&quot;: [&quot;ABCD&quot;],
                 &quot;es256_private_key_der&quot; : [&quot;MTIz&quot;],
+                &quot;private_cookie_key&quot; : [&quot;MTIz&quot;],
                 &quot;version&quot;: [&quot;1&quot;]
             }
         }&quot;#</span>,
@@ -1154,6 +1177,7 @@
                 &quot;domain_ssid&quot;: [&quot;Example_Wifi&quot;],
                 &quot;fernet_private_key_str&quot;: [&quot;ABCD&quot;],
                 &quot;es256_private_key_der&quot; : [&quot;MTIz&quot;],
+                &quot;private_cookie_key&quot; : [&quot;MTIz&quot;],
                 &quot;version&quot;: [&quot;1&quot;]
             }
         }&quot;#</span>,
@@ -1175,4 +1199,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0 (fc594f156 2023-01-24)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
