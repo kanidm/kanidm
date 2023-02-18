@@ -1,5 +1,4 @@
 use std::convert::TryFrom;
-use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -60,6 +59,14 @@ use crate::value::{Oauth2Session, Session};
 type AuthSessionMutex = Arc<Mutex<AuthSession>>;
 type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
 
+#[derive(Clone)]
+pub struct DomainKeys {
+    pub(crate) uat_jwt_signer: JwsSigner,
+    pub(crate) uat_jwt_validator: JwsValidator,
+    pub(crate) token_enc_key: Fernet,
+    pub(crate) cookie_key: [u8; 32],
+}
+
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
     // means that limits to sessions can be easily applied and checked to
@@ -79,10 +86,7 @@ pub struct IdmServer {
     webauthn: Webauthn,
     pw_badlist_cache: Arc<CowCell<HashSet<String>>>,
     oauth2rs: Arc<Oauth2ResourceServers>,
-    uat_jwt_signer: Arc<CowCell<JwsSigner>>,
-    uat_jwt_validator: Arc<CowCell<JwsValidator>>,
-    token_enc_key: Arc<CowCell<Fernet>>,
-    cookie_key: Arc<CowCell<[u8; 32]>>,
+    domain_keys: Arc<CowCell<DomainKeys>>,
 }
 
 /// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
@@ -98,8 +102,7 @@ pub struct IdmServerAuthTransaction<'a> {
     async_tx: Sender<DelayedAction>,
     webauthn: &'a Webauthn,
     pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
-    uat_jwt_signer: CowCellReadTxn<JwsSigner>,
-    uat_jwt_validator: CowCellReadTxn<JwsValidator>,
+    domain_keys: CowCellReadTxn<DomainKeys>,
 }
 
 pub struct IdmServerCredUpdateTransaction<'a> {
@@ -108,14 +111,14 @@ pub struct IdmServerCredUpdateTransaction<'a> {
     pub(crate) webauthn: &'a Webauthn,
     pub(crate) pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
     pub(crate) cred_update_sessions: BptreeMapReadTxn<'a, Uuid, CredentialUpdateSessionMutex>,
-    pub(crate) token_enc_key: CowCellReadTxn<Fernet>,
+    pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
     pub(crate) crypto_policy: &'a CryptoPolicy,
 }
 
 /// This contains read-only methods, like getting users, groups and other structured content.
 pub struct IdmServerProxyReadTransaction<'a> {
     pub qs_read: QueryServerReadTransaction<'a>,
-    uat_jwt_validator: CowCellReadTxn<JwsValidator>,
+    pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
     pub(crate) oauth2rs: Oauth2ResourceServersReadTransaction,
     pub(crate) async_tx: Sender<DelayedAction>,
 }
@@ -130,10 +133,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     crypto_policy: &'a CryptoPolicy,
     webauthn: &'a Webauthn,
     pw_badlist_cache: CowCellWriteTxn<'a, HashSet<String>>,
-    uat_jwt_signer: CowCellWriteTxn<'a, JwsSigner>,
-    uat_jwt_validator: CowCellWriteTxn<'a, JwsValidator>,
-    cookie_key: CowCellWriteTxn<'a, [u8; 32]>,
-    pub(crate) token_enc_key: CowCellWriteTxn<'a, Fernet>,
+    pub(crate) domain_keys: CowCellWriteTxn<'a, DomainKeys>,
     pub(crate) oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
 }
 
@@ -213,26 +213,27 @@ impl IdmServer {
             })?;
 
         // Setup our auth token signing key.
-        let fernet_key = Fernet::new(&fernet_private_key).ok_or_else(|| {
+        let token_enc_key = Fernet::new(&fernet_private_key).ok_or_else(|| {
             admin_error!("Unable to load Fernet encryption key");
             OperationError::CryptographyError
         })?;
-        let token_enc_key = Arc::new(CowCell::new(fernet_key));
 
-        let jwt_signer = JwsSigner::from_es256_der(&es256_private_key).map_err(|e| {
+        let uat_jwt_signer = JwsSigner::from_es256_der(&es256_private_key).map_err(|e| {
             admin_error!(err = ?e, "Unable to load ES256 JwsSigner from DER");
             OperationError::CryptographyError
         })?;
 
-        let jwt_validator = jwt_signer.get_validator().map_err(|e| {
+        let uat_jwt_validator = uat_jwt_signer.get_validator().map_err(|e| {
             admin_error!(err = ?e, "Unable to load ES256 JwsValidator from JwsSigner");
             OperationError::CryptographyError
         })?;
 
-        let uat_jwt_signer = Arc::new(CowCell::new(jwt_signer));
-        let uat_jwt_validator = Arc::new(CowCell::new(jwt_validator));
-
-        let cookie_key = Arc::new(CowCell::new(cookie_key));
+        let domain_keys = Arc::new(CowCell::new(DomainKeys {
+            uat_jwt_signer,
+            uat_jwt_validator,
+            token_enc_key,
+            cookie_key,
+        }));
 
         let oauth2rs =
             Oauth2ResourceServers::try_from((oauth2rs_set, origin_url)).map_err(|e| {
@@ -251,10 +252,7 @@ impl IdmServer {
                 async_tx,
                 webauthn,
                 pw_badlist_cache: Arc::new(CowCell::new(pw_badlist_set)),
-                uat_jwt_signer,
-                uat_jwt_validator,
-                token_enc_key,
-                cookie_key,
+                domain_keys,
                 oauth2rs: Arc::new(oauth2rs),
             },
             IdmServerDelayed { async_rx },
@@ -262,7 +260,7 @@ impl IdmServer {
     }
 
     pub fn get_cookie_key(&self) -> [u8; 32] {
-        *self.cookie_key.read().deref()
+        self.domain_keys.read().cookie_key
     }
 
     #[cfg(test)]
@@ -286,8 +284,7 @@ impl IdmServer {
             async_tx: self.async_tx.clone(),
             webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.read(),
-            uat_jwt_signer: self.uat_jwt_signer.read(),
-            uat_jwt_validator: self.uat_jwt_validator.read(),
+            domain_keys: self.domain_keys.read(),
         }
     }
 
@@ -296,7 +293,7 @@ impl IdmServer {
     pub async fn proxy_read(&self) -> IdmServerProxyReadTransaction<'_> {
         IdmServerProxyReadTransaction {
             qs_read: self.qs.read().await,
-            uat_jwt_validator: self.uat_jwt_validator.read(),
+            domain_keys: self.domain_keys.read(),
             oauth2rs: self.oauth2rs.read(),
             async_tx: self.async_tx.clone(),
         }
@@ -317,10 +314,7 @@ impl IdmServer {
             crypto_policy: &self.crypto_policy,
             webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.write(),
-            uat_jwt_signer: self.uat_jwt_signer.write(),
-            uat_jwt_validator: self.uat_jwt_validator.write(),
-            token_enc_key: self.token_enc_key.write(),
-            cookie_key: self.cookie_key.write(),
+            domain_keys: self.domain_keys.write(),
             oauth2rs: self.oauth2rs.write(),
         }
     }
@@ -337,7 +331,7 @@ impl IdmServer {
             webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.read(),
             cred_update_sessions: self.cred_update_sessions.read(),
-            token_enc_key: self.token_enc_key.read(),
+            domain_keys: self.domain_keys.read(),
             crypto_policy: &self.crypto_policy,
         }
     }
@@ -893,7 +887,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerAuthTransaction<'a> {
     }
 
     fn get_uat_validator_txn(&self) -> &JwsValidator {
-        &self.uat_jwt_validator
+        &self.domain_keys.uat_jwt_validator
     }
 }
 
@@ -1167,7 +1161,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             &self.async_tx,
                             self.webauthn,
                             pw_badlist_cache,
-                            &self.uat_jwt_signer,
+                            &self.domain_keys.uat_jwt_signer,
                         )
                         .map(|aus| {
                             // Inspect the result:
@@ -1436,7 +1430,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
     }
 
     fn get_uat_validator_txn(&self) -> &JwsValidator {
-        &self.uat_jwt_validator
+        &self.domain_keys.uat_jwt_validator
     }
 }
 
@@ -1539,7 +1533,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
     }
 
     fn get_uat_validator_txn(&self) -> &JwsValidator {
-        &self.uat_jwt_validator
+        &self.domain_keys.uat_jwt_validator
     }
 }
 
@@ -2200,7 +2194,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     })
                 })
                 .map(|new_handle| {
-                    *self.token_enc_key = new_handle;
+                    self.domain_keys.token_enc_key = new_handle;
                 })?;
             self.qs_write
                 .get_domain_es256_private_key()
@@ -2220,21 +2214,18 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         .map(|validator| (signer, validator))
                 })
                 .map(|(new_signer, new_validator)| {
-                    *self.uat_jwt_signer = new_signer;
-                    *self.uat_jwt_validator = new_validator;
+                    self.domain_keys.uat_jwt_signer = new_signer;
+                    self.domain_keys.uat_jwt_validator = new_validator;
                 })?;
             self.qs_write
                 .get_domain_cookie_key()
                 .map(|new_cookie_key| {
-                    *self.cookie_key = new_cookie_key;
+                    self.domain_keys.cookie_key = new_cookie_key;
                 })?;
         }
         // Commit everything.
         self.oauth2rs.commit();
-        self.uat_jwt_signer.commit();
-        self.uat_jwt_validator.commit();
-        self.cookie_key.commit();
-        self.token_enc_key.commit();
+        self.domain_keys.commit();
         self.pw_badlist_cache.commit();
         self.cred_update_sessions.commit();
         trace!("cred_update_session.commit");
