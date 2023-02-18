@@ -185,7 +185,7 @@ pub fn file_permissions_readonly(meta: &Metadata) -> bool {
 
 #[cfg(not(target_family = "unix"))]
 /// Check a given file's metadata is read-only for the current user (true = read-only) Stub function if you're building for windows!
-pub fn file_permissions_readonly(meta: &Metadata) -> bool {
+pub fn file_permissions_readonly(_meta: &Metadata) -> bool {
     #[cfg(debug_assertions)]
     eprintln!("Windows target asked to check metadata on {meta:?} returning false");
     false
