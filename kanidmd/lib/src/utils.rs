@@ -1,4 +1,3 @@
-#[cfg(not(target_family = "windows"))]
 use std::fs::Metadata;
 use std::io::ErrorKind;
 #[cfg(target_os = "linux")]
@@ -161,6 +160,7 @@ impl Distribution<char> for DistinctAlpha {
 }
 
 #[cfg(target_family = "unix")]
+/// Check a given file's metadata is read-only for the current user (true = read-only)
 pub fn file_permissions_readonly(meta: &Metadata) -> bool {
     // Who are we running as?
     let cuid = get_current_uid();
@@ -181,6 +181,14 @@ pub fn file_permissions_readonly(meta: &Metadata) -> bool {
         // Finally, check that everyone bits don't have write.
         ((f_mode & 0o0002) != 0)
     )
+}
+
+#[cfg(not(target_family = "unix"))]
+/// Check a given file's metadata is read-only for the current user (true = read-only) Stub function if you're building for windows!
+pub fn file_permissions_readonly(meta: &Metadata) -> bool {
+    #[cfg(debug_assertions)]
+    eprintln!("Windows target asked to check metadata on {meta:?} returning false");
+    false
 }
 
 #[cfg(test)]

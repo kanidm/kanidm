@@ -10,22 +10,34 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
+#[cfg(target_os_family = "unix")]
 #[macro_use]
 extern crate libnss;
+#[cfg(target_os_family = "unix")]
 #[macro_use]
 extern crate lazy_static;
 
+#[cfg(target_os_family = "unix")]
 use kanidm_unix_common::client_sync::call_daemon_blocking;
+#[cfg(target_os_family = "unix")]
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+#[cfg(target_os_family = "unix")]
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
+#[cfg(target_os_family = "unix")]
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, NssGroup, NssUser};
+#[cfg(target_os_family = "unix")]
 use libnss::group::{Group, GroupHooks};
+#[cfg(target_os_family = "unix")]
 use libnss::interop::Response;
+#[cfg(target_os_family = "unix")]
 use libnss::passwd::{Passwd, PasswdHooks};
 
+#[cfg(target_os_family = "unix")]
 struct KanidmPasswd;
+#[cfg(target_os_family = "unix")]
 libnss_passwd_hooks!(kanidm, KanidmPasswd);
 
+#[cfg(target_os_family = "unix")]
 impl PasswdHooks for KanidmPasswd {
     fn get_all_entries() -> Response<Vec<Passwd>> {
         let cfg =
@@ -86,9 +98,12 @@ impl PasswdHooks for KanidmPasswd {
     }
 }
 
+#[cfg(target_os_family = "unix")]
 struct KanidmGroup;
+#[cfg(target_os_family = "unix")]
 libnss_group_hooks!(kanidm, KanidmGroup);
 
+#[cfg(target_os_family = "unix")]
 impl GroupHooks for KanidmGroup {
     fn get_all_entries() -> Response<Vec<Group>> {
         let cfg =
@@ -149,6 +164,7 @@ impl GroupHooks for KanidmGroup {
     }
 }
 
+#[cfg(target_os_family = "unix")]
 fn passwd_from_nssuser(nu: NssUser) -> Passwd {
     Passwd {
         name: nu.name,
@@ -161,6 +177,7 @@ fn passwd_from_nssuser(nu: NssUser) -> Passwd {
     }
 }
 
+#[cfg(target_os_family = "unix")]
 fn group_from_nssgroup(ng: NssGroup) -> Group {
     Group {
         name: ng.name,

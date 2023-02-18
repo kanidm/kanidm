@@ -16,6 +16,8 @@ path =  "src/lib.rs"
 
 [dependencies]
 kanidm_unix_int.workspace = true
+
+[target.'cfg(not(target_family = "windows"))'.dependencies]
 libnss.workspace = true
 libc.workspace = true
 paste.workspace = true

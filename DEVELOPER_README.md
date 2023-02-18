@@ -1,1 +1,0 @@
-kanidm_book/src/DEVELOPER_README.md
