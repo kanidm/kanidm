@@ -13,33 +13,33 @@
 
 // extern crate libc;
 
-#[cfg(target_os_family = "unix")]
+#[cfg(target_family = "unix")]
 mod pam;
-#[cfg(target_os_family = "unix")]
+#[cfg(target_family = "unix")]
 use std::collections::BTreeSet;
-#[cfg(target_os_family = "unix")]
+#[cfg(target_family = "unix")]
 use std::convert::TryFrom;
-#[cfg(target_os_family = "unix")]
+#[cfg(target_family = "unix")]
 use std::ffi::CStr;
 
 // use std::os::raw::c_char;
-#[cfg(target_os_family = "unix")]
+#[cfg(target_family = "unix")]
 use kanidm_unix_common::client_sync::call_daemon_blocking;
-#[cfg(target_os_family = "unix")]
+#[cfg(target_family = "unix")]
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
-#[cfg(target_os_family = "unix")]
+#[cfg(target_family = "unix")]
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
-#[cfg(target_os_family = "unix")]
+#[cfg(target_family = "unix")]
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
-#[cfg(target_os_family = "unix")]
+#[cfg(target_family = "unix")]
 use crate::pam::constants::*;
-#[cfg(target_os_family = "unix")]
+#[cfg(target_family = "unix")]
 use crate::pam::conv::PamConv;
-#[cfg(target_os_family = "unix")]
+#[cfg(target_family = "unix")]
 use crate::pam::module::{PamHandle, PamHooks};
 
-#[cfg(target_os_family = "unix")]
+#[cfg(target_family = "unix")]
 #[derive(Debug)]
 struct Options {
     debug: bool,
@@ -47,7 +47,7 @@ struct Options {
     ignore_unknown_user: bool,
 }
 
-#[cfg(target_os_family = "unix")]
+#[cfg(target_family = "unix")]
 impl TryFrom<&Vec<&CStr>> for Options {
     type Error = ();
 
@@ -69,19 +69,19 @@ impl TryFrom<&Vec<&CStr>> for Options {
     }
 }
 
-#[cfg(target_os_family = "unix")]
+#[cfg(target_family = "unix")]
 fn get_cfg() -> Result<KanidmUnixdConfig, PamResultCode> {
     KanidmUnixdConfig::new()
         .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
         .map_err(|_| PamResultCode::PAM_SERVICE_ERR)
 }
 
-#[cfg(target_os_family = "unix")]
+#[cfg(target_family = "unix")]
 struct PamKanidm;
-#[cfg(target_os_family = "unix")]
+#[cfg(target_family = "unix")]
 pam_hooks!(PamKanidm);
 
-#[cfg(target_os_family = "unix")]
+#[cfg(target_family = "unix")]
 impl PamHooks for PamKanidm {
     fn acct_mgmt(pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
         let opts = match Options::try_from(&args) {
