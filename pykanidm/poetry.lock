@@ -1812,14 +1812,14 @@ files = [
 
 [[package]]
 name = "types-toml"
-version = "0.10.8.3"
+version = "0.10.8.4"
 description = "Typing stubs for toml"
 category = "dev"
 optional = false
 python-versions = "*"
 files = [
-    {file = "types-toml-0.10.8.3.tar.gz", hash = "sha256:f37244eff4cd7eace9cb70d0bac54d3eba77973aa4ef26c271ac3d1c6503a48e"},
-    {file = "types_toml-0.10.8.3-py3-none-any.whl", hash = "sha256:a2286a053aea6ab6ff814659272b1d4a05d86a1dd52b807a87b23511993b46c5"},
+    {file = "types-toml-0.10.8.4.tar.gz", hash = "sha256:c8748dd225b28eb80ce712e2d7d61b57599815e7b48d07ef53df51ed148fa6b1"},
+    {file = "types_toml-0.10.8.4-py3-none-any.whl", hash = "sha256:306b1bb8b5bbc5f1b60387dbcc4b489e79f8490ce20e93af5f422a68b470d94b"},
 ]
 
 [[package]]
