@@ -49,6 +49,37 @@ impl SessionConsistency {
 
         // We need to assert a number of properties. We must do these *in order*.
         cand.iter_mut().try_for_each(|entry| {
+            // * If the session's credential is no longer on the account, we remove the session.
+            let cred_ids: BTreeSet<Uuid> =
+                entry
+                    .get_ava_single_credential("primary_credential")
+                        .iter()
+                        .map(|c| c.uuid)
+
+                .chain(
+                    entry.get_ava_passkeys("passkeys")
+                        .iter()
+                        .flat_map(|pks| pks.keys().copied()  )
+                )
+                .collect();
+
+            let invalidate: Option<BTreeSet<_>> = entry.get_ava_as_session_map("user_auth_token_session")
+                .map(|sessions| {
+                    sessions.iter().filter_map(|(session_id, session)| {
+                        if !cred_ids.contains(&session.cred_id) {
+                            info!(%session_id, "Removing auth session whose issuing credential no longer exists");
+                            Some(PartialValue::Refer(*session_id))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+                });
+
+            if let Some(invalidate) = invalidate.as_ref() {
+                entry.remove_avas("user_auth_token_session", invalidate);
+            }
+
             // * If a UAT is past it's expiry, remove it.
             let expired: Option<BTreeSet<_>> = entry.get_ava_as_session_map("user_auth_token_session")
                 .map(|sessions| {
@@ -122,12 +153,19 @@ mod tests {
     use time::OffsetDateTime;
     use uuid::uuid;
 
+    use crate::credential::policy::CryptoPolicy;
+    use crate::credential::Credential;
+
     // Test expiry of old sessions
 
     #[qs_test]
     async fn test_session_consistency_expire_old_sessions(server: &QueryServer) {
         let curtime = duration_from_epoch_now();
         let curtime_odt = OffsetDateTime::unix_epoch() + curtime;
+
+        let p = CryptoPolicy::minimum();
+        let cred = Credential::new_password_only(&p, "test_password").unwrap();
+        let cred_id = cred.uuid;
 
         let exp_curtime = curtime + Duration::from_secs(60);
         let exp_curtime_odt = OffsetDateTime::unix_epoch() + exp_curtime;
@@ -144,7 +182,11 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(tuuid)),
             ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
+            ("displayname", Value::new_utf8s("testperson1")),
+            (
+                "primary_credential",
+                Value::Cred("primary".to_string(), cred.clone())
+            )
         );
 
         let ce = CreateEvent::new_internal(vec![e1]);
@@ -168,6 +210,7 @@ mod tests {
                 issued_at,
                 // Who actually created this?
                 issued_by,
+                cred_id,
                 // What is the access scope of this session? This is
                 // for auditing purposes.
                 scope,
@@ -213,6 +256,10 @@ mod tests {
         let curtime = duration_from_epoch_now();
         let curtime_odt = OffsetDateTime::unix_epoch() + curtime;
 
+        let p = CryptoPolicy::minimum();
+        let cred = Credential::new_password_only(&p, "test_password").unwrap();
+        let cred_id = cred.uuid;
+
         // Set exp to gracewindow.
         let exp_curtime = curtime + GRACE_WINDOW;
         let exp_curtime_odt = OffsetDateTime::unix_epoch() + exp_curtime;
@@ -230,7 +277,11 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(tuuid)),
             ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
+            ("displayname", Value::new_utf8s("testperson1")),
+            (
+                "primary_credential",
+                Value::Cred("primary".to_string(), cred.clone())
+            )
         );
 
         let e2 = entry_init!(
@@ -295,6 +346,7 @@ mod tests {
                         issued_at,
                         // Who actually created this?
                         issued_by,
+                        cred_id,
                         // What is the access scope of this session? This is
                         // for auditing purposes.
                         scope,
@@ -346,6 +398,10 @@ mod tests {
         let curtime_odt = OffsetDateTime::unix_epoch() + curtime;
         let exp_curtime = curtime + GRACE_WINDOW;
 
+        let p = CryptoPolicy::minimum();
+        let cred = Credential::new_password_only(&p, "test_password").unwrap();
+        let cred_id = cred.uuid;
+
         // Create a user
         let mut server_txn = server.write(curtime).await;
 
@@ -359,7 +415,11 @@ mod tests {
             ("name", Value::new_iname("testperson1")),
             ("uuid", Value::Uuid(tuuid)),
             ("description", Value::new_utf8s("testperson1")),
-            ("displayname", Value::new_utf8s("testperson1"))
+            ("displayname", Value::new_utf8s("testperson1")),
+            (
+                "primary_credential",
+                Value::Cred("primary".to_string(), cred.clone())
+            )
         );
 
         let e2 = entry_init!(
@@ -423,6 +483,7 @@ mod tests {
                         issued_at,
                         // Who actually created this?
                         issued_by,
+                        cred_id,
                         // What is the access scope of this session? This is
                         // for auditing purposes.
                         scope,
@@ -563,6 +624,97 @@ mod tests {
 
         // Note it's a not condition now.
         assert!(!entry.attribute_equality("oauth2_session", &pv_session_id));
+
+        assert!(server_txn.commit().is_ok());
+    }
+
+    #[qs_test]
+    async fn test_session_consistency_expire_when_cred_removed(server: &QueryServer) {
+        let curtime = duration_from_epoch_now();
+        let curtime_odt = OffsetDateTime::unix_epoch() + curtime;
+
+        let p = CryptoPolicy::minimum();
+        let cred = Credential::new_password_only(&p, "test_password").unwrap();
+        let cred_id = cred.uuid;
+
+        // Create a user
+        let mut server_txn = server.write(curtime).await;
+
+        let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+
+        let e1 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("class", Value::new_class("account")),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::Uuid(tuuid)),
+            ("description", Value::new_utf8s("testperson1")),
+            ("displayname", Value::new_utf8s("testperson1")),
+            (
+                "primary_credential",
+                Value::Cred("primary".to_string(), cred.clone())
+            )
+        );
+
+        let ce = CreateEvent::new_internal(vec![e1]);
+        assert!(server_txn.create(&ce).is_ok());
+
+        // Create a fake session.
+        let session_id = Uuid::new_v4();
+        let pv_session_id = PartialValue::Refer(session_id);
+        // No expiry!
+        let expiry = None;
+        let issued_at = curtime_odt;
+        let issued_by = IdentityId::User(tuuid);
+        let scope = AccessScope::IdentityOnly;
+
+        let session = Value::Session(
+            session_id,
+            Session {
+                label: "label".to_string(),
+                expiry,
+                // Need the other inner bits?
+                // for the gracewindow.
+                issued_at,
+                // Who actually created this?
+                issued_by,
+                cred_id,
+                // What is the access scope of this session? This is
+                // for auditing purposes.
+                scope,
+            },
+        );
+
+        // Mod the user
+        let modlist = ModifyList::new_append("user_auth_token_session", session);
+
+        server_txn
+            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
+            .expect("Failed to modify user");
+
+        // Still there
+
+        let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
+
+        assert!(entry.attribute_equality("user_auth_token_session", &pv_session_id));
+
+        assert!(server_txn.commit().is_ok());
+
+        // Notice we keep the time the same for the txn.
+        let mut server_txn = server.write(curtime).await;
+
+        // Remove the primary credential
+        let modlist = ModifyList::new_purge("primary_credential");
+
+        server_txn
+            .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(tuuid))), &modlist)
+            .expect("Failed to modify user");
+
+        // Session gone.
+        let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
+
+        // Note it's a not condition now.
+        assert!(!entry.attribute_equality("user_auth_token_session", &pv_session_id));
 
         assert!(server_txn.commit().is_ok());
     }

@@ -158,6 +158,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 issued_at,
                 // Who actually created this?
                 issued_by: gte.ident.get_event_origin_id(),
+                // random id
+                cred_id: Uuid::new_v4(),
                 // What is the access scope of this session? This is
                 // for auditing purposes.
                 scope: (&purpose).into(),

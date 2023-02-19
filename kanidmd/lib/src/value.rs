@@ -715,6 +715,7 @@ pub struct Session {
     pub expiry: Option<OffsetDateTime>,
     pub issued_at: OffsetDateTime,
     pub issued_by: IdentityId,
+    pub cred_id: Uuid,
     pub scope: AccessScope,
 }
 

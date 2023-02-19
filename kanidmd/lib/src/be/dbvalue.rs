@@ -421,6 +421,22 @@ pub enum DbValueSession {
         #[serde(rename = "s", default)]
         scope: DbValueAccessScopeV1,
     },
+    V2 {
+        #[serde(rename = "u")]
+        refer: Uuid,
+        #[serde(rename = "l")]
+        label: String,
+        #[serde(rename = "e")]
+        expiry: Option<String>,
+        #[serde(rename = "i")]
+        issued_at: String,
+        #[serde(rename = "b")]
+        issued_by: DbValueIdentityId,
+        #[serde(rename = "c")]
+        cred_id: Uuid,
+        #[serde(rename = "s", default)]
+        scope: DbValueAccessScopeV1,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
