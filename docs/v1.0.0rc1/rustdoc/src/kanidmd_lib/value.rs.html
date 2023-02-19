@@ -1788,6 +1788,7 @@
 <a href="#1788" id="1788">1788</a>
 <a href="#1789" id="1789">1789</a>
 <a href="#1790" id="1790">1790</a>
+<a href="#1791" id="1791">1791</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of
 //! the [`Value`] module allow storage and transformation of various types of input into strongly
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
@@ -2505,6 +2506,7 @@
     <span class="kw">pub </span>expiry: <span class="prelude-ty">Option</span>&lt;OffsetDateTime&gt;,
     <span class="kw">pub </span>issued_at: OffsetDateTime,
     <span class="kw">pub </span>issued_by: IdentityId,
+    <span class="kw">pub </span>cred_id: Uuid,
     <span class="kw">pub </span>scope: AccessScope,
 }
 

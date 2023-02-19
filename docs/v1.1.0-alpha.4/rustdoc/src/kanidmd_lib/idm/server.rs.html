@@ -4022,6 +4022,15 @@
 <a href="#4022" id="4022">4022</a>
 <a href="#4023" id="4023">4023</a>
 <a href="#4024" id="4024">4024</a>
+<a href="#4025" id="4025">4025</a>
+<a href="#4026" id="4026">4026</a>
+<a href="#4027" id="4027">4027</a>
+<a href="#4028" id="4028">4028</a>
+<a href="#4029" id="4029">4029</a>
+<a href="#4030" id="4030">4030</a>
+<a href="#4031" id="4031">4031</a>
+<a href="#4032" id="4032">4032</a>
+<a href="#4033" id="4033">4033</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::TryFrom;
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::sync::Arc;
@@ -6102,6 +6111,8 @@
                 </span>issued_at: asr.issued_at,
                 <span class="comment">// Who actually created this?
                 </span>issued_by: asr.issued_by.clone(),
+                <span class="comment">// Which credential was used?
+                </span>cred_id: asr.cred_id,
                 <span class="comment">// What is the access scope of this session? This is
                 // for auditing purposes.
                 </span>scope: asr.scope,
@@ -6470,9 +6481,10 @@
         )
     }
 
-    <span class="kw">async fn </span>init_admin_w_password(qs: <span class="kw-2">&amp;</span>QueryServer, pw: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
+    <span class="kw">async fn </span>init_admin_w_password(qs: <span class="kw-2">&amp;</span>QueryServer, pw: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Uuid, OperationError&gt; {
         <span class="kw">let </span>p = CryptoPolicy::minimum();
         <span class="kw">let </span>cred = Credential::new_password_only(<span class="kw-2">&amp;</span>p, pw)<span class="question-mark">?</span>;
+        <span class="kw">let </span>cred_id = cred.uuid;
         <span class="kw">let </span>v_cred = Value::new_credential(<span class="string">&quot;primary&quot;</span>, cred);
         <span class="kw">let </span><span class="kw-2">mut </span>qs_write = qs.write(duration_from_epoch_now()).<span class="kw">await</span>;
 
@@ -6489,7 +6501,7 @@
         <span class="comment">// go!
         </span><span class="macro">assert!</span>(qs_write.modify(<span class="kw-2">&amp;</span>me_inv_m).is_ok());
 
-        qs_write.commit()
+        qs_write.commit().map(|()| cred_id)
     }
 
     <span class="kw">fn </span>init_admin_authsession_sid(idms: <span class="kw-2">&amp;</span>IdmServer, ct: Duration, name: <span class="kw-2">&amp;</span>str) -&gt; Uuid {
@@ -7682,92 +7694,98 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_idm_expired_auth_session_cleanup() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span>expiry_a = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + <span class="number">1</span>);
-            <span class="kw">let </span>expiry_b = ct + Duration::from_secs((AUTH_SESSION_EXPIRY + <span class="number">1</span>) * <span class="number">2</span>);
+        <span class="macro">run_idm_test!</span>(
+            |qs: <span class="kw-2">&amp;</span>QueryServer, idms: <span class="kw-2">&amp;</span>IdmServer, _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
+                <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+                <span class="kw">let </span>expiry_a = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + <span class="number">1</span>);
+                <span class="kw">let </span>expiry_b = ct + Duration::from_secs((AUTH_SESSION_EXPIRY + <span class="number">1</span>) * <span class="number">2</span>);
 
-            <span class="kw">let </span>session_a = Uuid::new_v4();
-            <span class="kw">let </span>session_b = Uuid::new_v4();
+                <span class="kw">let </span>session_a = Uuid::new_v4();
+                <span class="kw">let </span>session_b = Uuid::new_v4();
 
-            <span class="comment">// Assert no sessions present
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
-            <span class="kw">let </span>admin = idms_prox_read
-                .qs_read
-                .internal_search_uuid(UUID_ADMIN)
-                .expect(<span class="string">&quot;failed&quot;</span>);
-            <span class="kw">let </span>sessions = admin.get_ava_as_session_map(<span class="string">&quot;user_auth_token_session&quot;</span>);
-            <span class="macro">assert!</span>(sessions.is_none());
-            drop(idms_prox_read);
+                <span class="comment">// We need to put the credential on the admin.
+                </span><span class="kw">let </span>cred_id = task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
+                    .expect(<span class="string">&quot;Failed to setup admin account&quot;</span>);
 
-            <span class="kw">let </span>da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
-                target_uuid: UUID_ADMIN,
-                session_id: session_a,
-                label: <span class="string">&quot;Test Session A&quot;</span>.to_string(),
-                expiry: <span class="prelude-val">Some</span>(OffsetDateTime::unix_epoch() + expiry_a),
-                issued_at: OffsetDateTime::unix_epoch() + ct,
-                issued_by: IdentityId::User(UUID_ADMIN),
-                scope: AccessScope::IdentityOnly,
-            });
-            <span class="comment">// Persist it.
-            </span><span class="kw">let </span>r = task::block_on(idms.delayed_action(ct, da));
-            <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) == r);
+                <span class="comment">// Assert no sessions present
+                </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span>admin = idms_prox_read
+                    .qs_read
+                    .internal_search_uuid(UUID_ADMIN)
+                    .expect(<span class="string">&quot;failed&quot;</span>);
+                <span class="kw">let </span>sessions = admin.get_ava_as_session_map(<span class="string">&quot;user_auth_token_session&quot;</span>);
+                <span class="macro">assert!</span>(sessions.is_none());
+                drop(idms_prox_read);
 
-            <span class="comment">// Check it was written, and check
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
-            <span class="kw">let </span>admin = idms_prox_read
-                .qs_read
-                .internal_search_uuid(UUID_ADMIN)
-                .expect(<span class="string">&quot;failed&quot;</span>);
-            <span class="kw">let </span>sessions = admin
-                .get_ava_as_session_map(<span class="string">&quot;user_auth_token_session&quot;</span>)
-                .expect(<span class="string">&quot;Sessions must be present!&quot;</span>);
-            <span class="macro">assert!</span>(sessions.len() == <span class="number">1</span>);
-            <span class="kw">let </span>session_id_a = sessions
-                .keys()
-                .copied()
-                .next()
-                .expect(<span class="string">&quot;Could not access session id&quot;</span>);
-            <span class="macro">assert!</span>(session_id_a == session_a);
+                <span class="kw">let </span>da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
+                    target_uuid: UUID_ADMIN,
+                    session_id: session_a,
+                    cred_id,
+                    label: <span class="string">&quot;Test Session A&quot;</span>.to_string(),
+                    expiry: <span class="prelude-val">Some</span>(OffsetDateTime::unix_epoch() + expiry_a),
+                    issued_at: OffsetDateTime::unix_epoch() + ct,
+                    issued_by: IdentityId::User(UUID_ADMIN),
+                    scope: AccessScope::IdentityOnly,
+                });
+                <span class="comment">// Persist it.
+                </span><span class="kw">let </span>r = task::block_on(idms.delayed_action(ct, da));
+                <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) == r);
 
-            drop(idms_prox_read);
+                <span class="comment">// Check it was written, and check
+                </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span>admin = idms_prox_read
+                    .qs_read
+                    .internal_search_uuid(UUID_ADMIN)
+                    .expect(<span class="string">&quot;failed&quot;</span>);
+                <span class="kw">let </span>sessions = admin
+                    .get_ava_as_session_map(<span class="string">&quot;user_auth_token_session&quot;</span>)
+                    .expect(<span class="string">&quot;Sessions must be present!&quot;</span>);
+                <span class="macro">assert!</span>(sessions.len() == <span class="number">1</span>);
+                <span class="kw">let </span>session_id_a = sessions
+                    .keys()
+                    .copied()
+                    .next()
+                    .expect(<span class="string">&quot;Could not access session id&quot;</span>);
+                <span class="macro">assert!</span>(session_id_a == session_a);
 
-            <span class="comment">// When we re-auth, this is what triggers the session cleanup via the delayed action.
+                drop(idms_prox_read);
 
-            </span><span class="kw">let </span>da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
-                target_uuid: UUID_ADMIN,
-                session_id: session_b,
-                label: <span class="string">&quot;Test Session B&quot;</span>.to_string(),
-                expiry: <span class="prelude-val">Some</span>(OffsetDateTime::unix_epoch() + expiry_b),
-                issued_at: OffsetDateTime::unix_epoch() + ct,
-                issued_by: IdentityId::User(UUID_ADMIN),
-                scope: AccessScope::IdentityOnly,
-            });
-            <span class="comment">// Persist it.
-            </span><span class="kw">let </span>r = task::block_on(idms.delayed_action(expiry_a, da));
-            <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) == r);
+                <span class="comment">// When we re-auth, this is what triggers the session cleanup via the delayed action.
 
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
-            <span class="kw">let </span>admin = idms_prox_read
-                .qs_read
-                .internal_search_uuid(UUID_ADMIN)
-                .expect(<span class="string">&quot;failed&quot;</span>);
-            <span class="kw">let </span>sessions = admin
-                .get_ava_as_session_map(<span class="string">&quot;user_auth_token_session&quot;</span>)
-                .expect(<span class="string">&quot;Sessions must be present!&quot;</span>);
-            <span class="macro">trace!</span>(<span class="question-mark">?</span>sessions);
-            <span class="macro">assert!</span>(sessions.len() == <span class="number">1</span>);
-            <span class="kw">let </span>session_id_b = sessions
-                .keys()
-                .copied()
-                .next()
-                .expect(<span class="string">&quot;Could not access session id&quot;</span>);
-            <span class="macro">assert!</span>(session_id_b == session_b);
+                </span><span class="kw">let </span>da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
+                    target_uuid: UUID_ADMIN,
+                    session_id: session_b,
+                    cred_id,
+                    label: <span class="string">&quot;Test Session B&quot;</span>.to_string(),
+                    expiry: <span class="prelude-val">Some</span>(OffsetDateTime::unix_epoch() + expiry_b),
+                    issued_at: OffsetDateTime::unix_epoch() + ct,
+                    issued_by: IdentityId::User(UUID_ADMIN),
+                    scope: AccessScope::IdentityOnly,
+                });
+                <span class="comment">// Persist it.
+                </span><span class="kw">let </span>r = task::block_on(idms.delayed_action(expiry_a, da));
+                <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) == r);
 
-            <span class="macro">assert!</span>(session_id_a != session_id_b);
-        })
+                <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
+                <span class="kw">let </span>admin = idms_prox_read
+                    .qs_read
+                    .internal_search_uuid(UUID_ADMIN)
+                    .expect(<span class="string">&quot;failed&quot;</span>);
+                <span class="kw">let </span>sessions = admin
+                    .get_ava_as_session_map(<span class="string">&quot;user_auth_token_session&quot;</span>)
+                    .expect(<span class="string">&quot;Sessions must be present!&quot;</span>);
+                <span class="macro">trace!</span>(<span class="question-mark">?</span>sessions);
+                <span class="macro">assert!</span>(sessions.len() == <span class="number">1</span>);
+                <span class="kw">let </span>session_id_b = sessions
+                    .keys()
+                    .copied()
+                    .next()
+                    .expect(<span class="string">&quot;Could not access session id&quot;</span>);
+                <span class="macro">assert!</span>(session_id_b == session_b);
+
+                <span class="macro">assert!</span>(session_id_a != session_id_b);
+            }
+        )
     }
 
     <span class="attr">#[test]

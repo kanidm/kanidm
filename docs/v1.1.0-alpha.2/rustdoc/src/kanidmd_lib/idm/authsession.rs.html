@@ -2361,6 +2361,87 @@
 <a href="#2361" id="2361">2361</a>
 <a href="#2362" id="2362">2362</a>
 <a href="#2363" id="2363">2363</a>
+<a href="#2364" id="2364">2364</a>
+<a href="#2365" id="2365">2365</a>
+<a href="#2366" id="2366">2366</a>
+<a href="#2367" id="2367">2367</a>
+<a href="#2368" id="2368">2368</a>
+<a href="#2369" id="2369">2369</a>
+<a href="#2370" id="2370">2370</a>
+<a href="#2371" id="2371">2371</a>
+<a href="#2372" id="2372">2372</a>
+<a href="#2373" id="2373">2373</a>
+<a href="#2374" id="2374">2374</a>
+<a href="#2375" id="2375">2375</a>
+<a href="#2376" id="2376">2376</a>
+<a href="#2377" id="2377">2377</a>
+<a href="#2378" id="2378">2378</a>
+<a href="#2379" id="2379">2379</a>
+<a href="#2380" id="2380">2380</a>
+<a href="#2381" id="2381">2381</a>
+<a href="#2382" id="2382">2382</a>
+<a href="#2383" id="2383">2383</a>
+<a href="#2384" id="2384">2384</a>
+<a href="#2385" id="2385">2385</a>
+<a href="#2386" id="2386">2386</a>
+<a href="#2387" id="2387">2387</a>
+<a href="#2388" id="2388">2388</a>
+<a href="#2389" id="2389">2389</a>
+<a href="#2390" id="2390">2390</a>
+<a href="#2391" id="2391">2391</a>
+<a href="#2392" id="2392">2392</a>
+<a href="#2393" id="2393">2393</a>
+<a href="#2394" id="2394">2394</a>
+<a href="#2395" id="2395">2395</a>
+<a href="#2396" id="2396">2396</a>
+<a href="#2397" id="2397">2397</a>
+<a href="#2398" id="2398">2398</a>
+<a href="#2399" id="2399">2399</a>
+<a href="#2400" id="2400">2400</a>
+<a href="#2401" id="2401">2401</a>
+<a href="#2402" id="2402">2402</a>
+<a href="#2403" id="2403">2403</a>
+<a href="#2404" id="2404">2404</a>
+<a href="#2405" id="2405">2405</a>
+<a href="#2406" id="2406">2406</a>
+<a href="#2407" id="2407">2407</a>
+<a href="#2408" id="2408">2408</a>
+<a href="#2409" id="2409">2409</a>
+<a href="#2410" id="2410">2410</a>
+<a href="#2411" id="2411">2411</a>
+<a href="#2412" id="2412">2412</a>
+<a href="#2413" id="2413">2413</a>
+<a href="#2414" id="2414">2414</a>
+<a href="#2415" id="2415">2415</a>
+<a href="#2416" id="2416">2416</a>
+<a href="#2417" id="2417">2417</a>
+<a href="#2418" id="2418">2418</a>
+<a href="#2419" id="2419">2419</a>
+<a href="#2420" id="2420">2420</a>
+<a href="#2421" id="2421">2421</a>
+<a href="#2422" id="2422">2422</a>
+<a href="#2423" id="2423">2423</a>
+<a href="#2424" id="2424">2424</a>
+<a href="#2425" id="2425">2425</a>
+<a href="#2426" id="2426">2426</a>
+<a href="#2427" id="2427">2427</a>
+<a href="#2428" id="2428">2428</a>
+<a href="#2429" id="2429">2429</a>
+<a href="#2430" id="2430">2430</a>
+<a href="#2431" id="2431">2431</a>
+<a href="#2432" id="2432">2432</a>
+<a href="#2433" id="2433">2433</a>
+<a href="#2434" id="2434">2434</a>
+<a href="#2435" id="2435">2435</a>
+<a href="#2436" id="2436">2436</a>
+<a href="#2437" id="2437">2437</a>
+<a href="#2438" id="2438">2438</a>
+<a href="#2439" id="2439">2439</a>
+<a href="#2440" id="2440">2440</a>
+<a href="#2441" id="2441">2441</a>
+<a href="#2442" id="2442">2442</a>
+<a href="#2443" id="2443">2443</a>
+<a href="#2444" id="2444">2444</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the logic to conduct an authentication of an account.
 //! Generally this has to process an authentication attempt, and validate each
 //! factor to assert that the user is legitimate. This also contains some
@@ -2382,7 +2463,8 @@
 <span class="comment">// use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
 </span><span class="kw">use </span>webauthn_rs::prelude::Passkey <span class="kw">as </span>PasskeyV4;
 <span class="kw">use </span>webauthn_rs::prelude::{
-    PasskeyAuthentication, RequestChallengeResponse, SecurityKeyAuthentication, Webauthn,
+    CredentialID, PasskeyAuthentication, RequestChallengeResponse, SecurityKeyAuthentication,
+    Webauthn,
 };
 
 <span class="kw">use </span><span class="kw">crate</span>::credential::totp::Totp;
@@ -2410,7 +2492,7 @@
 
 <span class="doccomment">/// A response type to indicate the progress and potential result of an authentication attempt.
 </span><span class="kw">enum </span>CredState {
-    Success(AuthType),
+    Success { auth_type: AuthType, cred_id: Uuid },
     Continue(Vec&lt;AuthAllowed&gt;),
     Denied(<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str),
 }
@@ -2447,10 +2529,22 @@
 /// mechanism.
 </span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">enum </span>CredHandler {
-    Anonymous,
-    Password(Password, bool),
-    PasswordMfa(Box&lt;CredMfa&gt;),
-    Passkey(CredWebauthn),
+    Anonymous {
+        cred_id: Uuid,
+    },
+    Password {
+        pw: Password,
+        generated: bool,
+        cred_id: Uuid,
+    },
+    PasswordMfa {
+        cmfa: Box&lt;CredMfa&gt;,
+        cred_id: Uuid,
+    },
+    Passkey {
+        c_wan: CredWebauthn,
+        cred_ids: BTreeMap&lt;CredentialID, Uuid&gt;,
+    },
 }
 
 <span class="kw">impl </span>TryFrom&lt;(<span class="kw-2">&amp;</span>Credential, <span class="kw-2">&amp;</span>Webauthn)&gt; <span class="kw">for </span>CredHandler {
@@ -2462,8 +2556,16 @@
     /// inconsistency.
     </span><span class="kw">fn </span>try_from((c, webauthn): (<span class="kw-2">&amp;</span>Credential, <span class="kw-2">&amp;</span>Webauthn)) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
         <span class="kw">match </span><span class="kw-2">&amp;</span>c.type_ {
-            CredentialType::Password(pw) =&gt; <span class="prelude-val">Ok</span>(CredHandler::Password(pw.clone(), <span class="bool-val">false</span>)),
-            CredentialType::GeneratedPassword(pw) =&gt; <span class="prelude-val">Ok</span>(CredHandler::Password(pw.clone(), <span class="bool-val">true</span>)),
+            CredentialType::Password(pw) =&gt; <span class="prelude-val">Ok</span>(CredHandler::Password {
+                pw: pw.clone(),
+                generated: <span class="bool-val">false</span>,
+                cred_id: c.uuid,
+            }),
+            CredentialType::GeneratedPassword(pw) =&gt; <span class="prelude-val">Ok</span>(CredHandler::Password {
+                pw: pw.clone(),
+                generated: <span class="bool-val">true</span>,
+                cred_id: c.uuid,
+            }),
             CredentialType::PasswordMfa(pw, maybe_totp, maybe_wan, maybe_backup_code) =&gt; {
                 <span class="kw">let </span>wan = <span class="kw">if </span>!maybe_wan.is_empty() {
                     <span class="kw">let </span>sks: Vec&lt;<span class="kw">_</span>&gt; = maybe_wan.values().cloned().collect();
@@ -2498,18 +2600,26 @@
                     <span class="kw">return </span><span class="prelude-val">Err</span>(());
                 }
 
-                <span class="prelude-val">Ok</span>(CredHandler::PasswordMfa(cmfa))
+                <span class="prelude-val">Ok</span>(CredHandler::PasswordMfa {
+                    cmfa,
+                    cred_id: c.uuid,
+                })
             }
             CredentialType::Webauthn(wan) =&gt; {
                 <span class="kw">let </span>pks: Vec&lt;<span class="kw">_</span>&gt; = wan.values().cloned().collect();
+                <span class="kw">let </span>cred_ids: BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = pks
+                    .iter()
+                    .map(|pk| (pk.cred_id().clone(), c.uuid))
+                    .collect();
                 webauthn
                     .start_passkey_authentication(<span class="kw-2">&amp;</span>pks)
-                    .map(|(chal, wan_state)| {
-                        CredHandler::Passkey(CredWebauthn {
+                    .map(|(chal, wan_state)| CredHandler::Passkey {
+                        c_wan: CredWebauthn {
                             chal,
                             wan_state,
                             state: CredVerifyState::Init,
-                        })
+                        },
+                        cred_ids,
                     })
                     .map_err(|e| {
                         <span class="macro">security_info!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Unable to create webauthn authentication challenge&quot;</span>);
@@ -2536,14 +2646,20 @@
         }
 
         <span class="kw">let </span>pks: Vec&lt;<span class="kw">_</span>&gt; = wan.values().map(|(<span class="kw">_</span>, k)| k).cloned().collect();
+        <span class="kw">let </span>cred_ids: BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = wan
+            .iter()
+            .map(|(u, (<span class="kw">_</span>, k))| (k.cred_id().clone(), <span class="kw-2">*</span>u))
+            .collect();
+
         webauthn
             .start_passkey_authentication(<span class="kw-2">&amp;</span>pks)
-            .map(|(chal, wan_state)| {
-                CredHandler::Passkey(CredWebauthn {
+            .map(|(chal, wan_state)| CredHandler::Passkey {
+                c_wan: CredWebauthn {
                     chal,
                     wan_state,
                     state: CredVerifyState::Init,
-                })
+                },
+                cred_ids,
             })
             .map_err(|e| {
                 <span class="macro">security_info!</span>(
@@ -2576,12 +2692,15 @@
     }
 
     <span class="doccomment">/// validate that the client wants to authenticate as the anonymous user.
-    </span><span class="kw">fn </span>validate_anonymous(cred: <span class="kw-2">&amp;</span>AuthCredential) -&gt; CredState {
+    </span><span class="kw">fn </span>validate_anonymous(cred: <span class="kw-2">&amp;</span>AuthCredential, cred_id: Uuid) -&gt; CredState {
         <span class="kw">match </span>cred {
             AuthCredential::Anonymous =&gt; {
                 <span class="comment">// For anonymous, no claims will ever be issued.
                 </span><span class="macro">security_info!</span>(<span class="string">&quot;Handler::Anonymous -&gt; Result::Success&quot;</span>);
-                CredState::Success(AuthType::Anonymous)
+                CredState::Success {
+                    auth_type: AuthType::Anonymous,
+                    cred_id,
+                }
             }
             <span class="kw">_ </span>=&gt; {
                 <span class="macro">security_error!</span>(
@@ -2595,6 +2714,7 @@
     <span class="doccomment">/// Validate a singule password credential of the account.
     </span><span class="kw">fn </span>validate_password(
         cred: <span class="kw-2">&amp;</span>AuthCredential,
+        cred_id: Uuid,
         pw: <span class="kw-2">&amp;mut </span>Password,
         generated: bool,
         who: Uuid,
@@ -2613,9 +2733,15 @@
                             <span class="macro">security_info!</span>(<span class="string">&quot;Handler::Password -&gt; Result::Success&quot;</span>);
                             <span class="self">Self</span>::maybe_pw_upgrade(pw, who, cleartext.as_str(), async_tx);
                             <span class="kw">if </span>generated {
-                                CredState::Success(AuthType::GeneratedPassword)
+                                CredState::Success {
+                                    auth_type: AuthType::GeneratedPassword,
+                                    cred_id,
+                                }
                             } <span class="kw">else </span>{
-                                CredState::Success(AuthType::Password)
+                                CredState::Success {
+                                    auth_type: AuthType::Password,
+                                    cred_id,
+                                }
                             }
                         }
                     }
@@ -2639,6 +2765,7 @@
     /// authentication will fail.
     </span><span class="kw">fn </span>validate_password_mfa(
         cred: <span class="kw-2">&amp;</span>AuthCredential,
+        cred_id: Uuid,
         ts: <span class="kw-2">&amp;</span>Duration,
         pw_mfa: <span class="kw-2">&amp;mut </span>CredMfa,
         webauthn: <span class="kw-2">&amp;</span>Webauthn,
@@ -2757,7 +2884,10 @@
                                         cleartext.as_str(),
                                         async_tx,
                                     );
-                                    CredState::Success(AuthType::PasswordMfa)
+                                    CredState::Success {
+                                        auth_type: AuthType::PasswordMfa,
+                                        cred_id,
+                                    }
                                 }
                             }
                         } <span class="kw">else </span>{
@@ -2786,6 +2916,7 @@
     </span><span class="doccomment">/// Validate a webauthn authentication attempt
     </span><span class="kw">pub fn </span>validate_webauthn(
         cred: <span class="kw-2">&amp;</span>AuthCredential,
+        cred_ids: <span class="kw-2">&amp;</span>BTreeMap&lt;CredentialID, Uuid&gt;,
         wan_cred: <span class="kw-2">&amp;mut </span>CredWebauthn,
         webauthn: <span class="kw-2">&amp;</span>Webauthn,
         who: Uuid,
@@ -2801,21 +2932,34 @@
                 <span class="comment">// lets see how we go.
                 </span><span class="kw">match </span>webauthn.finish_passkey_authentication(resp, <span class="kw-2">&amp;</span>wan_cred.wan_state) {
                     <span class="prelude-val">Ok</span>(auth_result) =&gt; {
-                        wan_cred.state = CredVerifyState::Success;
-                        <span class="comment">// Success. Determine if we need to update the counter
-                        // async from r.
-                        </span><span class="kw">if </span>auth_result.needs_update() {
-                            <span class="comment">// Do async
-                            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(_e) = async_tx.send(DelayedAction::WebauthnCounterIncrement(
-                                WebauthnCounterIncrement {
-                                    target_uuid: who,
-                                    auth_result,
-                                },
-                            )) {
-                                <span class="macro">admin_warn!</span>(<span class="string">&quot;unable to queue delayed webauthn property update, continuing ... &quot;</span>);
+                        <span class="kw">if let </span><span class="prelude-val">Some</span>(cred_id) = cred_ids.get(auth_result.cred_id()).copied() {
+                            wan_cred.state = CredVerifyState::Success;
+                            <span class="comment">// Success. Determine if we need to update the counter
+                            // async from r.
+                            </span><span class="kw">if </span>auth_result.needs_update() {
+                                <span class="comment">// Do async
+                                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(_e) =
+                                    async_tx.send(DelayedAction::WebauthnCounterIncrement(
+                                        WebauthnCounterIncrement {
+                                            target_uuid: who,
+                                            auth_result,
+                                        },
+                                    ))
+                                {
+                                    <span class="macro">admin_warn!</span>(<span class="string">&quot;unable to queue delayed webauthn property update, continuing ... &quot;</span>);
+                                };
                             };
-                        };
-                        CredState::Success(AuthType::Passkey)
+
+                            CredState::Success {
+                                auth_type: AuthType::Passkey,
+                                cred_id,
+                            }
+                        } <span class="kw">else </span>{
+                            wan_cred.state = CredVerifyState::Fail;
+                            <span class="comment">// Denied.
+                            </span><span class="macro">security_error!</span>(<span class="string">&quot;Handler::Webauthn -&gt; Result::Denied - webauthn credential id not found&quot;</span>);
+                            CredState::Denied(BAD_WEBAUTHN_MSG)
+                        }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; {
                         wan_cred.state = CredVerifyState::Fail;
@@ -2846,22 +2990,37 @@
         pw_badlist_set: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>HashSet&lt;String&gt;&gt;,
     ) -&gt; CredState {
         <span class="kw">match </span><span class="self">self </span>{
-            CredHandler::Anonymous =&gt; <span class="self">Self</span>::validate_anonymous(cred),
-            CredHandler::Password(<span class="kw-2">ref mut </span>pw, generated) =&gt; {
-                <span class="self">Self</span>::validate_password(cred, pw, <span class="kw-2">*</span>generated, who, async_tx, pw_badlist_set)
-            }
-            CredHandler::PasswordMfa(<span class="kw-2">ref mut </span>pw_mfa) =&gt; <span class="self">Self</span>::validate_password_mfa(
+            CredHandler::Anonymous { cred_id } =&gt; <span class="self">Self</span>::validate_anonymous(cred, <span class="kw-2">*</span>cred_id),
+            CredHandler::Password {
+                <span class="kw-2">ref mut </span>pw,
+                generated,
+                cred_id,
+            } =&gt; <span class="self">Self</span>::validate_password(
                 cred,
+                <span class="kw-2">*</span>cred_id,
+                pw,
+                <span class="kw-2">*</span>generated,
+                who,
+                async_tx,
+                pw_badlist_set,
+            ),
+            CredHandler::PasswordMfa {
+                <span class="kw-2">ref mut </span>cmfa,
+                cred_id,
+            } =&gt; <span class="self">Self</span>::validate_password_mfa(
+                cred,
+                <span class="kw-2">*</span>cred_id,
                 ts,
-                pw_mfa,
+                cmfa,
                 webauthn,
                 who,
                 async_tx,
                 pw_badlist_set,
             ),
-            CredHandler::Passkey(<span class="kw-2">ref mut </span>wan_cred) =&gt; {
-                <span class="self">Self</span>::validate_webauthn(cred, wan_cred, webauthn, who, async_tx)
-            }
+            CredHandler::Passkey {
+                <span class="kw-2">ref mut </span>c_wan,
+                cred_ids,
+            } =&gt; <span class="self">Self</span>::validate_webauthn(cred, cred_ids, c_wan, webauthn, who, async_tx),
         }
     }
 
@@ -2869,45 +3028,44 @@
     /// can proceed.
     </span><span class="kw">pub fn </span>next_auth_allowed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;AuthAllowed&gt; {
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self </span>{
-            CredHandler::Anonymous =&gt; <span class="macro">vec!</span>[AuthAllowed::Anonymous],
-            CredHandler::Password(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">vec!</span>[AuthAllowed::Password],
-            CredHandler::PasswordMfa(<span class="kw-2">ref </span>pw_mfa) =&gt; pw_mfa
+            CredHandler::Anonymous { .. } =&gt; <span class="macro">vec!</span>[AuthAllowed::Anonymous],
+            CredHandler::Password { .. } =&gt; <span class="macro">vec!</span>[AuthAllowed::Password],
+            CredHandler::PasswordMfa { <span class="kw-2">ref </span>cmfa, .. } =&gt; cmfa
                 .backup_code
                 .iter()
                 .map(|<span class="kw">_</span>| AuthAllowed::BackupCode)
                 <span class="comment">// This looks weird but the idea is that if at least *one*
                 // totp exists, then we only offer TOTP once. If none are
                 // there we offer it none.
-                </span>.chain(pw_mfa.totp.iter().next().map(|<span class="kw">_</span>| AuthAllowed::Totp))
+                </span>.chain(cmfa.totp.iter().next().map(|<span class="kw">_</span>| AuthAllowed::Totp))
                 <span class="comment">// This iter is over an option so it&#39;s there or not.
                 </span>.chain(
-                    pw_mfa
-                        .wan
+                    cmfa.wan
                         .iter()
                         .map(|(chal, <span class="kw">_</span>)| AuthAllowed::SecurityKey(chal.clone())),
                 )
                 .collect(),
-            CredHandler::Passkey(webauthn) =&gt; <span class="macro">vec!</span>[AuthAllowed::Passkey(webauthn.chal.clone())],
+            CredHandler::Passkey { c_wan, .. } =&gt; <span class="macro">vec!</span>[AuthAllowed::Passkey(c_wan.chal.clone())],
         }
     }
 
     <span class="doccomment">/// Determine which mechanismes can proceed given the requested mechanism.
     </span><span class="kw">fn </span>can_proceed(<span class="kw-2">&amp;</span><span class="self">self</span>, mech: <span class="kw-2">&amp;</span>AuthMech) -&gt; bool {
         <span class="kw">match </span>(<span class="self">self</span>, mech) {
-            (CredHandler::Anonymous, AuthMech::Anonymous)
-            | (CredHandler::Password(<span class="kw">_</span>, <span class="kw">_</span>), AuthMech::Password)
-            | (CredHandler::PasswordMfa(<span class="kw">_</span>), AuthMech::PasswordMfa)
-            | (CredHandler::Passkey(<span class="kw">_</span>), AuthMech::Passkey) =&gt; <span class="bool-val">true</span>,
+            (CredHandler::Anonymous { .. }, AuthMech::Anonymous)
+            | (CredHandler::Password { .. }, AuthMech::Password)
+            | (CredHandler::PasswordMfa { .. }, AuthMech::PasswordMfa)
+            | (CredHandler::Passkey { .. }, AuthMech::Passkey) =&gt; <span class="bool-val">true</span>,
             (<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
         }
     }
 
     <span class="kw">fn </span>allows_mech(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; AuthMech {
         <span class="kw">match </span><span class="self">self </span>{
-            CredHandler::Anonymous =&gt; AuthMech::Anonymous,
-            CredHandler::Password(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; AuthMech::Password,
-            CredHandler::PasswordMfa(<span class="kw">_</span>) =&gt; AuthMech::PasswordMfa,
-            CredHandler::Passkey(<span class="kw">_</span>) =&gt; AuthMech::Passkey,
+            CredHandler::Anonymous { .. } =&gt; AuthMech::Anonymous,
+            CredHandler::Password { .. } =&gt; AuthMech::Password,
+            CredHandler::PasswordMfa { .. } =&gt; AuthMech::PasswordMfa,
+            CredHandler::Passkey { .. } =&gt; AuthMech::Passkey,
         }
     }
 }
@@ -2975,7 +3133,9 @@
             // based on the anonymous ... in theory this could be cleaner
             // and interact with the account more?
             </span><span class="kw">if </span>account.is_anonymous() {
-                AuthSessionState::Init(<span class="macro">vec!</span>[CredHandler::Anonymous])
+                AuthSessionState::Init(<span class="macro">vec!</span>[CredHandler::Anonymous {
+                    cred_id: account.uuid,
+                }])
             } <span class="kw">else </span>{
                 <span class="comment">// What&#39;s valid to use in this context?
                 </span><span class="kw">let </span><span class="kw-2">mut </span>handlers = Vec::new();
@@ -3030,14 +3190,15 @@
         }
     }
 
-    <span class="kw">pub fn </span>get_credential_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
+    <span class="comment">// This is used for softlock identification only.
+    </span><span class="kw">pub fn </span>get_credential_uuid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Uuid&gt;, OperationError&gt; {
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.state {
-            AuthSessionState::InProgress(CredHandler::Password(<span class="kw">_</span>, <span class="kw">_</span>))
-            | AuthSessionState::InProgress(CredHandler::PasswordMfa(<span class="kw">_</span>)) =&gt; {
-                <span class="prelude-val">Ok</span>(<span class="self">self</span>.account.primary_cred_uuid())
+            AuthSessionState::InProgress(CredHandler::Password { cred_id, .. })
+            | AuthSessionState::InProgress(CredHandler::PasswordMfa { cred_id, .. }) =&gt; {
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>cred_id))
             }
-            AuthSessionState::InProgress(CredHandler::Anonymous)
-            | AuthSessionState::InProgress(CredHandler::Passkey(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
+            AuthSessionState::InProgress(CredHandler::Anonymous { .. })
+            | AuthSessionState::InProgress(CredHandler::Passkey { .. }) =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(OperationError::InvalidState),
         }
     }
@@ -3134,7 +3295,7 @@
                     webauthn,
                     pw_badlist_set,
                 ) {
-                    CredState::Success(auth_type) =&gt; {
+                    CredState::Success { auth_type, cred_id } =&gt; {
                         <span class="macro">security_info!</span>(<span class="string">&quot;Successful cred handling&quot;</span>);
                         <span class="kw">let </span>session_id = Uuid::new_v4();
                         <span class="kw">let </span>issue = <span class="self">self</span>.issue;
@@ -3179,6 +3340,7 @@
                                 async_tx.send(DelayedAction::AuthSessionRecord(AuthSessionRecord {
                                     target_uuid: <span class="self">self</span>.account.uuid,
                                     session_id,
+                                    cred_id,
                                     label: <span class="string">&quot;Auth Session&quot;</span>.to_string(),
                                     expiry: uat.expiry,
                                     issued_at: uat.issued_at,

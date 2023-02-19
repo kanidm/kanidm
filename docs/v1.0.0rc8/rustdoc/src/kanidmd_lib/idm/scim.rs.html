@@ -2802,6 +2802,8 @@
 <a href="#2802" id="2802">2802</a>
 <a href="#2803" id="2803">2803</a>
 <a href="#2804" id="2804">2804</a>
+<a href="#2805" id="2805">2805</a>
+<a href="#2806" id="2806">2806</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>base64urlsafedata::Base64UrlSafeData;
@@ -2962,6 +2964,8 @@
                 </span>issued_at,
                 <span class="comment">// Who actually created this?
                 </span>issued_by: gte.ident.get_event_origin_id(),
+                <span class="comment">// random id
+                </span>cred_id: Uuid::new_v4(),
                 <span class="comment">// What is the access scope of this session? This is
                 // for auditing purposes.
                 </span>scope: (<span class="kw-2">&amp;</span>purpose).into(),

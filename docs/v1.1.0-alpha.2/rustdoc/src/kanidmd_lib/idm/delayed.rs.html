@@ -82,6 +82,7 @@
 <a href="#82" id="82">82</a>
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>time::OffsetDateTime;
 <span class="kw">use </span>uuid::Uuid;
@@ -149,6 +150,7 @@
 </span><span class="kw">pub struct </span>AuthSessionRecord {
     <span class="kw">pub </span>target_uuid: Uuid,
     <span class="kw">pub </span>session_id: Uuid,
+    <span class="kw">pub </span>cred_id: Uuid,
     <span class="kw">pub </span>label: String,
     <span class="kw">pub </span>expiry: <span class="prelude-ty">Option</span>&lt;OffsetDateTime&gt;,
     <span class="kw">pub </span>issued_at: OffsetDateTime,

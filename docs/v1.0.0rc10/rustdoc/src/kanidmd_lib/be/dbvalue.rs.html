@@ -693,6 +693,22 @@
 <a href="#693" id="693">693</a>
 <a href="#694" id="694">694</a>
 <a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt;
 <span class="kw">use </span>std::time::Duration;
 
@@ -1113,6 +1129,22 @@
         </span>issued_at: String,
         <span class="attr">#[serde(rename = <span class="string">&quot;b&quot;</span>)]
         </span>issued_by: DbValueIdentityId,
+        <span class="attr">#[serde(rename = <span class="string">&quot;s&quot;</span>, default)]
+        </span>scope: DbValueAccessScopeV1,
+    },
+    V2 {
+        <span class="attr">#[serde(rename = <span class="string">&quot;u&quot;</span>)]
+        </span>refer: Uuid,
+        <span class="attr">#[serde(rename = <span class="string">&quot;l&quot;</span>)]
+        </span>label: String,
+        <span class="attr">#[serde(rename = <span class="string">&quot;e&quot;</span>)]
+        </span>expiry: <span class="prelude-ty">Option</span>&lt;String&gt;,
+        <span class="attr">#[serde(rename = <span class="string">&quot;i&quot;</span>)]
+        </span>issued_at: String,
+        <span class="attr">#[serde(rename = <span class="string">&quot;b&quot;</span>)]
+        </span>issued_by: DbValueIdentityId,
+        <span class="attr">#[serde(rename = <span class="string">&quot;c&quot;</span>)]
+        </span>cred_id: Uuid,
         <span class="attr">#[serde(rename = <span class="string">&quot;s&quot;</span>, default)]
         </span>scope: DbValueAccessScopeV1,
     },

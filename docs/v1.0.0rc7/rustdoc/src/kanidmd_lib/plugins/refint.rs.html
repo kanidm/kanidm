@@ -885,6 +885,18 @@
 <a href="#885" id="885">885</a>
 <a href="#886" id="886">886</a>
 <a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
 </pre><pre class="rust"><code><span class="comment">// Referential Integrity
 //
 // Given an entry, modification or change, ensure that all referential links
@@ -1150,6 +1162,9 @@
     <span class="kw">use </span><span class="kw">crate</span>::value::{Oauth2Session, Session};
     <span class="kw">use </span>time::OffsetDateTime;
     <span class="kw">use </span>uuid::uuid;
+
+    <span class="kw">use </span><span class="kw">crate</span>::credential::policy::CryptoPolicy;
+    <span class="kw">use </span><span class="kw">crate</span>::credential::Credential;
 
     <span class="comment">// The create references a uuid that doesn&#39;t exist - reject
     </span><span class="attr">#[test]
@@ -1663,6 +1678,10 @@
         <span class="kw">let </span>curtime = duration_from_epoch_now();
         <span class="kw">let </span>curtime_odt = OffsetDateTime::unix_epoch() + curtime;
 
+        <span class="kw">let </span>p = CryptoPolicy::minimum();
+        <span class="kw">let </span>cred = Credential::new_password_only(<span class="kw-2">&amp;</span>p, <span class="string">&quot;test_password&quot;</span>).unwrap();
+        <span class="kw">let </span>cred_id = cred.uuid;
+
         <span class="comment">// Create a user
         </span><span class="kw">let </span><span class="kw-2">mut </span>server_txn = server.write(curtime).<span class="kw">await</span>;
 
@@ -1676,7 +1695,11 @@
             (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testperson1&quot;</span>)),
             (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(tuuid)),
             (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
-            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>))
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;testperson1&quot;</span>)),
+            (
+                <span class="string">&quot;primary_credential&quot;</span>,
+                Value::Cred(<span class="string">&quot;primary&quot;</span>.to_string(), cred.clone())
+            )
         );
 
         <span class="kw">let </span>e2 = <span class="macro">entry_init!</span>(
@@ -1740,6 +1763,7 @@
                         </span>issued_at,
                         <span class="comment">// Who actually created this?
                         </span>issued_by,
+                        cred_id,
                         <span class="comment">// What is the access scope of this session? This is
                         // for auditing purposes.
                         </span>scope,
