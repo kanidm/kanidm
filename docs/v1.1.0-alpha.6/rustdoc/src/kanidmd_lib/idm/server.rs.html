@@ -4022,17 +4022,7 @@
 <a href="#4022" id="4022">4022</a>
 <a href="#4023" id="4023">4023</a>
 <a href="#4024" id="4024">4024</a>
-<a href="#4025" id="4025">4025</a>
-<a href="#4026" id="4026">4026</a>
-<a href="#4027" id="4027">4027</a>
-<a href="#4028" id="4028">4028</a>
-<a href="#4029" id="4029">4029</a>
-<a href="#4030" id="4030">4030</a>
-<a href="#4031" id="4031">4031</a>
-<a href="#4032" id="4032">4032</a>
-<a href="#4033" id="4033">4033</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::TryFrom;
-<span class="kw">use </span>std::ops::Deref;
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::time::Duration;
@@ -4093,6 +4083,14 @@
 <span class="kw">type </span>AuthSessionMutex = Arc&lt;Mutex&lt;AuthSession&gt;&gt;;
 <span class="kw">type </span>CredSoftLockMutex = Arc&lt;Mutex&lt;CredSoftLock&gt;&gt;;
 
+<span class="attr">#[derive(Clone)]
+</span><span class="kw">pub struct </span>DomainKeys {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) uat_jwt_signer: JwsSigner,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) uat_jwt_validator: JwsValidator,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) token_enc_key: Fernet,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) cookie_key: [u8; <span class="number">32</span>],
+}
+
 <span class="kw">pub struct </span>IdmServer {
     <span class="comment">// There is a good reason to keep this single thread - it
     // means that limits to sessions can be easily applied and checked to
@@ -4112,10 +4110,7 @@
     </span>webauthn: Webauthn,
     pw_badlist_cache: Arc&lt;CowCell&lt;HashSet&lt;String&gt;&gt;&gt;,
     oauth2rs: Arc&lt;Oauth2ResourceServers&gt;,
-    uat_jwt_signer: Arc&lt;CowCell&lt;JwsSigner&gt;&gt;,
-    uat_jwt_validator: Arc&lt;CowCell&lt;JwsValidator&gt;&gt;,
-    token_enc_key: Arc&lt;CowCell&lt;Fernet&gt;&gt;,
-    cookie_key: Arc&lt;CowCell&lt;[u8; <span class="number">32</span>]&gt;&gt;,
+    domain_keys: Arc&lt;CowCell&lt;DomainKeys&gt;&gt;,
 }
 
 <span class="doccomment">/// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
@@ -4131,8 +4126,7 @@
     </span>async_tx: Sender&lt;DelayedAction&gt;,
     webauthn: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Webauthn,
     pw_badlist_cache: CowCellReadTxn&lt;HashSet&lt;String&gt;&gt;,
-    uat_jwt_signer: CowCellReadTxn&lt;JwsSigner&gt;,
-    uat_jwt_validator: CowCellReadTxn&lt;JwsValidator&gt;,
+    domain_keys: CowCellReadTxn&lt;DomainKeys&gt;,
 }
 
 <span class="kw">pub struct </span>IdmServerCredUpdateTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
@@ -4141,14 +4135,14 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) webauthn: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Webauthn,
     <span class="kw">pub</span>(<span class="kw">crate</span>) pw_badlist_cache: CowCellReadTxn&lt;HashSet&lt;String&gt;&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) cred_update_sessions: BptreeMapReadTxn&lt;<span class="lifetime">&#39;a</span>, Uuid, CredentialUpdateSessionMutex&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) token_enc_key: CowCellReadTxn&lt;Fernet&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) domain_keys: CowCellReadTxn&lt;DomainKeys&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) crypto_policy: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>CryptoPolicy,
 }
 
 <span class="doccomment">/// This contains read-only methods, like getting users, groups and other structured content.
 </span><span class="kw">pub struct </span>IdmServerProxyReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">pub </span>qs_read: QueryServerReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
-    uat_jwt_validator: CowCellReadTxn&lt;JwsValidator&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) domain_keys: CowCellReadTxn&lt;DomainKeys&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) oauth2rs: Oauth2ResourceServersReadTransaction,
     <span class="kw">pub</span>(<span class="kw">crate</span>) async_tx: Sender&lt;DelayedAction&gt;,
 }
@@ -4163,10 +4157,7 @@
     crypto_policy: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>CryptoPolicy,
     webauthn: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Webauthn,
     pw_badlist_cache: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, HashSet&lt;String&gt;&gt;,
-    uat_jwt_signer: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, JwsSigner&gt;,
-    uat_jwt_validator: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, JwsValidator&gt;,
-    cookie_key: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, [u8; <span class="number">32</span>]&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) token_enc_key: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, Fernet&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) domain_keys: CowCellWriteTxn&lt;<span class="lifetime">&#39;a</span>, DomainKeys&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) oauth2rs: Oauth2ResourceServersWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
 }
 
@@ -4246,26 +4237,27 @@
             })<span class="question-mark">?</span>;
 
         <span class="comment">// Setup our auth token signing key.
-        </span><span class="kw">let </span>fernet_key = Fernet::new(<span class="kw-2">&amp;</span>fernet_private_key).ok_or_else(|| {
+        </span><span class="kw">let </span>token_enc_key = Fernet::new(<span class="kw-2">&amp;</span>fernet_private_key).ok_or_else(|| {
             <span class="macro">admin_error!</span>(<span class="string">&quot;Unable to load Fernet encryption key&quot;</span>);
             OperationError::CryptographyError
         })<span class="question-mark">?</span>;
-        <span class="kw">let </span>token_enc_key = Arc::new(CowCell::new(fernet_key));
 
-        <span class="kw">let </span>jwt_signer = JwsSigner::from_es256_der(<span class="kw-2">&amp;</span>es256_private_key).map_err(|e| {
+        <span class="kw">let </span>uat_jwt_signer = JwsSigner::from_es256_der(<span class="kw-2">&amp;</span>es256_private_key).map_err(|e| {
             <span class="macro">admin_error!</span>(err = <span class="question-mark">?</span>e, <span class="string">&quot;Unable to load ES256 JwsSigner from DER&quot;</span>);
             OperationError::CryptographyError
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>jwt_validator = jwt_signer.get_validator().map_err(|e| {
+        <span class="kw">let </span>uat_jwt_validator = uat_jwt_signer.get_validator().map_err(|e| {
             <span class="macro">admin_error!</span>(err = <span class="question-mark">?</span>e, <span class="string">&quot;Unable to load ES256 JwsValidator from JwsSigner&quot;</span>);
             OperationError::CryptographyError
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>uat_jwt_signer = Arc::new(CowCell::new(jwt_signer));
-        <span class="kw">let </span>uat_jwt_validator = Arc::new(CowCell::new(jwt_validator));
-
-        <span class="kw">let </span>cookie_key = Arc::new(CowCell::new(cookie_key));
+        <span class="kw">let </span>domain_keys = Arc::new(CowCell::new(DomainKeys {
+            uat_jwt_signer,
+            uat_jwt_validator,
+            token_enc_key,
+            cookie_key,
+        }));
 
         <span class="kw">let </span>oauth2rs =
             Oauth2ResourceServers::try_from((oauth2rs_set, origin_url)).map_err(|e| {
@@ -4284,10 +4276,7 @@
                 async_tx,
                 webauthn,
                 pw_badlist_cache: Arc::new(CowCell::new(pw_badlist_set)),
-                uat_jwt_signer,
-                uat_jwt_validator,
-                token_enc_key,
-                cookie_key,
+                domain_keys,
                 oauth2rs: Arc::new(oauth2rs),
             },
             IdmServerDelayed { async_rx },
@@ -4295,7 +4284,7 @@
     }
 
     <span class="kw">pub fn </span>get_cookie_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [u8; <span class="number">32</span>] {
-        <span class="kw-2">*</span><span class="self">self</span>.cookie_key.read().deref()
+        <span class="self">self</span>.domain_keys.read().cookie_key
     }
 
     <span class="attr">#[cfg(test)]
@@ -4319,8 +4308,7 @@
             async_tx: <span class="self">self</span>.async_tx.clone(),
             webauthn: <span class="kw-2">&amp;</span><span class="self">self</span>.webauthn,
             pw_badlist_cache: <span class="self">self</span>.pw_badlist_cache.read(),
-            uat_jwt_signer: <span class="self">self</span>.uat_jwt_signer.read(),
-            uat_jwt_validator: <span class="self">self</span>.uat_jwt_validator.read(),
+            domain_keys: <span class="self">self</span>.domain_keys.read(),
         }
     }
 
@@ -4329,7 +4317,7 @@
     </span><span class="kw">pub async fn </span>proxy_read(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; IdmServerProxyReadTransaction&lt;<span class="lifetime">&#39;_</span>&gt; {
         IdmServerProxyReadTransaction {
             qs_read: <span class="self">self</span>.qs.read().<span class="kw">await</span>,
-            uat_jwt_validator: <span class="self">self</span>.uat_jwt_validator.read(),
+            domain_keys: <span class="self">self</span>.domain_keys.read(),
             oauth2rs: <span class="self">self</span>.oauth2rs.read(),
             async_tx: <span class="self">self</span>.async_tx.clone(),
         }
@@ -4350,10 +4338,7 @@
             crypto_policy: <span class="kw-2">&amp;</span><span class="self">self</span>.crypto_policy,
             webauthn: <span class="kw-2">&amp;</span><span class="self">self</span>.webauthn,
             pw_badlist_cache: <span class="self">self</span>.pw_badlist_cache.write(),
-            uat_jwt_signer: <span class="self">self</span>.uat_jwt_signer.write(),
-            uat_jwt_validator: <span class="self">self</span>.uat_jwt_validator.write(),
-            token_enc_key: <span class="self">self</span>.token_enc_key.write(),
-            cookie_key: <span class="self">self</span>.cookie_key.write(),
+            domain_keys: <span class="self">self</span>.domain_keys.write(),
             oauth2rs: <span class="self">self</span>.oauth2rs.write(),
         }
     }
@@ -4370,7 +4355,7 @@
             </span>webauthn: <span class="kw-2">&amp;</span><span class="self">self</span>.webauthn,
             pw_badlist_cache: <span class="self">self</span>.pw_badlist_cache.read(),
             cred_update_sessions: <span class="self">self</span>.cred_update_sessions.read(),
-            token_enc_key: <span class="self">self</span>.token_enc_key.read(),
+            domain_keys: <span class="self">self</span>.domain_keys.read(),
             crypto_policy: <span class="kw-2">&amp;</span><span class="self">self</span>.crypto_policy,
         }
     }
@@ -4926,7 +4911,7 @@
     }
 
     <span class="kw">fn </span>get_uat_validator_txn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>JwsValidator {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.uat_jwt_validator
+        <span class="kw-2">&amp;</span><span class="self">self</span>.domain_keys.uat_jwt_validator
     }
 }
 
@@ -5200,7 +5185,7 @@
                             <span class="kw-2">&amp;</span><span class="self">self</span>.async_tx,
                             <span class="self">self</span>.webauthn,
                             pw_badlist_cache,
-                            <span class="kw-2">&amp;</span><span class="self">self</span>.uat_jwt_signer,
+                            <span class="kw-2">&amp;</span><span class="self">self</span>.domain_keys.uat_jwt_signer,
                         )
                         .map(|aus| {
                             <span class="comment">// Inspect the result:
@@ -5469,7 +5454,7 @@
     }
 
     <span class="kw">fn </span>get_uat_validator_txn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>JwsValidator {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.uat_jwt_validator
+        <span class="kw-2">&amp;</span><span class="self">self</span>.domain_keys.uat_jwt_validator
     }
 }
 
@@ -5572,7 +5557,7 @@
     }
 
     <span class="kw">fn </span>get_uat_validator_txn(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>JwsValidator {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.uat_jwt_validator
+        <span class="kw-2">&amp;</span><span class="self">self</span>.domain_keys.uat_jwt_validator
     }
 }
 
@@ -6233,7 +6218,7 @@
                     })
                 })
                 .map(|new_handle| {
-                    <span class="kw-2">*</span><span class="self">self</span>.token_enc_key = new_handle;
+                    <span class="self">self</span>.domain_keys.token_enc_key = new_handle;
                 })<span class="question-mark">?</span>;
             <span class="self">self</span>.qs_write
                 .get_domain_es256_private_key()
@@ -6253,21 +6238,18 @@
                         .map(|validator| (signer, validator))
                 })
                 .map(|(new_signer, new_validator)| {
-                    <span class="kw-2">*</span><span class="self">self</span>.uat_jwt_signer = new_signer;
-                    <span class="kw-2">*</span><span class="self">self</span>.uat_jwt_validator = new_validator;
+                    <span class="self">self</span>.domain_keys.uat_jwt_signer = new_signer;
+                    <span class="self">self</span>.domain_keys.uat_jwt_validator = new_validator;
                 })<span class="question-mark">?</span>;
             <span class="self">self</span>.qs_write
                 .get_domain_cookie_key()
                 .map(|new_cookie_key| {
-                    <span class="kw-2">*</span><span class="self">self</span>.cookie_key = new_cookie_key;
+                    <span class="self">self</span>.domain_keys.cookie_key = new_cookie_key;
                 })<span class="question-mark">?</span>;
         }
         <span class="comment">// Commit everything.
         </span><span class="self">self</span>.oauth2rs.commit();
-        <span class="self">self</span>.uat_jwt_signer.commit();
-        <span class="self">self</span>.uat_jwt_validator.commit();
-        <span class="self">self</span>.cookie_key.commit();
-        <span class="self">self</span>.token_enc_key.commit();
+        <span class="self">self</span>.domain_keys.commit();
         <span class="self">self</span>.pw_badlist_cache.commit();
         <span class="self">self</span>.cred_update_sessions.commit();
         <span class="macro">trace!</span>(<span class="string">&quot;cred_update_session.commit&quot;</span>);

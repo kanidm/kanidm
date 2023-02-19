@@ -2561,6 +2561,8 @@
 <a href="#2561" id="2561">2561</a>
 <a href="#2562" id="2562">2562</a>
 <a href="#2563" id="2563">2563</a>
+<a href="#2564" id="2564">2564</a>
+<a href="#2565" id="2565">2565</a>
 </pre><pre class="rust"><code><span class="kw">use </span>core::ops::Deref;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::fmt;
@@ -2976,7 +2978,7 @@
             OperationError::SerdeJsonError
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>token_enc = <span class="self">self</span>.token_enc_key.encrypt(<span class="kw-2">&amp;</span>token_data);
+        <span class="kw">let </span>token_enc = <span class="self">self</span>.domain_keys.token_enc_key.encrypt(<span class="kw-2">&amp;</span>token_data);
 
         <span class="comment">// Point of no return
 
@@ -3289,7 +3291,8 @@
         OperationError,
     &gt; {
         <span class="kw">let </span>session_token: CredentialUpdateSessionTokenInner = <span class="self">self
-            </span>.token_enc_key
+            </span>.domain_keys
+            .token_enc_key
             .decrypt(<span class="kw-2">&amp;</span>cust.token_enc)
             .map_err(|e| {
                 <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Failed to decrypt credential update session request&quot;</span>);
@@ -3507,7 +3510,8 @@
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CredentialUpdateSessionMutex, OperationError&gt; {
         <span class="kw">let </span>session_token: CredentialUpdateSessionTokenInner = <span class="self">self
-            </span>.token_enc_key
+            </span>.domain_keys
+            .token_enc_key
             .decrypt(<span class="kw-2">&amp;</span>cust.token_enc)
             .map_err(|e| {
                 <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Failed to decrypt credential update session request&quot;</span>);
