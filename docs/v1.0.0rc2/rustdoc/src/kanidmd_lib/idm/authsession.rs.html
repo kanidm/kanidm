@@ -2441,7 +2441,6 @@
 <a href="#2441" id="2441">2441</a>
 <a href="#2442" id="2442">2442</a>
 <a href="#2443" id="2443">2443</a>
-<a href="#2444" id="2444">2444</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the logic to conduct an authentication of an account.
 //! Generally this has to process an authentication attempt, and validate each
 //! factor to assert that the user is legitimate. This also contains some
@@ -4028,8 +4027,7 @@
         <span class="kw">let </span>jws_signer = create_jwt_signer();
 
         <span class="comment">// Now create the credential for the account.
-        </span><span class="kw">let </span>cred = Credential::new_passkey_only(<span class="string">&quot;soft&quot;</span>.to_string(), wan_cred);
-        account.primary = <span class="prelude-val">Some</span>(cred);
+        </span>account.passkeys = <span class="macro">btreemap!</span>[(Uuid::new_v4(), (<span class="string">&quot;soft&quot;</span>.to_string(), wan_cred))];
 
         <span class="comment">// now check correct mech was offered.
 

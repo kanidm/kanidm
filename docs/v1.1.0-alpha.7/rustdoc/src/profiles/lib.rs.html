@@ -72,6 +72,8 @@
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::env;
 
 <span class="kw">use </span>serde::Deserialize;
@@ -135,7 +137,9 @@
     <span class="kw">match </span>profile_cfg.cpu_flags {
         CpuOptLevel::none =&gt; {}
         CpuOptLevel::native =&gt; <span class="macro">println!</span>(<span class="string">&quot;cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=native&quot;</span>),
-        CpuOptLevel::neon_v8 =&gt; <span class="macro">println!</span>(<span class="string">&quot;cargo:rustc-env=RUSTFLAGS=-Ctarget-features=+neon,+fp-armv8&quot;</span>),
+        CpuOptLevel::neon_v8 =&gt; {
+            <span class="macro">println!</span>(<span class="string">&quot;cargo:rustc-env=RUSTFLAGS=-Ctarget-features=+neon,+fp-armv8&quot;</span>)
+        }
         CpuOptLevel::x86_64_v2 =&gt; <span class="macro">println!</span>(<span class="string">&quot;cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=x86-64-v2&quot;</span>),
         CpuOptLevel::x86_64_v3 =&gt; <span class="macro">println!</span>(<span class="string">&quot;cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=x86-64-v3&quot;</span>),
     }
