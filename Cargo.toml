@@ -94,7 +94,7 @@ libnss = "^0.4.0"
 libsqlite3-sys = "^0.25.0"
 lru = "^0.8.0"
 mathru = "^0.13.0"
-num_enum = "^0.5.7"
+num_enum = "^0.5.10"
 oauth2_ext = { version = "^4.1.0", package = "oauth2", default-features = false }
 openssl-sys = "^0.9"
 openssl = "^0.10.45"
