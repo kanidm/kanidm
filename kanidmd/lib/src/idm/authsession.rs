@@ -1584,8 +1584,7 @@ mod tests {
         let jws_signer = create_jwt_signer();
 
         // Now create the credential for the account.
-        let cred = Credential::new_passkey_only("soft".to_string(), wan_cred);
-        account.primary = Some(cred);
+        account.passkeys = btreemap![(Uuid::new_v4(), ("soft".to_string(), wan_cred))];
 
         // now check correct mech was offered.
 
