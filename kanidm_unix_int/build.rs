@@ -11,7 +11,6 @@ include!("src/opt/cache_clear.rs");
 include!("src/opt/unixd_status.rs");
 
 fn main() {
-    println!("cargo:rustc-cfg-feature=\"unix\"");
     profiles::apply_profile();
 
     let outdir = match env::var_os("OUT_DIR") {
