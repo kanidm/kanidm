@@ -918,16 +918,6 @@ impl Credential {
         Password::new(policy, cleartext).map(Self::new_from_generatedpassword)
     }
 
-    /// Create a new credential that contains a CredentialType::Webauthn
-    pub fn new_passkey_only(label: String, cred: Passkey) -> Self {
-        let mut webauthn_map = Map::new();
-        webauthn_map.insert(label, cred);
-        Credential {
-            type_: CredentialType::Webauthn(webauthn_map),
-            uuid: Uuid::new_v4(),
-        }
-    }
-
     /// Update the state of the Password on this credential, if a password is present. If possible
     /// this will convert the credential to a PasswordMFA in some cases, or fail in others.
     pub fn set_password(
