@@ -18,6 +18,8 @@ fn main() {
         Some(outdir) => outdir,
     };
 
+    println!("cargo:rustc-cfg-features=\"unix\"");
+
     let comp_dir = PathBuf::from(outdir)
         .ancestors()
         .nth(2)
