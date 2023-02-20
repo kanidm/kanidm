@@ -92,6 +92,10 @@ impl QueryServer {
             if system_info_version < 10 {
                 migrate_txn.migrate_9_to_10()?;
             }
+
+            if system_info_version < 11 {
+                migrate_txn.migrate_10_to_11()?;
+            }
         }
 
         migrate_txn.commit()?;
@@ -277,6 +281,55 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let modlist = ModifyList::new_append("class", Value::new_class("object"));
         self.internal_modify(&filter, &modlist)
         // Complete
+    }
+
+    /// Migrate 10 to 11
+    ///
+    /// This forces a load of all credentials, and then examines if any are "passkey" capable. If they
+    /// are, they are migrated to the passkey type, allowing us to deprecate and remove the older
+    /// credential behaviour.
+    ///
+    #[instrument(level = "debug", skip_all)]
+    pub fn migrate_10_to_11(&mut self) -> Result<(), OperationError> {
+        admin_warn!("starting 9 to 10 migration.");
+        let filter = filter!(f_pres("primary_credential"));
+
+        let pre_candidates = self.internal_search(filter).map_err(|e| {
+            admin_error!(err = ?e, "migrate_10_to_11 internal search failure");
+            e
+        })?;
+
+        // First, filter based on if any credentials present actually are the legacy
+        // webauthn type.
+        let modset: Vec<_> = pre_candidates
+            .into_iter()
+            .filter_map(|ent| {
+                ent.get_ava_single_credential("primary_credential")
+                    .and_then(|cred| cred.passkey_ref().ok())
+                    .map(|pk_map| {
+                        let modlist = pk_map
+                            .iter()
+                            .map(|(t, k)| {
+                                Modify::Present(
+                                    "passkeys".into(),
+                                    Value::Passkey(Uuid::new_v4(), t.clone(), k.clone()),
+                                )
+                            })
+                            .chain(std::iter::once(m_purge("primary_credential")))
+                            .collect();
+                        (ent.get_uuid(), ModifyList::new_list(modlist))
+                    })
+            })
+            .collect();
+
+        // If there is nothing, we don't need to do anything.
+        if modset.is_empty() {
+            admin_info!("migrate_10_to_11 no entries to migrate, complete");
+            return Ok(());
+        }
+
+        // Apply the batch mod.
+        self.internal_batch_modify(modset.into_iter())
     }
 
     #[instrument(level = "info", skip_all)]

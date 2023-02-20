@@ -61,7 +61,9 @@ pub fn apply_profile() {
     match profile_cfg.cpu_flags {
         CpuOptLevel::none => {}
         CpuOptLevel::native => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=native"),
-        CpuOptLevel::neon_v8 => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-features=+neon,+fp-armv8"),
+        CpuOptLevel::neon_v8 => {
+            println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-features=+neon,+fp-armv8")
+        }
         CpuOptLevel::x86_64_v2 => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=x86-64-v2"),
         CpuOptLevel::x86_64_v3 => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=x86-64-v3"),
     }
