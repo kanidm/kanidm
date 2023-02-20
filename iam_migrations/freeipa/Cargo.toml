@@ -33,7 +33,7 @@ uuid = { workspace = true, features = ["serde"] }
 # For file metadata, should this me moved out?
 kanidmd_lib.workspace = true
 
-[target.'cfg(not(target_family = "windows"))'.dependencies]
+[target.'cfg(target_family = "unix")'.dependencies]
 users.workspace = true
 
 [build-dependencies]
