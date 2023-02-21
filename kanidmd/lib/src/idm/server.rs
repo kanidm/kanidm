@@ -898,6 +898,11 @@ impl<'a> IdmServerAuthTransaction<'a> {
         session_read.contains_key(&sessionid)
     }
 
+    pub fn get_origin(&self) -> &Url {
+        #[allow(clippy::unwrap_used)]
+        self.webauthn.get_allowed_origins().get(0).unwrap()
+    }
+
     #[instrument(level = "trace", skip(self))]
     pub async fn expire_auth_sessions(&mut self, ct: Duration) {
         // ct is current time - sub the timeout. and then split.

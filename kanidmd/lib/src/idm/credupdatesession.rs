@@ -148,7 +148,7 @@ impl CredentialUpdateSession {
     }
 }
 
-enum MfaRegStateStatus {
+pub enum MfaRegStateStatus {
     // Nothing in progress.
     None,
     TotpCheck(TotpSecret),
@@ -183,6 +183,16 @@ pub struct CredentialUpdateSessionStatus {
     passkeys: Vec<PasskeyDetail>,
     // Any info the client needs about mfareg state.
     mfaregstate: MfaRegStateStatus,
+}
+
+impl CredentialUpdateSessionStatus {
+    pub fn can_commit(&self) -> bool {
+        self.can_commit
+    }
+
+    pub fn mfaregstate(&self) -> &MfaRegStateStatus {
+        &self.mfaregstate
+    }
 }
 
 // We allow Into here because CUStatus is foreign so it's impossible for us to implement From
@@ -2017,7 +2027,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (cust, _) = setup_test_session(idms, ct).await;
 
-        let cutxn = idms.cred_update_transaction();
+        let cutxn = idms.cred_update_transaction_async().await;
         // The session exists
         let c_status = cutxn.credential_update_status(&cust, ct);
         assert!(c_status.is_ok());
