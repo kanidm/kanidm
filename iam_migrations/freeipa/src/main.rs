@@ -216,6 +216,14 @@ async fn driver_main(opt: Opt) {
                     }
                 }
             }
+            #[cfg(target_family = "windows")]
+            {
+            tokio::select! {
+                Ok(()) = tokio::signal::ctrl_c() => {
+                    break
+                }
+            }
+            }
         }
 
         broadcast_tx
