@@ -11,7 +11,6 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-
 #[cfg(target_family = "unix")]
 mod pam;
 

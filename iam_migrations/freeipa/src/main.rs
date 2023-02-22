@@ -27,7 +27,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::fs::metadata;
 use std::fs::File;
 use std::io::Read;
-#[cfg(target_family="unix")]
+#[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -54,7 +54,7 @@ use kanidm_proto::scim_v1::{
 };
 use kanidmd_lib::utils::file_permissions_readonly;
 
-#[cfg(target_family="unix")]
+#[cfg(target_family = "unix")]
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
 use ldap3_client::{
@@ -219,11 +219,11 @@ async fn driver_main(opt: Opt) {
             }
             #[cfg(target_family = "windows")]
             {
-            tokio::select! {
-                Ok(()) = tokio::signal::ctrl_c() => {
-                    break
+                tokio::select! {
+                    Ok(()) = tokio::signal::ctrl_c() => {
+                        break
+                    }
                 }
-            }
             }
         }
 
@@ -921,7 +921,7 @@ fn config_security_checks(cfg_path: &Path) -> bool {
                 );
         }
 
-        #[cfg(target_family="unix")]
+        #[cfg(target_family = "unix")]
         if cfg_meta.uid() == get_current_uid() || cfg_meta.uid() == get_effective_uid() {
             warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
                 cfg_path_str
@@ -933,7 +933,6 @@ fn config_security_checks(cfg_path: &Path) -> bool {
 }
 
 fn main() {
-
     let opt = Opt::parse();
 
     let fmt_layer = fmt::layer().with_writer(std::io::stderr);
@@ -959,10 +958,14 @@ fn main() {
         .init();
 
     // Startup sanity checks.
-    #[cfg(target_family="unix")]
+    #[cfg(target_family = "unix")]
     if opt.skip_root_check {
         warn!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
-    } else if get_current_uid() == 0 || get_effective_uid() == 0 || get_current_gid() == 0 || get_effective_gid() == 0 {
+    } else if get_current_uid() == 0
+        || get_effective_uid() == 0
+        || get_current_gid() == 0
+        || get_effective_gid() == 0
+    {
         error!("Refusing to run - this process must not operate as root.");
         return;
     };

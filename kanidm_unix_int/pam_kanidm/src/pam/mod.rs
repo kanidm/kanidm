@@ -39,9 +39,9 @@ use std::convert::TryFrom;
 use std::ffi::CStr;
 
 use kanidm_unix_common::client_sync::call_daemon_blocking;
-use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
+use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
 use crate::pam::constants::*;
 use crate::pam::conv::PamConv;
@@ -54,8 +54,6 @@ pub fn get_cfg() -> Result<KanidmUnixdConfig, PamResultCode> {
         .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
         .map_err(|_| PamResultCode::PAM_SERVICE_ERR)
 }
-
-
 
 #[cfg(target_family = "unix")]
 #[derive(Debug)]
@@ -86,7 +84,6 @@ impl TryFrom<&Vec<&CStr>> for Options {
         })
     }
 }
-
 
 pub struct PamKanidm;
 

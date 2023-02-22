@@ -18,7 +18,6 @@ fn main() {
         Some(outdir) => outdir,
     };
 
-
     let comp_dir = PathBuf::from(outdir)
         .ancestors()
         .nth(2)
