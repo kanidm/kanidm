@@ -3696,7 +3696,7 @@ mod tests {
                     expiry: Some(OffsetDateTime::unix_epoch() + expiry_a),
                     issued_at: OffsetDateTime::unix_epoch() + ct,
                     issued_by: IdentityId::User(UUID_ADMIN),
-                    scope: AccessScope::ReadOnly,
+                    scope: SessionScope::ReadOnly,
                 });
                 // Persist it.
                 let r = task::block_on(idms.delayed_action(ct, da));
@@ -3731,7 +3731,7 @@ mod tests {
                     expiry: Some(OffsetDateTime::unix_epoch() + expiry_b),
                     issued_at: OffsetDateTime::unix_epoch() + ct,
                     issued_by: IdentityId::User(UUID_ADMIN),
-                    scope: AccessScope::ReadOnly,
+                    scope: SessionScope::ReadOnly,
                 });
                 // Persist it.
                 let r = task::block_on(idms.delayed_action(expiry_a, da));

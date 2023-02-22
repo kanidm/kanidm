@@ -9,7 +9,7 @@ use std::hash::Hash;
 use std::sync::Arc;
 use uuid::uuid;
 
-use kanidm_proto::v1::{ApiTokenPurpose, UatPurpose, UatPurposeStatus};
+use kanidm_proto::v1::{ApiTokenPurpose, UatPurpose};
 
 use serde::{Deserialize, Serialize};
 
@@ -42,35 +42,11 @@ impl From<&ApiTokenPurpose> for AccessScope {
     }
 }
 
-impl TryInto<ApiTokenPurpose> for AccessScope {
-    type Error = OperationError;
-
-    fn try_into(self: AccessScope) -> Result<ApiTokenPurpose, OperationError> {
-        match self {
-            AccessScope::ReadOnly => Ok(ApiTokenPurpose::ReadOnly),
-            AccessScope::ReadWrite => Ok(ApiTokenPurpose::ReadWrite),
-            AccessScope::Synchronise => Ok(ApiTokenPurpose::Synchronise),
-        }
-    }
-}
-
 impl From<&UatPurpose> for AccessScope {
     fn from(purpose: &UatPurpose) -> Self {
         match purpose {
             UatPurpose::ReadOnly => AccessScope::ReadOnly,
             UatPurpose::ReadWrite { .. } => AccessScope::ReadWrite,
-        }
-    }
-}
-
-impl TryInto<UatPurposeStatus> for AccessScope {
-    type Error = OperationError;
-
-    fn try_into(self: AccessScope) -> Result<UatPurposeStatus, OperationError> {
-        match self {
-            AccessScope::ReadOnly => Ok(UatPurposeStatus::ReadOnly),
-            AccessScope::ReadWrite => Ok(UatPurposeStatus::ReadWrite),
-            AccessScope::Synchronise => Err(OperationError::InvalidEntryState),
         }
     }
 }

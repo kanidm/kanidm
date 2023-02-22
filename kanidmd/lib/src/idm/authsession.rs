@@ -856,6 +856,10 @@ impl AuthSession {
                         let session_id = Uuid::new_v4();
                         let issue = self.issue;
 
+                        // We need to actually work this out better, and then
+                        // pass it to to_userauthtoken
+                        let scope = ();
+
                         security_info!(
                             "Issuing {:?} session {} for {} {}",
                             issue,
@@ -901,7 +905,7 @@ impl AuthSession {
                                     expiry: uat.expiry,
                                     issued_at: uat.issued_at,
                                     issued_by: IdentityId::User(self.account.uuid),
-                                    scope: (&uat.purpose).into(),
+                                    scope,
                                 }))
                                 .map_err(|_| {
                                     admin_error!("unable to queue failing authentication as the session will not validate ... ");

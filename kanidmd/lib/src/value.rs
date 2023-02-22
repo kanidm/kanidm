@@ -3,6 +3,8 @@
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
 //! these into a form for the backend that can be persistent into the [`Backend`](crate::be::Backend).
 
+use crate::prelude::*;
+
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::fmt;
@@ -13,6 +15,8 @@ use compact_jwt::JwsSigner;
 use hashbrown::HashSet;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::UiHint;
+use kanidm_proto::v1::UatPurposeStatus;
+use kanidm_proto::v1::ApiTokenPurpose;
 use num_enum::TryFromPrimitive;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -25,7 +29,7 @@ use webauthn_rs::prelude::{DeviceKey as DeviceKeyV4, Passkey as PasskeyV4};
 use crate::be::dbentry::DbIdentSpn;
 use crate::credential::{totp::Totp, Credential};
 use crate::repl::cid::Cid;
-use crate::server::identity::{AccessScope, IdentityId};
+use crate::server::identity::IdentityId;
 
 lazy_static! {
     pub static ref SPN_RE: Regex = {
@@ -199,6 +203,7 @@ pub enum SyntaxType {
     Oauth2Session = 28,
     UiHint = 29,
     TotpSecret = 30,
+    ApiToken = 31,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -239,6 +244,7 @@ impl TryFrom<&str> for SyntaxType {
             "OAUTH2SESSION" => Ok(SyntaxType::Oauth2Session),
             "UIHINT" => Ok(SyntaxType::UiHint),
             "TOTPSECRET" => Ok(SyntaxType::TotpSecret),
+            "APITOKEN" => Ok(SyntaxType::ApiToken),
             _ => Err(()),
         }
     }
@@ -278,6 +284,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::Oauth2Session => "OAUTH2SESSION",
             SyntaxType::UiHint => "UIHINT",
             SyntaxType::TotpSecret => "TOTPSECRET",
+            SyntaxType::ApiToken => "APITOKEN",
         })
     }
 }
@@ -328,6 +335,7 @@ pub enum PartialValue {
     DeviceKey(Uuid),
     TrustedDeviceEnrollment(Uuid),
     Session(Uuid),
+    ApiToken(Uuid),
     // The label, if any.
 }
 
@@ -699,6 +707,7 @@ impl PartialValue {
             PartialValue::IntentToken(u) => u.clone(),
             PartialValue::TrustedDeviceEnrollment(u) => u.as_hyphenated().to_string(),
             PartialValue::Session(u) => u.as_hyphenated().to_string(),
+            PartialValue::ApiToken(u) => u.as_hyphenated().to_string(),
             PartialValue::UiHint(u) => (*u as u16).to_string(),
         }
     }
@@ -709,6 +718,56 @@ impl PartialValue {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ApiTokenScope {
+    ReadOnly,
+    ReadWrite,
+    Synchronise,
+}
+
+impl TryInto<ApiTokenPurpose> for ApiTokenScope {
+    type Error = OperationError;
+
+    fn try_into(self: ApiTokenScope) -> Result<ApiTokenPurpose, OperationError> {
+        match self {
+            ApiTokenScope::ReadOnly => Ok(ApiTokenPurpose::ReadOnly),
+            ApiTokenScope::ReadWrite => Ok(ApiTokenPurpose::ReadWrite),
+            ApiTokenScope::Synchronise => Ok(ApiTokenPurpose::Synchronise),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ApiToken {
+    pub label: String,
+    pub expiry: Option<OffsetDateTime>,
+    pub issued_at: OffsetDateTime,
+    pub issued_by: IdentityId,
+    pub scope: ApiTokenScope,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SessionScope {
+    ReadOnly,
+    ReadWrite,
+    PrivilegeCapable,
+    // For migration! To be removed in future!
+    Synchronise,
+}
+
+impl TryInto<UatPurposeStatus> for SessionScope {
+    type Error = OperationError;
+
+    fn try_into(self: SessionScope) -> Result<UatPurposeStatus, OperationError> {
+        match self {
+            SessionScope::ReadOnly => Ok(UatPurposeStatus::ReadOnly),
+            SessionScope::ReadWrite => Ok(UatPurposeStatus::ReadWrite),
+            SessionScope::PrivilegeCapable => Ok(UatPurposeStatus::PrivilegeCapable),
+            SessionScope::Synchronise => Err(OperationError::InvalidEntryState),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Session {
     pub label: String,
@@ -716,7 +775,7 @@ pub struct Session {
     pub issued_at: OffsetDateTime,
     pub issued_by: IdentityId,
     pub cred_id: Uuid,
-    pub scope: AccessScope,
+    pub scope: SessionScope,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -771,6 +830,7 @@ pub enum Value {
 
     TrustedDeviceEnrollment(Uuid),
     Session(Uuid, Session),
+    ApiToken(Uuid, ApiToken),
     Oauth2Session(Uuid, Oauth2Session),
 
     JwsKeyEs256(JwsSigner),

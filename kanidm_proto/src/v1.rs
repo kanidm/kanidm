@@ -360,6 +360,7 @@ impl FromStr for UiHint {
 pub enum UatPurposeStatus {
     ReadOnly,
     ReadWrite,
+    PrivilegeCapable,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -387,6 +388,7 @@ impl fmt::Display for UatStatus {
         match &self.purpose {
             UatPurposeStatus::ReadOnly => writeln!(f, "purpose: read only")?,
             UatPurposeStatus::ReadWrite => writeln!(f, "purpose: read write")?,
+            UatPurposeStatus::PrivilegeCapable => writeln!(f, "purpose: privilege capable")?,
         }
         Ok(())
     }
