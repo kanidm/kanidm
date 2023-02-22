@@ -126,6 +126,11 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         Ok(None)
     }
 
+    fn migrate_session_to_apitoken(&self) -> Result<ValueSet, OperationError> {
+        debug_assert!(false);
+        Err(OperationError::InvalidValueState)
+    }
+
     fn get_ssh_tag(&self, _tag: &str) -> Option<&str> {
         None
     }
