@@ -858,7 +858,7 @@ impl AuthSession {
 
                         // We need to actually work this out better, and then
                         // pass it to to_userauthtoken
-                        let scope = ();
+                        let scope = SessionScope::ReadWrite;
 
                         security_info!(
                             "Issuing {:?} session {} for {} {}",

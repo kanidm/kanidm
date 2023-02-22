@@ -4,16 +4,16 @@ use std::collections::{BTreeMap, BTreeSet};
 use time::OffsetDateTime;
 
 use crate::be::dbvalue::{
-    DbValueAccessScopeV1, DbValueIdentityId, DbValueOauth2Session, DbValueSession,
-    DbValueApiToken, DbValueApiTokenScopeV1
+    DbValueAccessScopeV1, DbValueApiToken, DbValueApiTokenScopeV1, DbValueIdentityId,
+    DbValueOauth2Session, DbValueSession,
 };
 use crate::prelude::*;
 use crate::repl::proto::{
-    ReplSessionScopeV1, ReplAttrV1, ReplIdentityIdV1, ReplOauth2SessionV1, ReplSessionV1,
-    ReplApiTokenV1, ReplApiTokenScopeV1,
+    ReplApiTokenScopeV1, ReplApiTokenV1, ReplAttrV1, ReplIdentityIdV1, ReplOauth2SessionV1,
+    ReplSessionScopeV1, ReplSessionV1,
 };
 use crate::schema::SchemaAttribute;
-use crate::value::{Oauth2Session, Session, ApiToken, SessionScope, ApiTokenScope};
+use crate::value::{ApiToken, ApiTokenScope, Oauth2Session, Session, SessionScope};
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
@@ -96,7 +96,9 @@ impl ValueSetSession {
                                 DbValueAccessScopeV1::IdentityOnly
                                 | DbValueAccessScopeV1::ReadOnly => SessionScope::ReadOnly,
                                 DbValueAccessScopeV1::ReadWrite => SessionScope::ReadWrite,
-                                DbValueAccessScopeV1::PrivilegeCapable => SessionScope::PrivilegeCapable,
+                                DbValueAccessScopeV1::PrivilegeCapable => {
+                                    SessionScope::PrivilegeCapable
+                                }
                                 DbValueAccessScopeV1::Synchronise => SessionScope::Synchronise,
                             };
 
@@ -166,7 +168,9 @@ impl ValueSetSession {
                                 DbValueAccessScopeV1::IdentityOnly
                                 | DbValueAccessScopeV1::ReadOnly => SessionScope::ReadOnly,
                                 DbValueAccessScopeV1::ReadWrite => SessionScope::ReadWrite,
-                                DbValueAccessScopeV1::PrivilegeCapable => SessionScope::PrivilegeCapable,
+                                DbValueAccessScopeV1::PrivilegeCapable => {
+                                    SessionScope::PrivilegeCapable
+                                }
                                 DbValueAccessScopeV1::Synchronise => SessionScope::Synchronise,
                             };
 
@@ -445,6 +449,44 @@ impl ValueSetT for ValueSetSession {
     fn as_ref_uuid_iter(&self) -> Option<Box<dyn Iterator<Item = Uuid> + '_>> {
         // This is what ties us as a type that can be refint checked.
         Some(Box::new(self.map.keys().copied()))
+    }
+
+    fn migrate_session_to_apitoken(&self) -> Result<ValueSet, OperationError> {
+        let map = self
+            .as_session_map()
+            .iter()
+            .map(|m| m.iter())
+            .flatten()
+            .map(
+                |(
+                    u,
+                    Session {
+                        label,
+                        expiry,
+                        issued_at,
+                        issued_by,
+                        cred_id: _,
+                        scope,
+                    },
+                )| {
+                    (
+                        *u,
+                        ApiToken {
+                            label: label.clone(),
+                            expiry: expiry.clone(),
+                            issued_at: issued_at.clone(),
+                            issued_by: issued_by.clone(),
+                            scope: match scope {
+                                SessionScope::Synchronise => ApiTokenScope::Synchronise,
+                                SessionScope::ReadWrite => ApiTokenScope::ReadWrite,
+                                _ => ApiTokenScope::ReadOnly,
+                            },
+                        },
+                    )
+                },
+            )
+            .collect();
+        Ok(Box::new(ValueSetApiToken { map }))
     }
 }
 
@@ -825,79 +867,79 @@ impl ValueSetApiToken {
     }
 
     pub fn from_dbvs2(data: Vec<DbValueApiToken>) -> Result<ValueSet, OperationError> {
-        let map =
-            data.into_iter()
-                .filter_map(|dbv| {
-                    match dbv {
-                        DbValueApiToken::V1 {
-                            refer,
-                            label,
-                            expiry,
-                            issued_at,
-                            issued_by,
-                            scope,
-                        } => {
-                            // Convert things.
-                            let issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)
-                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                                .map_err(|e| {
-                                    admin_error!(
+        let map = data
+            .into_iter()
+            .filter_map(|dbv| {
+                match dbv {
+                    DbValueApiToken::V1 {
+                        refer,
+                        label,
+                        expiry,
+                        issued_at,
+                        issued_by,
+                        scope,
+                    } => {
+                        // Convert things.
+                        let issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)
+                            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                            .map_err(|e| {
+                                admin_error!(
                                     ?e,
                                     "Invalidating api token {} due to invalid issued_at timestamp",
                                     refer
                                 )
-                                })
-                                .ok()?;
+                            })
+                            .ok()?;
 
-                            // This is a bit annoying. In the case we can't parse the optional
-                            // expiry, we need to NOT return the session so that it's immediately
-                            // invalidated. To do this we have to invert some of the options involved
-                            // here.
-                            let expiry = expiry
-                                .map(|e_inner| {
-                                    OffsetDateTime::parse(e_inner, time::Format::Rfc3339)
-                                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                                    // We now have an
-                                    // Option<Result<ODT, _>>
-                                })
-                                .transpose()
-                                // Result<Option<ODT>, _>
-                                .map_err(|e| {
-                                    admin_error!(
-                                        ?e,
-                                        "Invalidating api token {} due to invalid expiry timestamp",
-                                        refer
-                                    )
-                                })
-                                // Option<Option<ODT>>
-                                .ok()?;
+                        // This is a bit annoying. In the case we can't parse the optional
+                        // expiry, we need to NOT return the session so that it's immediately
+                        // invalidated. To do this we have to invert some of the options involved
+                        // here.
+                        let expiry = expiry
+                            .map(|e_inner| {
+                                OffsetDateTime::parse(e_inner, time::Format::Rfc3339)
+                                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                // We now have an
+                                // Option<Result<ODT, _>>
+                            })
+                            .transpose()
+                            // Result<Option<ODT>, _>
+                            .map_err(|e| {
+                                admin_error!(
+                                    ?e,
+                                    "Invalidating api token {} due to invalid expiry timestamp",
+                                    refer
+                                )
+                            })
+                            // Option<Option<ODT>>
+                            .ok()?;
 
-                            let issued_by = match issued_by {
-                                DbValueIdentityId::V1Internal => IdentityId::Internal,
-                                DbValueIdentityId::V1Uuid(u) => IdentityId::User(u),
-                                DbValueIdentityId::V1Sync(u) => IdentityId::Synch(u),
-                            };
+                        let issued_by = match issued_by {
+                            DbValueIdentityId::V1Internal => IdentityId::Internal,
+                            DbValueIdentityId::V1Uuid(u) => IdentityId::User(u),
+                            DbValueIdentityId::V1Sync(u) => IdentityId::Synch(u),
+                        };
 
-                            let scope = match scope {
-                                DbValueApiTokenScopeV1::ReadOnly => ApiTokenScope::ReadOnly,
-                                  DbValueApiTokenScopeV1::ReadWrite => ApiTokenScope::ReadWrite,
-                                  DbValueApiTokenScopeV1::Synchronise => ApiTokenScope::Synchronise,
-                            };
+                        let scope = match scope {
+                            DbValueApiTokenScopeV1::ReadOnly => ApiTokenScope::ReadOnly,
+                            DbValueApiTokenScopeV1::ReadWrite => ApiTokenScope::ReadWrite,
+                            DbValueApiTokenScopeV1::Synchronise => ApiTokenScope::Synchronise,
+                        };
 
-                            Some((
-                                refer,
-                                ApiToken {
-                                    label,
-                                    expiry,
-                                    issued_at,
-                                    issued_by,
-                                    scope,
-                                },
-                            ))
-                        }
+                        Some((
+                            refer,
+                            ApiToken {
+                                label,
+                                expiry,
+                                issued_at,
+                                issued_by,
+                                scope,
+                            },
+                        ))
                     }
-                })
-                .collect();
+                }
+            })
+            .collect();
         Ok(Box::new(ValueSetApiToken { map }))
     }
 
@@ -956,8 +998,8 @@ impl ValueSetApiToken {
                     };
 
                     let scope = match scope {
-                        ReplApiTokenScopeV1::ReadOnly =>    ApiTokenScope::ReadOnly,
-                        ReplApiTokenScopeV1::ReadWrite =>   ApiTokenScope::ReadWrite,
+                        ReplApiTokenScopeV1::ReadOnly => ApiTokenScope::ReadOnly,
+                        ReplApiTokenScopeV1::ReadWrite => ApiTokenScope::ReadWrite,
                         ReplApiTokenScopeV1::Synchronise => ApiTokenScope::Synchronise,
                     };
 
@@ -1078,8 +1120,8 @@ impl ValueSetT for ValueSetApiToken {
                         IdentityId::Synch(u) => DbValueIdentityId::V1Sync(u),
                     },
                     scope: match m.scope {
-                        ApiTokenScope::ReadOnly =>    DbValueApiTokenScopeV1::ReadOnly,
-                        ApiTokenScope::ReadWrite =>   DbValueApiTokenScopeV1::ReadWrite,
+                        ApiTokenScope::ReadOnly => DbValueApiTokenScopeV1::ReadOnly,
+                        ApiTokenScope::ReadWrite => DbValueApiTokenScopeV1::ReadWrite,
                         ApiTokenScope::Synchronise => DbValueApiTokenScopeV1::Synchronise,
                     },
                 })
@@ -1109,9 +1151,9 @@ impl ValueSetT for ValueSetApiToken {
                         IdentityId::Synch(u) => ReplIdentityIdV1::Synch(u),
                     },
                     scope: match m.scope {
-                        ApiTokenScope::ReadOnly =>         ReplApiTokenScopeV1::ReadOnly,
-                        ApiTokenScope::ReadWrite =>        ReplApiTokenScopeV1::ReadWrite,
-                        ApiTokenScope::Synchronise =>      ReplApiTokenScopeV1::Synchronise,
+                        ApiTokenScope::ReadOnly => ReplApiTokenScopeV1::ReadOnly,
+                        ApiTokenScope::ReadWrite => ReplApiTokenScopeV1::ReadWrite,
+                        ApiTokenScope::Synchronise => ReplApiTokenScopeV1::Synchronise,
                     },
                 })
                 .collect(),

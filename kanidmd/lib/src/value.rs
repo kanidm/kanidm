@@ -13,10 +13,10 @@ use std::time::Duration;
 
 use compact_jwt::JwsSigner;
 use hashbrown::HashSet;
-use kanidm_proto::v1::Filter as ProtoFilter;
-use kanidm_proto::v1::UiHint;
-use kanidm_proto::v1::UatPurposeStatus;
 use kanidm_proto::v1::ApiTokenPurpose;
+use kanidm_proto::v1::Filter as ProtoFilter;
+use kanidm_proto::v1::UatPurposeStatus;
+use kanidm_proto::v1::UiHint;
 use num_enum::TryFromPrimitive;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -334,8 +334,6 @@ pub enum PartialValue {
     Passkey(Uuid),
     DeviceKey(Uuid),
     TrustedDeviceEnrollment(Uuid),
-    Session(Uuid),
-    ApiToken(Uuid),
     // The label, if any.
 }
 
@@ -706,8 +704,6 @@ impl PartialValue {
             PartialValue::PhoneNumber(a) => a.to_string(),
             PartialValue::IntentToken(u) => u.clone(),
             PartialValue::TrustedDeviceEnrollment(u) => u.as_hyphenated().to_string(),
-            PartialValue::Session(u) => u.as_hyphenated().to_string(),
-            PartialValue::ApiToken(u) => u.as_hyphenated().to_string(),
             PartialValue::UiHint(u) => (*u as u16).to_string(),
         }
     }

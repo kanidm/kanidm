@@ -16,7 +16,7 @@ use crate::credential::{totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::{cid::Cid, proto::ReplAttrV1};
 use crate::schema::SchemaAttribute;
-use crate::value::{Address, IntentTokenState, Oauth2Session, Session, ApiToken};
+use crate::value::{Address, ApiToken, IntentTokenState, Oauth2Session, Session};
 
 mod address;
 mod binary;
@@ -59,7 +59,7 @@ pub use self::nsuniqueid::ValueSetNsUniqueId;
 pub use self::oauth::{ValueSetOauthScope, ValueSetOauthScopeMap};
 pub use self::restricted::ValueSetRestricted;
 pub use self::secret::ValueSetSecret;
-pub use self::session::{ValueSetOauth2Session, ValueSetSession, ValueSetApiToken};
+pub use self::session::{ValueSetApiToken, ValueSetOauth2Session, ValueSetSession};
 pub use self::spn::ValueSetSpn;
 pub use self::ssh::ValueSetSshKey;
 pub use self::syntax::ValueSetSyntax;
@@ -585,6 +585,7 @@ pub fn from_result_value_iter(
         | Value::TotpSecret(_, _)
         | Value::TrustedDeviceEnrollment(_)
         | Value::Session(_, _)
+        | Value::ApiToken(_, _)
         | Value::Oauth2Session(_, _)
         | Value::JwsKeyEs256(_)
         | Value::JwsKeyRs256(_) => {

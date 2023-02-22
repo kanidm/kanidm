@@ -343,13 +343,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn migrate_11_to_12(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 11 to 12 migration.");
-            // sync_token_session
+        // sync_token_session
         let filter = filter!(f_or!([
             f_pres("api_token_session"),
             f_pres("sync_token_session"),
         ]));
 
-        let mut mod_candidates = self.internal_search_writeable(filter).map_err(|e| {
+        let mut mod_candidates = self.internal_search_writeable(&filter).map_err(|e| {
             admin_error!(err = ?e, "migrate_11_to_12 internal search failure");
             e
         })?;
@@ -362,45 +362,37 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // First, filter based on if any credentials present actually are the legacy
         // webauthn type.
-        let (
-            pre_candidates,
-            candidates
-        ) = mod_candidates
-            .into_iter()
-            .map(|(pre, mut ent)| {
 
-                if let Some(api_token_session) = ent.pop_ava("api_token_session") {
-                    let api_token_session = api_token_session.migrate_session_to_apitoken()
+        for (_, ent) in mod_candidates.iter_mut() {
+            if let Some(api_token_session) = ent.pop_ava("api_token_session") {
+                let api_token_session =
+                    api_token_session
+                        .migrate_session_to_apitoken()
                         .map_err(|e| {
                             error!("Failed to covert api_token_session from session -> apitoken");
                             e
                         })?;
 
-                    ent.set_ava_set(
-                        "api_token_session",
-                        api_token_session);
-                }
+                ent.set_ava_set("api_token_session", api_token_session);
+            }
 
-                if let Some(sync_token_session) = ent.pop_ava("sync_token_session") {
-                    let sync_token_session = sync_token_session.migrate_session_to_apitoken()
+            if let Some(sync_token_session) = ent.pop_ava("sync_token_session") {
+                let sync_token_session =
+                    sync_token_session
+                        .migrate_session_to_apitoken()
                         .map_err(|e| {
                             error!("Failed to covert sync_token_session from session -> apitoken");
                             e
                         })?;
 
-                    ent.set_ava_set(
-                        "sync_token_session",
-                        api_token_session);
-                }
+                ent.set_ava_set("sync_token_session", sync_token_session);
+            }
+        }
 
-                (pre, ent)
-            })
-            .unzip();
+        let (pre_candidates, candidates) = mod_candidates.into_iter().unzip();
 
         // Apply the batch mod.
-        self.internal_apply_writable(
-            pre_candidates, candidates
-        )
+        self.internal_apply_writable(pre_candidates, candidates)
     }
 
     #[instrument(level = "info", skip_all)]

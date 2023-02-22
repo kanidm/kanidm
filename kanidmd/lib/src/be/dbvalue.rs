@@ -663,6 +663,7 @@ impl DbValueSetV2 {
             DbValueSetV2::DeviceKey(set) => set.len(),
             DbValueSetV2::TrustedDeviceEnrollment(set) => set.len(),
             DbValueSetV2::Session(set) => set.len(),
+            DbValueSetV2::ApiToken(set) => set.len(),
             DbValueSetV2::Oauth2Session(set) => set.len(),
             DbValueSetV2::JwsKeyEs256(set) => set.len(),
             DbValueSetV2::JwsKeyRs256(set) => set.len(),

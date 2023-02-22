@@ -58,7 +58,7 @@ use crate::repl::entry::EntryChangeState;
 
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::value::{
-    IndexType, IntentTokenState, Oauth2Session, PartialValue, Session, SyntaxType, Value, ApiToken
+    ApiToken, IndexType, IntentTokenState, Oauth2Session, PartialValue, Session, SyntaxType, Value,
 };
 use crate::valueset::{self, ValueSet};
 

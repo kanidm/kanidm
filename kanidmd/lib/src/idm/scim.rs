@@ -83,7 +83,7 @@ impl SyncAccount {
 
         // Get the sessions. There are no gracewindows on sync, we are much stricter.
         let session_present = entry
-            .get_ava_as_session_map("sync_token_session")
+            .get_ava_as_apitoken_map("sync_token_session")
             .map(|session_map| session_map.get(&sst.token_id).is_some())
             .unwrap_or(false);
 
@@ -161,7 +161,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 issued_by: gte.ident.get_event_origin_id(),
                 // What is the access scope of this session? This is
                 // for auditing purposes.
-                scope
+                scope,
             },
         );
 
