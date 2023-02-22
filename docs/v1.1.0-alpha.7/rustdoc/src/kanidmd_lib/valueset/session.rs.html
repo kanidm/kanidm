@@ -731,6 +731,78 @@
 <a href="#731" id="731">731</a>
 <a href="#732" id="732">732</a>
 <a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::btree_map::Entry <span class="kw">as </span>BTreeEntry;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 
@@ -768,8 +840,80 @@
             .into_iter()
             .filter_map(|dbv| {
                 <span class="kw">match </span>dbv {
-                    <span class="comment">// Skip due to lack of credential id
-                    </span>DbValueSession::V1 { .. } =&gt; <span class="prelude-val">None</span>,
+                    <span class="comment">// MISTAKE - Skip due to lack of credential id
+                    // Don&#39;t actually skip, generate a random cred id. Session cleanup will
+                    // trim sessions on users, but if we skip blazenly we invalidate every api
+                    // token ever issued. OPPS!
+                    </span>DbValueSession::V1 {
+                        refer,
+                        label,
+                        expiry,
+                        issued_at,
+                        issued_by,
+                        scope,
+                    } =&gt; {
+                        <span class="kw">let </span>cred_id = Uuid::new_v4();
+
+                        <span class="comment">// Convert things.
+                        </span><span class="kw">let </span>issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)
+                            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                            .map_err(|e| {
+                                <span class="macro">admin_error!</span>(
+                                    <span class="question-mark">?</span>e,
+                                    <span class="string">&quot;Invalidating session {} due to invalid issued_at timestamp&quot;</span>,
+                                    refer
+                                )
+                            })
+                            .ok()<span class="question-mark">?</span>;
+
+                        <span class="comment">// This is a bit annoying. In the case we can&#39;t parse the optional
+                        // expiry, we need to NOT return the session so that it&#39;s immediately
+                        // invalidated. To do this we have to invert some of the options involved
+                        // here.
+                        </span><span class="kw">let </span>expiry = expiry
+                            .map(|e_inner| {
+                                OffsetDateTime::parse(e_inner, time::Format::Rfc3339)
+                                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                <span class="comment">// We now have an
+                                // Option&lt;Result&lt;ODT, _&gt;&gt;
+                            </span>})
+                            .transpose()
+                            <span class="comment">// Result&lt;Option&lt;ODT&gt;, _&gt;
+                            </span>.map_err(|e| {
+                                <span class="macro">admin_error!</span>(
+                                    <span class="question-mark">?</span>e,
+                                    <span class="string">&quot;Invalidating session {} due to invalid expiry timestamp&quot;</span>,
+                                    refer
+                                )
+                            })
+                            <span class="comment">// Option&lt;Option&lt;ODT&gt;&gt;
+                            </span>.ok()<span class="question-mark">?</span>;
+
+                        <span class="kw">let </span>issued_by = <span class="kw">match </span>issued_by {
+                            DbValueIdentityId::V1Internal =&gt; IdentityId::Internal,
+                            DbValueIdentityId::V1Uuid(u) =&gt; IdentityId::User(u),
+                            DbValueIdentityId::V1Sync(u) =&gt; IdentityId::Synch(u),
+                        };
+
+                        <span class="kw">let </span>scope = <span class="kw">match </span>scope {
+                            DbValueAccessScopeV1::IdentityOnly =&gt; AccessScope::IdentityOnly,
+                            DbValueAccessScopeV1::ReadOnly =&gt; AccessScope::ReadOnly,
+                            DbValueAccessScopeV1::ReadWrite =&gt; AccessScope::ReadWrite,
+                            DbValueAccessScopeV1::Synchronise =&gt; AccessScope::Synchronise,
+                        };
+
+                        <span class="prelude-val">Some</span>((
+                            refer,
+                            Session {
+                                label,
+                                expiry,
+                                issued_at,
+                                issued_by,
+                                cred_id,
+                                scope,
+                            },
+                        ))
+                    }
                     DbValueSession::V2 {
                         refer,
                         label,
