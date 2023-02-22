@@ -31,156 +31,156 @@ impl ValueSetSession {
     }
 
     pub fn from_dbvs2(data: Vec<DbValueSession>) -> Result<ValueSet, OperationError> {
-        let map = data
-            .into_iter()
-            .filter_map(|dbv| {
-                match dbv {
-                    // MISTAKE - Skip due to lack of credential id
-                    // Don't actually skip, generate a random cred id. Session cleanup will
-                    // trim sessions on users, but if we skip blazenly we invalidate every api
-                    // token ever issued. OPPS!
-                    DbValueSession::V1 {
-                        refer,
-                        label,
-                        expiry,
-                        issued_at,
-                        issued_by,
-                        scope,
-                    } => {
-                        let cred_id = Uuid::new_v4();
+        let map =
+            data.into_iter()
+                .filter_map(|dbv| {
+                    match dbv {
+                        // MISTAKE - Skip due to lack of credential id
+                        // Don't actually skip, generate a random cred id. Session cleanup will
+                        // trim sessions on users, but if we skip blazenly we invalidate every api
+                        // token ever issued. OPPS!
+                        DbValueSession::V1 {
+                            refer,
+                            label,
+                            expiry,
+                            issued_at,
+                            issued_by,
+                            scope,
+                        } => {
+                            let cred_id = Uuid::new_v4();
 
-                        // Convert things.
-                        let issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)
-                            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                            .map_err(|e| {
-                                admin_error!(
+                            // Convert things.
+                            let issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)
+                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                .map_err(|e| {
+                                    admin_error!(
                                     ?e,
                                     "Invalidating session {} due to invalid issued_at timestamp",
                                     refer
                                 )
-                            })
-                            .ok()?;
+                                })
+                                .ok()?;
 
-                        // This is a bit annoying. In the case we can't parse the optional
-                        // expiry, we need to NOT return the session so that it's immediately
-                        // invalidated. To do this we have to invert some of the options involved
-                        // here.
-                        let expiry = expiry
-                            .map(|e_inner| {
-                                OffsetDateTime::parse(e_inner, time::Format::Rfc3339)
-                                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                                // We now have an
-                                // Option<Result<ODT, _>>
-                            })
-                            .transpose()
-                            // Result<Option<ODT>, _>
-                            .map_err(|e| {
-                                admin_error!(
-                                    ?e,
-                                    "Invalidating session {} due to invalid expiry timestamp",
-                                    refer
-                                )
-                            })
-                            // Option<Option<ODT>>
-                            .ok()?;
+                            // This is a bit annoying. In the case we can't parse the optional
+                            // expiry, we need to NOT return the session so that it's immediately
+                            // invalidated. To do this we have to invert some of the options involved
+                            // here.
+                            let expiry = expiry
+                                .map(|e_inner| {
+                                    OffsetDateTime::parse(e_inner, time::Format::Rfc3339)
+                                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                    // We now have an
+                                    // Option<Result<ODT, _>>
+                                })
+                                .transpose()
+                                // Result<Option<ODT>, _>
+                                .map_err(|e| {
+                                    admin_error!(
+                                        ?e,
+                                        "Invalidating session {} due to invalid expiry timestamp",
+                                        refer
+                                    )
+                                })
+                                // Option<Option<ODT>>
+                                .ok()?;
 
-                        let issued_by = match issued_by {
-                            DbValueIdentityId::V1Internal => IdentityId::Internal,
-                            DbValueIdentityId::V1Uuid(u) => IdentityId::User(u),
-                            DbValueIdentityId::V1Sync(u) => IdentityId::Synch(u),
-                        };
+                            let issued_by = match issued_by {
+                                DbValueIdentityId::V1Internal => IdentityId::Internal,
+                                DbValueIdentityId::V1Uuid(u) => IdentityId::User(u),
+                                DbValueIdentityId::V1Sync(u) => IdentityId::Synch(u),
+                            };
 
-                        let scope = match scope {
-                            DbValueAccessScopeV1::IdentityOnly => AccessScope::IdentityOnly,
-                            DbValueAccessScopeV1::ReadOnly => AccessScope::ReadOnly,
-                            DbValueAccessScopeV1::ReadWrite => AccessScope::ReadWrite,
-                            DbValueAccessScopeV1::Synchronise => AccessScope::Synchronise,
-                        };
+                            let scope = match scope {
+                                DbValueAccessScopeV1::IdentityOnly
+                                | DbValueAccessScopeV1::ReadOnly => AccessScope::ReadOnly,
+                                DbValueAccessScopeV1::ReadWrite => AccessScope::ReadWrite,
+                                DbValueAccessScopeV1::Synchronise => AccessScope::Synchronise,
+                            };
 
-                        Some((
+                            Some((
+                                refer,
+                                Session {
+                                    label,
+                                    expiry,
+                                    issued_at,
+                                    issued_by,
+                                    cred_id,
+                                    scope,
+                                },
+                            ))
+                        }
+                        DbValueSession::V2 {
                             refer,
-                            Session {
-                                label,
-                                expiry,
-                                issued_at,
-                                issued_by,
-                                cred_id,
-                                scope,
-                            },
-                        ))
-                    }
-                    DbValueSession::V2 {
-                        refer,
-                        label,
-                        expiry,
-                        issued_at,
-                        issued_by,
-                        cred_id,
-                        scope,
-                    } => {
-                        // Convert things.
-                        let issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)
-                            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                            .map_err(|e| {
-                                admin_error!(
+                            label,
+                            expiry,
+                            issued_at,
+                            issued_by,
+                            cred_id,
+                            scope,
+                        } => {
+                            // Convert things.
+                            let issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)
+                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                .map_err(|e| {
+                                    admin_error!(
                                     ?e,
                                     "Invalidating session {} due to invalid issued_at timestamp",
                                     refer
                                 )
-                            })
-                            .ok()?;
+                                })
+                                .ok()?;
 
-                        // This is a bit annoying. In the case we can't parse the optional
-                        // expiry, we need to NOT return the session so that it's immediately
-                        // invalidated. To do this we have to invert some of the options involved
-                        // here.
-                        let expiry = expiry
-                            .map(|e_inner| {
-                                OffsetDateTime::parse(e_inner, time::Format::Rfc3339)
-                                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                                // We now have an
-                                // Option<Result<ODT, _>>
-                            })
-                            .transpose()
-                            // Result<Option<ODT>, _>
-                            .map_err(|e| {
-                                admin_error!(
-                                    ?e,
-                                    "Invalidating session {} due to invalid expiry timestamp",
-                                    refer
-                                )
-                            })
-                            // Option<Option<ODT>>
-                            .ok()?;
+                            // This is a bit annoying. In the case we can't parse the optional
+                            // expiry, we need to NOT return the session so that it's immediately
+                            // invalidated. To do this we have to invert some of the options involved
+                            // here.
+                            let expiry = expiry
+                                .map(|e_inner| {
+                                    OffsetDateTime::parse(e_inner, time::Format::Rfc3339)
+                                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                    // We now have an
+                                    // Option<Result<ODT, _>>
+                                })
+                                .transpose()
+                                // Result<Option<ODT>, _>
+                                .map_err(|e| {
+                                    admin_error!(
+                                        ?e,
+                                        "Invalidating session {} due to invalid expiry timestamp",
+                                        refer
+                                    )
+                                })
+                                // Option<Option<ODT>>
+                                .ok()?;
 
-                        let issued_by = match issued_by {
-                            DbValueIdentityId::V1Internal => IdentityId::Internal,
-                            DbValueIdentityId::V1Uuid(u) => IdentityId::User(u),
-                            DbValueIdentityId::V1Sync(u) => IdentityId::Synch(u),
-                        };
+                            let issued_by = match issued_by {
+                                DbValueIdentityId::V1Internal => IdentityId::Internal,
+                                DbValueIdentityId::V1Uuid(u) => IdentityId::User(u),
+                                DbValueIdentityId::V1Sync(u) => IdentityId::Synch(u),
+                            };
 
-                        let scope = match scope {
-                            DbValueAccessScopeV1::IdentityOnly => AccessScope::IdentityOnly,
-                            DbValueAccessScopeV1::ReadOnly => AccessScope::ReadOnly,
-                            DbValueAccessScopeV1::ReadWrite => AccessScope::ReadWrite,
-                            DbValueAccessScopeV1::Synchronise => AccessScope::Synchronise,
-                        };
+                            let scope = match scope {
+                                DbValueAccessScopeV1::IdentityOnly
+                                | DbValueAccessScopeV1::ReadOnly => AccessScope::ReadOnly,
+                                DbValueAccessScopeV1::ReadWrite => AccessScope::ReadWrite,
+                                DbValueAccessScopeV1::Synchronise => AccessScope::Synchronise,
+                            };
 
-                        Some((
-                            refer,
-                            Session {
-                                label,
-                                expiry,
-                                issued_at,
-                                issued_by,
-                                cred_id,
-                                scope,
-                            },
-                        ))
+                            Some((
+                                refer,
+                                Session {
+                                    label,
+                                    expiry,
+                                    issued_at,
+                                    issued_by,
+                                    cred_id,
+                                    scope,
+                                },
+                            ))
+                        }
                     }
-                }
-            })
-            .collect();
+                })
+                .collect();
         Ok(Box::new(ValueSetSession { map }))
     }
 
@@ -240,7 +240,6 @@ impl ValueSetSession {
                     };
 
                     let scope = match scope {
-                        ReplAccessScopeV1::IdentityOnly => AccessScope::IdentityOnly,
                         ReplAccessScopeV1::ReadOnly => AccessScope::ReadOnly,
                         ReplAccessScopeV1::ReadWrite => AccessScope::ReadWrite,
                         ReplAccessScopeV1::Synchronise => AccessScope::Synchronise,
@@ -365,7 +364,6 @@ impl ValueSetT for ValueSetSession {
                     },
                     cred_id: m.cred_id,
                     scope: match m.scope {
-                        AccessScope::IdentityOnly => DbValueAccessScopeV1::IdentityOnly,
                         AccessScope::ReadOnly => DbValueAccessScopeV1::ReadOnly,
                         AccessScope::ReadWrite => DbValueAccessScopeV1::ReadWrite,
                         AccessScope::Synchronise => DbValueAccessScopeV1::Synchronise,
@@ -398,7 +396,6 @@ impl ValueSetT for ValueSetSession {
                     },
                     cred_id: m.cred_id,
                     scope: match m.scope {
-                        AccessScope::IdentityOnly => ReplAccessScopeV1::IdentityOnly,
                         AccessScope::ReadOnly => ReplAccessScopeV1::ReadOnly,
                         AccessScope::ReadWrite => ReplAccessScopeV1::ReadWrite,
                         AccessScope::Synchronise => ReplAccessScopeV1::Synchronise,

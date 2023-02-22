@@ -217,7 +217,6 @@ pub struct ReplOauth2SessionV1 {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Default)]
 pub enum ReplAccessScopeV1 {
-    IdentityOnly,
     #[default]
     ReadOnly,
     ReadWrite,

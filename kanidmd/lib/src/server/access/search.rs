@@ -82,7 +82,7 @@ fn search_filter_entry<'a>(
     info!(event = %ident, "Access check for search (filter) event");
 
     match ident.access_scope() {
-        AccessScope::IdentityOnly | AccessScope::Synchronise => {
+        AccessScope::Synchronise => {
             security_access!("denied ❌ - identity access scope is not permitted to search");
             return AccessResult::Denied;
         }

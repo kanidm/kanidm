@@ -544,7 +544,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         };
 
         match sse.ident.access_scope() {
-            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::ReadWrite => {
+            AccessScope::ReadOnly | AccessScope::ReadWrite => {
                 warn!("Ident access scope is not synchronise");
                 return Err(OperationError::AccessDenied);
             }
@@ -1347,7 +1347,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         };
 
         match ident.access_scope() {
-            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::ReadWrite => {
+            AccessScope::ReadOnly | AccessScope::ReadWrite => {
                 warn!("Ident access scope is not synchronise");
                 return Err(OperationError::AccessDenied);
             }
