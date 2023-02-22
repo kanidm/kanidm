@@ -27,6 +27,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::fs::metadata;
 use std::fs::File;
 use std::io::Read;
+#[cfg(target_family="unix")]
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
