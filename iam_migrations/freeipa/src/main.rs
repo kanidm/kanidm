@@ -177,6 +177,7 @@ async fn driver_main(opt: Opt) {
             info!("Stopped sync driver");
         });
 
+        // TODO: this loop/handler should be generic across the various crates
         // Block on signals now.
         loop {
             #[cfg(target_family = "unix")]
@@ -958,6 +959,7 @@ fn main() {
         .init();
 
     // Startup sanity checks.
+    // TODO: put this in the junk drawer
     #[cfg(target_family = "unix")]
     if opt.skip_root_check {
         warn!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")

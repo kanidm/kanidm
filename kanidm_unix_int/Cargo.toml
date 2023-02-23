@@ -49,13 +49,9 @@ name = "kanidm_test_auth"
 path =  "src/test_auth.rs"
 required-features = ["unix"]
 
-
-
 [lib]
 name = "kanidm_unix_common"
 path = "src/lib.rs"
-# [target.'cfg(not(target_family="unix"))'.dependencies]
-# kanidm_unix_common = { path = "src/lib.rs" }
 
 [dependencies]
 bytes.workspace = true
