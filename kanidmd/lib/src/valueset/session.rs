@@ -40,7 +40,7 @@ impl ValueSetSession {
                         // MISTAKE - Skip due to lack of credential id
                         // Don't actually skip, generate a random cred id. Session cleanup will
                         // trim sessions on users, but if we skip blazenly we invalidate every api
-                        // token ever issued. OPPS!
+                        // token ever issued. OOPS!
                         DbValueSession::V1 {
                             refer,
                             label,

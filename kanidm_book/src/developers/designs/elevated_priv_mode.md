@@ -18,15 +18,15 @@ For us to implement this will require some changes to how we manage sessions.
 - CHANGE: service-accounts require a hard/short session expiry limit and always have elevated permissions
 - CHANGE: persons require no session expiry and must request elevation for privs.
 
-- ISSUE: Sessions currently are recorded identically between service-accounts, persons, and api tokens
-- CHANGE: Change the session storage types to have unique session types for these
-
-- ISSUE: Sessions currently indicate both read-write types as the same access scope type.
+- ISSUE: Sessions currently indicate all read-write types as the same access scope type.
 - CHANGE: Split sessions to show rwalways, rwcapable, rwactive
+
+- ISSUE: Sessions currently are recorded identically between service-accounts, persons, and api tokens
+- CHANGE: Change the session storage types to have unique session types for these ✅
 
 - ISSUE: Access Scope types are confused by api session using the same types.
 - CHANGE: Use access scope only as the end result of current effective permission calculation and
-  not as a method to convert to anything else.
+  not as a method to convert to anything else. ✅
 
 
     AccessScope {
@@ -77,12 +77,13 @@ For us to implement this will require some changes to how we manage sessions.
 
 - CHANGE: Session with PrivCapable indicates that re-auth can be performed.
 - CHANGE: Improve how Uat/Api Token scopes become Access Scopes
-- CHANGE: Remove all AccessScope into other types.
+- CHANGE: Remove all AccessScope into other types. ✅
 
 ## Session Re-Authentication
 
 - Must be performed by the same credential that issued the session originally
   - This is now stored in the session metadata itself.
+  - Does it need to be in the cred-id?
 
 - CHANGE: Store the cred id in UAT so that a replica can process the operation in a replication sync failure?
   - This would rely on re-writing the session.
@@ -133,8 +134,8 @@ For us to implement this will require some changes to how we manage sessions.
 
 ## TODO:
 
-1. Remove the ident-only access scope, it's useless!
-1. Split tokens to have a dedicated session type seperate to uat sessions.
+1. Remove the ident-only access scope, it's useless! ✅
+1. Split tokens to have a dedicated session type separate to uat sessions. ✅
 1. Change uat session access scope recording to match service-account vs person intent.
 1. Change UAT session issuance to have the uat purpose reflect the readwrite or readwrite-capable nature of the session, based on *auth-type* that was used.
 1. Based on auth-type, limit or unlimit expiry to match the intent of the session.
