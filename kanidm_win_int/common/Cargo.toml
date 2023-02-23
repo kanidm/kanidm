@@ -14,3 +14,6 @@ repository.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+kanidm_client.workspace = true
+kanidm_proto.workspace = true
+serde = { workspace = true, features = ["derive"] }
