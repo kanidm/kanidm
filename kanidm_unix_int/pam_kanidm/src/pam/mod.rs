@@ -31,11 +31,8 @@ pub mod items;
 pub mod macros;
 pub mod module;
 
-#[cfg(target_family = "unix")]
 use std::collections::BTreeSet;
-#[cfg(target_family = "unix")]
 use std::convert::TryFrom;
-#[cfg(target_family = "unix")]
 use std::ffi::CStr;
 
 use kanidm_unix_common::client_sync::call_daemon_blocking;
@@ -55,7 +52,6 @@ pub fn get_cfg() -> Result<KanidmUnixdConfig, PamResultCode> {
         .map_err(|_| PamResultCode::PAM_SERVICE_ERR)
 }
 
-#[cfg(target_family = "unix")]
 #[derive(Debug)]
 struct Options {
     debug: bool,
@@ -63,7 +59,6 @@ struct Options {
     ignore_unknown_user: bool,
 }
 
-#[cfg(target_family = "unix")]
 impl TryFrom<&Vec<&CStr>> for Options {
     type Error = ();
 
@@ -87,7 +82,6 @@ impl TryFrom<&Vec<&CStr>> for Options {
 
 pub struct PamKanidm;
 
-#[cfg(target_family = "unix")]
 pam_hooks!(PamKanidm);
 
 impl PamHooks for PamKanidm {
