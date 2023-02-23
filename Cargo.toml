@@ -22,7 +22,10 @@ members = [
     "libs/crypto",
     "libs/file_permissions",
     "libs/profiles",
-    "libs/sketching"
+    "libs/sketching",
+    "kanidm_win_int/common",
+    "kanidm_win_int/lsa_mode",
+    "kanidm_win_int/user_mode"
 ]
 
 [workspace.package]

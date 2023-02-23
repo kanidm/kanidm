@@ -1,0 +1,16 @@
+[package]
+name = "kanidm_win_common"
+description = "Kanidm Windows Integration Common Library"
+documentation = "https://docs.rs/kanidm/latest/kanidm/"
+
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
