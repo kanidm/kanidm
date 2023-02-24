@@ -70,7 +70,7 @@ pub struct AuthSessionRecord {
     pub expiry: Option<OffsetDateTime>,
     pub issued_at: OffsetDateTime,
     pub issued_by: IdentityId,
-    pub scope: AccessScope,
+    pub scope: SessionScope,
 }
 
 #[derive(Debug)]

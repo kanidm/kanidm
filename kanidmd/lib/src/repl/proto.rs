@@ -216,8 +216,16 @@ pub struct ReplOauth2SessionV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Default)]
-pub enum ReplAccessScopeV1 {
-    IdentityOnly,
+pub enum ReplSessionScopeV1 {
+    #[default]
+    ReadOnly,
+    ReadWrite,
+    PrivilegeCapable,
+    Synchronise,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Default)]
+pub enum ReplApiTokenScopeV1 {
     #[default]
     ReadOnly,
     ReadWrite,
@@ -239,7 +247,17 @@ pub struct ReplSessionV1 {
     pub issued_at: String,
     pub issued_by: ReplIdentityIdV1,
     pub cred_id: Uuid,
-    pub scope: ReplAccessScopeV1,
+    pub scope: ReplSessionScopeV1,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct ReplApiTokenV1 {
+    pub refer: Uuid,
+    pub label: String,
+    pub expiry: Option<String>,
+    pub issued_at: String,
+    pub issued_by: ReplIdentityIdV1,
+    pub scope: ReplApiTokenScopeV1,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -343,6 +361,9 @@ pub enum ReplAttrV1 {
     },
     Session {
         set: Vec<ReplSessionV1>,
+    },
+    ApiToken {
+        set: Vec<ReplApiTokenV1>,
     },
     TotpSecret {
         set: Vec<(String, ReplTotpV1)>,

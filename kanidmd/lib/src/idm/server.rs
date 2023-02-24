@@ -670,7 +670,6 @@ pub trait IdmServerTransaction<'a> {
         // ✅  Session is valid! Start to setup for it to be used.
 
         let scope = match uat.purpose {
-            UatPurpose::IdentityOnly => AccessScope::IdentityOnly,
             UatPurpose::ReadOnly => AccessScope::ReadOnly,
             UatPurpose::ReadWrite { expiry: None } => AccessScope::ReadWrite,
             UatPurpose::ReadWrite {
@@ -896,6 +895,11 @@ impl<'a> IdmServerAuthTransaction<'a> {
     pub fn is_sessionid_present(&self, sessionid: Uuid) -> bool {
         let session_read = self.sessions.read();
         session_read.contains_key(&sessionid)
+    }
+
+    pub fn get_origin(&self) -> &Url {
+        #[allow(clippy::unwrap_used)]
+        self.webauthn.get_allowed_origins().get(0).unwrap()
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -3692,7 +3696,7 @@ mod tests {
                     expiry: Some(OffsetDateTime::unix_epoch() + expiry_a),
                     issued_at: OffsetDateTime::unix_epoch() + ct,
                     issued_by: IdentityId::User(UUID_ADMIN),
-                    scope: AccessScope::IdentityOnly,
+                    scope: SessionScope::ReadOnly,
                 });
                 // Persist it.
                 let r = task::block_on(idms.delayed_action(ct, da));
@@ -3727,7 +3731,7 @@ mod tests {
                     expiry: Some(OffsetDateTime::unix_epoch() + expiry_b),
                     issued_at: OffsetDateTime::unix_epoch() + ct,
                     issued_by: IdentityId::User(UUID_ADMIN),
-                    scope: AccessScope::IdentityOnly,
+                    scope: SessionScope::ReadOnly,
                 });
                 // Persist it.
                 let r = task::block_on(idms.delayed_action(expiry_a, da));

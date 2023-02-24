@@ -1233,7 +1233,7 @@ pub const JSON_SCHEMA_ATTR_API_TOKEN_SESSION: &str = r#"{
         "api_token_session"
       ],
       "syntax": [
-        "SESSION"
+        "APITOKEN"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000111"
@@ -1326,7 +1326,7 @@ pub const JSON_SCHEMA_ATTR_SYNC_TOKEN_SESSION: &str = r#"{
         "sync_token_session"
       ],
       "syntax": [
-        "SESSION"
+        "APITOKEN"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000115"

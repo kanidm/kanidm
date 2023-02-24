@@ -149,7 +149,7 @@ fn modify_ident_test<'a>(ident: &Identity) -> AccessResult<'a> {
     info!(event = %ident, "Access check for modify event");
 
     match ident.access_scope() {
-        AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise => {
+        AccessScope::ReadOnly | AccessScope::Synchronise => {
             security_access!("denied ❌ - identity access scope is not permitted to modify");
             return AccessResult::Denied;
         }

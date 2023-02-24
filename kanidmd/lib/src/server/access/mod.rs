@@ -1629,16 +1629,8 @@ mod tests {
         let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
 
         let ex_some = vec![Arc::new(ev1.clone())];
-        let ex_none = vec![];
 
         let r_set = vec![Arc::new(ev1)];
-
-        let se_io = unsafe {
-            SearchEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_identityonly(E_TEST_ACCOUNT_1.clone()),
-                filter_all!(f_pres("name")),
-            )
-        };
 
         let se_ro = unsafe {
             SearchEvent::new_impersonate_identity(
@@ -1669,8 +1661,6 @@ mod tests {
         };
 
         // Check the admin search event
-        test_acp_search!(&se_io, vec![acp.clone()], r_set.clone(), ex_none);
-
         test_acp_search!(&se_ro, vec![acp.clone()], r_set.clone(), ex_some);
 
         test_acp_search!(&se_rw, vec![acp], r_set, ex_some);
@@ -1687,14 +1677,6 @@ mod tests {
         let exv1 = unsafe { E_TESTPERSON_1_REDUCED.clone().into_sealed_committed() };
 
         let ex_anon_some = vec![exv1];
-        let ex_anon_none: Vec<EntrySealedCommitted> = vec![];
-
-        let se_anon_io = unsafe {
-            SearchEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_identityonly(E_TEST_ACCOUNT_1.clone()),
-                filter_all!(f_pres("name")),
-            )
-        };
 
         let se_anon_ro = unsafe {
             SearchEvent::new_impersonate_identity(
@@ -1718,8 +1700,6 @@ mod tests {
         };
 
         // Finally test it!
-        test_acp_search_reduce!(&se_anon_io, vec![acp.clone()], r_set.clone(), ex_anon_none);
-
         test_acp_search_reduce!(&se_anon_ro, vec![acp], r_set, ex_anon_some);
     }
 
@@ -1970,15 +1950,6 @@ mod tests {
         let r_set = vec![Arc::new(ev1)];
 
         // Name present
-        let me_pres_io = unsafe {
-            ModifyEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_identityonly(E_TEST_ACCOUNT_1.clone()),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_pres("name", &Value::new_iname("value"))]),
-            )
-        };
-
-        // Name present
         let me_pres_ro = unsafe {
             ModifyEvent::new_impersonate_identity(
                 Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
@@ -2012,8 +1983,6 @@ mod tests {
                 "account",
             )
         };
-
-        test_acp_modify!(&me_pres_io, vec![acp_allow.clone()], &r_set, false);
 
         test_acp_modify!(&me_pres_ro, vec![acp_allow.clone()], &r_set, false);
 
@@ -2140,11 +2109,6 @@ mod tests {
 
         let admin = E_TEST_ACCOUNT_1.clone();
 
-        let ce_admin_io = CreateEvent::new_impersonate_identity(
-            Identity::from_impersonate_entry_identityonly(admin.clone()),
-            vec![],
-        );
-
         let ce_admin_ro = CreateEvent::new_impersonate_identity(
             Identity::from_impersonate_entry_readonly(admin.clone()),
             vec![],
@@ -2170,8 +2134,6 @@ mod tests {
                 "class name uuid",
             )
         };
-
-        test_acp_create!(&ce_admin_io, vec![acp.clone()], &r1_set, false);
 
         test_acp_create!(&ce_admin_ro, vec![acp.clone()], &r1_set, false);
 
@@ -2244,11 +2206,6 @@ mod tests {
 
         let admin = E_TEST_ACCOUNT_1.clone();
 
-        let de_admin_io = DeleteEvent::new_impersonate_identity(
-            Identity::from_impersonate_entry_identityonly(admin.clone()),
-            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-        );
-
         let de_admin_ro = DeleteEvent::new_impersonate_identity(
             Identity::from_impersonate_entry_readonly(admin.clone()),
             filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
@@ -2269,8 +2226,6 @@ mod tests {
                 filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
             )
         };
-
-        test_acp_delete!(&de_admin_io, vec![acp.clone()], &r_set, false);
 
         test_acp_delete!(&de_admin_ro, vec![acp.clone()], &r_set, false);
 

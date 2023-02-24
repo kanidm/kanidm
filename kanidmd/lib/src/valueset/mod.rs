@@ -16,7 +16,7 @@ use crate::credential::{totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::{cid::Cid, proto::ReplAttrV1};
 use crate::schema::SchemaAttribute;
-use crate::value::{Address, IntentTokenState, Oauth2Session, Session};
+use crate::value::{Address, ApiToken, IntentTokenState, Oauth2Session, Session};
 
 mod address;
 mod binary;
@@ -59,7 +59,7 @@ pub use self::nsuniqueid::ValueSetNsUniqueId;
 pub use self::oauth::{ValueSetOauthScope, ValueSetOauthScopeMap};
 pub use self::restricted::ValueSetRestricted;
 pub use self::secret::ValueSetSecret;
-pub use self::session::{ValueSetOauth2Session, ValueSetSession};
+pub use self::session::{ValueSetApiToken, ValueSetOauth2Session, ValueSetSession};
 pub use self::spn::ValueSetSpn;
 pub use self::ssh::ValueSetSshKey;
 pub use self::syntax::ValueSetSyntax;
@@ -124,6 +124,11 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     fn migrate_iutf8_iname(&self) -> Result<Option<ValueSet>, OperationError> {
         debug_assert!(false);
         Ok(None)
+    }
+
+    fn migrate_session_to_apitoken(&self) -> Result<ValueSet, OperationError> {
+        debug_assert!(false);
+        Err(OperationError::InvalidValueState)
     }
 
     fn get_ssh_tag(&self, _tag: &str) -> Option<&str> {
@@ -483,6 +488,11 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
+    fn as_apitoken_map(&self) -> Option<&BTreeMap<Uuid, ApiToken>> {
+        debug_assert!(false);
+        None
+    }
+
     fn as_oauth2session_map(&self) -> Option<&BTreeMap<Uuid, Oauth2Session>> {
         debug_assert!(false);
         None
@@ -575,6 +585,7 @@ pub fn from_result_value_iter(
         | Value::TotpSecret(_, _)
         | Value::TrustedDeviceEnrollment(_)
         | Value::Session(_, _)
+        | Value::ApiToken(_, _)
         | Value::Oauth2Session(_, _)
         | Value::JwsKeyEs256(_)
         | Value::JwsKeyRs256(_) => {
@@ -631,6 +642,7 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::JwsKeyEs256(k) => ValueSetJwsKeyEs256::new(k),
         Value::JwsKeyRs256(k) => ValueSetJwsKeyRs256::new(k),
         Value::Session(u, m) => ValueSetSession::new(u, m),
+        Value::ApiToken(u, m) => ValueSetApiToken::new(u, m),
         Value::Oauth2Session(u, m) => ValueSetOauth2Session::new(u, m),
         Value::UiHint(u) => ValueSetUiHint::new(u),
         Value::TotpSecret(l, t) => ValueSetTotpSecret::new(l, t),
@@ -677,6 +689,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::Passkey(set) => ValueSetPasskey::from_dbvs2(set),
         DbValueSetV2::DeviceKey(set) => ValueSetDeviceKey::from_dbvs2(set),
         DbValueSetV2::Session(set) => ValueSetSession::from_dbvs2(set),
+        DbValueSetV2::ApiToken(set) => ValueSetApiToken::from_dbvs2(set),
         DbValueSetV2::Oauth2Session(set) => ValueSetOauth2Session::from_dbvs2(set),
         DbValueSetV2::JwsKeyEs256(set) => ValueSetJwsKeyEs256::from_dbvs2(&set),
         DbValueSetV2::JwsKeyRs256(set) => ValueSetJwsKeyEs256::from_dbvs2(&set),
@@ -726,6 +739,7 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::OauthScopeMap { set } => ValueSetOauthScopeMap::from_repl_v1(set),
         ReplAttrV1::Oauth2Session { set } => ValueSetOauth2Session::from_repl_v1(set),
         ReplAttrV1::Session { set } => ValueSetSession::from_repl_v1(set),
+        ReplAttrV1::ApiToken { set } => ValueSetApiToken::from_repl_v1(set),
         ReplAttrV1::TotpSecret { set } => ValueSetTotpSecret::from_repl_v1(set),
     }
 }

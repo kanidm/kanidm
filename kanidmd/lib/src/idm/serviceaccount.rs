@@ -2,14 +2,14 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use compact_jwt::{Jws, JwsSigner};
-use kanidm_proto::v1::{ApiToken, ApiTokenPurpose};
+use kanidm_proto::v1::ApiToken as ProtoApiToken;
 use time::OffsetDateTime;
 
 use crate::event::SearchEvent;
 use crate::idm::account::Account;
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
 use crate::prelude::*;
-use crate::value::Session;
+use crate::value::ApiToken;
 
 // Need to add KID to es256 der for lookups ✅
 
@@ -47,7 +47,7 @@ macro_rules! try_from_entry {
             ))?;
 
         let api_tokens = $value
-            .get_ava_as_session_map("api_token_session")
+            .get_ava_as_apitoken_map("api_token_session")
             .cloned()
             .unwrap_or_default();
 
@@ -75,7 +75,7 @@ pub struct ServiceAccount {
     pub valid_from: Option<OffsetDateTime>,
     pub expire: Option<OffsetDateTime>,
 
-    pub api_tokens: BTreeMap<Uuid, Session>,
+    pub api_tokens: BTreeMap<Uuid, ApiToken>,
 
     pub jws_key: JwsSigner,
 }
@@ -92,7 +92,7 @@ impl ServiceAccount {
 
     pub(crate) fn check_api_token_valid(
         ct: Duration,
-        apit: &ApiToken,
+        apit: &ProtoApiToken,
         entry: &Entry<EntrySealed, EntryCommitted>,
     ) -> bool {
         let within_valid_window = Account::check_within_valid_time(
@@ -108,7 +108,7 @@ impl ServiceAccount {
 
         // Get the sessions.
         let session_present = entry
-            .get_ava_as_session_map("api_token_session")
+            .get_ava_as_apitoken_map("api_token_session")
             .map(|session_map| session_map.get(&apit.token_id).is_some())
             .unwrap_or(false);
 
@@ -207,16 +207,17 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Normalise to UTC in case it was provided as something else.
         let expiry = gte.expiry.map(|odt| odt.to_offset(time::UtcOffset::UTC));
 
-        let purpose = if gte.read_write {
-            ApiTokenPurpose::ReadWrite
+        let scope = if gte.read_write {
+            ApiTokenScope::ReadWrite
         } else {
-            ApiTokenPurpose::ReadOnly
+            ApiTokenScope::ReadOnly
         };
+        let purpose = scope.try_into()?;
 
         // create a new session
-        let session = Value::Session(
+        let session = Value::ApiToken(
             session_id,
-            Session {
+            ApiToken {
                 label: gte.label.clone(),
                 expiry,
                 // Need the other inner bits?
@@ -224,16 +225,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 issued_at,
                 // Who actually created this?
                 issued_by: gte.ident.get_event_origin_id(),
-                // random id
-                cred_id: Uuid::new_v4(),
                 // What is the access scope of this session? This is
                 // for auditing purposes.
-                scope: (&purpose).into(),
+                scope,
             },
         );
 
         // create the session token (not yet signed)
-        let token = Jws::new(ApiToken {
+        let token = Jws::new(ProtoApiToken {
             account_id: service_account.uuid,
             token_id: session_id,
             label: gte.label.clone(),
@@ -312,7 +311,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     pub fn service_account_list_api_token(
         &mut self,
         lte: &ListApiTokenEvent,
-    ) -> Result<Vec<ApiToken>, OperationError> {
+    ) -> Result<Vec<ProtoApiToken>, OperationError> {
         // Make an event from the request
         let srch = match SearchEvent::from_target_uuid_request(
             lte.ident.clone(),
@@ -334,12 +333,12 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     .and_then(|e| {
                         let account_id = e.get_uuid();
                         // From the entry, turn it into the value
-                        e.get_ava_as_session_map("api_token_session").map(|smap| {
+                        e.get_ava_as_apitoken_map("api_token_session").map(|smap| {
                             smap.iter()
                                 .map(|(u, s)| {
                                     s.scope
                                         .try_into()
-                                        .map(|purpose| ApiToken {
+                                        .map(|purpose| ProtoApiToken {
                                             account_id,
                                             token_id: *u,
                                             label: s.label.clone(),

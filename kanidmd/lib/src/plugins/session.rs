@@ -198,7 +198,7 @@ mod tests {
         let expiry = Some(exp_curtime_odt);
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
-        let scope = AccessScope::IdentityOnly;
+        let scope = SessionScope::ReadOnly;
 
         let session = Value::Session(
             session_id,
@@ -316,7 +316,7 @@ mod tests {
         let expiry = Some(exp_curtime_odt);
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
-        let scope = AccessScope::IdentityOnly;
+        let scope = SessionScope::ReadOnly;
 
         // Mod the user
         let modlist = modlist!([
@@ -453,7 +453,7 @@ mod tests {
         let pv_parent_id = PartialValue::Refer(parent);
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
-        let scope = AccessScope::IdentityOnly;
+        let scope = SessionScope::ReadOnly;
 
         // Mod the user
         let modlist = modlist!([
@@ -666,7 +666,7 @@ mod tests {
         let expiry = None;
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
-        let scope = AccessScope::IdentityOnly;
+        let scope = SessionScope::ReadOnly;
 
         let session = Value::Session(
             session_id,

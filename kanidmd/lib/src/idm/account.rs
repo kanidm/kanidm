@@ -209,7 +209,9 @@ impl Account {
         // TODO: Apply policy to this expiry time.
         let expiry = expiry_secs
             .map(|offset| OffsetDateTime::unix_epoch() + ct + Duration::from_secs(offset));
+
         let issued_at = OffsetDateTime::unix_epoch() + ct;
+
         // TODO: Apply priv expiry, and what type of token this is (ident, ro, rw).
         let purpose = UatPurpose::ReadWrite { expiry };
 

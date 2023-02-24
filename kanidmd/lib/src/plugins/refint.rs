@@ -834,7 +834,7 @@ mod tests {
         let pv_parent_id = PartialValue::Refer(parent);
         let issued_at = curtime_odt;
         let issued_by = IdentityId::User(tuuid);
-        let scope = AccessScope::IdentityOnly;
+        let scope = SessionScope::ReadOnly;
 
         // Mod the user
         let modlist = modlist!([

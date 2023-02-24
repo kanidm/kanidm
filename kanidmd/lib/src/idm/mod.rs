@@ -13,6 +13,7 @@ pub mod group;
 pub mod ldap;
 pub mod oauth2;
 pub mod radius;
+pub mod reauth;
 pub mod scim;
 pub mod server;
 pub mod serviceaccount;

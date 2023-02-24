@@ -358,9 +358,9 @@ impl FromStr for UiHint {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum UatPurposeStatus {
-    IdentityOnly,
     ReadOnly,
     ReadWrite,
+    PrivilegeCapable,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -386,9 +386,9 @@ impl fmt::Display for UatStatus {
         }
         writeln!(f, "issued_at: {}", self.issued_at)?;
         match &self.purpose {
-            UatPurposeStatus::IdentityOnly => writeln!(f, "purpose: identity only")?,
             UatPurposeStatus::ReadOnly => writeln!(f, "purpose: read only")?,
             UatPurposeStatus::ReadWrite => writeln!(f, "purpose: read write")?,
+            UatPurposeStatus::PrivilegeCapable => writeln!(f, "purpose: privilege capable")?,
         }
         Ok(())
     }
@@ -397,7 +397,6 @@ impl fmt::Display for UatStatus {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum UatPurpose {
-    IdentityOnly,
     ReadOnly,
     ReadWrite {
         /// If none, there is no expiry, and this is always rw. If there is
@@ -446,7 +445,6 @@ impl fmt::Display for UserAuthToken {
             writeln!(f, "expiry: -")?;
         }
         match &self.purpose {
-            UatPurpose::IdentityOnly => writeln!(f, "purpose: identity only")?,
             UatPurpose::ReadOnly => writeln!(f, "purpose: read only")?,
             UatPurpose::ReadWrite {
                 expiry: Some(expiry),

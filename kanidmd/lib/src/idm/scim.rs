@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::credential::totp::{Totp, TotpAlgo, TotpDigits};
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
 use crate::prelude::*;
-use crate::value::Session;
+use crate::value::ApiToken;
 
 use crate::schema::{SchemaClass, SchemaTransaction};
 
@@ -21,7 +21,7 @@ use crate::schema::{SchemaClass, SchemaTransaction};
 pub(crate) struct SyncAccount {
     pub name: String,
     pub uuid: Uuid,
-    pub sync_tokens: BTreeMap<Uuid, Session>,
+    pub sync_tokens: BTreeMap<Uuid, ApiToken>,
     pub jws_key: JwsSigner,
 }
 
@@ -49,7 +49,7 @@ macro_rules! try_from_entry {
             ))?;
 
         let sync_tokens = $value
-            .get_ava_as_session_map("sync_token_session")
+            .get_ava_as_apitoken_map("sync_token_session")
             .cloned()
             .unwrap_or_default();
 
@@ -83,7 +83,7 @@ impl SyncAccount {
 
         // Get the sessions. There are no gracewindows on sync, we are much stricter.
         let session_present = entry
-            .get_ava_as_session_map("sync_token_session")
+            .get_ava_as_apitoken_map("sync_token_session")
             .map(|session_map| session_map.get(&sst.token_id).is_some())
             .unwrap_or(false);
 
@@ -146,11 +146,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let session_id = Uuid::new_v4();
         let issued_at = time::OffsetDateTime::unix_epoch() + ct;
 
-        let purpose = ApiTokenPurpose::Synchronise;
+        let scope = ApiTokenScope::Synchronise;
+        let purpose = scope.try_into()?;
 
-        let session = Value::Session(
+        let session = Value::ApiToken(
             session_id,
-            Session {
+            ApiToken {
                 label: gte.label.clone(),
                 expiry: None,
                 // Need the other inner bits?
@@ -158,11 +159,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 issued_at,
                 // Who actually created this?
                 issued_by: gte.ident.get_event_origin_id(),
-                // random id
-                cred_id: Uuid::new_v4(),
                 // What is the access scope of this session? This is
                 // for auditing purposes.
-                scope: (&purpose).into(),
+                scope,
             },
         );
 
@@ -544,7 +543,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         };
 
         match sse.ident.access_scope() {
-            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::ReadWrite => {
+            AccessScope::ReadOnly | AccessScope::ReadWrite => {
                 warn!("Ident access scope is not synchronise");
                 return Err(OperationError::AccessDenied);
             }
@@ -1347,7 +1346,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         };
 
         match ident.access_scope() {
-            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::ReadWrite => {
+            AccessScope::ReadOnly | AccessScope::ReadWrite => {
                 warn!("Ident access scope is not synchronise");
                 return Err(OperationError::AccessDenied);
             }
@@ -1550,7 +1549,7 @@ mod tests {
                 .expect("Missing attribute: jws_es256_private_key");
 
             let sync_tokens = sync_entry
-                .get_ava_as_session_map("sync_token_session")
+                .get_ava_as_apitoken_map("sync_token_session")
                 .cloned()
                 .unwrap_or_default();
 

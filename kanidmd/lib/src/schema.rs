@@ -205,6 +205,7 @@ impl SchemaAttribute {
             SyntaxType::DeviceKey => matches!(v, PartialValue::DeviceKey(_)),
             // Allow refer types.
             SyntaxType::Session => matches!(v, PartialValue::Refer(_)),
+            SyntaxType::ApiToken => matches!(v, PartialValue::Refer(_)),
             SyntaxType::Oauth2Session => matches!(v, PartialValue::Refer(_)),
             // These are just insensitive string lookups on the hex-ified kid.
             SyntaxType::JwsKeyEs256 => matches!(v, PartialValue::Iutf8(_)),
@@ -255,6 +256,7 @@ impl SchemaAttribute {
                 SyntaxType::Passkey => matches!(v, Value::Passkey(_, _, _)),
                 SyntaxType::DeviceKey => matches!(v, Value::DeviceKey(_, _, _)),
                 SyntaxType::Session => matches!(v, Value::Session(_, _)),
+                SyntaxType::ApiToken => matches!(v, Value::ApiToken(_, _)),
                 SyntaxType::Oauth2Session => matches!(v, Value::Oauth2Session(_, _)),
                 SyntaxType::JwsKeyEs256 => matches!(v, Value::JwsKeyEs256(_)),
                 SyntaxType::JwsKeyRs256 => matches!(v, Value::JwsKeyRs256(_)),

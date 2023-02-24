@@ -391,6 +391,8 @@ pub enum DbValueAccessScopeV1 {
     ReadOnly,
     #[serde(rename = "w")]
     ReadWrite,
+    #[serde(rename = "p")]
+    PrivilegeCapable,
     #[serde(rename = "s")]
     Synchronise,
 }
@@ -436,6 +438,35 @@ pub enum DbValueSession {
         cred_id: Uuid,
         #[serde(rename = "s", default)]
         scope: DbValueAccessScopeV1,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub enum DbValueApiTokenScopeV1 {
+    #[serde(rename = "r")]
+    #[default]
+    ReadOnly,
+    #[serde(rename = "w")]
+    ReadWrite,
+    #[serde(rename = "s")]
+    Synchronise,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum DbValueApiToken {
+    V1 {
+        #[serde(rename = "u")]
+        refer: Uuid,
+        #[serde(rename = "l")]
+        label: String,
+        #[serde(rename = "e")]
+        expiry: Option<String>,
+        #[serde(rename = "i")]
+        issued_at: String,
+        #[serde(rename = "b")]
+        issued_by: DbValueIdentityId,
+        #[serde(rename = "s", default)]
+        scope: DbValueApiTokenScopeV1,
     },
 }
 
@@ -594,6 +625,8 @@ pub enum DbValueSetV2 {
     UiHint(Vec<u16>),
     #[serde(rename = "TO")]
     TotpSecret(Vec<(String, DbTotpV1)>),
+    #[serde(rename = "AT")]
+    ApiToken(Vec<DbValueApiToken>),
 }
 
 impl DbValueSetV2 {
@@ -630,6 +663,7 @@ impl DbValueSetV2 {
             DbValueSetV2::DeviceKey(set) => set.len(),
             DbValueSetV2::TrustedDeviceEnrollment(set) => set.len(),
             DbValueSetV2::Session(set) => set.len(),
+            DbValueSetV2::ApiToken(set) => set.len(),
             DbValueSetV2::Oauth2Session(set) => set.len(),
             DbValueSetV2::JwsKeyEs256(set) => set.len(),
             DbValueSetV2::JwsKeyRs256(set) => set.len(),
