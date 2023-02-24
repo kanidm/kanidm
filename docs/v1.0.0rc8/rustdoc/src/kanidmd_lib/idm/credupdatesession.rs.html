@@ -2563,6 +2563,16 @@
 <a href="#2563" id="2563">2563</a>
 <a href="#2564" id="2564">2564</a>
 <a href="#2565" id="2565">2565</a>
+<a href="#2566" id="2566">2566</a>
+<a href="#2567" id="2567">2567</a>
+<a href="#2568" id="2568">2568</a>
+<a href="#2569" id="2569">2569</a>
+<a href="#2570" id="2570">2570</a>
+<a href="#2571" id="2571">2571</a>
+<a href="#2572" id="2572">2572</a>
+<a href="#2573" id="2573">2573</a>
+<a href="#2574" id="2574">2574</a>
+<a href="#2575" id="2575">2575</a>
 </pre><pre class="rust"><code><span class="kw">use </span>core::ops::Deref;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::fmt;
@@ -2713,7 +2723,7 @@
     </span>}
 }
 
-<span class="kw">enum </span>MfaRegStateStatus {
+<span class="kw">pub enum </span>MfaRegStateStatus {
     <span class="comment">// Nothing in progress.
     </span><span class="prelude-val">None</span>,
     TotpCheck(TotpSecret),
@@ -2748,6 +2758,16 @@
     passkeys: Vec&lt;PasskeyDetail&gt;,
     <span class="comment">// Any info the client needs about mfareg state.
     </span>mfaregstate: MfaRegStateStatus,
+}
+
+<span class="kw">impl </span>CredentialUpdateSessionStatus {
+    <span class="kw">pub fn </span>can_commit(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.can_commit
+    }
+
+    <span class="kw">pub fn </span>mfaregstate(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MfaRegStateStatus {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.mfaregstate
+    }
 }
 
 <span class="comment">// We allow Into here because CUStatus is foreign so it&#39;s impossible for us to implement From
@@ -4582,7 +4602,7 @@
         <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
         <span class="kw">let </span>(cust, <span class="kw">_</span>) = setup_test_session(idms, ct).<span class="kw">await</span>;
 
-        <span class="kw">let </span>cutxn = idms.cred_update_transaction();
+        <span class="kw">let </span>cutxn = idms.cred_update_transaction_async().<span class="kw">await</span>;
         <span class="comment">// The session exists
         </span><span class="kw">let </span>c_status = cutxn.credential_update_status(<span class="kw-2">&amp;</span>cust, ct);
         <span class="macro">assert!</span>(c_status.is_ok());

@@ -1789,12 +1789,70 @@
 <a href="#1789" id="1789">1789</a>
 <a href="#1790" id="1790">1790</a>
 <a href="#1791" id="1791">1791</a>
+<a href="#1792" id="1792">1792</a>
+<a href="#1793" id="1793">1793</a>
+<a href="#1794" id="1794">1794</a>
+<a href="#1795" id="1795">1795</a>
+<a href="#1796" id="1796">1796</a>
+<a href="#1797" id="1797">1797</a>
+<a href="#1798" id="1798">1798</a>
+<a href="#1799" id="1799">1799</a>
+<a href="#1800" id="1800">1800</a>
+<a href="#1801" id="1801">1801</a>
+<a href="#1802" id="1802">1802</a>
+<a href="#1803" id="1803">1803</a>
+<a href="#1804" id="1804">1804</a>
+<a href="#1805" id="1805">1805</a>
+<a href="#1806" id="1806">1806</a>
+<a href="#1807" id="1807">1807</a>
+<a href="#1808" id="1808">1808</a>
+<a href="#1809" id="1809">1809</a>
+<a href="#1810" id="1810">1810</a>
+<a href="#1811" id="1811">1811</a>
+<a href="#1812" id="1812">1812</a>
+<a href="#1813" id="1813">1813</a>
+<a href="#1814" id="1814">1814</a>
+<a href="#1815" id="1815">1815</a>
+<a href="#1816" id="1816">1816</a>
+<a href="#1817" id="1817">1817</a>
+<a href="#1818" id="1818">1818</a>
+<a href="#1819" id="1819">1819</a>
+<a href="#1820" id="1820">1820</a>
+<a href="#1821" id="1821">1821</a>
+<a href="#1822" id="1822">1822</a>
+<a href="#1823" id="1823">1823</a>
+<a href="#1824" id="1824">1824</a>
+<a href="#1825" id="1825">1825</a>
+<a href="#1826" id="1826">1826</a>
+<a href="#1827" id="1827">1827</a>
+<a href="#1828" id="1828">1828</a>
+<a href="#1829" id="1829">1829</a>
+<a href="#1830" id="1830">1830</a>
+<a href="#1831" id="1831">1831</a>
+<a href="#1832" id="1832">1832</a>
+<a href="#1833" id="1833">1833</a>
+<a href="#1834" id="1834">1834</a>
+<a href="#1835" id="1835">1835</a>
+<a href="#1836" id="1836">1836</a>
+<a href="#1837" id="1837">1837</a>
+<a href="#1838" id="1838">1838</a>
+<a href="#1839" id="1839">1839</a>
+<a href="#1840" id="1840">1840</a>
+<a href="#1841" id="1841">1841</a>
+<a href="#1842" id="1842">1842</a>
+<a href="#1843" id="1843">1843</a>
+<a href="#1844" id="1844">1844</a>
+<a href="#1845" id="1845">1845</a>
+<a href="#1846" id="1846">1846</a>
+<a href="#1847" id="1847">1847</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of
 //! the [`Value`] module allow storage and transformation of various types of input into strongly
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
 //! these into a form for the backend that can be persistent into the [`Backend`](crate::be::Backend).
 
-</span><span class="kw">use </span>std::collections::BTreeSet;
+</span><span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+
+<span class="kw">use </span>std::collections::BTreeSet;
 <span class="kw">use </span>std::convert::TryFrom;
 <span class="kw">use </span>std::fmt;
 <span class="kw">use </span>std::str::FromStr;
@@ -1802,7 +1860,9 @@
 
 <span class="kw">use </span>compact_jwt::JwsSigner;
 <span class="kw">use </span>hashbrown::HashSet;
+<span class="kw">use </span>kanidm_proto::v1::ApiTokenPurpose;
 <span class="kw">use </span>kanidm_proto::v1::Filter <span class="kw">as </span>ProtoFilter;
+<span class="kw">use </span>kanidm_proto::v1::UatPurposeStatus;
 <span class="kw">use </span>kanidm_proto::v1::UiHint;
 <span class="kw">use </span>num_enum::TryFromPrimitive;
 <span class="kw">use </span>regex::Regex;
@@ -1816,7 +1876,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::be::dbentry::DbIdentSpn;
 <span class="kw">use </span><span class="kw">crate</span>::credential::{totp::Totp, Credential};
 <span class="kw">use </span><span class="kw">crate</span>::repl::cid::Cid;
-<span class="kw">use </span><span class="kw">crate</span>::server::identity::{AccessScope, IdentityId};
+<span class="kw">use </span><span class="kw">crate</span>::server::identity::IdentityId;
 
 <span class="macro">lazy_static! </span>{
     <span class="kw">pub static </span><span class="kw-2">ref </span>SPN_RE: Regex = {
@@ -1990,6 +2050,7 @@
     Oauth2Session = <span class="number">28</span>,
     UiHint = <span class="number">29</span>,
     TotpSecret = <span class="number">30</span>,
+    ApiToken = <span class="number">31</span>,
 }
 
 <span class="kw">impl </span>TryFrom&lt;<span class="kw-2">&amp;</span>str&gt; <span class="kw">for </span>SyntaxType {
@@ -2030,6 +2091,7 @@
             <span class="string">&quot;OAUTH2SESSION&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::Oauth2Session),
             <span class="string">&quot;UIHINT&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::UiHint),
             <span class="string">&quot;TOTPSECRET&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::TotpSecret),
+            <span class="string">&quot;APITOKEN&quot; </span>=&gt; <span class="prelude-val">Ok</span>(SyntaxType::ApiToken),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(()),
         }
     }
@@ -2069,6 +2131,7 @@
             SyntaxType::Oauth2Session =&gt; <span class="string">&quot;OAUTH2SESSION&quot;</span>,
             SyntaxType::UiHint =&gt; <span class="string">&quot;UIHINT&quot;</span>,
             SyntaxType::TotpSecret =&gt; <span class="string">&quot;TOTPSECRET&quot;</span>,
+            SyntaxType::ApiToken =&gt; <span class="string">&quot;APITOKEN&quot;</span>,
         })
     }
 }
@@ -2118,7 +2181,6 @@
     Passkey(Uuid),
     DeviceKey(Uuid),
     TrustedDeviceEnrollment(Uuid),
-    Session(Uuid),
     <span class="comment">// The label, if any.
 </span>}
 
@@ -2489,7 +2551,6 @@
             PartialValue::PhoneNumber(a) =&gt; a.to_string(),
             PartialValue::IntentToken(u) =&gt; u.clone(),
             PartialValue::TrustedDeviceEnrollment(u) =&gt; u.as_hyphenated().to_string(),
-            PartialValue::Session(u) =&gt; u.as_hyphenated().to_string(),
             PartialValue::UiHint(u) =&gt; (<span class="kw-2">*</span>u <span class="kw">as </span>u16).to_string(),
         }
     }
@@ -2500,6 +2561,56 @@
     }
 }
 
+<span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+</span><span class="kw">pub enum </span>ApiTokenScope {
+    ReadOnly,
+    ReadWrite,
+    Synchronise,
+}
+
+<span class="kw">impl </span>TryInto&lt;ApiTokenPurpose&gt; <span class="kw">for </span>ApiTokenScope {
+    <span class="kw">type </span>Error = OperationError;
+
+    <span class="kw">fn </span>try_into(<span class="self">self</span>: ApiTokenScope) -&gt; <span class="prelude-ty">Result</span>&lt;ApiTokenPurpose, OperationError&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            ApiTokenScope::ReadOnly =&gt; <span class="prelude-val">Ok</span>(ApiTokenPurpose::ReadOnly),
+            ApiTokenScope::ReadWrite =&gt; <span class="prelude-val">Ok</span>(ApiTokenPurpose::ReadWrite),
+            ApiTokenScope::Synchronise =&gt; <span class="prelude-val">Ok</span>(ApiTokenPurpose::Synchronise),
+        }
+    }
+}
+
+<span class="attr">#[derive(Clone, Debug, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>ApiToken {
+    <span class="kw">pub </span>label: String,
+    <span class="kw">pub </span>expiry: <span class="prelude-ty">Option</span>&lt;OffsetDateTime&gt;,
+    <span class="kw">pub </span>issued_at: OffsetDateTime,
+    <span class="kw">pub </span>issued_by: IdentityId,
+    <span class="kw">pub </span>scope: ApiTokenScope,
+}
+
+<span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+</span><span class="kw">pub enum </span>SessionScope {
+    ReadOnly,
+    ReadWrite,
+    PrivilegeCapable,
+    <span class="comment">// For migration! To be removed in future!
+    </span>Synchronise,
+}
+
+<span class="kw">impl </span>TryInto&lt;UatPurposeStatus&gt; <span class="kw">for </span>SessionScope {
+    <span class="kw">type </span>Error = OperationError;
+
+    <span class="kw">fn </span>try_into(<span class="self">self</span>: SessionScope) -&gt; <span class="prelude-ty">Result</span>&lt;UatPurposeStatus, OperationError&gt; {
+        <span class="kw">match </span><span class="self">self </span>{
+            SessionScope::ReadOnly =&gt; <span class="prelude-val">Ok</span>(UatPurposeStatus::ReadOnly),
+            SessionScope::ReadWrite =&gt; <span class="prelude-val">Ok</span>(UatPurposeStatus::ReadWrite),
+            SessionScope::PrivilegeCapable =&gt; <span class="prelude-val">Ok</span>(UatPurposeStatus::PrivilegeCapable),
+            SessionScope::Synchronise =&gt; <span class="prelude-val">Err</span>(OperationError::InvalidEntryState),
+        }
+    }
+}
+
 <span class="attr">#[derive(Clone, Debug, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>Session {
     <span class="kw">pub </span>label: String,
@@ -2507,7 +2618,7 @@
     <span class="kw">pub </span>issued_at: OffsetDateTime,
     <span class="kw">pub </span>issued_by: IdentityId,
     <span class="kw">pub </span>cred_id: Uuid,
-    <span class="kw">pub </span>scope: AccessScope,
+    <span class="kw">pub </span>scope: SessionScope,
 }
 
 <span class="attr">#[derive(Clone, Debug, PartialEq, Eq)]
@@ -2562,6 +2673,7 @@
 
     TrustedDeviceEnrollment(Uuid),
     Session(Uuid, Session),
+    ApiToken(Uuid, ApiToken),
     Oauth2Session(Uuid, Oauth2Session),
 
     JwsKeyEs256(JwsSigner),

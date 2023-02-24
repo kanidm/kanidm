@@ -3102,6 +3102,14 @@
 <a href="#3102" id="3102">3102</a>
 <a href="#3103" id="3103">3103</a>
 <a href="#3104" id="3104">3104</a>
+<a href="#3105" id="3105">3105</a>
+<a href="#3106" id="3106">3106</a>
+<a href="#3107" id="3107">3107</a>
+<a href="#3108" id="3108">3108</a>
+<a href="#3109" id="3109">3109</a>
+<a href="#3110" id="3110">3110</a>
+<a href="#3111" id="3111">3111</a>
+<a href="#3112" id="3112">3112</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Entries are the base unit of object storage in the server. This is one of the three foundational
 //! concepts along with [`filter`]s and [`schema`] that everything else builds upon.
 //!
@@ -3162,7 +3170,7 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 <span class="kw">use </span><span class="kw">crate</span>::value::{
-    IndexType, IntentTokenState, Oauth2Session, PartialValue, Session, SyntaxType, Value,
+    ApiToken, IndexType, IntentTokenState, Oauth2Session, PartialValue, Session, SyntaxType, Value,
 };
 <span class="kw">use </span><span class="kw">crate</span>::valueset::{<span class="self">self</span>, ValueSet};
 
@@ -5063,6 +5071,14 @@
         attr: <span class="kw-2">&amp;</span>str,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>std::collections::BTreeMap&lt;Uuid, Session&gt;&gt; {
         <span class="self">self</span>.attrs.get(attr).and_then(|vs| vs.as_session_map())
+    }
+
+    <span class="attr">#[inline(always)]
+    </span><span class="kw">pub fn </span>get_ava_as_apitoken_map(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        attr: <span class="kw-2">&amp;</span>str,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>std::collections::BTreeMap&lt;Uuid, ApiToken&gt;&gt; {
+        <span class="self">self</span>.attrs.get(attr).and_then(|vs| vs.as_apitoken_map())
     }
 
     <span class="attr">#[inline(always)]

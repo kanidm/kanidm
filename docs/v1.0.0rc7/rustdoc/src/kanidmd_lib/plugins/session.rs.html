@@ -919,7 +919,7 @@
         <span class="kw">let </span>expiry = <span class="prelude-val">Some</span>(exp_curtime_odt);
         <span class="kw">let </span>issued_at = curtime_odt;
         <span class="kw">let </span>issued_by = IdentityId::User(tuuid);
-        <span class="kw">let </span>scope = AccessScope::IdentityOnly;
+        <span class="kw">let </span>scope = SessionScope::ReadOnly;
 
         <span class="kw">let </span>session = Value::Session(
             session_id,
@@ -1037,7 +1037,7 @@
         <span class="kw">let </span>expiry = <span class="prelude-val">Some</span>(exp_curtime_odt);
         <span class="kw">let </span>issued_at = curtime_odt;
         <span class="kw">let </span>issued_by = IdentityId::User(tuuid);
-        <span class="kw">let </span>scope = AccessScope::IdentityOnly;
+        <span class="kw">let </span>scope = SessionScope::ReadOnly;
 
         <span class="comment">// Mod the user
         </span><span class="kw">let </span>modlist = <span class="macro">modlist!</span>([
@@ -1174,7 +1174,7 @@
         <span class="kw">let </span>pv_parent_id = PartialValue::Refer(parent);
         <span class="kw">let </span>issued_at = curtime_odt;
         <span class="kw">let </span>issued_by = IdentityId::User(tuuid);
-        <span class="kw">let </span>scope = AccessScope::IdentityOnly;
+        <span class="kw">let </span>scope = SessionScope::ReadOnly;
 
         <span class="comment">// Mod the user
         </span><span class="kw">let </span>modlist = <span class="macro">modlist!</span>([
@@ -1387,7 +1387,7 @@
         </span><span class="kw">let </span>expiry = <span class="prelude-val">None</span>;
         <span class="kw">let </span>issued_at = curtime_odt;
         <span class="kw">let </span>issued_by = IdentityId::User(tuuid);
-        <span class="kw">let </span>scope = AccessScope::IdentityOnly;
+        <span class="kw">let </span>scope = SessionScope::ReadOnly;
 
         <span class="kw">let </span>session = Value::Session(
             session_id,

@@ -2774,6 +2774,8 @@
 <a href="#2774" id="2774">2774</a>
 <a href="#2775" id="2775">2775</a>
 <a href="#2776" id="2776">2776</a>
+<a href="#2777" id="2777">2777</a>
+<a href="#2778" id="2778">2778</a>
 </pre><pre class="rust"><code><span class="doccomment">//! [`Schema`] is one of the foundational concepts of the server. It provides a
 //! set of rules to enforce that [`Entries`] ava&#39;s must be compliant to, to be
 //! considered valid for commit to the database. This allows us to provide
@@ -2981,6 +2983,7 @@
             SyntaxType::DeviceKey =&gt; <span class="macro">matches!</span>(v, PartialValue::DeviceKey(<span class="kw">_</span>)),
             <span class="comment">// Allow refer types.
             </span>SyntaxType::Session =&gt; <span class="macro">matches!</span>(v, PartialValue::Refer(<span class="kw">_</span>)),
+            SyntaxType::ApiToken =&gt; <span class="macro">matches!</span>(v, PartialValue::Refer(<span class="kw">_</span>)),
             SyntaxType::Oauth2Session =&gt; <span class="macro">matches!</span>(v, PartialValue::Refer(<span class="kw">_</span>)),
             <span class="comment">// These are just insensitive string lookups on the hex-ified kid.
             </span>SyntaxType::JwsKeyEs256 =&gt; <span class="macro">matches!</span>(v, PartialValue::Iutf8(<span class="kw">_</span>)),
@@ -3031,6 +3034,7 @@
                 SyntaxType::Passkey =&gt; <span class="macro">matches!</span>(v, Value::Passkey(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)),
                 SyntaxType::DeviceKey =&gt; <span class="macro">matches!</span>(v, Value::DeviceKey(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)),
                 SyntaxType::Session =&gt; <span class="macro">matches!</span>(v, Value::Session(<span class="kw">_</span>, <span class="kw">_</span>)),
+                SyntaxType::ApiToken =&gt; <span class="macro">matches!</span>(v, Value::ApiToken(<span class="kw">_</span>, <span class="kw">_</span>)),
                 SyntaxType::Oauth2Session =&gt; <span class="macro">matches!</span>(v, Value::Oauth2Session(<span class="kw">_</span>, <span class="kw">_</span>)),
                 SyntaxType::JwsKeyEs256 =&gt; <span class="macro">matches!</span>(v, Value::JwsKeyEs256(<span class="kw">_</span>)),
                 SyntaxType::JwsKeyRs256 =&gt; <span class="macro">matches!</span>(v, Value::JwsKeyRs256(<span class="kw">_</span>)),

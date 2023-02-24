@@ -232,7 +232,7 @@
     <span class="macro">info!</span>(event = %ident, <span class="string">&quot;Access check for search (filter) event&quot;</span>);
 
     <span class="kw">match </span>ident.access_scope() {
-        AccessScope::IdentityOnly | AccessScope::Synchronise =&gt; {
+        AccessScope::Synchronise =&gt; {
             <span class="macro">security_access!</span>(<span class="string">&quot;denied ❌ - identity access scope is not permitted to search&quot;</span>);
             <span class="kw">return </span>AccessResult::Denied;
         }

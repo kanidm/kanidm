@@ -2679,51 +2679,6 @@
 <a href="#2679" id="2679">2679</a>
 <a href="#2680" id="2680">2680</a>
 <a href="#2681" id="2681">2681</a>
-<a href="#2682" id="2682">2682</a>
-<a href="#2683" id="2683">2683</a>
-<a href="#2684" id="2684">2684</a>
-<a href="#2685" id="2685">2685</a>
-<a href="#2686" id="2686">2686</a>
-<a href="#2687" id="2687">2687</a>
-<a href="#2688" id="2688">2688</a>
-<a href="#2689" id="2689">2689</a>
-<a href="#2690" id="2690">2690</a>
-<a href="#2691" id="2691">2691</a>
-<a href="#2692" id="2692">2692</a>
-<a href="#2693" id="2693">2693</a>
-<a href="#2694" id="2694">2694</a>
-<a href="#2695" id="2695">2695</a>
-<a href="#2696" id="2696">2696</a>
-<a href="#2697" id="2697">2697</a>
-<a href="#2698" id="2698">2698</a>
-<a href="#2699" id="2699">2699</a>
-<a href="#2700" id="2700">2700</a>
-<a href="#2701" id="2701">2701</a>
-<a href="#2702" id="2702">2702</a>
-<a href="#2703" id="2703">2703</a>
-<a href="#2704" id="2704">2704</a>
-<a href="#2705" id="2705">2705</a>
-<a href="#2706" id="2706">2706</a>
-<a href="#2707" id="2707">2707</a>
-<a href="#2708" id="2708">2708</a>
-<a href="#2709" id="2709">2709</a>
-<a href="#2710" id="2710">2710</a>
-<a href="#2711" id="2711">2711</a>
-<a href="#2712" id="2712">2712</a>
-<a href="#2713" id="2713">2713</a>
-<a href="#2714" id="2714">2714</a>
-<a href="#2715" id="2715">2715</a>
-<a href="#2716" id="2716">2716</a>
-<a href="#2717" id="2717">2717</a>
-<a href="#2718" id="2718">2718</a>
-<a href="#2719" id="2719">2719</a>
-<a href="#2720" id="2720">2720</a>
-<a href="#2721" id="2721">2721</a>
-<a href="#2722" id="2722">2722</a>
-<a href="#2723" id="2723">2723</a>
-<a href="#2724" id="2724">2724</a>
-<a href="#2725" id="2725">2725</a>
-<a href="#2726" id="2726">2726</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Access Control Profiles
 //!
 //! This is a pretty important and security sensitive part of the code - it&#39;s
@@ -4355,16 +4310,8 @@
         </span><span class="kw">let </span>ev1 = <span class="kw">unsafe </span>{ E_TESTPERSON_1.clone().into_sealed_committed() };
 
         <span class="kw">let </span>ex_some = <span class="macro">vec!</span>[Arc::new(ev1.clone())];
-        <span class="kw">let </span>ex_none = <span class="macro">vec!</span>[];
 
         <span class="kw">let </span>r_set = <span class="macro">vec!</span>[Arc::new(ev1)];
-
-        <span class="kw">let </span>se_io = <span class="kw">unsafe </span>{
-            SearchEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_identityonly(E_TEST_ACCOUNT_1.clone()),
-                <span class="macro">filter_all!</span>(f_pres(<span class="string">&quot;name&quot;</span>)),
-            )
-        };
 
         <span class="kw">let </span>se_ro = <span class="kw">unsafe </span>{
             SearchEvent::new_impersonate_identity(
@@ -4395,9 +4342,7 @@
         };
 
         <span class="comment">// Check the admin search event
-        </span><span class="macro">test_acp_search!</span>(<span class="kw-2">&amp;</span>se_io, <span class="macro">vec!</span>[acp.clone()], r_set.clone(), ex_none);
-
-        <span class="macro">test_acp_search!</span>(<span class="kw-2">&amp;</span>se_ro, <span class="macro">vec!</span>[acp.clone()], r_set.clone(), ex_some);
+        </span><span class="macro">test_acp_search!</span>(<span class="kw-2">&amp;</span>se_ro, <span class="macro">vec!</span>[acp.clone()], r_set.clone(), ex_some);
 
         <span class="macro">test_acp_search!</span>(<span class="kw-2">&amp;</span>se_rw, <span class="macro">vec!</span>[acp], r_set, ex_some);
     }
@@ -4413,14 +4358,6 @@
         <span class="kw">let </span>exv1 = <span class="kw">unsafe </span>{ E_TESTPERSON_1_REDUCED.clone().into_sealed_committed() };
 
         <span class="kw">let </span>ex_anon_some = <span class="macro">vec!</span>[exv1];
-        <span class="kw">let </span>ex_anon_none: Vec&lt;EntrySealedCommitted&gt; = <span class="macro">vec!</span>[];
-
-        <span class="kw">let </span>se_anon_io = <span class="kw">unsafe </span>{
-            SearchEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_identityonly(E_TEST_ACCOUNT_1.clone()),
-                <span class="macro">filter_all!</span>(f_pres(<span class="string">&quot;name&quot;</span>)),
-            )
-        };
 
         <span class="kw">let </span>se_anon_ro = <span class="kw">unsafe </span>{
             SearchEvent::new_impersonate_identity(
@@ -4444,9 +4381,7 @@
         };
 
         <span class="comment">// Finally test it!
-        </span><span class="macro">test_acp_search_reduce!</span>(<span class="kw-2">&amp;</span>se_anon_io, <span class="macro">vec!</span>[acp.clone()], r_set.clone(), ex_anon_none);
-
-        <span class="macro">test_acp_search_reduce!</span>(<span class="kw-2">&amp;</span>se_anon_ro, <span class="macro">vec!</span>[acp], r_set, ex_anon_some);
+        </span><span class="macro">test_acp_search_reduce!</span>(<span class="kw-2">&amp;</span>se_anon_ro, <span class="macro">vec!</span>[acp], r_set, ex_anon_some);
     }
 
     <span class="macro">lazy_static! </span>{
@@ -4696,15 +4631,6 @@
         <span class="kw">let </span>r_set = <span class="macro">vec!</span>[Arc::new(ev1)];
 
         <span class="comment">// Name present
-        </span><span class="kw">let </span>me_pres_io = <span class="kw">unsafe </span>{
-            ModifyEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_identityonly(E_TEST_ACCOUNT_1.clone()),
-                <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testperson1&quot;</span>))),
-                <span class="macro">modlist!</span>([m_pres(<span class="string">&quot;name&quot;</span>, <span class="kw-2">&amp;</span>Value::new_iname(<span class="string">&quot;value&quot;</span>))]),
-            )
-        };
-
-        <span class="comment">// Name present
         </span><span class="kw">let </span>me_pres_ro = <span class="kw">unsafe </span>{
             ModifyEvent::new_impersonate_identity(
                 Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
@@ -4738,8 +4664,6 @@
                 </span><span class="string">&quot;account&quot;</span>,
             )
         };
-
-        <span class="macro">test_acp_modify!</span>(<span class="kw-2">&amp;</span>me_pres_io, <span class="macro">vec!</span>[acp_allow.clone()], <span class="kw-2">&amp;</span>r_set, <span class="bool-val">false</span>);
 
         <span class="macro">test_acp_modify!</span>(<span class="kw-2">&amp;</span>me_pres_ro, <span class="macro">vec!</span>[acp_allow.clone()], <span class="kw-2">&amp;</span>r_set, <span class="bool-val">false</span>);
 
@@ -4866,11 +4790,6 @@
 
         <span class="kw">let </span>admin = E_TEST_ACCOUNT_1.clone();
 
-        <span class="kw">let </span>ce_admin_io = CreateEvent::new_impersonate_identity(
-            Identity::from_impersonate_entry_identityonly(admin.clone()),
-            <span class="macro">vec!</span>[],
-        );
-
         <span class="kw">let </span>ce_admin_ro = CreateEvent::new_impersonate_identity(
             Identity::from_impersonate_entry_readonly(admin.clone()),
             <span class="macro">vec!</span>[],
@@ -4896,8 +4815,6 @@
                 </span><span class="string">&quot;class name uuid&quot;</span>,
             )
         };
-
-        <span class="macro">test_acp_create!</span>(<span class="kw-2">&amp;</span>ce_admin_io, <span class="macro">vec!</span>[acp.clone()], <span class="kw-2">&amp;</span>r1_set, <span class="bool-val">false</span>);
 
         <span class="macro">test_acp_create!</span>(<span class="kw-2">&amp;</span>ce_admin_ro, <span class="macro">vec!</span>[acp.clone()], <span class="kw-2">&amp;</span>r1_set, <span class="bool-val">false</span>);
 
@@ -4970,11 +4887,6 @@
 
         <span class="kw">let </span>admin = E_TEST_ACCOUNT_1.clone();
 
-        <span class="kw">let </span>de_admin_io = DeleteEvent::new_impersonate_identity(
-            Identity::from_impersonate_entry_identityonly(admin.clone()),
-            <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testperson1&quot;</span>))),
-        );
-
         <span class="kw">let </span>de_admin_ro = DeleteEvent::new_impersonate_identity(
             Identity::from_impersonate_entry_readonly(admin.clone()),
             <span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testperson1&quot;</span>))),
@@ -4995,8 +4907,6 @@
                 </span><span class="macro">filter_valid!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testperson1&quot;</span>))),
             )
         };
-
-        <span class="macro">test_acp_delete!</span>(<span class="kw-2">&amp;</span>de_admin_io, <span class="macro">vec!</span>[acp.clone()], <span class="kw-2">&amp;</span>r_set, <span class="bool-val">false</span>);
 
         <span class="macro">test_acp_delete!</span>(<span class="kw-2">&amp;</span>de_admin_ro, <span class="macro">vec!</span>[acp.clone()], <span class="kw-2">&amp;</span>r_set, <span class="bool-val">false</span>);
 

@@ -197,7 +197,7 @@
     <span class="macro">info!</span>(event = %ident, <span class="string">&quot;Access check for delete event&quot;</span>);
 
     <span class="kw">match </span>ident.access_scope() {
-        AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::Synchronise =&gt; {
+        AccessScope::ReadOnly | AccessScope::Synchronise =&gt; {
             <span class="macro">security_access!</span>(<span class="string">&quot;denied ❌ - identity access scope is not permitted to delete&quot;</span>);
             <span class="kw">return </span>IResult::Denied;
         }

@@ -496,6 +496,27 @@
 <a href="#496" id="496">496</a>
 <a href="#497" id="497">497</a>
 <a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
+<a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::cid::Cid;
 <span class="kw">use </span><span class="kw">super</span>::entry::EntryChangeState;
 <span class="kw">use </span><span class="kw">super</span>::entry::State;
@@ -714,8 +735,16 @@
 }
 
 <span class="attr">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Default)]
-</span><span class="kw">pub enum </span>ReplAccessScopeV1 {
-    IdentityOnly,
+</span><span class="kw">pub enum </span>ReplSessionScopeV1 {
+    <span class="attr">#[default]
+    </span>ReadOnly,
+    ReadWrite,
+    PrivilegeCapable,
+    Synchronise,
+}
+
+<span class="attr">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Default)]
+</span><span class="kw">pub enum </span>ReplApiTokenScopeV1 {
     <span class="attr">#[default]
     </span>ReadOnly,
     ReadWrite,
@@ -737,7 +766,17 @@
     <span class="kw">pub </span>issued_at: String,
     <span class="kw">pub </span>issued_by: ReplIdentityIdV1,
     <span class="kw">pub </span>cred_id: Uuid,
-    <span class="kw">pub </span>scope: ReplAccessScopeV1,
+    <span class="kw">pub </span>scope: ReplSessionScopeV1,
+}
+
+<span class="attr">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>ReplApiTokenV1 {
+    <span class="kw">pub </span>refer: Uuid,
+    <span class="kw">pub </span>label: String,
+    <span class="kw">pub </span>expiry: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    <span class="kw">pub </span>issued_at: String,
+    <span class="kw">pub </span>issued_by: ReplIdentityIdV1,
+    <span class="kw">pub </span>scope: ReplApiTokenScopeV1,
 }
 
 <span class="attr">#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -841,6 +880,9 @@
     },
     Session {
         set: Vec&lt;ReplSessionV1&gt;,
+    },
+    ApiToken {
+        set: Vec&lt;ReplApiTokenV1&gt;,
     },
     TotpSecret {
         set: Vec&lt;(String, ReplTotpV1)&gt;,

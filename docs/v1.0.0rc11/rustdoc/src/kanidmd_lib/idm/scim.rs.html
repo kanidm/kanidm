@@ -2803,7 +2803,6 @@
 <a href="#2803" id="2803">2803</a>
 <a href="#2804" id="2804">2804</a>
 <a href="#2805" id="2805">2805</a>
-<a href="#2806" id="2806">2806</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>base64urlsafedata::Base64UrlSafeData;
@@ -2817,7 +2816,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::credential::totp::{Totp, TotpAlgo, TotpDigits};
 <span class="kw">use </span><span class="kw">crate</span>::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
-<span class="kw">use </span><span class="kw">crate</span>::value::Session;
+<span class="kw">use </span><span class="kw">crate</span>::value::ApiToken;
 
 <span class="kw">use </span><span class="kw">crate</span>::schema::{SchemaClass, SchemaTransaction};
 
@@ -2827,7 +2826,7 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SyncAccount {
     <span class="kw">pub </span>name: String,
     <span class="kw">pub </span>uuid: Uuid,
-    <span class="kw">pub </span>sync_tokens: BTreeMap&lt;Uuid, Session&gt;,
+    <span class="kw">pub </span>sync_tokens: BTreeMap&lt;Uuid, ApiToken&gt;,
     <span class="kw">pub </span>jws_key: JwsSigner,
 }
 
@@ -2855,7 +2854,7 @@
             ))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>sync_tokens = <span class="macro-nonterminal">$value
-            </span>.get_ava_as_session_map(<span class="string">&quot;sync_token_session&quot;</span>)
+            </span>.get_ava_as_apitoken_map(<span class="string">&quot;sync_token_session&quot;</span>)
             .cloned()
             .unwrap_or_default();
 
@@ -2889,7 +2888,7 @@
 
         <span class="comment">// Get the sessions. There are no gracewindows on sync, we are much stricter.
         </span><span class="kw">let </span>session_present = entry
-            .get_ava_as_session_map(<span class="string">&quot;sync_token_session&quot;</span>)
+            .get_ava_as_apitoken_map(<span class="string">&quot;sync_token_session&quot;</span>)
             .map(|session_map| session_map.get(<span class="kw-2">&amp;</span>sst.token_id).is_some())
             .unwrap_or(<span class="bool-val">false</span>);
 
@@ -2952,11 +2951,12 @@
         <span class="kw">let </span>session_id = Uuid::new_v4();
         <span class="kw">let </span>issued_at = time::OffsetDateTime::unix_epoch() + ct;
 
-        <span class="kw">let </span>purpose = ApiTokenPurpose::Synchronise;
+        <span class="kw">let </span>scope = ApiTokenScope::Synchronise;
+        <span class="kw">let </span>purpose = scope.try_into()<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>session = Value::Session(
+        <span class="kw">let </span>session = Value::ApiToken(
             session_id,
-            Session {
+            ApiToken {
                 label: gte.label.clone(),
                 expiry: <span class="prelude-val">None</span>,
                 <span class="comment">// Need the other inner bits?
@@ -2964,11 +2964,9 @@
                 </span>issued_at,
                 <span class="comment">// Who actually created this?
                 </span>issued_by: gte.ident.get_event_origin_id(),
-                <span class="comment">// random id
-                </span>cred_id: Uuid::new_v4(),
                 <span class="comment">// What is the access scope of this session? This is
                 // for auditing purposes.
-                </span>scope: (<span class="kw-2">&amp;</span>purpose).into(),
+                </span>scope,
             },
         );
 
@@ -3350,7 +3348,7 @@
         };
 
         <span class="kw">match </span>sse.ident.access_scope() {
-            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::ReadWrite =&gt; {
+            AccessScope::ReadOnly | AccessScope::ReadWrite =&gt; {
                 <span class="macro">warn!</span>(<span class="string">&quot;Ident access scope is not synchronise&quot;</span>);
                 <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::AccessDenied);
             }
@@ -4153,7 +4151,7 @@
         };
 
         <span class="kw">match </span>ident.access_scope() {
-            AccessScope::IdentityOnly | AccessScope::ReadOnly | AccessScope::ReadWrite =&gt; {
+            AccessScope::ReadOnly | AccessScope::ReadWrite =&gt; {
                 <span class="macro">warn!</span>(<span class="string">&quot;Ident access scope is not synchronise&quot;</span>);
                 <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::AccessDenied);
             }
@@ -4356,7 +4354,7 @@
                 .expect(<span class="string">&quot;Missing attribute: jws_es256_private_key&quot;</span>);
 
             <span class="kw">let </span>sync_tokens = sync_entry
-                .get_ava_as_session_map(<span class="string">&quot;sync_token_session&quot;</span>)
+                .get_ava_as_apitoken_map(<span class="string">&quot;sync_token_session&quot;</span>)
                 .cloned()
                 .unwrap_or_default();
 

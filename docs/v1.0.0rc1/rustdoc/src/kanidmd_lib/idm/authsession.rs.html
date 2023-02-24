@@ -2441,6 +2441,10 @@
 <a href="#2441" id="2441">2441</a>
 <a href="#2442" id="2442">2442</a>
 <a href="#2443" id="2443">2443</a>
+<a href="#2444" id="2444">2444</a>
+<a href="#2445" id="2445">2445</a>
+<a href="#2446" id="2446">2446</a>
+<a href="#2447" id="2447">2447</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the logic to conduct an authentication of an account.
 //! Generally this has to process an authentication attempt, and validate each
 //! factor to assert that the user is legitimate. This also contains some
@@ -3299,6 +3303,10 @@
                         <span class="kw">let </span>session_id = Uuid::new_v4();
                         <span class="kw">let </span>issue = <span class="self">self</span>.issue;
 
+                        <span class="comment">// We need to actually work this out better, and then
+                        // pass it to to_userauthtoken
+                        </span><span class="kw">let </span>scope = SessionScope::ReadWrite;
+
                         <span class="macro">security_info!</span>(
                             <span class="string">&quot;Issuing {:?} session {} for {} {}&quot;</span>,
                             issue,
@@ -3344,7 +3352,7 @@
                                     expiry: uat.expiry,
                                     issued_at: uat.issued_at,
                                     issued_by: IdentityId::User(<span class="self">self</span>.account.uuid),
-                                    scope: (<span class="kw-2">&amp;</span>uat.purpose).into(),
+                                    scope,
                                 }))
                                 .map_err(|<span class="kw">_</span>| {
                                     <span class="macro">admin_error!</span>(<span class="string">&quot;unable to queue failing authentication as the session will not validate ... &quot;</span>);

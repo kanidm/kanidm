@@ -1775,6 +1775,8 @@
 <a href="#1775" id="1775">1775</a>
 <a href="#1776" id="1776">1776</a>
 <a href="#1777" id="1777">1777</a>
+<a href="#1778" id="1778">1778</a>
+<a href="#1779" id="1779">1779</a>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
@@ -2274,6 +2276,7 @@
                     SyntaxType::Passkey =&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="string">&quot;Passkey Values can not be supplied through modification&quot;</span>.to_string())),
                     SyntaxType::DeviceKey =&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="string">&quot;DeviceKey Values can not be supplied through modification&quot;</span>.to_string())),
                     SyntaxType::Session =&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="string">&quot;Session Values can not be supplied through modification&quot;</span>.to_string())),
+                    SyntaxType::ApiToken =&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="string">&quot;ApiToken Values can not be supplied through modification&quot;</span>.to_string())),
                     SyntaxType::JwsKeyEs256 =&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="string">&quot;JwsKeyEs256 Values can not be supplied through modification&quot;</span>.to_string())),
                     SyntaxType::JwsKeyRs256 =&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="string">&quot;JwsKeyRs256 Values can not be supplied through modification&quot;</span>.to_string())),
                     SyntaxType::Oauth2Session =&gt; <span class="prelude-val">Err</span>(OperationError::InvalidAttribute(<span class="string">&quot;Oauth2Session Values can not be supplied through modification&quot;</span>.to_string())),
@@ -2328,6 +2331,7 @@
                     </span>SyntaxType::ReferenceUuid
                     | SyntaxType::OauthScopeMap
                     | SyntaxType::Session
+                    | SyntaxType::ApiToken
                     | SyntaxType::Oauth2Session =&gt; {
                         <span class="kw">let </span>un = <span class="self">self</span>.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
                         <span class="prelude-val">Ok</span>(PartialValue::Refer(un))

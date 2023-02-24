@@ -99,6 +99,8 @@
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
 </pre><pre class="rust"><code><span class="doccomment">//! The Kanidmd server library. This implements all of the internal components of the server
 //! which is used to process authentication, store identities and enforce access controls.
 
@@ -190,7 +192,9 @@
         QueryServerWriteTransaction,
     };
     <span class="kw">pub use </span><span class="kw">crate</span>::utils::duration_from_epoch_now;
-    <span class="kw">pub use </span><span class="kw">crate</span>::value::{IndexType, PartialValue, SyntaxType, Value};
+    <span class="kw">pub use </span><span class="kw">crate</span>::value::{
+        ApiTokenScope, IndexType, PartialValue, SessionScope, SyntaxType, Value,
+    };
     <span class="kw">pub use </span><span class="kw">crate</span>::valueset::{
         ValueSet, ValueSetBool, ValueSetCid, ValueSetIndex, ValueSetIutf8, ValueSetRefer,
         ValueSetSecret, ValueSetSpn, ValueSetSyntax, ValueSetT, ValueSetUint32, ValueSetUtf8,

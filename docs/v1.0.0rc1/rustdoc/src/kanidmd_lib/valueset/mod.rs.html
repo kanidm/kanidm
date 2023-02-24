@@ -729,6 +729,20 @@
 <a href="#729" id="729">729</a>
 <a href="#730" id="730">730</a>
 <a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 
 <span class="kw">use </span>compact_jwt::JwsSigner;
@@ -747,7 +761,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::repl::{cid::Cid, proto::ReplAttrV1};
 <span class="kw">use </span><span class="kw">crate</span>::schema::SchemaAttribute;
-<span class="kw">use </span><span class="kw">crate</span>::value::{Address, IntentTokenState, Oauth2Session, Session};
+<span class="kw">use </span><span class="kw">crate</span>::value::{Address, ApiToken, IntentTokenState, Oauth2Session, Session};
 
 <span class="kw">mod </span>address;
 <span class="kw">mod </span>binary;
@@ -790,7 +804,7 @@
 <span class="kw">pub use </span><span class="self">self</span>::oauth::{ValueSetOauthScope, ValueSetOauthScopeMap};
 <span class="kw">pub use </span><span class="self">self</span>::restricted::ValueSetRestricted;
 <span class="kw">pub use </span><span class="self">self</span>::secret::ValueSetSecret;
-<span class="kw">pub use </span><span class="self">self</span>::session::{ValueSetOauth2Session, ValueSetSession};
+<span class="kw">pub use </span><span class="self">self</span>::session::{ValueSetApiToken, ValueSetOauth2Session, ValueSetSession};
 <span class="kw">pub use </span><span class="self">self</span>::spn::ValueSetSpn;
 <span class="kw">pub use </span><span class="self">self</span>::ssh::ValueSetSshKey;
 <span class="kw">pub use </span><span class="self">self</span>::syntax::ValueSetSyntax;
@@ -855,6 +869,11 @@
     <span class="kw">fn </span>migrate_iutf8_iname(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;ValueSet&gt;, OperationError&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
+    }
+
+    <span class="kw">fn </span>migrate_session_to_apitoken(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+        <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
+        <span class="prelude-val">Err</span>(OperationError::InvalidValueState)
     }
 
     <span class="kw">fn </span>get_ssh_tag(<span class="kw-2">&amp;</span><span class="self">self</span>, _tag: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
@@ -1214,6 +1233,11 @@
         <span class="prelude-val">None
     </span>}
 
+    <span class="kw">fn </span>as_apitoken_map(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeMap&lt;Uuid, ApiToken&gt;&gt; {
+        <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
+        <span class="prelude-val">None
+    </span>}
+
     <span class="kw">fn </span>as_oauth2session_map(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>BTreeMap&lt;Uuid, Oauth2Session&gt;&gt; {
         <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
         <span class="prelude-val">None
@@ -1306,6 +1330,7 @@
         | Value::TotpSecret(<span class="kw">_</span>, <span class="kw">_</span>)
         | Value::TrustedDeviceEnrollment(<span class="kw">_</span>)
         | Value::Session(<span class="kw">_</span>, <span class="kw">_</span>)
+        | Value::ApiToken(<span class="kw">_</span>, <span class="kw">_</span>)
         | Value::Oauth2Session(<span class="kw">_</span>, <span class="kw">_</span>)
         | Value::JwsKeyEs256(<span class="kw">_</span>)
         | Value::JwsKeyRs256(<span class="kw">_</span>) =&gt; {
@@ -1362,6 +1387,7 @@
         Value::JwsKeyEs256(k) =&gt; ValueSetJwsKeyEs256::new(k),
         Value::JwsKeyRs256(k) =&gt; ValueSetJwsKeyRs256::new(k),
         Value::Session(u, m) =&gt; ValueSetSession::new(u, m),
+        Value::ApiToken(u, m) =&gt; ValueSetApiToken::new(u, m),
         Value::Oauth2Session(u, m) =&gt; ValueSetOauth2Session::new(u, m),
         Value::UiHint(u) =&gt; ValueSetUiHint::new(u),
         Value::TotpSecret(l, t) =&gt; ValueSetTotpSecret::new(l, t),
@@ -1408,6 +1434,7 @@
         DbValueSetV2::Passkey(set) =&gt; ValueSetPasskey::from_dbvs2(set),
         DbValueSetV2::DeviceKey(set) =&gt; ValueSetDeviceKey::from_dbvs2(set),
         DbValueSetV2::Session(set) =&gt; ValueSetSession::from_dbvs2(set),
+        DbValueSetV2::ApiToken(set) =&gt; ValueSetApiToken::from_dbvs2(set),
         DbValueSetV2::Oauth2Session(set) =&gt; ValueSetOauth2Session::from_dbvs2(set),
         DbValueSetV2::JwsKeyEs256(set) =&gt; ValueSetJwsKeyEs256::from_dbvs2(<span class="kw-2">&amp;</span>set),
         DbValueSetV2::JwsKeyRs256(set) =&gt; ValueSetJwsKeyEs256::from_dbvs2(<span class="kw-2">&amp;</span>set),
@@ -1457,6 +1484,7 @@
         ReplAttrV1::OauthScopeMap { set } =&gt; ValueSetOauthScopeMap::from_repl_v1(set),
         ReplAttrV1::Oauth2Session { set } =&gt; ValueSetOauth2Session::from_repl_v1(set),
         ReplAttrV1::Session { set } =&gt; ValueSetSession::from_repl_v1(set),
+        ReplAttrV1::ApiToken { set } =&gt; ValueSetApiToken::from_repl_v1(set),
         ReplAttrV1::TotpSecret { set } =&gt; ValueSetTotpSecret::from_repl_v1(set),
     }
 }

@@ -4031,6 +4031,10 @@
 <a href="#4031" id="4031">4031</a>
 <a href="#4032" id="4032">4032</a>
 <a href="#4033" id="4033">4033</a>
+<a href="#4034" id="4034">4034</a>
+<a href="#4035" id="4035">4035</a>
+<a href="#4036" id="4036">4036</a>
+<a href="#4037" id="4037">4037</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::TryFrom;
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::sync::Arc;
@@ -4703,7 +4707,6 @@
         <span class="comment">// ✅  Session is valid! Start to setup for it to be used.
 
         </span><span class="kw">let </span>scope = <span class="kw">match </span>uat.purpose {
-            UatPurpose::IdentityOnly =&gt; AccessScope::IdentityOnly,
             UatPurpose::ReadOnly =&gt; AccessScope::ReadOnly,
             UatPurpose::ReadWrite { expiry: <span class="prelude-val">None </span>} =&gt; AccessScope::ReadWrite,
             UatPurpose::ReadWrite {
@@ -4929,6 +4932,11 @@
     </span><span class="kw">pub fn </span>is_sessionid_present(<span class="kw-2">&amp;</span><span class="self">self</span>, sessionid: Uuid) -&gt; bool {
         <span class="kw">let </span>session_read = <span class="self">self</span>.sessions.read();
         session_read.contains_key(<span class="kw-2">&amp;</span>sessionid)
+    }
+
+    <span class="kw">pub fn </span>get_origin(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Url {
+        <span class="attr">#[allow(clippy::unwrap_used)]
+        </span><span class="self">self</span>.webauthn.get_allowed_origins().get(<span class="number">0</span>).unwrap()
     }
 
     <span class="attr">#[instrument(level = <span class="string">&quot;trace&quot;</span>, skip(<span class="self">self</span>))]
@@ -7725,7 +7733,7 @@
                     expiry: <span class="prelude-val">Some</span>(OffsetDateTime::unix_epoch() + expiry_a),
                     issued_at: OffsetDateTime::unix_epoch() + ct,
                     issued_by: IdentityId::User(UUID_ADMIN),
-                    scope: AccessScope::IdentityOnly,
+                    scope: SessionScope::ReadOnly,
                 });
                 <span class="comment">// Persist it.
                 </span><span class="kw">let </span>r = task::block_on(idms.delayed_action(ct, da));
@@ -7760,7 +7768,7 @@
                     expiry: <span class="prelude-val">Some</span>(OffsetDateTime::unix_epoch() + expiry_b),
                     issued_at: OffsetDateTime::unix_epoch() + ct,
                     issued_by: IdentityId::User(UUID_ADMIN),
-                    scope: AccessScope::IdentityOnly,
+                    scope: SessionScope::ReadOnly,
                 });
                 <span class="comment">// Persist it.
                 </span><span class="kw">let </span>r = task::block_on(idms.delayed_action(expiry_a, da));
