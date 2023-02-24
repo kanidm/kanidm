@@ -14,5 +14,6 @@
 #[cfg(target_family = "unix")]
 mod pam;
 
+// pub use needs to be here so it'll compile and export all the things
 #[cfg(target_family = "unix")]
 pub use crate::pam::*;
