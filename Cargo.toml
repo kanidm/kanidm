@@ -125,7 +125,7 @@ sketching = { path = "./sketching" }
 smartstring = "^1.0.1"
 smolset = "^1.3.1"
 sshkeys = "^0.3.1"
-syn = { version = "1.0.107", features = ["full"] }
+syn = { version = "1.0.109", features = ["full"] }
 testkit-macros = { path = "./kanidmd/testkit-macros" }
 tide = "^0.16.0"
 # Including brotli *very* slow, so don't do that. Including the "default" feature pulls a mime-type list from the internet on build, which isn't used.
