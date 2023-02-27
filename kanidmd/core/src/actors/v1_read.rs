@@ -284,7 +284,6 @@ impl QueryServerReadV1 {
         uat: Option<String>,
         eventid: Uuid,
     ) -> Result<WhoamiResponse, OperationError> {
-        // TODO #62: Move this to IdmServer!!!
         // Begin a read
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
