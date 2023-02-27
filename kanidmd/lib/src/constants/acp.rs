@@ -389,6 +389,38 @@ pub const JSON_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1: &str = r#"{
 }"#;
 
 lazy_static! {
+    pub static ref E_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("name", Value::new_iname("idm_acp_hp_people_write_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for managing privilege personal and sensitive data.")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_HP_PEOPLE_WRITE_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_modify_removedattr", Value::new_iutf8("name")),
+        ("acp_modify_removedattr", Value::new_iutf8("displayname")),
+        ("acp_modify_removedattr", Value::new_iutf8("legalname")),
+        ("acp_modify_removedattr", Value::new_iutf8("mail")),
+        ("acp_modify_presentattr", Value::new_iutf8("name")),
+        ("acp_modify_presentattr", Value::new_iutf8("displayname")),
+        ("acp_modify_presentattr", Value::new_iutf8("legalname")),
+        ("acp_modify_presentattr", Value::new_iutf8("name"))
+    );
+}
+
+lazy_static! {
     pub static ref E_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
         ("class", CLASS_OBJECT.clone()),
         ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
@@ -413,15 +445,12 @@ lazy_static! {
         ("acp_modify_removedattr", Value::new_iutf8("displayname")),
         ("acp_modify_removedattr", Value::new_iutf8("legalname")),
         ("acp_modify_removedattr", Value::new_iutf8("mail")),
-
-        ("acp_modify_presentattr", Value::new_iutf8("class"))
-        ("acp_modify_presentattr", Value::new_iutf8("name"))
-        ("acp_modify_presentattr", Value::new_iutf8("displayname"))
-        ("acp_modify_presentattr", Value::new_iutf8("legalname"))
-        ("acp_modify_presentattr", Value::new_iutf8("name"))
-
+        ("acp_modify_presentattr", Value::new_iutf8("class")),
+        ("acp_modify_presentattr", Value::new_iutf8("name")),
+        ("acp_modify_presentattr", Value::new_iutf8("displayname")),
+        ("acp_modify_presentattr", Value::new_iutf8("legalname")),
+        ("acp_modify_presentattr", Value::new_iutf8("name")),
         ("acp_modify_class", Value::new_iutf8("person"))
-
     );
 }
 
@@ -1179,7 +1208,6 @@ lazy_static! {
         ("acp_modify_class", Value::new_iutf8("posixaccount"))
     );
 }
-
 
 lazy_static! {
     pub static ref E_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
