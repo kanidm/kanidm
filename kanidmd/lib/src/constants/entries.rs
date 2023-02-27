@@ -560,23 +560,33 @@ pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
     }
 }"#;
 
-pub const JSON_SYSTEM_INFO_V1: &str = r#"{
-    "attrs": {
-        "class": ["object", "system_info", "system"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000001"],
-        "description": ["System (local) info and metadata object."],
-        "version": ["12"]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_SYSTEM_INFO_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_SYSTEM_INFO.clone()),
+        ("class", CLASS_SYSTEM.clone()),
+        ("uuid", Value::Uuid(UUID_SYSTEM_INFO)),
+        (
+            "description",
+            Value::new_utf8s("System (local) info and metadata object.")
+        ),
+        ("version", Value::Uint32(12))
+    );
+}
 
-pub const JSON_DOMAIN_INFO_V1: &str = r#"{
-    "attrs": {
-        "class": ["object", "domain_info", "system"],
-        "name": ["domain_local"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000025"],
-        "description": ["This local domain's info and metadata object."]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_DOMAIN_INFO_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_DOMAIN_INFO.clone()),
+        ("class", CLASS_SYSTEM.clone()),
+        ("name", Value::new_iname("domain_local")),
+        ("uuid", Value::Uuid(UUID_DOMAIN_INFO)),
+        (
+            "description",
+            Value::new_utf8s("This local domain's info and metadata object.")
+        )
+    );
+}
 
 // Anonymous should be the last object in the range here.
 pub const JSON_ANONYMOUS_V1: &str = r#"{

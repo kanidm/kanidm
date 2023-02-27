@@ -31,8 +31,11 @@ impl PwBadlistOpt {
                     Err(e) => eprintln!("{:?}", e),
                 }
             }
-            PwBadlistOpt::Upload { copt, paths } => {
-                let client = copt.to_client().await;
+            PwBadlistOpt::Upload {
+                copt,
+                paths,
+                dryrun,
+            } => {
                 info!("pre-processing - this may take a while ...");
 
                 let mut pwset: Vec<String> = Vec::new();
@@ -101,19 +104,28 @@ impl PwBadlistOpt {
 
                 let results = task_handles.join().await;
 
-                let filt_pwset: Vec<_> = results
+                let mut filt_pwset: Vec<_> = results
                     .into_iter()
                     .flat_map(|res| res.expect("Thread join failure"))
                     .collect();
+
+                filt_pwset.sort_unstable();
 
                 info!(
                     "{} passwords passed zxcvbn, uploading ...",
                     filt_pwset.len()
                 );
 
-                match client.system_password_badlist_append(filt_pwset).await {
-                    Ok(_) => println!("Success"),
-                    Err(e) => eprintln!("{:?}", e),
+                if *dryrun {
+                    for pw in filt_pwset {
+                        println!("{}", pw);
+                    }
+                } else {
+                    let client = copt.to_client().await;
+                    match client.system_password_badlist_append(filt_pwset).await {
+                        Ok(_) => println!("Success"),
+                        Err(e) => eprintln!("{:?}", e),
+                    }
                 }
             } // End Upload
             PwBadlistOpt::Remove { copt, paths } => {

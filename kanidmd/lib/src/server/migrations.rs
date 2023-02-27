@@ -503,9 +503,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // and details. It's a pretty const thing. Also check anonymous, important to many
         // concepts.
         let res = self
-            .internal_migrate_or_create_str(JSON_SYSTEM_INFO_V1)
-            .and_then(|_| self.internal_migrate_or_create_str(JSON_DOMAIN_INFO_V1))
-            .and_then(|_| self.internal_migrate_or_create_str(JSON_SYSTEM_CONFIG_V1));
+            .internal_migrate_or_create(E_SYSTEM_INFO_V1.clone())
+            .and_then(|_| self.internal_migrate_or_create(E_DOMAIN_INFO_V1.clone()))
+            .and_then(|_| self.internal_migrate_or_create(E_SYSTEM_CONFIG_V1.clone()));
         if res.is_err() {
             admin_error!("initialise_idm p1 -> result {:?}", res);
         }
