@@ -148,4 +148,7 @@ enum OrcaOpt {
     #[clap(name = "run")]
     /// Run the load test as defined by the test profile
     Run(RunOpt),
+    #[clap(name = "version")]
+    /// Print version info and exit
+    Version(CommonOpt)
 }

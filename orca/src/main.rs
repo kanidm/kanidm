@@ -48,6 +48,7 @@ impl OrcaOpt {
             OrcaOpt::PreProc(opt) => opt.copt.debug,
             OrcaOpt::Setup(opt) => opt.copt.debug,
             OrcaOpt::Run(opt) => opt.copt.debug,
+            OrcaOpt::Version(opt) => opt.debug,
         }
     }
 }
@@ -231,6 +232,10 @@ async fn main() {
     info!("Orca - the Kanidm Load Testing Utility.");
     debug!("cli -> {:?}", opt);
     match opt {
+        OrcaOpt::Version(_opt) => {
+            println!("{}", kanidm_proto::utils::get_version("orca"));
+            std::process::exit(0);
+        }
         OrcaOpt::TestConnection(opt) => {
             let _ = conntest(&opt.target, &opt.profile_path).await;
         }
