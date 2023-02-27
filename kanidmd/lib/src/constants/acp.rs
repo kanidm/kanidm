@@ -549,29 +549,32 @@ pub const JSON_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1: &str = r#"{
     }
 }"#;
 
-pub const JSON_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_modify"
-        ],
-        "name": ["idm_acp_radius_secret_write_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000040"],
-        "description": ["Builtin IDM Control allowing writes to user radius secrets."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000031"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_modify_removedattr": [
-            "radius_secret"
-        ],
-        "acp_modify_presentattr": [
-            "radius_secret"
-        ]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("name", Value::new_iname("idm_acp_radius_secret_write_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control allowing writes to user radius secrets.")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_RADIUS_SECRET_WRITE_PRIV_V1)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_modify_removedattr", Value::new_iutf8("radius_secret")),
+        ("acp_modify_presentattr", Value::new_iutf8("radius_secret"))
+
+    );
+}
 
 pub const JSON_IDM_ACP_RADIUS_SERVERS_V1: &str = r#"{
     "attrs": {
@@ -1243,111 +1246,38 @@ pub const JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
     }
 }"#;
 
-pub const JSON_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_search",
-            "access_control_profile",
-            "access_control_modify"
-        ],
-        "name": ["idm_hp_acp_service_account_into_person_migrate"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000042"],
-        "description": ["Builtin IDM Control allowing service accounts to be migrated into persons"],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000034"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "class", "name", "uuid"
-        ],
-        "acp_modify_removedattr": [
-            "class"
-        ],
-        "acp_modify_presentattr": [
-            "class"
-        ],
-        "acp_modify_class": ["service_account", "person"]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_hp_acp_service_account_into_person_migrate")),
+        ("uuid", Value::Uuid(UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control allowing service accounts to be migrated into persons")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("class")),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_modify_removedattr", Value::new_iutf8("class")),
+        ("acp_modify_presentattr", Value::new_iutf8("class")),
+        ("acp_modify_class", Value::new_iutf8("service_account")),
+        ("acp_modify_class", Value::new_iutf8("person"))
 
-/*
-// Removed in favour of a dynamic check inside of access.rs that is based on membership to an
-// oauth2 rs.
-pub const JSON_IDM_ACP_OAUTH2_READ_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search"
-        ],
-        "name": ["idm_acp_oauth2_read_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000043"],
-        "description": ["Builtin IDM Control allowing persons to view oauth2 applications they can access"],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000035"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"oauth2_resource_server\"]},{\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "class",
-            "displayname",
-            "oauth2_rs_name",
-            "oauth2_rs_origin",
-            "oauth2_rs_origin_landing"
-        ]
-    }
-}"#;
-*/
-
-pub const JSON_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search",
-            "access_control_modify",
-            "access_control_delete",
-            "access_control_create"
-        ],
-        "name": ["idm_acp_hp_sync_account_manage_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000044"],
-        "description": ["Builtin IDM Control for managing IDM synchronisation accounts / connections"],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000037"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"sync_account\"]},{\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "class",
-            "name",
-            "description",
-            "jws_es256_private_key",
-            "sync_token_session",
-            "sync_cookie"
-        ],
-        "acp_modify_removedattr": [
-            "name",
-            "description",
-            "jws_es256_private_key",
-            "sync_token_session",
-            "sync_cookie"
-        ],
-        "acp_modify_presentattr": [
-            "name",
-            "description",
-            "sync_token_session"
-        ],
-        "acp_modify_class": [],
-        "acp_create_attr": [
-            "class",
-            "name",
-            "description"
-        ],
-        "acp_create_class": ["sync_account", "object"]
-    }
-}"#;
+    );
+}
 
 lazy_static! {
     pub static ref E_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
@@ -1379,21 +1309,17 @@ lazy_static! {
         ("acp_search_attr", Value::new_iutf8("jws_es256_private_key")),
         ("acp_search_attr", Value::new_iutf8("sync_token_session")),
         ("acp_search_attr", Value::new_iutf8("sync_cookie")),
-
         ("acp_modify_removedattr", Value::new_iutf8("name")),
         ("acp_modify_removedattr", Value::new_iutf8("description")),
         ("acp_modify_removedattr", Value::new_iutf8("jws_es256_private_key")),
         ("acp_modify_removedattr", Value::new_iutf8("sync_token_session")),
         ("acp_modify_removedattr", Value::new_iutf8("sync_cookie")),
-
         ("acp_modify_presentattr", Value::new_iutf8("name")),
         ("acp_modify_presentattr", Value::new_iutf8("description")),
         ("acp_modify_presentattr", Value::new_iutf8("sync_token_session")),
-
         ("acp_create_attr", Value::new_iutf8("class")),
         ("acp_create_attr", Value::new_iutf8("name")),
         ("acp_create_attr", Value::new_iutf8("description")),
-
         ("acp_create_class", Value::new_iutf8("object")),
         ("acp_create_class", Value::new_iutf8("sync_account"))
     );

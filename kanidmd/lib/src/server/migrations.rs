@@ -615,10 +615,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1,
             JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1,
             JSON_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1,
-            JSON_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1,
-            JSON_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1,
-            // JSON_IDM_ACP_OAUTH2_READ_PRIV_V1,
-            // JSON_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1,
         ];
 
         let res: Result<(), _> = idm_entries
@@ -633,6 +629,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         res?;
 
         let idm_entries = [
+            E_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1.clone(),
+            E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1.clone(),
             E_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1.clone(),
             E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES.clone(),
             E_IDM_ACCOUNT_MAIL_READ_PRIV.clone(),
