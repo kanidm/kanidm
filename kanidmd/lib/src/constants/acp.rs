@@ -550,6 +550,32 @@ pub const JSON_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1: &str = r#"{
 }"#;
 
 lazy_static! {
+    pub static ref E_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_radius_secret_read_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for reading user radius secrets.")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_RADIUS_SECRET_READ_PRIV_V1)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("radius_secret")),
+
+    );
+}
+
+lazy_static! {
     pub static ref E_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1: EntryInitNew = entry_init!(
         ("class", CLASS_OBJECT.clone()),
         ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
