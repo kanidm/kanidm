@@ -310,27 +310,33 @@ pub const JSON_IDM_ACP_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
     }
 }"#;
 
-// -- hp people
-pub const JSON_IDM_ACP_HP_PEOPLE_READ_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search"
-        ],
-        "name": ["idm_acp_hp_people_read_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000036"],
-        "description": ["Builtin IDM Control for reading high privilege personal sensitive data."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000028"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "name", "displayname", "legalname", "mail"
-        ]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_IDM_ACP_HP_PEOPLE_READ_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_hp_people_read_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_HP_PEOPLE_READ_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for reading high privilege personal sensitive data.")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_HP_PEOPLE_READ_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("displayname")),
+        ("acp_search_attr", Value::new_iutf8("legalname")),
+        ("acp_search_attr", Value::new_iutf8("mail"))
+    );
+}
 
 lazy_static! {
     pub static ref E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1: EntryInitNew = entry_init!(
@@ -363,30 +369,6 @@ lazy_static! {
         ("acp_search_attr", Value::new_iutf8("mail"))
     );
 }
-
-pub const JSON_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_modify"
-        ],
-        "name": ["idm_acp_hp_people_write_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000037"],
-        "description": ["Builtin IDM Control for managing privilege personal and sensitive data."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000029"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_modify_removedattr": [
-            "name", "displayname", "legalname", "mail"
-        ],
-        "acp_modify_presentattr": [
-            "name", "displayname", "legalname", "mail"
-        ]
-    }
-}"#;
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1: EntryInitNew = entry_init!(
