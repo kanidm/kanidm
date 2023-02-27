@@ -35,18 +35,8 @@ lazy_static! {
     );
 }
 
-/// Builtin IDM Admin account.
-pub const JSON_IDM_ADMIN_V1: &str = r#"{
-    "attrs": {
-        "class": ["account", "service_account", "memberof", "object"],
-        "name": ["idm_admin"],
-        "uuid": ["00000000-0000-0000-0000-000000000018"],
-        "description": ["Builtin IDM Admin account."],
-        "displayname": ["IDM Administrator"]
-    }
-}"#;
-
 lazy_static! {
+    /// Builtin IDM Admin account.
     pub static ref E_IDM_ADMIN_V1: EntryInitNew = entry_init!(
         ("class", CLASS_ACCOUNT.clone()),
         ("class", CLASS_MEMBEROF.clone()),
@@ -62,18 +52,8 @@ lazy_static! {
     );
 }
 
-/// Builtin IDM Administrators Group.
-pub const JSON_IDM_ADMINS_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_admins"],
-        "uuid": ["00000000-0000-0000-0000-000000000001"],
-        "description": ["Builtin IDM Administrators Group."],
-        "member": ["00000000-0000-0000-0000-000000000018"]
-    }
-}"#;
-
 lazy_static! {
+    /// Builtin IDM Administrators Group.
     pub static ref E_IDM_ADMINS_V1: EntryInitNew = entry_init!(
         ("class", CLASS_GROUP.clone()),
         ("class", CLASS_OBJECT.clone()),
@@ -87,18 +67,8 @@ lazy_static! {
     );
 }
 
-/// Builtin System Administrators Group.
-pub const JSON_SYSTEM_ADMINS_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["system_admins"],
-        "uuid": ["00000000-0000-0000-0000-000000000019"],
-        "description": ["Builtin System Administrators Group."],
-        "member": ["00000000-0000-0000-0000-000000000000"]
-    }
-}"#;
-
 lazy_static! {
+    /// Builtin System Administrators Group.
     pub static ref E_SYSTEM_ADMINS_V1: EntryInitNew = entry_init!(
         ("class", CLASS_GROUP.clone()),
         ("class", CLASS_OBJECT.clone()),
