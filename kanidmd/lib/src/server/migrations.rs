@@ -518,16 +518,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Check the admin object exists (migrations).
         // Create the default idm_admin group.
         let admin_entries = [
-            JSON_ANONYMOUS_V1,
-            JSON_ADMIN_V1,
-            JSON_IDM_ADMIN_V1,
-            JSON_IDM_ADMINS_V1,
-            JSON_SYSTEM_ADMINS_V1,
+            E_ANONYMOUS_V1.clone(),
+            E_ADMIN_V1.clone(),
+            E_IDM_ADMIN_V1.clone(),
+            E_IDM_ADMINS_V1.clone(),
+            E_SYSTEM_ADMINS_V1.clone(),
         ];
         let res: Result<(), _> = admin_entries
-            .iter()
+            .into_iter()
             // Each item individually logs it's result
-            .try_for_each(|e_str| self.internal_migrate_or_create_str(e_str));
+            .try_for_each(|ent| self.internal_migrate_or_create(ent));
         if res.is_err() {
             admin_error!("initialise_idm p2 -> result {:?}", res);
         }

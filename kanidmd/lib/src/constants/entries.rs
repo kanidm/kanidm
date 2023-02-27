@@ -21,9 +21,9 @@ pub const JSON_ADMIN_V1: &str = r#"{
 
 lazy_static! {
     pub static ref E_ADMIN_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_MEMBEROF.clone()),
         ("class", CLASS_ACCOUNT.clone()),
+        ("class", CLASS_MEMBEROF.clone()),
+        ("class", CLASS_OBJECT.clone()),
         ("class", CLASS_SERVICE_ACCOUNT.clone()),
         ("name", Value::new_iname("admin")),
         ("uuid", Value::Uuid(UUID_ADMIN)),
@@ -46,6 +46,22 @@ pub const JSON_IDM_ADMIN_V1: &str = r#"{
     }
 }"#;
 
+lazy_static! {
+    pub static ref E_IDM_ADMIN_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_ACCOUNT.clone()),
+        ("class", CLASS_MEMBEROF.clone()),
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_SERVICE_ACCOUNT.clone()),
+        ("name", Value::new_iname("idm_admin")),
+        ("uuid", Value::Uuid(UUID_IDM_ADMIN)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Admin account.")
+        ),
+        ("displayname", Value::new_utf8s("IDM Administrator"))
+    );
+}
+
 /// Builtin IDM Administrators Group.
 pub const JSON_IDM_ADMINS_V1: &str = r#"{
     "attrs": {
@@ -57,6 +73,20 @@ pub const JSON_IDM_ADMINS_V1: &str = r#"{
     }
 }"#;
 
+lazy_static! {
+    pub static ref E_IDM_ADMINS_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_GROUP.clone()),
+        ("class", CLASS_OBJECT.clone()),
+        ("name", Value::new_iname("idm_admins")),
+        ("uuid", Value::Uuid(UUID_IDM_ADMINS)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Administrators Group.")
+        ),
+        ("member", Value::Refer(UUID_IDM_ADMIN))
+    );
+}
+
 /// Builtin System Administrators Group.
 pub const JSON_SYSTEM_ADMINS_V1: &str = r#"{
     "attrs": {
@@ -67,6 +97,20 @@ pub const JSON_SYSTEM_ADMINS_V1: &str = r#"{
         "member": ["00000000-0000-0000-0000-000000000000"]
     }
 }"#;
+
+lazy_static! {
+    pub static ref E_SYSTEM_ADMINS_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_GROUP.clone()),
+        ("class", CLASS_OBJECT.clone()),
+        ("name", Value::new_iname("system_admins")),
+        ("uuid", Value::Uuid(UUID_SYSTEM_ADMINS)),
+        (
+            "description",
+            Value::new_utf8s("Builtin System Administrators Group.")
+        ),
+        ("member", Value::Refer(UUID_ADMIN))
+    );
+}
 
 // * People read managers
 /// Builtin IDM Group for granting elevated people (personal data) read permissions.
