@@ -570,8 +570,7 @@ lazy_static! {
                 "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
             ).unwrap()
         ),
-        ("acp_search_attr", Value::new_iutf8("radius_secret")),
-
+        ("acp_search_attr", Value::new_iutf8("radius_secret"))
     );
 }
 
