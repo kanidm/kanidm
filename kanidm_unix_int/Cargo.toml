@@ -15,7 +15,6 @@ repository.workspace = true
 default = ["unix"]
 unix = []
 
-
 [[bin]]
 name = "kanidm_unixd"
 path = "src/daemon.rs"
