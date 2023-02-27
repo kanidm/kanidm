@@ -268,18 +268,27 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn internal_apply_writable(
         &mut self,
-        pre_candidates: Vec<Arc<EntrySealedCommitted>>,
-        candidates: Vec<Entry<EntryInvalid, EntryCommitted>>,
+        candidate_tuples: Vec<(Arc<EntrySealedCommitted>, EntryInvalidCommitted)>,
     ) -> Result<(), OperationError> {
-        if pre_candidates.is_empty() && candidates.is_empty() {
+        if candidate_tuples.is_empty() {
             // No action needed.
             return Ok(());
         }
 
-        if pre_candidates.len() != candidates.len() {
-            admin_error!("internal_apply_writable - cand lengths differ");
-            return Err(OperationError::InvalidRequestState);
+        let (pre_candidates, candidates): (
+            Vec<Arc<EntrySealedCommitted>>,
+            Vec<EntryInvalidCommitted>,
+        ) = candidate_tuples.into_iter().unzip();
+
+        /*
+        let mut pre_candidates = Vec::with_capacity(candidate_tuples.len());
+        let mut candidates = Vec::with_capacity(candidate_tuples.len());
+
+        for (pre, post) in candidate_tuples.into_iter() {
+            pre_candidates.push(pre);
+            candidates.push(post);
         }
+        */
 
         let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> = candidates
             .into_iter()

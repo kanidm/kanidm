@@ -18,8 +18,7 @@ impl DynGroup {
     fn apply_dyngroup_change(
         qs: &mut QueryServerWriteTransaction,
         ident: &Identity,
-        pre_candidates: &mut Vec<Arc<EntrySealedCommitted>>,
-        candidates: &mut Vec<EntryInvalidCommitted>,
+        candidate_tuples: &mut Vec<(Arc<EntrySealedCommitted>, EntryInvalidCommitted)>,
         affected_uuids: &mut Vec<Uuid>,
         expect: bool,
         ident_internal: &Identity,
@@ -80,8 +79,7 @@ impl DynGroup {
                 nd_group.purge_ava("member");
             }
 
-            pre_candidates.push(pre);
-            candidates.push(nd_group);
+            candidate_tuples.push((pre, nd_group));
 
             // Insert to our new instances
             if dyn_groups.insts.insert(uuid, scope_i).is_none() == expect {
@@ -159,8 +157,7 @@ impl DynGroup {
         // dyn groups will see the created entries on an internal search
         // so we don't need to reference them.
 
-        let mut pre_candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
-        let mut candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
+        let mut candidate_tuples = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
 
         // Apply existing dyn_groups to entries.
         trace!(?dyn_groups.insts);
@@ -199,8 +196,7 @@ impl DynGroup {
                     affected_uuids.extend(matches.into_iter());
                     affected_uuids.push(*dg_uuid);
 
-                    pre_candidates.push(pre);
-                    candidates.push(d_group);
+                    candidate_tuples.push((pre, d_group));
                 }
             }
         }
@@ -213,8 +209,7 @@ impl DynGroup {
             Self::apply_dyngroup_change(
                 qs,
                 ident,
-                &mut pre_candidates,
-                &mut candidates,
+                &mut candidate_tuples,
                 &mut affected_uuids,
                 false,
                 &ident_internal,
@@ -224,14 +219,12 @@ impl DynGroup {
         }
 
         // Write back the new changes.
-        debug_assert!(pre_candidates.len() == candidates.len());
         // Write this stripe if populated.
-        if !pre_candidates.is_empty() {
-            qs.internal_apply_writable(pre_candidates, candidates)
-                .map_err(|e| {
-                    admin_error!("Failed to commit dyngroup set {:?}", e);
-                    e
-                })?;
+        if !candidate_tuples.is_empty() {
+            qs.internal_apply_writable(candidate_tuples).map_err(|e| {
+                admin_error!("Failed to commit dyngroup set {:?}", e);
+                e
+            })?;
         }
 
         Ok(affected_uuids)
@@ -265,8 +258,7 @@ impl DynGroup {
         // lifetime here is safe since we are the sole accessor.
         let dyn_groups: &mut DynGroupCache = unsafe { &mut *(qs.get_dyngroup_cache() as *mut _) };
 
-        let mut pre_candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
-        let mut candidates = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
+        let mut candidate_tuples = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
 
         // If we modified a dyngroups member or filter, re-trigger it here.
         //    if the event is not internal, reject (for now)
@@ -278,8 +270,7 @@ impl DynGroup {
             Self::apply_dyngroup_change(
                 qs,
                 ident,
-                &mut pre_candidates,
-                &mut candidates,
+                &mut candidate_tuples,
                 &mut affected_uuids,
                 true,
                 &ident_internal,
@@ -334,21 +325,18 @@ impl DynGroup {
                     }));
                     affected_uuids.push(*dg_uuid);
 
-                    pre_candidates.push(pre);
-                    candidates.push(d_group);
+                    candidate_tuples.push((pre, d_group));
                 }
             }
         }
 
         // Write back the new changes.
-        debug_assert!(pre_candidates.len() == candidates.len());
         // Write this stripe if populated.
-        if !pre_candidates.is_empty() {
-            qs.internal_apply_writable(pre_candidates, candidates)
-                .map_err(|e| {
-                    admin_error!("Failed to commit dyngroup set {:?}", e);
-                    e
-                })?;
+        if !candidate_tuples.is_empty() {
+            qs.internal_apply_writable(candidate_tuples).map_err(|e| {
+                admin_error!("Failed to commit dyngroup set {:?}", e);
+                e
+            })?;
         }
 
         Ok(affected_uuids)
