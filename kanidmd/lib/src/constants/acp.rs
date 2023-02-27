@@ -1348,3 +1348,53 @@ pub const JSON_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
         "acp_create_class": ["sync_account", "object"]
     }
 }"#;
+
+lazy_static! {
+    pub static ref E_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_hp_sync_account_manage_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for managing IDM synchronisation accounts / connections")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"sync_account\"]},{\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("class")),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("description")),
+        ("acp_search_attr", Value::new_iutf8("jws_es256_private_key")),
+        ("acp_search_attr", Value::new_iutf8("sync_token_session")),
+        ("acp_search_attr", Value::new_iutf8("sync_cookie")),
+
+        ("acp_modify_removedattr", Value::new_iutf8("name")),
+        ("acp_modify_removedattr", Value::new_iutf8("description")),
+        ("acp_modify_removedattr", Value::new_iutf8("jws_es256_private_key")),
+        ("acp_modify_removedattr", Value::new_iutf8("sync_token_session")),
+        ("acp_modify_removedattr", Value::new_iutf8("sync_cookie")),
+
+        ("acp_modify_presentattr", Value::new_iutf8("name")),
+        ("acp_modify_presentattr", Value::new_iutf8("description")),
+        ("acp_modify_presentattr", Value::new_iutf8("sync_token_session")),
+
+        ("acp_create_attr", Value::new_iutf8("class")),
+        ("acp_create_attr", Value::new_iutf8("name")),
+        ("acp_create_attr", Value::new_iutf8("description")),
+
+        ("acp_create_class", Value::new_iutf8("object")),
+        ("acp_create_class", Value::new_iutf8("sync_account"))
+    );
+}

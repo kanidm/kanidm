@@ -40,6 +40,9 @@ lazy_static! {
     pub static ref PVUUID_SYSTEM_CONFIG: PartialValue = PartialValue::Uuid(UUID_SYSTEM_CONFIG);
     pub static ref PVUUID_SYSTEM_INFO: PartialValue = PartialValue::Uuid(UUID_SYSTEM_INFO);
     pub static ref CLASS_ACCESS_CONTROL_PROFILE: Value = Value::new_class("access_control_profile");
+    pub static ref CLASS_ACCESS_CONTROL_CREATE: Value = Value::new_class("access_control_create");
+    pub static ref CLASS_ACCESS_CONTROL_DELETE: Value = Value::new_class("access_control_delete");
+    pub static ref CLASS_ACCESS_CONTROL_MODIFY: Value = Value::new_class("access_control_modify");
     pub static ref CLASS_ACCESS_CONTROL_SEARCH: Value = Value::new_class("access_control_search");
     pub static ref CLASS_ACCOUNT: Value = Value::new_class("account");
     pub static ref CLASS_ATTRIBUTETYPE: Value = Value::new_class("attributetype");
