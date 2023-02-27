@@ -12,7 +12,9 @@ homepage.workspace = true
 repository.workspace = true
 
 [features]
+default = ["unix"]
 unix = []
+
 
 [[bin]]
 name = "kanidm_unixd"

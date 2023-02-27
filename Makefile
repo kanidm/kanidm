@@ -222,7 +222,7 @@ release/kanidm: ## Build the Kanidm CLI - ensure you include the environment var
 
 .PHONY: release/kanidmd
 release/kanidmd: ## Build the Kanidm daemon - ensure you include the environment variable KANIDM_BUILD_PROFILE
-	cargo build --features unix -p daemon --bin kanidmd --release
+	cargo build -p daemon --bin kanidmd --release
 
 .PHONY: release/kanidm-ssh
 release/kanidm-ssh: ## Build the Kanidm SSH tools - ensure you include the environment variable KANIDM_BUILD_PROFILE
