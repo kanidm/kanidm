@@ -256,59 +256,70 @@ pub const JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
+
 // 31 - password import modification priv
 // right now, create requires you to have access to every attribute in a single snapshot,
 // so people will need to two step (create then import pw). Later we could add another
 // acp that allows the create here too? Should it be separate?
-pub const JSON_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_modify"
-        ],
-        "name": ["idm_acp_people_account_password_import_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000031"],
-        "description": ["Builtin IDM Control for allowing imports of passwords to people+account types."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000023"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_modify_removedattr": [
-            "password_import"
-        ],
-        "acp_modify_presentattr": [
-            "password_import"
-        ]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("name", Value::new_iname("idm_acp_people_account_password_import_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for allowing imports of passwords to people+account types.")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_modify_removedattr", Value::new_iutf8("password_import")),
+        ("acp_modify_presentattr", Value::new_iutf8("password_import"))
+    );
+}
 
-//
-pub const JSON_IDM_ACP_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_modify"
-        ],
-        "name": ["idm_acp_people_extend_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000032"],
-        "description": ["Builtin IDM Control for allowing person class extension"],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000024"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_modify_removedattr": [
-            "name", "displayname", "legalname", "mail"
-        ],
-        "acp_modify_presentattr": [
-            "class", "name", "displayname", "legalname", "mail"
-        ],
-        "acp_modify_class": ["person"]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_IDM_ACP_PEOPLE_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("name", Value::new_iname("idm_acp_people_extend_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_PEOPLE_EXTEND_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for allowing person class extension")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_PEOPLE_EXTEND_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_modify_removedattr", Value::new_iutf8("name")),
+        ("acp_modify_removedattr", Value::new_iutf8("displayname")),
+        ("acp_modify_removedattr", Value::new_iutf8("legalname")),
+        ("acp_modify_removedattr", Value::new_iutf8("mail")),
+        ("acp_modify_presentattr", Value::new_iutf8("class")),
+        ("acp_modify_presentattr", Value::new_iutf8("name")),
+        ("acp_modify_presentattr", Value::new_iutf8("displayname")),
+        ("acp_modify_presentattr", Value::new_iutf8("legalname")),
+        ("acp_modify_presentattr", Value::new_iutf8("name")),
+        ("acp_modify_class", Value::new_iutf8("person"))
+    );
+}
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_PEOPLE_READ_PRIV_V1: EntryInitNew = entry_init!(
