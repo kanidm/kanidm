@@ -528,27 +528,6 @@ pub const JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
 // The targetscope of this could change later to a "radius access" group or similar so we can add/remove
 //  users from having radius access easier.
 
-pub const JSON_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search"
-        ],
-        "name": ["idm_acp_radius_secret_read_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000039"],
-        "description": ["Builtin IDM Control for reading radius secrets of accounts."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000032"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "radius_secret"
-        ]
-    }
-}"#;
-
 lazy_static! {
     pub static ref E_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1: EntryInitNew = entry_init!(
         ("class", CLASS_OBJECT.clone()),
@@ -1071,205 +1050,246 @@ pub const JSON_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: &str = r#"{
     }
 }"#;
 
-// 29 account unix extend
-pub const JSON_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_search",
-            "access_control_profile",
-            "access_control_modify"
-        ],
-        "name": ["idm_acp_account_unix_extend_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000029"],
-        "description": ["Builtin IDM Control for managing accounts."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000021"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "class", "name", "spn", "uuid", "description", "gidnumber", "loginshell", "unix_password"
-        ],
-        "acp_modify_removedattr": [
-            "loginshell", "gidnumber", "unix_password"
-        ],
-        "acp_modify_presentattr": [
-            "class", "loginshell", "gidnumber", "unix_password"
-        ],
-        "acp_modify_class": ["posixaccount"]
-    }
-}"#;
-// 30 group unix extend
-pub const JSON_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search",
-            "access_control_modify"
-        ],
-        "name": ["idm_acp_group_unix_extend_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000030"],
-        "description": ["Builtin IDM Control for managing and extending unix groups"],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000022"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "class", "name", "spn", "uuid", "description", "member", "gidnumber"
-        ],
-        "acp_modify_removedattr": [
-            "gidnumber"
-        ],
-        "acp_modify_presentattr": [
-            "class", "gidnumber"
-        ],
-        "acp_modify_class": ["posixgroup"]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_account_unix_extend_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for managing and extending unix accounts")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_ACCOUNT_UNIX_EXTEND_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("class")),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("spn")),
+        ("acp_search_attr", Value::new_iutf8("description")),
+        ("acp_search_attr", Value::new_iutf8("gidnumber")),
+        ("acp_search_attr", Value::new_iutf8("loginshell")),
+        ("acp_search_attr", Value::new_iutf8("unix_password")),
+        ("acp_modify_removedattr", Value::new_iutf8("gidnumber")),
+        ("acp_modify_removedattr", Value::new_iutf8("loginshell")),
+        ("acp_modify_removedattr", Value::new_iutf8("unix_password")),
+        ("acp_modify_presentattr", Value::new_iutf8("class")),
+        ("acp_modify_presentattr", Value::new_iutf8("gidnumber")),
+        ("acp_modify_presentattr", Value::new_iutf8("loginshell")),
+        ("acp_modify_presentattr", Value::new_iutf8("unix_password")),
+        ("acp_modify_class", Value::new_iutf8("posixaccount"))
+    );
+}
 
-// 33 hp account unix extend
-pub const JSON_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_search",
-            "access_control_profile",
-            "access_control_modify"
-        ],
-        "name": ["idm_acp_hp_account_unix_extend_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000033"],
-        "description": ["Builtin IDM Control for managing and extending unix high privilege accounts."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000025"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "class", "name", "spn", "uuid", "description", "gidnumber", "loginshell", "unix_password"
-        ],
-        "acp_modify_removedattr": [
-            "loginshell", "gidnumber", "unix_password"
-        ],
-        "acp_modify_presentattr": [
-            "class", "loginshell", "gidnumber", "unix_password"
-        ],
-        "acp_modify_class": ["posixaccount"]
-    }
-}"#;
-// 34 hp group unix extend
-pub const JSON_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search",
-            "access_control_modify"
-        ],
-        "name": ["idm_acp_hp_group_unix_extend_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000034"],
-        "description": ["Builtin IDM Control for managing and extending unix high privilege groups"],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000026"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "class", "name", "spn", "uuid", "description", "member", "gidnumber"
-        ],
-        "acp_modify_removedattr": [
-            "gidnumber"
-        ],
-        "acp_modify_presentattr": [
-            "class", "gidnumber"
-        ],
-        "acp_modify_class": ["posixgroup"]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_group_unix_extend_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for managing and extending unix groups")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_GROUP_UNIX_EXTEND_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("class")),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("spn")),
+        ("acp_search_attr", Value::new_iutf8("description")),
+        ("acp_search_attr", Value::new_iutf8("member")),
+        ("acp_search_attr", Value::new_iutf8("gidnumber")),
+        ("acp_modify_removedattr", Value::new_iutf8("gidnumber")),
+        ("acp_modify_presentattr", Value::new_iutf8("class")),
+        ("acp_modify_presentattr", Value::new_iutf8("gidnumber")),
+        ("acp_modify_class", Value::new_iutf8("posixgroup"))
+    );
+}
 
-// 35 oauth2 manage
-pub const JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search",
-            "access_control_modify",
-            "access_control_delete",
-            "access_control_create"
-        ],
-        "name": ["idm_acp_hp_oauth2_manage_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000035"],
-        "description": ["Builtin IDM Control for managing oauth2 resource server integrations."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000027"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"oauth2_resource_server\"]},{\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "class",
+lazy_static! {
+    pub static ref E_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_hp_account_unix_extend_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1)),
+        (
             "description",
-            "displayname",
-            "oauth2_rs_name",
-            "oauth2_rs_origin",
-            "oauth2_rs_origin_landing",
-            "oauth2_rs_scope_map",
-            "oauth2_rs_sup_scope_map",
-            "oauth2_rs_basic_secret",
-            "oauth2_rs_token_key",
-            "es256_private_key_der",
-            "oauth2_allow_insecure_client_disable_pkce",
-            "rs256_private_key_der",
-            "oauth2_jwt_legacy_crypto_enable",
-            "oauth2_prefer_short_username"
-        ],
-        "acp_modify_removedattr": [
+            Value::new_utf8s("Builtin IDM Control for managing and extending unix accounts")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("class")),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("spn")),
+        ("acp_search_attr", Value::new_iutf8("description")),
+        ("acp_search_attr", Value::new_iutf8("gidnumber")),
+        ("acp_search_attr", Value::new_iutf8("loginshell")),
+        ("acp_search_attr", Value::new_iutf8("unix_password")),
+        ("acp_modify_removedattr", Value::new_iutf8("gidnumber")),
+        ("acp_modify_removedattr", Value::new_iutf8("loginshell")),
+        ("acp_modify_removedattr", Value::new_iutf8("unix_password")),
+        ("acp_modify_presentattr", Value::new_iutf8("class")),
+        ("acp_modify_presentattr", Value::new_iutf8("gidnumber")),
+        ("acp_modify_presentattr", Value::new_iutf8("loginshell")),
+        ("acp_modify_presentattr", Value::new_iutf8("unix_password")),
+        ("acp_modify_class", Value::new_iutf8("posixaccount"))
+    );
+}
+
+
+lazy_static! {
+    pub static ref E_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_hp_group_unix_extend_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1)),
+        (
             "description",
-            "displayname",
-            "oauth2_rs_name",
-            "oauth2_rs_origin",
-            "oauth2_rs_origin_landing",
-            "oauth2_rs_scope_map",
-            "oauth2_rs_sup_scope_map",
-            "oauth2_rs_basic_secret",
-            "oauth2_rs_token_key",
-            "es256_private_key_der",
-            "oauth2_allow_insecure_client_disable_pkce",
-            "rs256_private_key_der",
-            "oauth2_jwt_legacy_crypto_enable",
-            "oauth2_prefer_short_username"
-        ],
-        "acp_modify_presentattr": [
+            Value::new_utf8s("Builtin IDM Control for managing and extending unix high privilege groups")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_HP_GROUP_UNIX_EXTEND_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("class")),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("spn")),
+        ("acp_search_attr", Value::new_iutf8("description")),
+        ("acp_search_attr", Value::new_iutf8("member")),
+        ("acp_search_attr", Value::new_iutf8("gidnumber")),
+        ("acp_modify_removedattr", Value::new_iutf8("gidnumber")),
+        ("acp_modify_presentattr", Value::new_iutf8("class")),
+        ("acp_modify_presentattr", Value::new_iutf8("gidnumber")),
+        ("acp_modify_class", Value::new_iutf8("posixgroup"))
+    );
+}
+
+lazy_static! {
+    pub static ref E_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_hp_oauth2_manage_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1)),
+        (
             "description",
-            "displayname",
-            "oauth2_rs_name",
-            "oauth2_rs_origin",
-            "oauth2_rs_origin_landing",
-            "oauth2_rs_sup_scope_map",
-            "oauth2_rs_scope_map",
-            "oauth2_allow_insecure_client_disable_pkce",
-            "oauth2_jwt_legacy_crypto_enable",
-            "oauth2_prefer_short_username"
-        ],
-        "acp_modify_class": [],
-        "acp_create_attr": [
-            "class",
-            "description",
-            "displayname",
-            "oauth2_rs_name",
-            "oauth2_rs_origin",
-            "oauth2_rs_origin_landing",
-            "oauth2_rs_sup_scope_map",
-            "oauth2_rs_scope_map",
-            "oauth2_allow_insecure_client_disable_pkce",
-            "oauth2_jwt_legacy_crypto_enable",
-            "oauth2_prefer_short_username"
-        ],
-        "acp_create_class": ["oauth2_resource_server", "oauth2_resource_server_basic", "object"]
-    }
-}"#;
+            Value::new_utf8s("Builtin IDM Control for managing oauth2 resource server integrations.")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_HP_OAUTH2_MANAGE_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"oauth2_resource_server\"]},{\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("class")),
+        ("acp_search_attr", Value::new_iutf8("description")),
+        ("acp_search_attr", Value::new_iutf8("displayname")),
+        ("acp_search_attr", Value::new_iutf8("oauth2_rs_name")),
+        ("acp_search_attr", Value::new_iutf8("oauth2_rs_origin")),
+        ("acp_search_attr", Value::new_iutf8("oauth2_rs_origin_landing")),
+        ("acp_search_attr", Value::new_iutf8("oauth2_rs_scope_map")),
+        ("acp_search_attr", Value::new_iutf8("oauth2_rs_sup_scope_map")),
+        ("acp_search_attr", Value::new_iutf8("oauth2_rs_basic_secret")),
+        ("acp_search_attr", Value::new_iutf8("oauth2_rs_token_key")),
+        ("acp_search_attr", Value::new_iutf8("es256_private_key_der")),
+        ("acp_search_attr", Value::new_iutf8("oauth2_allow_insecure_client_disable_pkce")),
+        ("acp_search_attr", Value::new_iutf8("rs256_private_key_der")),
+        ("acp_search_attr", Value::new_iutf8("oauth2_jwt_legacy_crypto_enable")),
+        ("acp_search_attr", Value::new_iutf8("oauth2_prefer_short_username")),
+
+        ("acp_modify_removedattr", Value::new_iutf8("description")),
+        ("acp_modify_removedattr", Value::new_iutf8("displayname")),
+        ("acp_modify_removedattr", Value::new_iutf8("oauth2_rs_name")),
+        ("acp_modify_removedattr", Value::new_iutf8("oauth2_rs_origin")),
+        ("acp_modify_removedattr", Value::new_iutf8("oauth2_rs_origin_landing")),
+        ("acp_modify_removedattr", Value::new_iutf8("oauth2_rs_scope_map")),
+        ("acp_modify_removedattr", Value::new_iutf8("oauth2_rs_sup_scope_map")),
+        ("acp_modify_removedattr", Value::new_iutf8("oauth2_rs_basic_secret")),
+        ("acp_modify_removedattr", Value::new_iutf8("oauth2_rs_token_key")),
+        ("acp_modify_removedattr", Value::new_iutf8("es256_private_key_der")),
+        ("acp_modify_removedattr", Value::new_iutf8("oauth2_allow_insecure_client_disable_pkce")),
+        ("acp_modify_removedattr", Value::new_iutf8("rs256_private_key_der")),
+        ("acp_modify_removedattr", Value::new_iutf8("oauth2_jwt_legacy_crypto_enable")),
+        ("acp_modify_removedattr", Value::new_iutf8("oauth2_prefer_short_username")),
+
+
+        ("acp_modify_presentattr", Value::new_iutf8("description")),
+        ("acp_modify_presentattr", Value::new_iutf8("displayname")),
+        ("acp_modify_presentattr", Value::new_iutf8("oauth2_rs_name")),
+        ("acp_modify_presentattr", Value::new_iutf8("oauth2_rs_origin")),
+        ("acp_modify_presentattr", Value::new_iutf8("oauth2_rs_origin_landing")),
+        ("acp_modify_presentattr", Value::new_iutf8("oauth2_rs_sup_scope_map")),
+        ("acp_modify_presentattr", Value::new_iutf8("oauth2_rs_scope_map")),
+        ("acp_modify_presentattr", Value::new_iutf8("oauth2_allow_insecure_client_disable_pkce")),
+        ("acp_modify_presentattr", Value::new_iutf8("oauth2_jwt_legacy_crypto_enable")),
+        ("acp_modify_presentattr", Value::new_iutf8("oauth2_prefer_short_username")),
+
+        ("acp_create_attr", Value::new_iutf8("class")),
+        ("acp_create_attr", Value::new_iutf8("description")),
+        ("acp_create_attr", Value::new_iutf8("displayname")),
+        ("acp_create_attr", Value::new_iutf8("oauth2_rs_name")),
+        ("acp_create_attr", Value::new_iutf8("oauth2_rs_origin")),
+        ("acp_create_attr", Value::new_iutf8("oauth2_rs_origin_landing")),
+        ("acp_create_attr", Value::new_iutf8("oauth2_rs_sup_scope_map")),
+        ("acp_create_attr", Value::new_iutf8("oauth2_rs_scope_map")),
+        ("acp_create_attr", Value::new_iutf8("oauth2_allow_insecure_client_disable_pkce")),
+        ("acp_create_attr", Value::new_iutf8("oauth2_jwt_legacy_crypto_enable")),
+        ("acp_create_attr", Value::new_iutf8("oauth2_prefer_short_username")),
+
+
+        ("acp_create_class", Value::new_iutf8("object")),
+        ("acp_create_class", Value::new_iutf8("oauth2_resource_server")),
+        ("acp_create_class", Value::new_iutf8("oauth2_resource_server_basic"))
+    );
+}
 
 lazy_static! {
     pub static ref E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1: EntryInitNew = entry_init!(
