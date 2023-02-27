@@ -218,24 +218,24 @@ prep:
 
 .PHONY: release/kanidm
 release/kanidm: ## Build the Kanidm CLI - ensure you include the environment variable KANIDM_BUILD_PROFILE
-	cargo build -p kanidm_tools --bin kanidm --release
+	cargo build --features unix -p kanidm_tools --bin kanidm --release
 
 .PHONY: release/kanidmd
 release/kanidmd: ## Build the Kanidm daemon - ensure you include the environment variable KANIDM_BUILD_PROFILE
-	cargo build -p daemon --bin kanidmd --release
+	cargo build --features unix -p daemon --bin kanidmd --release
 
 .PHONY: release/kanidm-ssh
 release/kanidm-ssh: ## Build the Kanidm SSH tools - ensure you include the environment variable KANIDM_BUILD_PROFILE
-	cargo build --release \
+	cargo build --features unix --release \
 		--bin kanidm_ssh_authorizedkeys \
 		--bin kanidm_ssh_authorizedkeys_direct
 
 .PHONY: release/kanidm-unixd
 release/kanidm-unixd: ## Build the Kanidm UNIX tools - ensure you include the environment variable KANIDM_BUILD_PROFILE
 release/kanidm-unixd:
-	cargo build -p pam_kanidm --release
-	cargo build -p nss_kanidm --release
-	cargo build --release \
+	cargo build --features unix -p pam_kanidm --release
+	cargo build --features unix -p nss_kanidm --release
+	cargo build --features unix --release \
 		--bin kanidm_unixd  \
 		--bin kanidm_unixd_status \
 		--bin kanidm_unixd_tasks \
@@ -252,3 +252,7 @@ cert/clean:
 	rm -f /tmp/kanidm/*.csr
 	rm -f /tmp/kanidm/ca.txt*
 	rm -f /tmp/kanidm/ca.{cnf,srl,srl.old}
+
+.PHONY: webui
+webui: ## Build the WASM web frontent
+	cd kanidmd_web_ui && ./build_wasm_release.sh

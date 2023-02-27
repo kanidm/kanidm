@@ -9,7 +9,7 @@ RUN \
 
 # ======================
 FROM repos AS builder
-ARG KANIDM_FEATURES
+ARG KANIDM_FEATURES="unix"
 ARG KANIDM_BUILD_PROFILE="container_generic"
 ARG KANIDM_BUILD_OPTIONS=""
 

@@ -14,13 +14,13 @@ license = "MPL-2.0"
 homepage = "https://github.com/kanidm/kanidm/"
 repository = "https://github.com/kanidm/kanidm/"
 
-# version.workspace = true
-# authors.workspace = true
-# rust-version.workspace = true
-# edition.workspace = true
-# license.workspace = true
-# homepage.workspace = true
-# repository.workspace = true
+# version = { workspace = true }
+# authors = { workspace = true }
+# rust-version = { workspace = true }
+# edition = { workspace = true }
+# license = { workspace = true }
+# homepage = { workspace = true }
+# repository = { workspace = true }
 
 # These are ignored because the crate is in a workspace
 #[profile.release]
@@ -32,21 +32,21 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 compact_jwt = { workspace = true, default-features = false, features = ["unsafe_release_without_verify"] }
 # gloo = "^0.8.0"
-gloo.workspace = true
-gloo-net.workspace = true
-js-sys.workspace = true
+gloo = { workspace = true }
+gloo-net = { workspace = true }
+js-sys = { workspace = true }
 kanidm_proto = { path = "../kanidm_proto", features = ["wasm"] }
 qrcode = { workspace = true, default-features = false, features = ["svg"] }
 serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
-serde-wasm-bindgen.workspace = true
-wasm-bindgen.workspace = true
-wasm-bindgen-futures.workspace = true
-wasm-bindgen-test.workspace = true
-url.workspace = true
-uuid.workspace = true
+serde_json = { workspace = true }
+serde-wasm-bindgen = { workspace = true }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+wasm-bindgen-test = { workspace = true }
+url = { workspace = true }
+uuid = { workspace = true }
 yew = { workspace = true, features = ["csr"] }
-yew-router.workspace = true
+yew-router = { workspace = true }
 
 
 [dependencies.web-sys]
