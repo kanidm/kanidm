@@ -405,34 +405,43 @@ lazy_static! {
 
 // -- end people
 
-// 9 group write acp JSON_IDM_GROUP_WRITE_PRIV_V1
-pub const JSON_IDM_ACP_GROUP_WRITE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search",
-            "access_control_modify"
-        ],
-        "name": ["idm_acp_group_write_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000009"],
-        "description": ["Builtin IDM Control for managing groups"],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000004"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "class", "name", "spn", "uuid", "description", "member"
-        ],
-        "acp_modify_removedattr": [
-            "name", "description", "member"
-        ],
-        "acp_modify_presentattr": [
-            "name", "description", "member"
-        ]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_IDM_ACP_GROUP_WRITE_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_group_write_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_GROUP_WRITE_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for managing groups")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_GROUP_WRITE_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("spn")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("description")),
+        ("acp_search_attr", Value::new_iutf8("member")),
+        ("acp_modify_removedattr", Value::new_iutf8("name")),
+        ("acp_modify_removedattr", Value::new_iutf8("description")),
+        ("acp_modify_removedattr", Value::new_iutf8("member")),
+        ("acp_modify_presentattr", Value::new_iutf8("name")),
+        ("acp_modify_presentattr", Value::new_iutf8("description")),
+        ("acp_modify_presentattr", Value::new_iutf8("member"))
+    );
+}
+
 // 10 account read acp JSON_IDM_ACCOUNT_READ_PRIV_V1
 pub const JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1: &str = r#"{
     "attrs": {
@@ -637,34 +646,42 @@ pub const JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
     }
 }"#;
 
-// 17 high priv group write --> JSON_IDM_HP_GROUP_WRITE_PRIV_V1 (12)
-pub const JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search",
-            "access_control_modify"
-        ],
-        "name": ["idm_acp_hp_group_write_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000017"],
-        "description": ["Builtin IDM Control for managing high privilege groups"],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000012"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "class", "name", "uuid", "description", "member"
-        ],
-        "acp_modify_removedattr": [
-            "name", "description", "member"
-        ],
-        "acp_modify_presentattr": [
-            "name", "description", "member"
-        ]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_hp_group_write_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_HP_GROUP_WRITE_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for managing high privilege groups")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_HP_GROUP_WRITE_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("spn")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("description")),
+        ("acp_search_attr", Value::new_iutf8("member")),
+        ("acp_modify_removedattr", Value::new_iutf8("name")),
+        ("acp_modify_removedattr", Value::new_iutf8("description")),
+        ("acp_modify_removedattr", Value::new_iutf8("member")),
+        ("acp_modify_presentattr", Value::new_iutf8("name")),
+        ("acp_modify_presentattr", Value::new_iutf8("description")),
+        ("acp_modify_presentattr", Value::new_iutf8("member"))
+    );
+}
 
 lazy_static! {
     pub static ref E_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: EntryInitNew = entry_init!(
