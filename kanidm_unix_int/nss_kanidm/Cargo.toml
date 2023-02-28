@@ -1,13 +1,13 @@
 [package]
 name = "nss_kanidm"
 
-version.workspace = true
-authors.workspace = true
-rust-version.workspace = true
-edition.workspace = true
-license.workspace = true
-homepage.workspace = true
-repository.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+rust-version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
 
 [lib]
 name = "nss_kanidm"
@@ -15,9 +15,11 @@ crate-type = [ "cdylib" ]
 path =  "src/lib.rs"
 
 [dependencies]
-kanidm_unix_int.workspace = true
-libnss.workspace = true
-libc.workspace = true
-paste.workspace = true
-lazy_static.workspace = true
+kanidm_unix_int = { workspace = true }
+
+[target.'cfg(not(target_family = "windows"))'.dependencies]
+libnss = { workspace = true }
+libc = { workspace = true }
+paste = { workspace = true }
+lazy_static = { workspace = true }
 

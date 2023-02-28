@@ -12,6 +12,10 @@ license.workspace = true
 homepage.workspace = true
 repository.workspace = true
 
+[features]
+default = ["unix"]
+unix = []
+
 [lib]
 name = "kanidm_cli"
 path = "src/cli/lib.rs"

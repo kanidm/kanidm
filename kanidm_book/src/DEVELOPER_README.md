@@ -4,7 +4,7 @@
 
 See the [designs] folder, and compile the private documentation locally:
 
-```
+```bash
 cargo doc --document-private-items --open --no-deps
 ```
 
@@ -44,7 +44,7 @@ Tumbleweed release, it's packaged in `zypper`.
 
 You will also need some system libraries to build this:
 
-```
+```text
 libudev-devel sqlite3-devel libopenssl-devel
 ```
 
@@ -58,13 +58,13 @@ rust cargo
 
 You will also need some system libraries to build this:
 
-```
+```text
 systemd-devel sqlite-devel openssl-devel pam-devel
 ```
 
 Building the Web UI requires additional packages:
 
-```
+```text
 perl-FindBin perl-File-Compare rust-std-static-wasm32-unknown-unknown
 ```
 

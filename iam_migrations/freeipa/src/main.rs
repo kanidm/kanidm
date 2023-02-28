@@ -27,6 +27,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::fs::metadata;
 use std::fs::File;
 use std::io::Read;
+#[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -53,6 +54,7 @@ use kanidm_proto::scim_v1::{
 };
 use kanidmd_lib::utils::file_permissions_readonly;
 
+#[cfg(target_family = "unix")]
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
 use ldap3_client::{
@@ -175,41 +177,53 @@ async fn driver_main(opt: Opt) {
             info!("Stopped sync driver");
         });
 
+        // TODO: this loop/handler should be generic across the various crates
         // Block on signals now.
         loop {
-            tokio::select! {
-                Ok(()) = tokio::signal::ctrl_c() => {
-                    break
+            #[cfg(target_family = "unix")]
+            {
+                tokio::select! {
+                    Ok(()) = tokio::signal::ctrl_c() => {
+                        break
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::terminate();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        break
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::alarm();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::hangup();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
                 }
-                Some(()) = async move {
-                    let sigterm = tokio::signal::unix::SignalKind::terminate();
-                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                } => {
-                    break
-                }
-                Some(()) = async move {
-                    let sigterm = tokio::signal::unix::SignalKind::alarm();
-                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                } => {
-                    // Ignore
-                }
-                Some(()) = async move {
-                    let sigterm = tokio::signal::unix::SignalKind::hangup();
-                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                } => {
-                    // Ignore
-                }
-                Some(()) = async move {
-                    let sigterm = tokio::signal::unix::SignalKind::user_defined1();
-                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                } => {
-                    // Ignore
-                }
-                Some(()) = async move {
-                    let sigterm = tokio::signal::unix::SignalKind::user_defined2();
-                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                } => {
-                    // Ignore
+            }
+            #[cfg(target_family = "windows")]
+            {
+                tokio::select! {
+                    Ok(()) = tokio::signal::ctrl_c() => {
+                        break
+                    }
                 }
             }
         }
@@ -908,10 +922,8 @@ fn config_security_checks(cfg_path: &Path) -> bool {
                 );
         }
 
-        let cuid = get_current_uid();
-        let ceuid = get_effective_uid();
-
-        if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
+        #[cfg(target_family = "unix")]
+        if cfg_meta.uid() == get_current_uid() || cfg_meta.uid() == get_effective_uid() {
             warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
                 cfg_path_str
             );
@@ -922,11 +934,6 @@ fn config_security_checks(cfg_path: &Path) -> bool {
 }
 
 fn main() {
-    let cuid = get_current_uid();
-    let ceuid = get_effective_uid();
-    let cgid = get_current_gid();
-    let cegid = get_effective_gid();
-
     let opt = Opt::parse();
 
     let fmt_layer = fmt::layer().with_writer(std::io::stderr);
@@ -952,10 +959,15 @@ fn main() {
         .init();
 
     // Startup sanity checks.
+    // TODO: put this in the junk drawer
+    #[cfg(target_family = "unix")]
     if opt.skip_root_check {
         warn!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
-        // TODO: this wording is not great m'kay.
-    } else if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
+    } else if get_current_uid() == 0
+        || get_effective_uid() == 0
+        || get_current_gid() == 0
+        || get_effective_gid() == 0
+    {
         error!("Refusing to run - this process must not operate as root.");
         return;
     };
