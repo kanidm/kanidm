@@ -600,51 +600,87 @@ pub const JSON_IDM_ACP_RADIUS_SERVERS_V1: &str = r#"{
     }
 }"#;
 
-// 15 high priv account read JSON_IDM_HP_ACCOUNT_READ_PRIV_V1
-pub const JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search"
-        ],
-        "name": ["idm_acp_hp_account_read_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000015"],
-        "description": ["Builtin IDM Control for reading high privilege accounts."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000009"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "class", "name", "spn", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof", "account_expire", "account_valid_from", "passkeys", "devicekeys", "api_token_session", "user_auth_token_session"
-        ]
-    }
-}"#;
-// 16 high priv account write JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1
-pub const JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_modify"
-        ],
-        "name": ["idm_acp_hp_account_write_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000016"],
-        "description": ["Builtin IDM Control for managing high privilege accounts (both person and service)."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000009"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_modify_removedattr": [
-            "name", "displayname", "ssh_publickey", "primary_credential", "account_expire", "account_valid_from", "passkeys", "devicekeys", "api_token_session", "user_auth_token_session"
-        ],
-        "acp_modify_presentattr": [
-            "name", "displayname", "ssh_publickey", "primary_credential", "account_expire", "account_valid_from", "passkeys", "devicekeys", "api_token_session"
-        ]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_hp_account_read_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for reading high privilege accounts.")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_HP_ACCOUNT_READ_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("class")),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("spn")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("displayname")),
+        ("acp_search_attr", Value::new_iutf8("ssh_publickey")),
+        ("acp_search_attr", Value::new_iutf8("primary_credential")),
+        ("acp_search_attr", Value::new_iutf8("memberof")),
+        ("acp_search_attr", Value::new_iutf8("account_expire")),
+        ("acp_search_attr", Value::new_iutf8("account_valid_from")),
+        ("acp_search_attr", Value::new_iutf8("passkeys")),
+        ("acp_search_attr", Value::new_iutf8("devicekeys")),
+        ("acp_search_attr", Value::new_iutf8("api_token_session")),
+        ("acp_search_attr", Value::new_iutf8("user_auth_token_session"))
+    );
+}
+
+lazy_static! {
+    pub static ref E_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("name", Value::new_iname("idm_acp_hp_account_write_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for managing high privilege accounts (both person and service).")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_HP_ACCOUNT_WRITE_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_modify_removedattr", Value::new_iutf8("name")),
+        ("acp_modify_removedattr", Value::new_iutf8("displayname")),
+        ("acp_modify_removedattr", Value::new_iutf8("ssh_publickey")),
+        ("acp_modify_removedattr", Value::new_iutf8("primary_credential")),
+        ("acp_modify_removedattr", Value::new_iutf8("account_expire")),
+        ("acp_modify_removedattr", Value::new_iutf8("account_valid_from")),
+        ("acp_modify_removedattr", Value::new_iutf8("passkeys")),
+        ("acp_modify_removedattr", Value::new_iutf8("devicekeys")),
+        ("acp_modify_removedattr", Value::new_iutf8("api_token_session")),
+        ("acp_modify_removedattr", Value::new_iutf8("user_auth_token_session")),
+
+        ("acp_modify_presentattr", Value::new_iutf8("name")),
+        ("acp_modify_presentattr", Value::new_iutf8("displayname")),
+        ("acp_modify_presentattr", Value::new_iutf8("ssh_publickey")),
+        ("acp_modify_presentattr", Value::new_iutf8("primary_credential")),
+        ("acp_modify_presentattr", Value::new_iutf8("account_expire")),
+        ("acp_modify_presentattr", Value::new_iutf8("account_valid_from")),
+        ("acp_modify_presentattr", Value::new_iutf8("passkeys")),
+        ("acp_modify_presentattr", Value::new_iutf8("devicekeys")),
+        ("acp_modify_presentattr", Value::new_iutf8("api_token_session"))
+    );
+}
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: EntryInitNew = entry_init!(
