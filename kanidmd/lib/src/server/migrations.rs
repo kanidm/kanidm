@@ -577,9 +577,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
             // All members must exist before we write HP
             JSON_IDM_HIGH_PRIVILEGE_V1,
-            // Built in access controls.
-            JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1,
-            JSON_IDM_ADMINS_ACP_REVIVE_V1,
         ];
 
         let res: Result<(), _> = idm_entries
@@ -594,6 +591,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         res?;
 
         let idm_entries = [
+            // Built in access controls.
+            E_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1.clone(),
+            E_IDM_ADMINS_ACP_REVIVE_V1.clone(),
             E_IDM_ALL_ACP_READ_V1.clone(),
             E_IDM_SELF_ACP_READ_V1.clone(),
             E_IDM_SELF_ACP_WRITE_V1.clone(),

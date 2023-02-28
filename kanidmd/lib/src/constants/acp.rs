@@ -4,36 +4,49 @@ use crate::constants::values::*;
 use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
 use crate::value::Value;
 
-pub const JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: &str = r#"{
-    "attrs": {
-        "class": ["object", "access_control_profile", "access_control_search"],
-        "name": ["idm_admins_acp_recycle_search"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000002"],
-        "description": ["Builtin IDM admin recycle bin search permission."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000019"],
-        "acp_targetscope": [
-            "{\"eq\": [\"class\", \"recycled\"]}"
-        ],
-        "acp_search_attr": ["name", "class", "uuid", "last_modified_cid"]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_admins_acp_recycle_search")),
+        ("uuid", Value::Uuid(UUID_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM admin recycle bin search permission.")
+        ),
+        ("acp_receiver_group", Value::Refer(UUID_SYSTEM_ADMINS)),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s("{\"eq\": [\"class\", \"recycled\"]}").unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("class")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("last_modified_cid"))
+    );
+}
 
-pub const JSON_IDM_ADMINS_ACP_REVIVE_V1: &str = r#"{
-    "attrs": {
-        "class": ["object", "access_control_profile", "access_control_modify"],
-        "name": ["idm_admins_acp_revive"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000003"],
-        "description": ["Builtin IDM Administrators Access Controls."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000019"],
-        "acp_targetscope": [
-            "{\"eq\":[\"class\",\"recycled\"]}"
-        ],
-        "acp_modify_removedattr": ["class"],
-        "acp_modify_class": ["recycled"]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_IDM_ADMINS_ACP_REVIVE_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("name", Value::new_iname("idm_admins_acp_revive")),
+        ("uuid", Value::Uuid(UUID_IDM_ADMINS_ACP_REVIVE_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM admin recycle bin revive permission.")
+        ),
+        ("acp_receiver_group", Value::Refer(UUID_SYSTEM_ADMINS)),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s("{\"eq\":[\"class\",\"recycled\"]}").unwrap()
+        ),
+        ("acp_modify_removedattr", Value::new_iutf8("class")),
+        ("acp_modify_class", Value::new_iutf8("recycled"))
+    );
+}
 
 lazy_static! {
     pub static ref E_IDM_SELF_ACP_READ_V1: EntryInitNew = entry_init!(
