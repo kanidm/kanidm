@@ -133,85 +133,105 @@ pub const JSON_IDM_ALL_ACP_READ_V1: &str = r#"{
     }
 }"#;
 
-// 7 people read acp JSON_IDM_PEOPLE_READ_PRIV_V1
-pub const JSON_IDM_ACP_PEOPLE_READ_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search"
-        ],
-        "name": ["idm_acp_people_read_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000007"],
-        "description": ["Builtin IDM Control for reading personal sensitive data."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000002"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "name", "displayname", "legalname", "mail"
-        ]
-    }
-}"#;
-// 8 people write acp JSON_IDM_PEOPLE_WRITE_PRIV_V1
-pub const JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_modify"
-        ],
-        "name": ["idm_acp_people_write_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000008"],
-        "description": ["Builtin IDM Control for managing personal and sensitive data."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000003"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_modify_removedattr": [
-            "name", "displayname", "legalname", "mail"
-        ],
-        "acp_modify_presentattr": [
-            "name", "displayname", "legalname", "mail"
-        ]
-    }
-}"#;
-// 13 user (person) account create acp  JSON_IDM_PERSON_ACCOUNT_CREATE_PRIV_V1
-pub const JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_delete",
-            "access_control_create"
-        ],
-        "name": ["idm_acp_people_manage"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000013"],
-        "description": ["Builtin IDM Control for creating person (user) accounts"],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000013"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"class\",\"person\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_create_attr": [
-            "class",
-            "name",
-            "displayname",
-            "legalname",
-            "primary_credential",
-            "passkeys",
-            "devicekeys",
-            "user_auth_token_session",
-            "ssh_publickey",
-            "mail"
-        ],
-        "acp_create_class": [
-            "object", "person", "account"
-        ]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_IDM_ACP_PEOPLE_READ_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_people_read_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_PEOPLE_READ_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for reading personal sensitive data.")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_PEOPLE_READ_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("displayname")),
+        ("acp_search_attr", Value::new_iutf8("legalname")),
+        ("acp_search_attr", Value::new_iutf8("mail"))
+    );
+}
+
+lazy_static! {
+    pub static ref E_IDM_ACP_PEOPLE_WRITE_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("name", Value::new_iname("idm_acp_people_write_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for managing personal and sensitive data.")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_PEOPLE_WRITE_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_modify_removedattr", Value::new_iutf8("name")),
+        ("acp_modify_removedattr", Value::new_iutf8("displayname")),
+        ("acp_modify_removedattr", Value::new_iutf8("legalname")),
+        ("acp_modify_removedattr", Value::new_iutf8("mail")),
+
+        ("acp_modify_presentattr", Value::new_iutf8("name")),
+        ("acp_modify_presentattr", Value::new_iutf8("displayname")),
+        ("acp_modify_presentattr", Value::new_iutf8("legalname")),
+        ("acp_modify_presentattr", Value::new_iutf8("mail"))
+    );
+}
+
+lazy_static! {
+    pub static ref E_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
+        ("name", Value::new_iname("idm_acp_people_manage")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_PEOPLE_MANAGE_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for creating person (user) accounts")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_PEOPLE_MANAGE_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"class\",\"person\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_create_attr", Value::new_iutf8("class")),
+        ("acp_create_attr", Value::new_iutf8("name")),
+        ("acp_create_attr", Value::new_iutf8("displayname")),
+        ("acp_create_attr", Value::new_iutf8("legalname")),
+        ("acp_create_attr", Value::new_iutf8("primary_credential")),
+        ("acp_create_attr", Value::new_iutf8("ssh_publickey")),
+        ("acp_create_attr", Value::new_iutf8("mail")),
+        ("acp_create_attr", Value::new_iutf8("account_expire")),
+        ("acp_create_attr", Value::new_iutf8("account_valid_from")),
+        ("acp_create_attr", Value::new_iutf8("passkeys")),
+        ("acp_create_attr", Value::new_iutf8("devicekeys")),
+        ("acp_create_class", Value::new_iutf8("object")),
+        ("acp_create_class", Value::new_iutf8("account")),
+        ("acp_create_class", Value::new_iutf8("person"))
+    );
+}
 
 // 31 - password import modification priv
 // right now, create requires you to have access to every attribute in a single snapshot,
@@ -442,86 +462,130 @@ lazy_static! {
     );
 }
 
-// 10 account read acp JSON_IDM_ACCOUNT_READ_PRIV_V1
-pub const JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search"
-        ],
-        "name": ["idm_acp_account_read_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000010"],
-        "description": ["Builtin IDM Control for accounts."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000005"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "class", "name", "spn", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof", "mail", "gidnumber", "account_expire", "account_valid_from", "passkeys", "devicekeys", "api_token_session", "user_auth_token_session"
-        ]
-    }
-}"#;
-// 11 account write acp JSON_IDM_ACCOUNT_WRITE_PRIV_V1
-pub const JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_modify"
-        ],
-        "name": ["idm_acp_account_write_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000011"],
-        "description": ["Builtin IDM Control for managing all accounts (both person and service)."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000006"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_modify_removedattr": [
-            "name", "displayname", "ssh_publickey", "primary_credential", "mail", "account_expire", "account_valid_from", "passkeys", "devicekeys", "api_token_session", "user_auth_token_session"
-        ],
-        "acp_modify_presentattr": [
-            "name", "displayname", "ssh_publickey", "primary_credential", "mail", "account_expire", "account_valid_from", "passkeys", "devicekeys", "api_token_session"
-        ]
-    }
-}"#;
-// 12 service account create acp (only admins?)  JSON_IDM_SERVICE_ACCOUNT_CREATE_PRIV_V1
-pub const JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_delete",
-            "access_control_create"
-        ],
-        "name": ["idm_acp_account_manage"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000012"],
-        "description": ["Builtin IDM Control for creating and deleting (service) accounts"],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000014"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_create_attr": [
-            "class",
-            "name",
-            "displayname",
+lazy_static! {
+    pub static ref E_IDM_ACP_ACCOUNT_READ_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_account_read_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1)),
+        (
             "description",
-            "primary_credential",
-            "ssh_publickey",
-            "mail",
-            "account_expire",
-            "account_valid_from",
-            "passkeys",
-            "devicekeys"
-        ],
-        "acp_create_class": [
-            "object", "account", "service_account"
-        ]
-    }
-}"#;
+            Value::new_utf8s("Builtin IDM Control for reading accounts.")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_ACCOUNT_READ_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("class")),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("spn")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("displayname")),
+        ("acp_search_attr", Value::new_iutf8("ssh_publickey")),
+        ("acp_search_attr", Value::new_iutf8("primary_credential")),
+        ("acp_search_attr", Value::new_iutf8("memberof")),
+        ("acp_search_attr", Value::new_iutf8("mail")),
+        ("acp_search_attr", Value::new_iutf8("gidnumber")),
+        ("acp_search_attr", Value::new_iutf8("account_expire")),
+        ("acp_search_attr", Value::new_iutf8("account_valid_from")),
+        ("acp_search_attr", Value::new_iutf8("passkeys")),
+        ("acp_search_attr", Value::new_iutf8("devicekeys")),
+        ("acp_search_attr", Value::new_iutf8("api_token_session")),
+        ("acp_search_attr", Value::new_iutf8("user_auth_token_session"))
+    );
+}
+
+lazy_static! {
+    pub static ref E_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("name", Value::new_iname("idm_acp_account_write_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for managing all accounts (both person and service).")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_ACCOUNT_WRITE_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_modify_removedattr", Value::new_iutf8("name")),
+        ("acp_modify_removedattr", Value::new_iutf8("displayname")),
+        ("acp_modify_removedattr", Value::new_iutf8("ssh_publickey")),
+        ("acp_modify_removedattr", Value::new_iutf8("primary_credential")),
+        ("acp_modify_removedattr", Value::new_iutf8("mail")),
+        ("acp_modify_removedattr", Value::new_iutf8("account_expire")),
+        ("acp_modify_removedattr", Value::new_iutf8("account_valid_from")),
+        ("acp_modify_removedattr", Value::new_iutf8("passkeys")),
+        ("acp_modify_removedattr", Value::new_iutf8("devicekeys")),
+        ("acp_modify_removedattr", Value::new_iutf8("api_token_session")),
+        ("acp_modify_removedattr", Value::new_iutf8("user_auth_token_session")),
+
+        ("acp_modify_presentattr", Value::new_iutf8("name")),
+        ("acp_modify_presentattr", Value::new_iutf8("displayname")),
+        ("acp_modify_presentattr", Value::new_iutf8("ssh_publickey")),
+        ("acp_modify_presentattr", Value::new_iutf8("primary_credential")),
+        ("acp_modify_presentattr", Value::new_iutf8("mail")),
+        ("acp_modify_presentattr", Value::new_iutf8("account_expire")),
+        ("acp_modify_presentattr", Value::new_iutf8("account_valid_from")),
+        ("acp_modify_presentattr", Value::new_iutf8("passkeys")),
+        ("acp_modify_presentattr", Value::new_iutf8("devicekeys")),
+        ("acp_modify_presentattr", Value::new_iutf8("api_token_session"))
+    );
+}
+
+lazy_static! {
+    pub static ref E_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
+        ("name", Value::new_iname("idm_acp_account_manage")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for creating and deleting (service) accounts")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_ACCOUNT_MANAGE_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_create_attr", Value::new_iutf8("class")),
+        ("acp_create_attr", Value::new_iutf8("name")),
+        ("acp_create_attr", Value::new_iutf8("displayname")),
+        ("acp_create_attr", Value::new_iutf8("description")),
+        ("acp_create_attr", Value::new_iutf8("primary_credential")),
+        ("acp_create_attr", Value::new_iutf8("ssh_publickey")),
+        ("acp_create_attr", Value::new_iutf8("mail")),
+        ("acp_create_attr", Value::new_iutf8("account_expire")),
+        ("acp_create_attr", Value::new_iutf8("account_valid_from")),
+        ("acp_create_attr", Value::new_iutf8("passkeys")),
+        ("acp_create_attr", Value::new_iutf8("devicekeys")),
+        ("acp_create_class", Value::new_iutf8("object")),
+        ("acp_create_class", Value::new_iutf8("account")),
+        ("acp_create_class", Value::new_iutf8("service_account"))
+    );
+}
 
 // 14 radius read acp JSON_IDM_RADIUS_SERVERS_V1
 // The targetscope of this could change later to a "radius access" group or similar so we can add/remove

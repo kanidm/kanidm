@@ -585,12 +585,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_SELF_ACP_READ_V1,
             JSON_IDM_SELF_ACP_WRITE_V1,
             JSON_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_READ_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1,
-            JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1,
-            JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1,
         ];
 
         let res: Result<(), _> = idm_entries
@@ -605,7 +599,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         res?;
 
         let idm_entries = [
-            E_IDM_ACP_RADIUS_SERVERS_V1.clone(),
+            E_IDM_ACP_PEOPLE_READ_PRIV_V1.clone(),
+            E_IDM_ACP_PEOPLE_WRITE_PRIV_V1.clone(),
+            E_IDM_ACP_PEOPLE_MANAGE_PRIV_V1.clone(),
+            E_IDM_ACP_ACCOUNT_READ_PRIV_V1.clone(),
+            E_IDM_ACP_ACCOUNT_WRITE_PRIV_V1.clone(),
+            E_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1.clone(),
             E_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1.clone(),
             E_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1.clone(),
             E_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1.clone(),
@@ -616,6 +615,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             E_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1.clone(),
             E_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1.clone(),
             E_IDM_ACP_ACP_MANAGE_PRIV_V1.clone(),
+            E_IDM_ACP_RADIUS_SERVERS_V1.clone(),
             E_IDM_ACP_DOMAIN_ADMIN_PRIV_V1.clone(),
             E_IDM_ACP_SYSTEM_CONFIG_PRIV_V1.clone(),
             E_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1.clone(),
