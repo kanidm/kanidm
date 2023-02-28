@@ -67,45 +67,75 @@ pub const JSON_IDM_SELF_ACP_READ_V1: &str = r#"{
     }
 }"#;
 
-pub const JSON_IDM_SELF_ACP_WRITE_V1: &str = r#"{
-    "attrs": {
-        "class": ["object", "access_control_profile", "access_control_modify"],
-        "name": ["idm_self_acp_write"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000021"],
-        "description": ["Builtin IDM Control for self write - required for people to update their own identities and credentials in line with best practices."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000035"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"
-        ],
-        "acp_modify_removedattr": [
-            "name", "displayname", "legalname", "radius_secret", "primary_credential", "ssh_publickey", "unix_password", "passkeys", "devicekeys", "user_auth_token_session"
-        ],
-        "acp_modify_presentattr": [
-            "name", "displayname", "legalname", "radius_secret", "primary_credential", "ssh_publickey", "unix_password", "passkeys", "devicekeys"
-        ]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_IDM_SELF_ACP_WRITE_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("name", Value::new_iname("idm_self_acp_write")),
+        ("uuid", Value::Uuid(UUID_IDM_SELF_ACP_WRITE_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for self write - required for people to update their own identities and credentials in line with best practices.")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_ALL_PERSONS)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"
+            ).unwrap()
+        ),
+        ("acp_modify_removedattr", Value::new_iutf8("name")),
+        ("acp_modify_removedattr", Value::new_iutf8("displayname")),
+        ("acp_modify_removedattr", Value::new_iutf8("legalname")),
+        ("acp_modify_removedattr", Value::new_iutf8("radius_secret")),
+        ("acp_modify_removedattr", Value::new_iutf8("primary_credential")),
+        ("acp_modify_removedattr", Value::new_iutf8("ssh_publickey")),
+        ("acp_modify_removedattr", Value::new_iutf8("unix_password")),
+        ("acp_modify_removedattr", Value::new_iutf8("passkeys")),
+        ("acp_modify_removedattr", Value::new_iutf8("devicekeys")),
+        ("acp_modify_removedattr", Value::new_iutf8("user_auth_token_session")),
 
-pub const JSON_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": ["object", "access_control_profile", "access_control_modify"],
-        "name": ["idm_people_self_acp_write_mail"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000041"],
-        "description": ["Builtin IDM Control for self write of mail for people accounts."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000033"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"
-        ],
-        "acp_modify_removedattr": [
-            "mail"
-        ],
-        "acp_modify_presentattr": [
-            "mail"
-        ]
-    }
-}"#;
+        ("acp_modify_presentattr", Value::new_iutf8("name")),
+        ("acp_modify_presentattr", Value::new_iutf8("displayname")),
+        ("acp_modify_presentattr", Value::new_iutf8("legalname")),
+        ("acp_modify_presentattr", Value::new_iutf8("radius_secret")),
+        ("acp_modify_presentattr", Value::new_iutf8("primary_credential")),
+        ("acp_modify_presentattr", Value::new_iutf8("ssh_publickey")),
+        ("acp_modify_presentattr", Value::new_iutf8("unix_password")),
+        ("acp_modify_presentattr", Value::new_iutf8("passkeys")),
+        ("acp_modify_presentattr", Value::new_iutf8("devicekeys"))
+    );
+}
+
+lazy_static! {
+    pub static ref E_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("name", Value::new_iname("idm_people_self_acp_write_mail")),
+        ("uuid", Value::Uuid(UUID_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for self write of mail for people accounts.")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"
+            ).unwrap()
+        ),
+        ("acp_modify_removedattr", Value::new_iutf8("mail")),
+        ("acp_modify_presentattr", Value::new_iutf8("mail"))
+    );
+}
 
 pub const JSON_IDM_ALL_ACP_READ_V1: &str = r#"{
     "attrs": {
