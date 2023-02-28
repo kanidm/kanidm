@@ -884,69 +884,74 @@ lazy_static! {
 
 // 21 - anonymous / everyone schema read.
 
-// 22 - group create right
-pub const JSON_IDM_ACP_GROUP_MANAGE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_delete",
-            "access_control_create"
-        ],
-        "name": ["idm_acp_group_manage"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000022"],
-        "description": ["Builtin IDM Control for creating and deleting groups in the directory"],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000015"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_create_attr": [
-            "class",
-            "name",
+lazy_static! {
+    pub static ref E_IDM_ACP_GROUP_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
+        ("name", Value::new_iname("idm_acp_group_manage")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_GROUP_MANAGE_PRIV_V1)),
+        (
             "description",
-            "member"
-        ],
-        "acp_create_class": [
-            "object", "group"
-        ]
-    }
-}"#;
+            Value::new_utf8s("Builtin IDM Control for creating and deleting groups in the directory")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_GROUP_MANAGE_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_create_attr", Value::new_iutf8("class")),
+        ("acp_create_attr", Value::new_iutf8("name")),
+        ("acp_create_attr", Value::new_iutf8("description")),
+        ("acp_create_attr", Value::new_iutf8("member")),
+        ("acp_create_class", Value::new_iutf8("object")),
+        ("acp_create_class", Value::new_iutf8("group"))
+    );
+}
 
-// 23 - HP account manage
-pub const JSON_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_delete",
-            "access_control_create"
-        ],
-        "name": ["idm_acp_hp_account_manage"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000023"],
-        "description": ["Builtin IDM Control for creating and deleting hp and regular (service) accounts"],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000016"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_create_attr": [
-            "class",
-            "name",
-            "displayname",
+lazy_static! {
+    pub static ref E_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
+        ("name", Value::new_iname("idm_acp_hp_account_manage")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1)),
+        (
             "description",
-            "primary_credential",
-            "ssh_publickey",
-            "account_expire",
-            "account_valid_from",
-            "passkeys",
-            "devicekeys"
-        ],
-        "acp_create_class": [
-            "object", "account", "service_account"
-        ]
-    }
-}"#;
+            Value::new_utf8s("Builtin IDM Control for creating and deleting hp and regular (service) accounts")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_HP_ACCOUNT_MANAGE_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_create_attr", Value::new_iutf8("class")),
+        ("acp_create_attr", Value::new_iutf8("name")),
+        ("acp_create_attr", Value::new_iutf8("displayname")),
+        ("acp_create_attr", Value::new_iutf8("description")),
+        ("acp_create_attr", Value::new_iutf8("primary_credential")),
+        ("acp_create_attr", Value::new_iutf8("ssh_publickey")),
+        ("acp_create_attr", Value::new_iutf8("account_expire")),
+        ("acp_create_attr", Value::new_iutf8("account_valid_from")),
+        ("acp_create_attr", Value::new_iutf8("passkeys")),
+        ("acp_create_attr", Value::new_iutf8("devicekeys")),
+        ("acp_create_class", Value::new_iutf8("object")),
+        ("acp_create_class", Value::new_iutf8("account")),
+        ("acp_create_class", Value::new_iutf8("service_account"))
+    );
+}
 
 lazy_static! {
     pub static ref E_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
