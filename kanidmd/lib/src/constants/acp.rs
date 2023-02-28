@@ -710,64 +710,63 @@ pub const JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &str = r#"{
     }
 }"#;
 
-// 18 schema write JSON_IDM_SCHEMA_WRITE_PRIV_V1
-pub const JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search",
-            "access_control_modify",
-            "access_control_create"
-        ],
-        "name": ["idm_acp_schema_write_attrs_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000018"],
-        "description": ["Builtin IDM Control for management of schema attributes."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000010"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"attributetype\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "class",
+lazy_static! {
+    pub static ref E_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_schema_write_attrs_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1)),
+        (
             "description",
-            "index",
-            "unique",
-            "multivalue",
-            "attributename",
-            "syntax",
-            "uuid"
-        ],
-        "acp_modify_removedattr": [
-            "description",
-            "index",
-            "unique",
-            "multivalue",
-            "syntax"
-        ],
-        "acp_modify_presentattr": [
-            "description",
-            "index",
-            "unique",
-            "multivalue",
-            "syntax"
-        ],
-        "acp_modify_class":  [],
-        "acp_create_attr": [
-            "class",
-            "description",
-            "index",
-            "unique",
-            "multivalue",
-            "attributename",
-            "syntax",
-            "uuid"
-        ],
-        "acp_create_class": [
-            "object", "attributetype"
-        ]
-    }
-}"#;
+            Value::new_utf8s("Builtin IDM Control for management of schema attributes.")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_SCHEMA_MANAGE_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"attributetype\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("class")),
+        ("acp_search_attr", Value::new_iutf8("description")),
+        ("acp_search_attr", Value::new_iutf8("index")),
+        ("acp_search_attr", Value::new_iutf8("unique")),
+        ("acp_search_attr", Value::new_iutf8("multivalue")),
+        ("acp_search_attr", Value::new_iutf8("attributename")),
+        ("acp_search_attr", Value::new_iutf8("syntax")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+
+        ("acp_modify_removedattr", Value::new_iutf8("description")),
+        ("acp_modify_removedattr", Value::new_iutf8("index")),
+        ("acp_modify_removedattr", Value::new_iutf8("unique")),
+        ("acp_modify_removedattr", Value::new_iutf8("multivalue")),
+        ("acp_modify_removedattr", Value::new_iutf8("syntax")),
+
+        ("acp_modify_presentattr", Value::new_iutf8("description")),
+        ("acp_modify_presentattr", Value::new_iutf8("index")),
+        ("acp_modify_presentattr", Value::new_iutf8("unique")),
+        ("acp_modify_presentattr", Value::new_iutf8("multivalue")),
+        ("acp_modify_presentattr", Value::new_iutf8("syntax")),
+
+        ("acp_create_attr", Value::new_iutf8("class")),
+        ("acp_create_attr", Value::new_iutf8("description")),
+        ("acp_create_attr", Value::new_iutf8("index")),
+        ("acp_create_attr", Value::new_iutf8("unique")),
+        ("acp_create_attr", Value::new_iutf8("multivalue")),
+        ("acp_create_attr", Value::new_iutf8("attributename")),
+        ("acp_create_attr", Value::new_iutf8("syntax")),
+        ("acp_create_attr", Value::new_iutf8("uuid")),
+
+        ("acp_create_class", Value::new_iutf8("object")),
+        ("acp_create_class", Value::new_iutf8("attributetype"))
+    );
+}
 
 lazy_static! {
     pub static ref E_IDM_ACP_ACP_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
