@@ -769,151 +769,146 @@ pub const JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &str = r#"{
     }
 }"#;
 
-// 19 acp read/write
-pub const JSON_IDM_ACP_ACP_MANAGE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search",
-            "access_control_modify",
-            "access_control_create",
-            "access_control_delete"
-        ],
-        "name": ["idm_acp_acp_manage_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000019"],
-        "description": ["Builtin IDM Control for access profiles management."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000011"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"access_control_profile\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "name",
-            "class",
+lazy_static! {
+    pub static ref E_IDM_ACP_ACP_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_acp_manage_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_ACP_MANAGE_PRIV_V1)),
+        (
             "description",
-            "acp_enable",
+            Value::new_utf8s("Builtin IDM Control for access profiles management.")
+        ),
+        (
             "acp_receiver_group",
+            Value::Refer(UUID_IDM_ACP_MANAGE_PRIV)
+        ),
+        (
             "acp_targetscope",
-            "acp_search_attr",
-            "acp_modify_removedattr",
-            "acp_modify_presentattr",
-            "acp_modify_class",
-            "acp_create_class",
-            "acp_create_attr"
-        ],
-        "acp_modify_removedattr": [
-            "name",
-            "class",
-            "description",
-            "acp_enable",
-            "acp_receiver_group",
-            "acp_targetscope",
-            "acp_search_attr",
-            "acp_modify_removedattr",
-            "acp_modify_presentattr",
-            "acp_modify_class",
-            "acp_create_class",
-            "acp_create_attr"
-        ],
-        "acp_modify_presentattr": [
-            "name",
-            "class",
-            "description",
-            "acp_enable",
-            "acp_receiver_group",
-            "acp_targetscope",
-            "acp_search_attr",
-            "acp_modify_removedattr",
-            "acp_modify_presentattr",
-            "acp_modify_class",
-            "acp_create_class",
-            "acp_create_attr"
-        ],
-        "acp_modify_class":  [
-            "access_control_profile",
-            "access_control_search",
-            "access_control_modify",
-            "access_control_create",
-            "access_control_delete"
-        ],
-        "acp_create_attr": [
-            "name",
-            "class",
-            "description",
-            "acp_enable",
-            "acp_receiver_group",
-            "acp_targetscope",
-            "acp_search_attr",
-            "acp_modify_removedattr",
-            "acp_modify_presentattr",
-            "acp_modify_class",
-            "acp_create_class",
-            "acp_create_attr"
-        ],
-        "acp_create_class": [
-            "access_control_profile",
-            "access_control_search",
-            "access_control_modify",
-            "access_control_create",
-            "access_control_delete"
-        ]
-    }
-}"#;
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"access_control_profile\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("class")),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("description")),
+        ("acp_search_attr", Value::new_iutf8("acp_enable")),
+        ("acp_search_attr", Value::new_iutf8("acp_receiver_group")),
+        ("acp_search_attr", Value::new_iutf8("acp_targetscope")),
+        ("acp_search_attr", Value::new_iutf8("acp_search_attr")),
+        ("acp_search_attr", Value::new_iutf8("acp_modify_removedattr")),
+        ("acp_search_attr", Value::new_iutf8("acp_modify_presentattr")),
+        ("acp_search_attr", Value::new_iutf8("acp_modify_class")),
+        ("acp_search_attr", Value::new_iutf8("acp_create_class")),
+        ("acp_search_attr", Value::new_iutf8("acp_create_attr")),
 
-pub const JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search",
-            "access_control_modify",
-            "access_control_create"
-        ],
-        "name": ["idm_acp_schema_write_classes_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000020"],
-        "description": ["Builtin IDM Control for management of schema classes."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000010"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"classtype\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "class",
+        ("acp_modify_removedattr", Value::new_iutf8("class")),
+        ("acp_modify_removedattr", Value::new_iutf8("name")),
+        ("acp_modify_removedattr", Value::new_iutf8("description")),
+        ("acp_modify_removedattr", Value::new_iutf8("acp_enable")),
+        ("acp_modify_removedattr", Value::new_iutf8("acp_receiver_group")),
+        ("acp_modify_removedattr", Value::new_iutf8("acp_targetscope")),
+        ("acp_modify_removedattr", Value::new_iutf8("acp_search_attr")),
+        ("acp_modify_removedattr", Value::new_iutf8("acp_modify_removedattr")),
+        ("acp_modify_removedattr", Value::new_iutf8("acp_modify_presentattr")),
+        ("acp_modify_removedattr", Value::new_iutf8("acp_modify_class")),
+        ("acp_modify_removedattr", Value::new_iutf8("acp_create_class")),
+        ("acp_modify_removedattr", Value::new_iutf8("acp_create_attr")),
+
+        ("acp_modify_presentattr", Value::new_iutf8("class")),
+        ("acp_modify_presentattr", Value::new_iutf8("name")),
+        ("acp_modify_presentattr", Value::new_iutf8("description")),
+        ("acp_modify_presentattr", Value::new_iutf8("acp_enable")),
+        ("acp_modify_presentattr", Value::new_iutf8("acp_receiver_group")),
+        ("acp_modify_presentattr", Value::new_iutf8("acp_targetscope")),
+        ("acp_modify_presentattr", Value::new_iutf8("acp_search_attr")),
+        ("acp_modify_presentattr", Value::new_iutf8("acp_modify_removedattr")),
+        ("acp_modify_presentattr", Value::new_iutf8("acp_modify_presentattr")),
+        ("acp_modify_presentattr", Value::new_iutf8("acp_modify_class")),
+        ("acp_modify_presentattr", Value::new_iutf8("acp_create_class")),
+        ("acp_modify_presentattr", Value::new_iutf8("acp_create_attr")),
+
+        ("acp_create_attr", Value::new_iutf8("class")),
+        ("acp_create_attr", Value::new_iutf8("name")),
+        ("acp_create_attr", Value::new_iutf8("description")),
+        ("acp_create_attr", Value::new_iutf8("acp_enable")),
+        ("acp_create_attr", Value::new_iutf8("acp_receiver_group")),
+        ("acp_create_attr", Value::new_iutf8("acp_targetscope")),
+        ("acp_create_attr", Value::new_iutf8("acp_search_attr")),
+        ("acp_create_attr", Value::new_iutf8("acp_modify_removedattr")),
+        ("acp_create_attr", Value::new_iutf8("acp_modify_presentattr")),
+        ("acp_create_attr", Value::new_iutf8("acp_modify_class")),
+        ("acp_create_attr", Value::new_iutf8("acp_create_class")),
+        ("acp_create_attr", Value::new_iutf8("acp_create_attr")),
+
+
+        ("acp_modify_class", Value::new_iutf8("access_control_profile")),
+        ("acp_modify_class", Value::new_iutf8("access_control_search")),
+        ("acp_modify_class", Value::new_iutf8("access_control_modify")),
+        ("acp_modify_class", Value::new_iutf8("access_control_create")),
+        ("acp_modify_class", Value::new_iutf8("access_control_delete")),
+
+        ("acp_create_class", Value::new_iutf8("access_control_profile")),
+        ("acp_create_class", Value::new_iutf8("access_control_search")),
+        ("acp_create_class", Value::new_iutf8("access_control_modify")),
+        ("acp_create_class", Value::new_iutf8("access_control_create")),
+        ("acp_create_class", Value::new_iutf8("access_control_delete"))
+    );
+}
+
+lazy_static! {
+    pub static ref E_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_schema_write_classes_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1)),
+        (
             "description",
-            "classname",
-            "systemmay",
-            "may",
-            "systemmust",
-            "must",
-            "uuid"
-        ],
-        "acp_modify_removedattr": [
-            "class",
-            "description",
-            "may",
-            "must"
-        ],
-        "acp_modify_presentattr": [
-            "class",
-            "description",
-            "may",
-            "must"
-        ],
-        "acp_modify_class":  [],
-        "acp_create_attr": [
-            "class",
-            "description",
-            "classname",
-            "may",
-            "must",
-            "uuid"
-        ],
-        "acp_create_class": [
-            "object", "classtype"
-        ]
-    }
-}"#;
+            Value::new_utf8s("Builtin IDM Control for management of schema classes.")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_SCHEMA_MANAGE_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"classtype\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("class")),
+        ("acp_search_attr", Value::new_iutf8("classname")),
+        ("acp_search_attr", Value::new_iutf8("description")),
+        ("acp_search_attr", Value::new_iutf8("systemmay")),
+        ("acp_search_attr", Value::new_iutf8("may")),
+        ("acp_search_attr", Value::new_iutf8("systemmust")),
+        ("acp_search_attr", Value::new_iutf8("must")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_modify_removedattr", Value::new_iutf8("class")),
+        ("acp_modify_removedattr", Value::new_iutf8("description")),
+        ("acp_modify_removedattr", Value::new_iutf8("may")),
+        ("acp_modify_removedattr", Value::new_iutf8("must")),
+        ("acp_modify_presentattr", Value::new_iutf8("name")),
+        ("acp_modify_presentattr", Value::new_iutf8("description")),
+        ("acp_modify_presentattr", Value::new_iutf8("may")),
+        ("acp_modify_presentattr", Value::new_iutf8("must")),
+        ("acp_create_attr", Value::new_iutf8("class")),
+        ("acp_create_attr", Value::new_iutf8("classname")),
+        ("acp_create_attr", Value::new_iutf8("description")),
+        ("acp_create_attr", Value::new_iutf8("may")),
+        ("acp_create_attr", Value::new_iutf8("must")),
+        ("acp_create_attr", Value::new_iutf8("uuid")),
+        ("acp_create_class", Value::new_iutf8("object")),
+        ("acp_create_class", Value::new_iutf8("classtype"))
+    );
+}
 
 // 21 - anonymous / everyone schema read.
 
