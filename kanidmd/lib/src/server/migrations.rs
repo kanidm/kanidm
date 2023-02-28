@@ -598,7 +598,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1,
             JSON_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1,
             JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1,
-            JSON_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1,
         ];
 
         let res: Result<(), _> = idm_entries
@@ -613,6 +612,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         res?;
 
         let idm_entries = [
+            E_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1.clone(),
             E_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1.clone(),
             E_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1.clone(),
             E_IDM_ACP_ACP_MANAGE_PRIV_V1.clone(),

@@ -4,50 +4,6 @@ use crate::constants::values::*;
 use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
 use crate::value::Value;
 
-/*
-// Template acp
-pub const _UUID_IDM_ACP_XX_V1: &str = "00000000-0000-0000-0000-ffffff0000XX";
-pub const JSON_IDM_ACP_XX_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search",
-            "access_control_modify",
-            "access_control_create",
-            "access_control_delete"
-        ],
-        "name": ["idm_acp_xx"],
-        "uuid": ["00000000-0000-0000-0000-ffffff0000XX"],
-        "description": ["Builtin IDM Control for xx"],
-        "acp_receiver": [
-            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-0000000000XX\"]}"
-        ],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"attr\",\"value\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-
-        ],
-        "acp_modify_removedattr": [
-
-        ],
-        "acp_modify_presentattr": [
-
-        ],
-        "acp_modify_class":  [
-
-        ],
-        "acp_create_attr": [
-
-        ],
-        "acp_create_class": [
-
-        ]
-    }
-}"#;
-*/
-
 pub const JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: &str = r#"{
     "attrs": {
         "class": ["object", "access_control_profile", "access_control_search"],
@@ -975,34 +931,36 @@ pub const JSON_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
     }
 }"#;
 
-// 24 - hp group manage
-pub const JSON_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_delete",
-            "access_control_create"
-        ],
-        "name": ["idm_acp_hp_group_manage"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000024"],
-        "description": ["Builtin IDM Control for creating and deleting hp and regular groups in the directory"],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000017"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_create_attr": [
-            "class",
-            "name",
+lazy_static! {
+    pub static ref E_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_DELETE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_CREATE.clone()),
+        ("name", Value::new_iname("idm_acp_hp_group_manage")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1)),
+        (
             "description",
-            "member"
-        ],
-        "acp_create_class": [
-            "object", "group"
-        ]
-    }
-}"#;
+            Value::new_utf8s("Builtin IDM Control for creating and deleting hp and regular groups in the directory")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_HP_GROUP_MANAGE_PRIV)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_create_attr", Value::new_iutf8("class")),
+        ("acp_create_attr", Value::new_iutf8("name")),
+        ("acp_create_attr", Value::new_iutf8("description")),
+        ("acp_create_attr", Value::new_iutf8("member")),
+        ("acp_create_class", Value::new_iutf8("object")),
+        ("acp_create_class", Value::new_iutf8("group"))
+    );
+}
 
 // 28 - domain admins acp
 pub const JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &str = r#"{
@@ -1387,7 +1345,6 @@ lazy_static! {
         ("acp_modify_presentattr", Value::new_iutf8("class")),
         ("acp_modify_class", Value::new_iutf8("service_account")),
         ("acp_modify_class", Value::new_iutf8("person"))
-
     );
 }
 
