@@ -33,23 +33,23 @@ impl ValueSetSession {
     }
 
     pub fn from_dbvs2(data: Vec<DbValueSession>) -> Result<ValueSet, OperationError> {
-        let map = data
-            .into_iter()
-            .filter_map(|dbv| {
-                match dbv {
-                    // MISTAKE - Skip due to lack of credential id
-                    // Don't actually skip, generate a random cred id. Session cleanup will
-                    // trim sessions on users, but if we skip blazenly we invalidate every api
-                    // token ever issued. OOPS!
-                    DbValueSession::V1 {
-                        refer,
-                        label,
-                        expiry,
-                        issued_at,
-                        issued_by,
-                        scope,
-                    } => {
-                        let cred_id = Uuid::new_v4();
+        let map =
+            data.into_iter()
+                .filter_map(|dbv| {
+                    match dbv {
+                        // MISTAKE - Skip due to lack of credential id
+                        // Don't actually skip, generate a random cred id. Session cleanup will
+                        // trim sessions on users, but if we skip blazenly we invalidate every api
+                        // token ever issued. OOPS!
+                        DbValueSession::V1 {
+                            refer,
+                            label,
+                            expiry,
+                            issued_at,
+                            issued_by,
+                            scope,
+                        } => {
+                            let cred_id = Uuid::new_v4();
 
                             // Convert things.
                             let issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)

@@ -1052,37 +1052,77 @@ pub const JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &str = r#"{
     }
 }"#;
 
-// 28 - system config
-pub const JSON_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search",
-            "access_control_modify"
-        ],
-        "name": ["idm_acp_system_config_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000028"],
-        "description": ["Builtin IDM Control for granting system configuration rights"],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000019"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000027\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "name",
-            "uuid",
+lazy_static! {
+    pub static ref E_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_domain_admin_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_DOMAIN_ADMIN_PRIV_V1)),
+        (
             "description",
-            "badlist_password"
-        ],
-        "acp_modify_removedattr": [
-            "badlist_password"
-        ],
-        "acp_modify_presentattr": [
-            "badlist_password"
-        ]
-    }
-}"#;
+            Value::new_utf8s("Builtin IDM Control for granting domain info administration locally")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_DOMAIN_ADMINS)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000025\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("domain_display_name")),
+        ("acp_search_attr", Value::new_iutf8("domain_name")),
+        ("acp_search_attr", Value::new_iutf8("domain_ssid")),
+        ("acp_search_attr", Value::new_iutf8("domain_uuid")),
+        ("acp_search_attr", Value::new_iutf8("es256_private_key_der")),
+        ("acp_search_attr", Value::new_iutf8("fernet_private_key_str")),
+        ("acp_search_attr", Value::new_iutf8("cookie_private_key")),
+        ("acp_modify_removedattr", Value::new_iutf8("domain_display_name")),
+        ("acp_modify_removedattr", Value::new_iutf8("domain_ssid")),
+        ("acp_modify_removedattr", Value::new_iutf8("es256_private_key_der")),
+        ("acp_modify_removedattr", Value::new_iutf8("cookie_private_key")),
+        ("acp_modify_removedattr", Value::new_iutf8("fernet_private_key_str")),
+        ("acp_modify_presentattr", Value::new_iutf8("domain_display_name")),
+        ("acp_modify_presentattr", Value::new_iutf8("domain_ssid"))
+    );
+}
+
+lazy_static! {
+    pub static ref E_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_acp_system_config_priv")),
+        ("uuid", Value::Uuid(UUID_IDM_ACP_SYSTEM_CONFIG_PRIV_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for granting system configuration rights")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_SYSTEM_ADMINS)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000027\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("description")),
+        ("acp_search_attr", Value::new_iutf8("badlist_password")),
+        ("acp_modify_removedattr", Value::new_iutf8("badlist_password")),
+        ("acp_modify_presentattr", Value::new_iutf8("badlist_password"))
+    );
+}
 
 lazy_static! {
     pub static ref E_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: EntryInitNew = entry_init!(
