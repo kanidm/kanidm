@@ -580,8 +580,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Built in access controls.
             JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1,
             JSON_IDM_ADMINS_ACP_REVIVE_V1,
-            JSON_IDM_ALL_ACP_READ_V1,
-            JSON_IDM_SELF_ACP_READ_V1,
         ];
 
         let res: Result<(), _> = idm_entries
@@ -596,6 +594,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         res?;
 
         let idm_entries = [
+            E_IDM_ALL_ACP_READ_V1.clone(),
+            E_IDM_SELF_ACP_READ_V1.clone(),
             E_IDM_SELF_ACP_WRITE_V1.clone(),
             E_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1.clone(),
             E_IDM_ACP_PEOPLE_READ_PRIV_V1.clone(),

@@ -35,37 +35,46 @@ pub const JSON_IDM_ADMINS_ACP_REVIVE_V1: &str = r#"{
     }
 }"#;
 
-pub const JSON_IDM_SELF_ACP_READ_V1: &str = r#"{
-    "attrs": {
-        "class": ["object", "access_control_profile", "access_control_search"],
-        "name": ["idm_self_acp_read"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000004"],
-        "description": ["Builtin IDM Control for self read - required for whoami and many other functions."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000036"],
-        "acp_targetscope": [
-            "\"self\""
-        ],
-        "acp_search_attr": [
-            "name",
-            "spn",
-            "displayname",
-            "legalname",
-            "class",
-            "memberof",
-            "radius_secret",
-            "gidnumber",
-            "loginshell",
-            "uuid",
-            "account_expire",
-            "account_valid_from",
-            "primary_credential",
-            "user_auth_token_session",
-            "passkeys",
-            "devicekeys"
-        ]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_IDM_SELF_ACP_READ_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_self_acp_read")),
+        ("uuid", Value::Uuid(UUID_IDM_SELF_ACP_READ_V1)),
+        (
+            "description",
+            Value::new_utf8s(
+                "Builtin IDM Control for self read - required for whoami and many other functions"
+            )
+        ),
+        ("acp_receiver_group", Value::Refer(UUID_IDM_ALL_ACCOUNTS)),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s("\"self\"").unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("spn")),
+        ("acp_search_attr", Value::new_iutf8("displayname")),
+        ("acp_search_attr", Value::new_iutf8("legalname")),
+        ("acp_search_attr", Value::new_iutf8("class")),
+        ("acp_search_attr", Value::new_iutf8("memberof")),
+        ("acp_search_attr", Value::new_iutf8("mail")),
+        ("acp_search_attr", Value::new_iutf8("radius_secret")),
+        ("acp_search_attr", Value::new_iutf8("gidnumber")),
+        ("acp_search_attr", Value::new_iutf8("loginshell")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("account_expire")),
+        ("acp_search_attr", Value::new_iutf8("account_valid_from")),
+        ("acp_search_attr", Value::new_iutf8("primary_credential")),
+        (
+            "acp_search_attr",
+            Value::new_iutf8("user_auth_token_session")
+        ),
+        ("acp_search_attr", Value::new_iutf8("passkeys")),
+        ("acp_search_attr", Value::new_iutf8("devicekeys"))
+    );
+}
 
 lazy_static! {
     pub static ref E_IDM_SELF_ACP_WRITE_V1: EntryInitNew = entry_init!(
@@ -137,31 +146,39 @@ lazy_static! {
     );
 }
 
-pub const JSON_IDM_ALL_ACP_READ_V1: &str = r#"{
-    "attrs": {
-        "class": ["object", "access_control_profile", "access_control_search"],
-        "name": ["idm_all_acp_read"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000006"],
-        "description": ["Builtin IDM Control for all read - IE anonymous and all authenticated accounts."],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000036"],
-        "acp_targetscope": [
-            "{\"and\": [{\"pres\": \"class\"}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "name",
-            "spn",
-            "displayname",
-            "class",
-            "memberof",
-            "member",
-            "uuid",
-            "gidnumber",
-            "loginshell",
-            "ssh_publickey"
-        ]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_IDM_ALL_ACP_READ_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_SEARCH.clone()),
+        ("name", Value::new_iname("idm_all_acp_read")),
+        ("uuid", Value::Uuid(UUID_IDM_ALL_ACP_READ_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for all read - e.g. anonymous and all authenticated accounts.")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_ALL_ACCOUNTS)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"pres\": \"class\"}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            ).unwrap()
+        ),
+        ("acp_search_attr", Value::new_iutf8("name")),
+        ("acp_search_attr", Value::new_iutf8("spn")),
+        ("acp_search_attr", Value::new_iutf8("displayname")),
+        ("acp_search_attr", Value::new_iutf8("class")),
+        ("acp_search_attr", Value::new_iutf8("memberof")),
+        ("acp_search_attr", Value::new_iutf8("member")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("gidnumber")),
+        ("acp_search_attr", Value::new_iutf8("loginshell")),
+        ("acp_search_attr", Value::new_iutf8("ssh_publickey"))
+    );
+}
 
 lazy_static! {
     pub static ref E_IDM_ACP_PEOPLE_READ_PRIV_V1: EntryInitNew = entry_init!(
