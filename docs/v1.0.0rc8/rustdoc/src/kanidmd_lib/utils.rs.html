@@ -220,8 +220,17 @@
 <a href="#220" id="220">220</a>
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
-</pre><pre class="rust"><code><span class="attr">#[cfg(not(target_family = <span class="string">&quot;windows&quot;</span>))]
-</span><span class="kw">use </span>std::fs::Metadata;
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+</pre><pre class="rust"><code><span class="kw">use </span>std::fs::Metadata;
 <span class="kw">use </span>std::io::ErrorKind;
 <span class="attr">#[cfg(target_os = <span class="string">&quot;linux&quot;</span>)]
 </span><span class="kw">use </span>std::os::linux::fs::MetadataExt;
@@ -383,6 +392,7 @@ pub fn uuid_from_now(sid: Sid) -&gt; Uuid {
 }
 
 <span class="attr">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+</span><span class="doccomment">/// Check a given file&#39;s metadata is read-only for the current user (true = read-only)
 </span><span class="kw">pub fn </span>file_permissions_readonly(meta: <span class="kw-2">&amp;</span>Metadata) -&gt; bool {
     <span class="comment">// Who are we running as?
     </span><span class="kw">let </span>cuid = get_current_uid();
@@ -404,6 +414,16 @@ pub fn uuid_from_now(sid: Sid) -&gt; Uuid {
         </span>((f_mode &amp; <span class="number">0o0002</span>) != <span class="number">0</span>)
     )
 }
+
+<span class="attr">#[cfg(not(target_family = <span class="string">&quot;unix&quot;</span>))]
+</span><span class="doccomment">/// Check a given file&#39;s metadata is read-only for the current user (true = read-only) Stub function if you&#39;re building for windows!
+</span><span class="kw">pub fn </span>file_permissions_readonly(meta: <span class="kw-2">&amp;</span>Metadata) -&gt; bool {
+    <span class="macro">debug!</span>(
+        <span class="string">&quot;Windows target asked to check metadata on {:?} returning false&quot;</span>,
+        meta
+    );
+    <span class="bool-val">false
+</span>}
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {

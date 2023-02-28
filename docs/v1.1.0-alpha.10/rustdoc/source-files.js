@@ -18,7 +18,7 @@ var sourcesIndex = JSON.parse('{\
 "kanidmd_lib_macros":["",[],["entry.rs","lib.rs"]],\
 "kanidmd_testkit":["",[],["lib.rs"]],\
 "kanidmd_web_ui":["",[["components",[],["admin_accounts.rs","admin_groups.rs","admin_menu.rs","admin_oauth2.rs","change_unix_password.rs","mod.rs"]],["credential",[],["delete.rs","mod.rs","passkey.rs","passkeyremove.rs","pwmodal.rs","reset.rs","totpmodal.rs","totpremove.rs"]],["models",[],["mod.rs"]],["views",[],["apps.rs","components.rs","mod.rs","profile.rs","security.rs"]]],["constants.rs","error.rs","lib.rs","login.rs","macros.rs","manager.rs","oauth2.rs","utils.rs"]],\
-"nss_kanidm":["",[],["lib.rs"]],\
+"nss_kanidm":["",[],["implementation.rs","lib.rs"]],\
 "orca":["",[["runner",[],["mod.rs","search.rs"]]],["data.rs","ds.rs","generate.rs","ipa.rs","kani.rs","ldap.rs","main.rs","opt.rs","preprocess.rs","profile.rs","setup.rs"]],\
 "pam_kanidm":["",[["pam",[],["constants.rs","conv.rs","items.rs","macros.rs","mod.rs","module.rs"]]],["lib.rs"]],\
 "profiles":["",[],["lib.rs"]],\

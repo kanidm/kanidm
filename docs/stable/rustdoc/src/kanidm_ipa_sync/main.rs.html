@@ -980,6 +980,18 @@
 <a href="#980" id="980">980</a>
 <a href="#981" id="981">981</a>
 <a href="#982" id="982">982</a>
+<a href="#983" id="983">983</a>
+<a href="#984" id="984">984</a>
+<a href="#985" id="985">985</a>
+<a href="#986" id="986">986</a>
+<a href="#987" id="987">987</a>
+<a href="#988" id="988">988</a>
+<a href="#989" id="989">989</a>
+<a href="#990" id="990">990</a>
+<a href="#991" id="991">991</a>
+<a href="#992" id="992">992</a>
+<a href="#993" id="993">993</a>
+<a href="#994" id="994">994</a>
 </pre><pre class="rust"><code><span class="attr">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -1009,7 +1021,8 @@
 <span class="kw">use </span>std::fs::metadata;
 <span class="kw">use </span>std::fs::File;
 <span class="kw">use </span>std::io::Read;
-<span class="kw">use </span>std::os::unix::fs::MetadataExt;
+<span class="attr">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+</span><span class="kw">use </span>std::os::unix::fs::MetadataExt;
 <span class="kw">use </span>std::path::{Path, PathBuf};
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::sync::atomic::AtomicBool;
@@ -1035,7 +1048,8 @@
 };
 <span class="kw">use </span>kanidmd_lib::utils::file_permissions_readonly;
 
-<span class="kw">use </span>users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
+<span class="attr">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+</span><span class="kw">use </span>users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
 <span class="kw">use </span>ldap3_client::{
     proto, proto::LdapFilter, LdapClient, LdapClientBuilder, LdapSyncRepl, LdapSyncReplEntry,
@@ -1157,42 +1171,54 @@
             <span class="macro">info!</span>(<span class="string">&quot;Stopped sync driver&quot;</span>);
         });
 
-        <span class="comment">// Block on signals now.
+        <span class="comment">// TODO: this loop/handler should be generic across the various crates
+        // Block on signals now.
         </span><span class="kw">loop </span>{
-            <span class="macro">tokio::select! </span>{
-                <span class="prelude-val">Ok</span>(()) = tokio::signal::ctrl_c() =&gt; {
-                    <span class="kw">break
-                </span>}
-                <span class="prelude-val">Some</span>(()) = <span class="kw">async move </span>{
-                    <span class="kw">let </span>sigterm = tokio::signal::unix::SignalKind::terminate();
-                    tokio::signal::unix::signal(sigterm).unwrap().recv().<span class="kw">await
-                </span>} =&gt; {
-                    <span class="kw">break
-                </span>}
-                <span class="prelude-val">Some</span>(()) = <span class="kw">async move </span>{
-                    <span class="kw">let </span>sigterm = tokio::signal::unix::SignalKind::alarm();
-                    tokio::signal::unix::signal(sigterm).unwrap().recv().<span class="kw">await
-                </span>} =&gt; {
-                    <span class="comment">// Ignore
-                </span>}
-                <span class="prelude-val">Some</span>(()) = <span class="kw">async move </span>{
-                    <span class="kw">let </span>sigterm = tokio::signal::unix::SignalKind::hangup();
-                    tokio::signal::unix::signal(sigterm).unwrap().recv().<span class="kw">await
-                </span>} =&gt; {
-                    <span class="comment">// Ignore
-                </span>}
-                <span class="prelude-val">Some</span>(()) = <span class="kw">async move </span>{
-                    <span class="kw">let </span>sigterm = tokio::signal::unix::SignalKind::user_defined1();
-                    tokio::signal::unix::signal(sigterm).unwrap().recv().<span class="kw">await
-                </span>} =&gt; {
-                    <span class="comment">// Ignore
-                </span>}
-                <span class="prelude-val">Some</span>(()) = <span class="kw">async move </span>{
-                    <span class="kw">let </span>sigterm = tokio::signal::unix::SignalKind::user_defined2();
-                    tokio::signal::unix::signal(sigterm).unwrap().recv().<span class="kw">await
-                </span>} =&gt; {
-                    <span class="comment">// Ignore
-                </span>}
+            <span class="attr">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+            </span>{
+                <span class="macro">tokio::select! </span>{
+                    <span class="prelude-val">Ok</span>(()) = tokio::signal::ctrl_c() =&gt; {
+                        <span class="kw">break
+                    </span>}
+                    <span class="prelude-val">Some</span>(()) = <span class="kw">async move </span>{
+                        <span class="kw">let </span>sigterm = tokio::signal::unix::SignalKind::terminate();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().<span class="kw">await
+                    </span>} =&gt; {
+                        <span class="kw">break
+                    </span>}
+                    <span class="prelude-val">Some</span>(()) = <span class="kw">async move </span>{
+                        <span class="kw">let </span>sigterm = tokio::signal::unix::SignalKind::alarm();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().<span class="kw">await
+                    </span>} =&gt; {
+                        <span class="comment">// Ignore
+                    </span>}
+                    <span class="prelude-val">Some</span>(()) = <span class="kw">async move </span>{
+                        <span class="kw">let </span>sigterm = tokio::signal::unix::SignalKind::hangup();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().<span class="kw">await
+                    </span>} =&gt; {
+                        <span class="comment">// Ignore
+                    </span>}
+                    <span class="prelude-val">Some</span>(()) = <span class="kw">async move </span>{
+                        <span class="kw">let </span>sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().<span class="kw">await
+                    </span>} =&gt; {
+                        <span class="comment">// Ignore
+                    </span>}
+                    <span class="prelude-val">Some</span>(()) = <span class="kw">async move </span>{
+                        <span class="kw">let </span>sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().<span class="kw">await
+                    </span>} =&gt; {
+                        <span class="comment">// Ignore
+                    </span>}
+                }
+            }
+            <span class="attr">#[cfg(target_family = <span class="string">&quot;windows&quot;</span>)]
+            </span>{
+                <span class="macro">tokio::select! </span>{
+                    <span class="prelude-val">Ok</span>(()) = tokio::signal::ctrl_c() =&gt; {
+                        <span class="kw">break
+                    </span>}
+                }
             }
         }
 
@@ -1890,10 +1916,8 @@
                 );
         }
 
-        <span class="kw">let </span>cuid = get_current_uid();
-        <span class="kw">let </span>ceuid = get_effective_uid();
-
-        <span class="kw">if </span>cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
+        <span class="attr">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+        </span><span class="kw">if </span>cfg_meta.uid() == get_current_uid() || cfg_meta.uid() == get_effective_uid() {
             <span class="macro">warn!</span>(<span class="string">&quot;WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...&quot;</span>,
                 cfg_path_str
             );
@@ -1904,11 +1928,6 @@
 }
 
 <span class="kw">fn </span>main() {
-    <span class="kw">let </span>cuid = get_current_uid();
-    <span class="kw">let </span>ceuid = get_effective_uid();
-    <span class="kw">let </span>cgid = get_current_gid();
-    <span class="kw">let </span>cegid = get_effective_gid();
-
     <span class="kw">let </span>opt = Opt::parse();
 
     <span class="kw">let </span>fmt_layer = fmt::layer().with_writer(std::io::stderr);
@@ -1934,10 +1953,15 @@
         .init();
 
     <span class="comment">// Startup sanity checks.
+    // TODO: put this in the junk drawer
+    </span><span class="attr">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
     </span><span class="kw">if </span>opt.skip_root_check {
         <span class="macro">warn!</span>(<span class="string">&quot;Skipping root user check, if you&#39;re running this for testing, ensure you clean up temporary files.&quot;</span>)
-        <span class="comment">// TODO: this wording is not great m&#39;kay.
-    </span>} <span class="kw">else if </span>cuid == <span class="number">0 </span>|| ceuid == <span class="number">0 </span>|| cgid == <span class="number">0 </span>|| cegid == <span class="number">0 </span>{
+    } <span class="kw">else if </span>get_current_uid() == <span class="number">0
+        </span>|| get_effective_uid() == <span class="number">0
+        </span>|| get_current_gid() == <span class="number">0
+        </span>|| get_effective_gid() == <span class="number">0
+    </span>{
         <span class="macro">error!</span>(<span class="string">&quot;Refusing to run - this process must not operate as root.&quot;</span>);
         <span class="kw">return</span>;
     };

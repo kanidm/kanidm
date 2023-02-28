@@ -3233,7 +3233,7 @@ volumes:
 <div style="break-before: page; page-break-before: always;"></div><h2 id="getting-started-for-developers"><a class="header" href="#getting-started-for-developers">Getting Started (for Developers)</a></h2>
 <h3 id="designs"><a class="header" href="#designs">Designs</a></h3>
 <p>See the <a href="https://github.com/kanidm/kanidm/tree/master/designs">designs</a> folder, and compile the private documentation locally:</p>
-<pre><code>cargo doc --document-private-items --open --no-deps
+<pre><code class="language-bash">cargo doc --document-private-items --open --no-deps
 </code></pre>
 <h3 id="rust-documentation"><a class="header" href="#rust-documentation">Rust Documentation</a></h3>
 <p>A list of links to the library documentation is at
@@ -3254,17 +3254,17 @@ volumes:
 <p>You will need <a href="https://rustup.rs/">rustup</a> to install a Rust toolchain. If you're using the
 Tumbleweed release, it's packaged in <code>zypper</code>.</p>
 <p>You will also need some system libraries to build this:</p>
-<pre><code>libudev-devel sqlite3-devel libopenssl-devel
+<pre><code class="language-text">libudev-devel sqlite3-devel libopenssl-devel
 </code></pre>
 <h4 id="fedora"><a class="header" href="#fedora">Fedora</a></h4>
 <p>You need to install the Rust toolchain packages:</p>
 <pre><code class="language-bash">rust cargo
 </code></pre>
 <p>You will also need some system libraries to build this:</p>
-<pre><code>systemd-devel sqlite-devel openssl-devel pam-devel
+<pre><code class="language-text">systemd-devel sqlite-devel openssl-devel pam-devel
 </code></pre>
 <p>Building the Web UI requires additional packages:</p>
-<pre><code>perl-FindBin perl-File-Compare rust-std-static-wasm32-unknown-unknown
+<pre><code class="language-text">perl-FindBin perl-File-Compare rust-std-static-wasm32-unknown-unknown
 </code></pre>
 <h4 id="ubuntu"><a class="header" href="#ubuntu">Ubuntu</a></h4>
 <p>You need <a href="https://rustup.rs/">rustup</a> to install a Rust toolchain.</p>

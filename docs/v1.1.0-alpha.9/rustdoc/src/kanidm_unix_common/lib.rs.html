@@ -22,6 +22,15 @@
 <a href="#22" id="22">22</a>
 <a href="#23" id="23">23</a>
 <a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
 </pre><pre class="rust"><code><span class="attr">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -34,17 +43,26 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
+#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
 #[macro_use]
 </span><span class="kw">extern crate </span>tracing;
-<span class="attr">#[macro_use]
+<span class="attr">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+#[macro_use]
 </span><span class="kw">extern crate </span>rusqlite;
 
-<span class="kw">pub mod </span>cache;
-<span class="kw">pub mod </span>client;
-<span class="kw">pub mod </span>client_sync;
-<span class="kw">pub mod </span>constants;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>db;
-<span class="kw">pub mod </span>unix_config;
-<span class="kw">pub mod </span>unix_proto;
+<span class="attr">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+</span><span class="kw">pub mod </span>cache;
+<span class="attr">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+</span><span class="kw">pub mod </span>client;
+<span class="attr">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+</span><span class="kw">pub mod </span>client_sync;
+<span class="attr">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+</span><span class="kw">pub mod </span>constants;
+<span class="attr">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>db;
+<span class="attr">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+</span><span class="kw">pub mod </span>unix_config;
+<span class="attr">#[cfg(target_family = <span class="string">&quot;unix&quot;</span>)]
+</span><span class="kw">pub mod </span>unix_proto;
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidm_unix_common" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
