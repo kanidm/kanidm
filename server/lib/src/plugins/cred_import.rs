@@ -126,7 +126,7 @@ impl CredImport {
 
 #[cfg(test)]
 mod tests {
-    use crate::credential::policy::CryptoPolicy;
+    use kanidm_lib_crypto::CryptoPolicy;
     use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::{Credential, CredentialType};
     use crate::prelude::*;

@@ -63,9 +63,8 @@ libsqlite3-sys.workspace = true
 lru.workspace = true
 kanidm_client.workspace = true
 kanidm_proto.workspace = true
-# This is just used for password hashing and tests, so we could
-# clean this up
-kanidmd_lib.workspace = true
+kanidm_lib_crypto.workspace = true
+kanidm_lib_file_permissions.workspace = true
 
 r2d2.workspace = true
 r2d2_sqlite.workspace = true
@@ -92,4 +91,5 @@ kanidmd_core.workspace = true
 clap = { workspace = true, features = ["derive"] }
 clap_complete.workspace = true
 profiles.workspace = true
-
+# For testing against the server only.
+kanidmd_lib.workspace = true

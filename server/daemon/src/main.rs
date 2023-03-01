@@ -28,8 +28,6 @@ use kanidmd_core::{
     domain_rename_core, recover_account_core, reindex_server_core, restore_server_core,
     vacuum_server_core, verify_server_core,
 };
-#[cfg(not(target_family = "windows"))]
-use kanidmd_lib::utils::file_permissions_readonly;
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
 use sketching::tracing_forest::{self};
@@ -168,20 +166,17 @@ async fn main() {
             {
                 let cfg_meta = read_file_metadata(&(opt.commands.commonopt().config_path));
 
-                #[cfg(target_family = "unix")]
-                if !file_permissions_readonly(&cfg_meta) {
+                if !kanidm_lib_file_permissions::readonly(&cfg_meta) {
                     eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
                     opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path"));
                 }
 
-                #[cfg(target_family = "unix")]
                 if cfg_meta.mode() & 0o007 != 0 {
                     eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...",
                     opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
                     );
                 }
 
-                #[cfg(target_family = "unix")]
                 if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
                     eprintln!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
                     opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
@@ -219,15 +214,11 @@ async fn main() {
                     std::process::exit(1);
                 }
 
-                // TODO: windows support for DB folder permissions checks
-                #[cfg(target_family = "unix")]
-                {
-                    if file_permissions_readonly(&i_meta) {
-                        eprintln!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
-                    }
-                    if i_meta.mode() & 0o007 != 0 {
-                        eprintln!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
-                    }
+                if kanidm_lib_file_permissions::readonly(&i_meta) {
+                    eprintln!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
+                }
+                if i_meta.mode() & 0o007 != 0 {
+                    eprintln!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
                 }
             }
 
@@ -261,36 +252,23 @@ async fn main() {
 
                     if let Some(i_str) = &(sconfig.tls_chain) {
                         let i_path = PathBuf::from(i_str.as_str());
-                        // TODO: windows support for DB folder permissions checks
-                        #[cfg(not(target_family = "unix"))]
-                        eprintln!("WARNING: permissions checks on windows aren't implemented, cannot check TLS Key at {:?}", i_path);
 
-                        #[cfg(target_family = "unix")]
-                        {
-                            let i_meta = read_file_metadata(&i_path);
-                            if !file_permissions_readonly(&i_meta) {
-                                eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
-                            }
+                        let i_meta = read_file_metadata(&i_path);
+                        if !kanidm_lib_file_permissions::readonly(&i_meta) {
+                            eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
                         }
                     }
 
                     if let Some(i_str) = &(sconfig.tls_key) {
                         let i_path = PathBuf::from(i_str.as_str());
-                        // TODO: windows support for DB folder permissions checks
-                        #[cfg(not(target_family = "unix"))]
-                        eprintln!("WARNING: permissions checks on windows aren't implemented, cannot check TLS Key at {:?}", i_path);
 
-                        // TODO: windows support for DB folder permissions checks
-                        #[cfg(target_family = "unix")]
-                        {
                             let i_meta = read_file_metadata(&i_path);
-                            if !file_permissions_readonly(&i_meta) {
+                            if !kanidm_lib_file_permissions::readonly(&i_meta) {
                                 eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
                             }
                             if i_meta.mode() & 0o007 != 0 {
                                 eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...", i_str);
                             }
-                        }
                     }
 
                     let sctx = create_server_core(config, config_test).await;

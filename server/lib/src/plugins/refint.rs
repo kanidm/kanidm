@@ -260,7 +260,7 @@ mod tests {
     use time::OffsetDateTime;
     use uuid::uuid;
 
-    use crate::credential::policy::CryptoPolicy;
+    use kanidm_lib_crypto::CryptoPolicy;
     use crate::credential::Credential;
 
     // The create references a uuid that doesn't exist - reject

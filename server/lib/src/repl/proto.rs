@@ -13,6 +13,9 @@ use webauthn_rs::prelude::{
     DeviceKey as DeviceKeyV4, Passkey as PasskeyV4, SecurityKey as SecurityKeyV4,
 };
 
+// Re-export this for our own usage.
+pub use kanidm_lib_crypto::ReplPasswordV1;
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ReplCidV1 {
     #[serde(rename = "t")]
@@ -78,33 +81,6 @@ pub struct ReplTotpV1 {
     pub step: u64,
     pub algo: ReplTotpAlgoV1,
     pub digits: u8,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-#[allow(non_camel_case_types)]
-pub enum ReplPasswordV1 {
-    PBKDF2 {
-        cost: usize,
-        salt: Base64UrlSafeData,
-        hash: Base64UrlSafeData,
-    },
-    PBKDF2_SHA1 {
-        cost: usize,
-        salt: Base64UrlSafeData,
-        hash: Base64UrlSafeData,
-    },
-    PBKDF2_SHA512 {
-        cost: usize,
-        salt: Base64UrlSafeData,
-        hash: Base64UrlSafeData,
-    },
-    SSHA512 {
-        salt: Base64UrlSafeData,
-        hash: Base64UrlSafeData,
-    },
-    NT_MD4 {
-        hash: Base64UrlSafeData,
-    },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]

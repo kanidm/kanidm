@@ -10,34 +10,15 @@ use webauthn_rs::prelude::{
 };
 use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
 
+// Re-export this as though it was here.
+pub use kanidm_lib_crypto::DbPasswordV1;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbCidV1 {
     #[serde(rename = "s")]
     pub server_id: Uuid,
     #[serde(rename = "t")]
     pub timestamp: Duration,
-}
-
-#[derive(Serialize, Deserialize)]
-#[allow(non_camel_case_types)]
-pub enum DbPasswordV1 {
-    PBKDF2(usize, Vec<u8>, Vec<u8>),
-    PBKDF2_SHA1(usize, Vec<u8>, Vec<u8>),
-    PBKDF2_SHA512(usize, Vec<u8>, Vec<u8>),
-    SSHA512(Vec<u8>, Vec<u8>),
-    NT_MD4(Vec<u8>),
-}
-
-impl fmt::Debug for DbPasswordV1 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            DbPasswordV1::PBKDF2(_, _, _) => write!(f, "PBKDF2"),
-            DbPasswordV1::PBKDF2_SHA1(_, _, _) => write!(f, "PBKDF2_SHA1"),
-            DbPasswordV1::PBKDF2_SHA512(_, _, _) => write!(f, "PBKDF2_SHA512"),
-            DbPasswordV1::SSHA512(_, _) => write!(f, "SSHA512"),
-            DbPasswordV1::NT_MD4(_) => write!(f, "NT_MD4"),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

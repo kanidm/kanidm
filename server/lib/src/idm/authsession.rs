@@ -1000,7 +1000,7 @@ mod tests {
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::WebauthnAuthenticator;
 
-    use crate::credential::policy::CryptoPolicy;
+    use kanidm_lib_crypto::CryptoPolicy;
     use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::{BackupCodes, Credential};
     use crate::idm::authsession::{

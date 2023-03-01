@@ -4,10 +4,10 @@ lto = "thin"
 
 [workspace]
 members = [
-    "client",
     "proto",
-    "tools/kanidm_tools",
+    "tools/cli",
     "tools/iam_migrations/freeipa",
+    "tools/orca",
     "unix_integration",
     "unix_integration/nss_kanidm",
     "unix_integration/pam_kanidm",
@@ -18,7 +18,9 @@ members = [
     "server/core",
     "server/testkit",
     "server/testkit-macros",
-    "tools/orca",
+    "libs/client",
+    "libs/crypto",
+    "libs/file_permissions",
     "libs/profiles",
     "libs/sketching"
 ]
@@ -73,8 +75,10 @@ kanidmd_core = { path = "./server/core" }
 kanidmd_idm = { path = "./server/idm" }
 kanidmd_lib = { path = "./server/lib" }
 kanidmd_lib_macros = { path = "./server/lib-macros" }
+kanidm_lib_crypto = { path = "./libs/crypto" }
+kanidm_lib_file_permissions = { path = "./libs/file_permissions" }
 kanidmd_testkit = { path = "./server/testkit" }
-kanidm_client = { path = "./client", version = "1.1.0-alpha.11" }
+kanidm_client = { path = "./libs/client", version = "1.1.0-alpha.11" }
 kanidm_proto = { path = "./proto", version = "1.1.0-alpha.11" }
 kanidm_unix_int = { path = "./unix_integration" }
 last-git-commit = "0.2.0"

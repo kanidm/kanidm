@@ -7,7 +7,8 @@ use time::OffsetDateTime;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
 
-use crate::credential::policy::CryptoPolicy;
+use kanidm_lib_crypto::CryptoPolicy;
+
 use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::Credential;
 use crate::idm::delayed::{DelayedAction, UnixPasswordUpgrade};

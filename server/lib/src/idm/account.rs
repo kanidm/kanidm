@@ -12,7 +12,7 @@ use webauthn_rs::prelude::{
 };
 
 use crate::constants::UUID_ANONYMOUS;
-use crate::credential::policy::CryptoPolicy;
+use kanidm_lib_crypto::CryptoPolicy;
 use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::Credential;
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};

@@ -1,0 +1,21 @@
+[package]
+name = "kanidm_lib_crypto"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+base64.workspace = true
+base64urlsafedata.workspace = true
+hex.workspace = true
+
+kanidm_proto.workspace = true
+
+# We need to explicitly ask for openssl-sys so that we get the version propagated
+# into the build.rs for legacy feature checks.
+openssl-sys.workspace = true
+openssl.workspace = true
+rand.workspace = true
+serde = { workspace = true, features = ["derive"] }
+sketching.workspace = true
+tracing.workspace = true
+

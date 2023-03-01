@@ -28,7 +28,7 @@ use kanidm_unix_common::cache::CacheLayer;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
-use kanidmd_lib::utils::file_permissions_readonly;
+
 use libc::umask;
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
@@ -461,7 +461,7 @@ async fn main() {
                         return
                     }
                 };
-                if !file_permissions_readonly(&cfg_meta) {
+                if !kanidm_lib_file_permissions::readonly(&cfg_meta) {
                     warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
                         cfg_path_str
                         );
@@ -493,7 +493,7 @@ async fn main() {
                         return
                     }
                 };
-                if !file_permissions_readonly(&unixd_meta) {
+                if !kanidm_lib_file_permissions::readonly(&unixd_meta) {
                     warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
                         unixd_path_str);
                 }
@@ -579,7 +579,7 @@ async fn main() {
                         );
                         return
                     }
-                    if !file_permissions_readonly(&i_meta) {
+                    if !kanidm_lib_file_permissions::readonly(&i_meta) {
                         warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
                         .unwrap_or("<db_par_path_buf invalid>")
                         );

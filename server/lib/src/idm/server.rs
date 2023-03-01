@@ -3,6 +3,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use kanidm_lib_crypto::CryptoPolicy;
+
 use async_std::task;
 use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
 use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
@@ -26,7 +28,6 @@ use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
 
 use super::event::ReadBackupCodeEvent;
 use super::ldap::{LdapBoundToken, LdapSession};
-use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLock;
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
@@ -2262,7 +2263,7 @@ mod tests {
     use time::OffsetDateTime;
     use uuid::Uuid;
 
-    use crate::credential::policy::CryptoPolicy;
+    use kanidm_lib_crypto::CryptoPolicy;
     use crate::credential::{Credential, Password};
     use crate::idm::account::DestroySessionTokenEvent;
     use crate::idm::delayed::{AuthSessionRecord, DelayedAction};
