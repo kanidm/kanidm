@@ -1,3 +1,0 @@
-web_ui_pkg_path = "../../kanidmd_web_ui/pkg"
-# Set to native for developer machines.
-cpu_flags = "native"
