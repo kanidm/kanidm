@@ -335,13 +335,12 @@ cargo install mdbook
 To build it:
 
 ```bash
-cd kanidm_book
-mdbook build
+make book
 ```
 
 Or to run a local webserver:
 
 ```bash
-cd kanidm_book
+cd book
 mdbook serve
 ```

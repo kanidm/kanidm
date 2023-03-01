@@ -173,7 +173,7 @@ book_versioned:
 	git switch -c "${BOOK_VERSION}"
 	git pull origin "${BOOK_VERSION}"
 	cargo doc --no-deps --quiet
-	mdbook build kanidm_book
+	mdbook build book
 	rm -rf ./docs/
 	mkdir -p ./docs
 	mv ./book/book/ ./docs/${BOOK_VERSION}/
