@@ -48,6 +48,7 @@
 # For Developers
 
 - [Developer Guide](DEVELOPER_README.md)
+- [FAQ](developers/faq.md)
 - [Design Documents]()
   - [Access Profiles 2022](developers/designs/access_profiles_rework_2022.md)
   - [Access Profiles Original](developers/designs/access_profiles_and_security.md)
