@@ -126,10 +126,10 @@ impl CredImport {
 
 #[cfg(test)]
 mod tests {
-    use kanidm_lib_crypto::CryptoPolicy;
     use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::{Credential, CredentialType};
     use crate::prelude::*;
+    use kanidm_lib_crypto::CryptoPolicy;
     use kanidm_proto::v1::PluginError;
 
     const IMPORT_HASH: &str =

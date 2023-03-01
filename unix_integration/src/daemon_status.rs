@@ -30,7 +30,10 @@ fn main() {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     }
     if opt.version {
-        println!("{}", kanidm_proto::utils::get_version("kanidm_unixd_status"));
+        println!(
+            "{}",
+            kanidm_proto::utils::get_version("kanidm_unixd_status")
+        );
         std::process::exit(0);
     }
     sketching::tracing_subscriber::fmt::init();

@@ -31,7 +31,10 @@ async fn main() {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     }
     if opt.version {
-        println!("{}", kanidm_proto::utils::get_version("kanidm_ssh_authorizedkeys"));
+        println!(
+            "{}",
+            kanidm_proto::utils::get_version("kanidm_ssh_authorizedkeys")
+        );
         std::process::exit(0);
     }
     sketching::tracing_subscriber::fmt::init();

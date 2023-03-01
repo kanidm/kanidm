@@ -29,12 +29,10 @@ concread.workspace = true
 dyn-clone.workspace = true
 fernet = { workspace = true, features = ["fernet_danger_timestamps"] }
 filetime.workspace = true
-futures.workspace = true
 futures-util.workspace = true
 hashbrown.workspace = true
 idlset.workspace = true
 kanidm_proto.workspace = true
-kanidmd_lib_macros.workspace = true
 kanidm_lib_crypto.workspace = true
 lazy_static.workspace = true
 ldap3_proto.workspace = true
@@ -88,6 +86,9 @@ users.workspace = true
 [dev-dependencies]
 criterion = { workspace = true, features = ["html_reports"] }
 webauthn-authenticator-rs.workspace = true
+
+futures.workspace = true
+kanidmd_lib_macros.workspace = true
 
 [build-dependencies]
 profiles.workspace = true

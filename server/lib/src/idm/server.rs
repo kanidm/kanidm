@@ -2263,7 +2263,6 @@ mod tests {
     use time::OffsetDateTime;
     use uuid::Uuid;
 
-    use kanidm_lib_crypto::CryptoPolicy;
     use crate::credential::{Credential, Password};
     use crate::idm::account::DestroySessionTokenEvent;
     use crate::idm::delayed::{AuthSessionRecord, DelayedAction};
@@ -2277,6 +2276,7 @@ mod tests {
     use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
     use crate::utils::duration_from_epoch_now;
+    use kanidm_lib_crypto::CryptoPolicy;
 
     const TEST_PASSWORD: &str = "ntaoeuntnaoeuhraohuercahu😍";
     const TEST_PASSWORD_INC: &str = "ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx ";

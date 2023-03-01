@@ -466,9 +466,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    use kanidm_lib_crypto::CryptoPolicy;
     use crate::credential::Credential;
     use crate::prelude::*;
+    use kanidm_lib_crypto::CryptoPolicy;
 
     #[qs_test]
     async fn test_modify(server: &QueryServer) {

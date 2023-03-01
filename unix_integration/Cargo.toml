@@ -91,5 +91,3 @@ kanidmd_core.workspace = true
 clap = { workspace = true, features = ["derive"] }
 clap_complete.workspace = true
 profiles.workspace = true
-# For testing against the server only.
-kanidmd_lib.workspace = true

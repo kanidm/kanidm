@@ -7,9 +7,7 @@ use webauthn_rs::prelude::{AuthenticationResult, Passkey, SecurityKey};
 use webauthn_rs_core::proto::{Credential as WebauthnCredential, CredentialV3};
 
 use crate::be::dbvalue::{DbBackupCodeV1, DbCred};
-use crate::repl::proto::{
-    ReplBackupCodeV1, ReplCredV1, ReplPasskeyV4V1, ReplSecurityKeyV4V1,
-};
+use crate::repl::proto::{ReplBackupCodeV1, ReplCredV1, ReplPasskeyV4V1, ReplSecurityKeyV4V1};
 
 pub mod softlock;
 pub mod totp;

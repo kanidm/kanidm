@@ -153,8 +153,8 @@ mod tests {
     use time::OffsetDateTime;
     use uuid::uuid;
 
-    use kanidm_lib_crypto::CryptoPolicy;
     use crate::credential::Credential;
+    use kanidm_lib_crypto::CryptoPolicy;
 
     // Test expiry of old sessions
 

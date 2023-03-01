@@ -2353,7 +2353,6 @@ dependencies = [
  "kanidm_lib_file_permissions",
  "kanidm_proto",
  "kanidmd_core",
- "kanidmd_lib",
  "libc",
  "libsqlite3-sys",
  "lru 0.8.1",

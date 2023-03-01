@@ -7,7 +7,6 @@ edition = "2021"
 base64.workspace = true
 base64urlsafedata.workspace = true
 hex.workspace = true
-
 kanidm_proto.workspace = true
 
 # We need to explicitly ask for openssl-sys so that we get the version propagated
@@ -16,6 +15,7 @@ openssl-sys.workspace = true
 openssl.workspace = true
 rand.workspace = true
 serde = { workspace = true, features = ["derive"] }
-sketching.workspace = true
 tracing.workspace = true
 
+[dev-dependencies]
+sketching.workspace = true

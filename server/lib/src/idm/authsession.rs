@@ -1000,7 +1000,6 @@ mod tests {
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::WebauthnAuthenticator;
 
-    use kanidm_lib_crypto::CryptoPolicy;
     use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::{BackupCodes, Credential};
     use crate::idm::authsession::{
@@ -1011,6 +1010,7 @@ mod tests {
     use crate::idm::AuthState;
     use crate::prelude::*;
     use crate::utils::{duration_from_epoch_now, readable_password_from_random};
+    use kanidm_lib_crypto::CryptoPolicy;
 
     fn create_pw_badlist_cache() -> HashSet<String> {
         let mut s = HashSet::new();

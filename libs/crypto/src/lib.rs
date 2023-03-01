@@ -1,11 +1,10 @@
-
-use tracing::{error, warn, debug};
+use tracing::{debug, error, warn};
 
 use base64urlsafedata::Base64UrlSafeData;
-use std::time::{Duration, Instant};
-use std::fmt;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::time::{Duration, Instant};
 
 use kanidm_proto::v1::OperationError;
 use openssl::hash::{self, MessageDigest};
@@ -562,7 +561,7 @@ mod tests {
     fn test_credential_simple() {
         let p = CryptoPolicy::minimum();
         let c = Password::new(&p, "password").unwrap();
-        assert!( c.verify("password").unwrap());
+        assert!(c.verify("password").unwrap());
         assert!(!c.verify("password1").unwrap());
         assert!(!c.verify("Password1").unwrap());
         assert!(!c.verify("It Works!").unwrap());

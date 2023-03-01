@@ -44,5 +44,3 @@ pub fn readonly(meta: &Metadata) -> bool {
     );
     false
 }
-
-

@@ -12,7 +12,6 @@ use webauthn_rs::prelude::{
 };
 
 use crate::constants::UUID_ANONYMOUS;
-use kanidm_lib_crypto::CryptoPolicy;
 use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::Credential;
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
@@ -23,6 +22,7 @@ use crate::modify::{ModifyInvalid, ModifyList};
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use crate::value::{IntentTokenState, PartialValue, Value};
+use kanidm_lib_crypto::CryptoPolicy;
 
 macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{

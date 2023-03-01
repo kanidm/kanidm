@@ -20,10 +20,7 @@ kanidm_client.workspace = true
 kanidm_proto.workspace = true
 kanidmd_core.workspace = true
 kanidmd_lib.workspace = true
-futures.workspace = true
 
-webauthn-authenticator-rs.workspace = true
-oauth2_ext = { workspace = true, default-features = false }
 
 url = { workspace = true, features = ["serde"] }
 reqwest = { workspace = true, default-features = false }
@@ -39,3 +36,6 @@ profiles.workspace = true
 [dev-dependencies]
 compact_jwt.workspace = true
 serde_json.workspace = true
+webauthn-authenticator-rs.workspace = true
+oauth2_ext = { workspace = true, default-features = false }
+futures.workspace = true
