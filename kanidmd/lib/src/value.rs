@@ -8,9 +8,11 @@ use crate::prelude::*;
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::fmt;
+use std::fmt::Formatter;
 use std::str::FromStr;
 use std::time::Duration;
 
+use crate::valueset::uuid_to_proto_string;
 use compact_jwt::JwsSigner;
 use hashbrown::HashSet;
 use kanidm_proto::v1::ApiTokenPurpose;
@@ -764,7 +766,7 @@ impl TryInto<UatPurposeStatus> for SessionScope {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Session {
     pub label: String,
     pub expiry: Option<OffsetDateTime>,
@@ -772,6 +774,25 @@ pub struct Session {
     pub issued_by: IdentityId,
     pub cred_id: Uuid,
     pub scope: SessionScope,
+}
+
+impl fmt::Debug for Session {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let issuer = match self.issued_by {
+            IdentityId::User(u) => uuid_to_proto_string(u),
+            IdentityId::Synch(u) => uuid_to_proto_string(u),
+            _ => "invalid".to_string(),
+        };
+        let expiry = match self.expiry {
+            Some(e) => e.to_string(),
+            None => "never".to_string(),
+        };
+        write!(
+            f,
+            "expiry: {}, issued at: {}, issued by: {}, credential id: {}, scope: {:?}",
+            expiry, self.issued_at, issuer, self.cred_id, self.scope
+        )
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

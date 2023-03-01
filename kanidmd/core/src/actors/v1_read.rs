@@ -300,7 +300,6 @@ impl QueryServerReadV1 {
                 admin_error!(?e, "Invalid identity");
                 e
             })?;
-
         let srch =
             SearchEvent::from_whoami_request(ident, &idms_prox_read.qs_read).map_err(|e| {
                 admin_error!(?e, "Failed to begin whoami");
