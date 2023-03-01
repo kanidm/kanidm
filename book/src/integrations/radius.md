@@ -97,7 +97,7 @@ kanidm group add_members --name admin idm_radius_servers radius_service_account
 Now reset the account password, using the `admin` account:
 
 ```bash
-kanidm service-account credential generate-pw --name admin radius_service_account
+kanidm service-account credential generate --name admin radius_service_account
 ```
 
 ## Deploying a RADIUS Container
