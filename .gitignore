@@ -1,5 +1,4 @@
 altnames.cnf
-
 .DS_Store
 .backup*_test.json
 .backup_test.db
@@ -9,15 +8,13 @@ altnames.cnf
 test.db
 cargo_vendor_config
 /vendor
-kanidm_rlm_python/test_data/certs/
-vendor.tar.gz
-kanidm_rlm_python/test_data/ca.pem
-loc.sh
+rlm_python/test_data/certs/
+rlm_python/test_data/ca.pem
+scripts/loc.sh
 vendor.tar.*
 *.patch
-orca/example_profiles/small/orca-edited.toml
+tools/orca/example_profiles/small/orca-edited.toml
 /docs/
-kanidm_unix_int/pam_tester/Cargo.lock
 .vscode/
 
 # kanidm simple packaging
