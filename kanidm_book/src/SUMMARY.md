@@ -52,6 +52,7 @@
   - [Access Profiles 2022](developers/designs/access_profiles_rework_2022.md)
   - [Access Profiles Original](developers/designs/access_profiles_and_security.md)
   - [REST Interface](developers/designs/rest_interface.md)
+  - [Elevated Priv Mode](developers/designs/elevated_priv_mode.md)
 - [Python Module](developers/python.md)
 - [RADIUS Integration](developers/radius.md)
 

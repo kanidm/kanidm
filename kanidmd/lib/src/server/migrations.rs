@@ -343,7 +343,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn migrate_11_to_12(&mut self) -> Result<(), OperationError> {
         admin_warn!("starting 11 to 12 migration.");
-            // sync_token_session
+        // sync_token_session
         let filter = filter!(f_or!([
             f_pres("api_token_session"),
             f_pres("sync_token_session"),
@@ -365,41 +365,32 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         for (_, ent) in mod_candidates.iter_mut() {
             if let Some(api_token_session) = ent.pop_ava("api_token_session") {
-                let api_token_session = api_token_session.migrate_session_to_apitoken()
-                    .map_err(|e| {
-                        error!("Failed to convert api_token_session from session -> apitoken");
-                        e
-                    })?;
+                let api_token_session =
+                    api_token_session
+                        .migrate_session_to_apitoken()
+                        .map_err(|e| {
+                            error!("Failed to convert api_token_session from session -> apitoken");
+                            e
+                        })?;
 
-                ent.set_ava_set(
-                    "api_token_session",
-                    api_token_session);
+                ent.set_ava_set("api_token_session", api_token_session);
             }
 
             if let Some(sync_token_session) = ent.pop_ava("sync_token_session") {
-                let sync_token_session = sync_token_session.migrate_session_to_apitoken()
-                    .map_err(|e| {
-                        error!("Failed to convert sync_token_session from session -> apitoken");
-                        e
-                    })?;
+                let sync_token_session =
+                    sync_token_session
+                        .migrate_session_to_apitoken()
+                        .map_err(|e| {
+                            error!("Failed to convert sync_token_session from session -> apitoken");
+                            e
+                        })?;
 
-                ent.set_ava_set(
-                    "sync_token_session",
-                    sync_token_session);
+                ent.set_ava_set("sync_token_session", sync_token_session);
             }
-        };
-
-        let (
-            pre_candidates,
-            candidates
-        ) = mod_candidates
-            .into_iter()
-            .unzip();
+        }
 
         // Apply the batch mod.
-        self.internal_apply_writable(
-            pre_candidates, candidates
-        )
+        self.internal_apply_writable(mod_candidates)
     }
 
     #[instrument(level = "info", skip_all)]
@@ -512,9 +503,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // and details. It's a pretty const thing. Also check anonymous, important to many
         // concepts.
         let res = self
-            .internal_migrate_or_create_str(JSON_SYSTEM_INFO_V1)
-            .and_then(|_| self.internal_migrate_or_create_str(JSON_DOMAIN_INFO_V1))
-            .and_then(|_| self.internal_migrate_or_create_str(JSON_SYSTEM_CONFIG_V1));
+            .internal_migrate_or_create(E_SYSTEM_INFO_V1.clone())
+            .and_then(|_| self.internal_migrate_or_create(E_DOMAIN_INFO_V1.clone()))
+            .and_then(|_| self.internal_migrate_or_create(E_SYSTEM_CONFIG_V1.clone()));
         if res.is_err() {
             admin_error!("initialise_idm p1 -> result {:?}", res);
         }
@@ -527,16 +518,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Check the admin object exists (migrations).
         // Create the default idm_admin group.
         let admin_entries = [
-            JSON_ANONYMOUS_V1,
-            JSON_ADMIN_V1,
-            JSON_IDM_ADMIN_V1,
-            JSON_IDM_ADMINS_V1,
-            JSON_SYSTEM_ADMINS_V1,
+            E_ANONYMOUS_V1.clone(),
+            E_ADMIN_V1.clone(),
+            E_IDM_ADMIN_V1.clone(),
+            E_IDM_ADMINS_V1.clone(),
+            E_SYSTEM_ADMINS_V1.clone(),
         ];
         let res: Result<(), _> = admin_entries
-            .iter()
+            .into_iter()
             // Each item individually logs it's result
-            .try_for_each(|e_str| self.internal_migrate_or_create_str(e_str));
+            .try_for_each(|ent| self.internal_migrate_or_create(ent));
         if res.is_err() {
             admin_error!("initialise_idm p2 -> result {:?}", res);
         }
@@ -586,48 +577,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
             // All members must exist before we write HP
             JSON_IDM_HIGH_PRIVILEGE_V1,
-            // Built in access controls.
-            JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1,
-            JSON_IDM_ADMINS_ACP_REVIVE_V1,
-            // JSON_IDM_ADMINS_ACP_MANAGE_V1,
-            JSON_IDM_ALL_ACP_READ_V1,
-            JSON_IDM_SELF_ACP_READ_V1,
-            JSON_IDM_SELF_ACP_WRITE_V1,
-            JSON_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_READ_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_GROUP_WRITE_PRIV_V1,
-            JSON_IDM_ACP_GROUP_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1,
-            JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1,
-            JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_RADIUS_SERVERS_V1,
-            JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1,
-            JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1,
-            JSON_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1,
-            JSON_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1,
-            JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1,
-            JSON_IDM_ACP_ACP_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1,
-            JSON_IDM_ACP_SYSTEM_CONFIG_PRIV_V1,
-            JSON_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_EXTEND_PRIV_V1,
-            JSON_IDM_ACP_HP_PEOPLE_READ_PRIV_V1,
-            JSON_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1,
-            JSON_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1,
-            JSON_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1,
-            JSON_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1,
-            JSON_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1,
-            // JSON_IDM_ACP_OAUTH2_READ_PRIV_V1,
-            JSON_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1,
         ];
 
         let res: Result<(), _> = idm_entries
@@ -642,6 +591,46 @@ impl<'a> QueryServerWriteTransaction<'a> {
         res?;
 
         let idm_entries = [
+            // Built in access controls.
+            E_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1.clone(),
+            E_IDM_ADMINS_ACP_REVIVE_V1.clone(),
+            E_IDM_ALL_ACP_READ_V1.clone(),
+            E_IDM_SELF_ACP_READ_V1.clone(),
+            E_IDM_SELF_ACP_WRITE_V1.clone(),
+            E_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1.clone(),
+            E_IDM_ACP_PEOPLE_READ_PRIV_V1.clone(),
+            E_IDM_ACP_PEOPLE_WRITE_PRIV_V1.clone(),
+            E_IDM_ACP_PEOPLE_MANAGE_PRIV_V1.clone(),
+            E_IDM_ACP_ACCOUNT_READ_PRIV_V1.clone(),
+            E_IDM_ACP_ACCOUNT_WRITE_PRIV_V1.clone(),
+            E_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1.clone(),
+            E_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1.clone(),
+            E_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1.clone(),
+            E_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1.clone(),
+            E_IDM_ACP_GROUP_WRITE_PRIV_V1.clone(),
+            E_IDM_ACP_GROUP_MANAGE_PRIV_V1.clone(),
+            E_IDM_ACP_HP_GROUP_WRITE_PRIV_V1.clone(),
+            E_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1.clone(),
+            E_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1.clone(),
+            E_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1.clone(),
+            E_IDM_ACP_ACP_MANAGE_PRIV_V1.clone(),
+            E_IDM_ACP_RADIUS_SERVERS_V1.clone(),
+            E_IDM_ACP_DOMAIN_ADMIN_PRIV_V1.clone(),
+            E_IDM_ACP_SYSTEM_CONFIG_PRIV_V1.clone(),
+            E_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1.clone(),
+            E_IDM_ACP_PEOPLE_EXTEND_PRIV_V1.clone(),
+            E_IDM_ACP_HP_PEOPLE_READ_PRIV_V1.clone(),
+            E_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1.clone(),
+            E_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1.clone(),
+            E_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1.clone(),
+            E_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1.clone(),
+            E_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
+            E_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
+            E_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1.clone(),
+            E_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1.clone(),
+            E_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1.clone(),
+            E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1.clone(),
+            E_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1.clone(),
             E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES.clone(),
             E_IDM_ACCOUNT_MAIL_READ_PRIV.clone(),
             E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),

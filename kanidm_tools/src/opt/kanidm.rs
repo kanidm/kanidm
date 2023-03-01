@@ -715,6 +715,9 @@ pub enum PwBadlistOpt {
         copt: CommonOpt,
         #[clap(parse(from_os_str))]
         paths: Vec<PathBuf>,
+        /// Perform a dry run and display the list that would have been uploaded instead.
+        #[clap(short = 'n', long)]
+        dryrun: bool,
     },
     #[clap[name = "remove", hide = true]]
     /// Remove the content of these lists if present in the configured

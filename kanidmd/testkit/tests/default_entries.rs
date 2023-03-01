@@ -244,7 +244,7 @@ async fn test_read_attrs(rsclient: &KanidmClient, id: &str, attrs: &[&str], is_r
 async fn test_write_attrs(rsclient: &KanidmClient, id: &str, attrs: &[&str], is_writeable: bool) {
     println!("Test write to {}, is writeable: {}", id, is_writeable);
     for attr in attrs.iter() {
-        println!("Writing to {}", attr);
+        println!("Writing to {} - ex {}", attr, is_writeable);
         let is_ok = is_attr_writable(rsclient, id, attr).await.unwrap();
         assert!(is_ok == is_writeable)
     }

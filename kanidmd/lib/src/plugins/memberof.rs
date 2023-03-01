@@ -113,9 +113,6 @@ fn apply_memberof(
     while !group_affect.is_empty() {
         group_affect.sort();
         group_affect.dedup();
-        // Prep the write lists
-        let mut pre_candidates = Vec::with_capacity(group_affect.len());
-        let mut candidates = Vec::with_capacity(group_affect.len());
 
         // Ignore recycled/tombstones
         let filt = filter!(FC::Or(
@@ -125,10 +122,12 @@ fn apply_memberof(
                 .collect()
         ));
 
-        let mut work_set = qs.internal_search_writeable(&filt)?;
+        let work_set = qs.internal_search_writeable(&filt)?;
         // Load the vecdeque with this batch.
 
-        while let Some((pre, mut tgte)) = work_set.pop() {
+        let mut changes = Vec::with_capacity(work_set.len());
+
+        for (pre, mut tgte) in work_set.into_iter() {
             let guuid = pre.get_uuid();
             // load the entry from the db.
             if !tgte.attribute_equality("class", &PVCLASS_GROUP) {
@@ -160,28 +159,24 @@ fn apply_memberof(
                 };
 
                 // push the entries to pre/cand
-                pre_candidates.push(pre);
-                candidates.push(tgte);
+                changes.push((pre, tgte));
             } else {
                 trace!("{:?} stable", guuid);
             }
         }
 
-        debug_assert!(pre_candidates.len() == candidates.len());
         // Write this stripe if populated.
-        if !pre_candidates.is_empty() {
-            qs.internal_apply_writable(pre_candidates, candidates)
-                .map_err(|e| {
-                    admin_error!("Failed to commit memberof group set {:?}", e);
-                    e
-                })?;
+        if !changes.is_empty() {
+            qs.internal_apply_writable(changes).map_err(|e| {
+                admin_error!("Failed to commit memberof group set {:?}", e);
+                e
+            })?;
         }
         // Next loop!
     }
 
     // ALL GROUP MOS + DMOS ARE NOW STABLE. We can load these into other items directly.
-    let mut pre_candidates = Vec::with_capacity(other_cache.len());
-    let mut candidates = Vec::with_capacity(other_cache.len());
+    let mut changes = Vec::with_capacity(other_cache.len());
 
     other_cache
         .into_iter()
@@ -193,15 +188,14 @@ fn apply_memberof(
             if pre.get_ava_set("memberof") != tgte.get_ava_set("memberof")
                 || pre.get_ava_set("directmemberof") != tgte.get_ava_set("directmemberof")
             {
-                pre_candidates.push(pre);
-                candidates.push(tgte);
+                changes.push((pre, tgte));
             }
             Ok(())
         })?;
 
     // Turn the other_cache into a write set.
     // Write the batch out in a single stripe.
-    qs.internal_apply_writable(pre_candidates, candidates)
+    qs.internal_apply_writable(changes)
     // Done! 🎉
 }
 

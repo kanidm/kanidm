@@ -21,9 +21,9 @@ pub const JSON_ADMIN_V1: &str = r#"{
 
 lazy_static! {
     pub static ref E_ADMIN_V1: EntryInitNew = entry_init!(
-        ("class", CLASS_OBJECT.clone()),
-        ("class", CLASS_MEMBEROF.clone()),
         ("class", CLASS_ACCOUNT.clone()),
+        ("class", CLASS_MEMBEROF.clone()),
+        ("class", CLASS_OBJECT.clone()),
         ("class", CLASS_SERVICE_ACCOUNT.clone()),
         ("name", Value::new_iname("admin")),
         ("uuid", Value::Uuid(UUID_ADMIN)),
@@ -35,38 +35,52 @@ lazy_static! {
     );
 }
 
-/// Builtin IDM Admin account.
-pub const JSON_IDM_ADMIN_V1: &str = r#"{
-    "attrs": {
-        "class": ["account", "service_account", "memberof", "object"],
-        "name": ["idm_admin"],
-        "uuid": ["00000000-0000-0000-0000-000000000018"],
-        "description": ["Builtin IDM Admin account."],
-        "displayname": ["IDM Administrator"]
-    }
-}"#;
+lazy_static! {
+    /// Builtin IDM Admin account.
+    pub static ref E_IDM_ADMIN_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_ACCOUNT.clone()),
+        ("class", CLASS_MEMBEROF.clone()),
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_SERVICE_ACCOUNT.clone()),
+        ("name", Value::new_iname("idm_admin")),
+        ("uuid", Value::Uuid(UUID_IDM_ADMIN)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Admin account.")
+        ),
+        ("displayname", Value::new_utf8s("IDM Administrator"))
+    );
+}
 
-/// Builtin IDM Administrators Group.
-pub const JSON_IDM_ADMINS_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["idm_admins"],
-        "uuid": ["00000000-0000-0000-0000-000000000001"],
-        "description": ["Builtin IDM Administrators Group."],
-        "member": ["00000000-0000-0000-0000-000000000018"]
-    }
-}"#;
+lazy_static! {
+    /// Builtin IDM Administrators Group.
+    pub static ref E_IDM_ADMINS_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_GROUP.clone()),
+        ("class", CLASS_OBJECT.clone()),
+        ("name", Value::new_iname("idm_admins")),
+        ("uuid", Value::Uuid(UUID_IDM_ADMINS)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Administrators Group.")
+        ),
+        ("member", Value::Refer(UUID_IDM_ADMIN))
+    );
+}
 
-/// Builtin System Administrators Group.
-pub const JSON_SYSTEM_ADMINS_V1: &str = r#"{
-    "attrs": {
-        "class": ["group", "object"],
-        "name": ["system_admins"],
-        "uuid": ["00000000-0000-0000-0000-000000000019"],
-        "description": ["Builtin System Administrators Group."],
-        "member": ["00000000-0000-0000-0000-000000000000"]
-    }
-}"#;
+lazy_static! {
+    /// Builtin System Administrators Group.
+    pub static ref E_SYSTEM_ADMINS_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_GROUP.clone()),
+        ("class", CLASS_OBJECT.clone()),
+        ("name", Value::new_iname("system_admins")),
+        ("uuid", Value::Uuid(UUID_SYSTEM_ADMINS)),
+        (
+            "description",
+            Value::new_utf8s("Builtin System Administrators Group.")
+        ),
+        ("member", Value::Refer(UUID_ADMIN))
+    );
+}
 
 // * People read managers
 /// Builtin IDM Group for granting elevated people (personal data) read permissions.
@@ -560,23 +574,33 @@ pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
     }
 }"#;
 
-pub const JSON_SYSTEM_INFO_V1: &str = r#"{
-    "attrs": {
-        "class": ["object", "system_info", "system"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000001"],
-        "description": ["System (local) info and metadata object."],
-        "version": ["12"]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_SYSTEM_INFO_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_SYSTEM_INFO.clone()),
+        ("class", CLASS_SYSTEM.clone()),
+        ("uuid", Value::Uuid(UUID_SYSTEM_INFO)),
+        (
+            "description",
+            Value::new_utf8s("System (local) info and metadata object.")
+        ),
+        ("version", Value::Uint32(12))
+    );
+}
 
-pub const JSON_DOMAIN_INFO_V1: &str = r#"{
-    "attrs": {
-        "class": ["object", "domain_info", "system"],
-        "name": ["domain_local"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000025"],
-        "description": ["This local domain's info and metadata object."]
-    }
-}"#;
+lazy_static! {
+    pub static ref E_DOMAIN_INFO_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_DOMAIN_INFO.clone()),
+        ("class", CLASS_SYSTEM.clone()),
+        ("name", Value::new_iname("domain_local")),
+        ("uuid", Value::Uuid(UUID_DOMAIN_INFO)),
+        (
+            "description",
+            Value::new_utf8s("This local domain's info and metadata object.")
+        )
+    );
+}
 
 // Anonymous should be the last object in the range here.
 pub const JSON_ANONYMOUS_V1: &str = r#"{

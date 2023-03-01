@@ -155,19 +155,15 @@ impl Plugin for ReferentialIntegrity {
             .map(|e| PartialValue::Refer(e.get_uuid()))
             .collect();
 
-        let work_set = qs.internal_search_writeable(&filt)?;
+        let mut work_set = qs.internal_search_writeable(&filt)?;
 
-        let (pre_candidates, candidates) = work_set
-            .into_iter()
-            .map(|(pre, mut post)| {
-                ref_types
-                    .values()
-                    .for_each(|attr| post.remove_avas(attr.name.as_str(), &removed_ids));
-                (pre, post)
-            })
-            .unzip();
+        work_set.iter_mut().for_each(|(_, post)| {
+            ref_types
+                .values()
+                .for_each(|attr| post.remove_avas(attr.name.as_str(), &removed_ids));
+        });
 
-        qs.internal_apply_writable(pre_candidates, candidates)
+        qs.internal_apply_writable(work_set)
     }
 
     #[instrument(level = "debug", name = "verify", skip(qs))]
