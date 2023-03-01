@@ -4,10 +4,10 @@ lto = "thin"
 
 [workspace]
 members = [
-    "iam_migrations/freeipa",
     "client",
     "proto",
     "tools/kanidm_tools",
+    "tools/iam_migrations/freeipa",
     "unix_integration",
     "unix_integration/nss_kanidm",
     "unix_integration/pam_kanidm",
