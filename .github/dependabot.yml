@@ -2,7 +2,7 @@
 version: 2
 updates:
   - package-ecosystem: pip
-    directory: "/kanidm_rlm_python"
+    directory: "/rlm_python"
     schedule:
       interval: weekly
       time: "06:00"
@@ -37,35 +37,35 @@ updates:
       timezone: Australia/Brisbane
     open-pull-requests-limit: 99
   - package-ecosystem: cargo
-    directory: "/kanidmd/idm"
+    directory: "/server/core"
     schedule:
       interval: weekly
       time: "06:00"
       timezone: Australia/Brisbane
     open-pull-requests-limit: 99
   - package-ecosystem: cargo
-    directory: "/kanidmd/score"
+    directory: "/server/score"
     schedule:
       interval: weekly
       time: "06:00"
       timezone: Australia/Brisbane
     open-pull-requests-limit: 99
   - package-ecosystem: cargo
-    directory: "/kanidmd/daemon"
+    directory: "/server/daemon"
     schedule:
       interval: weekly
       time: "06:00"
       timezone: Australia/Brisbane
     open-pull-requests-limit: 99
   - package-ecosystem: cargo
-    directory: "/kanidm_tools"
+    directory: "/tools/cli"
     schedule:
       interval: weekly
       time: "06:00"
       timezone: Australia/Brisbane
     open-pull-requests-limit: 99
   - package-ecosystem: cargo
-    directory: "/kanidmd_web_ui"
+    directory: "/server/web_ui"
     schedule:
       interval: weekly
       time: "06:00"

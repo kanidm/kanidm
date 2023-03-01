@@ -244,5 +244,5 @@ cert/clean:
 	rm -f /tmp/kanidm/ca.{cnf,srl,srl.old}
 
 .PHONY: webui
-webui: ## Build the WASM web frontent
+webui: ## Build the WASM web frontend
 	cd kanidmd_web_ui && ./build_wasm_release.sh

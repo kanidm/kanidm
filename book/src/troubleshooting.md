@@ -61,7 +61,7 @@ curl -vk https://idm.example.com:8443/status
 
 ## Client errors
 
-When you recieve a client error it will list an "Operation ID" sometimes also called the OpId or
+When you receive a client error it will list an "Operation ID" sometimes also called the OpId or
 KOpId. This UUID matches to the UUID's in the logs allowing you to precisely locate the server logs
 related to the failing operation.
 
