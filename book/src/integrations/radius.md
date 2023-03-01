@@ -66,8 +66,8 @@ For an account to use RADIUS they must first generate a RADIUS secret unique to 
 default, all accounts can self-create this secret.
 
 ```bash
-kanidm person radius generate_secret --name william william
-kanidm person radius show_secret --name william william
+kanidm person radius generate-secret --name william william
+kanidm person radius show-secret --name william william
 ```
 
 ## Account Group Configuration

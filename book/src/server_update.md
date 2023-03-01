@@ -1,5 +1,19 @@
 # Updating the Server
 
+Docker doesn't follow a "traditional" method of updates. Rather you remove the old version of the
+container and recreate it with a newer version. This document will help walk you through that
+process.
+
+<!-- deno-fmt-ignore-start -->
+
+{{#template templates/kani-alert.md
+imagepath=images
+title=Tip
+text=You should have documented and preserved your kanidm container create / run command from the server preparation guide. If not, you'll need to use "docker inspect" to work out how to recreate these parameters.
+}}
+
+<!-- deno-fmt-ignore-end -->
+
 ## Preserving the Previous Image
 
 You may wish to preserve the previous image before updating. This is useful if an issue is
@@ -12,11 +26,12 @@ docker tag kanidm/server:latest kanidm/server:2022-10-24
 
 ## Update your Image
 
-Pull the latest version of Kanidm that matches your CPU profile
+Pull the latest version of Kanidm.
 
 ```bash
 docker pull kanidm/server:latest
-docker pull kanidm/server:x86_64_latest
+docker pull kanidm/radius:latest
+docker pull kanidm/tools:latest
 ```
 
 ## Perform a backup
@@ -30,13 +45,13 @@ See [backup and restore](backup_restore.md)
 {{#template templates/kani-warning.md
 imagepath=images
 title=WARNING
-text=It is not always guaranteed that downgrades are possible. It is critical you know how to backup and restore before you proceed with this step.
+text=Downgrades are not possible. It is critical you know how to backup and restore before you proceed with this step.
 }}
 
 <!-- deno-fmt-ignore-end -->
 
-Docker updates by deleting and recreating the instance. All that needs to be preserved in your
-storage volume.
+Docker updates by deleting and recreating the instance. All that needs to be preserved is contained
+in your storage volume.
 
 ```bash
 docker stop <previous instance name>
@@ -49,10 +64,11 @@ docker run --rm -i -t -v kanidmd:/data \
     kanidm/server:latest /sbin/kanidmd configtest -c /data/server.toml
 ```
 
-You can then follow through with the upgrade
+You can then follow through with the upgrade by running the create / run command with your existing
+volume.
 
 ```bash
-docker run -p PORTS -v kanidmd:/data \
+docker run [Your Arguments Here] -v kanidmd:/data \
     OTHER_CUSTOM_OPTIONS \
     kanidm/server:latest
 ```
@@ -76,5 +92,4 @@ If you deleted the previous instance, you can recreate it from your preserved ta
 docker run -p ports -v volumes kanidm/server:<DATE>
 ```
 
-In some cases the downgrade to the previous instance may not work. If the server from your previous
-version fails to start, you may need to restore from backup.
+If the server from your previous version fails to start, you will need to restore from backup.

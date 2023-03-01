@@ -71,7 +71,7 @@ RUN \
         pam
 
 COPY --from=builder /usr/src/kanidm/target/release/kanidmd /sbin/
-COPY --from=builder /usr/src/kanidm/kanidmd_web_ui/pkg /pkg
+COPY --from=builder /usr/src/kanidm/server/web_ui/pkg /pkg
 RUN chmod +x /sbin/kanidmd
 
 EXPOSE 8443 3636

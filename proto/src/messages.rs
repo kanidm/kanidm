@@ -154,7 +154,7 @@ impl fmt::Display for AccountChangeMessage {
             ),
             ConsoleOutputMode::Text => write!(
                 f,
-                "{} - {} for user {}: {}",
+                "{} - {} for {}: {}",
                 self.status, self.action, self.dest_user, self.result,
             ),
         }

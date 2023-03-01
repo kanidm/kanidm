@@ -1,10 +1,10 @@
 # LDAP
 
 While many applications can support external authentication and identity services through Oauth2,
-not all services can. Lightweight Directory Access Protocol (LDAP) has been the "lingua franca" of
-authentication for many years, with almost every application in the world being able to search and
-bind to LDAP. As many organisations still rely on LDAP, Kanidm can host a read-only LDAP interface
-for these legacy applications.
+not all services can. Lightweight Directory Access Protocol (LDAP) has been the "universal language"
+of authentication for many years, with almost every application in the world being able to search
+and bind to LDAP. As many organisations still rely on LDAP, Kanidm can host a read-only LDAP
+interface for these legacy applications and services.
 
 <!-- deno-fmt-ignore-start -->
 
@@ -56,8 +56,7 @@ consuming applications.
 ### TLS
 
 StartTLS is not supported due to security risks. LDAPS is the only secure method of communicating to
-any LDAP server. Kanidm, when configured with certificates, will use them for LDAPS (and will not
-listen on a plaintext LDAP port).
+any LDAP server. Kanidm will use it's certificates for both HTTPS and LDAPS.
 
 ### Writes
 
@@ -69,8 +68,8 @@ contains. As a result, writes are rejected for all users via the LDAP interface.
 LDAP only supports password authentication. As LDAP is used heavily in POSIX environments the LDAP
 bind for any DN will use its configured posix password.
 
-As the POSIX password is not equivalent in strength to the primary credentials of Kanidm (which may
-be multi-factor authentication, MFA), the LDAP bind does not grant rights to elevated read
+As the POSIX password is not equivalent in strength to the primary credentials of Kanidm (which in
+most cases is multi-factor authentication), the LDAP bind does not grant rights to elevated read
 permissions. All binds have the permissions of "Anonymous" even if the anonymous account is locked.
 
 The exception is service accounts which can use api-tokens during an LDAP bind for elevated read
