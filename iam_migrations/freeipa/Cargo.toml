@@ -22,7 +22,6 @@ tokio = { workspace = true, features = ["rt", "macros", "net"] }
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 
-users.workspace = true
 
 ldap3_client.workspace = true
 serde = { workspace = true, features = ["derive"] }
@@ -33,6 +32,9 @@ uuid = { workspace = true, features = ["serde"] }
 
 # For file metadata, should this me moved out?
 kanidmd_lib.workspace = true
+
+[target.'cfg(target_family = "unix")'.dependencies]
+users.workspace = true
 
 [build-dependencies]
 clap = { workspace = true, features = ["derive"] }
