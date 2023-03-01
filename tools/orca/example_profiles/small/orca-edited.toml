@@ -1,0 +1,21 @@
+name = "Orca Small Example"
+data = "data.json"
+results = "/tmp/small_results"
+
+[ds_config]
+uri = "ldaps://172.24.20.4:49153"
+base_dn = "dc=example,dc=com"
+dm_pw = "ds9n539EaYtD2CsGOUATsOUeyFy4OZVPAN6jEEm.WP52NVz7j.VLhAVG5twbcaSoa"
+
+[kani_http_config]
+uri = "https://172.24.20.4:8443"
+admin_pw = "YWySv7W65D1Zq001jgT1zxg5TEsz6ex80MQ9EKDG7t0RrQU0"
+
+[kani_ldap_config]
+uri = "https://172.24.20.4:8443"
+ldap_uri = "ldaps://172.24.20.4:3636"
+admin_pw = "YWySv7W65D1Zq001jgT1zxg5TEsz6ex80MQ9EKDG7t0RrQU0"
+base_dn = "dc=example,dc=com"
+
+# [search_basic_config]
+

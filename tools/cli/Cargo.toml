@@ -1,0 +1,64 @@
+[package]
+name = "kanidm_tools"
+default-run = "kanidm"
+description = "Kanidm Client Tools"
+documentation = "https://kanidm.github.io/kanidm/stable/"
+
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[features]
+default = ["unix"]
+unix = []
+
+[lib]
+name = "kanidm_cli"
+path = "src/cli/lib.rs"
+
+[[bin]]
+name = "kanidm"
+path = "src/cli/main.rs"
+doc = false
+
+[[bin]]
+name = "kanidm_ssh_authorizedkeys_direct"
+path = "src/ssh_authorizedkeys.rs"
+
+[dependencies]
+clap = { workspace = true, features = ["derive", "env"] }
+compact_jwt = { workspace = true, features = ["openssl"] }
+dialoguer.workspace = true
+futures-concurrency.workspace = true
+libc.workspace = true
+kanidm_client.workspace = true
+kanidm_proto.workspace = true
+qrcode = { workspace = true, default-features = false }
+rpassword.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+shellexpand.workspace = true
+time = { workspace = true, features = ["serde", "std"] }
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
+tokio = { workspace = true, features = ["rt", "macros"] }
+url = { workspace = true, features = ["serde"] }
+uuid.workspace = true
+zxcvbn.workspace = true
+
+[build-dependencies]
+clap = { workspace = true, features = ["derive"] }
+clap_complete.workspace = true
+uuid.workspace = true
+
+[target."cfg(target_os = \"windows\")".dependencies.webauthn-authenticator-rs]
+workspace = true
+features = ["win10"]
+
+[target."cfg(not(any(target_os = \"windows\")))".dependencies.webauthn-authenticator-rs]
+workspace = true
+features = ["u2fhid"]

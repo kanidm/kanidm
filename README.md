@@ -52,7 +52,7 @@ See our [code of conduct]
 See our documentation on [rights and ethics]
 
 [code of conduct]: https://github.com/kanidm/kanidm/blob/master/CODE_OF_CONDUCT.md
-[rights and ethics]: https://github.com/kanidm/kanidm/blob/master/ethics/README.md
+[rights and ethics]: https://github.com/kanidm/kanidm/blob/master/project_docs/ethics/README.md
 
 ## Getting in Contact / Questions
 

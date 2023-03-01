@@ -1,0 +1,93 @@
+[package]
+name = "kanidm_unix_int"
+description = "Kanidm Unix Integration Clients"
+documentation = "https://docs.rs/kanidm/latest/kanidm/"
+
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[features]
+default = ["unix"]
+unix = []
+
+[[bin]]
+name = "kanidm_unixd"
+path = "src/daemon.rs"
+required-features = ["unix"]
+
+[[bin]]
+name = "kanidm_unixd_tasks"
+path = "src/tasks_daemon.rs"
+required-features = ["unix"]
+
+[[bin]]
+name = "kanidm_ssh_authorizedkeys"
+path = "src/ssh_authorizedkeys.rs"
+required-features = ["unix"]
+
+[[bin]]
+name = "kanidm_cache_invalidate"
+path = "src/cache_invalidate.rs"
+required-features = ["unix"]
+
+[[bin]]
+name = "kanidm_cache_clear"
+path = "src/cache_clear.rs"
+required-features = ["unix"]
+
+[[bin]]
+name = "kanidm_unixd_status"
+path =  "src/daemon_status.rs"
+required-features = ["unix"]
+
+[[bin]]
+name = "kanidm_test_auth"
+path =  "src/test_auth.rs"
+required-features = ["unix"]
+
+[lib]
+name = "kanidm_unix_common"
+path = "src/lib.rs"
+
+[dependencies]
+bytes.workspace = true
+clap = { workspace = true, features = ["derive", "env"] }
+futures.workspace = true
+libc.workspace = true
+libsqlite3-sys.workspace = true
+lru.workspace = true
+kanidm_client.workspace = true
+kanidm_proto.workspace = true
+kanidm_lib_crypto.workspace = true
+kanidm_lib_file_permissions.workspace = true
+
+r2d2.workspace = true
+r2d2_sqlite.workspace = true
+rpassword.workspace = true
+rusqlite.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sketching.workspace = true
+
+toml.workspace = true
+tokio = { workspace = true, features = ["rt", "macros", "sync", "time", "net", "io-util"] }
+tokio-util = { workspace = true, features = ["codec"] }
+tracing.workspace = true
+reqwest = { workspace = true, default-features = false }
+walkdir.workspace = true
+
+[target.'cfg(not(target_family = "windows"))'.dependencies]
+users.workspace = true
+
+[dev-dependencies]
+kanidmd_core.workspace = true
+
+[build-dependencies]
+clap = { workspace = true, features = ["derive"] }
+clap_complete.workspace = true
+profiles.workspace = true

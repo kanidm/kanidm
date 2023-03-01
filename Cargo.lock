@@ -1152,9 +1152,9 @@ version = "1.1.0-alpha.12-dev"
 dependencies = [
  "clap",
  "clap_complete",
+ "kanidm_lib_file_permissions",
  "kanidm_proto",
  "kanidmd_core",
- "kanidmd_lib",
  "profiles",
  "reqwest",
  "serde",
@@ -2271,6 +2271,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "kanidm_lib_crypto"
+version = "0.1.0"
+dependencies = [
+ "base64 0.13.1",
+ "base64urlsafedata",
+ "hex",
+ "kanidm_proto",
+ "openssl",
+ "openssl-sys",
+ "rand 0.8.5",
+ "serde",
+ "sketching",
+ "tracing",
+]
+
+[[package]]
+name = "kanidm_lib_file_permissions"
+version = "0.1.0"
+dependencies = [
+ "users",
+ "whoami",
+]
+
+[[package]]
 name = "kanidm_proto"
 version = "1.1.0-alpha.12-dev"
 dependencies = [
@@ -2325,9 +2349,10 @@ dependencies = [
  "clap_complete",
  "futures",
  "kanidm_client",
+ "kanidm_lib_crypto",
+ "kanidm_lib_file_permissions",
  "kanidm_proto",
  "kanidmd_core",
- "kanidmd_lib",
  "libc",
  "libsqlite3-sys",
  "lru 0.8.1",
@@ -2398,8 +2423,8 @@ dependencies = [
  "futures",
  "futures-util",
  "hashbrown",
- "hex",
  "idlset",
+ "kanidm_lib_crypto",
  "kanidm_proto",
  "kanidmd_lib_macros",
  "lazy_static",
@@ -2948,18 +2973,18 @@ dependencies = [
 
 [[package]]
 name = "num_enum"
-version = "0.5.10"
+version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e0072973714303aa6e3631c7e8e777970cf4bdd25dc4932e41031027b8bcc4e"
+checksum = "1f646caf906c20226733ed5b1374287eb97e3c2a5c227ce668c1f2ce20ae57c9"
 dependencies = [
  "num_enum_derive",
 ]
 
 [[package]]
 name = "num_enum_derive"
-version = "0.5.10"
+version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0629cbd6b897944899b1f10496d9c4a7ac5878d45fd61bc22e9e79bfbbc29597"
+checksum = "dcbff9bc912032c62bf65ef1d5aea88983b420f4f839db1e9b0c281a25c9c799"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
