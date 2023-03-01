@@ -1230,23 +1230,23 @@
     }
 
     <span class="kw">pub fn </span>from_dbvs2(data: Vec&lt;DbValueSession&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
-        <span class="kw">let </span>map = data
-            .into_iter()
-            .filter_map(|dbv| {
-                <span class="kw">match </span>dbv {
-                    <span class="comment">// MISTAKE - Skip due to lack of credential id
-                    // Don&#39;t actually skip, generate a random cred id. Session cleanup will
-                    // trim sessions on users, but if we skip blazenly we invalidate every api
-                    // token ever issued. OOPS!
-                    </span>DbValueSession::V1 {
-                        refer,
-                        label,
-                        expiry,
-                        issued_at,
-                        issued_by,
-                        scope,
-                    } =&gt; {
-                        <span class="kw">let </span>cred_id = Uuid::new_v4();
+        <span class="kw">let </span>map =
+            data.into_iter()
+                .filter_map(|dbv| {
+                    <span class="kw">match </span>dbv {
+                        <span class="comment">// MISTAKE - Skip due to lack of credential id
+                        // Don&#39;t actually skip, generate a random cred id. Session cleanup will
+                        // trim sessions on users, but if we skip blazenly we invalidate every api
+                        // token ever issued. OOPS!
+                        </span>DbValueSession::V1 {
+                            refer,
+                            label,
+                            expiry,
+                            issued_at,
+                            issued_by,
+                            scope,
+                        } =&gt; {
+                            <span class="kw">let </span>cred_id = Uuid::new_v4();
 
                             <span class="comment">// Convert things.
                             </span><span class="kw">let </span>issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)

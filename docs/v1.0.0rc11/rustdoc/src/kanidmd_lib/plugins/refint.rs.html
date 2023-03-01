@@ -893,10 +893,6 @@
 <a href="#893" id="893">893</a>
 <a href="#894" id="894">894</a>
 <a href="#895" id="895">895</a>
-<a href="#896" id="896">896</a>
-<a href="#897" id="897">897</a>
-<a href="#898" id="898">898</a>
-<a href="#899" id="899">899</a>
 </pre><pre class="rust"><code><span class="comment">// Referential Integrity
 //
 // Given an entry, modification or change, ensure that all referential links
@@ -1054,19 +1050,15 @@
             .map(|e| PartialValue::Refer(e.get_uuid()))
             .collect();
 
-        <span class="kw">let </span>work_set = qs.internal_search_writeable(<span class="kw-2">&amp;</span>filt)<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>work_set = qs.internal_search_writeable(<span class="kw-2">&amp;</span>filt)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>(pre_candidates, candidates) = work_set
-            .into_iter()
-            .map(|(pre, <span class="kw-2">mut </span>post)| {
-                ref_types
-                    .values()
-                    .for_each(|attr| post.remove_avas(attr.name.as_str(), <span class="kw-2">&amp;</span>removed_ids));
-                (pre, post)
-            })
-            .unzip();
+        work_set.iter_mut().for_each(|(<span class="kw">_</span>, post)| {
+            ref_types
+                .values()
+                .for_each(|attr| post.remove_avas(attr.name.as_str(), <span class="kw-2">&amp;</span>removed_ids));
+        });
 
-        qs.internal_apply_writable(pre_candidates, candidates)
+        qs.internal_apply_writable(work_set)
     }
 
     <span class="attr">#[instrument(level = <span class="string">&quot;debug&quot;</span>, name = <span class="string">&quot;verify&quot;</span>, skip(qs))]

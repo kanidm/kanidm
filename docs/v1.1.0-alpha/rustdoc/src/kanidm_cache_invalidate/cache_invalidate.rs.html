@@ -55,6 +55,10 @@
 <a href="#55" id="55">55</a>
 <a href="#56" id="56">56</a>
 <a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
 </pre><pre class="rust"><code><span class="attr">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -84,6 +88,10 @@
     <span class="kw">let </span>opt = CacheInvalidateOpt::parse();
     <span class="kw">if </span>opt.debug {
         ::std::env::set_var(<span class="string">&quot;RUST_LOG&quot;</span>, <span class="string">&quot;kanidm=debug,kanidm_client=debug&quot;</span>);
+    }
+    <span class="kw">if </span>opt.version {
+        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, kanidm_proto::utils::get_version(<span class="string">&quot;kanidm_cache_invalidate&quot;</span>));
+        std::process::exit(<span class="number">0</span>);
     }
     sketching::tracing_subscriber::fmt::init();
 

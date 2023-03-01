@@ -816,17 +816,6 @@
 <a href="#816" id="816">816</a>
 <a href="#817" id="817">817</a>
 <a href="#818" id="818">818</a>
-<a href="#819" id="819">819</a>
-<a href="#820" id="820">820</a>
-<a href="#821" id="821">821</a>
-<a href="#822" id="822">822</a>
-<a href="#823" id="823">823</a>
-<a href="#824" id="824">824</a>
-<a href="#825" id="825">825</a>
-<a href="#826" id="826">826</a>
-<a href="#827" id="827">827</a>
-<a href="#828" id="828">828</a>
-<a href="#829" id="829">829</a>
 </pre><pre class="rust"><code><span class="kw">use </span>kanidm_proto::v1::SchemaError;
 <span class="kw">use </span>std::time::Duration;
 
@@ -1172,7 +1161,7 @@
     </span><span class="attr">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip_all)]
     </span><span class="kw">pub fn </span>migrate_11_to_12(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
         <span class="macro">admin_warn!</span>(<span class="string">&quot;starting 11 to 12 migration.&quot;</span>);
-            <span class="comment">// sync_token_session
+        <span class="comment">// sync_token_session
         </span><span class="kw">let </span>filter = <span class="macro">filter!</span>(<span class="macro">f_or!</span>([
             f_pres(<span class="string">&quot;api_token_session&quot;</span>),
             f_pres(<span class="string">&quot;sync_token_session&quot;</span>),
@@ -1194,41 +1183,32 @@
 
         </span><span class="kw">for </span>(<span class="kw">_</span>, ent) <span class="kw">in </span>mod_candidates.iter_mut() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(api_token_session) = ent.pop_ava(<span class="string">&quot;api_token_session&quot;</span>) {
-                <span class="kw">let </span>api_token_session = api_token_session.migrate_session_to_apitoken()
-                    .map_err(|e| {
-                        <span class="macro">error!</span>(<span class="string">&quot;Failed to convert api_token_session from session -&gt; apitoken&quot;</span>);
-                        e
-                    })<span class="question-mark">?</span>;
+                <span class="kw">let </span>api_token_session =
+                    api_token_session
+                        .migrate_session_to_apitoken()
+                        .map_err(|e| {
+                            <span class="macro">error!</span>(<span class="string">&quot;Failed to convert api_token_session from session -&gt; apitoken&quot;</span>);
+                            e
+                        })<span class="question-mark">?</span>;
 
-                ent.set_ava_set(
-                    <span class="string">&quot;api_token_session&quot;</span>,
-                    api_token_session);
+                ent.set_ava_set(<span class="string">&quot;api_token_session&quot;</span>, api_token_session);
             }
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>(sync_token_session) = ent.pop_ava(<span class="string">&quot;sync_token_session&quot;</span>) {
-                <span class="kw">let </span>sync_token_session = sync_token_session.migrate_session_to_apitoken()
-                    .map_err(|e| {
-                        <span class="macro">error!</span>(<span class="string">&quot;Failed to convert sync_token_session from session -&gt; apitoken&quot;</span>);
-                        e
-                    })<span class="question-mark">?</span>;
+                <span class="kw">let </span>sync_token_session =
+                    sync_token_session
+                        .migrate_session_to_apitoken()
+                        .map_err(|e| {
+                            <span class="macro">error!</span>(<span class="string">&quot;Failed to convert sync_token_session from session -&gt; apitoken&quot;</span>);
+                            e
+                        })<span class="question-mark">?</span>;
 
-                ent.set_ava_set(
-                    <span class="string">&quot;sync_token_session&quot;</span>,
-                    sync_token_session);
+                ent.set_ava_set(<span class="string">&quot;sync_token_session&quot;</span>, sync_token_session);
             }
-        };
-
-        <span class="kw">let </span>(
-            pre_candidates,
-            candidates
-        ) = mod_candidates
-            .into_iter()
-            .unzip();
+        }
 
         <span class="comment">// Apply the batch mod.
-        </span><span class="self">self</span>.internal_apply_writable(
-            pre_candidates, candidates
-        )
+        </span><span class="self">self</span>.internal_apply_writable(mod_candidates)
     }
 
     <span class="attr">#[instrument(level = <span class="string">&quot;info&quot;</span>, skip_all)]
@@ -1341,9 +1321,9 @@
         // and details. It&#39;s a pretty const thing. Also check anonymous, important to many
         // concepts.
         </span><span class="kw">let </span>res = <span class="self">self
-            </span>.internal_migrate_or_create_str(JSON_SYSTEM_INFO_V1)
-            .and_then(|<span class="kw">_</span>| <span class="self">self</span>.internal_migrate_or_create_str(JSON_DOMAIN_INFO_V1))
-            .and_then(|<span class="kw">_</span>| <span class="self">self</span>.internal_migrate_or_create_str(JSON_SYSTEM_CONFIG_V1));
+            </span>.internal_migrate_or_create(E_SYSTEM_INFO_V1.clone())
+            .and_then(|<span class="kw">_</span>| <span class="self">self</span>.internal_migrate_or_create(E_DOMAIN_INFO_V1.clone()))
+            .and_then(|<span class="kw">_</span>| <span class="self">self</span>.internal_migrate_or_create(E_SYSTEM_CONFIG_V1.clone()));
         <span class="kw">if </span>res.is_err() {
             <span class="macro">admin_error!</span>(<span class="string">&quot;initialise_idm p1 -&gt; result {:?}&quot;</span>, res);
         }
@@ -1356,16 +1336,16 @@
         // Check the admin object exists (migrations).
         // Create the default idm_admin group.
         </span><span class="kw">let </span>admin_entries = [
-            JSON_ANONYMOUS_V1,
-            JSON_ADMIN_V1,
-            JSON_IDM_ADMIN_V1,
-            JSON_IDM_ADMINS_V1,
-            JSON_SYSTEM_ADMINS_V1,
+            E_ANONYMOUS_V1.clone(),
+            E_ADMIN_V1.clone(),
+            E_IDM_ADMIN_V1.clone(),
+            E_IDM_ADMINS_V1.clone(),
+            E_SYSTEM_ADMINS_V1.clone(),
         ];
         <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(), <span class="kw">_</span>&gt; = admin_entries
-            .iter()
+            .into_iter()
             <span class="comment">// Each item individually logs it&#39;s result
-            </span>.try_for_each(|e_str| <span class="self">self</span>.internal_migrate_or_create_str(e_str));
+            </span>.try_for_each(|ent| <span class="self">self</span>.internal_migrate_or_create(ent));
         <span class="kw">if </span>res.is_err() {
             <span class="macro">admin_error!</span>(<span class="string">&quot;initialise_idm p2 -&gt; result {:?}&quot;</span>, res);
         }
@@ -1415,48 +1395,6 @@
             JSON_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
             <span class="comment">// All members must exist before we write HP
             </span>JSON_IDM_HIGH_PRIVILEGE_V1,
-            <span class="comment">// Built in access controls.
-            </span>JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1,
-            JSON_IDM_ADMINS_ACP_REVIVE_V1,
-            <span class="comment">// JSON_IDM_ADMINS_ACP_MANAGE_V1,
-            </span>JSON_IDM_ALL_ACP_READ_V1,
-            JSON_IDM_SELF_ACP_READ_V1,
-            JSON_IDM_SELF_ACP_WRITE_V1,
-            JSON_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_READ_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_GROUP_WRITE_PRIV_V1,
-            JSON_IDM_ACP_GROUP_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1,
-            JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1,
-            JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_RADIUS_SERVERS_V1,
-            JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1,
-            JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1,
-            JSON_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1,
-            JSON_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1,
-            JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1,
-            JSON_IDM_ACP_ACP_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1,
-            JSON_IDM_ACP_SYSTEM_CONFIG_PRIV_V1,
-            JSON_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
-            JSON_IDM_ACP_PEOPLE_EXTEND_PRIV_V1,
-            JSON_IDM_ACP_HP_PEOPLE_READ_PRIV_V1,
-            JSON_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1,
-            JSON_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1,
-            JSON_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1,
-            JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1,
-            JSON_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1,
-            JSON_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1,
-            JSON_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1,
-            <span class="comment">// JSON_IDM_ACP_OAUTH2_READ_PRIV_V1,
-            </span>JSON_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1,
         ];
 
         <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;(), <span class="kw">_</span>&gt; = idm_entries
@@ -1471,6 +1409,46 @@
         res<span class="question-mark">?</span>;
 
         <span class="kw">let </span>idm_entries = [
+            <span class="comment">// Built in access controls.
+            </span>E_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1.clone(),
+            E_IDM_ADMINS_ACP_REVIVE_V1.clone(),
+            E_IDM_ALL_ACP_READ_V1.clone(),
+            E_IDM_SELF_ACP_READ_V1.clone(),
+            E_IDM_SELF_ACP_WRITE_V1.clone(),
+            E_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1.clone(),
+            E_IDM_ACP_PEOPLE_READ_PRIV_V1.clone(),
+            E_IDM_ACP_PEOPLE_WRITE_PRIV_V1.clone(),
+            E_IDM_ACP_PEOPLE_MANAGE_PRIV_V1.clone(),
+            E_IDM_ACP_ACCOUNT_READ_PRIV_V1.clone(),
+            E_IDM_ACP_ACCOUNT_WRITE_PRIV_V1.clone(),
+            E_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1.clone(),
+            E_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1.clone(),
+            E_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1.clone(),
+            E_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1.clone(),
+            E_IDM_ACP_GROUP_WRITE_PRIV_V1.clone(),
+            E_IDM_ACP_GROUP_MANAGE_PRIV_V1.clone(),
+            E_IDM_ACP_HP_GROUP_WRITE_PRIV_V1.clone(),
+            E_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1.clone(),
+            E_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1.clone(),
+            E_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1.clone(),
+            E_IDM_ACP_ACP_MANAGE_PRIV_V1.clone(),
+            E_IDM_ACP_RADIUS_SERVERS_V1.clone(),
+            E_IDM_ACP_DOMAIN_ADMIN_PRIV_V1.clone(),
+            E_IDM_ACP_SYSTEM_CONFIG_PRIV_V1.clone(),
+            E_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1.clone(),
+            E_IDM_ACP_PEOPLE_EXTEND_PRIV_V1.clone(),
+            E_IDM_ACP_HP_PEOPLE_READ_PRIV_V1.clone(),
+            E_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1.clone(),
+            E_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1.clone(),
+            E_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1.clone(),
+            E_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1.clone(),
+            E_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
+            E_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1.clone(),
+            E_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1.clone(),
+            E_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1.clone(),
+            E_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1.clone(),
+            E_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1.clone(),
+            E_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1.clone(),
             E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES.clone(),
             E_IDM_ACCOUNT_MAIL_READ_PRIV.clone(),
             E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),

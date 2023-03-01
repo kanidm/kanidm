@@ -157,6 +157,18 @@
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
 <a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::PwBadlistOpt;
 <span class="kw">use </span>futures_concurrency::prelude::<span class="kw-2">*</span>;
 <span class="comment">// use std::thread;
@@ -190,8 +202,11 @@
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, e),
                 }
             }
-            PwBadlistOpt::Upload { copt, paths } =&gt; {
-                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+            PwBadlistOpt::Upload {
+                copt,
+                paths,
+                dryrun,
+            } =&gt; {
                 <span class="macro">info!</span>(<span class="string">&quot;pre-processing - this may take a while ...&quot;</span>);
 
                 <span class="kw">let </span><span class="kw-2">mut </span>pwset: Vec&lt;String&gt; = Vec::new();
@@ -260,19 +275,28 @@
 
                 <span class="kw">let </span>results = task_handles.join().<span class="kw">await</span>;
 
-                <span class="kw">let </span>filt_pwset: Vec&lt;<span class="kw">_</span>&gt; = results
+                <span class="kw">let </span><span class="kw-2">mut </span>filt_pwset: Vec&lt;<span class="kw">_</span>&gt; = results
                     .into_iter()
                     .flat_map(|res| res.expect(<span class="string">&quot;Thread join failure&quot;</span>))
                     .collect();
+
+                filt_pwset.sort_unstable();
 
                 <span class="macro">info!</span>(
                     <span class="string">&quot;{} passwords passed zxcvbn, uploading ...&quot;</span>,
                     filt_pwset.len()
                 );
 
-                <span class="kw">match </span>client.system_password_badlist_append(filt_pwset).<span class="kw">await </span>{
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
-                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, e),
+                <span class="kw">if </span><span class="kw-2">*</span>dryrun {
+                    <span class="kw">for </span>pw <span class="kw">in </span>filt_pwset {
+                        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, pw);
+                    }
+                } <span class="kw">else </span>{
+                    <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">match </span>client.system_password_badlist_append(filt_pwset).<span class="kw">await </span>{
+                        <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                        <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, e),
+                    }
                 }
             } <span class="comment">// End Upload
             </span>PwBadlistOpt::Remove { copt, paths } =&gt; {

@@ -1586,12 +1586,6 @@
 <a href="#1586" id="1586">1586</a>
 <a href="#1587" id="1587">1587</a>
 <a href="#1588" id="1588">1588</a>
-<a href="#1589" id="1589">1589</a>
-<a href="#1590" id="1590">1590</a>
-<a href="#1591" id="1591">1591</a>
-<a href="#1592" id="1592">1592</a>
-<a href="#1593" id="1593">1593</a>
-<a href="#1594" id="1594">1594</a>
 </pre><pre class="rust"><code><span class="comment">// Member Of
 //
 // Generate reverse relationships for groups to their members.
@@ -1707,9 +1701,6 @@
     <span class="kw">while </span>!group_affect.is_empty() {
         group_affect.sort();
         group_affect.dedup();
-        <span class="comment">// Prep the write lists
-        </span><span class="kw">let </span><span class="kw-2">mut </span>pre_candidates = Vec::with_capacity(group_affect.len());
-        <span class="kw">let </span><span class="kw-2">mut </span>candidates = Vec::with_capacity(group_affect.len());
 
         <span class="comment">// Ignore recycled/tombstones
         </span><span class="kw">let </span>filt = <span class="macro">filter!</span>(FC::Or(
@@ -1719,10 +1710,12 @@
                 .collect()
         ));
 
-        <span class="kw">let </span><span class="kw-2">mut </span>work_set = qs.internal_search_writeable(<span class="kw-2">&amp;</span>filt)<span class="question-mark">?</span>;
+        <span class="kw">let </span>work_set = qs.internal_search_writeable(<span class="kw-2">&amp;</span>filt)<span class="question-mark">?</span>;
         <span class="comment">// Load the vecdeque with this batch.
 
-        </span><span class="kw">while let </span><span class="prelude-val">Some</span>((pre, <span class="kw-2">mut </span>tgte)) = work_set.pop() {
+        </span><span class="kw">let </span><span class="kw-2">mut </span>changes = Vec::with_capacity(work_set.len());
+
+        <span class="kw">for </span>(pre, <span class="kw-2">mut </span>tgte) <span class="kw">in </span>work_set.into_iter() {
             <span class="kw">let </span>guuid = pre.get_uuid();
             <span class="comment">// load the entry from the db.
             </span><span class="kw">if </span>!tgte.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_GROUP) {
@@ -1754,28 +1747,24 @@
                 };
 
                 <span class="comment">// push the entries to pre/cand
-                </span>pre_candidates.push(pre);
-                candidates.push(tgte);
+                </span>changes.push((pre, tgte));
             } <span class="kw">else </span>{
                 <span class="macro">trace!</span>(<span class="string">&quot;{:?} stable&quot;</span>, guuid);
             }
         }
 
-        <span class="macro">debug_assert!</span>(pre_candidates.len() == candidates.len());
         <span class="comment">// Write this stripe if populated.
-        </span><span class="kw">if </span>!pre_candidates.is_empty() {
-            qs.internal_apply_writable(pre_candidates, candidates)
-                .map_err(|e| {
-                    <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to commit memberof group set {:?}&quot;</span>, e);
-                    e
-                })<span class="question-mark">?</span>;
+        </span><span class="kw">if </span>!changes.is_empty() {
+            qs.internal_apply_writable(changes).map_err(|e| {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to commit memberof group set {:?}&quot;</span>, e);
+                e
+            })<span class="question-mark">?</span>;
         }
         <span class="comment">// Next loop!
     </span>}
 
     <span class="comment">// ALL GROUP MOS + DMOS ARE NOW STABLE. We can load these into other items directly.
-    </span><span class="kw">let </span><span class="kw-2">mut </span>pre_candidates = Vec::with_capacity(other_cache.len());
-    <span class="kw">let </span><span class="kw-2">mut </span>candidates = Vec::with_capacity(other_cache.len());
+    </span><span class="kw">let </span><span class="kw-2">mut </span>changes = Vec::with_capacity(other_cache.len());
 
     other_cache
         .into_iter()
@@ -1787,15 +1776,14 @@
             </span><span class="kw">if </span>pre.get_ava_set(<span class="string">&quot;memberof&quot;</span>) != tgte.get_ava_set(<span class="string">&quot;memberof&quot;</span>)
                 || pre.get_ava_set(<span class="string">&quot;directmemberof&quot;</span>) != tgte.get_ava_set(<span class="string">&quot;directmemberof&quot;</span>)
             {
-                pre_candidates.push(pre);
-                candidates.push(tgte);
+                changes.push((pre, tgte));
             }
             <span class="prelude-val">Ok</span>(())
         })<span class="question-mark">?</span>;
 
     <span class="comment">// Turn the other_cache into a write set.
     // Write the batch out in a single stripe.
-    </span>qs.internal_apply_writable(pre_candidates, candidates)
+    </span>qs.internal_apply_writable(changes)
     <span class="comment">// Done! 🎉
 </span>}
 

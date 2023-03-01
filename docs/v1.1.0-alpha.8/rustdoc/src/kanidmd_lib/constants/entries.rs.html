@@ -639,6 +639,30 @@
 <a href="#639" id="639">639</a>
 <a href="#640" id="640">640</a>
 <a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
+<a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::constants::uuids::<span class="kw-2">*</span>;
 <span class="doccomment">///! Constant Entries for the IDM
 </span><span class="kw">use </span><span class="kw">crate</span>::constants::values::<span class="kw-2">*</span>;
@@ -662,9 +686,9 @@
 
 <span class="macro">lazy_static! </span>{
     <span class="kw">pub static </span><span class="kw-2">ref </span>E_ADMIN_V1: EntryInitNew = <span class="macro">entry_init!</span>(
-        (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
-        (<span class="string">&quot;class&quot;</span>, CLASS_MEMBEROF.clone()),
         (<span class="string">&quot;class&quot;</span>, CLASS_ACCOUNT.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_MEMBEROF.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
         (<span class="string">&quot;class&quot;</span>, CLASS_SERVICE_ACCOUNT.clone()),
         (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;admin&quot;</span>)),
         (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_ADMIN)),
@@ -676,38 +700,52 @@
     );
 }
 
-<span class="doccomment">/// Builtin IDM Admin account.
-</span><span class="kw">pub const </span>JSON_IDM_ADMIN_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
-    &quot;attrs&quot;: {
-        &quot;class&quot;: [&quot;account&quot;, &quot;service_account&quot;, &quot;memberof&quot;, &quot;object&quot;],
-        &quot;name&quot;: [&quot;idm_admin&quot;],
-        &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-000000000018&quot;],
-        &quot;description&quot;: [&quot;Builtin IDM Admin account.&quot;],
-        &quot;displayname&quot;: [&quot;IDM Administrator&quot;]
-    }
-}&quot;#</span>;
+<span class="macro">lazy_static! </span>{
+    <span class="doccomment">/// Builtin IDM Admin account.
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>E_IDM_ADMIN_V1: EntryInitNew = <span class="macro">entry_init!</span>(
+        (<span class="string">&quot;class&quot;</span>, CLASS_ACCOUNT.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_MEMBEROF.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_SERVICE_ACCOUNT.clone()),
+        (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;idm_admin&quot;</span>)),
+        (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_IDM_ADMIN)),
+        (
+            <span class="string">&quot;description&quot;</span>,
+            Value::new_utf8s(<span class="string">&quot;Builtin IDM Admin account.&quot;</span>)
+        ),
+        (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;IDM Administrator&quot;</span>))
+    );
+}
 
-<span class="doccomment">/// Builtin IDM Administrators Group.
-</span><span class="kw">pub const </span>JSON_IDM_ADMINS_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
-    &quot;attrs&quot;: {
-        &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
-        &quot;name&quot;: [&quot;idm_admins&quot;],
-        &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-000000000001&quot;],
-        &quot;description&quot;: [&quot;Builtin IDM Administrators Group.&quot;],
-        &quot;member&quot;: [&quot;00000000-0000-0000-0000-000000000018&quot;]
-    }
-}&quot;#</span>;
+<span class="macro">lazy_static! </span>{
+    <span class="doccomment">/// Builtin IDM Administrators Group.
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>E_IDM_ADMINS_V1: EntryInitNew = <span class="macro">entry_init!</span>(
+        (<span class="string">&quot;class&quot;</span>, CLASS_GROUP.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
+        (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;idm_admins&quot;</span>)),
+        (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_IDM_ADMINS)),
+        (
+            <span class="string">&quot;description&quot;</span>,
+            Value::new_utf8s(<span class="string">&quot;Builtin IDM Administrators Group.&quot;</span>)
+        ),
+        (<span class="string">&quot;member&quot;</span>, Value::Refer(UUID_IDM_ADMIN))
+    );
+}
 
-<span class="doccomment">/// Builtin System Administrators Group.
-</span><span class="kw">pub const </span>JSON_SYSTEM_ADMINS_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
-    &quot;attrs&quot;: {
-        &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
-        &quot;name&quot;: [&quot;system_admins&quot;],
-        &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-000000000019&quot;],
-        &quot;description&quot;: [&quot;Builtin System Administrators Group.&quot;],
-        &quot;member&quot;: [&quot;00000000-0000-0000-0000-000000000000&quot;]
-    }
-}&quot;#</span>;
+<span class="macro">lazy_static! </span>{
+    <span class="doccomment">/// Builtin System Administrators Group.
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>E_SYSTEM_ADMINS_V1: EntryInitNew = <span class="macro">entry_init!</span>(
+        (<span class="string">&quot;class&quot;</span>, CLASS_GROUP.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
+        (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;system_admins&quot;</span>)),
+        (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_SYSTEM_ADMINS)),
+        (
+            <span class="string">&quot;description&quot;</span>,
+            Value::new_utf8s(<span class="string">&quot;Builtin System Administrators Group.&quot;</span>)
+        ),
+        (<span class="string">&quot;member&quot;</span>, Value::Refer(UUID_ADMIN))
+    );
+}
 
 <span class="comment">// * People read managers
 </span><span class="doccomment">/// Builtin IDM Group for granting elevated people (personal data) read permissions.
@@ -1201,23 +1239,33 @@
     }
 }&quot;#</span>;
 
-<span class="kw">pub const </span>JSON_SYSTEM_INFO_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
-    &quot;attrs&quot;: {
-        &quot;class&quot;: [&quot;object&quot;, &quot;system_info&quot;, &quot;system&quot;],
-        &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000001&quot;],
-        &quot;description&quot;: [&quot;System (local) info and metadata object.&quot;],
-        &quot;version&quot;: [&quot;12&quot;]
-    }
-}&quot;#</span>;
+<span class="macro">lazy_static! </span>{
+    <span class="kw">pub static </span><span class="kw-2">ref </span>E_SYSTEM_INFO_V1: EntryInitNew = <span class="macro">entry_init!</span>(
+        (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_SYSTEM_INFO.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_SYSTEM.clone()),
+        (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_SYSTEM_INFO)),
+        (
+            <span class="string">&quot;description&quot;</span>,
+            Value::new_utf8s(<span class="string">&quot;System (local) info and metadata object.&quot;</span>)
+        ),
+        (<span class="string">&quot;version&quot;</span>, Value::Uint32(<span class="number">12</span>))
+    );
+}
 
-<span class="kw">pub const </span>JSON_DOMAIN_INFO_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{
-    &quot;attrs&quot;: {
-        &quot;class&quot;: [&quot;object&quot;, &quot;domain_info&quot;, &quot;system&quot;],
-        &quot;name&quot;: [&quot;domain_local&quot;],
-        &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000025&quot;],
-        &quot;description&quot;: [&quot;This local domain&#39;s info and metadata object.&quot;]
-    }
-}&quot;#</span>;
+<span class="macro">lazy_static! </span>{
+    <span class="kw">pub static </span><span class="kw-2">ref </span>E_DOMAIN_INFO_V1: EntryInitNew = <span class="macro">entry_init!</span>(
+        (<span class="string">&quot;class&quot;</span>, CLASS_OBJECT.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_DOMAIN_INFO.clone()),
+        (<span class="string">&quot;class&quot;</span>, CLASS_SYSTEM.clone()),
+        (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;domain_local&quot;</span>)),
+        (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(UUID_DOMAIN_INFO)),
+        (
+            <span class="string">&quot;description&quot;</span>,
+            Value::new_utf8s(<span class="string">&quot;This local domain&#39;s info and metadata object.&quot;</span>)
+        )
+    );
+}
 
 <span class="comment">// Anonymous should be the last object in the range here.
 </span><span class="kw">pub const </span>JSON_ANONYMOUS_V1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;{

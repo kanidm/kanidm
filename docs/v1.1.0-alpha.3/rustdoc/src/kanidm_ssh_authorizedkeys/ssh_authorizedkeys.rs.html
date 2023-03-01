@@ -72,6 +72,10 @@
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
 </pre><pre class="rust"><code><span class="attr">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -103,6 +107,10 @@
     <span class="kw">let </span>opt = SshAuthorizedOpt::parse();
     <span class="kw">if </span>opt.debug {
         ::std::env::set_var(<span class="string">&quot;RUST_LOG&quot;</span>, <span class="string">&quot;kanidm=debug,kanidm_client=debug&quot;</span>);
+    }
+    <span class="kw">if </span>opt.version {
+        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, kanidm_proto::utils::get_version(<span class="string">&quot;kanidm_ssh_authorizedkeys&quot;</span>));
+        std::process::exit(<span class="number">0</span>);
     }
     sketching::tracing_subscriber::fmt::init();
 

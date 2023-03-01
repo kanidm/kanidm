@@ -248,6 +248,11 @@
 <a href="#248" id="248">248</a>
 <a href="#249" id="249">249</a>
 <a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
 </pre><pre class="rust"><code><span class="attr">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![allow(clippy::unwrap_used)]
@@ -298,6 +303,7 @@
             OrcaOpt::PreProc(opt) =&gt; opt.copt.debug,
             OrcaOpt::Setup(opt) =&gt; opt.copt.debug,
             OrcaOpt::Run(opt) =&gt; opt.copt.debug,
+            OrcaOpt::Version(opt) =&gt; opt.debug,
         }
     }
 }
@@ -481,6 +487,10 @@
     <span class="macro">info!</span>(<span class="string">&quot;Orca - the Kanidm Load Testing Utility.&quot;</span>);
     <span class="macro">debug!</span>(<span class="string">&quot;cli -&gt; {:?}&quot;</span>, opt);
     <span class="kw">match </span>opt {
+        OrcaOpt::Version(_opt) =&gt; {
+            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, kanidm_proto::utils::get_version(<span class="string">&quot;orca&quot;</span>));
+            std::process::exit(<span class="number">0</span>);
+        }
         OrcaOpt::TestConnection(opt) =&gt; {
             <span class="kw">let _ </span>= conntest(<span class="kw-2">&amp;</span>opt.target, <span class="kw-2">&amp;</span>opt.profile_path).<span class="kw">await</span>;
         }

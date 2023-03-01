@@ -902,6 +902,9 @@
 <a href="#902" id="902">902</a>
 <a href="#903" id="903">903</a>
 <a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
 </pre><pre class="rust"><code><span class="kw">use </span>clap::{Args, Subcommand};
 
 <span class="attr">#[derive(Debug, Args)]
@@ -1619,6 +1622,9 @@
         </span>copt: CommonOpt,
         <span class="attr">#[clap(parse(from_os_str))]
         </span>paths: Vec&lt;PathBuf&gt;,
+        <span class="doccomment">/// Perform a dry run and display the list that would have been uploaded instead.
+        </span><span class="attr">#[clap(short = <span class="string">&#39;n&#39;</span>, long)]
+        </span>dryrun: bool,
     },
     <span class="attr">#[clap[name = <span class="string">&quot;remove&quot;</span>, hide = <span class="bool-val">true</span>]</span>]
     <span class="doccomment">/// Remove the content of these lists if present in the configured
