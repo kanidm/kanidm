@@ -217,6 +217,7 @@ async fn main() {
                 if kanidm_lib_file_permissions::readonly(&i_meta) {
                     eprintln!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
                 }
+                #[cfg(not(target_os="windows"))]
                 if i_meta.mode() & 0o007 != 0 {
                     eprintln!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
                 }
@@ -266,6 +267,7 @@ async fn main() {
                             if !kanidm_lib_file_permissions::readonly(&i_meta) {
                                 eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
                             }
+                            #[cfg(not(target_os="windows"))]
                             if i_meta.mode() & 0o007 != 0 {
                                 eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...", i_str);
                             }
