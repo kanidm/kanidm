@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidm_tools/src/cli/../opt/kanidm.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>kanidm.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-6827029ac823cab7.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-ebce58d0a40c3431.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-f23faae4a2daf9a6.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-8af5e100b21cd173.css"><script id="default-settings" ></script><script src="../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-c55e1eb52e1886b4.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../kanidm_cli/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `tools/cli/src/cli/../opt/kanidm.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>kanidm.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-6827029ac823cab7.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-ebce58d0a40c3431.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-f23faae4a2daf9a6.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-8af5e100b21cd173.css"><script id="default-settings" ></script><script src="../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-c55e1eb52e1886b4.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../kanidm_cli/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -979,20 +979,20 @@
     </span><span class="attr">#[clap(name = <span class="string">&quot;delete&quot;</span>)]
     </span>Delete(Named),
     <span class="doccomment">/// List the members of a group
-    </span><span class="attr">#[clap(name = <span class="string">&quot;list_members&quot;</span>)]
+    </span><span class="attr">#[clap(name = <span class="string">&quot;list-members&quot;</span>)]
     </span>ListMembers(Named),
     <span class="doccomment">/// Set the exact list of members that this group should contain, removing any not listed in the
     /// set operation.
-    </span><span class="attr">#[clap(name = <span class="string">&quot;set_members&quot;</span>)]
+    </span><span class="attr">#[clap(name = <span class="string">&quot;set-members&quot;</span>)]
     </span>SetMembers(GroupNamedMembers),
     <span class="doccomment">/// Delete all members of a group.
-    </span><span class="attr">#[clap(name = <span class="string">&quot;purge_members&quot;</span>)]
+    </span><span class="attr">#[clap(name = <span class="string">&quot;purge-members&quot;</span>)]
     </span>PurgeMembers(Named),
     <span class="doccomment">/// Add new members to a group
-    </span><span class="attr">#[clap(name = <span class="string">&quot;add_members&quot;</span>)]
+    </span><span class="attr">#[clap(name = <span class="string">&quot;add-members&quot;</span>)]
     </span>AddMembers(GroupNamedMembers),
     <span class="doccomment">/// Remove the named members from this group
-    </span><span class="attr">#[clap(name = <span class="string">&quot;remove_members&quot;</span>)]
+    </span><span class="attr">#[clap(name = <span class="string">&quot;remove-members&quot;</span>)]
     </span>RemoveMembers(GroupNamedMembers),
     <span class="doccomment">/// Manage posix extensions for this group allowing groups to be used on unix/linux systems
     </span><span class="attr">#[clap(name = <span class="string">&quot;posix&quot;</span>)]
@@ -1075,7 +1075,7 @@
 </span><span class="kw">pub struct </span>AccountCreateOpt {
     <span class="attr">#[clap(flatten)]
     </span>aopts: AccountCommonOpt,
-    <span class="attr">#[clap(name = <span class="string">&quot;display_name&quot;</span>)]
+    <span class="attr">#[clap(name = <span class="string">&quot;display-name&quot;</span>)]
     </span>display_name: String,
     <span class="attr">#[clap(flatten)]
     </span>copt: CommonOpt,
@@ -1090,11 +1090,11 @@
     </span><span class="attr">#[clap(name = <span class="string">&quot;update&quot;</span>)]
     </span>Update(AccountNamedOpt),
     <span class="doccomment">/// Using a reset token, interactively reset credentials for a user
-    </span><span class="attr">#[clap(name = <span class="string">&quot;use_reset_token&quot;</span>)]
+    </span><span class="attr">#[clap(name = <span class="string">&quot;use-reset-token&quot;</span>)]
     </span>UseResetToken(UseResetTokenOpt),
     <span class="doccomment">/// Create a reset token that can be given to another person so they can
     /// recover or reset their account credentials.
-    </span><span class="attr">#[clap(name = <span class="string">&quot;create_reset_token&quot;</span>)]
+    </span><span class="attr">#[clap(name = <span class="string">&quot;create-reset-token&quot;</span>)]
     </span>CreateResetToken(AccountNamedOpt),
 }
 
@@ -1102,12 +1102,12 @@
 </span><span class="attr">#[derive(Debug, Subcommand)]
 </span><span class="kw">pub enum </span>AccountRadius {
     <span class="doccomment">/// Show the RADIUS secret for a user.
-    </span><span class="attr">#[clap(name = <span class="string">&quot;show_secret&quot;</span>)]
+    </span><span class="attr">#[clap(name = <span class="string">&quot;show-secret&quot;</span>)]
     </span>Show(AccountNamedOpt),
     <span class="doccomment">/// Generate a randomized RADIUS secret for a user.
-    </span><span class="attr">#[clap(name = <span class="string">&quot;generate_secret&quot;</span>)]
+    </span><span class="attr">#[clap(name = <span class="string">&quot;generate-secret&quot;</span>)]
     </span>Generate(AccountNamedOpt),
-    <span class="attr">#[clap(name = <span class="string">&quot;delete_secret&quot;</span>)]
+    <span class="attr">#[clap(name = <span class="string">&quot;delete-secret&quot;</span>)]
     </span><span class="doccomment">/// Remove the configured RADIUS secret for the user.
     </span>DeleteSecret(AccountNamedOpt),
 }
@@ -1130,7 +1130,7 @@
     </span>Show(AccountNamedOpt),
     <span class="attr">#[clap(name = <span class="string">&quot;set&quot;</span>)]
     </span>Set(AccountPosixOpt),
-    <span class="attr">#[clap(name = <span class="string">&quot;set_password&quot;</span>)]
+    <span class="attr">#[clap(name = <span class="string">&quot;set-password&quot;</span>)]
     </span>SetPassword(AccountNamedOpt),
 }
 
@@ -1164,11 +1164,11 @@
 
 <span class="attr">#[derive(Debug, Subcommand)]
 </span><span class="kw">pub enum </span>AccountSsh {
-    <span class="attr">#[clap(name = <span class="string">&quot;list_publickeys&quot;</span>)]
+    <span class="attr">#[clap(name = <span class="string">&quot;list-publickeys&quot;</span>)]
     </span>List(AccountNamedOpt),
-    <span class="attr">#[clap(name = <span class="string">&quot;add_publickey&quot;</span>)]
+    <span class="attr">#[clap(name = <span class="string">&quot;add-publickey&quot;</span>)]
     </span>Add(AccountNamedTagPkOpt),
-    <span class="attr">#[clap(name = <span class="string">&quot;delete_publickey&quot;</span>)]
+    <span class="attr">#[clap(name = <span class="string">&quot;delete-publickey&quot;</span>)]
     </span>Delete(AccountNamedTagOpt),
 }
 
@@ -1178,10 +1178,10 @@
     </span><span class="attr">#[clap(name = <span class="string">&quot;show&quot;</span>)]
     </span>Show(AccountNamedOpt),
     <span class="doccomment">/// Set an accounts expiry time
-    </span><span class="attr">#[clap(name = <span class="string">&quot;expire_at&quot;</span>)]
+    </span><span class="attr">#[clap(name = <span class="string">&quot;expire-at&quot;</span>)]
     </span>ExpireAt(AccountNamedExpireDateTimeOpt),
     <span class="doccomment">/// Set an account valid from time
-    </span><span class="attr">#[clap(name = <span class="string">&quot;begin_from&quot;</span>)]
+    </span><span class="attr">#[clap(name = <span class="string">&quot;begin-from&quot;</span>)]
     </span>BeginFrom(AccountNamedValidDateTimeOpt),
 }
 
@@ -1199,7 +1199,7 @@
         <span class="attr">#[clap(flatten)]
         </span>copt: CommonOpt,
         <span class="doccomment">/// The UUID of the token to destroy.
-        </span><span class="attr">#[clap(name = <span class="string">&quot;session_id&quot;</span>)]
+        </span><span class="attr">#[clap(name = <span class="string">&quot;session-id&quot;</span>)]
         </span>session_id: Uuid,
     },
 }
@@ -1302,7 +1302,7 @@
         <span class="attr">#[clap(flatten)]
         </span>copt: CommonOpt,
         <span class="doccomment">/// The UUID of the token to destroy.
-        </span><span class="attr">#[clap(name = <span class="string">&quot;token_id&quot;</span>)]
+        </span><span class="attr">#[clap(name = <span class="string">&quot;token-id&quot;</span>)]
         </span>token_id: Uuid,
     },
 }
@@ -1534,7 +1534,7 @@
     <span class="attr">#[clap(name = <span class="string">&quot;update-scope-map&quot;</span>, visible_aliases=<span class="kw-2">&amp;</span>[<span class="string">&quot;create-scope-map&quot;</span>]</span>)]
     <span class="doccomment">/// Update or add a new mapping from a group to scopes that it provides to members
     </span>UpdateScopeMap(Oauth2CreateScopeMapOpt),
-    <span class="attr">#[clap(name = <span class="string">&quot;delete_scope_map&quot;</span>)]
+    <span class="attr">#[clap(name = <span class="string">&quot;delete-scope-map&quot;</span>)]
     </span><span class="doccomment">/// Remove a mapping from groups to scopes
     </span>DeleteScopeMap(Oauth2DeleteScopeMapOpt),
 
@@ -1573,7 +1573,7 @@
     </span>SetLandingUrl {
         <span class="attr">#[clap(flatten)]
         </span>nopt: Named,
-        <span class="attr">#[clap(name = <span class="string">&quot;landing_url&quot;</span>)]
+        <span class="attr">#[clap(name = <span class="string">&quot;landing-url&quot;</span>)]
         </span>url: String,
     },
     <span class="attr">#[clap(name = <span class="string">&quot;enable-pkce&quot;</span>)]
@@ -1603,7 +1603,7 @@
 </span><span class="kw">pub struct </span>OptSetDomainDisplayName {
     <span class="attr">#[clap(flatten)]
     </span>copt: CommonOpt,
-    <span class="attr">#[clap(name = <span class="string">&quot;new_display_Name&quot;</span>)]
+    <span class="attr">#[clap(name = <span class="string">&quot;new-display-name&quot;</span>)]
     </span>new_display_name: String,
 }
 
@@ -1639,13 +1639,13 @@
 
 <span class="attr">#[derive(Debug, Subcommand)]
 </span><span class="kw">pub enum </span>DomainOpt {
-    <span class="attr">#[clap[name = <span class="string">&quot;set_domain_display_name&quot;</span>]</span>]
+    <span class="attr">#[clap[name = <span class="string">&quot;set-domain-display-name&quot;</span>]</span>]
     <span class="doccomment">/// Set the domain display name
     </span>SetDomainDisplayName(OptSetDomainDisplayName),
     <span class="attr">#[clap(name = <span class="string">&quot;show&quot;</span>)]
     </span><span class="doccomment">/// Show information about this system&#39;s domain
     </span>Show(CommonOpt),
-    <span class="attr">#[clap(name = <span class="string">&quot;reset_token_key&quot;</span>)]
+    <span class="attr">#[clap(name = <span class="string">&quot;reset-token-key&quot;</span>)]
     </span><span class="doccomment">/// Reset this domain token signing key. This will cause all user sessions to be
     /// invalidated (logged out).
     </span>ResetTokenKey(CommonOpt),
