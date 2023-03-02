@@ -3,7 +3,7 @@
 ### Setup the Server
 
 It's important before you start trying to write code and contribute that you understand
-what Kanidm does and it's goals.
+what Kanidm does and its goals.
 
 An important first step is to [install the server](installing_the_server.md) so if you have
 not done that yet, go and try that now! 😄
