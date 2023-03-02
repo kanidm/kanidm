@@ -3209,40 +3209,29 @@ affect target entries.</li>
 it's members to affect the target entries.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h2 id="getting-started-for-developers"><a class="header" href="#getting-started-for-developers">Getting Started (for Developers)</a></h2>
-<h3 id="designs"><a class="header" href="#designs">Designs</a></h3>
-<p>See the <a href="https://github.com/kanidm/kanidm/tree/master/designs">designs</a> folder, and compile the private documentation locally:</p>
-<pre><code class="language-bash">cargo doc --document-private-items --open --no-deps
-</code></pre>
-<h3 id="rust-documentation"><a class="header" href="#rust-documentation">Rust Documentation</a></h3>
-<p>A list of links to the library documentation is at
-<a href="https://kanidm.com/documentation/">kanidm.com/documentation</a>.</p>
-<h3 id="minimum-supported-rust-version"><a class="header" href="#minimum-supported-rust-version">Minimum Supported Rust Version</a></h3>
-<p>The MSRV is specified in the package <code>Cargo.toml</code> files.</p>
-<h3 id="build-profiles"><a class="header" href="#build-profiles">Build Profiles</a></h3>
-<p>Setting different developer profiles while building is done by setting the environment variable
-<code>KANIDM_BUILD_PROFILE</code> to one of the bare filename of the TOML files in <code>/profiles</code>.</p>
-<p>For example, this will set the CPU flags to &quot;none&quot; and the location for the Web UI files to
-<code>/usr/share/kanidm/ui/pkg</code>:</p>
-<pre><code class="language-bash">KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd
-</code></pre>
-<h3 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h3>
+<h3 id="setup-the-server"><a class="header" href="#setup-the-server">Setup the Server</a></h3>
+<p>It's important before you start trying to write code and contribute that you understand what Kanidm
+does and its goals.</p>
+<p>An important first step is to <a href="installing_the_server.html">install the server</a> so if you have not done
+that yet, go and try that now! 😄</p>
+<h3 id="setting-up-your-machine"><a class="header" href="#setting-up-your-machine">Setting up your Machine</a></h3>
+<p>Each operating system has different steps required to configure and build Kanidm.</p>
 <h4 id="macos"><a class="header" href="#macos">MacOS</a></h4>
+<p>A prerequisite is <a href="https://apps.apple.com/au/app/xcode/id497799835?mt=12">Apple Xcode</a> for access to
+git and compiler tools. You should install this first.</p>
 <p>You will need <a href="https://rustup.rs/">rustup</a> to install a Rust toolchain.</p>
-<h4 id="suse"><a class="header" href="#suse">SUSE</a></h4>
-<p>You will need <a href="https://rustup.rs/">rustup</a> to install a Rust toolchain. If you're using the
-Tumbleweed release, it's packaged in <code>zypper</code>.</p>
-<p>You will also need some system libraries to build this:</p>
-<pre><code class="language-text">libudev-devel sqlite3-devel libopenssl-devel
+<h4 id="suse--opensuse-1"><a class="header" href="#suse--opensuse-1">SUSE / OpenSUSE</a></h4>
+<p>You will need to install rustup and our build dependencies with:</p>
+<pre><code class="language-bash">zypper in rustup git libudev-devel sqlite3-devel libopenssl-3-devel
 </code></pre>
+<p>You can then use rustup to complete the setup of the toolchain.</p>
 <h4 id="fedora"><a class="header" href="#fedora">Fedora</a></h4>
-<p>You need to install the Rust toolchain packages:</p>
-<pre><code class="language-bash">rust cargo
-</code></pre>
+<p>You will need <a href="https://rustup.rs/">rustup</a> to install a Rust toolchain.</p>
 <p>You will also need some system libraries to build this:</p>
 <pre><code class="language-text">systemd-devel sqlite-devel openssl-devel pam-devel
 </code></pre>
 <p>Building the Web UI requires additional packages:</p>
-<pre><code class="language-text">perl-FindBin perl-File-Compare rust-std-static-wasm32-unknown-unknown
+<pre><code class="language-text">perl-FindBin perl-File-Compare
 </code></pre>
 <h4 id="ubuntu"><a class="header" href="#ubuntu">Ubuntu</a></h4>
 <p>You need <a href="https://rustup.rs/">rustup</a> to install a Rust toolchain.</p>
@@ -3251,6 +3240,17 @@ Tumbleweed release, it's packaged in <code>zypper</code>.</p>
 </code></pre>
 <p>Tested with Ubuntu 20.04 and 22.04.</p>
 <h4 id="windows"><a class="header" href="#windows">Windows</a></h4>
+<!-- deno-fmt-ignore-start -->
+<table>
+<tr>
+    <td rowspan=2><img src="images/kani-warning.png" alt="Kani Warning" /></td>
+    <td><strong>NOTICE</strong></td>
+    </tr>
+<tr>
+    <td>Our support for Windows is still in development, so you may encounter some compilation or build issues.</td>
+</tr>
+</table>
+<!-- deno-fmt-ignore-end -->
 <p>You need <a href="https://rustup.rs/">rustup</a> to install a Rust toolchain.</p>
 <p>An easy way to grab the dependencies is to install
 <a href="https://vcpkg.io/en/getting-started.html">vcpkg</a>.</p>
@@ -3268,15 +3268,16 @@ dependencies, including perl for the build.</li>
 </code></pre>
 <p>There's a powershell script in the root directory of the repository which, in concert with <code>openssl</code>
 will generate a config file and certs for testing.</p>
+<h3 id="getting-the-source-code"><a class="header" href="#getting-the-source-code">Getting the Source Code</a></h3>
 <h3 id="get-involved"><a class="header" href="#get-involved">Get Involved</a></h3>
 <p>To get started, you'll need to fork or branch, and we'll merge based on pull requests.</p>
-<p>If you are a contributor to the project, simply clone:</p>
-<pre><code class="language-bash">git clone git@github.com:kanidm/kanidm.git
-</code></pre>
-<p>If you are forking, then fork in GitHub and clone with:</p>
+<p>Kanidm is (largely) a monorepo. This can be checked out with:</p>
 <pre><code class="language-bash">git clone https://github.com/kanidm/kanidm.git
 cd kanidm
-git remote add myfork git@github.com:&lt;YOUR USERNAME&gt;/kanidm.git
+</code></pre>
+<p>Other supporting projects can be found on the <a href="https://github.com/kanidm">project github</a></p>
+<p>If you are forking, then fork in GitHub and then add your remote.</p>
+<pre><code class="language-bash">git remote add myfork git@github.com:&lt;YOUR USERNAME&gt;/kanidm.git
 </code></pre>
 <p>Select an issue (always feel free to reach out to us for advice!), and create a branch to start
 working:</p>
@@ -3286,14 +3287,14 @@ cargo test
 </code></pre>
 <p>When you are ready for review (even if the feature isn't complete and you just want some advice):</p>
 <ol>
-<li>Run the test suite: <code>cargo test --workspace</code></li>
+<li>Run the test suite: <code>cargo test</code></li>
 <li>Ensure rust formatting standards are followed: <code>cargo fmt --check</code></li>
 <li>Try following the suggestions from clippy, after running <code>cargo clippy</code>. This is not a blocker on
 us accepting your code!</li>
 <li>Then commit your changes:</li>
 </ol>
 <pre><code class="language-bash">git commit -m 'Commit message' change_file.rs ...
-git push &lt;myfork/origin&gt; &lt;feature-branch-name&gt;
+git push &lt;myfork&gt; &lt;feature-branch-name&gt;
 </code></pre>
 <p>If you receive advice or make further changes, just keep committing to the branch, and pushing to
 your branch. When we are happy with the code, we'll merge in GitHub, meaning you can now clean up
@@ -3313,28 +3314,69 @@ git rebase master
 always stop and reset with:</p>
 <pre><code class="language-bash">git rebase --abort
 </code></pre>
-<h3 id="development-server-quickstart-for-interactive-testing"><a class="header" href="#development-server-quickstart-for-interactive-testing">Development Server Quickstart for Interactive Testing</a></h3>
-<p>After getting the code, you will need a rust environment. Please investigate
-<a href="https://rustup.rs">rustup</a> for your platform to establish this.</p>
+<h3 id="building-the-book"><a class="header" href="#building-the-book">Building the Book</a></h3>
+<p>You'll need <code>mdbook</code> to build the book:</p>
+<pre><code class="language-bash">cargo install mdbook
+</code></pre>
+<p>To build it:</p>
+<pre><code class="language-bash">make book
+</code></pre>
+<p>Or to run a local webserver:</p>
+<pre><code class="language-bash">cd book
+mdbook serve
+</code></pre>
+<h3 id="designs"><a class="header" href="#designs">Designs</a></h3>
+<p>See the &quot;Design Documents&quot; section of this book.</p>
+<h3 id="rust-documentation"><a class="header" href="#rust-documentation">Rust Documentation</a></h3>
+<p>A list of links to the library documentation is at
+<a href="https://kanidm.com/documentation/">kanidm.com/documentation</a>.</p>
+<h3 id="advanced"><a class="header" href="#advanced">Advanced</a></h3>
+<h4 id="minimum-supported-rust-version"><a class="header" href="#minimum-supported-rust-version">Minimum Supported Rust Version</a></h4>
+<p>The MSRV is specified in the package <code>Cargo.toml</code> files.</p>
+<p>We tend to be quite proactive in updating this to recent rust versions so we are open to increasing
+this value if required!</p>
+<h4 id="build-profiles"><a class="header" href="#build-profiles">Build Profiles</a></h4>
+<p>Build profiles allow us to change the operation of Kanidm during it's compilation for development or
+release on various platforms. By default the &quot;developer&quot; profile is used that assumes the correct
+relative paths within the monorepo.</p>
+<p>Setting different developer profiles while building is done by setting the environment variable
+<code>KANIDM_BUILD_PROFILE</code> to one of the bare filename of the TOML files in <code>/profiles</code>.</p>
+<p>For example, this will set the CPU flags to &quot;none&quot; and the location for the Web UI files to
+<code>/usr/share/kanidm/ui/pkg</code>:</p>
+<pre><code class="language-bash">KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd
+</code></pre>
+<h4 id="building-the-web-ui"><a class="header" href="#building-the-web-ui">Building the Web UI</a></h4>
+<p><strong>NOTE:</strong> There is a pre-packaged version of the Web UI at <code>/server/web_ui/pkg/</code>, which can be used
+directly. This means you don't need to build the Web UI yourself.</p>
+<p>The Web UI uses Rust WebAssembly rather than Javascript. To build this you need to set up the
+environment:</p>
+<pre><code class="language-bash">cargo install wasm-pack
+</code></pre>
+<p>Then you are able to build the UI:</p>
+<pre><code class="language-bash">cd server/web_ui/
+./build_wasm_dev.sh
+</code></pre>
+<p>To build for release, run <code>build_wasm_release.sh</code>.</p>
+<p>The &quot;developer&quot; profile for kanidmd will automatically use the pkg output in this folder.</p>
+<h4 id="development-server-for-interactive-testing"><a class="header" href="#development-server-for-interactive-testing">Development Server for Interactive Testing</a></h4>
+<p>Especially if you wish to develop the WebUI then the ability to run the server from the source tree
+is critical.</p>
 <p>Once you have the source code, you need encryption certificates to use with the server, because
 without certificates, authentication will fail.</p>
 <p>We recommend using <a href="https://letsencrypt.org">Let's Encrypt</a>, but if this is not possible, please use
-our insecure certificate tool (<code>insecure_generate_tls.sh</code>).</p>
-<p><strong>NOTE:</strong> Windows developers can use <code>insecure_generate_tls.ps1</code>, which puts everything (including a
-templated confi gfile) in <code>$TEMP\kanidm</code>. Please adjust paths below to suit.</p>
-<p>The insecure certificate tool creates <code>/tmp/kanidm</code> and puts some self-signed certificates there.</p>
+our insecure certificate tool (<code>scripts/insecure_generate_tls.sh</code>). The insecure certificate tool
+creates <code>/tmp/kanidm</code> and puts some self-signed certificates there.</p>
+<p><strong>NOTE:</strong> Windows developers can use <code>scripts/insecure_generate_tls.ps1</code>, which puts everything
+(including a templated config file) in <code>$TEMP\kanidm</code>. Please adjust paths below to suit.</p>
 <p>You can now build and run the server with the commands below. It will use a database in
 <code>/tmp/kanidm.db</code>.</p>
-<p>Create the initial database and generate an <code>admin</code> username:</p>
-<pre><code class="language-bash">cargo run --bin kanidmd recover_account -c ./examples/insecure_server.toml admin
-&lt;snip&gt;
-Success - password reset to -&gt; Et8QRJgQkMJu3v1AQxcbxRWW44qRUZPpr6BJ9fCGapAB9cT4
+<p>Create the initial database and generate an <code>admin</code> password:</p>
+<pre><code class="language-bash">cd server/daemon
+./run_insecure_dev_server.sh recover-account admin
 </code></pre>
 <p>Record the password above, then run the server start command:</p>
-<pre><code class="language-bash">cd kanidmd/daemon
-cargo run --bin kanidmd server -c ../../examples/insecure_server.toml
+<pre><code class="language-bash">./run_insecure_dev_server.sh
 </code></pre>
-<p>(The server start command is also a script in <code>kanidmd/daemon/run_insecure_dev_server.sh</code>)</p>
 <p>In a new terminal, you can now build and run the client tools with:</p>
 <pre><code class="language-bash">cargo run --bin kanidm -- --help
 cargo run --bin kanidm -- login -H https://localhost:8443 -D anonymous -C /tmp/kanidm/ca.pem
@@ -3343,7 +3385,20 @@ cargo run --bin kanidm -- self whoami -H https://localhost:8443 -D anonymous -C 
 cargo run --bin kanidm -- login -H https://localhost:8443 -D admin -C /tmp/kanidm/ca.pem
 cargo run --bin kanidm -- self whoami -H https://localhost:8443 -D admin -C /tmp/kanidm/ca.pem
 </code></pre>
-<h3 id="raw-actions"><a class="header" href="#raw-actions">Raw actions</a></h3>
+<p>You may find it easier to modify <code>~/.config/kanidm</code> per the
+<a href="client_tools.html">book client tools section</a> for extended administration locally.</p>
+<h4 id="raw-actions"><a class="header" href="#raw-actions">Raw actions</a></h4>
+<!-- deno-fmt-ignore-start -->
+<table>
+<tr>
+    <td rowspan=2><img src="images/kani-warning.png" alt="Kani Warning" /></td>
+    <td><strong>NOTICE</strong></td>
+    </tr>
+<tr>
+    <td>It's not recommended to use these tools outside of extremely complex or advanced development requirements. These are a last resort!</td>
+</tr>
+</table>
+<!-- deno-fmt-ignore-end -->
 <p>The server has a low-level stateful API you can use for more complex or advanced tasks on large
 numbers of entries at once. Some examples are below, but generally we advise you to use the APIs or
 CLI tools. These are very handy to &quot;unbreak&quot; something if you make a mistake however!</p>
@@ -3361,20 +3416,7 @@ kanidm raw search -H https://localhost:8443 -C ../insecure/ca.pem -D admin '{&qu
 # Delete all entries matching a filter
 kanidm raw delete -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '{&quot;eq&quot;: [&quot;name&quot;, &quot;test_account_delete_me&quot;]}'
 </code></pre>
-<h3 id="building-the-web-ui"><a class="header" href="#building-the-web-ui">Building the Web UI</a></h3>
-<p><strong>NOTE:</strong> There is a pre-packaged version of the Web UI at <code>/server/web_ui/pkg/</code>, which can be used
-directly. This means you don't need to build the Web UI yourself.</p>
-<p>The Web UI uses Rust WebAssembly rather than Javascript. To build this you need to set up the
-environment:</p>
-<pre><code class="language-bash">cargo install wasm-pack
-</code></pre>
-<p>Then you are able to build the UI:</p>
-<pre><code class="language-bash">cd server/web_ui/
-./build_wasm_dev.sh
-</code></pre>
-<p>To build for release, run <code>build_wasm_release.sh</code>.</p>
-<p>The &quot;developer&quot; profile for kanidmd will automatically use the pkg output in this folder.</p>
-<h3 id="build-a-kanidm-container"><a class="header" href="#build-a-kanidm-container">Build a Kanidm Container</a></h3>
+<h4 id="build-a-kanidm-container"><a class="header" href="#build-a-kanidm-container">Build a Kanidm Container</a></h4>
 <p>Build a container with the current branch using:</p>
 <pre><code class="language-bash">make &lt;TARGET&gt;
 </code></pre>
@@ -3390,14 +3432,14 @@ environment:</p>
 <tr><td><code>BOOK_VERSION</code></td><td>Sets version used when building the documentation book.</td><td><code>master</code></td></tr>
 </tbody></table>
 </div>
-<h4 id="container-build-examples"><a class="header" href="#container-build-examples">Container Build Examples</a></h4>
+<h5 id="container-build-examples"><a class="header" href="#container-build-examples">Container Build Examples</a></h5>
 <p>Build a <code>kanidm</code> container using <code>podman</code>:</p>
 <pre><code class="language-bash">CONTAINER_TOOL=podman make build/kanidmd
 </code></pre>
 <p>Build a <code>kanidm</code> container and use a redis build cache:</p>
 <pre><code class="language-bash">CONTAINER_BUILD_ARGS='--build-arg &quot;SCCACHE_REDIS=redis://redis.dev.blackhats.net.au:6379&quot;' make build/kanidmd
 </code></pre>
-<h4 id="automatically-built-containers"><a class="header" href="#automatically-built-containers">Automatically Built Containers</a></h4>
+<h5 id="automatically-built-containers"><a class="header" href="#automatically-built-containers">Automatically Built Containers</a></h5>
 <p>To speed up testing across platforms, we're leveraging GitHub actions to build containers for test
 use.</p>
 <p>Whenever code is merged with the <code>master</code> branch of Kanidm, containers are automatically built for
@@ -3412,17 +3454,6 @@ docker run --rm -it \
     ghcr.io/kanidm/radius:devel
 </code></pre>
 <p>This assumes you have a <code>kanidm</code> client configuration file in the current working directory.</p>
-<h2 id="building-the-book"><a class="header" href="#building-the-book">Building the Book</a></h2>
-<p>You'll need <code>mdbook</code> to build the book:</p>
-<pre><code class="language-bash">cargo install mdbook
-</code></pre>
-<p>To build it:</p>
-<pre><code class="language-bash">make book
-</code></pre>
-<p>Or to run a local webserver:</p>
-<pre><code class="language-bash">cd book
-mdbook serve
-</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h2 id="frequently-asked-questions-1"><a class="header" href="#frequently-asked-questions-1">Frequently Asked Questions</a></h2>
 <p>This is a list of common questions that are generally raised by developers or technical users.</p>
 <h2 id="why-dont-you-use-libraryproject-x"><a class="header" href="#why-dont-you-use-libraryproject-x">Why don't you use library/project X?</a></h2>
