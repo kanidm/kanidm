@@ -49,7 +49,8 @@ impl TryFrom<Entry> for Profile {
             .cloned()
             .ok_or_else(|| "Missing displayname".to_string())?;
 
-        let groups = entry.attrs.get("memberof").cloned().unwrap_or_default();
+        let mut groups = entry.attrs.get("memberof").cloned().unwrap_or_default();
+        groups.sort_unstable();
 
         let mail_primary = entry
             .attrs
