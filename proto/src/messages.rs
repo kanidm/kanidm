@@ -137,7 +137,7 @@ impl Default for AccountChangeMessage {
 /// msg.result=String::from("It was amazing");
 /// assert_eq!(msg.status, MessageStatus::Success);
 ///
-/// let expected_result = "success - cake_eating for user Krabby: It was amazing";
+/// let expected_result = "success - cake_eating for Krabby: It was amazing";
 /// assert_eq!(format!("{}", msg), expected_result);
 ///
 /// msg.output_mode = ConsoleOutputMode::JSON;
