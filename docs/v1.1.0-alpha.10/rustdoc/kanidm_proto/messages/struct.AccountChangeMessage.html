@@ -16,7 +16,7 @@ msg.dest_user=String::from(<span class="string">&quot;Krabby&quot;</span>);
 msg.result=String::from(<span class="string">&quot;It was amazing&quot;</span>);
 <span class="macro">assert_eq!</span>(msg.status, MessageStatus::Success);
 
-<span class="kw">let </span>expected_result = <span class="string">&quot;success - cake_eating for user Krabby: It was amazing&quot;</span>;
+<span class="kw">let </span>expected_result = <span class="string">&quot;success - cake_eating for Krabby: It was amazing&quot;</span>;
 <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, msg), expected_result);
 
 msg.output_mode = ConsoleOutputMode::JSON;
