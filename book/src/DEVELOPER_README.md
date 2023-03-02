@@ -255,7 +255,7 @@ our insecure certificate tool (`scripts/insecure_generate_tls.sh`). The insecure
 creates `/tmp/kanidm` and puts some self-signed certificates there.
 
 **NOTE:** Windows developers can use `scripts/insecure_generate_tls.ps1`, which puts everything (including a
-templated confi gfile) in `$TEMP\kanidm`. Please adjust paths below to suit.
+templated config file) in `$TEMP\kanidm`. Please adjust paths below to suit.
 
 You can now build and run the server with the commands below. It will use a database in
 `/tmp/kanidm.db`.
