@@ -2,11 +2,11 @@
 
 ### Setup the Server
 
-It's important before you start trying to write code and contribute that you understand
-what Kanidm does and its goals.
+It's important before you start trying to write code and contribute that you understand what Kanidm
+does and its goals.
 
-An important first step is to [install the server](installing_the_server.md) so if you have
-not done that yet, go and try that now! 😄
+An important first step is to [install the server](installing_the_server.md) so if you have not done
+that yet, go and try that now! 😄
 
 ### Setting up your Machine
 
@@ -14,8 +14,8 @@ Each operating system has different steps required to configure and build Kanidm
 
 #### MacOS
 
-A prerequisite is [Apple Xcode](https://apps.apple.com/au/app/xcode/id497799835?mt=12) for
-access to git and compiler tools. You should install this first.
+A prerequisite is [Apple Xcode](https://apps.apple.com/au/app/xcode/id497799835?mt=12) for access to
+git and compiler tools. You should install this first.
 
 You will need [rustup](https://rustup.rs/) to install a Rust toolchain.
 
@@ -204,8 +204,8 @@ this value if required!
 
 #### Build Profiles
 
-Build profiles allow us to change the operation of Kanidm during it's compilation for development
-or release on various platforms. By default the "developer" profile is used that assumes the correct
+Build profiles allow us to change the operation of Kanidm during it's compilation for development or
+release on various platforms. By default the "developer" profile is used that assumes the correct
 relative paths within the monorepo.
 
 Setting different developer profiles while building is done by setting the environment variable
@@ -213,7 +213,6 @@ Setting different developer profiles while building is done by setting the envir
 
 For example, this will set the CPU flags to "none" and the location for the Web UI files to
 `/usr/share/kanidm/ui/pkg`:
-
 
 ```bash
 KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd
@@ -244,8 +243,8 @@ The "developer" profile for kanidmd will automatically use the pkg output in thi
 
 #### Development Server for Interactive Testing
 
-Especially if you wish to develop the WebUI then the ability to run the server from the source
-tree is critical.
+Especially if you wish to develop the WebUI then the ability to run the server from the source tree
+is critical.
 
 Once you have the source code, you need encryption certificates to use with the server, because
 without certificates, authentication will fail.
@@ -254,8 +253,8 @@ We recommend using [Let's Encrypt](https://letsencrypt.org), but if this is not 
 our insecure certificate tool (`scripts/insecure_generate_tls.sh`). The insecure certificate tool
 creates `/tmp/kanidm` and puts some self-signed certificates there.
 
-**NOTE:** Windows developers can use `scripts/insecure_generate_tls.ps1`, which puts everything (including a
-templated config file) in `$TEMP\kanidm`. Please adjust paths below to suit.
+**NOTE:** Windows developers can use `scripts/insecure_generate_tls.ps1`, which puts everything
+(including a templated config file) in `$TEMP\kanidm`. Please adjust paths below to suit.
 
 You can now build and run the server with the commands below. It will use a database in
 `/tmp/kanidm.db`.
@@ -284,8 +283,8 @@ cargo run --bin kanidm -- login -H https://localhost:8443 -D admin -C /tmp/kanid
 cargo run --bin kanidm -- self whoami -H https://localhost:8443 -D admin -C /tmp/kanidm/ca.pem
 ```
 
-You may find it easier to modify `~/.config/kanidm` per the [book client tools section](client_tools.md)
-for extended administration locally.
+You may find it easier to modify `~/.config/kanidm` per the
+[book client tools section](client_tools.md) for extended administration locally.
 
 #### Raw actions
 
@@ -298,7 +297,6 @@ text=It's not recommended to use these tools outside of extremely complex or adv
 }}
 
 <!-- deno-fmt-ignore-end -->
-
 
 The server has a low-level stateful API you can use for more complex or advanced tasks on large
 numbers of entries at once. Some examples are below, but generally we advise you to use the APIs or
@@ -378,4 +376,3 @@ docker run --rm -it \
 ```
 
 This assumes you have a `kanidm` client configuration file in the current working directory.
-
