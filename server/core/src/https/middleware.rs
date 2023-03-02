@@ -195,7 +195,8 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
                 "worker-src 'none'",
                 // TODO: Content-Security-Policy-Report-Only https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy-Report-Only
                 // "report-to 'none'", // unsupported by a lot of things still, but mozilla's saying report-uri is deprecated?
-                "report-uri 'none'",
+                // Commented because when violated this attempts to post to "'none'" as a url
+                // "report-uri 'none'",
                 "base-uri 'self'",
                 // nobody wants to be in a frame
                 "frame-ancestors 'none'",

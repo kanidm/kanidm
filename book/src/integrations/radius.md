@@ -66,8 +66,8 @@ For an account to use RADIUS they must first generate a RADIUS secret unique to 
 default, all accounts can self-create this secret.
 
 ```bash
-kanidm person radius generate_secret --name william william
-kanidm person radius show_secret --name william william
+kanidm person radius generate-secret --name william william
+kanidm person radius show-secret --name william william
 ```
 
 ## Account Group Configuration
@@ -97,7 +97,7 @@ kanidm group add_members --name admin idm_radius_servers radius_service_account
 Now reset the account password, using the `admin` account:
 
 ```bash
-kanidm service-account credential generate-pw --name admin radius_service_account
+kanidm service-account credential generate --name admin radius_service_account
 ```
 
 ## Deploying a RADIUS Container

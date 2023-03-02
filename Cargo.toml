@@ -62,7 +62,7 @@ fernet = "^0.2.0"
 filetime = "^0.2.20"
 futures = "^0.3.25"
 futures-concurrency = "^3.1.0"
-futures-util = "^0.3.21"
+futures-util = { version = "^0.3.21", features = ["sink"] }
 gloo = "^0.8.0"
 gloo-net = "0.2.6"
 hashbrown = { version = "0.12.3", features = ["serde", "inline-more", "ahash"] }

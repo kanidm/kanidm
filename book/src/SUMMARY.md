@@ -5,8 +5,8 @@
   - [Choosing a Domain Name](choosing_a_domain_name.md)
   - [Preparing for your Deployment](prepare_the_server.md)
   - [Server Configuration and Install](server_configuration.md)
-  - [Server Updates](server_update.md)
   - [Platform Security Hardening](security_hardening.md)
+  - [Server Updates](server_update.md)
 - [Client Tools](client_tools.md)
   - [Installing client tools](installing_client_tools.md)
 
@@ -14,26 +14,21 @@
 
 - [Administration](administrivia.md)
   - [Accounts and Groups](accounts_and_groups.md)
+  - [POSIX Accounts and Groups](posix_accounts.md)
   - [Backup and Restore](backup_restore.md)
   - [Database Maintenance](database_maint.md)
   - [Domain Rename](domain_rename.md)
   - [Monitoring the platform](monitoring.md)
   - [Password Quality and Badlisting](password_quality.md)
-  - [POSIX Accounts and Groups](posix_accounts.md)
-  - [SSH Key Distribution](ssh_key_dist.md)
   - [The Recycle Bin](recycle_bin.md)
-- [Troubleshooting](troubleshooting.md)
-
-- [Frequently Asked Questions](frequently_asked_questions.md)
-
-- [Glossary of Technical Terms](glossary.md)
 
 # Services
 
-- [Oauth2](integrations/oauth2.md)
 - [PAM and nsswitch](integrations/pam_and_nsswitch.md)
-- [RADIUS](integrations/radius.md)
+- [SSH Key Distribution](ssh_key_dist.md)
+- [Oauth2](integrations/oauth2.md)
 - [LDAP](integrations/ldap.md)
+- [RADIUS](integrations/radius.md)
 
 # Synchronisation
 
@@ -44,6 +39,12 @@
 
 - [Kubernetes Ingress](examples/k8s_ingress_example.md)
 - [Traefik](integrations/traefik.md)
+
+# Support
+
+- [Troubleshooting](troubleshooting.md)
+- [Frequently Asked Questions](frequently_asked_questions.md)
+- [Glossary of Technical Terms](glossary.md)
 
 # For Developers
 

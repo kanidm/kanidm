@@ -51,34 +51,9 @@ sensitive data), group management, and more.
 By default the `admin` and `idm_admin` accounts have no password, and can not be accessed. They need
 to be "recovered" from the server that is running the kanidmd server.
 
-<!-- deno-fmt-ignore-start -->
-
-{{#template templates/kani-warning.md
-imagepath=images
-title=Warning!
-text=The server must not be running at this point, as it requires exclusive access to the database.
-}}
-
-<!-- deno-fmt-ignore-end -->
-
-```shell
-kanidmd recover_account admin -c /etc/kanidm/server.toml
-# Successfully recovered account 'admin' - password reset to -> j9YUv...
-```
-
-To do this with Docker, you'll need to stop the existing container and use the "command" argument to
-access the kanidmd binary.
-
-```bash
-docker run --rm -it \
-    -v/tmp/kanidm:/data \
-    --name kanidmd \
-    --hostname kanidmd \
-    kanidm/server:latest \
-    kanidmd recover_account admin -c /data/server.toml
-```
-
-After the recovery is complete the server can be started again.
+You should have already recovered the admin account during your setup process. If not refer to the
+[server configuration chapter](server_configuration.md#default-admin-account) on how to recover this
+account.
 
 Once you have access to the admin account, it is able to reset the credentials of the `idm_admin`
 account.
@@ -111,8 +86,8 @@ kanidm person create demo_user "Demonstration User" --name idm_admin
 kanidm person get demo_user --name idm_admin
 
 kanidm group create demo_group --name idm_admin
-kanidm group add_members demo_group demo_user --name idm_admin
-kanidm group list_members demo_group --name idm_admin
+kanidm group add-members demo_group demo_user --name idm_admin
+kanidm group list-members demo_group --name idm_admin
 ```
 
 You can also use anonymous to view accounts and groups - note that you won't see certain fields due
@@ -149,7 +124,7 @@ text=Persons may change their own displayname, name, and legal name at any time.
 Members of the `idm_account_manage_priv` group have the rights to manage person and service accounts
 security and login aspects. This includes resetting account credentials.
 
-You can perform a password reset on the demo_user, for example as the idm_admin user, who is a
+You can perform a password reset on the demo\_user, for example as the idm\_admin user, who is a
 default member of this group. The lines below prefixed with `#` are the interactive credential
 update interface.
 
@@ -268,8 +243,8 @@ An example can be easily shown with:
 kanidm group create group_1 --name idm_admin
 kanidm group create group_2 --name idm_admin
 kanidm person create nest_example "Nesting Account Example" --name idm_admin
-kanidm group add_members group_1 group_2 --name idm_admin
-kanidm group add_members group_2 nest_example --name idm_admin
+kanidm group add-members group_1 group_2 --name idm_admin
+kanidm group add-members group_2 nest_example --name idm_admin
 kanidm person get nest_example --name anonymous
 ```
 
@@ -338,42 +313,42 @@ Adding the user to the `idm_people_self_write_mail` group, as shown below, allow
 their own mail.
 
 ```bash
-kanidm group add_members idm_people_self_write_mail_priv demo_user --name idm_admin
+kanidm group add-members idm_people_self_write_mail_priv demo_user --name idm_admin
 ```
 
-## Why Can't I Change admin With idm_admin?
+## Why Can't I Change admin With idm\_admin?
 
 As a security mechanism there is a distinction between "accounts" and "high permission accounts".
 This is to help prevent elevation attacks, where say a member of a service desk could attempt to
-reset the password of idm_admin or admin, or even a member of HR or System Admin teams to move
+reset the password of idm\_admin or admin, or even a member of HR or System Admin teams to move
 laterally.
 
 Generally, membership of a "privilege" group that ships with Kanidm, such as:
 
-- idm_account_manage_priv
-- idm_people_read_priv
-- idm_schema_manage_priv
+- idm\_account\_manage\_priv
+- idm\_people\_read\_priv
+- idm\_schema\_manage\_priv
 - many more ...
 
-...indirectly grants you membership to "idm_high_privilege". If you are a member of this group, the
-standard "account" and "people" rights groups are NOT able to alter, read or manage these accounts.
-To manage these accounts higher rights are required, such as those held by the admin account are
-required.
+...indirectly grants you membership to "idm\_high\_privilege". If you are a member of this group,
+the standard "account" and "people" rights groups are NOT able to alter, read or manage these
+accounts. To manage these accounts higher rights are required, such as those held by the admin
+account are required.
 
-Further, groups that are considered "idm_high_privilege" can NOT be managed by the standard
-"idm_group_manage_priv" group.
+Further, groups that are considered "idm\_high\_privilege" can NOT be managed by the standard
+"idm\_group\_manage\_priv" group.
 
 Management of high privilege accounts and groups is granted through the the "hp" variants of all
 privileges. A non-conclusive list:
 
-- idm_hp_account_read_priv
-- idm_hp_account_manage_priv
-- idm_hp_account_write_priv
-- idm_hp_group_manage_priv
-- idm_hp_group_write_priv
+- idm\_hp\_account\_read\_priv
+- idm\_hp\_account\_manage\_priv
+- idm\_hp\_account\_write\_priv
+- idm\_hp\_group\_manage\_priv
+- idm\_hp\_group\_write\_priv
 
 Membership of any of these groups should be considered to be equivalent to system administration
 rights in the directory, and by extension, over all network resources that trust Kanidm.
 
-All groups that are flagged as "idm_high_privilege" should be audited and monitored to ensure that
+All groups that are flagged as "idm\_high\_privilege" should be audited and monitored to ensure that
 they are not altered.

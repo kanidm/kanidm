@@ -14,22 +14,12 @@ BOOK_VERSION ?= master
 help:
 	@grep -E -h '\s##\s' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: buildx/kanidmd/x86_64_v3
-buildx/kanidmd/x86_64_v3: ## build multiarch server images
-buildx/kanidmd/x86_64_v3:
-	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) --pull --push --platform "linux/amd64/v3" \
-		-f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:x86_64_$(IMAGE_VERSION) \
-		--progress $(BUILDKIT_PROGRESS) \
-		--build-arg "KANIDM_BUILD_PROFILE=container_x86_64_v3" \
-		--build-arg "KANIDM_FEATURES=" \
-		$(CONTAINER_BUILD_ARGS) .
-
 .PHONY: buildx/kanidmd
 buildx/kanidmd: ## Build multiarch kanidm server images and push to docker hub
 buildx/kanidmd:
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
 		--pull --push --platform $(IMAGE_ARCH) \
-		-f kanidmd/Dockerfile \
+		-f server/Dockerfile \
 		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
@@ -41,7 +31,7 @@ buildx/kanidm_tools: ## Build multiarch kanidm tool images and push to docker hu
 buildx/kanidm_tools:
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
 		--pull --push --platform $(IMAGE_ARCH) \
-		-f kanidm_tools/Dockerfile \
+		-f tools/Dockerfile \
 		-t $(IMAGE_BASE)/tools:$(IMAGE_VERSION) \
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
@@ -53,17 +43,17 @@ buildx/radiusd: ## Build multi-arch radius docker images and push to docker hub
 buildx/radiusd:
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
 		--pull --push --platform $(IMAGE_ARCH) \
-		-f kanidm_rlm_python/Dockerfile \
+		-f rlm_python/Dockerfile \
 		--progress $(BUILDKIT_PROGRESS) \
 		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
 
 .PHONY: buildx
-buildx: buildx/kanidmd/x86_64_v3 buildx/kanidmd buildx/kanidm_tools buildx/radiusd
+buildx: buildx/kanidmd buildx/kanidm_tools buildx/radiusd
 
 .PHONY: build/kanidmd
 build/kanidmd:	## Build the kanidmd docker image locally
 build/kanidmd:
-	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
+	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f server/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
 		$(CONTAINER_BUILD_ARGS) .
@@ -72,7 +62,7 @@ build/kanidmd:
 build/radiusd:	## Build the radiusd docker image locally
 build/radiusd:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) \
-		-f kanidm_rlm_python/Dockerfile \
+		-f rlm_python/Dockerfile \
 		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
 
 .PHONY: build
@@ -82,7 +72,7 @@ build: build/kanidmd build/radiusd
 test/kanidmd: ## Run cargo test in docker
 test/kanidmd:
 	@$(CONTAINER_TOOL) build \
-		$(CONTAINER_TOOL_ARGS) -f kanidmd/Dockerfile \
+		$(CONTAINER_TOOL_ARGS) -f server/Dockerfile \
 		--target builder \
 		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION)-builder \
 		$(CONTAINER_BUILD_ARGS) .
@@ -91,7 +81,7 @@ test/kanidmd:
 .PHONY: test/radiusd
 test/radiusd: ## Run a test radius server
 test/radiusd: build/radiusd
-	cd kanidm_rlm_python && \
+	cd rlm_python && \
 	./run_radius_container.sh
 
 .PHONY: test
@@ -113,7 +103,7 @@ vendor-prep: vendor
 .PHONY: install-tools
 install-tools: ## install kanidm_tools in your local environment
 install-tools:
-	cd kanidm_tools && cargo install --path . --force
+	cargo install --path tools/cli --force
 
 .PHONY: codespell
 codespell:
@@ -121,8 +111,8 @@ codespell:
 	-L crate,unexpect,Pres,pres,ACI,aci,te,ue \
 	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache' \
 	--skip='./docs/*,./.git' \
-	--skip='./kanidmd_web_ui/src/external,./kanidmd_web_ui/pkg/external' \
-	--skip='./kanidmd/lib/src/constants/system_config.rs,./pykanidm/site,./kanidmd/lib/src/constants/*.json'
+	--skip='./server/web_ui/src/external,./server/web_ui/pkg/external' \
+	--skip='./server/lib/src/constants/system_config.rs,./pykanidm/site,./server/lib/src/constants/*.json'
 
 .PHONY: test/pykanidm/pytest
 test/pykanidm/pytest: ## python library testing
@@ -170,9 +160,9 @@ doc/format/fix: ## Fix docs and the Kanidm book
 book: ## Build the Kanidm book
 book:
 	cargo doc --no-deps
-	mdbook build kanidm_book
+	mdbook build book
 	rm -rf ./docs/
-	mv ./kanidm_book/book/ ./docs/
+	mv ./book/book/ ./docs/
 	mkdir -p ./docs/rustdoc/${BOOK_VERSION}
 	mv ./target/doc/* ./docs/rustdoc/${BOOK_VERSION}/
 
@@ -183,10 +173,10 @@ book_versioned:
 	git switch -c "${BOOK_VERSION}"
 	git pull origin "${BOOK_VERSION}"
 	cargo doc --no-deps --quiet
-	mdbook build kanidm_book
+	mdbook build book
 	rm -rf ./docs/
 	mkdir -p ./docs
-	mv ./kanidm_book/book/ ./docs/${BOOK_VERSION}/
+	mv ./book/book/ ./docs/${BOOK_VERSION}/
 	mkdir -p ./docs/${BOOK_VERSION}/rustdoc/
 	mv ./target/doc/* ./docs/${BOOK_VERSION}/rustdoc/
 	git switch master
@@ -254,5 +244,5 @@ cert/clean:
 	rm -f /tmp/kanidm/ca.{cnf,srl,srl.old}
 
 .PHONY: webui
-webui: ## Build the WASM web frontent
-	cd kanidmd_web_ui && ./build_wasm_release.sh
+webui: ## Build the WASM web frontend
+	cd server/web_ui && ./build_wasm_release.sh

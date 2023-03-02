@@ -548,7 +548,7 @@ pub async fn recover_account_core(config: &Configuration, name: &str) {
             src_user: String::from("command-line invocation"),
             dest_user: name.to_string(),
             result: new_pw,
-            action: String::from("recover_account password"),
+            action: String::from("recovery of account password"),
         }
     );
 }

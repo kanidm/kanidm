@@ -1,3 +1,0 @@
-web_ui_pkg_path = "/pkg"
-# Define this to override the arch.
-cpu_flags = "x86_64_v3"
