@@ -43,4 +43,4 @@ jobs:
           build-args: |
             "KANIDM_FEATURES="
           #  "KANIDM_BUILD_OPTIONS=-j1"
-          file: kanidm_tools/Dockerfile
+          file: tools/Dockerfile

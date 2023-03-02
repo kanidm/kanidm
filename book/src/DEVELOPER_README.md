@@ -244,7 +244,7 @@ kanidm raw delete -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '
 
 ### Building the Web UI
 
-**NOTE:** There is a pre-packaged version of the Web UI at `/kanidmd_web_ui/pkg/`, which can be used
+**NOTE:** There is a pre-packaged version of the Web UI at `/server/web_ui/pkg/`, which can be used
 directly. This means you don't need to build the Web UI yourself.
 
 The Web UI uses Rust WebAssembly rather than Javascript. To build this you need to set up the
@@ -257,7 +257,7 @@ cargo install wasm-pack
 Then you are able to build the UI:
 
 ```bash
-cd kanidmd_web_ui/
+cd server/web_ui/
 ./build_wasm_dev.sh
 ```
 
@@ -335,13 +335,12 @@ cargo install mdbook
 To build it:
 
 ```bash
-cd kanidm_book
-mdbook build
+make book
 ```
 
 Or to run a local webserver:
 
 ```bash
-cd kanidm_book
+cd book
 mdbook serve
 ```

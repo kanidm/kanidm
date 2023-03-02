@@ -58,7 +58,7 @@ You should ignore `cn=changelog` and `o=ipaca` as these are system internal nami
 then create an ldapmodify like the following.
 
 ```rust
-{{#rustdoc_include ../../../iam_migrations/freeipa/00config-mod.ldif}}
+{{#rustdoc_include ../../../tools/iam_migrations/freeipa/00config-mod.ldif}}
 ```
 
 And apply it with:

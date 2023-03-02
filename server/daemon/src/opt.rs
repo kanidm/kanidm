@@ -102,22 +102,22 @@ struct DbScanGetId2Entry {
 
 #[derive(Debug, Subcommand)]
 enum DbScanOpt {
-    #[clap(name = "list_all_indexes")]
+    #[clap(name = "list-all-indexes")]
     /// List all index tables that exist on the system.
     ListIndexes(CommonOpt),
-    #[clap(name = "list_index")]
+    #[clap(name = "list-index")]
     /// List all content of a named index
     ListIndex(DbScanListIndex),
     // #[structopt(name = "get_index")]
     // /// Display the content of a single index key
     // GetIndex(DbScanGetIndex),
-    #[clap(name = "list_id2entry")]
+    #[clap(name = "list-id2entry")]
     /// List all id2entry values with reduced entry content
     ListId2Entry(CommonOpt),
-    #[clap(name = "get_id2entry")]
+    #[clap(name = "get-id2entry")]
     /// View the data of a specific entry from id2entry
     GetId2Entry(DbScanGetId2Entry),
-    #[clap(name = "list_index_analysis")]
+    #[clap(name = "list-index-analysis")]
     /// List all content of index analysis
     ListIndexAnalysis(CommonOpt),
 }
@@ -136,12 +136,12 @@ enum KanidmdOpt {
     #[clap(name = "configtest")]
     /// Test the IDM Server configuration, without starting network listeners.
     ConfigTest(CommonOpt),
-    #[clap(name = "recover_account")]
+    #[clap(name = "recover-account")]
     /// Recover an account's password
     RecoverAccount(RecoverAccountOpt),
     // #[clap(name = "reset_server_id")]
     // ResetServerId(CommonOpt),
-    #[clap(name = "db_scan")]
+    #[clap(name = "db-scan")]
     /// Inspect the internal content of the database datastructures.
     DbScan {
         #[clap(subcommand)]

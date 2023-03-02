@@ -49,9 +49,7 @@ jobs:
           args: mdbook-template
 
       - name: Make all the books
-        run: |
-          export
-          ./build_all_the_docs.sh
+        run: ./scripts/build_all_the_docs.sh
 
       - name: Install python 3.10
         uses: actions/setup-python@v4
