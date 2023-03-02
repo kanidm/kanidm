@@ -140,7 +140,7 @@ time = "=0.2.27"
 
 tikv-jemallocator = "0.5"
 
-tokio = "^1.24.2"
+tokio = "^1.26.0"
 tokio-openssl = "^0.6.3"
 tokio-util = "^0.7.7"
 
