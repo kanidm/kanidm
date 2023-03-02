@@ -35,7 +35,7 @@ COPY . /usr/src/kanidm
 
 # ======================
 
-# WORKDIR /usr/src/kanidm/kanidmd_web_ui
+# WORKDIR /usr/src/kanidm/server/web_ui
 # # This can't be used in the wasm build for now.
 # # ENV RUSTFLAGS="-Clinker=clang"
 # RUN ./build_wasm.sh

@@ -245,4 +245,4 @@ cert/clean:
 
 .PHONY: webui
 webui: ## Build the WASM web frontend
-	cd kanidmd_web_ui && ./build_wasm_release.sh
+	cd server/web_ui && ./build_wasm_release.sh
