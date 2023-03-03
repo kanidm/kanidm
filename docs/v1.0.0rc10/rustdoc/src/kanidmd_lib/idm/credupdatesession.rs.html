@@ -4316,7 +4316,7 @@
         pw: <span class="kw-2">&amp;</span>str,
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>idms_auth = idms.auth();
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_auth = idms.auth().<span class="kw">await</span>;
 
         <span class="kw">let </span>auth_init = AuthEvent::named_init(<span class="string">&quot;testperson&quot;</span>);
 
@@ -4375,7 +4375,7 @@
         token: <span class="kw-2">&amp;</span>Totp,
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>idms_auth = idms.auth();
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_auth = idms.auth().<span class="kw">await</span>;
 
         <span class="kw">let </span>auth_init = AuthEvent::named_init(<span class="string">&quot;testperson&quot;</span>);
 
@@ -4448,7 +4448,7 @@
         code: <span class="kw-2">&amp;</span>str,
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>idms_auth = idms.auth();
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_auth = idms.auth().<span class="kw">await</span>;
 
         <span class="kw">let </span>auth_init = AuthEvent::named_init(<span class="string">&quot;testperson&quot;</span>);
 
@@ -4523,7 +4523,7 @@
         origin: Url,
         ct: Duration,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>idms_auth = idms.auth();
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_auth = idms.auth().<span class="kw">await</span>;
 
         <span class="kw">let </span>auth_init = AuthEvent::named_init(<span class="string">&quot;testperson&quot;</span>);
 
@@ -4602,7 +4602,7 @@
         <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
         <span class="kw">let </span>(cust, <span class="kw">_</span>) = setup_test_session(idms, ct).<span class="kw">await</span>;
 
-        <span class="kw">let </span>cutxn = idms.cred_update_transaction_async().<span class="kw">await</span>;
+        <span class="kw">let </span>cutxn = idms.cred_update_transaction().<span class="kw">await</span>;
         <span class="comment">// The session exists
         </span><span class="kw">let </span>c_status = cutxn.credential_update_status(<span class="kw-2">&amp;</span>cust, ct);
         <span class="macro">assert!</span>(c_status.is_ok());
@@ -4612,7 +4612,7 @@
         </span><span class="kw">let </span>(_cust, <span class="kw">_</span>) =
             renew_test_session(idms, ct + MAXIMUM_CRED_UPDATE_TTL + Duration::from_secs(<span class="number">1</span>)).<span class="kw">await</span>;
 
-        <span class="kw">let </span>cutxn = idms.cred_update_transaction();
+        <span class="kw">let </span>cutxn = idms.cred_update_transaction().<span class="kw">await</span>;
 
         <span class="comment">// Now fake going back in time .... allows the tokne to decrypt, but the session
         // is gone anyway!
@@ -4632,7 +4632,7 @@
 
         <span class="kw">let </span>(cust, <span class="kw">_</span>) = setup_test_session(idms, ct).<span class="kw">await</span>;
 
-        <span class="kw">let </span>cutxn = idms.cred_update_transaction();
+        <span class="kw">let </span>cutxn = idms.cred_update_transaction().<span class="kw">await</span>;
 
         <span class="comment">// Get the credential status - this should tell
         // us the details of the credentials, as well as
@@ -4663,7 +4663,7 @@
 
         <span class="comment">// Test deleting the pw
         </span><span class="kw">let </span>(cust, <span class="kw">_</span>) = renew_test_session(idms, ct).<span class="kw">await</span>;
-        <span class="kw">let </span>cutxn = idms.cred_update_transaction();
+        <span class="kw">let </span>cutxn = idms.cred_update_transaction().<span class="kw">await</span>;
 
         <span class="kw">let </span>c_status = cutxn
             .credential_update_status(<span class="kw-2">&amp;</span>cust, ct)
@@ -4700,7 +4700,7 @@
         <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         <span class="kw">let </span>(cust, <span class="kw">_</span>) = setup_test_session(idms, ct).<span class="kw">await</span>;
-        <span class="kw">let </span>cutxn = idms.cred_update_transaction();
+        <span class="kw">let </span>cutxn = idms.cred_update_transaction().<span class="kw">await</span>;
 
         <span class="comment">// Setup the PW
         </span><span class="kw">let </span>c_status = cutxn
@@ -4763,7 +4763,7 @@
 
         // If we remove TOTP, show it reverts back.
         </span><span class="kw">let </span>(cust, <span class="kw">_</span>) = renew_test_session(idms, ct).<span class="kw">await</span>;
-        <span class="kw">let </span>cutxn = idms.cred_update_transaction();
+        <span class="kw">let </span>cutxn = idms.cred_update_transaction().<span class="kw">await</span>;
 
         <span class="kw">let </span>c_status = cutxn
             .credential_primary_remove_totp(<span class="kw-2">&amp;</span>cust, ct, <span class="string">&quot;totp&quot;</span>)
@@ -4794,7 +4794,7 @@
         <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         <span class="kw">let </span>(cust, <span class="kw">_</span>) = setup_test_session(idms, ct).<span class="kw">await</span>;
-        <span class="kw">let </span>cutxn = idms.cred_update_transaction();
+        <span class="kw">let </span>cutxn = idms.cred_update_transaction().<span class="kw">await</span>;
 
         <span class="comment">// Setup the PW
         </span><span class="kw">let </span>c_status = cutxn
@@ -4868,7 +4868,7 @@
         <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         <span class="kw">let </span>(cust, <span class="kw">_</span>) = setup_test_session(idms, ct).<span class="kw">await</span>;
-        <span class="kw">let </span>cutxn = idms.cred_update_transaction();
+        <span class="kw">let </span>cutxn = idms.cred_update_transaction().<span class="kw">await</span>;
 
         <span class="comment">// Setup the PW
         </span><span class="kw">let </span>_c_status = cutxn
@@ -4944,7 +4944,7 @@
 
         <span class="comment">// Renew to start the next steps
         </span><span class="kw">let </span>(cust, <span class="kw">_</span>) = renew_test_session(idms, ct).<span class="kw">await</span>;
-        <span class="kw">let </span>cutxn = idms.cred_update_transaction();
+        <span class="kw">let </span>cutxn = idms.cred_update_transaction().<span class="kw">await</span>;
 
         <span class="comment">// Only 7 codes left.
         </span><span class="kw">let </span>c_status = cutxn
@@ -5005,7 +5005,7 @@
         <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         <span class="kw">let </span>(cust, <span class="kw">_</span>) = setup_test_session(idms, ct).<span class="kw">await</span>;
-        <span class="kw">let </span>cutxn = idms.cred_update_transaction();
+        <span class="kw">let </span>cutxn = idms.cred_update_transaction().<span class="kw">await</span>;
 
         <span class="comment">// Setup the PW
         </span><span class="kw">let </span>c_status = cutxn
@@ -5057,7 +5057,7 @@
         <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         <span class="kw">let </span>(cust, <span class="kw">_</span>) = setup_test_session(idms, ct).<span class="kw">await</span>;
-        <span class="kw">let </span>cutxn = idms.cred_update_transaction();
+        <span class="kw">let </span>cutxn = idms.cred_update_transaction().<span class="kw">await</span>;
         <span class="kw">let </span>origin = cutxn.get_origin().clone();
 
         <span class="comment">// Create a soft passkey
@@ -5113,7 +5113,7 @@
 
         <span class="comment">// Now test removing the token
         </span><span class="kw">let </span>(cust, <span class="kw">_</span>) = renew_test_session(idms, ct).<span class="kw">await</span>;
-        <span class="kw">let </span>cutxn = idms.cred_update_transaction();
+        <span class="kw">let </span>cutxn = idms.cred_update_transaction().<span class="kw">await</span>;
 
         <span class="macro">trace!</span>(<span class="question-mark">?</span>c_status);
         <span class="macro">assert!</span>(c_status.primary.is_none());

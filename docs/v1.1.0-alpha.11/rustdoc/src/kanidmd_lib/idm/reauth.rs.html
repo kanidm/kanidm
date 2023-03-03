@@ -308,7 +308,7 @@
 
         <span class="comment">// Update session is setup.
 
-        </span><span class="kw">let </span>cutxn = idms.cred_update_transaction();
+        </span><span class="kw">let </span>cutxn = idms.cred_update_transaction().<span class="kw">await</span>;
         <span class="kw">let </span>origin = cutxn.get_origin().clone();
 
         <span class="kw">let </span><span class="kw-2">mut </span>wa = WebauthnAuthenticator::new(SoftPasskey::new());
@@ -353,7 +353,7 @@
         wa: <span class="kw-2">&amp;mut </span>WebauthnAuthenticator&lt;SoftPasskey&gt;,
         idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>idms_auth = idms.auth();
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_auth = idms.auth().<span class="kw">await</span>;
         <span class="kw">let </span>origin = idms_auth.get_origin().clone();
 
         <span class="kw">let </span>auth_init = AuthEvent::named_init(<span class="string">&quot;testperson&quot;</span>);

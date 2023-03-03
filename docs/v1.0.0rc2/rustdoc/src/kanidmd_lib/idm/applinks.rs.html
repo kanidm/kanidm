@@ -181,11 +181,6 @@
 <a href="#181" id="181">181</a>
 <a href="#182" id="182">182</a>
 <a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::idm::server::IdmServerProxyReadTransaction;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>kanidm_proto::internal::AppLink;
@@ -258,120 +253,115 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
-    <span class="comment">// use crate::prelude::*;
-    </span><span class="kw">use </span>async_std::task;
+    <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>kanidm_proto::internal::AppLink;
 
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_applinks_list() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = duration_from_epoch_now();
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
+    <span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_applinks_list(idms: <span class="kw-2">&amp;</span>IdmServer, _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed) {
+        <span class="kw">let </span>ct = duration_from_epoch_now();
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
 
-            <span class="comment">// Create an RS, the user and a group..
-            </span><span class="kw">let </span>usr_uuid = Uuid::new_v4();
-            <span class="kw">let </span>grp_uuid = Uuid::new_v4();
+        <span class="comment">// Create an RS, the user and a group..
+        </span><span class="kw">let </span>usr_uuid = Uuid::new_v4();
+        <span class="kw">let </span>grp_uuid = Uuid::new_v4();
 
-            <span class="kw">let </span>e_rs: Entry&lt;EntryInit, EntryNew&gt; = <span class="macro">entry_init!</span>(
-                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
-                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server&quot;</span>)),
-                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server_basic&quot;</span>)),
-                (<span class="string">&quot;oauth2_rs_name&quot;</span>, Value::new_iname(<span class="string">&quot;test_resource_server&quot;</span>)),
-                (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;test_resource_server&quot;</span>)),
-                (
-                    <span class="string">&quot;oauth2_rs_origin&quot;</span>,
-                    Value::new_url_s(<span class="string">&quot;https://demo.example.com&quot;</span>).unwrap()
-                ),
-                (
-                    <span class="string">&quot;oauth2_rs_origin_landing&quot;</span>,
-                    Value::new_url_s(<span class="string">&quot;https://demo.example.com/landing&quot;</span>).unwrap()
-                ),
-                <span class="comment">// System admins
-                </span>(
-                    <span class="string">&quot;oauth2_rs_scope_map&quot;</span>,
-                    Value::new_oauthscopemap(grp_uuid, <span class="macro">btreeset!</span>[<span class="string">&quot;read&quot;</span>.to_string()])
-                        .expect(<span class="string">&quot;invalid oauthscope&quot;</span>)
-                )
-            );
+        <span class="kw">let </span>e_rs: Entry&lt;EntryInit, EntryNew&gt; = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;oauth2_resource_server_basic&quot;</span>)),
+            (<span class="string">&quot;oauth2_rs_name&quot;</span>, Value::new_iname(<span class="string">&quot;test_resource_server&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;test_resource_server&quot;</span>)),
+            (
+                <span class="string">&quot;oauth2_rs_origin&quot;</span>,
+                Value::new_url_s(<span class="string">&quot;https://demo.example.com&quot;</span>).unwrap()
+            ),
+            (
+                <span class="string">&quot;oauth2_rs_origin_landing&quot;</span>,
+                Value::new_url_s(<span class="string">&quot;https://demo.example.com/landing&quot;</span>).unwrap()
+            ),
+            <span class="comment">// System admins
+            </span>(
+                <span class="string">&quot;oauth2_rs_scope_map&quot;</span>,
+                Value::new_oauthscopemap(grp_uuid, <span class="macro">btreeset!</span>[<span class="string">&quot;read&quot;</span>.to_string()])
+                    .expect(<span class="string">&quot;invalid oauthscope&quot;</span>)
+            )
+        );
 
-            <span class="kw">let </span>e_usr = <span class="macro">entry_init!</span>(
-                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
-                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
-                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
-                (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testaccount&quot;</span>)),
-                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(usr_uuid)),
-                (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testaccount&quot;</span>)),
-                (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;Test Account&quot;</span>))
-            );
+        <span class="kw">let </span>e_usr = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testaccount&quot;</span>)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(usr_uuid)),
+            (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testaccount&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;Test Account&quot;</span>))
+        );
 
-            <span class="kw">let </span>e_grp = <span class="macro">entry_init!</span>(
-                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
-                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
-                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(grp_uuid)),
-                (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_oauth2_group&quot;</span>))
-            );
+        <span class="kw">let </span>e_grp = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(grp_uuid)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_oauth2_group&quot;</span>))
+        );
 
-            <span class="kw">let </span>ce = CreateEvent::new_internal(<span class="macro">vec!</span>[e_rs, e_grp, e_usr]);
-            <span class="macro">assert!</span>(idms_prox_write.qs_write.create(<span class="kw-2">&amp;</span>ce).is_ok());
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+        <span class="kw">let </span>ce = CreateEvent::new_internal(<span class="macro">vec!</span>[e_rs, e_grp, e_usr]);
+        <span class="macro">assert!</span>(idms_prox_write.qs_write.create(<span class="kw-2">&amp;</span>ce).is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
-            <span class="comment">// Now do an applink query, they will not be there.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
+        <span class="comment">// Now do an applink query, they will not be there.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = idms.proxy_read().<span class="kw">await</span>;
 
-            <span class="kw">let </span>ident = idms_prox_read
-                .qs_read
-                .internal_search_uuid(usr_uuid)
-                .map(Identity::from_impersonate_entry_readonly)
-                .expect(<span class="string">&quot;Failed to impersonate identity&quot;</span>);
+        <span class="kw">let </span>ident = idms_prox_read
+            .qs_read
+            .internal_search_uuid(usr_uuid)
+            .map(Identity::from_impersonate_entry_readonly)
+            .expect(<span class="string">&quot;Failed to impersonate identity&quot;</span>);
 
-            <span class="kw">let </span>apps = idms_prox_read
-                .list_applinks(<span class="kw-2">&amp;</span>ident)
-                .expect(<span class="string">&quot;Failed to access related apps&quot;</span>);
+        <span class="kw">let </span>apps = idms_prox_read
+            .list_applinks(<span class="kw-2">&amp;</span>ident)
+            .expect(<span class="string">&quot;Failed to access related apps&quot;</span>);
 
-            <span class="macro">assert!</span>(apps.is_empty());
-            drop(idms_prox_read);
+        <span class="macro">assert!</span>(apps.is_empty());
+        drop(idms_prox_read);
 
-            <span class="comment">// Add them to the group.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>me_inv_m = <span class="kw">unsafe </span>{
-                ModifyEvent::new_internal_invalid(
-                    <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Refer(grp_uuid))),
-                    ModifyList::new_append(<span class="string">&quot;member&quot;</span>, Value::Refer(usr_uuid)),
-                )
-            };
-            <span class="macro">assert!</span>(idms_prox_write.qs_write.modify(<span class="kw-2">&amp;</span>me_inv_m).is_ok());
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+        <span class="comment">// Add them to the group.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>me_inv_m = <span class="kw">unsafe </span>{
+            ModifyEvent::new_internal_invalid(
+                <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Refer(grp_uuid))),
+                ModifyList::new_append(<span class="string">&quot;member&quot;</span>, Value::Refer(usr_uuid)),
+            )
+        };
+        <span class="macro">assert!</span>(idms_prox_write.qs_write.modify(<span class="kw-2">&amp;</span>me_inv_m).is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = idms.proxy_read().<span class="kw">await</span>;
 
-            <span class="kw">let </span>ident = idms_prox_read
-                .qs_read
-                .internal_search_uuid(usr_uuid)
-                .map(Identity::from_impersonate_entry_readonly)
-                .expect(<span class="string">&quot;Failed to impersonate identity&quot;</span>);
+        <span class="kw">let </span>ident = idms_prox_read
+            .qs_read
+            .internal_search_uuid(usr_uuid)
+            .map(Identity::from_impersonate_entry_readonly)
+            .expect(<span class="string">&quot;Failed to impersonate identity&quot;</span>);
 
-            <span class="kw">let </span>apps = idms_prox_read
-                .list_applinks(<span class="kw-2">&amp;</span>ident)
-                .expect(<span class="string">&quot;Failed to access related apps&quot;</span>);
+        <span class="kw">let </span>apps = idms_prox_read
+            .list_applinks(<span class="kw-2">&amp;</span>ident)
+            .expect(<span class="string">&quot;Failed to access related apps&quot;</span>);
 
-            <span class="kw">let </span>app = apps.get(<span class="number">0</span>).expect(<span class="string">&quot;No apps return!&quot;</span>);
+        <span class="kw">let </span>app = apps.get(<span class="number">0</span>).expect(<span class="string">&quot;No apps return!&quot;</span>);
 
-            <span class="macro">assert!</span>(<span class="kw">match </span>app {
-                AppLink::Oauth2 {
-                    name,
-                    display_name,
-                    redirect_url,
-                    icon,
-                } =&gt; {
-                    name == <span class="string">&quot;test_resource_server&quot;
-                        </span>&amp;&amp; display_name == <span class="string">&quot;test_resource_server&quot;
-                        </span>&amp;&amp; redirect_url == <span class="kw-2">&amp;</span>Url::parse(<span class="string">&quot;https://demo.example.com/landing&quot;</span>).unwrap()
-                        &amp;&amp; icon.is_none()
-                } <span class="comment">// _ =&gt; false,
-            </span>})
-        })
+        <span class="macro">assert!</span>(<span class="kw">match </span>app {
+            AppLink::Oauth2 {
+                name,
+                display_name,
+                redirect_url,
+                icon,
+            } =&gt; {
+                name == <span class="string">&quot;test_resource_server&quot;
+                    </span>&amp;&amp; display_name == <span class="string">&quot;test_resource_server&quot;
+                    </span>&amp;&amp; redirect_url == <span class="kw-2">&amp;</span>Url::parse(<span class="string">&quot;https://demo.example.com/landing&quot;</span>).unwrap()
+                    &amp;&amp; icon.is_none()
+            } <span class="comment">// _ =&gt; false,
+        </span>})
     }
 }
 </code></pre></div>

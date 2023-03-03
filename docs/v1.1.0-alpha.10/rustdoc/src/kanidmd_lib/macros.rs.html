@@ -640,52 +640,6 @@
 <a href="#640" id="640">640</a>
 <a href="#641" id="641">641</a>
 <a href="#642" id="642">642</a>
-<a href="#643" id="643">643</a>
-<a href="#644" id="644">644</a>
-<a href="#645" id="645">645</a>
-<a href="#646" id="646">646</a>
-<a href="#647" id="647">647</a>
-<a href="#648" id="648">648</a>
-<a href="#649" id="649">649</a>
-<a href="#650" id="650">650</a>
-<a href="#651" id="651">651</a>
-<a href="#652" id="652">652</a>
-<a href="#653" id="653">653</a>
-<a href="#654" id="654">654</a>
-<a href="#655" id="655">655</a>
-<a href="#656" id="656">656</a>
-<a href="#657" id="657">657</a>
-<a href="#658" id="658">658</a>
-<a href="#659" id="659">659</a>
-<a href="#660" id="660">660</a>
-<a href="#661" id="661">661</a>
-<a href="#662" id="662">662</a>
-<a href="#663" id="663">663</a>
-<a href="#664" id="664">664</a>
-<a href="#665" id="665">665</a>
-<a href="#666" id="666">666</a>
-<a href="#667" id="667">667</a>
-<a href="#668" id="668">668</a>
-<a href="#669" id="669">669</a>
-<a href="#670" id="670">670</a>
-<a href="#671" id="671">671</a>
-<a href="#672" id="672">672</a>
-<a href="#673" id="673">673</a>
-<a href="#674" id="674">674</a>
-<a href="#675" id="675">675</a>
-<a href="#676" id="676">676</a>
-<a href="#677" id="677">677</a>
-<a href="#678" id="678">678</a>
-<a href="#679" id="679">679</a>
-<a href="#680" id="680">680</a>
-<a href="#681" id="681">681</a>
-<a href="#682" id="682">682</a>
-<a href="#683" id="683">683</a>
-<a href="#684" id="684">684</a>
-<a href="#685" id="685">685</a>
-<a href="#686" id="686">686</a>
-<a href="#687" id="687">687</a>
-<a href="#688" id="688">688</a>
 </pre><pre class="rust"><code><span class="attr">#[cfg(test)]
 </span><span class="macro">macro_rules! </span>setup_test {
     () =&gt; {{
@@ -701,7 +655,9 @@
             .expect(<span class="string">&quot;Failed to init BE&quot;</span>);
 
         <span class="kw">let </span>qs = QueryServer::new(be, schema_outer, <span class="string">&quot;example.com&quot;</span>.to_string());
-        async_std::task::block_on(qs.initialise_helper(duration_from_epoch_now()))
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(qs.initialise_helper(duration_from_epoch_now()))
             .expect(<span class="string">&quot;init failed!&quot;</span>);
         qs
     }};
@@ -722,41 +678,21 @@
             .expect(<span class="string">&quot;Failed to init BE&quot;</span>);
 
         <span class="kw">let </span>qs = QueryServer::new(be, schema_outer, <span class="string">&quot;example.com&quot;</span>.to_string());
-        async_std::task::block_on(qs.initialise_helper(duration_from_epoch_now()))
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(qs.initialise_helper(duration_from_epoch_now()))
             .expect(<span class="string">&quot;init failed!&quot;</span>);
 
         <span class="kw">if </span>!<span class="macro-nonterminal">$preload_entries</span>.is_empty() {
-            <span class="kw">let </span><span class="kw-2">mut </span>qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            <span class="kw">let </span><span class="kw-2">mut </span>qs_write = tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(qs.write(duration_from_epoch_now()));
             qs_write
                 .internal_create(<span class="macro-nonterminal">$preload_entries</span>)
                 .expect(<span class="string">&quot;Failed to preload entries&quot;</span>);
             <span class="macro">assert!</span>(qs_write.commit().is_ok());
         }
         qs
-    }};
-}
-
-<span class="attr">#[cfg(test)]
-</span><span class="macro">macro_rules! </span>entry_str_to_account {
-    (<span class="macro-nonterminal">$entry_str</span>:expr) =&gt; {{
-        <span class="kw">use </span>std::iter::once;
-
-        <span class="kw">use </span><span class="kw">crate</span>::entry::{Entry, EntryInvalid, EntryNew};
-        <span class="kw">use </span><span class="kw">crate</span>::idm::account::Account;
-        <span class="kw">use </span><span class="kw">crate</span>::value::Value;
-
-        <span class="kw">let </span><span class="kw-2">mut </span>e: Entry&lt;EntryInvalid, EntryNew&gt; =
-            <span class="kw">unsafe </span>{ Entry::unsafe_from_entry_str(<span class="macro-nonterminal">$entry_str</span>).into_invalid_new() };
-        <span class="comment">// Add spn, because normally this is generated but in tests we can&#39;t.
-        </span><span class="kw">let </span>spn = e
-            .get_ava_single_iname(<span class="string">&quot;name&quot;</span>)
-            .map(|s| Value::new_spn_str(s, <span class="string">&quot;example.com&quot;</span>))
-            .expect(<span class="string">&quot;Failed to munge spn from name!&quot;</span>);
-        e.set_ava(<span class="string">&quot;spn&quot;</span>, once(spn));
-
-        <span class="kw">let </span>e = <span class="kw">unsafe </span>{ e.into_sealed_committed() };
-
-        Account::try_from_entry_no_groups(<span class="kw-2">&amp;</span>e).expect(<span class="string">&quot;Account conversion failure&quot;</span>)
     }};
 }
 
@@ -780,48 +716,6 @@
         <span class="kw">let </span>e = <span class="kw">unsafe </span>{ e.into_sealed_committed() };
 
         Account::try_from_entry_no_groups(<span class="kw-2">&amp;</span>e).expect(<span class="string">&quot;Account conversion failure&quot;</span>)
-    }};
-}
-
-<span class="attr">#[cfg(test)]
-</span><span class="macro">macro_rules! </span>run_idm_test_inner {
-    (<span class="macro-nonterminal">$test_fn</span>:expr) =&gt; {{
-        <span class="attr">#[allow(unused_imports)]
-        </span><span class="kw">use </span><span class="kw">crate</span>::be::{Backend, BackendConfig};
-        <span class="attr">#[allow(unused_imports)]
-        </span><span class="kw">use </span><span class="kw">crate</span>::idm::server::{IdmServer, IdmServerDelayed};
-        <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
-        <span class="attr">#[allow(unused_imports)]
-        </span><span class="kw">use </span><span class="kw">crate</span>::schema::Schema;
-        <span class="comment">/*
-        use env_logger;
-        ::std::env::set_var(&quot;RUST_LOG&quot;, &quot;actix_web=debug,kanidm=debug&quot;);
-        let _ = env_logger::builder()
-            .format_timestamp(None)
-            .format_level(false)
-            .is_test(true)
-            .try_init();
-        */
-
-        </span><span class="kw">let </span>test_server = <span class="macro">setup_test!</span>();
-
-        <span class="kw">let </span>(test_idm_server, <span class="kw-2">mut </span>idms_delayed) =
-            IdmServer::new(test_server.clone(), <span class="string">&quot;https://idm.example.com&quot;</span>)
-                .expect(<span class="string">&quot;Failed to setup idms&quot;</span>);
-
-        <span class="macro-nonterminal">$test_fn</span>(<span class="kw-2">&amp;</span>test_server, <span class="kw-2">&amp;</span>test_idm_server, <span class="kw-2">&amp;mut </span>idms_delayed);
-        <span class="comment">// Any needed teardown?
-        // Make sure there are no errors.
-        </span><span class="macro">assert!</span>(async_std::task::block_on(test_server.verify()).len() == <span class="number">0</span>);
-        idms_delayed.check_is_empty_or_panic();
-    }};
-}
-
-<span class="attr">#[cfg(test)]
-</span><span class="macro">macro_rules! </span>run_idm_test {
-    (<span class="macro-nonterminal">$test_fn</span>:expr) =&gt; {{
-        <span class="kw">let _ </span>= sketching::test_init();
-        <span class="macro">run_idm_test_inner!</span>(<span class="macro-nonterminal">$test_fn</span>);
     }};
 }
 
@@ -853,7 +747,9 @@
         };
 
         {
-            <span class="kw">let </span><span class="kw-2">mut </span>qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            <span class="kw">let </span><span class="kw-2">mut </span>qs_write = tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(qs.write(duration_from_epoch_now()));
             <span class="kw">let </span>r = qs_write.create(<span class="kw-2">&amp;</span>ce);
             <span class="macro">trace!</span>(<span class="string">&quot;test result: {:?}&quot;</span>, r);
             <span class="macro">assert!</span>(r == <span class="macro-nonterminal">$expect</span>);
@@ -869,7 +765,9 @@
         }
         <span class="comment">// Make sure there are no errors.
         </span><span class="macro">trace!</span>(<span class="string">&quot;starting verification&quot;</span>);
-        <span class="kw">let </span>ver = async_std::task::block_on(qs.verify());
+        <span class="kw">let </span>ver = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(qs.verify());
         <span class="macro">trace!</span>(<span class="string">&quot;verification -&gt; {:?}&quot;</span>, ver);
         <span class="macro">assert!</span>(ver.len() == <span class="number">0</span>);
     }};
@@ -895,7 +793,9 @@
         <span class="kw">let </span>qs = <span class="macro">setup_test!</span>(<span class="macro-nonterminal">$preload_entries</span>);
 
         {
-            <span class="kw">let </span><span class="kw-2">mut </span>qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            <span class="kw">let </span><span class="kw-2">mut </span>qs_write = tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(qs.write(duration_from_epoch_now()));
             <span class="macro-nonterminal">$pre_hook</span>(<span class="kw-2">&amp;mut </span>qs_write);
             qs_write.commit().expect(<span class="string">&quot;commit failure!&quot;</span>);
         }
@@ -908,7 +808,9 @@
         };
 
         {
-            <span class="kw">let </span><span class="kw-2">mut </span>qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            <span class="kw">let </span><span class="kw-2">mut </span>qs_write = tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(qs.write(duration_from_epoch_now()));
             <span class="kw">let </span>r = qs_write.modify(<span class="kw-2">&amp;</span>me);
             <span class="macro-nonterminal">$check</span>(<span class="kw-2">&amp;mut </span>qs_write);
             <span class="macro">trace!</span>(<span class="string">&quot;test result: {:?}&quot;</span>, r);
@@ -924,7 +826,9 @@
         }
         <span class="comment">// Make sure there are no errors.
         </span><span class="macro">trace!</span>(<span class="string">&quot;starting verification&quot;</span>);
-        <span class="kw">let </span>ver = async_std::task::block_on(qs.verify());
+        <span class="kw">let </span>ver = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(qs.verify());
         <span class="macro">trace!</span>(<span class="string">&quot;verification -&gt; {:?}&quot;</span>, ver);
         <span class="macro">assert!</span>(ver.len() == <span class="number">0</span>);
     }};
@@ -954,7 +858,9 @@
         };
 
         {
-            <span class="kw">let </span><span class="kw-2">mut </span>qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            <span class="kw">let </span><span class="kw-2">mut </span>qs_write = tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(qs.write(duration_from_epoch_now()));
             <span class="kw">let </span>r = qs_write.delete(<span class="kw-2">&amp;</span>de);
             <span class="macro">trace!</span>(<span class="string">&quot;test result: {:?}&quot;</span>, r);
             <span class="macro-nonterminal">$check</span>(<span class="kw-2">&amp;mut </span>qs_write);
@@ -970,7 +876,9 @@
         }
         <span class="comment">// Make sure there are no errors.
         </span><span class="macro">trace!</span>(<span class="string">&quot;starting verification&quot;</span>);
-        <span class="kw">let </span>ver = async_std::task::block_on(qs.verify());
+        <span class="kw">let </span>ver = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(qs.verify());
         <span class="macro">trace!</span>(<span class="string">&quot;verification -&gt; {:?}&quot;</span>, ver);
         <span class="macro">assert!</span>(ver.len() == <span class="number">0</span>);
     }};

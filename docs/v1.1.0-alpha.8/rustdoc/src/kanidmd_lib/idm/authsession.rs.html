@@ -3484,7 +3484,7 @@
 
         <span class="kw">let </span>webauthn = create_webauthn();
 
-        <span class="kw">let </span>anon_account = <span class="macro">entry_str_to_account!</span>(JSON_ANONYMOUS_V1);
+        <span class="kw">let </span>anon_account = <span class="macro">entry_to_account!</span>(E_ANONYMOUS_V1.clone());
 
         <span class="kw">let </span>(session, state) = AuthSession::new(
             anon_account,
@@ -3554,7 +3554,7 @@
         sketching::test_init();
         <span class="kw">let </span>webauthn = create_webauthn();
         <span class="comment">// create the ent
-        </span><span class="kw">let </span><span class="kw-2">mut </span>account = <span class="macro">entry_str_to_account!</span>(JSON_ADMIN_V1);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>account = <span class="macro">entry_to_account!</span>(E_ADMIN_V1.clone());
         <span class="comment">// manually load in a cred
         </span><span class="kw">let </span>p = CryptoPolicy::minimum();
         <span class="kw">let </span>cred = Credential::new_password_only(<span class="kw-2">&amp;</span>p, <span class="string">&quot;test_password&quot;</span>).unwrap();
@@ -3613,7 +3613,7 @@
         <span class="kw">let </span>jws_signer = create_jwt_signer();
         <span class="kw">let </span>webauthn = create_webauthn();
         <span class="comment">// create the ent
-        </span><span class="kw">let </span><span class="kw-2">mut </span>account = <span class="macro">entry_str_to_account!</span>(JSON_ADMIN_V1);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>account = <span class="macro">entry_to_account!</span>(E_ADMIN_V1.clone());
         <span class="comment">// manually load in a cred
         </span><span class="kw">let </span>p = CryptoPolicy::minimum();
         <span class="kw">let </span>cred = Credential::new_password_only(<span class="kw-2">&amp;</span>p, <span class="string">&quot;list@no3IBTyqHu$bad&quot;</span>).unwrap();
@@ -3705,7 +3705,7 @@
         <span class="kw">let </span>webauthn = create_webauthn();
         <span class="kw">let </span>jws_signer = create_jwt_signer();
         <span class="comment">// create the ent
-        </span><span class="kw">let </span><span class="kw-2">mut </span>account = <span class="macro">entry_str_to_account!</span>(JSON_ADMIN_V1);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>account = <span class="macro">entry_to_account!</span>(E_ADMIN_V1);
 
         <span class="comment">// Setup a fake time stamp for consistency.
         </span><span class="kw">let </span>ts = Duration::from_secs(<span class="number">12345</span>);
@@ -3865,7 +3865,7 @@
         <span class="kw">let </span>webauthn = create_webauthn();
         <span class="kw">let </span>jws_signer = create_jwt_signer();
         <span class="comment">// create the ent
-        </span><span class="kw">let </span><span class="kw-2">mut </span>account = <span class="macro">entry_str_to_account!</span>(JSON_ADMIN_V1);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>account = <span class="macro">entry_to_account!</span>(E_ADMIN_V1);
 
         <span class="comment">// Setup a fake time stamp for consistency.
         </span><span class="kw">let </span>ts = Duration::from_secs(<span class="number">12345</span>);
@@ -4029,7 +4029,7 @@
         <span class="kw">let </span>(async_tx, <span class="kw-2">mut </span>async_rx) = unbounded();
         <span class="kw">let </span>ts = duration_from_epoch_now();
         <span class="comment">// create the ent
-        </span><span class="kw">let </span><span class="kw-2">mut </span>account = <span class="macro">entry_str_to_account!</span>(JSON_ADMIN_V1);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>account = <span class="macro">entry_to_account!</span>(E_ADMIN_V1.clone());
 
         <span class="kw">let </span>(webauthn, <span class="kw-2">mut </span>wa, wan_cred) = setup_webauthn_passkey(account.name.as_str());
         <span class="kw">let </span>jws_signer = create_jwt_signer();
@@ -4166,7 +4166,7 @@
         <span class="kw">let </span>(async_tx, <span class="kw-2">mut </span>async_rx) = unbounded();
         <span class="kw">let </span>ts = duration_from_epoch_now();
         <span class="comment">// create the ent
-        </span><span class="kw">let </span><span class="kw-2">mut </span>account = <span class="macro">entry_str_to_account!</span>(JSON_ADMIN_V1);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>account = <span class="macro">entry_to_account!</span>(E_ADMIN_V1);
 
         <span class="kw">let </span>(webauthn, <span class="kw-2">mut </span>wa, wan_cred) = setup_webauthn_securitykey(account.name.as_str());
         <span class="kw">let </span>jws_signer = create_jwt_signer();
@@ -4343,7 +4343,7 @@
         <span class="kw">let </span>(async_tx, <span class="kw-2">mut </span>async_rx) = unbounded();
         <span class="kw">let </span>ts = duration_from_epoch_now();
         <span class="comment">// create the ent
-        </span><span class="kw">let </span><span class="kw-2">mut </span>account = <span class="macro">entry_str_to_account!</span>(JSON_ADMIN_V1);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>account = <span class="macro">entry_to_account!</span>(E_ADMIN_V1);
 
         <span class="kw">let </span>(webauthn, <span class="kw-2">mut </span>wa, wan_cred) = setup_webauthn_securitykey(account.name.as_str());
         <span class="kw">let </span>jws_signer = create_jwt_signer();
@@ -4592,7 +4592,7 @@
         <span class="kw">let </span>jws_signer = create_jwt_signer();
         <span class="kw">let </span>webauthn = create_webauthn();
         <span class="comment">// create the ent
-        </span><span class="kw">let </span><span class="kw-2">mut </span>account = <span class="macro">entry_str_to_account!</span>(JSON_ADMIN_V1);
+        </span><span class="kw">let </span><span class="kw-2">mut </span>account = <span class="macro">entry_to_account!</span>(E_ADMIN_V1);
 
         <span class="comment">// Setup a fake time stamp for consistency.
         </span><span class="kw">let </span>ts = Duration::from_secs(<span class="number">12345</span>);

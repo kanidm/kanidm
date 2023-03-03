@@ -1585,7 +1585,6 @@
 <a href="#1585" id="1585">1585</a>
 <a href="#1586" id="1586">1586</a>
 <a href="#1587" id="1587">1587</a>
-<a href="#1588" id="1588">1588</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::{TryFrom, TryInto};
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::time::Duration;
@@ -3140,7 +3139,6 @@
     <span class="kw">pub fn </span>read(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; IdlSqliteReadTransaction {
         <span class="comment">// When we make this async, this will allow us to backoff
         // when we miss-grabbing from the conn-pool.
-        // async_std::task::yield_now().await
         </span><span class="attr">#[allow(clippy::expect_used)]
         </span><span class="kw">let </span>conn = <span class="self">self
             </span>.pool

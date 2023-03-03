@@ -2768,41 +2768,6 @@
 <a href="#2768" id="2768">2768</a>
 <a href="#2769" id="2769">2769</a>
 <a href="#2770" id="2770">2770</a>
-<a href="#2771" id="2771">2771</a>
-<a href="#2772" id="2772">2772</a>
-<a href="#2773" id="2773">2773</a>
-<a href="#2774" id="2774">2774</a>
-<a href="#2775" id="2775">2775</a>
-<a href="#2776" id="2776">2776</a>
-<a href="#2777" id="2777">2777</a>
-<a href="#2778" id="2778">2778</a>
-<a href="#2779" id="2779">2779</a>
-<a href="#2780" id="2780">2780</a>
-<a href="#2781" id="2781">2781</a>
-<a href="#2782" id="2782">2782</a>
-<a href="#2783" id="2783">2783</a>
-<a href="#2784" id="2784">2784</a>
-<a href="#2785" id="2785">2785</a>
-<a href="#2786" id="2786">2786</a>
-<a href="#2787" id="2787">2787</a>
-<a href="#2788" id="2788">2788</a>
-<a href="#2789" id="2789">2789</a>
-<a href="#2790" id="2790">2790</a>
-<a href="#2791" id="2791">2791</a>
-<a href="#2792" id="2792">2792</a>
-<a href="#2793" id="2793">2793</a>
-<a href="#2794" id="2794">2794</a>
-<a href="#2795" id="2795">2795</a>
-<a href="#2796" id="2796">2796</a>
-<a href="#2797" id="2797">2797</a>
-<a href="#2798" id="2798">2798</a>
-<a href="#2799" id="2799">2799</a>
-<a href="#2800" id="2800">2800</a>
-<a href="#2801" id="2801">2801</a>
-<a href="#2802" id="2802">2802</a>
-<a href="#2803" id="2803">2803</a>
-<a href="#2804" id="2804">2804</a>
-<a href="#2805" id="2805">2805</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>base64urlsafedata::Base64UrlSafeData;
@@ -4190,8 +4155,6 @@
         ScimSyncUpdateEvent,
     };
 
-    <span class="kw">use </span>async_std::task;
-
     <span class="kw">const </span>TEST_CURRENT_TIME: u64 = <span class="number">6000</span>;
 
     <span class="kw">fn </span>create_scim_sync_account(
@@ -4221,167 +4184,163 @@
         (sync_uuid, sync_token)
     }
 
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_basic_function() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+    <span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_basic_function(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>(sync_uuid, sync_token) = create_scim_sync_account(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>(sync_uuid, sync_token) = create_scim_sync_account(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
 
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
-            <span class="comment">// Do a get_state to get the current &quot;state cookie&quot; if any.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
+        <span class="comment">// Do a get_state to get the current &quot;state cookie&quot; if any.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = idms.proxy_read().<span class="kw">await</span>;
 
-            <span class="kw">let </span>ident = idms_prox_read
-                .validate_and_parse_sync_token_to_ident(<span class="prelude-val">Some</span>(sync_token.as_str()), ct)
-                .expect(<span class="string">&quot;Failed to validate sync token&quot;</span>);
+        <span class="kw">let </span>ident = idms_prox_read
+            .validate_and_parse_sync_token_to_ident(<span class="prelude-val">Some</span>(sync_token.as_str()), ct)
+            .expect(<span class="string">&quot;Failed to validate sync token&quot;</span>);
 
-            <span class="macro">assert!</span>(<span class="prelude-val">Some</span>(sync_uuid) == ident.get_uuid());
+        <span class="macro">assert!</span>(<span class="prelude-val">Some</span>(sync_uuid) == ident.get_uuid());
 
-            <span class="kw">let </span>sync_state = idms_prox_read
-                .scim_sync_get_state(<span class="kw-2">&amp;</span>ident)
-                .expect(<span class="string">&quot;Failed to get current sync state&quot;</span>);
-            <span class="macro">trace!</span>(<span class="question-mark">?</span>sync_state);
+        <span class="kw">let </span>sync_state = idms_prox_read
+            .scim_sync_get_state(<span class="kw-2">&amp;</span>ident)
+            .expect(<span class="string">&quot;Failed to get current sync state&quot;</span>);
+        <span class="macro">trace!</span>(<span class="question-mark">?</span>sync_state);
 
-            <span class="macro">assert!</span>(<span class="macro">matches!</span>(sync_state, ScimSyncState::Refresh));
+        <span class="macro">assert!</span>(<span class="macro">matches!</span>(sync_state, ScimSyncState::Refresh));
 
-            drop(idms_prox_read);
+        drop(idms_prox_read);
 
-            <span class="comment">// Use the current state and update.
+        <span class="comment">// Use the current state and update.
 
-            // TODO!!!
-        </span>})
-    }
+        // TODO!!!
+    </span>}
 
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_token_security() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+    <span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_token_security(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
 
-            <span class="kw">let </span>sync_uuid = Uuid::new_v4();
+        <span class="kw">let </span>sync_uuid = Uuid::new_v4();
 
-            <span class="kw">let </span>e1 = <span class="macro">entry_init!</span>(
-                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
-                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;sync_account&quot;</span>)),
-                (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_scim_sync&quot;</span>)),
-                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(sync_uuid)),
-                (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;A test sync agreement&quot;</span>))
-            );
+        <span class="kw">let </span>e1 = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;sync_account&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_scim_sync&quot;</span>)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(sync_uuid)),
+            (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;A test sync agreement&quot;</span>))
+        );
 
-            <span class="kw">let </span>ce = CreateEvent::new_internal(<span class="macro">vec!</span>[e1]);
-            <span class="kw">let </span>cr = idms_prox_write.qs_write.create(<span class="kw-2">&amp;</span>ce);
-            <span class="macro">assert!</span>(cr.is_ok());
+        <span class="kw">let </span>ce = CreateEvent::new_internal(<span class="macro">vec!</span>[e1]);
+        <span class="kw">let </span>cr = idms_prox_write.qs_write.create(<span class="kw-2">&amp;</span>ce);
+        <span class="macro">assert!</span>(cr.is_ok());
 
-            <span class="kw">let </span>gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, <span class="string">&quot;Sync Connector&quot;</span>);
+        <span class="kw">let </span>gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, <span class="string">&quot;Sync Connector&quot;</span>);
 
-            <span class="kw">let </span>sync_token = idms_prox_write
-                .scim_sync_generate_token(<span class="kw-2">&amp;</span>gte, ct)
-                .expect(<span class="string">&quot;failed to generate new scim sync token&quot;</span>);
+        <span class="kw">let </span>sync_token = idms_prox_write
+            .scim_sync_generate_token(<span class="kw-2">&amp;</span>gte, ct)
+            .expect(<span class="string">&quot;failed to generate new scim sync token&quot;</span>);
 
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
-            <span class="comment">// -- Check the happy path.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
-            <span class="kw">let </span>ident = idms_prox_read
-                .validate_and_parse_sync_token_to_ident(<span class="prelude-val">Some</span>(sync_token.as_str()), ct)
-                .expect(<span class="string">&quot;Failed to validate sync token&quot;</span>);
-            <span class="macro">assert!</span>(<span class="prelude-val">Some</span>(sync_uuid) == ident.get_uuid());
-            drop(idms_prox_read);
+        <span class="comment">// -- Check the happy path.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span>ident = idms_prox_read
+            .validate_and_parse_sync_token_to_ident(<span class="prelude-val">Some</span>(sync_token.as_str()), ct)
+            .expect(<span class="string">&quot;Failed to validate sync token&quot;</span>);
+        <span class="macro">assert!</span>(<span class="prelude-val">Some</span>(sync_uuid) == ident.get_uuid());
+        drop(idms_prox_read);
 
-            <span class="comment">// -- Revoke the session
+        <span class="comment">// -- Revoke the session
 
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>me_inv_m = <span class="kw">unsafe </span>{
-                ModifyEvent::new_internal_invalid(
-                    <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;test_scim_sync&quot;</span>))),
-                    ModifyList::new_list(<span class="macro">vec!</span>[Modify::Purged(AttrString::from(
-                        <span class="string">&quot;sync_token_session&quot;</span>,
-                    ))]),
-                )
-            };
-            <span class="macro">assert!</span>(idms_prox_write.qs_write.modify(<span class="kw-2">&amp;</span>me_inv_m).is_ok());
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+        </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>me_inv_m = <span class="kw">unsafe </span>{
+            ModifyEvent::new_internal_invalid(
+                <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;test_scim_sync&quot;</span>))),
+                ModifyList::new_list(<span class="macro">vec!</span>[Modify::Purged(AttrString::from(<span class="string">&quot;sync_token_session&quot;</span>))]),
+            )
+        };
+        <span class="macro">assert!</span>(idms_prox_write.qs_write.modify(<span class="kw-2">&amp;</span>me_inv_m).is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
-            <span class="comment">// Must fail
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
-            <span class="kw">let </span>fail = idms_prox_read
-                .validate_and_parse_sync_token_to_ident(<span class="prelude-val">Some</span>(sync_token.as_str()), ct);
-            <span class="macro">assert!</span>(<span class="macro">matches!</span>(fail, <span class="prelude-val">Err</span>(OperationError::NotAuthenticated)));
-            drop(idms_prox_read);
+        <span class="comment">// Must fail
+        </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span>fail =
+            idms_prox_read.validate_and_parse_sync_token_to_ident(<span class="prelude-val">Some</span>(sync_token.as_str()), ct);
+        <span class="macro">assert!</span>(<span class="macro">matches!</span>(fail, <span class="prelude-val">Err</span>(OperationError::NotAuthenticated)));
+        drop(idms_prox_read);
 
-            <span class="comment">// -- New session, reset the JWS
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
+        <span class="comment">// -- New session, reset the JWS
+        </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
 
-            <span class="kw">let </span>gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, <span class="string">&quot;Sync Connector&quot;</span>);
-            <span class="kw">let </span>sync_token = idms_prox_write
-                .scim_sync_generate_token(<span class="kw-2">&amp;</span>gte, ct)
-                .expect(<span class="string">&quot;failed to generate new scim sync token&quot;</span>);
+        <span class="kw">let </span>gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, <span class="string">&quot;Sync Connector&quot;</span>);
+        <span class="kw">let </span>sync_token = idms_prox_write
+            .scim_sync_generate_token(<span class="kw-2">&amp;</span>gte, ct)
+            .expect(<span class="string">&quot;failed to generate new scim sync token&quot;</span>);
 
-            <span class="kw">let </span>me_inv_m = <span class="kw">unsafe </span>{
-                ModifyEvent::new_internal_invalid(
-                    <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;test_scim_sync&quot;</span>))),
-                    ModifyList::new_list(<span class="macro">vec!</span>[Modify::Purged(AttrString::from(
-                        <span class="string">&quot;jws_es256_private_key&quot;</span>,
-                    ))]),
-                )
-            };
-            <span class="macro">assert!</span>(idms_prox_write.qs_write.modify(<span class="kw-2">&amp;</span>me_inv_m).is_ok());
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+        <span class="kw">let </span>me_inv_m = <span class="kw">unsafe </span>{
+            ModifyEvent::new_internal_invalid(
+                <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;test_scim_sync&quot;</span>))),
+                ModifyList::new_list(<span class="macro">vec!</span>[Modify::Purged(AttrString::from(
+                    <span class="string">&quot;jws_es256_private_key&quot;</span>,
+                ))]),
+            )
+        };
+        <span class="macro">assert!</span>(idms_prox_write.qs_write.modify(<span class="kw-2">&amp;</span>me_inv_m).is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = task::block_on(idms.proxy_read());
-            <span class="kw">let </span>fail = idms_prox_read
-                .validate_and_parse_sync_token_to_ident(<span class="prelude-val">Some</span>(sync_token.as_str()), ct);
-            <span class="macro">assert!</span>(<span class="macro">matches!</span>(fail, <span class="prelude-val">Err</span>(OperationError::NotAuthenticated)));
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = idms.proxy_read().<span class="kw">await</span>;
+        <span class="kw">let </span>fail =
+            idms_prox_read.validate_and_parse_sync_token_to_ident(<span class="prelude-val">Some</span>(sync_token.as_str()), ct);
+        <span class="macro">assert!</span>(<span class="macro">matches!</span>(fail, <span class="prelude-val">Err</span>(OperationError::NotAuthenticated)));
 
-            <span class="comment">// -- Forge a session, use wrong types
+        <span class="comment">// -- Forge a session, use wrong types
 
-            </span><span class="kw">let </span>sync_entry = idms_prox_read
-                .qs_read
-                .internal_search_uuid(sync_uuid)
-                .expect(<span class="string">&quot;Unable to access sync entry&quot;</span>);
+        </span><span class="kw">let </span>sync_entry = idms_prox_read
+            .qs_read
+            .internal_search_uuid(sync_uuid)
+            .expect(<span class="string">&quot;Unable to access sync entry&quot;</span>);
 
-            <span class="kw">let </span>jws_key = sync_entry
-                .get_ava_single_jws_key_es256(<span class="string">&quot;jws_es256_private_key&quot;</span>)
-                .cloned()
-                .expect(<span class="string">&quot;Missing attribute: jws_es256_private_key&quot;</span>);
+        <span class="kw">let </span>jws_key = sync_entry
+            .get_ava_single_jws_key_es256(<span class="string">&quot;jws_es256_private_key&quot;</span>)
+            .cloned()
+            .expect(<span class="string">&quot;Missing attribute: jws_es256_private_key&quot;</span>);
 
-            <span class="kw">let </span>sync_tokens = sync_entry
-                .get_ava_as_apitoken_map(<span class="string">&quot;sync_token_session&quot;</span>)
-                .cloned()
-                .unwrap_or_default();
+        <span class="kw">let </span>sync_tokens = sync_entry
+            .get_ava_as_apitoken_map(<span class="string">&quot;sync_token_session&quot;</span>)
+            .cloned()
+            .unwrap_or_default();
 
-            <span class="comment">// Steal these from the legit sesh.
-            </span><span class="kw">let </span>(token_id, issued_at) = sync_tokens
-                .iter()
-                .next()
-                .map(|(k, v)| (<span class="kw-2">*</span>k, v.issued_at))
-                .expect(<span class="string">&quot;No sync tokens present&quot;</span>);
+        <span class="comment">// Steal these from the legit sesh.
+        </span><span class="kw">let </span>(token_id, issued_at) = sync_tokens
+            .iter()
+            .next()
+            .map(|(k, v)| (<span class="kw-2">*</span>k, v.issued_at))
+            .expect(<span class="string">&quot;No sync tokens present&quot;</span>);
 
-            <span class="kw">let </span>purpose = ApiTokenPurpose::ReadWrite;
+        <span class="kw">let </span>purpose = ApiTokenPurpose::ReadWrite;
 
-            <span class="kw">let </span>token = Jws::new(ScimSyncToken {
-                token_id,
-                issued_at,
-                purpose,
-            });
+        <span class="kw">let </span>token = Jws::new(ScimSyncToken {
+            token_id,
+            issued_at,
+            purpose,
+        });
 
-            <span class="kw">let </span>forged_token = token
-                .sign(<span class="kw-2">&amp;</span>jws_key)
-                .map(|jws_signed| jws_signed.to_string())
-                .expect(<span class="string">&quot;Unable to sign forged token&quot;</span>);
+        <span class="kw">let </span>forged_token = token
+            .sign(<span class="kw-2">&amp;</span>jws_key)
+            .map(|jws_signed| jws_signed.to_string())
+            .expect(<span class="string">&quot;Unable to sign forged token&quot;</span>);
 
-            <span class="kw">let </span>fail = idms_prox_read
-                .validate_and_parse_sync_token_to_ident(<span class="prelude-val">Some</span>(forged_token.as_str()), ct);
-            <span class="macro">assert!</span>(<span class="macro">matches!</span>(fail, <span class="prelude-val">Err</span>(OperationError::NotAuthenticated)));
-        })
+        <span class="kw">let </span>fail =
+            idms_prox_read.validate_and_parse_sync_token_to_ident(<span class="prelude-val">Some</span>(forged_token.as_str()), ct);
+        <span class="macro">assert!</span>(<span class="macro">matches!</span>(fail, <span class="prelude-val">Err</span>(OperationError::NotAuthenticated)));
     }
 
     <span class="kw">fn </span>test_scim_sync_apply_setup_ident(
@@ -4415,142 +4374,139 @@
         (sync_uuid, ident)
     }
 
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_apply_phase_1_inconsistent() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
-            <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
+    <span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_apply_phase_1_inconsistent(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
+        <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
 
-            <span class="kw">let </span>changes = ScimSyncRequest {
-                from_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
-                },
-                to_state: ScimSyncState::Refresh,
-                entries: Vec::default(),
-                delete_uuids: Vec::default(),
-            };
+        <span class="kw">let </span>changes = ScimSyncRequest {
+            from_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
+            },
+            to_state: ScimSyncState::Refresh,
+            entries: Vec::default(),
+            delete_uuids: Vec::default(),
+        };
 
-            <span class="kw">let </span>res = idms_prox_write.scim_sync_apply_phase_1(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes);
+        <span class="kw">let </span>res = idms_prox_write.scim_sync_apply_phase_1(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes);
 
-            <span class="macro">assert!</span>(<span class="macro">matches!</span>(res, <span class="prelude-val">Err</span>(OperationError::InvalidSyncState)));
+        <span class="macro">assert!</span>(<span class="macro">matches!</span>(res, <span class="prelude-val">Err</span>(OperationError::InvalidSyncState)));
 
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-        })
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
     }
 
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_apply_phase_2_basic() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
-            <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
+    <span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_apply_phase_2_basic(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
+        <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
 
-            <span class="kw">let </span>user_sync_uuid = <span class="macro">uuid::uuid!</span>(<span class="string">&quot;91b7aaf2-2445-46ce-8998-96d9f186cc69&quot;</span>);
+        <span class="kw">let </span>user_sync_uuid = <span class="macro">uuid::uuid!</span>(<span class="string">&quot;91b7aaf2-2445-46ce-8998-96d9f186cc69&quot;</span>);
 
-            <span class="kw">let </span>changes = ScimSyncRequest {
-                from_state: ScimSyncState::Refresh,
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
-                },
-                entries: <span class="macro">vec!</span>[ScimEntry {
-                    schemas: <span class="macro">vec!</span>[SCIM_SCHEMA_SYNC_PERSON.to_string()],
-                    id: user_sync_uuid,
-                    external_id: <span class="prelude-val">Some</span>(<span class="string">&quot;dn=william,ou=people,dc=test&quot;</span>.to_string()),
-                    meta: <span class="prelude-val">None</span>,
-                    attrs: <span class="macro">btreemap!</span>((
-                        <span class="string">&quot;name&quot;</span>.to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String(<span class="string">&quot;william&quot;</span>.to_string()))
-                    ),),
-                }],
-                delete_uuids: Vec::default(),
-            };
+        <span class="kw">let </span>changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
+            },
+            entries: <span class="macro">vec!</span>[ScimEntry {
+                schemas: <span class="macro">vec!</span>[SCIM_SCHEMA_SYNC_PERSON.to_string()],
+                id: user_sync_uuid,
+                external_id: <span class="prelude-val">Some</span>(<span class="string">&quot;dn=william,ou=people,dc=test&quot;</span>.to_string()),
+                meta: <span class="prelude-val">None</span>,
+                attrs: <span class="macro">btreemap!</span>((
+                    <span class="string">&quot;name&quot;</span>.to_string(),
+                    ScimAttr::SingleSimple(ScimSimpleAttr::String(<span class="string">&quot;william&quot;</span>.to_string()))
+                ),),
+            }],
+            delete_uuids: Vec::default(),
+        };
 
-            <span class="kw">let </span>(sync_uuid, _sync_authority_set, change_entries, _sync_refresh) = idms_prox_write
-                .scim_sync_apply_phase_1(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes)
-                .expect(<span class="string">&quot;Failed to run phase 1&quot;</span>);
+        <span class="kw">let </span>(sync_uuid, _sync_authority_set, change_entries, _sync_refresh) = idms_prox_write
+            .scim_sync_apply_phase_1(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes)
+            .expect(<span class="string">&quot;Failed to run phase 1&quot;</span>);
 
-            idms_prox_write
-                .scim_sync_apply_phase_2(<span class="kw-2">&amp;</span>change_entries, sync_uuid)
-                .expect(<span class="string">&quot;Failed to run phase 2&quot;</span>);
+        idms_prox_write
+            .scim_sync_apply_phase_2(<span class="kw-2">&amp;</span>change_entries, sync_uuid)
+            .expect(<span class="string">&quot;Failed to run phase 2&quot;</span>);
 
-            <span class="kw">let </span>synced_entry = idms_prox_write
-                .qs_write
-                .internal_search_uuid(user_sync_uuid)
-                .expect(<span class="string">&quot;Failed to access sync stub entry&quot;</span>);
+        <span class="kw">let </span>synced_entry = idms_prox_write
+            .qs_write
+            .internal_search_uuid(user_sync_uuid)
+            .expect(<span class="string">&quot;Failed to access sync stub entry&quot;</span>);
 
-            <span class="macro">assert!</span>(
-                synced_entry.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
-                    == <span class="prelude-val">Some</span>(<span class="string">&quot;dn=william,ou=people,dc=test&quot;</span>)
-            );
-            <span class="macro">assert!</span>(synced_entry.get_uuid() == user_sync_uuid);
+        <span class="macro">assert!</span>(
+            synced_entry.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
+                == <span class="prelude-val">Some</span>(<span class="string">&quot;dn=william,ou=people,dc=test&quot;</span>)
+        );
+        <span class="macro">assert!</span>(synced_entry.get_uuid() == user_sync_uuid);
 
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-        })
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
     }
 
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_apply_phase_2_deny_on_tombstone() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
+    <span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_apply_phase_2_deny_on_tombstone(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
 
-            <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
-            <span class="comment">// Create a recycled entry
-            </span><span class="macro">assert!</span>(idms_prox_write
-                .qs_write
-                .internal_create(<span class="macro">vec!</span>[<span class="macro">entry_init!</span>(
-                    (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
-                    (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(user_sync_uuid))
-                )])
-                .is_ok());
+        <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
+        <span class="comment">// Create a recycled entry
+        </span><span class="macro">assert!</span>(idms_prox_write
+            .qs_write
+            .internal_create(<span class="macro">vec!</span>[<span class="macro">entry_init!</span>(
+                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(user_sync_uuid))
+            )])
+            .is_ok());
 
-            <span class="macro">assert!</span>(idms_prox_write
-                .qs_write
-                .internal_delete_uuid(user_sync_uuid)
-                .is_ok());
+        <span class="macro">assert!</span>(idms_prox_write
+            .qs_write
+            .internal_delete_uuid(user_sync_uuid)
+            .is_ok());
 
-            <span class="comment">// Now create a sync that conflicts with the tombstone uuid. This will be REJECTED.
+        <span class="comment">// Now create a sync that conflicts with the tombstone uuid. This will be REJECTED.
 
-            </span><span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
+        </span><span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
 
-            <span class="kw">let </span>changes = ScimSyncRequest {
-                from_state: ScimSyncState::Refresh,
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
-                },
-                entries: <span class="macro">vec!</span>[ScimEntry {
-                    schemas: <span class="macro">vec!</span>[SCIM_SCHEMA_SYNC_PERSON.to_string()],
-                    id: user_sync_uuid,
-                    external_id: <span class="prelude-val">Some</span>(<span class="string">&quot;dn=william,ou=people,dc=test&quot;</span>.to_string()),
-                    meta: <span class="prelude-val">None</span>,
-                    attrs: <span class="macro">btreemap!</span>((
-                        <span class="string">&quot;name&quot;</span>.to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String(<span class="string">&quot;william&quot;</span>.to_string()))
-                    ),),
-                }],
-                delete_uuids: Vec::default(),
-            };
+        <span class="kw">let </span>changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
+            },
+            entries: <span class="macro">vec!</span>[ScimEntry {
+                schemas: <span class="macro">vec!</span>[SCIM_SCHEMA_SYNC_PERSON.to_string()],
+                id: user_sync_uuid,
+                external_id: <span class="prelude-val">Some</span>(<span class="string">&quot;dn=william,ou=people,dc=test&quot;</span>.to_string()),
+                meta: <span class="prelude-val">None</span>,
+                attrs: <span class="macro">btreemap!</span>((
+                    <span class="string">&quot;name&quot;</span>.to_string(),
+                    ScimAttr::SingleSimple(ScimSimpleAttr::String(<span class="string">&quot;william&quot;</span>.to_string()))
+                ),),
+            }],
+            delete_uuids: Vec::default(),
+        };
 
-            <span class="kw">let </span>(sync_uuid, _sync_authority_set, change_entries, _sync_refresh) = idms_prox_write
-                .scim_sync_apply_phase_1(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes)
-                .expect(<span class="string">&quot;Failed to run phase 1&quot;</span>);
+        <span class="kw">let </span>(sync_uuid, _sync_authority_set, change_entries, _sync_refresh) = idms_prox_write
+            .scim_sync_apply_phase_1(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes)
+            .expect(<span class="string">&quot;Failed to run phase 1&quot;</span>);
 
-            <span class="kw">let </span>res = idms_prox_write.scim_sync_apply_phase_2(<span class="kw-2">&amp;</span>change_entries, sync_uuid);
+        <span class="kw">let </span>res = idms_prox_write.scim_sync_apply_phase_2(<span class="kw-2">&amp;</span>change_entries, sync_uuid);
 
-            <span class="macro">assert!</span>(<span class="macro">matches!</span>(res, <span class="prelude-val">Err</span>(OperationError::InvalidEntryState)));
+        <span class="macro">assert!</span>(<span class="macro">matches!</span>(res, <span class="prelude-val">Err</span>(OperationError::InvalidEntryState)));
 
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-        })
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
     }
 
     <span class="comment">// Phase 3
@@ -4586,402 +4542,394 @@
             .and_then(|a| idms_prox_write.commit().map(|()| a))
     }
 
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_phase_3_basic() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
+    <span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_phase_3_basic(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
 
-            <span class="macro">assert!</span>(task::block_on(apply_phase_3_test(
-                idms,
-                <span class="macro">vec!</span>[ScimEntry {
-                    schemas: <span class="macro">vec!</span>[SCIM_SCHEMA_SYNC_GROUP.to_string()],
-                    id: user_sync_uuid,
-                    external_id: <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,ou=people,dc=test&quot;</span>.to_string()),
-                    meta: <span class="prelude-val">None</span>,
-                    attrs: <span class="macro">btreemap!</span>((
-                        <span class="string">&quot;name&quot;</span>.to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String(<span class="string">&quot;testgroup&quot;</span>.to_string()))
-                    ),),
-                }]
-            ))
-            .is_ok());
+        <span class="macro">assert!</span>(apply_phase_3_test(
+            idms,
+            <span class="macro">vec!</span>[ScimEntry {
+                schemas: <span class="macro">vec!</span>[SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                id: user_sync_uuid,
+                external_id: <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,ou=people,dc=test&quot;</span>.to_string()),
+                meta: <span class="prelude-val">None</span>,
+                attrs: <span class="macro">btreemap!</span>((
+                    <span class="string">&quot;name&quot;</span>.to_string(),
+                    ScimAttr::SingleSimple(ScimSimpleAttr::String(<span class="string">&quot;testgroup&quot;</span>.to_string()))
+                ),),
+            }]
+        )
+        .<span class="kw">await
+        </span>.is_ok());
 
-            <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
+        <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
 
-            <span class="kw">let </span>ent = idms_prox_write
-                .qs_write
-                .internal_search_uuid(user_sync_uuid)
-                .expect(<span class="string">&quot;Unable to access entry&quot;</span>);
+        <span class="kw">let </span>ent = idms_prox_write
+            .qs_write
+            .internal_search_uuid(user_sync_uuid)
+            .expect(<span class="string">&quot;Unable to access entry&quot;</span>);
 
-            <span class="macro">assert!</span>(ent.get_ava_single_iname(<span class="string">&quot;name&quot;</span>) == <span class="prelude-val">Some</span>(<span class="string">&quot;testgroup&quot;</span>));
-            <span class="macro">assert!</span>(
-                ent.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
-                    == <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,ou=people,dc=test&quot;</span>)
-            );
+        <span class="macro">assert!</span>(ent.get_ava_single_iname(<span class="string">&quot;name&quot;</span>) == <span class="prelude-val">Some</span>(<span class="string">&quot;testgroup&quot;</span>));
+        <span class="macro">assert!</span>(
+            ent.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>) == <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,ou=people,dc=test&quot;</span>)
+        );
 
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-        })
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
     }
 
     <span class="comment">// -- try to set uuid
-    </span><span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_phase_3_uuid_manipulation() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
+    </span><span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_phase_3_uuid_manipulation(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
 
-            <span class="macro">assert!</span>(task::block_on(apply_phase_3_test(
-                idms,
-                <span class="macro">vec!</span>[ScimEntry {
-                    schemas: <span class="macro">vec!</span>[SCIM_SCHEMA_SYNC_GROUP.to_string()],
-                    id: user_sync_uuid,
-                    external_id: <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,ou=people,dc=test&quot;</span>.to_string()),
-                    meta: <span class="prelude-val">None</span>,
-                    attrs: <span class="macro">btreemap!</span>(
-                        (
-                            <span class="string">&quot;name&quot;</span>.to_string(),
-                            ScimAttr::SingleSimple(ScimSimpleAttr::String(<span class="string">&quot;testgroup&quot;</span>.to_string()))
-                        ),
-                        (
-                            <span class="string">&quot;uuid&quot;</span>.to_string(),
-                            ScimAttr::SingleSimple(ScimSimpleAttr::String(
-                                <span class="string">&quot;2c019619-f894-4a94-b356-05d371850e3d&quot;</span>.to_string()
-                            ))
-                        )
+        <span class="macro">assert!</span>(apply_phase_3_test(
+            idms,
+            <span class="macro">vec!</span>[ScimEntry {
+                schemas: <span class="macro">vec!</span>[SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                id: user_sync_uuid,
+                external_id: <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,ou=people,dc=test&quot;</span>.to_string()),
+                meta: <span class="prelude-val">None</span>,
+                attrs: <span class="macro">btreemap!</span>(
+                    (
+                        <span class="string">&quot;name&quot;</span>.to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String(<span class="string">&quot;testgroup&quot;</span>.to_string()))
                     ),
-                }]
-            ))
-            .is_err());
-        })
+                    (
+                        <span class="string">&quot;uuid&quot;</span>.to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String(
+                            <span class="string">&quot;2c019619-f894-4a94-b356-05d371850e3d&quot;</span>.to_string()
+                        ))
+                    )
+                ),
+            }]
+        )
+        .<span class="kw">await
+        </span>.is_err());
     }
 
     <span class="comment">// -- try to set sync_uuid / sync_object attrs
-    </span><span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_phase_3_sync_parent_uuid_manipulation() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
+    </span><span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_phase_3_sync_parent_uuid_manipulation(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
 
-            <span class="macro">assert!</span>(task::block_on(apply_phase_3_test(
-                idms,
-                <span class="macro">vec!</span>[ScimEntry {
-                    schemas: <span class="macro">vec!</span>[SCIM_SCHEMA_SYNC_GROUP.to_string()],
-                    id: user_sync_uuid,
-                    external_id: <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,ou=people,dc=test&quot;</span>.to_string()),
-                    meta: <span class="prelude-val">None</span>,
-                    attrs: <span class="macro">btreemap!</span>(
-                        (
-                            <span class="string">&quot;name&quot;</span>.to_string(),
-                            ScimAttr::SingleSimple(ScimSimpleAttr::String(<span class="string">&quot;testgroup&quot;</span>.to_string()))
-                        ),
-                        (
-                            <span class="string">&quot;sync_parent_uuid&quot;</span>.to_string(),
-                            ScimAttr::SingleSimple(ScimSimpleAttr::String(
-                                <span class="string">&quot;2c019619-f894-4a94-b356-05d371850e3d&quot;</span>.to_string()
-                            ))
-                        )
+        <span class="macro">assert!</span>(apply_phase_3_test(
+            idms,
+            <span class="macro">vec!</span>[ScimEntry {
+                schemas: <span class="macro">vec!</span>[SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                id: user_sync_uuid,
+                external_id: <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,ou=people,dc=test&quot;</span>.to_string()),
+                meta: <span class="prelude-val">None</span>,
+                attrs: <span class="macro">btreemap!</span>(
+                    (
+                        <span class="string">&quot;name&quot;</span>.to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String(<span class="string">&quot;testgroup&quot;</span>.to_string()))
                     ),
-                }]
-            ))
-            .is_err());
-        })
+                    (
+                        <span class="string">&quot;sync_parent_uuid&quot;</span>.to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String(
+                            <span class="string">&quot;2c019619-f894-4a94-b356-05d371850e3d&quot;</span>.to_string()
+                        ))
+                    )
+                ),
+            }]
+        )
+        .<span class="kw">await
+        </span>.is_err());
     }
 
     <span class="comment">// -- try to add class via class attr (not via scim schema)
-    </span><span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_phase_3_disallowed_class_forbidden() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
+    </span><span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_phase_3_disallowed_class_forbidden(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
 
-            <span class="macro">assert!</span>(task::block_on(apply_phase_3_test(
-                idms,
-                <span class="macro">vec!</span>[ScimEntry {
-                    schemas: <span class="macro">vec!</span>[SCIM_SCHEMA_SYNC_GROUP.to_string()],
-                    id: user_sync_uuid,
-                    external_id: <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,ou=people,dc=test&quot;</span>.to_string()),
-                    meta: <span class="prelude-val">None</span>,
-                    attrs: <span class="macro">btreemap!</span>(
-                        (
-                            <span class="string">&quot;name&quot;</span>.to_string(),
-                            ScimAttr::SingleSimple(ScimSimpleAttr::String(<span class="string">&quot;testgroup&quot;</span>.to_string()))
-                        ),
-                        (
-                            <span class="string">&quot;class&quot;</span>.to_string(),
-                            ScimAttr::SingleSimple(ScimSimpleAttr::String(
-                                <span class="string">&quot;posixgroup&quot;</span>.to_string()
-                            ))
-                        )
+        <span class="macro">assert!</span>(apply_phase_3_test(
+            idms,
+            <span class="macro">vec!</span>[ScimEntry {
+                schemas: <span class="macro">vec!</span>[SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                id: user_sync_uuid,
+                external_id: <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,ou=people,dc=test&quot;</span>.to_string()),
+                meta: <span class="prelude-val">None</span>,
+                attrs: <span class="macro">btreemap!</span>(
+                    (
+                        <span class="string">&quot;name&quot;</span>.to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String(<span class="string">&quot;testgroup&quot;</span>.to_string()))
                     ),
-                }]
-            ))
-            .is_err());
-        })
+                    (
+                        <span class="string">&quot;class&quot;</span>.to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String(<span class="string">&quot;posixgroup&quot;</span>.to_string()))
+                    )
+                ),
+            }]
+        )
+        .<span class="kw">await
+        </span>.is_err());
     }
 
     <span class="comment">// -- try to add class not in allowed class set (via scim schema)
 
-    </span><span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_phase_3_disallowed_class_system() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
+    </span><span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_phase_3_disallowed_class_system(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
 
-            <span class="macro">assert!</span>(task::block_on(apply_phase_3_test(
-                idms,
-                <span class="macro">vec!</span>[ScimEntry {
-                    schemas: <span class="macro">vec!</span>[<span class="macro">format!</span>(<span class="string">&quot;{SCIM_SCHEMA_SYNC}system&quot;</span>)],
-                    id: user_sync_uuid,
-                    external_id: <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,ou=people,dc=test&quot;</span>.to_string()),
-                    meta: <span class="prelude-val">None</span>,
-                    attrs: <span class="macro">btreemap!</span>((
-                        <span class="string">&quot;name&quot;</span>.to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String(<span class="string">&quot;testgroup&quot;</span>.to_string()))
-                    ),),
-                }]
-            ))
-            .is_err());
-        })
+        <span class="macro">assert!</span>(apply_phase_3_test(
+            idms,
+            <span class="macro">vec!</span>[ScimEntry {
+                schemas: <span class="macro">vec!</span>[<span class="macro">format!</span>(<span class="string">&quot;{SCIM_SCHEMA_SYNC}system&quot;</span>)],
+                id: user_sync_uuid,
+                external_id: <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,ou=people,dc=test&quot;</span>.to_string()),
+                meta: <span class="prelude-val">None</span>,
+                attrs: <span class="macro">btreemap!</span>((
+                    <span class="string">&quot;name&quot;</span>.to_string(),
+                    ScimAttr::SingleSimple(ScimSimpleAttr::String(<span class="string">&quot;testgroup&quot;</span>.to_string()))
+                ),),
+            }]
+        )
+        .<span class="kw">await
+        </span>.is_err());
     }
 
     <span class="comment">// Phase 4
 
     // Good delete - requires phase 5 due to need to do two syncs
-    </span><span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_phase_4_correct_delete() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
-            <span class="comment">// Create an entry via sync
+    </span><span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_phase_4_correct_delete(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
+        <span class="comment">// Create an entry via sync
 
-            </span><span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
-            <span class="kw">let </span>sse = ScimSyncUpdateEvent {
-                ident: ident.clone(),
-            };
+        </span><span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
+        <span class="kw">let </span>sse = ScimSyncUpdateEvent {
+            ident: ident.clone(),
+        };
 
-            <span class="kw">let </span>changes = ScimSyncRequest {
-                from_state: ScimSyncState::Refresh,
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
-                },
-                entries: <span class="macro">vec!</span>[ScimEntry {
-                    schemas: <span class="macro">vec!</span>[SCIM_SCHEMA_SYNC_GROUP.to_string()],
-                    id: user_sync_uuid,
-                    external_id: <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,ou=people,dc=test&quot;</span>.to_string()),
-                    meta: <span class="prelude-val">None</span>,
-                    attrs: <span class="macro">btreemap!</span>((
-                        <span class="string">&quot;name&quot;</span>.to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String(<span class="string">&quot;testgroup&quot;</span>.to_string()))
-                    ),),
-                }],
-                delete_uuids: Vec::default(),
-            };
+        <span class="kw">let </span>changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
+            },
+            entries: <span class="macro">vec!</span>[ScimEntry {
+                schemas: <span class="macro">vec!</span>[SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                id: user_sync_uuid,
+                external_id: <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,ou=people,dc=test&quot;</span>.to_string()),
+                meta: <span class="prelude-val">None</span>,
+                attrs: <span class="macro">btreemap!</span>((
+                    <span class="string">&quot;name&quot;</span>.to_string(),
+                    ScimAttr::SingleSimple(ScimSimpleAttr::String(<span class="string">&quot;testgroup&quot;</span>.to_string()))
+                ),),
+            }],
+            delete_uuids: Vec::default(),
+        };
 
-            <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
-            <span class="comment">// Now we can attempt the delete.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
+        <span class="comment">// Now we can attempt the delete.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
 
-            <span class="kw">let </span>changes = ScimSyncRequest {
-                from_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
-                },
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]),
-                },
-                entries: <span class="macro">vec!</span>[],
-                delete_uuids: <span class="macro">vec!</span>[user_sync_uuid],
-            };
+        <span class="kw">let </span>changes = ScimSyncRequest {
+            from_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
+            },
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]),
+            },
+            entries: <span class="macro">vec!</span>[],
+            delete_uuids: <span class="macro">vec!</span>[user_sync_uuid],
+        };
 
-            <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
 
-            <span class="comment">// Can&#39;t use internal_search_uuid since that applies a mask.
-            </span><span class="macro">assert!</span>(idms_prox_write
-                .qs_write
-                .internal_search(<span class="macro">filter_all!</span>(f_eq(
-                    <span class="string">&quot;uuid&quot;</span>,
-                    PartialValue::Uuid(user_sync_uuid)
-                )))
-                <span class="comment">// Should be none as the entry was masked by being recycled.
-                </span>.map(|entries| {
-                    <span class="macro">assert!</span>(entries.len() == <span class="number">1</span>);
-                    <span class="kw">let </span>ent = entries.get(<span class="number">0</span>).unwrap();
-                    ent.mask_recycled_ts().is_none()
-                })
-                .unwrap_or(<span class="bool-val">false</span>));
+        <span class="comment">// Can&#39;t use internal_search_uuid since that applies a mask.
+        </span><span class="macro">assert!</span>(idms_prox_write
+            .qs_write
+            .internal_search(<span class="macro">filter_all!</span>(f_eq(
+                <span class="string">&quot;uuid&quot;</span>,
+                PartialValue::Uuid(user_sync_uuid)
+            )))
+            <span class="comment">// Should be none as the entry was masked by being recycled.
+            </span>.map(|entries| {
+                <span class="macro">assert!</span>(entries.len() == <span class="number">1</span>);
+                <span class="kw">let </span>ent = entries.get(<span class="number">0</span>).unwrap();
+                ent.mask_recycled_ts().is_none()
+            })
+            .unwrap_or(<span class="bool-val">false</span>));
 
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-        })
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
     }
 
     <span class="comment">// Delete that doesn&#39;t exist.
-    </span><span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_phase_4_nonexisting_delete() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
-            <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
+    </span><span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_phase_4_nonexisting_delete(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
+        <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
 
-            <span class="kw">let </span>changes = ScimSyncRequest {
-                from_state: ScimSyncState::Refresh,
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
-                },
-                <span class="comment">// Doesn&#39;t exist. If it does, then bless rng.
-                </span>entries: Vec::default(),
-                delete_uuids: <span class="macro">vec!</span>[Uuid::new_v4()],
-            };
+        <span class="kw">let </span>changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
+            },
+            <span class="comment">// Doesn&#39;t exist. If it does, then bless rng.
+            </span>entries: Vec::default(),
+            delete_uuids: <span class="macro">vec!</span>[Uuid::new_v4()],
+        };
 
-            <span class="comment">// Hard to know what was right here. IMO because it doesn&#39;t exist at all, we just ignore it
-            // because the source sync is being overzealous, or it previously used to exist. Maybe
-            // it was added and immediately removed. Either way, this is ok because we changed
-            // nothing.
-            </span><span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-        })
+        <span class="comment">// Hard to know what was right here. IMO because it doesn&#39;t exist at all, we just ignore it
+        // because the source sync is being overzealous, or it previously used to exist. Maybe
+        // it was added and immediately removed. Either way, this is ok because we changed
+        // nothing.
+        </span><span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
     }
 
     <span class="comment">// Delete of something outside of agreement control - must fail.
-    </span><span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_phase_4_out_of_scope_delete() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
+    </span><span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_phase_4_out_of_scope_delete(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
 
-            <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
-            <span class="macro">assert!</span>(idms_prox_write
-                .qs_write
-                .internal_create(<span class="macro">vec!</span>[<span class="macro">entry_init!</span>(
-                    (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
-                    (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(user_sync_uuid))
-                )])
-                .is_ok());
+        <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
+        <span class="macro">assert!</span>(idms_prox_write
+            .qs_write
+            .internal_create(<span class="macro">vec!</span>[<span class="macro">entry_init!</span>(
+                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(user_sync_uuid))
+            )])
+            .is_ok());
 
-            <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
-            <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
+        <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
+        <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
 
-            <span class="kw">let </span>changes = ScimSyncRequest {
-                from_state: ScimSyncState::Refresh,
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
-                },
-                <span class="comment">// Doesn&#39;t exist. If it does, then bless rng.
-                </span>entries: Vec::default(),
-                delete_uuids: <span class="macro">vec!</span>[user_sync_uuid],
-            };
+        <span class="kw">let </span>changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
+            },
+            <span class="comment">// Doesn&#39;t exist. If it does, then bless rng.
+            </span>entries: Vec::default(),
+            delete_uuids: <span class="macro">vec!</span>[user_sync_uuid],
+        };
 
-            <span class="comment">// Again, not sure what to do here. I think because this is clearly an overstep of the
-            // rights of the delete_uuid request, this is an error here.
-            </span><span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_err());
-            <span class="comment">// assert!(idms_prox_write.commit().is_ok());
-        </span>})
-    }
+        <span class="comment">// Again, not sure what to do here. I think because this is clearly an overstep of the
+        // rights of the delete_uuid request, this is an error here.
+        </span><span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_err());
+        <span class="comment">// assert!(idms_prox_write.commit().is_ok());
+    </span>}
 
     <span class="comment">// Delete already deleted entry.
-    </span><span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_phase_4_delete_already_deleted() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
+    </span><span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_phase_4_delete_already_deleted(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
 
-            <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
-            <span class="macro">assert!</span>(idms_prox_write
-                .qs_write
-                .internal_create(<span class="macro">vec!</span>[<span class="macro">entry_init!</span>(
-                    (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
-                    (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(user_sync_uuid))
-                )])
-                .is_ok());
+        <span class="kw">let </span>user_sync_uuid = Uuid::new_v4();
+        <span class="macro">assert!</span>(idms_prox_write
+            .qs_write
+            .internal_create(<span class="macro">vec!</span>[<span class="macro">entry_init!</span>(
+                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(user_sync_uuid))
+            )])
+            .is_ok());
 
-            <span class="macro">assert!</span>(idms_prox_write
-                .qs_write
-                .internal_delete_uuid(user_sync_uuid)
-                .is_ok());
+        <span class="macro">assert!</span>(idms_prox_write
+            .qs_write
+            .internal_delete_uuid(user_sync_uuid)
+            .is_ok());
 
-            <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
-            <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
+        <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
+        <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
 
-            <span class="kw">let </span>changes = ScimSyncRequest {
-                from_state: ScimSyncState::Refresh,
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
-                },
-                <span class="comment">// Doesn&#39;t exist. If it does, then bless rng.
-                </span>entries: Vec::default(),
-                delete_uuids: <span class="macro">vec!</span>[user_sync_uuid],
-            };
+        <span class="kw">let </span>changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
+            },
+            <span class="comment">// Doesn&#39;t exist. If it does, then bless rng.
+            </span>entries: Vec::default(),
+            delete_uuids: <span class="macro">vec!</span>[user_sync_uuid],
+        };
 
-            <span class="comment">// More subtely. There is clearly a theme here. In this case while the sync request
-            // is trying to delete something out of scope and already deleted, since it already
-            // is in a recycled state it doesn&#39;t matter, it&#39;s a no-op. We only care about when
-            // the delete req applies to a live entry.
-            </span><span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-        })
+        <span class="comment">// More subtely. There is clearly a theme here. In this case while the sync request
+        // is trying to delete something out of scope and already deleted, since it already
+        // is in a recycled state it doesn&#39;t matter, it&#39;s a no-op. We only care about when
+        // the delete req applies to a live entry.
+        </span><span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
     }
 
     <span class="comment">// Phase 5
-    </span><span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_phase_5_from_refresh_to_active() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
-            <span class="kw">let </span>sse = ScimSyncUpdateEvent {
-                ident: ident.clone(),
-            };
+    </span><span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_phase_5_from_refresh_to_active(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
+        <span class="kw">let </span>sse = ScimSyncUpdateEvent {
+            ident: ident.clone(),
+        };
 
-            <span class="kw">let </span>changes = ScimSyncRequest {
-                from_state: ScimSyncState::Refresh,
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
-                },
-                entries: Vec::default(),
-                delete_uuids: Vec::default(),
-            };
+        <span class="kw">let </span>changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
+            },
+            entries: Vec::default(),
+            delete_uuids: Vec::default(),
+        };
 
-            <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
-            <span class="comment">// Advance the from -&gt; to state.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
+        <span class="comment">// Advance the from -&gt; to state.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
 
-            <span class="kw">let </span>changes = ScimSyncRequest {
-                from_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
-                },
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]),
-                },
-                entries: <span class="macro">vec!</span>[],
-                delete_uuids: <span class="macro">vec!</span>[],
-            };
+        <span class="kw">let </span>changes = ScimSyncRequest {
+            from_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
+            },
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(<span class="macro">vec!</span>[<span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>]),
+            },
+            entries: <span class="macro">vec!</span>[],
+            delete_uuids: <span class="macro">vec!</span>[],
+        };
 
-            <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-        })
+        <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
     }
 
     <span class="comment">// Test the client doing a sync refresh request (active -&gt; refresh).
@@ -5007,455 +4955,437 @@
             .expect(<span class="string">&quot;Failed to access entry.&quot;</span>)
     }
 
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_refresh_ipa_example_1() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
-            <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
+    <span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_refresh_ipa_example_1(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
+        <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
 
-            <span class="kw">let </span>changes =
-                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
+        <span class="kw">let </span>changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
 
-            <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
 
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
-            <span class="comment">// Test properties of the imported entries.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
+        <span class="comment">// Test properties of the imported entries.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
 
-            <span class="kw">let </span>testgroup = get_single_entry(<span class="string">&quot;testgroup&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">assert!</span>(
-                testgroup.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
-                    == <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
-            );
-            <span class="macro">assert!</span>(testgroup.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>).is_none());
+        <span class="kw">let </span>testgroup = get_single_entry(<span class="string">&quot;testgroup&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">assert!</span>(
+            testgroup.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
+                == <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
+        );
+        <span class="macro">assert!</span>(testgroup.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>).is_none());
 
-            <span class="kw">let </span>testposix = get_single_entry(<span class="string">&quot;testposix&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">assert!</span>(
-                testposix.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
-                    == <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
-            );
-            <span class="macro">assert!</span>(testposix.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>) == <span class="prelude-val">Some</span>(<span class="number">1234567</span>));
+        <span class="kw">let </span>testposix = get_single_entry(<span class="string">&quot;testposix&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">assert!</span>(
+            testposix.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
+                == <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
+        );
+        <span class="macro">assert!</span>(testposix.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>) == <span class="prelude-val">Some</span>(<span class="number">1234567</span>));
 
-            <span class="kw">let </span>testexternal = get_single_entry(<span class="string">&quot;testexternal&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">assert!</span>(
-                testexternal.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
-                    == <span class="prelude-val">Some</span>(
-                        <span class="string">&quot;cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;
-                    </span>)
-            );
-            <span class="macro">assert!</span>(testexternal.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>).is_none());
+        <span class="kw">let </span>testexternal = get_single_entry(<span class="string">&quot;testexternal&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">assert!</span>(
+            testexternal.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
+                == <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
+        );
+        <span class="macro">assert!</span>(testexternal.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>).is_none());
 
-            <span class="kw">let </span>testuser = get_single_entry(<span class="string">&quot;testuser&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">assert!</span>(
-                testuser.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
-                    == <span class="prelude-val">Some</span>(<span class="string">&quot;uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
-            );
-            <span class="macro">assert!</span>(testuser.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>) == <span class="prelude-val">Some</span>(<span class="number">12345</span>));
-            <span class="macro">assert!</span>(testuser.get_ava_single_utf8(<span class="string">&quot;displayname&quot;</span>) == <span class="prelude-val">Some</span>(<span class="string">&quot;Test User&quot;</span>));
-            <span class="macro">assert!</span>(testuser.get_ava_single_iutf8(<span class="string">&quot;loginshell&quot;</span>) == <span class="prelude-val">Some</span>(<span class="string">&quot;/bin/sh&quot;</span>));
+        <span class="kw">let </span>testuser = get_single_entry(<span class="string">&quot;testuser&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">assert!</span>(
+            testuser.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
+                == <span class="prelude-val">Some</span>(<span class="string">&quot;uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
+        );
+        <span class="macro">assert!</span>(testuser.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>) == <span class="prelude-val">Some</span>(<span class="number">12345</span>));
+        <span class="macro">assert!</span>(testuser.get_ava_single_utf8(<span class="string">&quot;displayname&quot;</span>) == <span class="prelude-val">Some</span>(<span class="string">&quot;Test User&quot;</span>));
+        <span class="macro">assert!</span>(testuser.get_ava_single_iutf8(<span class="string">&quot;loginshell&quot;</span>) == <span class="prelude-val">Some</span>(<span class="string">&quot;/bin/sh&quot;</span>));
 
-            <span class="comment">// Check memberof works.
-            </span><span class="kw">let </span>testgroup_mb = testgroup.get_ava_refer(<span class="string">&quot;member&quot;</span>).expect(<span class="string">&quot;No members!&quot;</span>);
-            <span class="macro">assert!</span>(testgroup_mb.contains(<span class="kw-2">&amp;</span>testuser.get_uuid()));
+        <span class="comment">// Check memberof works.
+        </span><span class="kw">let </span>testgroup_mb = testgroup.get_ava_refer(<span class="string">&quot;member&quot;</span>).expect(<span class="string">&quot;No members!&quot;</span>);
+        <span class="macro">assert!</span>(testgroup_mb.contains(<span class="kw-2">&amp;</span>testuser.get_uuid()));
 
-            <span class="kw">let </span>testposix_mb = testposix.get_ava_refer(<span class="string">&quot;member&quot;</span>).expect(<span class="string">&quot;No members!&quot;</span>);
-            <span class="macro">assert!</span>(testposix_mb.contains(<span class="kw-2">&amp;</span>testuser.get_uuid()));
+        <span class="kw">let </span>testposix_mb = testposix.get_ava_refer(<span class="string">&quot;member&quot;</span>).expect(<span class="string">&quot;No members!&quot;</span>);
+        <span class="macro">assert!</span>(testposix_mb.contains(<span class="kw-2">&amp;</span>testuser.get_uuid()));
 
-            <span class="kw">let </span>testuser_mo = testuser.get_ava_refer(<span class="string">&quot;memberof&quot;</span>).expect(<span class="string">&quot;No memberof!&quot;</span>);
-            <span class="macro">assert!</span>(testuser_mo.contains(<span class="kw-2">&amp;</span>testposix.get_uuid()));
-            <span class="macro">assert!</span>(testuser_mo.contains(<span class="kw-2">&amp;</span>testgroup.get_uuid()));
+        <span class="kw">let </span>testuser_mo = testuser.get_ava_refer(<span class="string">&quot;memberof&quot;</span>).expect(<span class="string">&quot;No memberof!&quot;</span>);
+        <span class="macro">assert!</span>(testuser_mo.contains(<span class="kw-2">&amp;</span>testposix.get_uuid()));
+        <span class="macro">assert!</span>(testuser_mo.contains(<span class="kw-2">&amp;</span>testgroup.get_uuid()));
 
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
-            <span class="comment">// Now apply updates.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>changes =
-                serde_json::from_str(TEST_SYNC_SCIM_IPA_2).expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
+        <span class="comment">// Now apply updates.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_2).expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
 
-            <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
 
-            <span class="comment">// Test properties of the updated entries.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
+        <span class="comment">// Test properties of the updated entries.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
 
-            <span class="comment">// Deleted
-            </span><span class="macro">assert!</span>(idms_prox_write
-                .qs_write
-                .internal_search(<span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup&quot;</span>))))
-                .unwrap()
-                .is_empty());
+        <span class="comment">// Deleted
+        </span><span class="macro">assert!</span>(idms_prox_write
+            .qs_write
+            .internal_search(<span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testgroup&quot;</span>))))
+            .unwrap()
+            .is_empty());
 
-            <span class="kw">let </span>testposix = get_single_entry(<span class="string">&quot;testposix&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">info!</span>(<span class="string">&quot;{:?}&quot;</span>, testposix);
-            <span class="macro">assert!</span>(
-                testposix.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
-                    == <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
-            );
-            <span class="macro">assert!</span>(testposix.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>) == <span class="prelude-val">Some</span>(<span class="number">1234567</span>));
+        <span class="kw">let </span>testposix = get_single_entry(<span class="string">&quot;testposix&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">info!</span>(<span class="string">&quot;{:?}&quot;</span>, testposix);
+        <span class="macro">assert!</span>(
+            testposix.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
+                == <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
+        );
+        <span class="macro">assert!</span>(testposix.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>) == <span class="prelude-val">Some</span>(<span class="number">1234567</span>));
 
-            <span class="kw">let </span>testexternal = get_single_entry(<span class="string">&quot;testexternal2&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">info!</span>(<span class="string">&quot;{:?}&quot;</span>, testexternal);
-            <span class="macro">assert!</span>(
-                testexternal.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
-                    == <span class="prelude-val">Some</span>(
-                        <span class="string">&quot;cn=testexternal2,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;
-                    </span>)
-            );
-            <span class="macro">assert!</span>(testexternal.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>).is_none());
+        <span class="kw">let </span>testexternal = get_single_entry(<span class="string">&quot;testexternal2&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">info!</span>(<span class="string">&quot;{:?}&quot;</span>, testexternal);
+        <span class="macro">assert!</span>(
+            testexternal.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
+                == <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testexternal2,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
+        );
+        <span class="macro">assert!</span>(testexternal.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>).is_none());
 
-            <span class="kw">let </span>testuser = get_single_entry(<span class="string">&quot;testuser&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="kw">let </span>testuser = get_single_entry(<span class="string">&quot;testuser&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
 
-            <span class="comment">// Check memberof works.
-            </span><span class="kw">let </span>testexternal_mb = testexternal.get_ava_refer(<span class="string">&quot;member&quot;</span>).expect(<span class="string">&quot;No members!&quot;</span>);
-            <span class="macro">assert!</span>(testexternal_mb.contains(<span class="kw-2">&amp;</span>testuser.get_uuid()));
+        <span class="comment">// Check memberof works.
+        </span><span class="kw">let </span>testexternal_mb = testexternal.get_ava_refer(<span class="string">&quot;member&quot;</span>).expect(<span class="string">&quot;No members!&quot;</span>);
+        <span class="macro">assert!</span>(testexternal_mb.contains(<span class="kw-2">&amp;</span>testuser.get_uuid()));
 
-            <span class="macro">assert!</span>(testposix.get_ava_refer(<span class="string">&quot;member&quot;</span>).is_none());
+        <span class="macro">assert!</span>(testposix.get_ava_refer(<span class="string">&quot;member&quot;</span>).is_none());
 
-            <span class="kw">let </span>testuser_mo = testuser.get_ava_refer(<span class="string">&quot;memberof&quot;</span>).expect(<span class="string">&quot;No memberof!&quot;</span>);
-            <span class="macro">assert!</span>(testuser_mo.contains(<span class="kw-2">&amp;</span>testexternal.get_uuid()));
+        <span class="kw">let </span>testuser_mo = testuser.get_ava_refer(<span class="string">&quot;memberof&quot;</span>).expect(<span class="string">&quot;No memberof!&quot;</span>);
+        <span class="macro">assert!</span>(testuser_mo.contains(<span class="kw-2">&amp;</span>testexternal.get_uuid()));
 
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-        })
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
     }
 
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_refresh_ipa_example_2() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
-            <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
+    <span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_refresh_ipa_example_2(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>(_sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
+        <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
 
-            <span class="kw">let </span>changes =
-                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
+        <span class="kw">let </span>changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
 
-            <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
 
-            <span class="kw">let </span>from_state = changes.to_state.clone();
+        <span class="kw">let </span>from_state = changes.to_state.clone();
 
-            <span class="comment">// Indicate the next set of changes will be a refresh. Don&#39;t change content.
-            // Strictly speaking this step isn&#39;t need.
+        <span class="comment">// Indicate the next set of changes will be a refresh. Don&#39;t change content.
+        // Strictly speaking this step isn&#39;t need.
 
-            </span><span class="kw">let </span>changes = ScimSyncRequest::need_refresh(from_state);
-            <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
+        </span><span class="kw">let </span>changes = ScimSyncRequest::need_refresh(from_state);
+        <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
 
-            <span class="comment">// Check entries still remain as expected.
-            </span><span class="kw">let </span>testgroup = get_single_entry(<span class="string">&quot;testgroup&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">assert!</span>(
-                testgroup.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
-                    == <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
-            );
-            <span class="macro">assert!</span>(testgroup.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>).is_none());
+        <span class="comment">// Check entries still remain as expected.
+        </span><span class="kw">let </span>testgroup = get_single_entry(<span class="string">&quot;testgroup&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">assert!</span>(
+            testgroup.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
+                == <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
+        );
+        <span class="macro">assert!</span>(testgroup.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>).is_none());
 
-            <span class="kw">let </span>testposix = get_single_entry(<span class="string">&quot;testposix&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">assert!</span>(
-                testposix.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
-                    == <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
-            );
-            <span class="macro">assert!</span>(testposix.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>) == <span class="prelude-val">Some</span>(<span class="number">1234567</span>));
+        <span class="kw">let </span>testposix = get_single_entry(<span class="string">&quot;testposix&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">assert!</span>(
+            testposix.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
+                == <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
+        );
+        <span class="macro">assert!</span>(testposix.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>) == <span class="prelude-val">Some</span>(<span class="number">1234567</span>));
 
-            <span class="kw">let </span>testexternal = get_single_entry(<span class="string">&quot;testexternal&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">assert!</span>(
-                testexternal.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
-                    == <span class="prelude-val">Some</span>(
-                        <span class="string">&quot;cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;
-                    </span>)
-            );
-            <span class="macro">assert!</span>(testexternal.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>).is_none());
+        <span class="kw">let </span>testexternal = get_single_entry(<span class="string">&quot;testexternal&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">assert!</span>(
+            testexternal.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
+                == <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
+        );
+        <span class="macro">assert!</span>(testexternal.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>).is_none());
 
-            <span class="kw">let </span>testuser = get_single_entry(<span class="string">&quot;testuser&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">assert!</span>(
-                testuser.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
-                    == <span class="prelude-val">Some</span>(<span class="string">&quot;uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
-            );
-            <span class="macro">assert!</span>(testuser.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>) == <span class="prelude-val">Some</span>(<span class="number">12345</span>));
-            <span class="macro">assert!</span>(testuser.get_ava_single_utf8(<span class="string">&quot;displayname&quot;</span>) == <span class="prelude-val">Some</span>(<span class="string">&quot;Test User&quot;</span>));
-            <span class="macro">assert!</span>(testuser.get_ava_single_iutf8(<span class="string">&quot;loginshell&quot;</span>) == <span class="prelude-val">Some</span>(<span class="string">&quot;/bin/sh&quot;</span>));
+        <span class="kw">let </span>testuser = get_single_entry(<span class="string">&quot;testuser&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">assert!</span>(
+            testuser.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
+                == <span class="prelude-val">Some</span>(<span class="string">&quot;uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
+        );
+        <span class="macro">assert!</span>(testuser.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>) == <span class="prelude-val">Some</span>(<span class="number">12345</span>));
+        <span class="macro">assert!</span>(testuser.get_ava_single_utf8(<span class="string">&quot;displayname&quot;</span>) == <span class="prelude-val">Some</span>(<span class="string">&quot;Test User&quot;</span>));
+        <span class="macro">assert!</span>(testuser.get_ava_single_iutf8(<span class="string">&quot;loginshell&quot;</span>) == <span class="prelude-val">Some</span>(<span class="string">&quot;/bin/sh&quot;</span>));
 
-            <span class="comment">// Check memberof works.
-            </span><span class="kw">let </span>testgroup_mb = testgroup.get_ava_refer(<span class="string">&quot;member&quot;</span>).expect(<span class="string">&quot;No members!&quot;</span>);
-            <span class="macro">assert!</span>(testgroup_mb.contains(<span class="kw-2">&amp;</span>testuser.get_uuid()));
+        <span class="comment">// Check memberof works.
+        </span><span class="kw">let </span>testgroup_mb = testgroup.get_ava_refer(<span class="string">&quot;member&quot;</span>).expect(<span class="string">&quot;No members!&quot;</span>);
+        <span class="macro">assert!</span>(testgroup_mb.contains(<span class="kw-2">&amp;</span>testuser.get_uuid()));
 
-            <span class="kw">let </span>testposix_mb = testposix.get_ava_refer(<span class="string">&quot;member&quot;</span>).expect(<span class="string">&quot;No members!&quot;</span>);
-            <span class="macro">assert!</span>(testposix_mb.contains(<span class="kw-2">&amp;</span>testuser.get_uuid()));
+        <span class="kw">let </span>testposix_mb = testposix.get_ava_refer(<span class="string">&quot;member&quot;</span>).expect(<span class="string">&quot;No members!&quot;</span>);
+        <span class="macro">assert!</span>(testposix_mb.contains(<span class="kw-2">&amp;</span>testuser.get_uuid()));
 
-            <span class="kw">let </span>testuser_mo = testuser.get_ava_refer(<span class="string">&quot;memberof&quot;</span>).expect(<span class="string">&quot;No memberof!&quot;</span>);
-            <span class="macro">assert!</span>(testuser_mo.contains(<span class="kw-2">&amp;</span>testposix.get_uuid()));
-            <span class="macro">assert!</span>(testuser_mo.contains(<span class="kw-2">&amp;</span>testgroup.get_uuid()));
+        <span class="kw">let </span>testuser_mo = testuser.get_ava_refer(<span class="string">&quot;memberof&quot;</span>).expect(<span class="string">&quot;No memberof!&quot;</span>);
+        <span class="macro">assert!</span>(testuser_mo.contains(<span class="kw-2">&amp;</span>testposix.get_uuid()));
+        <span class="macro">assert!</span>(testuser_mo.contains(<span class="kw-2">&amp;</span>testgroup.get_uuid()));
 
-            <span class="comment">// Now, the next change is the refresh.
+        <span class="comment">// Now, the next change is the refresh.
 
-            </span><span class="kw">let </span>changes = serde_json::from_str(TEST_SYNC_SCIM_IPA_REFRESH_1)
-                .expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
+        </span><span class="kw">let </span>changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_REFRESH_1).expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
 
-            <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
 
+        <span class="macro">assert!</span>(idms_prox_write
+            .qs_write
+            .internal_search(<span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testposix&quot;</span>))))
+            .unwrap()
+            .is_empty());
+
+        <span class="macro">assert!</span>(idms_prox_write
+            .qs_write
+            .internal_search(<span class="macro">filter!</span>(f_eq(
+                <span class="string">&quot;name&quot;</span>,
+                PartialValue::new_iname(<span class="string">&quot;testexternal&quot;</span>)
+            )))
+            .unwrap()
+            .is_empty());
+
+        <span class="kw">let </span>testgroup = get_single_entry(<span class="string">&quot;testgroup&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">assert!</span>(
+            testgroup.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
+                == <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
+        );
+        <span class="macro">assert!</span>(testgroup.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>).is_none());
+
+        <span class="kw">let </span>testuser = get_single_entry(<span class="string">&quot;testuser&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">assert!</span>(
+            testuser.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
+                == <span class="prelude-val">Some</span>(<span class="string">&quot;uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
+        );
+        <span class="macro">assert!</span>(testuser.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>) == <span class="prelude-val">Some</span>(<span class="number">12345</span>));
+        <span class="macro">assert!</span>(testuser.get_ava_single_utf8(<span class="string">&quot;displayname&quot;</span>) == <span class="prelude-val">Some</span>(<span class="string">&quot;Test User&quot;</span>));
+        <span class="macro">assert!</span>(testuser.get_ava_single_iutf8(<span class="string">&quot;loginshell&quot;</span>) == <span class="prelude-val">Some</span>(<span class="string">&quot;/bin/sh&quot;</span>));
+
+        <span class="comment">// Check memberof works.
+        </span><span class="kw">let </span>testgroup_mb = testgroup.get_ava_refer(<span class="string">&quot;member&quot;</span>).expect(<span class="string">&quot;No members!&quot;</span>);
+        <span class="macro">assert!</span>(testgroup_mb.contains(<span class="kw-2">&amp;</span>testuser.get_uuid()));
+
+        <span class="kw">let </span>testuser_mo = testuser.get_ava_refer(<span class="string">&quot;memberof&quot;</span>).expect(<span class="string">&quot;No memberof!&quot;</span>);
+        <span class="macro">assert!</span>(testuser_mo.contains(<span class="kw-2">&amp;</span>testgroup.get_uuid()));
+
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+    }
+
+    <span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_finalise_1(idms: <span class="kw-2">&amp;</span>IdmServer, _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed) {
+        <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>(sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
+        <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
+
+        <span class="kw">let </span>changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
+
+        <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
+
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+
+        <span class="comment">// Finalise the sync account.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+
+        <span class="kw">let </span>ident = idms_prox_write
+            .qs_write
+            .internal_search_uuid(UUID_ADMIN)
+            .map(Identity::from_impersonate_entry_readwrite)
+            .expect(<span class="string">&quot;Failed to get admin&quot;</span>);
+
+        <span class="kw">let </span>sfe = ScimSyncFinaliseEvent {
+            ident,
+            target: sync_uuid,
+        };
+
+        idms_prox_write
+            .scim_sync_finalise(<span class="kw-2">&amp;</span>sfe)
+            .expect(<span class="string">&quot;Failed to finalise sync account&quot;</span>);
+
+        <span class="comment">// Check that the entries still exists but now have no sync_object attached.
+        </span><span class="kw">let </span>testgroup = get_single_entry(<span class="string">&quot;testgroup&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">assert!</span>(!testgroup.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT));
+
+        <span class="kw">let </span>testposix = get_single_entry(<span class="string">&quot;testposix&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">assert!</span>(!testposix.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT));
+
+        <span class="kw">let </span>testexternal = get_single_entry(<span class="string">&quot;testexternal&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">assert!</span>(!testexternal.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT));
+
+        <span class="kw">let </span>testuser = get_single_entry(<span class="string">&quot;testuser&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">assert!</span>(!testuser.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT));
+
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+    }
+
+    <span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_finalise_2(idms: <span class="kw-2">&amp;</span>IdmServer, _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed) {
+        <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>(sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
+        <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
+
+        <span class="kw">let </span>changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
+
+        <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
+
+        <span class="comment">// The difference in this test is that the refresh deletes some entries
+        // so the recycle bin case needs to be handled.
+        </span><span class="kw">let </span>changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_REFRESH_1).expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
+
+        <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
+
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+
+        <span class="comment">// Finalise the sync account.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+
+        <span class="kw">let </span>ident = idms_prox_write
+            .qs_write
+            .internal_search_uuid(UUID_ADMIN)
+            .map(Identity::from_impersonate_entry_readwrite)
+            .expect(<span class="string">&quot;Failed to get admin&quot;</span>);
+
+        <span class="kw">let </span>sfe = ScimSyncFinaliseEvent {
+            ident,
+            target: sync_uuid,
+        };
+
+        idms_prox_write
+            .scim_sync_finalise(<span class="kw-2">&amp;</span>sfe)
+            .expect(<span class="string">&quot;Failed to finalise sync account&quot;</span>);
+
+        <span class="comment">// Check that the entries still exists but now have no sync_object attached.
+        </span><span class="kw">let </span>testgroup = get_single_entry(<span class="string">&quot;testgroup&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">assert!</span>(!testgroup.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT));
+
+        <span class="kw">let </span>testuser = get_single_entry(<span class="string">&quot;testuser&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
+        <span class="macro">assert!</span>(!testuser.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT));
+
+        <span class="kw">for </span>iname <span class="kw">in </span>[<span class="string">&quot;testposix&quot;</span>, <span class="string">&quot;testexternal&quot;</span>] {
+            <span class="macro">trace!</span>(%iname);
             <span class="macro">assert!</span>(idms_prox_write
                 .qs_write
-                .internal_search(<span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testposix&quot;</span>))))
+                .internal_search(<span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(iname))))
                 .unwrap()
                 .is_empty());
+        }
 
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+    }
+
+    <span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_terminate_1(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>(sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
+        <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
+
+        <span class="kw">let </span>changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
+
+        <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
+
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+
+        <span class="comment">// Terminate the sync account
+        </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+
+        <span class="kw">let </span>ident = idms_prox_write
+            .qs_write
+            .internal_search_uuid(UUID_ADMIN)
+            .map(Identity::from_impersonate_entry_readwrite)
+            .expect(<span class="string">&quot;Failed to get admin&quot;</span>);
+
+        <span class="kw">let </span>sfe = ScimSyncTerminateEvent {
+            ident,
+            target: sync_uuid,
+        };
+
+        idms_prox_write
+            .scim_sync_terminate(<span class="kw-2">&amp;</span>sfe)
+            .expect(<span class="string">&quot;Failed to terminate sync account&quot;</span>);
+
+        <span class="comment">// Check that the entries no longer exist
+        </span><span class="kw">for </span>iname <span class="kw">in </span>[<span class="string">&quot;testgroup&quot;</span>, <span class="string">&quot;testposix&quot;</span>, <span class="string">&quot;testexternal&quot;</span>, <span class="string">&quot;testuser&quot;</span>] {
+            <span class="macro">trace!</span>(%iname);
             <span class="macro">assert!</span>(idms_prox_write
                 .qs_write
-                .internal_search(<span class="macro">filter!</span>(f_eq(
-                    <span class="string">&quot;name&quot;</span>,
-                    PartialValue::new_iname(<span class="string">&quot;testexternal&quot;</span>)
-                )))
+                .internal_search(<span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(iname))))
                 .unwrap()
                 .is_empty());
+        }
 
-            <span class="kw">let </span>testgroup = get_single_entry(<span class="string">&quot;testgroup&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">assert!</span>(
-                testgroup.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
-                    == <span class="prelude-val">Some</span>(<span class="string">&quot;cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
-            );
-            <span class="macro">assert!</span>(testgroup.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>).is_none());
-
-            <span class="kw">let </span>testuser = get_single_entry(<span class="string">&quot;testuser&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">assert!</span>(
-                testuser.get_ava_single_iutf8(<span class="string">&quot;sync_external_id&quot;</span>)
-                    == <span class="prelude-val">Some</span>(<span class="string">&quot;uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au&quot;</span>)
-            );
-            <span class="macro">assert!</span>(testuser.get_ava_single_uint32(<span class="string">&quot;gidnumber&quot;</span>) == <span class="prelude-val">Some</span>(<span class="number">12345</span>));
-            <span class="macro">assert!</span>(testuser.get_ava_single_utf8(<span class="string">&quot;displayname&quot;</span>) == <span class="prelude-val">Some</span>(<span class="string">&quot;Test User&quot;</span>));
-            <span class="macro">assert!</span>(testuser.get_ava_single_iutf8(<span class="string">&quot;loginshell&quot;</span>) == <span class="prelude-val">Some</span>(<span class="string">&quot;/bin/sh&quot;</span>));
-
-            <span class="comment">// Check memberof works.
-            </span><span class="kw">let </span>testgroup_mb = testgroup.get_ava_refer(<span class="string">&quot;member&quot;</span>).expect(<span class="string">&quot;No members!&quot;</span>);
-            <span class="macro">assert!</span>(testgroup_mb.contains(<span class="kw-2">&amp;</span>testuser.get_uuid()));
-
-            <span class="kw">let </span>testuser_mo = testuser.get_ava_refer(<span class="string">&quot;memberof&quot;</span>).expect(<span class="string">&quot;No memberof!&quot;</span>);
-            <span class="macro">assert!</span>(testuser_mo.contains(<span class="kw-2">&amp;</span>testgroup.get_uuid()));
-
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-        })
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
     }
 
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_finalise_1() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>(sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
-            <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
+    <span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_scim_sync_terminate_2(
+        idms: <span class="kw-2">&amp;</span>IdmServer,
+        _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed,
+    ) {
+        <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+        <span class="kw">let </span>(sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
+        <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
 
-            <span class="kw">let </span>changes =
-                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
+        <span class="kw">let </span>changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
 
-            <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
+        <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
 
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+        <span class="comment">// The difference in this test is that the refresh deletes some entries
+        // so the recycle bin case needs to be handled.
+        </span><span class="kw">let </span>changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_REFRESH_1).expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
 
-            <span class="comment">// Finalise the sync account.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
+        <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
 
-            <span class="kw">let </span>ident = idms_prox_write
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+
+        <span class="comment">// Terminate the sync account
+        </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
+
+        <span class="kw">let </span>ident = idms_prox_write
+            .qs_write
+            .internal_search_uuid(UUID_ADMIN)
+            .map(Identity::from_impersonate_entry_readwrite)
+            .expect(<span class="string">&quot;Failed to get admin&quot;</span>);
+
+        <span class="kw">let </span>sfe = ScimSyncTerminateEvent {
+            ident,
+            target: sync_uuid,
+        };
+
+        idms_prox_write
+            .scim_sync_terminate(<span class="kw-2">&amp;</span>sfe)
+            .expect(<span class="string">&quot;Failed to terminate sync account&quot;</span>);
+
+        <span class="comment">// Check that the entries no longer exist
+        </span><span class="kw">for </span>iname <span class="kw">in </span>[<span class="string">&quot;testgroup&quot;</span>, <span class="string">&quot;testposix&quot;</span>, <span class="string">&quot;testexternal&quot;</span>, <span class="string">&quot;testuser&quot;</span>] {
+            <span class="macro">trace!</span>(%iname);
+            <span class="macro">assert!</span>(idms_prox_write
                 .qs_write
-                .internal_search_uuid(UUID_ADMIN)
-                .map(Identity::from_impersonate_entry_readwrite)
-                .expect(<span class="string">&quot;Failed to get admin&quot;</span>);
+                .internal_search(<span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(iname))))
+                .unwrap()
+                .is_empty());
+        }
 
-            <span class="kw">let </span>sfe = ScimSyncFinaliseEvent {
-                ident,
-                target: sync_uuid,
-            };
-
-            idms_prox_write
-                .scim_sync_finalise(<span class="kw-2">&amp;</span>sfe)
-                .expect(<span class="string">&quot;Failed to finalise sync account&quot;</span>);
-
-            <span class="comment">// Check that the entries still exists but now have no sync_object attached.
-            </span><span class="kw">let </span>testgroup = get_single_entry(<span class="string">&quot;testgroup&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">assert!</span>(!testgroup.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT));
-
-            <span class="kw">let </span>testposix = get_single_entry(<span class="string">&quot;testposix&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">assert!</span>(!testposix.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT));
-
-            <span class="kw">let </span>testexternal = get_single_entry(<span class="string">&quot;testexternal&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">assert!</span>(!testexternal.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT));
-
-            <span class="kw">let </span>testuser = get_single_entry(<span class="string">&quot;testuser&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">assert!</span>(!testuser.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT));
-
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-        })
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_finalise_2() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>(sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
-            <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
-
-            <span class="kw">let </span>changes =
-                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
-
-            <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
-
-            <span class="comment">// The difference in this test is that the refresh deletes some entries
-            // so the recycle bin case needs to be handled.
-            </span><span class="kw">let </span>changes = serde_json::from_str(TEST_SYNC_SCIM_IPA_REFRESH_1)
-                .expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
-
-            <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
-
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-
-            <span class="comment">// Finalise the sync account.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-
-            <span class="kw">let </span>ident = idms_prox_write
-                .qs_write
-                .internal_search_uuid(UUID_ADMIN)
-                .map(Identity::from_impersonate_entry_readwrite)
-                .expect(<span class="string">&quot;Failed to get admin&quot;</span>);
-
-            <span class="kw">let </span>sfe = ScimSyncFinaliseEvent {
-                ident,
-                target: sync_uuid,
-            };
-
-            idms_prox_write
-                .scim_sync_finalise(<span class="kw-2">&amp;</span>sfe)
-                .expect(<span class="string">&quot;Failed to finalise sync account&quot;</span>);
-
-            <span class="comment">// Check that the entries still exists but now have no sync_object attached.
-            </span><span class="kw">let </span>testgroup = get_single_entry(<span class="string">&quot;testgroup&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">assert!</span>(!testgroup.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT));
-
-            <span class="kw">let </span>testuser = get_single_entry(<span class="string">&quot;testuser&quot;</span>, <span class="kw-2">&amp;mut </span>idms_prox_write);
-            <span class="macro">assert!</span>(!testuser.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_SYNC_OBJECT));
-
-            <span class="kw">for </span>iname <span class="kw">in </span>[<span class="string">&quot;testposix&quot;</span>, <span class="string">&quot;testexternal&quot;</span>] {
-                <span class="macro">trace!</span>(%iname);
-                <span class="macro">assert!</span>(idms_prox_write
-                    .qs_write
-                    .internal_search(<span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(iname))))
-                    .unwrap()
-                    .is_empty());
-            }
-
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-        })
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_terminate_1() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>(sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
-            <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
-
-            <span class="kw">let </span>changes =
-                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
-
-            <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
-
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-
-            <span class="comment">// Terminate the sync account
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-
-            <span class="kw">let </span>ident = idms_prox_write
-                .qs_write
-                .internal_search_uuid(UUID_ADMIN)
-                .map(Identity::from_impersonate_entry_readwrite)
-                .expect(<span class="string">&quot;Failed to get admin&quot;</span>);
-
-            <span class="kw">let </span>sfe = ScimSyncTerminateEvent {
-                ident,
-                target: sync_uuid,
-            };
-
-            idms_prox_write
-                .scim_sync_terminate(<span class="kw-2">&amp;</span>sfe)
-                .expect(<span class="string">&quot;Failed to terminate sync account&quot;</span>);
-
-            <span class="comment">// Check that the entries no longer exist
-            </span><span class="kw">for </span>iname <span class="kw">in </span>[<span class="string">&quot;testgroup&quot;</span>, <span class="string">&quot;testposix&quot;</span>, <span class="string">&quot;testexternal&quot;</span>, <span class="string">&quot;testuser&quot;</span>] {
-                <span class="macro">trace!</span>(%iname);
-                <span class="macro">assert!</span>(idms_prox_write
-                    .qs_write
-                    .internal_search(<span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(iname))))
-                    .unwrap()
-                    .is_empty());
-            }
-
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-        })
-    }
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_scim_sync_terminate_2() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-            <span class="kw">let </span>(sync_uuid, ident) = test_scim_sync_apply_setup_ident(<span class="kw-2">&amp;mut </span>idms_prox_write, ct);
-            <span class="kw">let </span>sse = ScimSyncUpdateEvent { ident };
-
-            <span class="kw">let </span>changes =
-                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
-
-            <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
-
-            <span class="comment">// The difference in this test is that the refresh deletes some entries
-            // so the recycle bin case needs to be handled.
-            </span><span class="kw">let </span>changes = serde_json::from_str(TEST_SYNC_SCIM_IPA_REFRESH_1)
-                .expect(<span class="string">&quot;failed to parse scim sync&quot;</span>);
-
-            <span class="macro">assert!</span>(idms_prox_write.scim_sync_apply(<span class="kw-2">&amp;</span>sse, <span class="kw-2">&amp;</span>changes, ct).is_ok());
-
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-
-            <span class="comment">// Terminate the sync account
-            </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
-
-            <span class="kw">let </span>ident = idms_prox_write
-                .qs_write
-                .internal_search_uuid(UUID_ADMIN)
-                .map(Identity::from_impersonate_entry_readwrite)
-                .expect(<span class="string">&quot;Failed to get admin&quot;</span>);
-
-            <span class="kw">let </span>sfe = ScimSyncTerminateEvent {
-                ident,
-                target: sync_uuid,
-            };
-
-            idms_prox_write
-                .scim_sync_terminate(<span class="kw-2">&amp;</span>sfe)
-                .expect(<span class="string">&quot;Failed to terminate sync account&quot;</span>);
-
-            <span class="comment">// Check that the entries no longer exist
-            </span><span class="kw">for </span>iname <span class="kw">in </span>[<span class="string">&quot;testgroup&quot;</span>, <span class="string">&quot;testposix&quot;</span>, <span class="string">&quot;testexternal&quot;</span>, <span class="string">&quot;testuser&quot;</span>] {
-                <span class="macro">trace!</span>(%iname);
-                <span class="macro">assert!</span>(idms_prox_write
-                    .qs_write
-                    .internal_search(<span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(iname))))
-                    .unwrap()
-                    .is_empty());
-            }
-
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-        })
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
     }
 
     <span class="kw">const </span>TEST_SYNC_SCIM_IPA_1: <span class="kw-2">&amp;</span>str = <span class="string">r#&quot;

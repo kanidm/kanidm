@@ -318,6 +318,7 @@
 <a href="#318" id="318">318</a>
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
 </pre><pre class="rust"><code><span class="kw">use </span>gloo::console;
 <span class="kw">use </span>kanidm_proto::v1::{Entry, WhoamiResponse};
 <span class="kw">use </span>uuid::Uuid;
@@ -369,7 +370,8 @@
             .cloned()
             .ok_or_else(|| <span class="string">&quot;Missing displayname&quot;</span>.to_string())<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>groups = entry.attrs.get(<span class="string">&quot;memberof&quot;</span>).cloned().unwrap_or_default();
+        <span class="kw">let </span><span class="kw-2">mut </span>groups = entry.attrs.get(<span class="string">&quot;memberof&quot;</span>).cloned().unwrap_or_default();
+        groups.sort_unstable();
 
         <span class="kw">let </span>mail_primary = entry
             .attrs

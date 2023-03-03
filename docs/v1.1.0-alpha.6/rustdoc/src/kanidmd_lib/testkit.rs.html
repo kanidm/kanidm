@@ -65,6 +65,8 @@
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::be::{Backend, BackendConfig};
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::schema::Schema;
@@ -130,7 +132,9 @@
     qs.initialise_helper(duration_from_epoch_now())
         .<span class="kw">await
         </span>.expect(<span class="string">&quot;init failed!&quot;</span>);
-    IdmServer::new(qs, <span class="string">&quot;https://idm.example.com&quot;</span>).expect(<span class="string">&quot;Failed to setup idms&quot;</span>)
+    IdmServer::new(qs, <span class="string">&quot;https://idm.example.com&quot;</span>)
+        .<span class="kw">await
+        </span>.expect(<span class="string">&quot;Failed to setup idms&quot;</span>)
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.1 (d5a82bbd2 2023-02-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

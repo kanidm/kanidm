@@ -780,14 +780,6 @@
 <a href="#780" id="780">780</a>
 <a href="#781" id="781">781</a>
 <a href="#782" id="782">782</a>
-<a href="#783" id="783">783</a>
-<a href="#784" id="784">784</a>
-<a href="#785" id="785">785</a>
-<a href="#786" id="786">786</a>
-<a href="#787" id="787">787</a>
-<a href="#788" id="788">788</a>
-<a href="#789" id="789">789</a>
-<a href="#790" id="790">790</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 <span class="kw">use </span>std::time::Duration;
 
@@ -1473,109 +1465,101 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
-    <span class="kw">use </span>async_std::task;
     <span class="kw">use </span>kanidm_proto::v1::{AuthType, UiHint};
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_idm_account_from_anonymous() {
-        <span class="kw">let </span>anon_e = <span class="macro">entry_str_to_account!</span>(JSON_ANONYMOUS_V1);
+        <span class="kw">let </span>anon_e = <span class="macro">entry_to_account!</span>(E_ANONYMOUS_V1.clone());
         <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, anon_e);
         <span class="comment">// I think that&#39;s it? we may want to check anonymous mech ...
     </span>}
 
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_idm_account_ui_hints() {
-        <span class="macro">run_idm_test!</span>(|_qs: <span class="kw-2">&amp;</span>QueryServer,
-                       idms: <span class="kw-2">&amp;</span>IdmServer,
-                       _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed| {
-            <span class="kw">let </span>ct = duration_from_epoch_now();
-            <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = task::block_on(idms.proxy_write(ct));
+    <span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_idm_account_ui_hints(idms: <span class="kw-2">&amp;</span>IdmServer, _idms_delayed: <span class="kw-2">&amp;mut </span>IdmServerDelayed) {
+        <span class="kw">let </span>ct = duration_from_epoch_now();
+        <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
 
-            <span class="kw">let </span>target_uuid = Uuid::new_v4();
+        <span class="kw">let </span>target_uuid = Uuid::new_v4();
 
-            <span class="comment">// Create a user. So far no ui hints.
-            // Create a service account
-            </span><span class="kw">let </span>e = <span class="macro">entry_init!</span>(
-                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
-                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
-                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
-                (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testaccount&quot;</span>)),
-                (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(target_uuid)),
-                (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testaccount&quot;</span>)),
-                (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;Test Account&quot;</span>))
-            );
+        <span class="comment">// Create a user. So far no ui hints.
+        // Create a service account
+        </span><span class="kw">let </span>e = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;account&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;person&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testaccount&quot;</span>)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(target_uuid)),
+            (<span class="string">&quot;description&quot;</span>, Value::new_utf8s(<span class="string">&quot;testaccount&quot;</span>)),
+            (<span class="string">&quot;displayname&quot;</span>, Value::new_utf8s(<span class="string">&quot;Test Account&quot;</span>))
+        );
 
-            <span class="kw">let </span>ce = CreateEvent::new_internal(<span class="macro">vec!</span>[e]);
-            <span class="macro">assert!</span>(idms_prox_write.qs_write.create(<span class="kw-2">&amp;</span>ce).is_ok());
+        <span class="kw">let </span>ce = CreateEvent::new_internal(<span class="macro">vec!</span>[e]);
+        <span class="macro">assert!</span>(idms_prox_write.qs_write.create(<span class="kw-2">&amp;</span>ce).is_ok());
 
-            <span class="kw">let </span>account = idms_prox_write
-                .target_to_account(target_uuid)
-                .expect(<span class="string">&quot;account must exist&quot;</span>);
-            <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
-            <span class="kw">let </span>uat = account
-                .to_userauthtoken(session_id, ct, AuthType::Passkey, <span class="prelude-val">None</span>)
-                .expect(<span class="string">&quot;Unable to create uat&quot;</span>);
+        <span class="kw">let </span>account = idms_prox_write
+            .target_to_account(target_uuid)
+            .expect(<span class="string">&quot;account must exist&quot;</span>);
+        <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
+        <span class="kw">let </span>uat = account
+            .to_userauthtoken(session_id, ct, AuthType::Passkey, <span class="prelude-val">None</span>)
+            .expect(<span class="string">&quot;Unable to create uat&quot;</span>);
 
-            <span class="comment">// Check the ui hints are as expected.
-            </span><span class="macro">assert!</span>(uat.ui_hints.len() == <span class="number">1</span>);
-            <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::CredentialUpdate));
+        <span class="comment">// Check the ui hints are as expected.
+        </span><span class="macro">assert!</span>(uat.ui_hints.len() == <span class="number">1</span>);
+        <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::CredentialUpdate));
 
-            <span class="comment">// Modify the user to be a posix account, ensure they get the hint.
-            </span><span class="kw">let </span>me_posix = <span class="kw">unsafe </span>{
-                ModifyEvent::new_internal_invalid(
-                    <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testaccount&quot;</span>))),
-                    ModifyList::new_list(<span class="macro">vec!</span>[
-                        Modify::Present(
-                            AttrString::from(<span class="string">&quot;class&quot;</span>),
-                            Value::new_class(<span class="string">&quot;posixaccount&quot;</span>),
-                        ),
-                        Modify::Present(AttrString::from(<span class="string">&quot;gidnumber&quot;</span>), Value::new_uint32(<span class="number">2001</span>)),
-                    ]),
-                )
-            };
-            <span class="macro">assert!</span>(idms_prox_write.qs_write.modify(<span class="kw-2">&amp;</span>me_posix).is_ok());
+        <span class="comment">// Modify the user to be a posix account, ensure they get the hint.
+        </span><span class="kw">let </span>me_posix = <span class="kw">unsafe </span>{
+            ModifyEvent::new_internal_invalid(
+                <span class="macro">filter!</span>(f_eq(<span class="string">&quot;name&quot;</span>, PartialValue::new_iname(<span class="string">&quot;testaccount&quot;</span>))),
+                ModifyList::new_list(<span class="macro">vec!</span>[
+                    Modify::Present(AttrString::from(<span class="string">&quot;class&quot;</span>), Value::new_class(<span class="string">&quot;posixaccount&quot;</span>)),
+                    Modify::Present(AttrString::from(<span class="string">&quot;gidnumber&quot;</span>), Value::new_uint32(<span class="number">2001</span>)),
+                ]),
+            )
+        };
+        <span class="macro">assert!</span>(idms_prox_write.qs_write.modify(<span class="kw-2">&amp;</span>me_posix).is_ok());
 
-            <span class="comment">// Check the ui hints are as expected.
-            </span><span class="kw">let </span>account = idms_prox_write
-                .target_to_account(target_uuid)
-                .expect(<span class="string">&quot;account must exist&quot;</span>);
-            <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
-            <span class="kw">let </span>uat = account
-                .to_userauthtoken(session_id, ct, AuthType::Passkey, <span class="prelude-val">None</span>)
-                .expect(<span class="string">&quot;Unable to create uat&quot;</span>);
+        <span class="comment">// Check the ui hints are as expected.
+        </span><span class="kw">let </span>account = idms_prox_write
+            .target_to_account(target_uuid)
+            .expect(<span class="string">&quot;account must exist&quot;</span>);
+        <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
+        <span class="kw">let </span>uat = account
+            .to_userauthtoken(session_id, ct, AuthType::Passkey, <span class="prelude-val">None</span>)
+            .expect(<span class="string">&quot;Unable to create uat&quot;</span>);
 
-            <span class="macro">assert!</span>(uat.ui_hints.len() == <span class="number">2</span>);
-            <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::PosixAccount));
-            <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::CredentialUpdate));
+        <span class="macro">assert!</span>(uat.ui_hints.len() == <span class="number">2</span>);
+        <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::PosixAccount));
+        <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::CredentialUpdate));
 
-            <span class="comment">// Add a group with a ui hint, and then check they get the hint.
-            </span><span class="kw">let </span>e = <span class="macro">entry_init!</span>(
-                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
-                (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
-                (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_uihint_group&quot;</span>)),
-                (<span class="string">&quot;member&quot;</span>, Value::Refer(target_uuid)),
-                (<span class="string">&quot;grant_ui_hint&quot;</span>, Value::UiHint(UiHint::ExperimentalFeatures))
-            );
+        <span class="comment">// Add a group with a ui hint, and then check they get the hint.
+        </span><span class="kw">let </span>e = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_uihint_group&quot;</span>)),
+            (<span class="string">&quot;member&quot;</span>, Value::Refer(target_uuid)),
+            (<span class="string">&quot;grant_ui_hint&quot;</span>, Value::UiHint(UiHint::ExperimentalFeatures))
+        );
 
-            <span class="kw">let </span>ce = CreateEvent::new_internal(<span class="macro">vec!</span>[e]);
-            <span class="macro">assert!</span>(idms_prox_write.qs_write.create(<span class="kw-2">&amp;</span>ce).is_ok());
+        <span class="kw">let </span>ce = CreateEvent::new_internal(<span class="macro">vec!</span>[e]);
+        <span class="macro">assert!</span>(idms_prox_write.qs_write.create(<span class="kw-2">&amp;</span>ce).is_ok());
 
-            <span class="comment">// Check the ui hints are as expected.
-            </span><span class="kw">let </span>account = idms_prox_write
-                .target_to_account(target_uuid)
-                .expect(<span class="string">&quot;account must exist&quot;</span>);
-            <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
-            <span class="kw">let </span>uat = account
-                .to_userauthtoken(session_id, ct, AuthType::Passkey, <span class="prelude-val">None</span>)
-                .expect(<span class="string">&quot;Unable to create uat&quot;</span>);
+        <span class="comment">// Check the ui hints are as expected.
+        </span><span class="kw">let </span>account = idms_prox_write
+            .target_to_account(target_uuid)
+            .expect(<span class="string">&quot;account must exist&quot;</span>);
+        <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
+        <span class="kw">let </span>uat = account
+            .to_userauthtoken(session_id, ct, AuthType::Passkey, <span class="prelude-val">None</span>)
+            .expect(<span class="string">&quot;Unable to create uat&quot;</span>);
 
-            <span class="macro">assert!</span>(uat.ui_hints.len() == <span class="number">3</span>);
-            <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::PosixAccount));
-            <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::ExperimentalFeatures));
-            <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::CredentialUpdate));
+        <span class="macro">assert!</span>(uat.ui_hints.len() == <span class="number">3</span>);
+        <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::PosixAccount));
+        <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::ExperimentalFeatures));
+        <span class="macro">assert!</span>(uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::CredentialUpdate));
 
-            <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
-        })
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
     }
 }
 </code></pre></div>
