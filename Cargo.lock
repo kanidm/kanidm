@@ -222,7 +222,6 @@ dependencies = [
  "blocking",
  "futures-lite",
  "once_cell",
- "tokio",
 ]
 
 [[package]]
@@ -2410,7 +2409,6 @@ dependencies = [
 name = "kanidmd_lib"
 version = "1.1.0-alpha.12-dev"
 dependencies = [
- "async-std",
  "async-trait",
  "base64 0.13.1",
  "base64urlsafedata",

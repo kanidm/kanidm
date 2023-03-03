@@ -119,7 +119,7 @@ async fn setup_qs_idms(
 
     // We generate a SINGLE idms only!
 
-    let (idms, idms_delayed) = IdmServer::new(query_server.clone(), &config.origin)?;
+    let (idms, idms_delayed) = IdmServer::new(query_server.clone(), &config.origin).await?;
 
     Ok((query_server, idms, idms_delayed))
 }
@@ -696,7 +696,7 @@ pub async fn create_server_core(
         None => {}
     }
 
-    let ldap = match LdapServer::new(&idms) {
+    let ldap = match LdapServer::new(&idms).await {
         Ok(l) => l,
         Err(e) => {
             error!("Unable to start LdapServer -> {:?}", e);
