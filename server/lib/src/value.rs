@@ -779,9 +779,9 @@ pub struct Session {
 impl fmt::Debug for Session {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let issuer = match self.issued_by {
-            IdentityId::User(u) => uuid_to_proto_string(u),
-            IdentityId::Synch(u) => uuid_to_proto_string(u),
-            _ => "invalid".to_string(),
+            IdentityId::User(u) => format!("User - {}", uuid_to_proto_string(u)),
+            IdentityId::Synch(u) => format!("Synch - {}", uuid_to_proto_string(u)),
+            IdentityId::Internal => "Internal".to_string(),
         };
         let expiry = match self.expiry {
             Some(e) => e.to_string(),

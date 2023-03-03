@@ -347,7 +347,7 @@ impl ValueSetT for ValueSetSession {
         Box::new(
             self.map
                 .iter()
-                .map(|(u, m)| format!("Auth session id: {}, {:?}", uuid_to_proto_string(*u), m)),
+                .map(|(u, m)| format!("{}: {:?}", uuid_to_proto_string(*u), m)),
         )
     }
 
