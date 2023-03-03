@@ -980,7 +980,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<CUStatus, OperationError> {
         let ct = duration_from_epoch_now();
-        let idms_cred_update = self.idms.cred_update_transaction_async().await;
+        let idms_cred_update = self.idms.cred_update_transaction().await;
         let session_token = CredentialUpdateSessionToken {
             token_enc: session_token.token,
         };
@@ -1009,7 +1009,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<CUStatus, OperationError> {
         let ct = duration_from_epoch_now();
-        let idms_cred_update = self.idms.cred_update_transaction_async().await;
+        let idms_cred_update = self.idms.cred_update_transaction().await;
         let session_token = CredentialUpdateSessionToken {
             token_enc: session_token.token,
         };

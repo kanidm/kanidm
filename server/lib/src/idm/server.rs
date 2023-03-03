@@ -5,7 +5,6 @@ use std::time::Duration;
 
 use kanidm_lib_crypto::CryptoPolicy;
 
-use async_std::task;
 use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
 use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
 use concread::cowcell::{CowCellReadTxn, CowCellWriteTxn};
@@ -144,10 +143,9 @@ pub struct IdmServerDelayed {
 
 impl IdmServer {
     // TODO: Make number of authsessions configurable!!!
-    pub fn new(
+    pub async fn new(
         qs: QueryServer,
         origin: &str,
-        // ct: Duration,
     ) -> Result<(IdmServer, IdmServerDelayed), OperationError> {
         // This is calculated back from:
         //  500 auths / thread -> 0.002 sec per op
@@ -169,7 +167,7 @@ impl IdmServer {
             pw_badlist_set,
             oauth2rs_set,
         ) = {
-            let mut qs_read = task::block_on(qs.read());
+            let mut qs_read = qs.read().await;
             (
                 qs_read.get_domain_name().to_string(),
                 qs_read.get_domain_display_name().to_string(),
@@ -316,12 +314,7 @@ impl IdmServer {
         }
     }
 
-    #[cfg(test)]
-    pub fn cred_update_transaction(&self) -> IdmServerCredUpdateTransaction<'_> {
-        task::block_on(self.cred_update_transaction_async())
-    }
-
-    pub async fn cred_update_transaction_async(&self) -> IdmServerCredUpdateTransaction<'_> {
+    pub async fn cred_update_transaction(&self) -> IdmServerCredUpdateTransaction<'_> {
         IdmServerCredUpdateTransaction {
             _qs_read: self.qs.read().await,
             // sid: Sid,

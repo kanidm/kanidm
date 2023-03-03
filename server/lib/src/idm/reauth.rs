@@ -75,7 +75,7 @@ mod tests {
 
         // Update session is setup.
 
-        let cutxn = idms.cred_update_transaction();
+        let cutxn = idms.cred_update_transaction().await;
         let origin = cutxn.get_origin().clone();
 
         let mut wa = WebauthnAuthenticator::new(SoftPasskey::new());
