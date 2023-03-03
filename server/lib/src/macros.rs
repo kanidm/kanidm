@@ -95,48 +95,6 @@ macro_rules! entry_to_account {
     }};
 }
 
-#[cfg(test)]
-macro_rules! run_idm_test_inner {
-    ($test_fn:expr) => {{
-        #[allow(unused_imports)]
-        use crate::be::{Backend, BackendConfig};
-        #[allow(unused_imports)]
-        use crate::idm::server::{IdmServer, IdmServerDelayed};
-        use crate::prelude::*;
-        #[allow(unused_imports)]
-        use crate::schema::Schema;
-        /*
-        use env_logger;
-        ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
-        let _ = env_logger::builder()
-            .format_timestamp(None)
-            .format_level(false)
-            .is_test(true)
-            .try_init();
-        */
-
-        let test_server = setup_test!();
-
-        let (test_idm_server, mut idms_delayed) =
-            IdmServer::new(test_server.clone(), "https://idm.example.com")
-                .expect("Failed to setup idms");
-
-        $test_fn(&test_server, &test_idm_server, &mut idms_delayed);
-        // Any needed teardown?
-        // Make sure there are no errors.
-        assert!(async_std::task::block_on(test_server.verify()).len() == 0);
-        idms_delayed.check_is_empty_or_panic();
-    }};
-}
-
-#[cfg(test)]
-macro_rules! run_idm_test {
-    ($test_fn:expr) => {{
-        let _ = sketching::test_init();
-        run_idm_test_inner!($test_fn);
-    }};
-}
-
 // Test helpers for all plugins.
 // #[macro_export]
 #[cfg(test)]
