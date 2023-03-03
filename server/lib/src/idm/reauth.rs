@@ -75,7 +75,7 @@ mod tests {
 
         // Update session is setup.
 
-        let cutxn = idms.cred_update_transaction();
+        let cutxn = idms.cred_update_transaction().await;
         let origin = cutxn.get_origin().clone();
 
         let mut wa = WebauthnAuthenticator::new(SoftPasskey::new());
@@ -120,7 +120,7 @@ mod tests {
         wa: &mut WebauthnAuthenticator<SoftPasskey>,
         idms_delayed: &mut IdmServerDelayed,
     ) -> Option<String> {
-        let mut idms_auth = idms.auth();
+        let mut idms_auth = idms.auth().await;
         let origin = idms_auth.get_origin().clone();
 
         let auth_init = AuthEvent::named_init("testperson");

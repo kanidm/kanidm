@@ -117,7 +117,7 @@ impl QueryServerReadV1 {
         // the credentials provided is sufficient to say if someone is
         // "authenticated" or not.
         let ct = duration_from_epoch_now();
-        let mut idm_auth = self.idms.auth_async().await;
+        let mut idm_auth = self.idms.auth().await;
         security_info!(?sessionid, ?req, "Begin auth event");
 
         // Destructure it.
@@ -840,7 +840,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Option<UnixUserToken>, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idm_auth = self.idms.auth_async().await;
+        let mut idm_auth = self.idms.auth().await;
         // resolve the id
         let ident = idm_auth
             .validate_and_parse_token_to_ident(uat.as_deref(), ct)
@@ -980,7 +980,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<CUStatus, OperationError> {
         let ct = duration_from_epoch_now();
-        let idms_cred_update = self.idms.cred_update_transaction_async().await;
+        let idms_cred_update = self.idms.cred_update_transaction().await;
         let session_token = CredentialUpdateSessionToken {
             token_enc: session_token.token,
         };
@@ -1009,7 +1009,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<CUStatus, OperationError> {
         let ct = duration_from_epoch_now();
-        let idms_cred_update = self.idms.cred_update_transaction_async().await;
+        let idms_cred_update = self.idms.cred_update_transaction().await;
         let session_token = CredentialUpdateSessionToken {
             token_enc: session_token.token,
         };

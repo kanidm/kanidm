@@ -45,7 +45,7 @@ struct RunOpt {
     pub copt: CommonOpt,
     #[clap(name = "target")]
     pub target: TargetOpt,
-    #[clap(name = "test_type")]
+    #[clap(name = "test-type")]
     /// Which type of test to run against this system
     pub test_type: TestTypeOpt,
     #[clap(parse(from_os_str), short, long = "profile")]
@@ -65,7 +65,7 @@ pub(crate) enum TargetOpt {
     #[clap(name = "kanidm")]
     /// Run against the kanidm http profile
     Kanidm,
-    #[clap(name = "kanidm_ldap")]
+    #[clap(name = "kanidm-ldap")]
     /// Run against the kanidm ldap profile
     KanidmLdap,
 }
@@ -78,8 +78,8 @@ impl FromStr for TargetOpt {
             "ds" => Ok(TargetOpt::Ds),
             "ipa" => Ok(TargetOpt::Ipa),
             "kanidm" => Ok(TargetOpt::Kanidm),
-            "kanidm_ldap" => Ok(TargetOpt::KanidmLdap),
-            _ => Err("Invalid target type. Must be ds, ipa, kanidm, or kanidm_ldap"),
+            "kanidm-ldap" => Ok(TargetOpt::KanidmLdap),
+            _ => Err("Invalid target type. Must be ds, ipa, kanidm, or kanidm-ldap"),
         }
     }
 }

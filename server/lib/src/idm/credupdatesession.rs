@@ -1741,7 +1741,7 @@ mod tests {
         pw: &str,
         ct: Duration,
     ) -> Option<String> {
-        let mut idms_auth = idms.auth();
+        let mut idms_auth = idms.auth().await;
 
         let auth_init = AuthEvent::named_init("testperson");
 
@@ -1800,7 +1800,7 @@ mod tests {
         token: &Totp,
         ct: Duration,
     ) -> Option<String> {
-        let mut idms_auth = idms.auth();
+        let mut idms_auth = idms.auth().await;
 
         let auth_init = AuthEvent::named_init("testperson");
 
@@ -1873,7 +1873,7 @@ mod tests {
         code: &str,
         ct: Duration,
     ) -> Option<String> {
-        let mut idms_auth = idms.auth();
+        let mut idms_auth = idms.auth().await;
 
         let auth_init = AuthEvent::named_init("testperson");
 
@@ -1948,7 +1948,7 @@ mod tests {
         origin: Url,
         ct: Duration,
     ) -> Option<String> {
-        let mut idms_auth = idms.auth();
+        let mut idms_auth = idms.auth().await;
 
         let auth_init = AuthEvent::named_init("testperson");
 
@@ -2027,7 +2027,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (cust, _) = setup_test_session(idms, ct).await;
 
-        let cutxn = idms.cred_update_transaction_async().await;
+        let cutxn = idms.cred_update_transaction().await;
         // The session exists
         let c_status = cutxn.credential_update_status(&cust, ct);
         assert!(c_status.is_ok());
@@ -2037,7 +2037,7 @@ mod tests {
         let (_cust, _) =
             renew_test_session(idms, ct + MAXIMUM_CRED_UPDATE_TTL + Duration::from_secs(1)).await;
 
-        let cutxn = idms.cred_update_transaction();
+        let cutxn = idms.cred_update_transaction().await;
 
         // Now fake going back in time .... allows the tokne to decrypt, but the session
         // is gone anyway!
@@ -2057,7 +2057,7 @@ mod tests {
 
         let (cust, _) = setup_test_session(idms, ct).await;
 
-        let cutxn = idms.cred_update_transaction();
+        let cutxn = idms.cred_update_transaction().await;
 
         // Get the credential status - this should tell
         // us the details of the credentials, as well as
@@ -2088,7 +2088,7 @@ mod tests {
 
         // Test deleting the pw
         let (cust, _) = renew_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction();
+        let cutxn = idms.cred_update_transaction().await;
 
         let c_status = cutxn
             .credential_update_status(&cust, ct)
@@ -2125,7 +2125,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction();
+        let cutxn = idms.cred_update_transaction().await;
 
         // Setup the PW
         let c_status = cutxn
@@ -2188,7 +2188,7 @@ mod tests {
 
         // If we remove TOTP, show it reverts back.
         let (cust, _) = renew_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction();
+        let cutxn = idms.cred_update_transaction().await;
 
         let c_status = cutxn
             .credential_primary_remove_totp(&cust, ct, "totp")
@@ -2219,7 +2219,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction();
+        let cutxn = idms.cred_update_transaction().await;
 
         // Setup the PW
         let c_status = cutxn
@@ -2293,7 +2293,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction();
+        let cutxn = idms.cred_update_transaction().await;
 
         // Setup the PW
         let _c_status = cutxn
@@ -2369,7 +2369,7 @@ mod tests {
 
         // Renew to start the next steps
         let (cust, _) = renew_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction();
+        let cutxn = idms.cred_update_transaction().await;
 
         // Only 7 codes left.
         let c_status = cutxn
@@ -2430,7 +2430,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction();
+        let cutxn = idms.cred_update_transaction().await;
 
         // Setup the PW
         let c_status = cutxn
@@ -2482,7 +2482,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction();
+        let cutxn = idms.cred_update_transaction().await;
         let origin = cutxn.get_origin().clone();
 
         // Create a soft passkey
@@ -2538,7 +2538,7 @@ mod tests {
 
         // Now test removing the token
         let (cust, _) = renew_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction();
+        let cutxn = idms.cred_update_transaction().await;
 
         trace!(?c_status);
         assert!(c_status.primary.is_none());

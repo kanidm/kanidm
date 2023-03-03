@@ -29,8 +29,8 @@ RUN \
     openssl \
     curl
 
-ADD kanidm_rlm_python/mods-available/ /etc/raddb/mods-available/
-COPY kanidm_rlm_python/sites-available/ /etc/raddb/sites-available/
+ADD  rlm_python/mods-available/ /etc/raddb/mods-available/
+COPY rlm_python/sites-available/ /etc/raddb/sites-available/
 
 # Set a working directory of /etc/raddb
 WORKDIR /etc/raddb
@@ -55,7 +55,7 @@ COPY pykanidm/ /pkg/pykanidm/
 RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/pykanidm && \
     rm -rf /pkg/*
 
-COPY kanidm_rlm_python/radius_entrypoint.py /radius_entrypoint.py
+COPY rlm_python/radius_entrypoint.py /radius_entrypoint.py
 
 ENV LD_PRELOAD=/usr/lib64/libpython3.so
 ENV KANIDM_CONFIG_FILE="/data/kanidm"

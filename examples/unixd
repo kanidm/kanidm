@@ -1,5 +1,5 @@
 # this should be at /etc/kanidm/unixd, and configures kanidm-unixd
-# some documentation is here: https://github.com/kanidm/kanidm/blob/master/kanidm_book/src/pam_and_nsswitch.md
+# some documentation is here: https://github.com/kanidm/kanidm/blob/master/book/src/pam_and_nsswitch.md
 # pam_allowed_login_groups = ["posix_group"]
 # default_shell = "/bin/sh"
 # home_prefix = "/home/"

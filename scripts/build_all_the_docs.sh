@@ -25,11 +25,11 @@ function build_version() {
         git switch -c "${BOOK_VERSION}" || git switch "${BOOK_VERSION}"
     fi
     echo "Running mdbook build"
-	mdbook build kanidm_book
+	mdbook build book
     echo "Running cargo doc"
     cargo doc --quiet --no-deps
     echo "Moving book to ${DOCS_DIR}/${BOOK_VERSION}/"
-    mv ./kanidm_book/book/ "${DOCS_DIR}/${BOOK_VERSION}/"
+    mv ./book/book/ "${DOCS_DIR}/${BOOK_VERSION}/"
     echo "Cleaning out rustdoc dir..."
     rm -rf "${DOCS_DIR}/${BOOK_VERSION}/rustdoc/"
 	echo "Moving rustdoc to ${DOCS_DIR}/${BOOK_VERSION}/rustdoc/"

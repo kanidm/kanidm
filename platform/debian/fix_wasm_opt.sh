@@ -10,9 +10,9 @@ if [ "$(uname -m)" = "aarch64" ] && [ "$(uname -s)" = "Linux" ]; then
     echo "        Large WASM ahead."
     echo "#####################################"
 
-    if [ "$(grep -oE 'wasm-opt.*' kanidmd_web_ui/Cargo.toml | awk '{print $NF}')" != "false" ]; then
-        echo "Updating kanidmd_web_ui/Cargo.toml to disable wasm-opt"
-        cat >> kanidmd_web_ui/Cargo.toml <<-EOM
+    if [ "$(grep -oE 'wasm-opt.*' server/web_ui/Cargo.toml | awk '{print $NF}')" != "false" ]; then
+        echo "Updating server/web_ui/Cargo.toml to disable wasm-opt"
+        cat >> server/web_ui/Cargo.toml <<-EOM
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = false
 EOM
