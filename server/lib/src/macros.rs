@@ -13,7 +13,9 @@ macro_rules! setup_test {
             .expect("Failed to init BE");
 
         let qs = QueryServer::new(be, schema_outer, "example.com".to_string());
-        async_std::task::block_on(qs.initialise_helper(duration_from_epoch_now()))
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(qs.initialise_helper(duration_from_epoch_now()))
             .expect("init failed!");
         qs
     }};
@@ -34,11 +36,15 @@ macro_rules! setup_test {
             .expect("Failed to init BE");
 
         let qs = QueryServer::new(be, schema_outer, "example.com".to_string());
-        async_std::task::block_on(qs.initialise_helper(duration_from_epoch_now()))
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(qs.initialise_helper(duration_from_epoch_now()))
             .expect("init failed!");
 
         if !$preload_entries.is_empty() {
-            let mut qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            let mut qs_write = tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(qs.write(duration_from_epoch_now()));
             qs_write
                 .internal_create($preload_entries)
                 .expect("Failed to preload entries");
@@ -123,7 +129,9 @@ macro_rules! run_create_test {
         };
 
         {
-            let mut qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            let mut qs_write = tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(qs.write(duration_from_epoch_now()));
             let r = qs_write.create(&ce);
             trace!("test result: {:?}", r);
             assert!(r == $expect);
@@ -139,7 +147,9 @@ macro_rules! run_create_test {
         }
         // Make sure there are no errors.
         trace!("starting verification");
-        let ver = async_std::task::block_on(qs.verify());
+        let ver = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(qs.verify());
         trace!("verification -> {:?}", ver);
         assert!(ver.len() == 0);
     }};
@@ -165,7 +175,9 @@ macro_rules! run_modify_test {
         let qs = setup_test!($preload_entries);
 
         {
-            let mut qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            let mut qs_write = tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(qs.write(duration_from_epoch_now()));
             $pre_hook(&mut qs_write);
             qs_write.commit().expect("commit failure!");
         }
@@ -178,7 +190,9 @@ macro_rules! run_modify_test {
         };
 
         {
-            let mut qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            let mut qs_write = tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(qs.write(duration_from_epoch_now()));
             let r = qs_write.modify(&me);
             $check(&mut qs_write);
             trace!("test result: {:?}", r);
@@ -194,7 +208,9 @@ macro_rules! run_modify_test {
         }
         // Make sure there are no errors.
         trace!("starting verification");
-        let ver = async_std::task::block_on(qs.verify());
+        let ver = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(qs.verify());
         trace!("verification -> {:?}", ver);
         assert!(ver.len() == 0);
     }};
@@ -224,7 +240,9 @@ macro_rules! run_delete_test {
         };
 
         {
-            let mut qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            let mut qs_write = tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(qs.write(duration_from_epoch_now()));
             let r = qs_write.delete(&de);
             trace!("test result: {:?}", r);
             $check(&mut qs_write);
@@ -240,7 +258,9 @@ macro_rules! run_delete_test {
         }
         // Make sure there are no errors.
         trace!("starting verification");
-        let ver = async_std::task::block_on(qs.verify());
+        let ver = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(qs.verify());
         trace!("verification -> {:?}", ver);
         assert!(ver.len() == 0);
     }};
