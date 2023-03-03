@@ -696,7 +696,7 @@ pub async fn create_server_core(
         None => {}
     }
 
-    let ldap = match LdapServer::new(&idms) {
+    let ldap = match LdapServer::new(&idms).await {
         Ok(l) => l,
         Err(e) => {
             error!("Unable to start LdapServer -> {:?}", e);

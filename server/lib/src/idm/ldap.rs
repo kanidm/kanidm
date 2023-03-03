@@ -4,7 +4,6 @@
 use std::collections::BTreeSet;
 use std::iter;
 
-use async_std::task;
 use kanidm_proto::v1::{ApiToken, OperationError, UserAuthToken};
 use ldap3_proto::simple::*;
 use regex::Regex;
@@ -59,9 +58,9 @@ pub struct LdapServer {
 }
 
 impl LdapServer {
-    pub fn new(idms: &IdmServer) -> Result<Self, OperationError> {
+    pub async fn new(idms: &IdmServer) -> Result<Self, OperationError> {
         // let ct = duration_from_epoch_now();
-        let mut idms_prox_read = task::block_on(idms.proxy_read());
+        let mut idms_prox_read = idms.proxy_read().await;
         // This is the rootdse path.
         // get the domain_info item
         let domain_entry = idms_prox_read
@@ -617,7 +616,7 @@ mod tests {
 
     #[idm_test]
     async fn test_ldap_simple_bind(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
-        let ldaps = LdapServer::new(idms).expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         // make the admin a valid posix account
@@ -801,7 +800,7 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &IdmServerDelayed,
     ) {
-        let ldaps = LdapServer::new(idms).expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let ssh_ed25519 = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP william@amethyst";
 
@@ -943,7 +942,7 @@ mod tests {
         _idms_delayed: &IdmServerDelayed,
     ) {
         // Setup the ldap server
-        let ldaps = LdapServer::new(idms).expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         // Prebuild the search req we'll be using this test.
         let sr = SearchRequest {
@@ -1103,7 +1102,7 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &IdmServerDelayed,
     ) {
-        let ldaps = LdapServer::new(idms).expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let acct_uuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
