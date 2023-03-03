@@ -1385,8 +1385,6 @@ mod tests {
         ScimSyncUpdateEvent,
     };
 
-    use async_std::task;
-
     const TEST_CURRENT_TIME: u64 = 6000;
 
     fn create_scim_sync_account(
@@ -1416,167 +1414,163 @@ mod tests {
         (sync_uuid, sync_token)
     }
 
-    #[test]
-    fn test_idm_scim_sync_basic_function() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+    #[idm_test]
+    async fn test_idm_scim_sync_basic_function(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let (sync_uuid, sync_token) = create_scim_sync_account(&mut idms_prox_write, ct);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (sync_uuid, sync_token) = create_scim_sync_account(&mut idms_prox_write, ct);
 
-            assert!(idms_prox_write.commit().is_ok());
+        assert!(idms_prox_write.commit().is_ok());
 
-            // Do a get_state to get the current "state cookie" if any.
-            let mut idms_prox_read = task::block_on(idms.proxy_read());
+        // Do a get_state to get the current "state cookie" if any.
+        let mut idms_prox_read = idms.proxy_read().await;
 
-            let ident = idms_prox_read
-                .validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct)
-                .expect("Failed to validate sync token");
+        let ident = idms_prox_read
+            .validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct)
+            .expect("Failed to validate sync token");
 
-            assert!(Some(sync_uuid) == ident.get_uuid());
+        assert!(Some(sync_uuid) == ident.get_uuid());
 
-            let sync_state = idms_prox_read
-                .scim_sync_get_state(&ident)
-                .expect("Failed to get current sync state");
-            trace!(?sync_state);
+        let sync_state = idms_prox_read
+            .scim_sync_get_state(&ident)
+            .expect("Failed to get current sync state");
+        trace!(?sync_state);
 
-            assert!(matches!(sync_state, ScimSyncState::Refresh));
+        assert!(matches!(sync_state, ScimSyncState::Refresh));
 
-            drop(idms_prox_read);
+        drop(idms_prox_read);
 
-            // Use the current state and update.
+        // Use the current state and update.
 
-            // TODO!!!
-        })
+        // TODO!!!
     }
 
-    #[test]
-    fn test_idm_scim_sync_token_security() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+    #[idm_test]
+    async fn test_idm_scim_sync_token_security(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+        let mut idms_prox_write = idms.proxy_write(ct).await;
 
-            let sync_uuid = Uuid::new_v4();
+        let sync_uuid = Uuid::new_v4();
 
-            let e1 = entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("sync_account")),
-                ("name", Value::new_iname("test_scim_sync")),
-                ("uuid", Value::Uuid(sync_uuid)),
-                ("description", Value::new_utf8s("A test sync agreement"))
-            );
+        let e1 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("sync_account")),
+            ("name", Value::new_iname("test_scim_sync")),
+            ("uuid", Value::Uuid(sync_uuid)),
+            ("description", Value::new_utf8s("A test sync agreement"))
+        );
 
-            let ce = CreateEvent::new_internal(vec![e1]);
-            let cr = idms_prox_write.qs_write.create(&ce);
-            assert!(cr.is_ok());
+        let ce = CreateEvent::new_internal(vec![e1]);
+        let cr = idms_prox_write.qs_write.create(&ce);
+        assert!(cr.is_ok());
 
-            let gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, "Sync Connector");
+        let gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, "Sync Connector");
 
-            let sync_token = idms_prox_write
-                .scim_sync_generate_token(&gte, ct)
-                .expect("failed to generate new scim sync token");
+        let sync_token = idms_prox_write
+            .scim_sync_generate_token(&gte, ct)
+            .expect("failed to generate new scim sync token");
 
-            assert!(idms_prox_write.commit().is_ok());
+        assert!(idms_prox_write.commit().is_ok());
 
-            // -- Check the happy path.
-            let mut idms_prox_read = task::block_on(idms.proxy_read());
-            let ident = idms_prox_read
-                .validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct)
-                .expect("Failed to validate sync token");
-            assert!(Some(sync_uuid) == ident.get_uuid());
-            drop(idms_prox_read);
+        // -- Check the happy path.
+        let mut idms_prox_read = idms.proxy_read().await;
+        let ident = idms_prox_read
+            .validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct)
+            .expect("Failed to validate sync token");
+        assert!(Some(sync_uuid) == ident.get_uuid());
+        drop(idms_prox_read);
 
-            // -- Revoke the session
+        // -- Revoke the session
 
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let me_inv_m = unsafe {
-                ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iname("test_scim_sync"))),
-                    ModifyList::new_list(vec![Modify::Purged(AttrString::from(
-                        "sync_token_session",
-                    ))]),
-                )
-            };
-            assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
-            assert!(idms_prox_write.commit().is_ok());
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let me_inv_m = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iname("test_scim_sync"))),
+                ModifyList::new_list(vec![Modify::Purged(AttrString::from("sync_token_session"))]),
+            )
+        };
+        assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
 
-            // Must fail
-            let mut idms_prox_read = task::block_on(idms.proxy_read());
-            let fail = idms_prox_read
-                .validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct);
-            assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
-            drop(idms_prox_read);
+        // Must fail
+        let mut idms_prox_read = idms.proxy_read().await;
+        let fail =
+            idms_prox_read.validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct);
+        assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
+        drop(idms_prox_read);
 
-            // -- New session, reset the JWS
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+        // -- New session, reset the JWS
+        let mut idms_prox_write = idms.proxy_write(ct).await;
 
-            let gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, "Sync Connector");
-            let sync_token = idms_prox_write
-                .scim_sync_generate_token(&gte, ct)
-                .expect("failed to generate new scim sync token");
+        let gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, "Sync Connector");
+        let sync_token = idms_prox_write
+            .scim_sync_generate_token(&gte, ct)
+            .expect("failed to generate new scim sync token");
 
-            let me_inv_m = unsafe {
-                ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iname("test_scim_sync"))),
-                    ModifyList::new_list(vec![Modify::Purged(AttrString::from(
-                        "jws_es256_private_key",
-                    ))]),
-                )
-            };
-            assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
-            assert!(idms_prox_write.commit().is_ok());
+        let me_inv_m = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iname("test_scim_sync"))),
+                ModifyList::new_list(vec![Modify::Purged(AttrString::from(
+                    "jws_es256_private_key",
+                ))]),
+            )
+        };
+        assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
 
-            let mut idms_prox_read = task::block_on(idms.proxy_read());
-            let fail = idms_prox_read
-                .validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct);
-            assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
+        let mut idms_prox_read = idms.proxy_read().await;
+        let fail =
+            idms_prox_read.validate_and_parse_sync_token_to_ident(Some(sync_token.as_str()), ct);
+        assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
 
-            // -- Forge a session, use wrong types
+        // -- Forge a session, use wrong types
 
-            let sync_entry = idms_prox_read
-                .qs_read
-                .internal_search_uuid(sync_uuid)
-                .expect("Unable to access sync entry");
+        let sync_entry = idms_prox_read
+            .qs_read
+            .internal_search_uuid(sync_uuid)
+            .expect("Unable to access sync entry");
 
-            let jws_key = sync_entry
-                .get_ava_single_jws_key_es256("jws_es256_private_key")
-                .cloned()
-                .expect("Missing attribute: jws_es256_private_key");
+        let jws_key = sync_entry
+            .get_ava_single_jws_key_es256("jws_es256_private_key")
+            .cloned()
+            .expect("Missing attribute: jws_es256_private_key");
 
-            let sync_tokens = sync_entry
-                .get_ava_as_apitoken_map("sync_token_session")
-                .cloned()
-                .unwrap_or_default();
+        let sync_tokens = sync_entry
+            .get_ava_as_apitoken_map("sync_token_session")
+            .cloned()
+            .unwrap_or_default();
 
-            // Steal these from the legit sesh.
-            let (token_id, issued_at) = sync_tokens
-                .iter()
-                .next()
-                .map(|(k, v)| (*k, v.issued_at))
-                .expect("No sync tokens present");
+        // Steal these from the legit sesh.
+        let (token_id, issued_at) = sync_tokens
+            .iter()
+            .next()
+            .map(|(k, v)| (*k, v.issued_at))
+            .expect("No sync tokens present");
 
-            let purpose = ApiTokenPurpose::ReadWrite;
+        let purpose = ApiTokenPurpose::ReadWrite;
 
-            let token = Jws::new(ScimSyncToken {
-                token_id,
-                issued_at,
-                purpose,
-            });
+        let token = Jws::new(ScimSyncToken {
+            token_id,
+            issued_at,
+            purpose,
+        });
 
-            let forged_token = token
-                .sign(&jws_key)
-                .map(|jws_signed| jws_signed.to_string())
-                .expect("Unable to sign forged token");
+        let forged_token = token
+            .sign(&jws_key)
+            .map(|jws_signed| jws_signed.to_string())
+            .expect("Unable to sign forged token");
 
-            let fail = idms_prox_read
-                .validate_and_parse_sync_token_to_ident(Some(forged_token.as_str()), ct);
-            assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
-        })
+        let fail =
+            idms_prox_read.validate_and_parse_sync_token_to_ident(Some(forged_token.as_str()), ct);
+        assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
     }
 
     fn test_scim_sync_apply_setup_ident(
@@ -1610,142 +1604,139 @@ mod tests {
         (sync_uuid, ident)
     }
 
-    #[test]
-    fn test_idm_scim_sync_apply_phase_1_inconsistent() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
-            let sse = ScimSyncUpdateEvent { ident };
+    #[idm_test]
+    async fn test_idm_scim_sync_apply_phase_1_inconsistent(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent { ident };
 
-            let changes = ScimSyncRequest {
-                from_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
-                },
-                to_state: ScimSyncState::Refresh,
-                entries: Vec::default(),
-                delete_uuids: Vec::default(),
-            };
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            to_state: ScimSyncState::Refresh,
+            entries: Vec::default(),
+            delete_uuids: Vec::default(),
+        };
 
-            let res = idms_prox_write.scim_sync_apply_phase_1(&sse, &changes);
+        let res = idms_prox_write.scim_sync_apply_phase_1(&sse, &changes);
 
-            assert!(matches!(res, Err(OperationError::InvalidSyncState)));
+        assert!(matches!(res, Err(OperationError::InvalidSyncState)));
 
-            assert!(idms_prox_write.commit().is_ok());
-        })
+        assert!(idms_prox_write.commit().is_ok());
     }
 
-    #[test]
-    fn test_idm_scim_sync_apply_phase_2_basic() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
-            let sse = ScimSyncUpdateEvent { ident };
+    #[idm_test]
+    async fn test_idm_scim_sync_apply_phase_2_basic(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent { ident };
 
-            let user_sync_uuid = uuid::uuid!("91b7aaf2-2445-46ce-8998-96d9f186cc69");
+        let user_sync_uuid = uuid::uuid!("91b7aaf2-2445-46ce-8998-96d9f186cc69");
 
-            let changes = ScimSyncRequest {
-                from_state: ScimSyncState::Refresh,
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
-                },
-                entries: vec![ScimEntry {
-                    schemas: vec![SCIM_SCHEMA_SYNC_PERSON.to_string()],
-                    id: user_sync_uuid,
-                    external_id: Some("dn=william,ou=people,dc=test".to_string()),
-                    meta: None,
-                    attrs: btreemap!((
-                        "name".to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String("william".to_string()))
-                    ),),
-                }],
-                delete_uuids: Vec::default(),
-            };
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            entries: vec![ScimEntry {
+                schemas: vec![SCIM_SCHEMA_SYNC_PERSON.to_string()],
+                id: user_sync_uuid,
+                external_id: Some("dn=william,ou=people,dc=test".to_string()),
+                meta: None,
+                attrs: btreemap!((
+                    "name".to_string(),
+                    ScimAttr::SingleSimple(ScimSimpleAttr::String("william".to_string()))
+                ),),
+            }],
+            delete_uuids: Vec::default(),
+        };
 
-            let (sync_uuid, _sync_authority_set, change_entries, _sync_refresh) = idms_prox_write
-                .scim_sync_apply_phase_1(&sse, &changes)
-                .expect("Failed to run phase 1");
+        let (sync_uuid, _sync_authority_set, change_entries, _sync_refresh) = idms_prox_write
+            .scim_sync_apply_phase_1(&sse, &changes)
+            .expect("Failed to run phase 1");
 
-            idms_prox_write
-                .scim_sync_apply_phase_2(&change_entries, sync_uuid)
-                .expect("Failed to run phase 2");
+        idms_prox_write
+            .scim_sync_apply_phase_2(&change_entries, sync_uuid)
+            .expect("Failed to run phase 2");
 
-            let synced_entry = idms_prox_write
-                .qs_write
-                .internal_search_uuid(user_sync_uuid)
-                .expect("Failed to access sync stub entry");
+        let synced_entry = idms_prox_write
+            .qs_write
+            .internal_search_uuid(user_sync_uuid)
+            .expect("Failed to access sync stub entry");
 
-            assert!(
-                synced_entry.get_ava_single_iutf8("sync_external_id")
-                    == Some("dn=william,ou=people,dc=test")
-            );
-            assert!(synced_entry.get_uuid() == user_sync_uuid);
+        assert!(
+            synced_entry.get_ava_single_iutf8("sync_external_id")
+                == Some("dn=william,ou=people,dc=test")
+        );
+        assert!(synced_entry.get_uuid() == user_sync_uuid);
 
-            assert!(idms_prox_write.commit().is_ok());
-        })
+        assert!(idms_prox_write.commit().is_ok());
     }
 
-    #[test]
-    fn test_idm_scim_sync_apply_phase_2_deny_on_tombstone() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+    #[idm_test]
+    async fn test_idm_scim_sync_apply_phase_2_deny_on_tombstone(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
 
-            let user_sync_uuid = Uuid::new_v4();
-            // Create a recycled entry
-            assert!(idms_prox_write
-                .qs_write
-                .internal_create(vec![entry_init!(
-                    ("class", Value::new_class("object")),
-                    ("uuid", Value::Uuid(user_sync_uuid))
-                )])
-                .is_ok());
+        let user_sync_uuid = Uuid::new_v4();
+        // Create a recycled entry
+        assert!(idms_prox_write
+            .qs_write
+            .internal_create(vec![entry_init!(
+                ("class", Value::new_class("object")),
+                ("uuid", Value::Uuid(user_sync_uuid))
+            )])
+            .is_ok());
 
-            assert!(idms_prox_write
-                .qs_write
-                .internal_delete_uuid(user_sync_uuid)
-                .is_ok());
+        assert!(idms_prox_write
+            .qs_write
+            .internal_delete_uuid(user_sync_uuid)
+            .is_ok());
 
-            // Now create a sync that conflicts with the tombstone uuid. This will be REJECTED.
+        // Now create a sync that conflicts with the tombstone uuid. This will be REJECTED.
 
-            let sse = ScimSyncUpdateEvent { ident };
+        let sse = ScimSyncUpdateEvent { ident };
 
-            let changes = ScimSyncRequest {
-                from_state: ScimSyncState::Refresh,
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
-                },
-                entries: vec![ScimEntry {
-                    schemas: vec![SCIM_SCHEMA_SYNC_PERSON.to_string()],
-                    id: user_sync_uuid,
-                    external_id: Some("dn=william,ou=people,dc=test".to_string()),
-                    meta: None,
-                    attrs: btreemap!((
-                        "name".to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String("william".to_string()))
-                    ),),
-                }],
-                delete_uuids: Vec::default(),
-            };
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            entries: vec![ScimEntry {
+                schemas: vec![SCIM_SCHEMA_SYNC_PERSON.to_string()],
+                id: user_sync_uuid,
+                external_id: Some("dn=william,ou=people,dc=test".to_string()),
+                meta: None,
+                attrs: btreemap!((
+                    "name".to_string(),
+                    ScimAttr::SingleSimple(ScimSimpleAttr::String("william".to_string()))
+                ),),
+            }],
+            delete_uuids: Vec::default(),
+        };
 
-            let (sync_uuid, _sync_authority_set, change_entries, _sync_refresh) = idms_prox_write
-                .scim_sync_apply_phase_1(&sse, &changes)
-                .expect("Failed to run phase 1");
+        let (sync_uuid, _sync_authority_set, change_entries, _sync_refresh) = idms_prox_write
+            .scim_sync_apply_phase_1(&sse, &changes)
+            .expect("Failed to run phase 1");
 
-            let res = idms_prox_write.scim_sync_apply_phase_2(&change_entries, sync_uuid);
+        let res = idms_prox_write.scim_sync_apply_phase_2(&change_entries, sync_uuid);
 
-            assert!(matches!(res, Err(OperationError::InvalidEntryState)));
+        assert!(matches!(res, Err(OperationError::InvalidEntryState)));
 
-            assert!(idms_prox_write.commit().is_ok());
-        })
+        assert!(idms_prox_write.commit().is_ok());
     }
 
     // Phase 3
@@ -1781,402 +1772,394 @@ mod tests {
             .and_then(|a| idms_prox_write.commit().map(|()| a))
     }
 
-    #[test]
-    fn test_idm_scim_sync_phase_3_basic() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let user_sync_uuid = Uuid::new_v4();
+    #[idm_test]
+    async fn test_idm_scim_sync_phase_3_basic(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let user_sync_uuid = Uuid::new_v4();
 
-            assert!(task::block_on(apply_phase_3_test(
-                idms,
-                vec![ScimEntry {
-                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
-                    id: user_sync_uuid,
-                    external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
-                    meta: None,
-                    attrs: btreemap!((
-                        "name".to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
-                    ),),
-                }]
-            ))
-            .is_ok());
+        assert!(apply_phase_3_test(
+            idms,
+            vec![ScimEntry {
+                schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                id: user_sync_uuid,
+                external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
+                meta: None,
+                attrs: btreemap!((
+                    "name".to_string(),
+                    ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                ),),
+            }]
+        )
+        .await
+        .is_ok());
 
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
 
-            let ent = idms_prox_write
-                .qs_write
-                .internal_search_uuid(user_sync_uuid)
-                .expect("Unable to access entry");
+        let ent = idms_prox_write
+            .qs_write
+            .internal_search_uuid(user_sync_uuid)
+            .expect("Unable to access entry");
 
-            assert!(ent.get_ava_single_iname("name") == Some("testgroup"));
-            assert!(
-                ent.get_ava_single_iutf8("sync_external_id")
-                    == Some("cn=testgroup,ou=people,dc=test")
-            );
+        assert!(ent.get_ava_single_iname("name") == Some("testgroup"));
+        assert!(
+            ent.get_ava_single_iutf8("sync_external_id") == Some("cn=testgroup,ou=people,dc=test")
+        );
 
-            assert!(idms_prox_write.commit().is_ok());
-        })
+        assert!(idms_prox_write.commit().is_ok());
     }
 
     // -- try to set uuid
-    #[test]
-    fn test_idm_scim_sync_phase_3_uuid_manipulation() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let user_sync_uuid = Uuid::new_v4();
+    #[idm_test]
+    async fn test_idm_scim_sync_phase_3_uuid_manipulation(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let user_sync_uuid = Uuid::new_v4();
 
-            assert!(task::block_on(apply_phase_3_test(
-                idms,
-                vec![ScimEntry {
-                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
-                    id: user_sync_uuid,
-                    external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
-                    meta: None,
-                    attrs: btreemap!(
-                        (
-                            "name".to_string(),
-                            ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
-                        ),
-                        (
-                            "uuid".to_string(),
-                            ScimAttr::SingleSimple(ScimSimpleAttr::String(
-                                "2c019619-f894-4a94-b356-05d371850e3d".to_string()
-                            ))
-                        )
+        assert!(apply_phase_3_test(
+            idms,
+            vec![ScimEntry {
+                schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                id: user_sync_uuid,
+                external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
+                meta: None,
+                attrs: btreemap!(
+                    (
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),
-                }]
-            ))
-            .is_err());
-        })
+                    (
+                        "uuid".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String(
+                            "2c019619-f894-4a94-b356-05d371850e3d".to_string()
+                        ))
+                    )
+                ),
+            }]
+        )
+        .await
+        .is_err());
     }
 
     // -- try to set sync_uuid / sync_object attrs
-    #[test]
-    fn test_idm_scim_sync_phase_3_sync_parent_uuid_manipulation() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let user_sync_uuid = Uuid::new_v4();
+    #[idm_test]
+    async fn test_idm_scim_sync_phase_3_sync_parent_uuid_manipulation(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let user_sync_uuid = Uuid::new_v4();
 
-            assert!(task::block_on(apply_phase_3_test(
-                idms,
-                vec![ScimEntry {
-                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
-                    id: user_sync_uuid,
-                    external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
-                    meta: None,
-                    attrs: btreemap!(
-                        (
-                            "name".to_string(),
-                            ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
-                        ),
-                        (
-                            "sync_parent_uuid".to_string(),
-                            ScimAttr::SingleSimple(ScimSimpleAttr::String(
-                                "2c019619-f894-4a94-b356-05d371850e3d".to_string()
-                            ))
-                        )
+        assert!(apply_phase_3_test(
+            idms,
+            vec![ScimEntry {
+                schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                id: user_sync_uuid,
+                external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
+                meta: None,
+                attrs: btreemap!(
+                    (
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),
-                }]
-            ))
-            .is_err());
-        })
+                    (
+                        "sync_parent_uuid".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String(
+                            "2c019619-f894-4a94-b356-05d371850e3d".to_string()
+                        ))
+                    )
+                ),
+            }]
+        )
+        .await
+        .is_err());
     }
 
     // -- try to add class via class attr (not via scim schema)
-    #[test]
-    fn test_idm_scim_sync_phase_3_disallowed_class_forbidden() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let user_sync_uuid = Uuid::new_v4();
+    #[idm_test]
+    async fn test_idm_scim_sync_phase_3_disallowed_class_forbidden(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let user_sync_uuid = Uuid::new_v4();
 
-            assert!(task::block_on(apply_phase_3_test(
-                idms,
-                vec![ScimEntry {
-                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
-                    id: user_sync_uuid,
-                    external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
-                    meta: None,
-                    attrs: btreemap!(
-                        (
-                            "name".to_string(),
-                            ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
-                        ),
-                        (
-                            "class".to_string(),
-                            ScimAttr::SingleSimple(ScimSimpleAttr::String(
-                                "posixgroup".to_string()
-                            ))
-                        )
+        assert!(apply_phase_3_test(
+            idms,
+            vec![ScimEntry {
+                schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                id: user_sync_uuid,
+                external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
+                meta: None,
+                attrs: btreemap!(
+                    (
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                     ),
-                }]
-            ))
-            .is_err());
-        })
+                    (
+                        "class".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("posixgroup".to_string()))
+                    )
+                ),
+            }]
+        )
+        .await
+        .is_err());
     }
 
     // -- try to add class not in allowed class set (via scim schema)
 
-    #[test]
-    fn test_idm_scim_sync_phase_3_disallowed_class_system() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let user_sync_uuid = Uuid::new_v4();
+    #[idm_test]
+    async fn test_idm_scim_sync_phase_3_disallowed_class_system(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let user_sync_uuid = Uuid::new_v4();
 
-            assert!(task::block_on(apply_phase_3_test(
-                idms,
-                vec![ScimEntry {
-                    schemas: vec![format!("{SCIM_SCHEMA_SYNC}system")],
-                    id: user_sync_uuid,
-                    external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
-                    meta: None,
-                    attrs: btreemap!((
-                        "name".to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
-                    ),),
-                }]
-            ))
-            .is_err());
-        })
+        assert!(apply_phase_3_test(
+            idms,
+            vec![ScimEntry {
+                schemas: vec![format!("{SCIM_SCHEMA_SYNC}system")],
+                id: user_sync_uuid,
+                external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
+                meta: None,
+                attrs: btreemap!((
+                    "name".to_string(),
+                    ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                ),),
+            }]
+        )
+        .await
+        .is_err());
     }
 
     // Phase 4
 
     // Good delete - requires phase 5 due to need to do two syncs
-    #[test]
-    fn test_idm_scim_sync_phase_4_correct_delete() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let user_sync_uuid = Uuid::new_v4();
-            // Create an entry via sync
+    #[idm_test]
+    async fn test_idm_scim_sync_phase_4_correct_delete(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let user_sync_uuid = Uuid::new_v4();
+        // Create an entry via sync
 
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
-            let sse = ScimSyncUpdateEvent {
-                ident: ident.clone(),
-            };
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent {
+            ident: ident.clone(),
+        };
 
-            let changes = ScimSyncRequest {
-                from_state: ScimSyncState::Refresh,
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
-                },
-                entries: vec![ScimEntry {
-                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
-                    id: user_sync_uuid,
-                    external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
-                    meta: None,
-                    attrs: btreemap!((
-                        "name".to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
-                    ),),
-                }],
-                delete_uuids: Vec::default(),
-            };
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            entries: vec![ScimEntry {
+                schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                id: user_sync_uuid,
+                external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
+                meta: None,
+                attrs: btreemap!((
+                    "name".to_string(),
+                    ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                ),),
+            }],
+            delete_uuids: Vec::default(),
+        };
 
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
-            assert!(idms_prox_write.commit().is_ok());
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
 
-            // Now we can attempt the delete.
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let sse = ScimSyncUpdateEvent { ident };
+        // Now we can attempt the delete.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let sse = ScimSyncUpdateEvent { ident };
 
-            let changes = ScimSyncRequest {
-                from_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
-                },
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
-                },
-                entries: vec![],
-                delete_uuids: vec![user_sync_uuid],
-            };
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
+            },
+            entries: vec![],
+            delete_uuids: vec![user_sync_uuid],
+        };
 
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
 
-            // Can't use internal_search_uuid since that applies a mask.
-            assert!(idms_prox_write
-                .qs_write
-                .internal_search(filter_all!(f_eq(
-                    "uuid",
-                    PartialValue::Uuid(user_sync_uuid)
-                )))
-                // Should be none as the entry was masked by being recycled.
-                .map(|entries| {
-                    assert!(entries.len() == 1);
-                    let ent = entries.get(0).unwrap();
-                    ent.mask_recycled_ts().is_none()
-                })
-                .unwrap_or(false));
+        // Can't use internal_search_uuid since that applies a mask.
+        assert!(idms_prox_write
+            .qs_write
+            .internal_search(filter_all!(f_eq(
+                "uuid",
+                PartialValue::Uuid(user_sync_uuid)
+            )))
+            // Should be none as the entry was masked by being recycled.
+            .map(|entries| {
+                assert!(entries.len() == 1);
+                let ent = entries.get(0).unwrap();
+                ent.mask_recycled_ts().is_none()
+            })
+            .unwrap_or(false));
 
-            assert!(idms_prox_write.commit().is_ok());
-        })
+        assert!(idms_prox_write.commit().is_ok());
     }
 
     // Delete that doesn't exist.
-    #[test]
-    fn test_idm_scim_sync_phase_4_nonexisting_delete() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
-            let sse = ScimSyncUpdateEvent { ident };
+    #[idm_test]
+    async fn test_idm_scim_sync_phase_4_nonexisting_delete(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent { ident };
 
-            let changes = ScimSyncRequest {
-                from_state: ScimSyncState::Refresh,
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
-                },
-                // Doesn't exist. If it does, then bless rng.
-                entries: Vec::default(),
-                delete_uuids: vec![Uuid::new_v4()],
-            };
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            // Doesn't exist. If it does, then bless rng.
+            entries: Vec::default(),
+            delete_uuids: vec![Uuid::new_v4()],
+        };
 
-            // Hard to know what was right here. IMO because it doesn't exist at all, we just ignore it
-            // because the source sync is being overzealous, or it previously used to exist. Maybe
-            // it was added and immediately removed. Either way, this is ok because we changed
-            // nothing.
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
-            assert!(idms_prox_write.commit().is_ok());
-        })
+        // Hard to know what was right here. IMO because it doesn't exist at all, we just ignore it
+        // because the source sync is being overzealous, or it previously used to exist. Maybe
+        // it was added and immediately removed. Either way, this is ok because we changed
+        // nothing.
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
     }
 
     // Delete of something outside of agreement control - must fail.
-    #[test]
-    fn test_idm_scim_sync_phase_4_out_of_scope_delete() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+    #[idm_test]
+    async fn test_idm_scim_sync_phase_4_out_of_scope_delete(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
 
-            let user_sync_uuid = Uuid::new_v4();
-            assert!(idms_prox_write
-                .qs_write
-                .internal_create(vec![entry_init!(
-                    ("class", Value::new_class("object")),
-                    ("uuid", Value::Uuid(user_sync_uuid))
-                )])
-                .is_ok());
+        let user_sync_uuid = Uuid::new_v4();
+        assert!(idms_prox_write
+            .qs_write
+            .internal_create(vec![entry_init!(
+                ("class", Value::new_class("object")),
+                ("uuid", Value::Uuid(user_sync_uuid))
+            )])
+            .is_ok());
 
-            let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
-            let sse = ScimSyncUpdateEvent { ident };
+        let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent { ident };
 
-            let changes = ScimSyncRequest {
-                from_state: ScimSyncState::Refresh,
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
-                },
-                // Doesn't exist. If it does, then bless rng.
-                entries: Vec::default(),
-                delete_uuids: vec![user_sync_uuid],
-            };
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            // Doesn't exist. If it does, then bless rng.
+            entries: Vec::default(),
+            delete_uuids: vec![user_sync_uuid],
+        };
 
-            // Again, not sure what to do here. I think because this is clearly an overstep of the
-            // rights of the delete_uuid request, this is an error here.
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_err());
-            // assert!(idms_prox_write.commit().is_ok());
-        })
+        // Again, not sure what to do here. I think because this is clearly an overstep of the
+        // rights of the delete_uuid request, this is an error here.
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_err());
+        // assert!(idms_prox_write.commit().is_ok());
     }
 
     // Delete already deleted entry.
-    #[test]
-    fn test_idm_scim_sync_phase_4_delete_already_deleted() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+    #[idm_test]
+    async fn test_idm_scim_sync_phase_4_delete_already_deleted(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
 
-            let user_sync_uuid = Uuid::new_v4();
-            assert!(idms_prox_write
-                .qs_write
-                .internal_create(vec![entry_init!(
-                    ("class", Value::new_class("object")),
-                    ("uuid", Value::Uuid(user_sync_uuid))
-                )])
-                .is_ok());
+        let user_sync_uuid = Uuid::new_v4();
+        assert!(idms_prox_write
+            .qs_write
+            .internal_create(vec![entry_init!(
+                ("class", Value::new_class("object")),
+                ("uuid", Value::Uuid(user_sync_uuid))
+            )])
+            .is_ok());
 
-            assert!(idms_prox_write
-                .qs_write
-                .internal_delete_uuid(user_sync_uuid)
-                .is_ok());
+        assert!(idms_prox_write
+            .qs_write
+            .internal_delete_uuid(user_sync_uuid)
+            .is_ok());
 
-            let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
-            let sse = ScimSyncUpdateEvent { ident };
+        let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent { ident };
 
-            let changes = ScimSyncRequest {
-                from_state: ScimSyncState::Refresh,
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
-                },
-                // Doesn't exist. If it does, then bless rng.
-                entries: Vec::default(),
-                delete_uuids: vec![user_sync_uuid],
-            };
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            // Doesn't exist. If it does, then bless rng.
+            entries: Vec::default(),
+            delete_uuids: vec![user_sync_uuid],
+        };
 
-            // More subtely. There is clearly a theme here. In this case while the sync request
-            // is trying to delete something out of scope and already deleted, since it already
-            // is in a recycled state it doesn't matter, it's a no-op. We only care about when
-            // the delete req applies to a live entry.
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
-            assert!(idms_prox_write.commit().is_ok());
-        })
+        // More subtely. There is clearly a theme here. In this case while the sync request
+        // is trying to delete something out of scope and already deleted, since it already
+        // is in a recycled state it doesn't matter, it's a no-op. We only care about when
+        // the delete req applies to a live entry.
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
     }
 
     // Phase 5
-    #[test]
-    fn test_idm_scim_sync_phase_5_from_refresh_to_active() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
-            let sse = ScimSyncUpdateEvent {
-                ident: ident.clone(),
-            };
+    #[idm_test]
+    async fn test_idm_scim_sync_phase_5_from_refresh_to_active(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent {
+            ident: ident.clone(),
+        };
 
-            let changes = ScimSyncRequest {
-                from_state: ScimSyncState::Refresh,
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
-                },
-                entries: Vec::default(),
-                delete_uuids: Vec::default(),
-            };
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            entries: Vec::default(),
+            delete_uuids: Vec::default(),
+        };
 
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
-            assert!(idms_prox_write.commit().is_ok());
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
 
-            // Advance the from -> to state.
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let sse = ScimSyncUpdateEvent { ident };
+        // Advance the from -> to state.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let sse = ScimSyncUpdateEvent { ident };
 
-            let changes = ScimSyncRequest {
-                from_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
-                },
-                to_state: ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
-                },
-                entries: vec![],
-                delete_uuids: vec![],
-            };
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
+            },
+            entries: vec![],
+            delete_uuids: vec![],
+        };
 
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
-            assert!(idms_prox_write.commit().is_ok());
-        })
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
     }
 
     // Test the client doing a sync refresh request (active -> refresh).
@@ -2202,455 +2185,437 @@ mod tests {
             .expect("Failed to access entry.")
     }
 
-    #[test]
-    fn test_idm_scim_sync_refresh_ipa_example_1() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
-            let sse = ScimSyncUpdateEvent { ident };
+    #[idm_test]
+    async fn test_idm_scim_sync_refresh_ipa_example_1(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent { ident };
 
-            let changes =
-                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
+        let changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
 
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
 
-            assert!(idms_prox_write.commit().is_ok());
+        assert!(idms_prox_write.commit().is_ok());
 
-            // Test properties of the imported entries.
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+        // Test properties of the imported entries.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
 
-            let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
-            assert!(
-                testgroup.get_ava_single_iutf8("sync_external_id")
-                    == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
-            );
-            assert!(testgroup.get_ava_single_uint32("gidnumber").is_none());
+        let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
+        assert!(
+            testgroup.get_ava_single_iutf8("sync_external_id")
+                == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+        );
+        assert!(testgroup.get_ava_single_uint32("gidnumber").is_none());
 
-            let testposix = get_single_entry("testposix", &mut idms_prox_write);
-            assert!(
-                testposix.get_ava_single_iutf8("sync_external_id")
-                    == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
-            );
-            assert!(testposix.get_ava_single_uint32("gidnumber") == Some(1234567));
+        let testposix = get_single_entry("testposix", &mut idms_prox_write);
+        assert!(
+            testposix.get_ava_single_iutf8("sync_external_id")
+                == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+        );
+        assert!(testposix.get_ava_single_uint32("gidnumber") == Some(1234567));
 
-            let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
-            assert!(
-                testexternal.get_ava_single_iutf8("sync_external_id")
-                    == Some(
-                        "cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
-                    )
-            );
-            assert!(testexternal.get_ava_single_uint32("gidnumber").is_none());
+        let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
+        assert!(
+            testexternal.get_ava_single_iutf8("sync_external_id")
+                == Some("cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+        );
+        assert!(testexternal.get_ava_single_uint32("gidnumber").is_none());
 
-            let testuser = get_single_entry("testuser", &mut idms_prox_write);
-            assert!(
-                testuser.get_ava_single_iutf8("sync_external_id")
-                    == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
-            );
-            assert!(testuser.get_ava_single_uint32("gidnumber") == Some(12345));
-            assert!(testuser.get_ava_single_utf8("displayname") == Some("Test User"));
-            assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
+        let testuser = get_single_entry("testuser", &mut idms_prox_write);
+        assert!(
+            testuser.get_ava_single_iutf8("sync_external_id")
+                == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+        );
+        assert!(testuser.get_ava_single_uint32("gidnumber") == Some(12345));
+        assert!(testuser.get_ava_single_utf8("displayname") == Some("Test User"));
+        assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
 
-            // Check memberof works.
-            let testgroup_mb = testgroup.get_ava_refer("member").expect("No members!");
-            assert!(testgroup_mb.contains(&testuser.get_uuid()));
+        // Check memberof works.
+        let testgroup_mb = testgroup.get_ava_refer("member").expect("No members!");
+        assert!(testgroup_mb.contains(&testuser.get_uuid()));
 
-            let testposix_mb = testposix.get_ava_refer("member").expect("No members!");
-            assert!(testposix_mb.contains(&testuser.get_uuid()));
+        let testposix_mb = testposix.get_ava_refer("member").expect("No members!");
+        assert!(testposix_mb.contains(&testuser.get_uuid()));
 
-            let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
-            assert!(testuser_mo.contains(&testposix.get_uuid()));
-            assert!(testuser_mo.contains(&testgroup.get_uuid()));
+        let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
+        assert!(testuser_mo.contains(&testposix.get_uuid()));
+        assert!(testuser_mo.contains(&testgroup.get_uuid()));
 
-            assert!(idms_prox_write.commit().is_ok());
+        assert!(idms_prox_write.commit().is_ok());
 
-            // Now apply updates.
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let changes =
-                serde_json::from_str(TEST_SYNC_SCIM_IPA_2).expect("failed to parse scim sync");
+        // Now apply updates.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_2).expect("failed to parse scim sync");
 
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
-            assert!(idms_prox_write.commit().is_ok());
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
 
-            // Test properties of the updated entries.
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+        // Test properties of the updated entries.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
 
-            // Deleted
+        // Deleted
+        assert!(idms_prox_write
+            .qs_write
+            .internal_search(filter!(f_eq("name", PartialValue::new_iname("testgroup"))))
+            .unwrap()
+            .is_empty());
+
+        let testposix = get_single_entry("testposix", &mut idms_prox_write);
+        info!("{:?}", testposix);
+        assert!(
+            testposix.get_ava_single_iutf8("sync_external_id")
+                == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+        );
+        assert!(testposix.get_ava_single_uint32("gidnumber") == Some(1234567));
+
+        let testexternal = get_single_entry("testexternal2", &mut idms_prox_write);
+        info!("{:?}", testexternal);
+        assert!(
+            testexternal.get_ava_single_iutf8("sync_external_id")
+                == Some("cn=testexternal2,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+        );
+        assert!(testexternal.get_ava_single_uint32("gidnumber").is_none());
+
+        let testuser = get_single_entry("testuser", &mut idms_prox_write);
+
+        // Check memberof works.
+        let testexternal_mb = testexternal.get_ava_refer("member").expect("No members!");
+        assert!(testexternal_mb.contains(&testuser.get_uuid()));
+
+        assert!(testposix.get_ava_refer("member").is_none());
+
+        let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
+        assert!(testuser_mo.contains(&testexternal.get_uuid()));
+
+        assert!(idms_prox_write.commit().is_ok());
+    }
+
+    #[idm_test]
+    async fn test_idm_scim_sync_refresh_ipa_example_2(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent { ident };
+
+        let changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+        let from_state = changes.to_state.clone();
+
+        // Indicate the next set of changes will be a refresh. Don't change content.
+        // Strictly speaking this step isn't need.
+
+        let changes = ScimSyncRequest::need_refresh(from_state);
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+        // Check entries still remain as expected.
+        let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
+        assert!(
+            testgroup.get_ava_single_iutf8("sync_external_id")
+                == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+        );
+        assert!(testgroup.get_ava_single_uint32("gidnumber").is_none());
+
+        let testposix = get_single_entry("testposix", &mut idms_prox_write);
+        assert!(
+            testposix.get_ava_single_iutf8("sync_external_id")
+                == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+        );
+        assert!(testposix.get_ava_single_uint32("gidnumber") == Some(1234567));
+
+        let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
+        assert!(
+            testexternal.get_ava_single_iutf8("sync_external_id")
+                == Some("cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+        );
+        assert!(testexternal.get_ava_single_uint32("gidnumber").is_none());
+
+        let testuser = get_single_entry("testuser", &mut idms_prox_write);
+        assert!(
+            testuser.get_ava_single_iutf8("sync_external_id")
+                == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+        );
+        assert!(testuser.get_ava_single_uint32("gidnumber") == Some(12345));
+        assert!(testuser.get_ava_single_utf8("displayname") == Some("Test User"));
+        assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
+
+        // Check memberof works.
+        let testgroup_mb = testgroup.get_ava_refer("member").expect("No members!");
+        assert!(testgroup_mb.contains(&testuser.get_uuid()));
+
+        let testposix_mb = testposix.get_ava_refer("member").expect("No members!");
+        assert!(testposix_mb.contains(&testuser.get_uuid()));
+
+        let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
+        assert!(testuser_mo.contains(&testposix.get_uuid()));
+        assert!(testuser_mo.contains(&testgroup.get_uuid()));
+
+        // Now, the next change is the refresh.
+
+        let changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_REFRESH_1).expect("failed to parse scim sync");
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+        assert!(idms_prox_write
+            .qs_write
+            .internal_search(filter!(f_eq("name", PartialValue::new_iname("testposix"))))
+            .unwrap()
+            .is_empty());
+
+        assert!(idms_prox_write
+            .qs_write
+            .internal_search(filter!(f_eq(
+                "name",
+                PartialValue::new_iname("testexternal")
+            )))
+            .unwrap()
+            .is_empty());
+
+        let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
+        assert!(
+            testgroup.get_ava_single_iutf8("sync_external_id")
+                == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+        );
+        assert!(testgroup.get_ava_single_uint32("gidnumber").is_none());
+
+        let testuser = get_single_entry("testuser", &mut idms_prox_write);
+        assert!(
+            testuser.get_ava_single_iutf8("sync_external_id")
+                == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
+        );
+        assert!(testuser.get_ava_single_uint32("gidnumber") == Some(12345));
+        assert!(testuser.get_ava_single_utf8("displayname") == Some("Test User"));
+        assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
+
+        // Check memberof works.
+        let testgroup_mb = testgroup.get_ava_refer("member").expect("No members!");
+        assert!(testgroup_mb.contains(&testuser.get_uuid()));
+
+        let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
+        assert!(testuser_mo.contains(&testgroup.get_uuid()));
+
+        assert!(idms_prox_write.commit().is_ok());
+    }
+
+    #[idm_test]
+    async fn test_idm_scim_sync_finalise_1(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent { ident };
+
+        let changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Finalise the sync account.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let ident = idms_prox_write
+            .qs_write
+            .internal_search_uuid(UUID_ADMIN)
+            .map(Identity::from_impersonate_entry_readwrite)
+            .expect("Failed to get admin");
+
+        let sfe = ScimSyncFinaliseEvent {
+            ident,
+            target: sync_uuid,
+        };
+
+        idms_prox_write
+            .scim_sync_finalise(&sfe)
+            .expect("Failed to finalise sync account");
+
+        // Check that the entries still exists but now have no sync_object attached.
+        let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
+        assert!(!testgroup.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+
+        let testposix = get_single_entry("testposix", &mut idms_prox_write);
+        assert!(!testposix.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+
+        let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
+        assert!(!testexternal.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+
+        let testuser = get_single_entry("testuser", &mut idms_prox_write);
+        assert!(!testuser.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+
+        assert!(idms_prox_write.commit().is_ok());
+    }
+
+    #[idm_test]
+    async fn test_idm_scim_sync_finalise_2(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent { ident };
+
+        let changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+        // The difference in this test is that the refresh deletes some entries
+        // so the recycle bin case needs to be handled.
+        let changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_REFRESH_1).expect("failed to parse scim sync");
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Finalise the sync account.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let ident = idms_prox_write
+            .qs_write
+            .internal_search_uuid(UUID_ADMIN)
+            .map(Identity::from_impersonate_entry_readwrite)
+            .expect("Failed to get admin");
+
+        let sfe = ScimSyncFinaliseEvent {
+            ident,
+            target: sync_uuid,
+        };
+
+        idms_prox_write
+            .scim_sync_finalise(&sfe)
+            .expect("Failed to finalise sync account");
+
+        // Check that the entries still exists but now have no sync_object attached.
+        let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
+        assert!(!testgroup.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+
+        let testuser = get_single_entry("testuser", &mut idms_prox_write);
+        assert!(!testuser.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
+
+        for iname in ["testposix", "testexternal"] {
+            trace!(%iname);
             assert!(idms_prox_write
                 .qs_write
-                .internal_search(filter!(f_eq("name", PartialValue::new_iname("testgroup"))))
+                .internal_search(filter!(f_eq("name", PartialValue::new_iname(iname))))
                 .unwrap()
                 .is_empty());
+        }
 
-            let testposix = get_single_entry("testposix", &mut idms_prox_write);
-            info!("{:?}", testposix);
-            assert!(
-                testposix.get_ava_single_iutf8("sync_external_id")
-                    == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
-            );
-            assert!(testposix.get_ava_single_uint32("gidnumber") == Some(1234567));
-
-            let testexternal = get_single_entry("testexternal2", &mut idms_prox_write);
-            info!("{:?}", testexternal);
-            assert!(
-                testexternal.get_ava_single_iutf8("sync_external_id")
-                    == Some(
-                        "cn=testexternal2,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
-                    )
-            );
-            assert!(testexternal.get_ava_single_uint32("gidnumber").is_none());
-
-            let testuser = get_single_entry("testuser", &mut idms_prox_write);
-
-            // Check memberof works.
-            let testexternal_mb = testexternal.get_ava_refer("member").expect("No members!");
-            assert!(testexternal_mb.contains(&testuser.get_uuid()));
-
-            assert!(testposix.get_ava_refer("member").is_none());
-
-            let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
-            assert!(testuser_mo.contains(&testexternal.get_uuid()));
-
-            assert!(idms_prox_write.commit().is_ok());
-        })
+        assert!(idms_prox_write.commit().is_ok());
     }
 
-    #[test]
-    fn test_idm_scim_sync_refresh_ipa_example_2() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
-            let sse = ScimSyncUpdateEvent { ident };
+    #[idm_test]
+    async fn test_idm_scim_sync_terminate_1(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent { ident };
 
-            let changes =
-                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
+        let changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
 
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
 
-            let from_state = changes.to_state.clone();
+        assert!(idms_prox_write.commit().is_ok());
 
-            // Indicate the next set of changes will be a refresh. Don't change content.
-            // Strictly speaking this step isn't need.
+        // Terminate the sync account
+        let mut idms_prox_write = idms.proxy_write(ct).await;
 
-            let changes = ScimSyncRequest::need_refresh(from_state);
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+        let ident = idms_prox_write
+            .qs_write
+            .internal_search_uuid(UUID_ADMIN)
+            .map(Identity::from_impersonate_entry_readwrite)
+            .expect("Failed to get admin");
 
-            // Check entries still remain as expected.
-            let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
-            assert!(
-                testgroup.get_ava_single_iutf8("sync_external_id")
-                    == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
-            );
-            assert!(testgroup.get_ava_single_uint32("gidnumber").is_none());
+        let sfe = ScimSyncTerminateEvent {
+            ident,
+            target: sync_uuid,
+        };
 
-            let testposix = get_single_entry("testposix", &mut idms_prox_write);
-            assert!(
-                testposix.get_ava_single_iutf8("sync_external_id")
-                    == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
-            );
-            assert!(testposix.get_ava_single_uint32("gidnumber") == Some(1234567));
+        idms_prox_write
+            .scim_sync_terminate(&sfe)
+            .expect("Failed to terminate sync account");
 
-            let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
-            assert!(
-                testexternal.get_ava_single_iutf8("sync_external_id")
-                    == Some(
-                        "cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au"
-                    )
-            );
-            assert!(testexternal.get_ava_single_uint32("gidnumber").is_none());
-
-            let testuser = get_single_entry("testuser", &mut idms_prox_write);
-            assert!(
-                testuser.get_ava_single_iutf8("sync_external_id")
-                    == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
-            );
-            assert!(testuser.get_ava_single_uint32("gidnumber") == Some(12345));
-            assert!(testuser.get_ava_single_utf8("displayname") == Some("Test User"));
-            assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
-
-            // Check memberof works.
-            let testgroup_mb = testgroup.get_ava_refer("member").expect("No members!");
-            assert!(testgroup_mb.contains(&testuser.get_uuid()));
-
-            let testposix_mb = testposix.get_ava_refer("member").expect("No members!");
-            assert!(testposix_mb.contains(&testuser.get_uuid()));
-
-            let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
-            assert!(testuser_mo.contains(&testposix.get_uuid()));
-            assert!(testuser_mo.contains(&testgroup.get_uuid()));
-
-            // Now, the next change is the refresh.
-
-            let changes = serde_json::from_str(TEST_SYNC_SCIM_IPA_REFRESH_1)
-                .expect("failed to parse scim sync");
-
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
-
+        // Check that the entries no longer exist
+        for iname in ["testgroup", "testposix", "testexternal", "testuser"] {
+            trace!(%iname);
             assert!(idms_prox_write
                 .qs_write
-                .internal_search(filter!(f_eq("name", PartialValue::new_iname("testposix"))))
+                .internal_search(filter!(f_eq("name", PartialValue::new_iname(iname))))
                 .unwrap()
                 .is_empty());
+        }
 
+        assert!(idms_prox_write.commit().is_ok());
+    }
+
+    #[idm_test]
+    async fn test_idm_scim_sync_terminate_2(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent { ident };
+
+        let changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+        // The difference in this test is that the refresh deletes some entries
+        // so the recycle bin case needs to be handled.
+        let changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_REFRESH_1).expect("failed to parse scim sync");
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Terminate the sync account
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let ident = idms_prox_write
+            .qs_write
+            .internal_search_uuid(UUID_ADMIN)
+            .map(Identity::from_impersonate_entry_readwrite)
+            .expect("Failed to get admin");
+
+        let sfe = ScimSyncTerminateEvent {
+            ident,
+            target: sync_uuid,
+        };
+
+        idms_prox_write
+            .scim_sync_terminate(&sfe)
+            .expect("Failed to terminate sync account");
+
+        // Check that the entries no longer exist
+        for iname in ["testgroup", "testposix", "testexternal", "testuser"] {
+            trace!(%iname);
             assert!(idms_prox_write
                 .qs_write
-                .internal_search(filter!(f_eq(
-                    "name",
-                    PartialValue::new_iname("testexternal")
-                )))
+                .internal_search(filter!(f_eq("name", PartialValue::new_iname(iname))))
                 .unwrap()
                 .is_empty());
+        }
 
-            let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
-            assert!(
-                testgroup.get_ava_single_iutf8("sync_external_id")
-                    == Some("cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
-            );
-            assert!(testgroup.get_ava_single_uint32("gidnumber").is_none());
-
-            let testuser = get_single_entry("testuser", &mut idms_prox_write);
-            assert!(
-                testuser.get_ava_single_iutf8("sync_external_id")
-                    == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
-            );
-            assert!(testuser.get_ava_single_uint32("gidnumber") == Some(12345));
-            assert!(testuser.get_ava_single_utf8("displayname") == Some("Test User"));
-            assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
-
-            // Check memberof works.
-            let testgroup_mb = testgroup.get_ava_refer("member").expect("No members!");
-            assert!(testgroup_mb.contains(&testuser.get_uuid()));
-
-            let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
-            assert!(testuser_mo.contains(&testgroup.get_uuid()));
-
-            assert!(idms_prox_write.commit().is_ok());
-        })
-    }
-
-    #[test]
-    fn test_idm_scim_sync_finalise_1() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
-            let sse = ScimSyncUpdateEvent { ident };
-
-            let changes =
-                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
-
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
-
-            assert!(idms_prox_write.commit().is_ok());
-
-            // Finalise the sync account.
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-
-            let ident = idms_prox_write
-                .qs_write
-                .internal_search_uuid(UUID_ADMIN)
-                .map(Identity::from_impersonate_entry_readwrite)
-                .expect("Failed to get admin");
-
-            let sfe = ScimSyncFinaliseEvent {
-                ident,
-                target: sync_uuid,
-            };
-
-            idms_prox_write
-                .scim_sync_finalise(&sfe)
-                .expect("Failed to finalise sync account");
-
-            // Check that the entries still exists but now have no sync_object attached.
-            let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
-            assert!(!testgroup.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
-
-            let testposix = get_single_entry("testposix", &mut idms_prox_write);
-            assert!(!testposix.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
-
-            let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
-            assert!(!testexternal.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
-
-            let testuser = get_single_entry("testuser", &mut idms_prox_write);
-            assert!(!testuser.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
-
-            assert!(idms_prox_write.commit().is_ok());
-        })
-    }
-
-    #[test]
-    fn test_idm_scim_sync_finalise_2() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
-            let sse = ScimSyncUpdateEvent { ident };
-
-            let changes =
-                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
-
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
-
-            // The difference in this test is that the refresh deletes some entries
-            // so the recycle bin case needs to be handled.
-            let changes = serde_json::from_str(TEST_SYNC_SCIM_IPA_REFRESH_1)
-                .expect("failed to parse scim sync");
-
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
-
-            assert!(idms_prox_write.commit().is_ok());
-
-            // Finalise the sync account.
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-
-            let ident = idms_prox_write
-                .qs_write
-                .internal_search_uuid(UUID_ADMIN)
-                .map(Identity::from_impersonate_entry_readwrite)
-                .expect("Failed to get admin");
-
-            let sfe = ScimSyncFinaliseEvent {
-                ident,
-                target: sync_uuid,
-            };
-
-            idms_prox_write
-                .scim_sync_finalise(&sfe)
-                .expect("Failed to finalise sync account");
-
-            // Check that the entries still exists but now have no sync_object attached.
-            let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
-            assert!(!testgroup.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
-
-            let testuser = get_single_entry("testuser", &mut idms_prox_write);
-            assert!(!testuser.attribute_equality("class", &PVCLASS_SYNC_OBJECT));
-
-            for iname in ["testposix", "testexternal"] {
-                trace!(%iname);
-                assert!(idms_prox_write
-                    .qs_write
-                    .internal_search(filter!(f_eq("name", PartialValue::new_iname(iname))))
-                    .unwrap()
-                    .is_empty());
-            }
-
-            assert!(idms_prox_write.commit().is_ok());
-        })
-    }
-
-    #[test]
-    fn test_idm_scim_sync_terminate_1() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
-            let sse = ScimSyncUpdateEvent { ident };
-
-            let changes =
-                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
-
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
-
-            assert!(idms_prox_write.commit().is_ok());
-
-            // Terminate the sync account
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-
-            let ident = idms_prox_write
-                .qs_write
-                .internal_search_uuid(UUID_ADMIN)
-                .map(Identity::from_impersonate_entry_readwrite)
-                .expect("Failed to get admin");
-
-            let sfe = ScimSyncTerminateEvent {
-                ident,
-                target: sync_uuid,
-            };
-
-            idms_prox_write
-                .scim_sync_terminate(&sfe)
-                .expect("Failed to terminate sync account");
-
-            // Check that the entries no longer exist
-            for iname in ["testgroup", "testposix", "testexternal", "testuser"] {
-                trace!(%iname);
-                assert!(idms_prox_write
-                    .qs_write
-                    .internal_search(filter!(f_eq("name", PartialValue::new_iname(iname))))
-                    .unwrap()
-                    .is_empty());
-            }
-
-            assert!(idms_prox_write.commit().is_ok());
-        })
-    }
-
-    #[test]
-    fn test_idm_scim_sync_terminate_2() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
-            let sse = ScimSyncUpdateEvent { ident };
-
-            let changes =
-                serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
-
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
-
-            // The difference in this test is that the refresh deletes some entries
-            // so the recycle bin case needs to be handled.
-            let changes = serde_json::from_str(TEST_SYNC_SCIM_IPA_REFRESH_1)
-                .expect("failed to parse scim sync");
-
-            assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
-
-            assert!(idms_prox_write.commit().is_ok());
-
-            // Terminate the sync account
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-
-            let ident = idms_prox_write
-                .qs_write
-                .internal_search_uuid(UUID_ADMIN)
-                .map(Identity::from_impersonate_entry_readwrite)
-                .expect("Failed to get admin");
-
-            let sfe = ScimSyncTerminateEvent {
-                ident,
-                target: sync_uuid,
-            };
-
-            idms_prox_write
-                .scim_sync_terminate(&sfe)
-                .expect("Failed to terminate sync account");
-
-            // Check that the entries no longer exist
-            for iname in ["testgroup", "testposix", "testexternal", "testuser"] {
-                trace!(%iname);
-                assert!(idms_prox_write
-                    .qs_write
-                    .internal_search(filter!(f_eq("name", PartialValue::new_iname(iname))))
-                    .unwrap()
-                    .is_empty());
-            }
-
-            assert!(idms_prox_write.commit().is_ok());
-        })
+        assert!(idms_prox_write.commit().is_ok());
     }
 
     const TEST_SYNC_SCIM_IPA_1: &str = r#"

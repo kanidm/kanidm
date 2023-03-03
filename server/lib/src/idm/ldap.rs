@@ -4,7 +4,6 @@
 use std::collections::BTreeSet;
 use std::iter;
 
-use async_std::task;
 use kanidm_proto::v1::{ApiToken, OperationError, UserAuthToken};
 use ldap3_proto::simple::*;
 use regex::Regex;
@@ -59,9 +58,9 @@ pub struct LdapServer {
 }
 
 impl LdapServer {
-    pub fn new(idms: &IdmServer) -> Result<Self, OperationError> {
+    pub async fn new(idms: &IdmServer) -> Result<Self, OperationError> {
         // let ct = duration_from_epoch_now();
-        let mut idms_prox_read = task::block_on(idms.proxy_read());
+        let mut idms_prox_read = idms.proxy_read().await;
         // This is the rootdse path.
         // get the domain_info item
         let domain_entry = idms_prox_read
@@ -378,7 +377,7 @@ impl LdapServer {
         );
         let ct = duration_from_epoch_now();
 
-        let mut idm_auth = idms.auth_async().await;
+        let mut idm_auth = idms.auth().await;
 
         let target_uuid: Uuid = if dn.is_empty() {
             if pw.is_empty() {
@@ -603,7 +602,6 @@ mod tests {
     use crate::prelude::*;
     use std::str::FromStr;
 
-    use async_std::task;
     use compact_jwt::{Jws, JwsUnverified};
     use hashbrown::HashSet;
     use kanidm_proto::v1::ApiToken;
@@ -616,152 +614,160 @@ mod tests {
 
     const TEST_PASSWORD: &str = "ntaoeuntnaoeuhraohuercahu😍";
 
-    #[test]
-    fn test_ldap_simple_bind() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let ldaps = LdapServer::new(idms).expect("failed to start ldap");
+    #[idm_test]
+    async fn test_ldap_simple_bind(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
-                let mut idms_prox_write =
-                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                // make the admin a valid posix account
-                let me_posix = unsafe {
-                    ModifyEvent::new_internal_invalid(
-                        filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                        ModifyList::new_list(vec![
-                            Modify::Present(
-                                AttrString::from("class"),
-                                Value::new_class("posixaccount"),
-                            ),
-                            Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                        ]),
-                    )
-                };
-                assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        // make the admin a valid posix account
+        let me_posix = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iname("admin"))),
+                ModifyList::new_list(vec![
+                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+                ]),
+            )
+        };
+        assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
-                let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
+        let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
-                assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
-                assert!(idms_prox_write.commit().is_ok());
+        assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
 
-                let anon_t = task::block_on(ldaps.do_bind(idms, "", ""))
-                    .unwrap()
-                    .unwrap();
-                assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
-                assert!(
-                    task::block_on(ldaps.do_bind(idms, "", "test")).unwrap_err()
-                        == OperationError::NotAuthenticated
-                );
+        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+        assert!(
+            ldaps.do_bind(idms, "", "test").await.unwrap_err() == OperationError::NotAuthenticated
+        );
 
-                // Now test the admin and various DN's
-                let admin_t = task::block_on(ldaps.do_bind(idms, "admin", TEST_PASSWORD))
-                    .unwrap()
-                    .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
-                let admin_t =
-                    task::block_on(ldaps.do_bind(idms, "admin@example.com", TEST_PASSWORD))
-                        .unwrap()
-                        .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
-                let admin_t = task::block_on(ldaps.do_bind(idms, STR_UUID_ADMIN, TEST_PASSWORD))
-                    .unwrap()
-                    .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
-                let admin_t = task::block_on(ldaps.do_bind(
-                    idms,
-                    "name=admin,dc=example,dc=com",
-                    TEST_PASSWORD,
-                ))
-                .unwrap()
-                .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
-                let admin_t = task::block_on(ldaps.do_bind(
-                    idms,
-                    "spn=admin@example.com,dc=example,dc=com",
-                    TEST_PASSWORD,
-                ))
-                .unwrap()
-                .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
-                let admin_t = task::block_on(ldaps.do_bind(
-                    idms,
-                    format!("uuid={STR_UUID_ADMIN},dc=example,dc=com").as_str(),
-                    TEST_PASSWORD,
-                ))
-                .unwrap()
-                .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        // Now test the admin and various DN's
+        let admin_t = ldaps
+            .do_bind(idms, "admin", TEST_PASSWORD)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        let admin_t = ldaps
+            .do_bind(idms, "admin@example.com", TEST_PASSWORD)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        let admin_t = ldaps
+            .do_bind(idms, STR_UUID_ADMIN, TEST_PASSWORD)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        let admin_t = ldaps
+            .do_bind(idms, "name=admin,dc=example,dc=com", TEST_PASSWORD)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        let admin_t = ldaps
+            .do_bind(
+                idms,
+                "spn=admin@example.com,dc=example,dc=com",
+                TEST_PASSWORD,
+            )
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        let admin_t = ldaps
+            .do_bind(
+                idms,
+                format!("uuid={STR_UUID_ADMIN},dc=example,dc=com").as_str(),
+                TEST_PASSWORD,
+            )
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
 
-                let admin_t = task::block_on(ldaps.do_bind(idms, "name=admin", TEST_PASSWORD))
-                    .unwrap()
-                    .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
-                let admin_t =
-                    task::block_on(ldaps.do_bind(idms, "spn=admin@example.com", TEST_PASSWORD))
-                        .unwrap()
-                        .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
-                let admin_t = task::block_on(ldaps.do_bind(
-                    idms,
-                    format!("uuid={STR_UUID_ADMIN}").as_str(),
-                    TEST_PASSWORD,
-                ))
-                .unwrap()
-                .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        let admin_t = ldaps
+            .do_bind(idms, "name=admin", TEST_PASSWORD)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        let admin_t = ldaps
+            .do_bind(idms, "spn=admin@example.com", TEST_PASSWORD)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        let admin_t = ldaps
+            .do_bind(
+                idms,
+                format!("uuid={STR_UUID_ADMIN}").as_str(),
+                TEST_PASSWORD,
+            )
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
 
-                let admin_t =
-                    task::block_on(ldaps.do_bind(idms, "admin,dc=example,dc=com", TEST_PASSWORD))
-                        .unwrap()
-                        .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
-                let admin_t = task::block_on(ldaps.do_bind(
-                    idms,
-                    "admin@example.com,dc=example,dc=com",
-                    TEST_PASSWORD,
-                ))
-                .unwrap()
-                .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
-                let admin_t = task::block_on(ldaps.do_bind(
-                    idms,
-                    format!("{STR_UUID_ADMIN},dc=example,dc=com").as_str(),
-                    TEST_PASSWORD,
-                ))
-                .unwrap()
-                .unwrap();
-                assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        let admin_t = ldaps
+            .do_bind(idms, "admin,dc=example,dc=com", TEST_PASSWORD)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        let admin_t = ldaps
+            .do_bind(idms, "admin@example.com,dc=example,dc=com", TEST_PASSWORD)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        let admin_t = ldaps
+            .do_bind(
+                idms,
+                format!("{STR_UUID_ADMIN},dc=example,dc=com").as_str(),
+                TEST_PASSWORD,
+            )
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
 
-                // Bad password, check last to prevent softlocking of the admin account.
-                assert!(task::block_on(ldaps.do_bind(idms, "admin", "test"))
-                    .unwrap()
-                    .is_none());
+        // Bad password, check last to prevent softlocking of the admin account.
+        assert!(ldaps
+            .do_bind(idms, "admin", "test")
+            .await
+            .unwrap()
+            .is_none());
 
-                // Non-existent and invalid DNs
-                assert!(task::block_on(ldaps.do_bind(
-                    idms,
-                    "spn=admin@example.com,dc=clownshoes,dc=example,dc=com",
-                    TEST_PASSWORD
-                ))
-                .is_err());
-                assert!(task::block_on(ldaps.do_bind(
-                    idms,
-                    "spn=claire@example.com,dc=example,dc=com",
-                    TEST_PASSWORD
-                ))
-                .is_err());
-                assert!(
-                    task::block_on(ldaps.do_bind(idms, ",dc=example,dc=com", TEST_PASSWORD))
-                        .is_err()
-                );
-                assert!(
-                    task::block_on(ldaps.do_bind(idms, "dc=example,dc=com", TEST_PASSWORD))
-                        .is_err()
-                );
+        // Non-existent and invalid DNs
+        assert!(ldaps
+            .do_bind(
+                idms,
+                "spn=admin@example.com,dc=clownshoes,dc=example,dc=com",
+                TEST_PASSWORD
+            )
+            .await
+            .is_err());
+        assert!(ldaps
+            .do_bind(
+                idms,
+                "spn=claire@example.com,dc=example,dc=com",
+                TEST_PASSWORD
+            )
+            .await
+            .is_err());
+        assert!(ldaps
+            .do_bind(idms, ",dc=example,dc=com", TEST_PASSWORD)
+            .await
+            .is_err());
+        assert!(ldaps
+            .do_bind(idms, "dc=example,dc=com", TEST_PASSWORD)
+            .await
+            .is_err());
 
-                assert!(task::block_on(ldaps.do_bind(idms, "claire", "test")).is_err());
-            }
-        )
+        assert!(ldaps.do_bind(idms, "claire", "test").await.is_err());
     }
 
     macro_rules! assert_entry_contains {
@@ -789,384 +795,370 @@ mod tests {
         }};
     }
 
-    #[test]
-    fn test_ldap_virtual_attribute_generation() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let ldaps = LdapServer::new(idms).expect("failed to start ldap");
+    #[idm_test]
+    async fn test_ldap_virtual_attribute_generation(
+        idms: &IdmServer,
+        _idms_delayed: &IdmServerDelayed,
+    ) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
-                let ssh_ed25519 = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP william@amethyst";
+        let ssh_ed25519 = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP william@amethyst";
 
-                // Setup a user we want to check.
-                {
-                    let e1 = entry_init!(
-                        ("class", Value::new_class("object")),
-                        ("class", Value::new_class("person")),
-                        ("class", Value::new_class("account")),
-                        ("class", Value::new_class("posixaccount")),
-                        ("name", Value::new_iname("testperson1")),
-                        (
-                            "uuid",
-                            Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
-                        ),
-                        ("description", Value::new_utf8s("testperson1")),
-                        ("displayname", Value::new_utf8s("testperson1")),
-                        ("gidnumber", Value::new_uint32(12345678)),
-                        ("loginshell", Value::new_iutf8("/bin/zsh")),
-                        ("ssh_publickey", Value::new_sshkey_str("test", ssh_ed25519))
-                    );
+        // Setup a user we want to check.
+        {
+            let e1 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("class", Value::new_class("account")),
+                ("class", Value::new_class("posixaccount")),
+                ("name", Value::new_iname("testperson1")),
+                (
+                    "uuid",
+                    Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                ),
+                ("description", Value::new_utf8s("testperson1")),
+                ("displayname", Value::new_utf8s("testperson1")),
+                ("gidnumber", Value::new_uint32(12345678)),
+                ("loginshell", Value::new_iutf8("/bin/zsh")),
+                ("ssh_publickey", Value::new_sshkey_str("test", ssh_ed25519))
+            );
 
-                    let mut server_txn =
-                        task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                    let ce = CreateEvent::new_internal(vec![e1]);
-                    assert!(server_txn
-                        .qs_write
-                        .create(&ce)
-                        .and_then(|_| server_txn.commit())
-                        .is_ok());
-                }
+            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await;
+            let ce = CreateEvent::new_internal(vec![e1]);
+            assert!(server_txn
+                .qs_write
+                .create(&ce)
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+        }
 
-                // Setup the anonymous login.
-                let anon_t = task::block_on(ldaps.do_bind(idms, "", ""))
-                    .unwrap()
-                    .unwrap();
-                assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+        // Setup the anonymous login.
+        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
 
-                // Check that when we request *, we get default list.
-                let sr = SearchRequest {
-                    msgid: 1,
-                    base: "dc=example,dc=com".to_string(),
-                    scope: LdapSearchScope::Subtree,
-                    filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
-                    attrs: vec!["*".to_string()],
-                };
-                let r1 = task::block_on(ldaps.do_search(idms, &sr, &anon_t)).unwrap();
+        // Check that when we request *, we get default list.
+        let sr = SearchRequest {
+            msgid: 1,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            attrs: vec!["*".to_string()],
+        };
+        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
 
-                // The result, and the ldap proto success msg.
-                assert!(r1.len() == 2);
-                match &r1[0].op {
-                    LdapOp::SearchResultEntry(lsre) => {
-                        assert_entry_contains!(
-                            lsre,
-                            "spn=testperson1@example.com,dc=example,dc=com",
-                            ("class", "object"),
-                            ("class", "person"),
-                            ("class", "account"),
-                            ("class", "posixaccount"),
-                            ("displayname", "testperson1"),
-                            ("name", "testperson1"),
-                            ("gidnumber", "12345678"),
-                            ("loginshell", "/bin/zsh"),
-                            ("ssh_publickey", ssh_ed25519),
-                            ("uuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
-                        );
-                    }
-                    _ => assert!(false),
-                };
-
-                // Check that when we request +, we get all attrs and the vattrs
-                let sr = SearchRequest {
-                    msgid: 1,
-                    base: "dc=example,dc=com".to_string(),
-                    scope: LdapSearchScope::Subtree,
-                    filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
-                    attrs: vec!["+".to_string()],
-                };
-                let r1 = task::block_on(ldaps.do_search(idms, &sr, &anon_t)).unwrap();
-
-                // The result, and the ldap proto success msg.
-                assert!(r1.len() == 2);
-                match &r1[0].op {
-                    LdapOp::SearchResultEntry(lsre) => {
-                        assert_entry_contains!(
-                            lsre,
-                            "spn=testperson1@example.com,dc=example,dc=com",
-                            ("objectclass", "object"),
-                            ("objectclass", "person"),
-                            ("objectclass", "account"),
-                            ("objectclass", "posixaccount"),
-                            ("displayname", "testperson1"),
-                            ("name", "testperson1"),
-                            ("gidnumber", "12345678"),
-                            ("loginshell", "/bin/zsh"),
-                            ("ssh_publickey", ssh_ed25519),
-                            ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                            ("entrydn", "spn=testperson1@example.com,dc=example,dc=com"),
-                            ("uidnumber", "12345678"),
-                            ("cn", "testperson1"),
-                            ("keys", ssh_ed25519)
-                        );
-                    }
-                    _ => assert!(false),
-                };
-
-                // Check that when we request an attr by name, we get all of them correctly.
-                let sr = SearchRequest {
-                    msgid: 1,
-                    base: "dc=example,dc=com".to_string(),
-                    scope: LdapSearchScope::Subtree,
-                    filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
-                    attrs: vec![
-                        "name".to_string(),
-                        "entrydn".to_string(),
-                        "keys".to_string(),
-                        "uidnumber".to_string(),
-                    ],
-                };
-                let r1 = task::block_on(ldaps.do_search(idms, &sr, &anon_t)).unwrap();
-
-                // The result, and the ldap proto success msg.
-                assert!(r1.len() == 2);
-                match &r1[0].op {
-                    LdapOp::SearchResultEntry(lsre) => {
-                        assert_entry_contains!(
-                            lsre,
-                            "spn=testperson1@example.com,dc=example,dc=com",
-                            ("name", "testperson1"),
-                            ("entrydn", "spn=testperson1@example.com,dc=example,dc=com"),
-                            ("uidnumber", "12345678"),
-                            ("keys", ssh_ed25519)
-                        );
-                    }
-                    _ => assert!(false),
-                };
+        // The result, and the ldap proto success msg.
+        assert!(r1.len() == 2);
+        match &r1[0].op {
+            LdapOp::SearchResultEntry(lsre) => {
+                assert_entry_contains!(
+                    lsre,
+                    "spn=testperson1@example.com,dc=example,dc=com",
+                    ("class", "object"),
+                    ("class", "person"),
+                    ("class", "account"),
+                    ("class", "posixaccount"),
+                    ("displayname", "testperson1"),
+                    ("name", "testperson1"),
+                    ("gidnumber", "12345678"),
+                    ("loginshell", "/bin/zsh"),
+                    ("ssh_publickey", ssh_ed25519),
+                    ("uuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                );
             }
-        )
+            _ => assert!(false),
+        };
+
+        // Check that when we request +, we get all attrs and the vattrs
+        let sr = SearchRequest {
+            msgid: 1,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            attrs: vec!["+".to_string()],
+        };
+        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
+
+        // The result, and the ldap proto success msg.
+        assert!(r1.len() == 2);
+        match &r1[0].op {
+            LdapOp::SearchResultEntry(lsre) => {
+                assert_entry_contains!(
+                    lsre,
+                    "spn=testperson1@example.com,dc=example,dc=com",
+                    ("objectclass", "object"),
+                    ("objectclass", "person"),
+                    ("objectclass", "account"),
+                    ("objectclass", "posixaccount"),
+                    ("displayname", "testperson1"),
+                    ("name", "testperson1"),
+                    ("gidnumber", "12345678"),
+                    ("loginshell", "/bin/zsh"),
+                    ("ssh_publickey", ssh_ed25519),
+                    ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
+                    ("entrydn", "spn=testperson1@example.com,dc=example,dc=com"),
+                    ("uidnumber", "12345678"),
+                    ("cn", "testperson1"),
+                    ("keys", ssh_ed25519)
+                );
+            }
+            _ => assert!(false),
+        };
+
+        // Check that when we request an attr by name, we get all of them correctly.
+        let sr = SearchRequest {
+            msgid: 1,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            attrs: vec![
+                "name".to_string(),
+                "entrydn".to_string(),
+                "keys".to_string(),
+                "uidnumber".to_string(),
+            ],
+        };
+        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
+
+        // The result, and the ldap proto success msg.
+        assert!(r1.len() == 2);
+        match &r1[0].op {
+            LdapOp::SearchResultEntry(lsre) => {
+                assert_entry_contains!(
+                    lsre,
+                    "spn=testperson1@example.com,dc=example,dc=com",
+                    ("name", "testperson1"),
+                    ("entrydn", "spn=testperson1@example.com,dc=example,dc=com"),
+                    ("uidnumber", "12345678"),
+                    ("keys", ssh_ed25519)
+                );
+            }
+            _ => assert!(false),
+        };
     }
 
-    #[test]
-    fn test_ldap_token_privilege_granting() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                // Setup the ldap server
-                let ldaps = LdapServer::new(idms).expect("failed to start ldap");
+    #[idm_test]
+    async fn test_ldap_token_privilege_granting(
+        idms: &IdmServer,
+        _idms_delayed: &IdmServerDelayed,
+    ) {
+        // Setup the ldap server
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
-                // Prebuild the search req we'll be using this test.
-                let sr = SearchRequest {
-                    msgid: 1,
-                    base: "dc=example,dc=com".to_string(),
-                    scope: LdapSearchScope::Subtree,
-                    filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
-                    attrs: vec![
-                        "name".to_string(),
-                        "mail".to_string(),
-                        "mail;primary".to_string(),
-                        "mail;alternative".to_string(),
-                        "emailprimary".to_string(),
-                        "emailalternative".to_string(),
-                    ],
-                };
+        // Prebuild the search req we'll be using this test.
+        let sr = SearchRequest {
+            msgid: 1,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            attrs: vec![
+                "name".to_string(),
+                "mail".to_string(),
+                "mail;primary".to_string(),
+                "mail;alternative".to_string(),
+                "emailprimary".to_string(),
+                "emailalternative".to_string(),
+            ],
+        };
 
-                let sa_uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+        let sa_uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
-                // Configure the user account that will have the tokens issued.
-                // Should be a SERVICE account.
-                let apitoken = {
-                    // Create a service account,
+        // Configure the user account that will have the tokens issued.
+        // Should be a SERVICE account.
+        let apitoken = {
+            // Create a service account,
 
-                    let e1 = entry_init!(
-                        ("class", Value::new_class("object")),
-                        ("class", Value::new_class("service_account")),
-                        ("class", Value::new_class("account")),
-                        ("uuid", Value::Uuid(sa_uuid)),
-                        ("name", Value::new_iname("service_permission_test")),
-                        ("displayname", Value::new_utf8s("service_permission_test"))
-                    );
+            let e1 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("service_account")),
+                ("class", Value::new_class("account")),
+                ("uuid", Value::Uuid(sa_uuid)),
+                ("name", Value::new_iname("service_permission_test")),
+                ("displayname", Value::new_utf8s("service_permission_test"))
+            );
 
-                    // Setup a person with an email
-                    let e2 = entry_init!(
-                        ("class", Value::new_class("object")),
-                        ("class", Value::new_class("person")),
-                        ("class", Value::new_class("account")),
-                        ("class", Value::new_class("posixaccount")),
-                        ("name", Value::new_iname("testperson1")),
-                        (
-                            "mail",
-                            Value::EmailAddress("testperson1@example.com".to_string(), true)
-                        ),
-                        (
-                            "mail",
-                            Value::EmailAddress(
-                                "testperson1.alternative@example.com".to_string(),
-                                false
-                            )
-                        ),
-                        ("description", Value::new_utf8s("testperson1")),
-                        ("displayname", Value::new_utf8s("testperson1")),
-                        ("gidnumber", Value::new_uint32(12345678)),
-                        ("loginshell", Value::new_iutf8("/bin/zsh"))
-                    );
+            // Setup a person with an email
+            let e2 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("class", Value::new_class("account")),
+                ("class", Value::new_class("posixaccount")),
+                ("name", Value::new_iname("testperson1")),
+                (
+                    "mail",
+                    Value::EmailAddress("testperson1@example.com".to_string(), true)
+                ),
+                (
+                    "mail",
+                    Value::EmailAddress("testperson1.alternative@example.com".to_string(), false)
+                ),
+                ("description", Value::new_utf8s("testperson1")),
+                ("displayname", Value::new_utf8s("testperson1")),
+                ("gidnumber", Value::new_uint32(12345678)),
+                ("loginshell", Value::new_iutf8("/bin/zsh"))
+            );
 
-                    // Setup an access control for the service account to view mail attrs.
+            // Setup an access control for the service account to view mail attrs.
 
-                    let ct = duration_from_epoch_now();
+            let ct = duration_from_epoch_now();
 
-                    let mut server_txn = task::block_on(idms.proxy_write(ct));
-                    let ce = CreateEvent::new_internal(vec![e1, e2]);
-                    assert!(server_txn.qs_write.create(&ce).is_ok());
+            let mut server_txn = idms.proxy_write(ct).await;
+            let ce = CreateEvent::new_internal(vec![e1, e2]);
+            assert!(server_txn.qs_write.create(&ce).is_ok());
 
-                    // idm_people_read_priv
-                    let me = unsafe {
-                        ModifyEvent::new_internal_invalid(
-                            filter!(f_eq(
-                                "name",
-                                PartialValue::new_iname("idm_people_read_priv")
-                            )),
-                            ModifyList::new_list(vec![Modify::Present(
-                                AttrString::from("member"),
-                                Value::Refer(sa_uuid),
-                            )]),
-                        )
-                    };
-                    assert!(server_txn.qs_write.modify(&me).is_ok());
+            // idm_people_read_priv
+            let me = unsafe {
+                ModifyEvent::new_internal_invalid(
+                    filter!(f_eq(
+                        "name",
+                        PartialValue::new_iname("idm_people_read_priv")
+                    )),
+                    ModifyList::new_list(vec![Modify::Present(
+                        AttrString::from("member"),
+                        Value::Refer(sa_uuid),
+                    )]),
+                )
+            };
+            assert!(server_txn.qs_write.modify(&me).is_ok());
 
-                    // Issue a token
-                    // make it purpose = ldap <- currently purpose isn't supported,
-                    // it's an idea for future.
-                    let gte = GenerateApiTokenEvent::new_internal(sa_uuid, "TestToken", None);
+            // Issue a token
+            // make it purpose = ldap <- currently purpose isn't supported,
+            // it's an idea for future.
+            let gte = GenerateApiTokenEvent::new_internal(sa_uuid, "TestToken", None);
 
-                    let apitoken = server_txn
-                        .service_account_generate_api_token(&gte, ct)
-                        .expect("Failed to create new apitoken");
+            let apitoken = server_txn
+                .service_account_generate_api_token(&gte, ct)
+                .expect("Failed to create new apitoken");
 
-                    assert!(server_txn.commit().is_ok());
+            assert!(server_txn.commit().is_ok());
 
-                    apitoken
-                };
+            apitoken
+        };
 
-                // assert the token fails on non-ldap events token-xchg <- currently
-                // we don't have purpose so this isn't tested.
+        // assert the token fails on non-ldap events token-xchg <- currently
+        // we don't have purpose so this isn't tested.
 
-                // Bind with anonymous, search and show mail attr isn't accessible.
-                let anon_lbt = task::block_on(ldaps.do_bind(idms, "", ""))
-                    .unwrap()
-                    .unwrap();
-                assert!(anon_lbt.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+        // Bind with anonymous, search and show mail attr isn't accessible.
+        let anon_lbt = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        assert!(anon_lbt.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
 
-                let r1 = task::block_on(ldaps.do_search(idms, &sr, &anon_lbt)).unwrap();
-                assert!(r1.len() == 2);
-                match &r1[0].op {
-                    LdapOp::SearchResultEntry(lsre) => {
-                        assert_entry_contains!(
-                            lsre,
-                            "spn=testperson1@example.com,dc=example,dc=com",
-                            ("name", "testperson1")
-                        );
-                    }
-                    _ => assert!(false),
-                };
-
-                // Inspect the token to get its uuid out.
-                let apitoken_unverified =
-                    JwsUnverified::from_str(&apitoken).expect("Failed to parse apitoken");
-
-                let apitoken_inner: Jws<ApiToken> = apitoken_unverified
-                    .validate_embeded()
-                    .expect("Embedded jwk not found");
-
-                let apitoken_inner = apitoken_inner.into_inner();
-
-                // Bind using the token as a DN
-                let sa_lbt = task::block_on(ldaps.do_bind(idms, "dn=token", &apitoken))
-                    .unwrap()
-                    .unwrap();
-                assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner.clone()));
-
-                // Bind using the token as a pw
-                let sa_lbt = task::block_on(ldaps.do_bind(idms, "", &apitoken))
-                    .unwrap()
-                    .unwrap();
-                assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner));
-
-                // Search and retrieve mail that's now accessible.
-                let r1 = task::block_on(ldaps.do_search(idms, &sr, &sa_lbt)).unwrap();
-                assert!(r1.len() == 2);
-                match &r1[0].op {
-                    LdapOp::SearchResultEntry(lsre) => {
-                        assert_entry_contains!(
-                            lsre,
-                            "spn=testperson1@example.com,dc=example,dc=com",
-                            ("name", "testperson1"),
-                            ("mail", "testperson1@example.com"),
-                            ("mail", "testperson1.alternative@example.com"),
-                            ("mail;primary", "testperson1@example.com"),
-                            ("mail;alternative", "testperson1.alternative@example.com"),
-                            ("emailprimary", "testperson1@example.com"),
-                            ("emailalternative", "testperson1.alternative@example.com")
-                        );
-                    }
-                    _ => assert!(false),
-                };
+        let r1 = ldaps.do_search(idms, &sr, &anon_lbt).await.unwrap();
+        assert!(r1.len() == 2);
+        match &r1[0].op {
+            LdapOp::SearchResultEntry(lsre) => {
+                assert_entry_contains!(
+                    lsre,
+                    "spn=testperson1@example.com,dc=example,dc=com",
+                    ("name", "testperson1")
+                );
             }
-        )
+            _ => assert!(false),
+        };
+
+        // Inspect the token to get its uuid out.
+        let apitoken_unverified =
+            JwsUnverified::from_str(&apitoken).expect("Failed to parse apitoken");
+
+        let apitoken_inner: Jws<ApiToken> = apitoken_unverified
+            .validate_embeded()
+            .expect("Embedded jwk not found");
+
+        let apitoken_inner = apitoken_inner.into_inner();
+
+        // Bind using the token as a DN
+        let sa_lbt = ldaps
+            .do_bind(idms, "dn=token", &apitoken)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner.clone()));
+
+        // Bind using the token as a pw
+        let sa_lbt = ldaps.do_bind(idms, "", &apitoken).await.unwrap().unwrap();
+        assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner));
+
+        // Search and retrieve mail that's now accessible.
+        let r1 = ldaps.do_search(idms, &sr, &sa_lbt).await.unwrap();
+        assert!(r1.len() == 2);
+        match &r1[0].op {
+            LdapOp::SearchResultEntry(lsre) => {
+                assert_entry_contains!(
+                    lsre,
+                    "spn=testperson1@example.com,dc=example,dc=com",
+                    ("name", "testperson1"),
+                    ("mail", "testperson1@example.com"),
+                    ("mail", "testperson1.alternative@example.com"),
+                    ("mail;primary", "testperson1@example.com"),
+                    ("mail;alternative", "testperson1.alternative@example.com"),
+                    ("emailprimary", "testperson1@example.com"),
+                    ("emailalternative", "testperson1.alternative@example.com")
+                );
+            }
+            _ => assert!(false),
+        };
     }
 
-    #[test]
-    fn test_ldap_virtual_attribute_with_all_attr_search() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let ldaps = LdapServer::new(idms).expect("failed to start ldap");
+    #[idm_test]
+    async fn test_ldap_virtual_attribute_with_all_attr_search(
+        idms: &IdmServer,
+        _idms_delayed: &IdmServerDelayed,
+    ) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
-                let acct_uuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+        let acct_uuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
-                // Setup a user we want to check.
-                {
-                    let e1 = entry_init!(
-                        ("class", Value::new_class("person")),
-                        ("class", Value::new_class("account")),
-                        ("name", Value::new_iname("testperson1")),
-                        ("uuid", Value::Uuid(acct_uuid)),
-                        ("description", Value::new_utf8s("testperson1")),
-                        ("displayname", Value::new_utf8s("testperson1"))
-                    );
+        // Setup a user we want to check.
+        {
+            let e1 = entry_init!(
+                ("class", Value::new_class("person")),
+                ("class", Value::new_class("account")),
+                ("name", Value::new_iname("testperson1")),
+                ("uuid", Value::Uuid(acct_uuid)),
+                ("description", Value::new_utf8s("testperson1")),
+                ("displayname", Value::new_utf8s("testperson1"))
+            );
 
-                    let mut server_txn =
-                        task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                    assert!(server_txn
-                        .qs_write
-                        .internal_create(vec![e1])
-                        .and_then(|_| server_txn.commit())
-                        .is_ok());
-                }
+            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await;
+            assert!(server_txn
+                .qs_write
+                .internal_create(vec![e1])
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+        }
 
-                // Setup the anonymous login.
-                let anon_t = task::block_on(ldaps.do_bind(idms, "", ""))
-                    .unwrap()
-                    .unwrap();
-                assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+        // Setup the anonymous login.
+        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
 
-                // Check that when we request a virtual attr by name *and* all_attrs we get all the requested values.
-                let sr = SearchRequest {
-                    msgid: 1,
-                    base: "dc=example,dc=com".to_string(),
-                    scope: LdapSearchScope::Subtree,
-                    filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
-                    attrs: vec![
-                        "*".to_string(),
-                        // Already being returned
-                        "name".to_string(),
-                        // This is a virtual attribute
-                        "entryuuid".to_string(),
-                    ],
-                };
-                let r1 = task::block_on(ldaps.do_search(idms, &sr, &anon_t)).unwrap();
+        // Check that when we request a virtual attr by name *and* all_attrs we get all the requested values.
+        let sr = SearchRequest {
+            msgid: 1,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+            attrs: vec![
+                "*".to_string(),
+                // Already being returned
+                "name".to_string(),
+                // This is a virtual attribute
+                "entryuuid".to_string(),
+            ],
+        };
+        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
 
-                // The result, and the ldap proto success msg.
-                assert!(r1.len() == 2);
-                match &r1[0].op {
-                    LdapOp::SearchResultEntry(lsre) => {
-                        assert_entry_contains!(
-                            lsre,
-                            "spn=testperson1@example.com,dc=example,dc=com",
-                            ("name", "testperson1"),
-                            ("displayname", "testperson1"),
-                            ("uuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                            ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
-                        );
-                    }
-                    _ => assert!(false),
-                };
+        // The result, and the ldap proto success msg.
+        assert!(r1.len() == 2);
+        match &r1[0].op {
+            LdapOp::SearchResultEntry(lsre) => {
+                assert_entry_contains!(
+                    lsre,
+                    "spn=testperson1@example.com,dc=example,dc=com",
+                    ("name", "testperson1"),
+                    ("displayname", "testperson1"),
+                    ("uuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
+                    ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                );
             }
-        )
+            _ => assert!(false),
+        };
     }
 }

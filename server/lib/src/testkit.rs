@@ -63,5 +63,7 @@ pub async fn setup_idm_test() -> (IdmServer, IdmServerDelayed) {
     qs.initialise_helper(duration_from_epoch_now())
         .await
         .expect("init failed!");
-    IdmServer::new(qs, "https://idm.example.com").expect("Failed to setup idms")
+    IdmServer::new(qs, "https://idm.example.com")
+        .await
+        .expect("Failed to setup idms")
 }

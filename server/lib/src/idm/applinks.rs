@@ -70,119 +70,114 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    // use crate::prelude::*;
-    use async_std::task;
+    use crate::prelude::*;
     use kanidm_proto::internal::AppLink;
 
-    #[test]
-    fn test_idm_applinks_list() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = duration_from_epoch_now();
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+    #[idm_test]
+    async fn test_idm_applinks_list(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = idms.proxy_write(ct).await;
 
-            // Create an RS, the user and a group..
-            let usr_uuid = Uuid::new_v4();
-            let grp_uuid = Uuid::new_v4();
+        // Create an RS, the user and a group..
+        let usr_uuid = Uuid::new_v4();
+        let grp_uuid = Uuid::new_v4();
 
-            let e_rs: Entry<EntryInit, EntryNew> = entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("oauth2_resource_server")),
-                ("class", Value::new_class("oauth2_resource_server_basic")),
-                ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-                ("displayname", Value::new_utf8s("test_resource_server")),
-                (
-                    "oauth2_rs_origin",
-                    Value::new_url_s("https://demo.example.com").unwrap()
-                ),
-                (
-                    "oauth2_rs_origin_landing",
-                    Value::new_url_s("https://demo.example.com/landing").unwrap()
-                ),
-                // System admins
-                (
-                    "oauth2_rs_scope_map",
-                    Value::new_oauthscopemap(grp_uuid, btreeset!["read".to_string()])
-                        .expect("invalid oauthscope")
-                )
-            );
+        let e_rs: Entry<EntryInit, EntryNew> = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("oauth2_resource_server")),
+            ("class", Value::new_class("oauth2_resource_server_basic")),
+            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
+            ("displayname", Value::new_utf8s("test_resource_server")),
+            (
+                "oauth2_rs_origin",
+                Value::new_url_s("https://demo.example.com").unwrap()
+            ),
+            (
+                "oauth2_rs_origin_landing",
+                Value::new_url_s("https://demo.example.com/landing").unwrap()
+            ),
+            // System admins
+            (
+                "oauth2_rs_scope_map",
+                Value::new_oauthscopemap(grp_uuid, btreeset!["read".to_string()])
+                    .expect("invalid oauthscope")
+            )
+        );
 
-            let e_usr = entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("account")),
-                ("class", Value::new_class("person")),
-                ("name", Value::new_iname("testaccount")),
-                ("uuid", Value::Uuid(usr_uuid)),
-                ("description", Value::new_utf8s("testaccount")),
-                ("displayname", Value::new_utf8s("Test Account"))
-            );
+        let e_usr = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testaccount")),
+            ("uuid", Value::Uuid(usr_uuid)),
+            ("description", Value::new_utf8s("testaccount")),
+            ("displayname", Value::new_utf8s("Test Account"))
+        );
 
-            let e_grp = entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("group")),
-                ("uuid", Value::Uuid(grp_uuid)),
-                ("name", Value::new_iname("test_oauth2_group"))
-            );
+        let e_grp = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("group")),
+            ("uuid", Value::Uuid(grp_uuid)),
+            ("name", Value::new_iname("test_oauth2_group"))
+        );
 
-            let ce = CreateEvent::new_internal(vec![e_rs, e_grp, e_usr]);
-            assert!(idms_prox_write.qs_write.create(&ce).is_ok());
-            assert!(idms_prox_write.commit().is_ok());
+        let ce = CreateEvent::new_internal(vec![e_rs, e_grp, e_usr]);
+        assert!(idms_prox_write.qs_write.create(&ce).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
 
-            // Now do an applink query, they will not be there.
-            let mut idms_prox_read = task::block_on(idms.proxy_read());
+        // Now do an applink query, they will not be there.
+        let mut idms_prox_read = idms.proxy_read().await;
 
-            let ident = idms_prox_read
-                .qs_read
-                .internal_search_uuid(usr_uuid)
-                .map(Identity::from_impersonate_entry_readonly)
-                .expect("Failed to impersonate identity");
+        let ident = idms_prox_read
+            .qs_read
+            .internal_search_uuid(usr_uuid)
+            .map(Identity::from_impersonate_entry_readonly)
+            .expect("Failed to impersonate identity");
 
-            let apps = idms_prox_read
-                .list_applinks(&ident)
-                .expect("Failed to access related apps");
+        let apps = idms_prox_read
+            .list_applinks(&ident)
+            .expect("Failed to access related apps");
 
-            assert!(apps.is_empty());
-            drop(idms_prox_read);
+        assert!(apps.is_empty());
+        drop(idms_prox_read);
 
-            // Add them to the group.
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-            let me_inv_m = unsafe {
-                ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("uuid", PartialValue::Refer(grp_uuid))),
-                    ModifyList::new_append("member", Value::Refer(usr_uuid)),
-                )
-            };
-            assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
-            assert!(idms_prox_write.commit().is_ok());
+        // Add them to the group.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let me_inv_m = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("uuid", PartialValue::Refer(grp_uuid))),
+                ModifyList::new_append("member", Value::Refer(usr_uuid)),
+            )
+        };
+        assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
 
-            let mut idms_prox_read = task::block_on(idms.proxy_read());
+        let mut idms_prox_read = idms.proxy_read().await;
 
-            let ident = idms_prox_read
-                .qs_read
-                .internal_search_uuid(usr_uuid)
-                .map(Identity::from_impersonate_entry_readonly)
-                .expect("Failed to impersonate identity");
+        let ident = idms_prox_read
+            .qs_read
+            .internal_search_uuid(usr_uuid)
+            .map(Identity::from_impersonate_entry_readonly)
+            .expect("Failed to impersonate identity");
 
-            let apps = idms_prox_read
-                .list_applinks(&ident)
-                .expect("Failed to access related apps");
+        let apps = idms_prox_read
+            .list_applinks(&ident)
+            .expect("Failed to access related apps");
 
-            let app = apps.get(0).expect("No apps return!");
+        let app = apps.get(0).expect("No apps return!");
 
-            assert!(match app {
-                AppLink::Oauth2 {
-                    name,
-                    display_name,
-                    redirect_url,
-                    icon,
-                } => {
-                    name == "test_resource_server"
-                        && display_name == "test_resource_server"
-                        && redirect_url == &Url::parse("https://demo.example.com/landing").unwrap()
-                        && icon.is_none()
-                } // _ => false,
-            })
+        assert!(match app {
+            AppLink::Oauth2 {
+                name,
+                display_name,
+                redirect_url,
+                icon,
+            } => {
+                name == "test_resource_server"
+                    && display_name == "test_resource_server"
+                    && redirect_url == &Url::parse("https://demo.example.com/landing").unwrap()
+                    && icon.is_none()
+            } // _ => false,
         })
     }
 }

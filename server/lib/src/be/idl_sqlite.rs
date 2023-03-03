@@ -1552,7 +1552,6 @@ impl IdlSqlite {
     pub fn read(&self) -> IdlSqliteReadTransaction {
         // When we make this async, this will allow us to backoff
         // when we miss-grabbing from the conn-pool.
-        // async_std::task::yield_now().await
         #[allow(clippy::expect_used)]
         let conn = self
             .pool

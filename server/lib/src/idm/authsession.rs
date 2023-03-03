@@ -1037,7 +1037,7 @@ mod tests {
 
         let webauthn = create_webauthn();
 
-        let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
+        let anon_account = entry_to_account!(E_ANONYMOUS_V1.clone());
 
         let (session, state) = AuthSession::new(
             anon_account,
@@ -1107,7 +1107,7 @@ mod tests {
         sketching::test_init();
         let webauthn = create_webauthn();
         // create the ent
-        let mut account = entry_str_to_account!(JSON_ADMIN_V1);
+        let mut account = entry_to_account!(E_ADMIN_V1.clone());
         // manually load in a cred
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "test_password").unwrap();
@@ -1166,7 +1166,7 @@ mod tests {
         let jws_signer = create_jwt_signer();
         let webauthn = create_webauthn();
         // create the ent
-        let mut account = entry_str_to_account!(JSON_ADMIN_V1);
+        let mut account = entry_to_account!(E_ADMIN_V1.clone());
         // manually load in a cred
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "list@no3IBTyqHu$bad").unwrap();
@@ -1258,7 +1258,7 @@ mod tests {
         let webauthn = create_webauthn();
         let jws_signer = create_jwt_signer();
         // create the ent
-        let mut account = entry_str_to_account!(JSON_ADMIN_V1);
+        let mut account = entry_to_account!(E_ADMIN_V1);
 
         // Setup a fake time stamp for consistency.
         let ts = Duration::from_secs(12345);
@@ -1418,7 +1418,7 @@ mod tests {
         let webauthn = create_webauthn();
         let jws_signer = create_jwt_signer();
         // create the ent
-        let mut account = entry_str_to_account!(JSON_ADMIN_V1);
+        let mut account = entry_to_account!(E_ADMIN_V1);
 
         // Setup a fake time stamp for consistency.
         let ts = Duration::from_secs(12345);
@@ -1582,7 +1582,7 @@ mod tests {
         let (async_tx, mut async_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
-        let mut account = entry_str_to_account!(JSON_ADMIN_V1);
+        let mut account = entry_to_account!(E_ADMIN_V1.clone());
 
         let (webauthn, mut wa, wan_cred) = setup_webauthn_passkey(account.name.as_str());
         let jws_signer = create_jwt_signer();
@@ -1719,7 +1719,7 @@ mod tests {
         let (async_tx, mut async_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
-        let mut account = entry_str_to_account!(JSON_ADMIN_V1);
+        let mut account = entry_to_account!(E_ADMIN_V1);
 
         let (webauthn, mut wa, wan_cred) = setup_webauthn_securitykey(account.name.as_str());
         let jws_signer = create_jwt_signer();
@@ -1896,7 +1896,7 @@ mod tests {
         let (async_tx, mut async_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
-        let mut account = entry_str_to_account!(JSON_ADMIN_V1);
+        let mut account = entry_to_account!(E_ADMIN_V1);
 
         let (webauthn, mut wa, wan_cred) = setup_webauthn_securitykey(account.name.as_str());
         let jws_signer = create_jwt_signer();
@@ -2145,7 +2145,7 @@ mod tests {
         let jws_signer = create_jwt_signer();
         let webauthn = create_webauthn();
         // create the ent
-        let mut account = entry_str_to_account!(JSON_ADMIN_V1);
+        let mut account = entry_to_account!(E_ADMIN_V1);
 
         // Setup a fake time stamp for consistency.
         let ts = Duration::from_secs(12345);

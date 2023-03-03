@@ -13,7 +13,9 @@ macro_rules! setup_test {
             .expect("Failed to init BE");
 
         let qs = QueryServer::new(be, schema_outer, "example.com".to_string());
-        async_std::task::block_on(qs.initialise_helper(duration_from_epoch_now()))
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(qs.initialise_helper(duration_from_epoch_now()))
             .expect("init failed!");
         qs
     }};
@@ -34,41 +36,21 @@ macro_rules! setup_test {
             .expect("Failed to init BE");
 
         let qs = QueryServer::new(be, schema_outer, "example.com".to_string());
-        async_std::task::block_on(qs.initialise_helper(duration_from_epoch_now()))
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(qs.initialise_helper(duration_from_epoch_now()))
             .expect("init failed!");
 
         if !$preload_entries.is_empty() {
-            let mut qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            let mut qs_write = tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(qs.write(duration_from_epoch_now()));
             qs_write
                 .internal_create($preload_entries)
                 .expect("Failed to preload entries");
             assert!(qs_write.commit().is_ok());
         }
         qs
-    }};
-}
-
-#[cfg(test)]
-macro_rules! entry_str_to_account {
-    ($entry_str:expr) => {{
-        use std::iter::once;
-
-        use crate::entry::{Entry, EntryInvalid, EntryNew};
-        use crate::idm::account::Account;
-        use crate::value::Value;
-
-        let mut e: Entry<EntryInvalid, EntryNew> =
-            unsafe { Entry::unsafe_from_entry_str($entry_str).into_invalid_new() };
-        // Add spn, because normally this is generated but in tests we can't.
-        let spn = e
-            .get_ava_single_iname("name")
-            .map(|s| Value::new_spn_str(s, "example.com"))
-            .expect("Failed to munge spn from name!");
-        e.set_ava("spn", once(spn));
-
-        let e = unsafe { e.into_sealed_committed() };
-
-        Account::try_from_entry_no_groups(&e).expect("Account conversion failure")
     }};
 }
 
@@ -92,48 +74,6 @@ macro_rules! entry_to_account {
         let e = unsafe { e.into_sealed_committed() };
 
         Account::try_from_entry_no_groups(&e).expect("Account conversion failure")
-    }};
-}
-
-#[cfg(test)]
-macro_rules! run_idm_test_inner {
-    ($test_fn:expr) => {{
-        #[allow(unused_imports)]
-        use crate::be::{Backend, BackendConfig};
-        #[allow(unused_imports)]
-        use crate::idm::server::{IdmServer, IdmServerDelayed};
-        use crate::prelude::*;
-        #[allow(unused_imports)]
-        use crate::schema::Schema;
-        /*
-        use env_logger;
-        ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
-        let _ = env_logger::builder()
-            .format_timestamp(None)
-            .format_level(false)
-            .is_test(true)
-            .try_init();
-        */
-
-        let test_server = setup_test!();
-
-        let (test_idm_server, mut idms_delayed) =
-            IdmServer::new(test_server.clone(), "https://idm.example.com")
-                .expect("Failed to setup idms");
-
-        $test_fn(&test_server, &test_idm_server, &mut idms_delayed);
-        // Any needed teardown?
-        // Make sure there are no errors.
-        assert!(async_std::task::block_on(test_server.verify()).len() == 0);
-        idms_delayed.check_is_empty_or_panic();
-    }};
-}
-
-#[cfg(test)]
-macro_rules! run_idm_test {
-    ($test_fn:expr) => {{
-        let _ = sketching::test_init();
-        run_idm_test_inner!($test_fn);
     }};
 }
 
@@ -165,7 +105,9 @@ macro_rules! run_create_test {
         };
 
         {
-            let mut qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            let mut qs_write = tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(qs.write(duration_from_epoch_now()));
             let r = qs_write.create(&ce);
             trace!("test result: {:?}", r);
             assert!(r == $expect);
@@ -181,7 +123,9 @@ macro_rules! run_create_test {
         }
         // Make sure there are no errors.
         trace!("starting verification");
-        let ver = async_std::task::block_on(qs.verify());
+        let ver = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(qs.verify());
         trace!("verification -> {:?}", ver);
         assert!(ver.len() == 0);
     }};
@@ -207,7 +151,9 @@ macro_rules! run_modify_test {
         let qs = setup_test!($preload_entries);
 
         {
-            let mut qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            let mut qs_write = tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(qs.write(duration_from_epoch_now()));
             $pre_hook(&mut qs_write);
             qs_write.commit().expect("commit failure!");
         }
@@ -220,7 +166,9 @@ macro_rules! run_modify_test {
         };
 
         {
-            let mut qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            let mut qs_write = tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(qs.write(duration_from_epoch_now()));
             let r = qs_write.modify(&me);
             $check(&mut qs_write);
             trace!("test result: {:?}", r);
@@ -236,7 +184,9 @@ macro_rules! run_modify_test {
         }
         // Make sure there are no errors.
         trace!("starting verification");
-        let ver = async_std::task::block_on(qs.verify());
+        let ver = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(qs.verify());
         trace!("verification -> {:?}", ver);
         assert!(ver.len() == 0);
     }};
@@ -266,7 +216,9 @@ macro_rules! run_delete_test {
         };
 
         {
-            let mut qs_write = async_std::task::block_on(qs.write(duration_from_epoch_now()));
+            let mut qs_write = tokio::runtime::Runtime::new()
+                .unwrap()
+                .block_on(qs.write(duration_from_epoch_now()));
             let r = qs_write.delete(&de);
             trace!("test result: {:?}", r);
             $check(&mut qs_write);
@@ -282,7 +234,9 @@ macro_rules! run_delete_test {
         }
         // Make sure there are no errors.
         trace!("starting verification");
-        let ver = async_std::task::block_on(qs.verify());
+        let ver = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(qs.verify());
         trace!("verification -> {:?}", ver);
         assert!(ver.len() == 0);
     }};
