@@ -10,5 +10,4 @@ fn main() {
             println!("cargo:rustc-cfg=openssl3");
         }
     }
-
 }
