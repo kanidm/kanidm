@@ -264,12 +264,8 @@ impl IdmServer {
         self.domain_keys.read().cookie_key
     }
 
-    #[cfg(test)]
-    pub fn auth(&self) -> IdmServerAuthTransaction {
-        task::block_on(self.auth_async())
-    }
-
-    pub async fn auth_async(&self) -> IdmServerAuthTransaction<'_> {
+    /// Start an auth txn
+    pub async fn auth(&self) -> IdmServerAuthTransaction<'_> {
         let qs_read = self.qs.read().await;
 
         let mut sid = [0; 4];
@@ -2257,7 +2253,6 @@ mod tests {
     use std::convert::TryFrom;
     use std::time::Duration;
 
-    use async_std::task;
     use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, AuthType, OperationError};
     use smartstring::alias::String as AttrString;
     use time::OffsetDateTime;
@@ -2282,183 +2277,166 @@ mod tests {
     const TEST_PASSWORD_INC: &str = "ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx ";
     const TEST_CURRENT_TIME: u64 = 6000;
 
-    #[test]
-    fn test_idm_anonymous_auth() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let sid = {
-                    // Start and test anonymous auth.
-                    let mut idms_auth = idms.auth();
-                    // Send the initial auth event for initialising the session
-                    let anon_init = AuthEvent::anonymous_init();
-                    // Expect success
-                    let r1 = task::block_on(
-                        idms_auth.auth(&anon_init, Duration::from_secs(TEST_CURRENT_TIME)),
-                    );
-                    /* Some weird lifetime things happen here ... */
+    #[idm_test]
+    async fn test_idm_anonymous_auth(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        // Start and test anonymous auth.
+        let mut idms_auth = idms.auth().await;
+        // Send the initial auth event for initialising the session
+        let anon_init = AuthEvent::anonymous_init();
+        // Expect success
+        let r1 = idms_auth
+            .auth(&anon_init, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
+        /* Some weird lifetime things happen here ... */
 
-                    let sid = match r1 {
-                        Ok(ar) => {
-                            let AuthResult {
-                                sessionid,
-                                state,
-                                delay,
-                            } = ar;
-                            debug_assert!(delay.is_none());
-                            match state {
-                                AuthState::Choose(mut conts) => {
-                                    // Should only be one auth mech
-                                    assert!(conts.len() == 1);
-                                    // And it should be anonymous
-                                    let m = conts.pop().expect("Should not fail");
-                                    assert!(m == AuthMech::Anonymous);
-                                }
-                                _ => {
-                                    error!(
-                                    "A critical error has occurred! We have a non-continue result!"
-                                );
-                                    panic!();
-                                }
-                            };
-                            // Now pass back the sessionid, we are good to continue.
-                            sessionid
-                        }
-                        Err(e) => {
-                            // Should not occur!
-                            error!("A critical error has occurred! {:?}", e);
-                            panic!();
-                        }
-                    };
-
-                    debug!("sessionid is ==> {:?}", sid);
-
-                    idms_auth.commit().expect("Must not fail");
-
-                    sid
+        let sid = match r1 {
+            Ok(ar) => {
+                let AuthResult {
+                    sessionid,
+                    state,
+                    delay,
+                } = ar;
+                debug_assert!(delay.is_none());
+                match state {
+                    AuthState::Choose(mut conts) => {
+                        // Should only be one auth mech
+                        assert!(conts.len() == 1);
+                        // And it should be anonymous
+                        let m = conts.pop().expect("Should not fail");
+                        assert!(m == AuthMech::Anonymous);
+                    }
+                    _ => {
+                        error!("A critical error has occurred! We have a non-continue result!");
+                        panic!();
+                    }
                 };
-                {
-                    let mut idms_auth = idms.auth();
-                    let anon_begin = AuthEvent::begin_mech(sid, AuthMech::Anonymous);
+                // Now pass back the sessionid, we are good to continue.
+                sessionid
+            }
+            Err(e) => {
+                // Should not occur!
+                error!("A critical error has occurred! {:?}", e);
+                panic!();
+            }
+        };
 
-                    let r2 = task::block_on(
-                        idms_auth.auth(&anon_begin, Duration::from_secs(TEST_CURRENT_TIME)),
-                    );
-                    debug!("r2 ==> {:?}", r2);
+        debug!("sessionid is ==> {:?}", sid);
 
-                    match r2 {
-                        Ok(ar) => {
-                            let AuthResult {
-                                sessionid: _,
-                                state,
-                                delay,
-                            } = ar;
+        idms_auth.commit().expect("Must not fail");
 
-                            debug_assert!(delay.is_none());
-                            match state {
-                                AuthState::Continue(allowed) => {
-                                    // Check the uat.
-                                    assert!(allowed.len() == 1);
-                                    assert!(allowed.first() == Some(&AuthAllowed::Anonymous));
-                                }
-                                _ => {
-                                    error!(
-                                    "A critical error has occurred! We have a non-continue result!"
-                                );
-                                    panic!();
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            error!("A critical error has occurred! {:?}", e);
-                            // Should not occur!
-                            panic!();
-                        }
-                    };
+        let mut idms_auth = idms.auth().await;
+        let anon_begin = AuthEvent::begin_mech(sid, AuthMech::Anonymous);
 
-                    idms_auth.commit().expect("Must not fail");
-                };
-                {
-                    let mut idms_auth = idms.auth();
-                    // Now send the anonymous request, given the session id.
-                    let anon_step = AuthEvent::cred_step_anonymous(sid);
+        let r2 = idms_auth
+            .auth(&anon_begin, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
+        debug!("r2 ==> {:?}", r2);
 
-                    // Expect success
-                    let r2 = task::block_on(
-                        idms_auth.auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME)),
-                    );
-                    debug!("r2 ==> {:?}", r2);
+        match r2 {
+            Ok(ar) => {
+                let AuthResult {
+                    sessionid: _,
+                    state,
+                    delay,
+                } = ar;
 
-                    match r2 {
-                        Ok(ar) => {
-                            let AuthResult {
-                                sessionid: _,
-                                state,
-                                delay,
-                            } = ar;
-
-                            debug_assert!(delay.is_none());
-                            match state {
-                                AuthState::Success(_uat, AuthIssueSession::Token) => {
-                                    // Check the uat.
-                                }
-                                _ => {
-                                    error!(
-                                    "A critical error has occurred! We have a non-succcess result!"
-                                );
-                                    panic!();
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            error!("A critical error has occurred! {:?}", e);
-                            // Should not occur!
-                            panic!();
-                        }
-                    };
-
-                    idms_auth.commit().expect("Must not fail");
+                debug_assert!(delay.is_none());
+                match state {
+                    AuthState::Continue(allowed) => {
+                        // Check the uat.
+                        assert!(allowed.len() == 1);
+                        assert!(allowed.first() == Some(&AuthAllowed::Anonymous));
+                    }
+                    _ => {
+                        error!("A critical error has occurred! We have a non-continue result!");
+                        panic!();
+                    }
                 }
             }
-        );
+            Err(e) => {
+                error!("A critical error has occurred! {:?}", e);
+                // Should not occur!
+                panic!();
+            }
+        };
+
+        idms_auth.commit().expect("Must not fail");
+
+        let mut idms_auth = idms.auth().await;
+        // Now send the anonymous request, given the session id.
+        let anon_step = AuthEvent::cred_step_anonymous(sid);
+
+        // Expect success
+        let r2 = idms_auth
+            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
+        debug!("r2 ==> {:?}", r2);
+
+        match r2 {
+            Ok(ar) => {
+                let AuthResult {
+                    sessionid: _,
+                    state,
+                    delay,
+                } = ar;
+
+                debug_assert!(delay.is_none());
+                match state {
+                    AuthState::Success(_uat, AuthIssueSession::Token) => {
+                        // Check the uat.
+                    }
+                    _ => {
+                        error!("A critical error has occurred! We have a non-succcess result!");
+                        panic!();
+                    }
+                }
+            }
+            Err(e) => {
+                error!("A critical error has occurred! {:?}", e);
+                // Should not occur!
+                panic!();
+            }
+        };
+
+        idms_auth.commit().expect("Must not fail");
     }
 
     // Test sending anonymous but with no session init.
-    #[test]
-    fn test_idm_anonymous_auth_invalid_states() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                {
-                    let mut idms_auth = idms.auth();
-                    let sid = Uuid::new_v4();
-                    let anon_step = AuthEvent::cred_step_anonymous(sid);
+    #[idm_test]
+    async fn test_idm_anonymous_auth_invalid_states(
+        idms: &IdmServer,
+        _idms_delayed: &IdmServerDelayed,
+    ) {
+        {
+            let mut idms_auth = idms.auth().await;
+            let sid = Uuid::new_v4();
+            let anon_step = AuthEvent::cred_step_anonymous(sid);
 
-                    // Expect failure
-                    let r2 = task::block_on(
-                        idms_auth.auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME)),
-                    );
-                    debug!("r2 ==> {:?}", r2);
+            // Expect failure
+            let r2 = idms_auth
+                .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+                .await;
+            debug!("r2 ==> {:?}", r2);
 
-                    match r2 {
-                        Ok(_) => {
-                            error!("Auth state machine not correctly enforced!");
-                            panic!();
-                        }
-                        Err(e) => match e {
-                            OperationError::InvalidSessionState => {}
-                            _ => panic!(),
-                        },
-                    };
+            match r2 {
+                Ok(_) => {
+                    error!("Auth state machine not correctly enforced!");
+                    panic!();
                 }
-            }
-        )
+                Err(e) => match e {
+                    OperationError::InvalidSessionState => {}
+                    _ => panic!(),
+                },
+            };
+        }
     }
 
-    async fn init_admin_w_password(qs: &QueryServer, pw: &str) -> Result<Uuid, OperationError> {
+    async fn init_admin_w_password(idms: &IdmServer, pw: &str) -> Result<Uuid, OperationError> {
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, pw)?;
         let cred_id = cred.uuid;
         let v_cred = Value::new_credential("primary", cred);
-        let mut qs_write = qs.write(duration_from_epoch_now()).await;
+        let mut idms_write = idms.proxy_write(duration_from_epoch_now()).await;
 
         // now modify and provide a primary credential.
         let me_inv_m = unsafe {
@@ -2471,16 +2449,16 @@ mod tests {
             )
         };
         // go!
-        assert!(qs_write.modify(&me_inv_m).is_ok());
+        assert!(idms_write.qs_write.modify(&me_inv_m).is_ok());
 
-        qs_write.commit().map(|()| cred_id)
+        idms_write.commit().map(|()| cred_id)
     }
 
-    fn init_admin_authsession_sid(idms: &IdmServer, ct: Duration, name: &str) -> Uuid {
-        let mut idms_auth = idms.auth();
+    async fn init_admin_authsession_sid(idms: &IdmServer, ct: Duration, name: &str) -> Uuid {
+        let mut idms_auth = idms.auth().await;
         let admin_init = AuthEvent::named_init(name);
 
-        let r1 = task::block_on(idms_auth.auth(&admin_init, ct));
+        let r1 = idms_auth.auth(&admin_init, ct).await;
         let ar = r1.unwrap();
         let AuthResult {
             sessionid,
@@ -2494,7 +2472,7 @@ mod tests {
         // Now push that we want the Password Mech.
         let admin_begin = AuthEvent::begin_mech(sessionid, AuthMech::Password);
 
-        let r2 = task::block_on(idms_auth.auth(&admin_begin, ct));
+        let r2 = idms_auth.auth(&admin_begin, ct).await;
         let ar = r2.unwrap();
         let AuthResult {
             sessionid,
@@ -2517,14 +2495,17 @@ mod tests {
         sessionid
     }
 
-    fn check_admin_password(idms: &IdmServer, pw: &str) -> String {
-        let sid = init_admin_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "admin");
+    async fn check_admin_password(idms: &IdmServer, pw: &str) -> String {
+        let sid =
+            init_admin_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "admin").await;
 
-        let mut idms_auth = idms.auth();
+        let mut idms_auth = idms.auth().await;
         let anon_step = AuthEvent::cred_step_password(sid, pw);
 
         // Expect success
-        let r2 = task::block_on(idms_auth.auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME)));
+        let r2 = idms_auth
+            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
         debug!("r2 ==> {:?}", r2);
 
         let token = match r2 {
@@ -2560,554 +2541,489 @@ mod tests {
         token
     }
 
-    #[test]
-    fn test_idm_simple_password_auth() {
-        run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
-                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
-                    .expect("Failed to setup admin account");
-                check_admin_password(idms, TEST_PASSWORD);
+    #[idm_test]
+    async fn test_idm_simple_password_auth(idms: &IdmServer, idms_delayed: &mut IdmServerDelayed) {
+        init_admin_w_password(idms, TEST_PASSWORD)
+            .await
+            .expect("Failed to setup admin account");
+        check_admin_password(idms, TEST_PASSWORD).await;
 
-                // Clear our the session record
-                let da = idms_delayed.try_recv().expect("invalid");
-                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
-                idms_delayed.check_is_empty_or_panic();
-            }
-        )
+        // Clear our the session record
+        let da = idms_delayed.try_recv().expect("invalid");
+        assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+        idms_delayed.check_is_empty_or_panic();
     }
 
-    #[test]
-    fn test_idm_simple_password_spn_auth() {
-        run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
-                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
-                    .expect("Failed to setup admin account");
+    #[idm_test]
+    async fn test_idm_simple_password_spn_auth(
+        idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
+    ) {
+        init_admin_w_password(idms, TEST_PASSWORD)
+            .await
+            .expect("Failed to setup admin account");
 
-                let sid = init_admin_authsession_sid(
-                    idms,
-                    Duration::from_secs(TEST_CURRENT_TIME),
-                    "admin@example.com",
-                );
+        let sid = init_admin_authsession_sid(
+            idms,
+            Duration::from_secs(TEST_CURRENT_TIME),
+            "admin@example.com",
+        )
+        .await;
 
-                let mut idms_auth = idms.auth();
-                let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);
+        let mut idms_auth = idms.auth().await;
+        let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);
 
-                // Expect success
-                let r2 = task::block_on(
-                    idms_auth.auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME)),
-                );
-                debug!("r2 ==> {:?}", r2);
+        // Expect success
+        let r2 = idms_auth
+            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
+        debug!("r2 ==> {:?}", r2);
 
-                match r2 {
-                    Ok(ar) => {
-                        let AuthResult {
-                            sessionid: _,
-                            state,
-                            delay,
-                        } = ar;
-                        debug_assert!(delay.is_none());
-                        match state {
-                            AuthState::Success(_uat, AuthIssueSession::Token) => {
-                                // Check the uat.
-                            }
-                            _ => {
-                                error!(
-                                    "A critical error has occurred! We have a non-succcess result!"
-                                );
-                                panic!();
-                            }
-                        }
+        match r2 {
+            Ok(ar) => {
+                let AuthResult {
+                    sessionid: _,
+                    state,
+                    delay,
+                } = ar;
+                debug_assert!(delay.is_none());
+                match state {
+                    AuthState::Success(_uat, AuthIssueSession::Token) => {
+                        // Check the uat.
                     }
-                    Err(e) => {
-                        error!("A critical error has occurred! {:?}", e);
-                        // Should not occur!
+                    _ => {
+                        error!("A critical error has occurred! We have a non-succcess result!");
                         panic!();
                     }
-                };
-
-                // Clear our the session record
-                let da = idms_delayed.try_recv().expect("invalid");
-                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
-                idms_delayed.check_is_empty_or_panic();
-
-                idms_auth.commit().expect("Must not fail");
+                }
             }
-        )
+            Err(e) => {
+                error!("A critical error has occurred! {:?}", e);
+                // Should not occur!
+                panic!();
+            }
+        };
+
+        // Clear our the session record
+        let da = idms_delayed.try_recv().expect("invalid");
+        assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+        idms_delayed.check_is_empty_or_panic();
+
+        idms_auth.commit().expect("Must not fail");
     }
 
-    #[test]
-    fn test_idm_simple_password_invalid() {
-        run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
-                    .expect("Failed to setup admin account");
-                let sid = init_admin_authsession_sid(
-                    idms,
-                    Duration::from_secs(TEST_CURRENT_TIME),
-                    "admin",
-                );
-                let mut idms_auth = idms.auth();
-                let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
+    #[idm_test]
+    async fn test_idm_simple_password_invalid(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        init_admin_w_password(idms, TEST_PASSWORD)
+            .await
+            .expect("Failed to setup admin account");
+        let sid =
+            init_admin_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "admin").await;
+        let mut idms_auth = idms.auth().await;
+        let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
 
-                // Expect success
-                let r2 = task::block_on(
-                    idms_auth.auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME)),
-                );
-                debug!("r2 ==> {:?}", r2);
+        // Expect success
+        let r2 = idms_auth
+            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
+        debug!("r2 ==> {:?}", r2);
 
-                match r2 {
-                    Ok(ar) => {
-                        let AuthResult {
-                            sessionid: _,
-                            state,
-                            delay,
-                        } = ar;
-                        debug_assert!(delay.is_none());
-                        match state {
-                            AuthState::Denied(_reason) => {
-                                // Check the uat.
-                            }
-                            _ => {
-                                error!(
-                                    "A critical error has occurred! We have a non-denied result!"
-                                );
-                                panic!();
-                            }
-                        }
+        match r2 {
+            Ok(ar) => {
+                let AuthResult {
+                    sessionid: _,
+                    state,
+                    delay,
+                } = ar;
+                debug_assert!(delay.is_none());
+                match state {
+                    AuthState::Denied(_reason) => {
+                        // Check the uat.
                     }
-                    Err(e) => {
-                        error!("A critical error has occurred! {:?}", e);
-                        // Should not occur!
+                    _ => {
+                        error!("A critical error has occurred! We have a non-denied result!");
                         panic!();
                     }
-                };
-
-                idms_auth.commit().expect("Must not fail");
+                }
             }
-        )
+            Err(e) => {
+                error!("A critical error has occurred! {:?}", e);
+                // Should not occur!
+                panic!();
+            }
+        };
+
+        idms_auth.commit().expect("Must not fail");
     }
 
-    #[test]
-    fn test_idm_simple_password_reset() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
+    #[idm_test]
+    async fn test_idm_simple_password_reset(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
-                let mut idms_prox_write =
-                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                assert!(idms_prox_write.set_account_password(&pce).is_ok());
-                assert!(idms_prox_write.set_account_password(&pce).is_ok());
-                assert!(idms_prox_write.commit().is_ok());
-            }
-        )
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        assert!(idms_prox_write.set_account_password(&pce).is_ok());
+        assert!(idms_prox_write.set_account_password(&pce).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
     }
 
-    #[test]
-    fn test_idm_anonymous_set_password_denied() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let pce = PasswordChangeEvent::new_internal(UUID_ANONYMOUS, TEST_PASSWORD);
+    #[idm_test]
+    async fn test_idm_anonymous_set_password_denied(
+        idms: &IdmServer,
+        _idms_delayed: &IdmServerDelayed,
+    ) {
+        let pce = PasswordChangeEvent::new_internal(UUID_ANONYMOUS, TEST_PASSWORD);
 
-                let mut idms_prox_write =
-                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                assert!(idms_prox_write.set_account_password(&pce).is_err());
-                assert!(idms_prox_write.commit().is_ok());
-            }
-        )
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        assert!(idms_prox_write.set_account_password(&pce).is_err());
+        assert!(idms_prox_write.commit().is_ok());
     }
 
-    #[test]
-    fn test_idm_regenerate_radius_secret() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let mut idms_prox_write =
-                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
+    #[idm_test]
+    async fn test_idm_regenerate_radius_secret(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
 
-                // Generates a new credential when none exists
-                let r1 = idms_prox_write
-                    .regenerate_radius_secret(&rrse)
-                    .expect("Failed to reset radius credential 1");
-                // Regenerates and overwrites the radius credential
-                let r2 = idms_prox_write
-                    .regenerate_radius_secret(&rrse)
-                    .expect("Failed to reset radius credential 2");
-                assert!(r1 != r2);
-            }
-        )
+        // Generates a new credential when none exists
+        let r1 = idms_prox_write
+            .regenerate_radius_secret(&rrse)
+            .expect("Failed to reset radius credential 1");
+        // Regenerates and overwrites the radius credential
+        let r2 = idms_prox_write
+            .regenerate_radius_secret(&rrse)
+            .expect("Failed to reset radius credential 2");
+        assert!(r1 != r2);
     }
 
-    #[test]
-    fn test_idm_radius_secret_rejected_from_account_credential() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let mut idms_prox_write =
-                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
+    #[idm_test]
+    async fn test_idm_radius_secret_rejected_from_account_credential(
+        idms: &IdmServer,
+        _idms_delayed: &IdmServerDelayed,
+    ) {
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
 
-                let r1 = idms_prox_write
-                    .regenerate_radius_secret(&rrse)
-                    .expect("Failed to reset radius credential 1");
+        let r1 = idms_prox_write
+            .regenerate_radius_secret(&rrse)
+            .expect("Failed to reset radius credential 1");
 
-                // Try and set that as the main account password, should fail.
-                let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, r1.as_str());
-                let e = idms_prox_write.set_account_password(&pce);
-                assert!(e.is_err());
+        // Try and set that as the main account password, should fail.
+        let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, r1.as_str());
+        let e = idms_prox_write.set_account_password(&pce);
+        assert!(e.is_err());
 
-                let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, r1.as_str());
-                let e = idms_prox_write.set_unix_account_password(&pce);
-                assert!(e.is_err());
+        let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, r1.as_str());
+        let e = idms_prox_write.set_unix_account_password(&pce);
+        assert!(e.is_err());
 
-                assert!(idms_prox_write.commit().is_ok());
-            }
-        )
+        assert!(idms_prox_write.commit().is_ok());
     }
 
-    #[test]
-    fn test_idm_radiusauthtoken() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let mut idms_prox_write =
-                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
-                let r1 = idms_prox_write
-                    .regenerate_radius_secret(&rrse)
-                    .expect("Failed to reset radius credential 1");
-                idms_prox_write.commit().expect("failed to commit");
+    #[idm_test]
+    async fn test_idm_radiusauthtoken(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
+        let r1 = idms_prox_write
+            .regenerate_radius_secret(&rrse)
+            .expect("Failed to reset radius credential 1");
+        idms_prox_write.commit().expect("failed to commit");
 
-                let mut idms_prox_read = task::block_on(idms.proxy_read());
-                let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN);
-                let tok_r = idms_prox_read
-                    .get_radiusauthtoken(&rate, duration_from_epoch_now())
-                    .expect("Failed to generate radius auth token");
+        let mut idms_prox_read = idms.proxy_read().await;
+        let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN);
+        let tok_r = idms_prox_read
+            .get_radiusauthtoken(&rate, duration_from_epoch_now())
+            .expect("Failed to generate radius auth token");
 
-                // view the token?
-                assert!(r1 == tok_r.secret);
-            }
-        )
+        // view the token?
+        assert!(r1 == tok_r.secret);
     }
 
-    #[test]
-    fn test_idm_simple_password_reject_weak() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                // len check
-                let mut idms_prox_write =
-                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
+    #[idm_test]
+    async fn test_idm_simple_password_reject_weak(
+        idms: &IdmServer,
+        _idms_delayed: &IdmServerDelayed,
+    ) {
+        // len check
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
 
-                let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "password");
-                let e = idms_prox_write.set_account_password(&pce);
-                assert!(e.is_err());
+        let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "password");
+        let e = idms_prox_write.set_account_password(&pce);
+        assert!(e.is_err());
 
-                // zxcvbn check
-                let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "password1234");
-                let e = idms_prox_write.set_account_password(&pce);
-                assert!(e.is_err());
+        // zxcvbn check
+        let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "password1234");
+        let e = idms_prox_write.set_account_password(&pce);
+        assert!(e.is_err());
 
-                // Check the "name" checking works too (I think admin may hit a common pw rule first)
-                let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "admin_nta");
-                let e = idms_prox_write.set_account_password(&pce);
-                assert!(e.is_err());
+        // Check the "name" checking works too (I think admin may hit a common pw rule first)
+        let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "admin_nta");
+        let e = idms_prox_write.set_account_password(&pce);
+        assert!(e.is_err());
 
-                // Check that the demo badlist password is rejected.
-                let pce = PasswordChangeEvent::new_internal(
-                    UUID_ADMIN,
-                    "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1",
-                );
-                let e = idms_prox_write.set_account_password(&pce);
-                assert!(e.is_err());
+        // Check that the demo badlist password is rejected.
+        let pce = PasswordChangeEvent::new_internal(
+            UUID_ADMIN,
+            "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1",
+        );
+        let e = idms_prox_write.set_account_password(&pce);
+        assert!(e.is_err());
 
-                assert!(idms_prox_write.commit().is_ok());
-            }
-        )
+        assert!(idms_prox_write.commit().is_ok());
     }
 
-    #[test]
-    fn test_idm_simple_password_reject_badlist() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let mut idms_prox_write =
-                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
+    #[idm_test]
+    async fn test_idm_simple_password_reject_badlist(
+        idms: &IdmServer,
+        _idms_delayed: &IdmServerDelayed,
+    ) {
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
 
-                // Check that the badlist password inserted is rejected.
-                let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "bad@no3IBTyqHu$list");
-                let e = idms_prox_write.set_account_password(&pce);
-                assert!(e.is_err());
+        // Check that the badlist password inserted is rejected.
+        let pce = PasswordChangeEvent::new_internal(UUID_ADMIN, "bad@no3IBTyqHu$list");
+        let e = idms_prox_write.set_account_password(&pce);
+        assert!(e.is_err());
 
-                assert!(idms_prox_write.commit().is_ok());
-            }
-        )
+        assert!(idms_prox_write.commit().is_ok());
     }
 
-    #[test]
-    fn test_idm_unixusertoken() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let mut idms_prox_write =
-                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                // Modify admin to have posixaccount
-                let me_posix = unsafe {
-                    ModifyEvent::new_internal_invalid(
-                        filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                        ModifyList::new_list(vec![
-                            Modify::Present(
-                                AttrString::from("class"),
-                                Value::new_class("posixaccount"),
-                            ),
-                            Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                        ]),
-                    )
-                };
-                assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
-                // Add a posix group that has the admin as a member.
-                let e: Entry<EntryInit, EntryNew> = entry_init!(
-                    ("class", Value::new_class("object")),
-                    ("class", Value::new_class("group")),
-                    ("class", Value::new_class("posixgroup")),
-                    ("name", Value::new_iname("testgroup")),
-                    (
-                        "uuid",
-                        Value::Uuid(uuid::uuid!("01609135-a1c4-43d5-966b-a28227644445"))
-                    ),
-                    ("description", Value::new_utf8s("testgroup")),
-                    (
-                        "member",
-                        Value::Refer(uuid::uuid!("00000000-0000-0000-0000-000000000000"))
-                    )
-                );
+    #[idm_test]
+    async fn test_idm_unixusertoken(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        // Modify admin to have posixaccount
+        let me_posix = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iname("admin"))),
+                ModifyList::new_list(vec![
+                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+                ]),
+            )
+        };
+        assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
+        // Add a posix group that has the admin as a member.
+        let e: Entry<EntryInit, EntryNew> = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("group")),
+            ("class", Value::new_class("posixgroup")),
+            ("name", Value::new_iname("testgroup")),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("01609135-a1c4-43d5-966b-a28227644445"))
+            ),
+            ("description", Value::new_utf8s("testgroup")),
+            (
+                "member",
+                Value::Refer(uuid::uuid!("00000000-0000-0000-0000-000000000000"))
+            )
+        );
 
-                let ce = CreateEvent::new_internal(vec![e]);
+        let ce = CreateEvent::new_internal(vec![e]);
 
-                assert!(idms_prox_write.qs_write.create(&ce).is_ok());
+        assert!(idms_prox_write.qs_write.create(&ce).is_ok());
 
-                idms_prox_write.commit().expect("failed to commit");
+        idms_prox_write.commit().expect("failed to commit");
 
-                let mut idms_prox_read = task::block_on(idms.proxy_read());
+        let mut idms_prox_read = idms.proxy_read().await;
 
-                let ugte = UnixGroupTokenEvent::new_internal(uuid!(
-                    "01609135-a1c4-43d5-966b-a28227644445"
-                ));
-                let tok_g = idms_prox_read
-                    .get_unixgrouptoken(&ugte)
-                    .expect("Failed to generate unix group token");
+        let ugte = UnixGroupTokenEvent::new_internal(uuid!("01609135-a1c4-43d5-966b-a28227644445"));
+        let tok_g = idms_prox_read
+            .get_unixgrouptoken(&ugte)
+            .expect("Failed to generate unix group token");
 
-                assert!(tok_g.name == "testgroup");
-                assert!(tok_g.spn == "testgroup@example.com");
+        assert!(tok_g.name == "testgroup");
+        assert!(tok_g.spn == "testgroup@example.com");
 
-                let uute = UnixUserTokenEvent::new_internal(UUID_ADMIN);
-                let tok_r = idms_prox_read
-                    .get_unixusertoken(&uute, duration_from_epoch_now())
-                    .expect("Failed to generate unix user token");
+        let uute = UnixUserTokenEvent::new_internal(UUID_ADMIN);
+        let tok_r = idms_prox_read
+            .get_unixusertoken(&uute, duration_from_epoch_now())
+            .expect("Failed to generate unix user token");
 
-                assert!(tok_r.name == "admin");
-                assert!(tok_r.spn == "admin@example.com");
-                assert!(tok_r.groups.len() == 2);
-                assert!(tok_r.groups[0].name == "admin");
-                assert!(tok_r.groups[1].name == "testgroup");
-                assert!(tok_r.valid);
+        assert!(tok_r.name == "admin");
+        assert!(tok_r.spn == "admin@example.com");
+        assert!(tok_r.groups.len() == 2);
+        assert!(tok_r.groups[0].name == "admin");
+        assert!(tok_r.groups[1].name == "testgroup");
+        assert!(tok_r.valid);
 
-                // Show we can get the admin as a unix group token too
-                let ugte = UnixGroupTokenEvent::new_internal(uuid!(
-                    "00000000-0000-0000-0000-000000000000"
-                ));
-                let tok_g = idms_prox_read
-                    .get_unixgrouptoken(&ugte)
-                    .expect("Failed to generate unix group token");
+        // Show we can get the admin as a unix group token too
+        let ugte = UnixGroupTokenEvent::new_internal(uuid!("00000000-0000-0000-0000-000000000000"));
+        let tok_g = idms_prox_read
+            .get_unixgrouptoken(&ugte)
+            .expect("Failed to generate unix group token");
 
-                assert!(tok_g.name == "admin");
-                assert!(tok_g.spn == "admin@example.com");
-            }
-        )
+        assert!(tok_g.name == "admin");
+        assert!(tok_g.spn == "admin@example.com");
     }
 
-    #[test]
-    fn test_idm_simple_unix_password_reset() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
-                let mut idms_prox_write =
-                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                // make the admin a valid posix account
-                let me_posix = unsafe {
-                    ModifyEvent::new_internal_invalid(
-                        filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                        ModifyList::new_list(vec![
-                            Modify::Present(
-                                AttrString::from("class"),
-                                Value::new_class("posixaccount"),
-                            ),
-                            Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                        ]),
-                    )
-                };
-                assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
+    #[idm_test]
+    async fn test_idm_simple_unix_password_reset(
+        idms: &IdmServer,
+        _idms_delayed: &IdmServerDelayed,
+    ) {
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        // make the admin a valid posix account
+        let me_posix = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iname("admin"))),
+                ModifyList::new_list(vec![
+                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+                ]),
+            )
+        };
+        assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
-                let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
+        let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
 
-                assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
-                assert!(idms_prox_write.commit().is_ok());
+        assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
 
-                let mut idms_auth = idms.auth();
-                // Check auth verification of the password
+        let mut idms_auth = idms.auth().await;
+        // Check auth verification of the password
 
-                let uuae_good = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
-                let a1 = task::block_on(
-                    idms_auth.auth_unix(&uuae_good, Duration::from_secs(TEST_CURRENT_TIME)),
-                );
-                match a1 {
-                    Ok(Some(_tok)) => {}
-                    _ => assert!(false),
-                };
-                // Check bad password
-                let uuae_bad = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD_INC);
-                let a2 = task::block_on(
-                    idms_auth.auth_unix(&uuae_bad, Duration::from_secs(TEST_CURRENT_TIME)),
-                );
-                match a2 {
-                    Ok(None) => {}
-                    _ => assert!(false),
-                };
-                assert!(idms_auth.commit().is_ok());
+        let uuae_good = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
+        let a1 = idms_auth
+            .auth_unix(&uuae_good, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
+        match a1 {
+            Ok(Some(_tok)) => {}
+            _ => assert!(false),
+        };
+        // Check bad password
+        let uuae_bad = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD_INC);
+        let a2 = idms_auth
+            .auth_unix(&uuae_bad, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
+        match a2 {
+            Ok(None) => {}
+            _ => assert!(false),
+        };
+        assert!(idms_auth.commit().is_ok());
 
-                // Check deleting the password
-                let mut idms_prox_write =
-                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                let me_purge_up = unsafe {
-                    ModifyEvent::new_internal_invalid(
-                        filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                        ModifyList::new_list(vec![Modify::Purged(AttrString::from(
-                            "unix_password",
-                        ))]),
-                    )
-                };
-                assert!(idms_prox_write.qs_write.modify(&me_purge_up).is_ok());
-                assert!(idms_prox_write.commit().is_ok());
+        // Check deleting the password
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        let me_purge_up = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iname("admin"))),
+                ModifyList::new_list(vec![Modify::Purged(AttrString::from("unix_password"))]),
+            )
+        };
+        assert!(idms_prox_write.qs_write.modify(&me_purge_up).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
 
-                // And auth should now fail due to the lack of PW material (note that
-                // softlocking WON'T kick in because the cred_uuid is gone!)
-                let mut idms_auth = idms.auth();
-                let a3 = task::block_on(
-                    idms_auth.auth_unix(&uuae_good, Duration::from_secs(TEST_CURRENT_TIME)),
-                );
-                match a3 {
-                    Ok(None) => {}
-                    _ => assert!(false),
-                };
-                assert!(idms_auth.commit().is_ok());
-            }
-        )
+        // And auth should now fail due to the lack of PW material (note that
+        // softlocking WON'T kick in because the cred_uuid is gone!)
+        let mut idms_auth = idms.auth().await;
+        let a3 = idms_auth
+            .auth_unix(&uuae_good, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
+        match a3 {
+            Ok(None) => {}
+            _ => assert!(false),
+        };
+        assert!(idms_auth.commit().is_ok());
     }
 
-    #[test]
-    fn test_idm_simple_password_upgrade() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
-                // Assert the delayed action queue is empty
-                idms_delayed.check_is_empty_or_panic();
-                // Setup the admin w_ an imported password.
-                {
-                    let mut idms_prox_write =
-                        task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                    // now modify and provide a primary credential.
-                    let me_inv_m = unsafe {
-                        ModifyEvent::new_internal_invalid(
+    #[idm_test]
+    async fn test_idm_simple_password_upgrade(
+        idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
+    ) {
+        // Assert the delayed action queue is empty
+        idms_delayed.check_is_empty_or_panic();
+        // Setup the admin w_ an imported password.
+        {
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            // now modify and provide a primary credential.
+            let me_inv_m = unsafe {
+                ModifyEvent::new_internal_invalid(
                         filter!(f_eq("name", PartialValue::new_iname("admin"))),
                         ModifyList::new_list(vec![Modify::Present(
                             AttrString::from("password_import"),
                             Value::from("{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM")
                         )]),
                     )
-                    };
-                    // go!
-                    assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
-                    assert!(idms_prox_write.commit().is_ok());
-                }
-                // Still empty
-                idms_delayed.check_is_empty_or_panic();
-                // Do an auth, this will trigger the action to send.
-                check_admin_password(idms, "password");
+            };
+            // go!
+            assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
+            assert!(idms_prox_write.commit().is_ok());
+        }
+        // Still empty
+        idms_delayed.check_is_empty_or_panic();
+        // Do an auth, this will trigger the action to send.
+        check_admin_password(idms, "password").await;
 
-                // process it.
-                let da = idms_delayed.try_recv().expect("invalid");
-                // The first task is the pw upgrade
-                assert!(matches!(da, DelayedAction::PwUpgrade(_)));
-                let r = task::block_on(idms.delayed_action(duration_from_epoch_now(), da));
-                // The second is the auth session record
-                let da = idms_delayed.try_recv().expect("invalid");
-                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
-                assert!(Ok(true) == r);
+        // process it.
+        let da = idms_delayed.try_recv().expect("invalid");
+        // The first task is the pw upgrade
+        assert!(matches!(da, DelayedAction::PwUpgrade(_)));
+        let r = idms.delayed_action(duration_from_epoch_now(), da).await;
+        // The second is the auth session record
+        let da = idms_delayed.try_recv().expect("invalid");
+        assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+        assert!(Ok(true) == r);
 
-                // Check the admin pw still matches
-                check_admin_password(idms, "password");
-                // Clear the next auth session record
-                let da = idms_delayed.try_recv().expect("invalid");
-                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+        // Check the admin pw still matches
+        check_admin_password(idms, "password").await;
+        // Clear the next auth session record
+        let da = idms_delayed.try_recv().expect("invalid");
+        assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
 
-                // No delayed action was queued.
-                idms_delayed.check_is_empty_or_panic();
-            }
-        )
+        // No delayed action was queued.
+        idms_delayed.check_is_empty_or_panic();
     }
 
-    #[test]
-    fn test_idm_unix_password_upgrade() {
-        run_idm_test!(
-            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
-                // Assert the delayed action queue is empty
-                idms_delayed.check_is_empty_or_panic();
-                // Setup the admin with an imported unix pw.
-                let mut idms_prox_write =
-                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
+    #[idm_test]
+    async fn test_idm_unix_password_upgrade(idms: &IdmServer, idms_delayed: &mut IdmServerDelayed) {
+        // Assert the delayed action queue is empty
+        idms_delayed.check_is_empty_or_panic();
+        // Setup the admin with an imported unix pw.
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
 
-                let im_pw = "{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM";
-                let pw = Password::try_from(im_pw).expect("failed to parse");
-                let cred = Credential::new_from_password(pw);
-                let v_cred = Value::new_credential("unix", cred);
+        let im_pw = "{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM";
+        let pw = Password::try_from(im_pw).expect("failed to parse");
+        let cred = Credential::new_from_password(pw);
+        let v_cred = Value::new_credential("unix", cred);
 
-                let me_posix = unsafe {
-                    ModifyEvent::new_internal_invalid(
-                        filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                        ModifyList::new_list(vec![
-                            Modify::Present(
-                                AttrString::from("class"),
-                                Value::new_class("posixaccount"),
-                            ),
-                            Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                            Modify::Present(AttrString::from("unix_password"), v_cred),
-                        ]),
-                    )
-                };
-                assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
-                assert!(idms_prox_write.commit().is_ok());
-                idms_delayed.check_is_empty_or_panic();
-                // Get the auth ready.
-                let uuae = UnixUserAuthEvent::new_internal(UUID_ADMIN, "password");
-                let mut idms_auth = idms.auth();
-                let a1 = task::block_on(
-                    idms_auth.auth_unix(&uuae, Duration::from_secs(TEST_CURRENT_TIME)),
-                );
-                match a1 {
-                    Ok(Some(_tok)) => {}
-                    _ => assert!(false),
-                };
-                idms_auth.commit().expect("Must not fail");
-                // The upgrade was queued
-                // Process it.
-                let da = idms_delayed.try_recv().expect("invalid");
-                let _r = task::block_on(idms.delayed_action(duration_from_epoch_now(), da));
-                // Go again
-                let mut idms_auth = idms.auth();
-                let a2 = task::block_on(
-                    idms_auth.auth_unix(&uuae, Duration::from_secs(TEST_CURRENT_TIME)),
-                );
-                match a2 {
-                    Ok(Some(_tok)) => {}
-                    _ => assert!(false),
-                };
-                idms_auth.commit().expect("Must not fail");
-                // No delayed action was queued.
-                idms_delayed.check_is_empty_or_panic();
-            }
-        )
+        let me_posix = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iname("admin"))),
+                ModifyList::new_list(vec![
+                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+                    Modify::Present(AttrString::from("unix_password"), v_cred),
+                ]),
+            )
+        };
+        assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
+        idms_delayed.check_is_empty_or_panic();
+        // Get the auth ready.
+        let uuae = UnixUserAuthEvent::new_internal(UUID_ADMIN, "password");
+        let mut idms_auth = idms.auth().await;
+        let a1 = idms_auth
+            .auth_unix(&uuae, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
+        match a1 {
+            Ok(Some(_tok)) => {}
+            _ => assert!(false),
+        };
+        idms_auth.commit().expect("Must not fail");
+        // The upgrade was queued
+        // Process it.
+        let da = idms_delayed.try_recv().expect("invalid");
+        let _r = idms.delayed_action(duration_from_epoch_now(), da).await;
+        // Go again
+        let mut idms_auth = idms.auth().await;
+        let a2 = idms_auth
+            .auth_unix(&uuae, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
+        match a2 {
+            Ok(Some(_tok)) => {}
+            _ => assert!(false),
+        };
+        idms_auth.commit().expect("Must not fail");
+        // No delayed action was queued.
+        idms_delayed.check_is_empty_or_panic();
     }
 
     // For testing the timeouts
@@ -3118,8 +3034,8 @@ mod tests {
     const TEST_EXPIRE_TIME: u64 = TEST_CURRENT_TIME + 120;
     const TEST_AFTER_EXPIRY: u64 = TEST_CURRENT_TIME + 240;
 
-    async fn set_admin_valid_time(qs: &QueryServer) {
-        let mut qs_write = qs.write(duration_from_epoch_now()).await;
+    async fn set_admin_valid_time(idms: &IdmServer) {
+        let mut idms_write = idms.proxy_write(duration_from_epoch_now()).await;
 
         let v_valid_from = Value::new_datetime_epoch(Duration::from_secs(TEST_VALID_FROM_TIME));
         let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_EXPIRE_TIME));
@@ -3135,904 +3051,860 @@ mod tests {
             )
         };
         // go!
-        assert!(qs_write.modify(&me_inv_m).is_ok());
+        assert!(idms_write.qs_write.modify(&me_inv_m).is_ok());
 
-        qs_write.commit().expect("Must not fail");
+        idms_write.commit().expect("Must not fail");
     }
 
-    #[test]
-    fn test_idm_account_valid_from_expire() {
-        run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
-                // Any account that is not yet valrid / expired can't auth.
+    #[idm_test]
+    async fn test_idm_account_valid_from_expire(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        // Any account that is not yet valrid / expired can't auth.
 
-                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
-                    .expect("Failed to setup admin account");
-                // Set the valid bounds high/low
-                // TEST_VALID_FROM_TIME/TEST_EXPIRE_TIME
-                task::block_on(set_admin_valid_time(qs));
+        init_admin_w_password(idms, TEST_PASSWORD)
+            .await
+            .expect("Failed to setup admin account");
+        // Set the valid bounds high/low
+        // TEST_VALID_FROM_TIME/TEST_EXPIRE_TIME
+        set_admin_valid_time(idms).await;
 
-                let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
-                let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
+        let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
+        let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
 
-                let mut idms_auth = idms.auth();
-                let admin_init = AuthEvent::named_init("admin");
-                let r1 = task::block_on(idms_auth.auth(&admin_init, time_low));
+        let mut idms_auth = idms.auth().await;
+        let admin_init = AuthEvent::named_init("admin");
+        let r1 = idms_auth.auth(&admin_init, time_low).await;
 
-                let ar = r1.unwrap();
+        let ar = r1.unwrap();
+        let AuthResult {
+            sessionid: _,
+            state,
+            delay,
+        } = ar;
+
+        debug_assert!(delay.is_none());
+        match state {
+            AuthState::Denied(_) => {}
+            _ => {
+                panic!();
+            }
+        };
+
+        idms_auth.commit().expect("Must not fail");
+
+        // And here!
+        let mut idms_auth = idms.auth().await;
+        let admin_init = AuthEvent::named_init("admin");
+        let r1 = idms_auth.auth(&admin_init, time_high).await;
+
+        let ar = r1.unwrap();
+        let AuthResult {
+            sessionid: _,
+            state,
+            delay,
+        } = ar;
+
+        debug_assert!(delay.is_none());
+        match state {
+            AuthState::Denied(_) => {}
+            _ => {
+                panic!();
+            }
+        };
+
+        idms_auth.commit().expect("Must not fail");
+    }
+
+    #[idm_test]
+    async fn test_idm_unix_valid_from_expire(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        // Any account that is expired can't unix auth.
+        init_admin_w_password(idms, TEST_PASSWORD)
+            .await
+            .expect("Failed to setup admin account");
+        set_admin_valid_time(idms).await;
+
+        let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
+        let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
+
+        // make the admin a valid posix account
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        let me_posix = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iname("admin"))),
+                ModifyList::new_list(vec![
+                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+                ]),
+            )
+        };
+        assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
+
+        let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
+
+        assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Now check auth when the time is too high or too low.
+        let mut idms_auth = idms.auth().await;
+        let uuae_good = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
+
+        let a1 = idms_auth.auth_unix(&uuae_good, time_low).await;
+        // Should this actually send an error with the details? Or just silently act as
+        // badpw?
+        match a1 {
+            Ok(None) => {}
+            _ => assert!(false),
+        };
+
+        let a2 = idms_auth.auth_unix(&uuae_good, time_high).await;
+        match a2 {
+            Ok(None) => {}
+            _ => assert!(false),
+        };
+
+        idms_auth.commit().expect("Must not fail");
+        // Also check the generated unix tokens are invalid.
+        let mut idms_prox_read = idms.proxy_read().await;
+        let uute = UnixUserTokenEvent::new_internal(UUID_ADMIN);
+
+        let tok_r = idms_prox_read
+            .get_unixusertoken(&uute, time_low)
+            .expect("Failed to generate unix user token");
+
+        assert!(tok_r.name == "admin");
+        assert!(!tok_r.valid);
+
+        let tok_r = idms_prox_read
+            .get_unixusertoken(&uute, time_high)
+            .expect("Failed to generate unix user token");
+
+        assert!(tok_r.name == "admin");
+        assert!(!tok_r.valid);
+    }
+
+    #[idm_test]
+    async fn test_idm_radius_valid_from_expire(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        // Any account not valid/expiry should not return
+        // a radius packet.
+        init_admin_w_password(idms, TEST_PASSWORD)
+            .await
+            .expect("Failed to setup admin account");
+        set_admin_valid_time(idms).await;
+
+        let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
+        let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
+
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
+        let _r1 = idms_prox_write
+            .regenerate_radius_secret(&rrse)
+            .expect("Failed to reset radius credential 1");
+        idms_prox_write.commit().expect("failed to commit");
+
+        let mut idms_prox_read = idms.proxy_read().await;
+        let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN);
+        let tok_r = idms_prox_read.get_radiusauthtoken(&rate, time_low);
+
+        if tok_r.is_err() {
+            // Ok?
+        } else {
+            assert!(false);
+        }
+
+        let tok_r = idms_prox_read.get_radiusauthtoken(&rate, time_high);
+
+        if tok_r.is_err() {
+            // Ok?
+        } else {
+            assert!(false);
+        }
+    }
+
+    #[idm_test]
+    async fn test_idm_account_softlocking(idms: &IdmServer, idms_delayed: &mut IdmServerDelayed) {
+        init_admin_w_password(idms, TEST_PASSWORD)
+            .await
+            .expect("Failed to setup admin account");
+
+        // Auth invalid, no softlock present.
+        let sid =
+            init_admin_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "admin").await;
+        let mut idms_auth = idms.auth().await;
+        let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
+
+        let r2 = idms_auth
+            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
+        debug!("r2 ==> {:?}", r2);
+
+        match r2 {
+            Ok(ar) => {
                 let AuthResult {
                     sessionid: _,
                     state,
                     delay,
                 } = ar;
-
                 debug_assert!(delay.is_none());
                 match state {
-                    AuthState::Denied(_) => {}
+                    AuthState::Denied(reason) => {
+                        assert!(reason != "Account is temporarily locked");
+                    }
                     _ => {
+                        error!("A critical error has occurred! We have a non-denied result!");
                         panic!();
                     }
-                };
+                }
+            }
+            Err(e) => {
+                error!("A critical error has occurred! {:?}", e);
+                panic!();
+            }
+        };
+        idms_auth.commit().expect("Must not fail");
 
-                idms_auth.commit().expect("Must not fail");
+        // Auth init, softlock present, count == 1, same time (so before unlock_at)
+        // aka Auth valid immediate, (ct < exp), autofail
+        // aka Auth invalid immediate, (ct < exp), autofail
+        let mut idms_auth = idms.auth().await;
+        let admin_init = AuthEvent::named_init("admin");
 
-                // And here!
-                let mut idms_auth = idms.auth();
-                let admin_init = AuthEvent::named_init("admin");
-                let r1 = task::block_on(idms_auth.auth(&admin_init, time_high));
+        let r1 = idms_auth
+            .auth(&admin_init, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
+        let ar = r1.unwrap();
+        let AuthResult {
+            sessionid,
+            state,
+            delay: _,
+        } = ar;
+        assert!(matches!(state, AuthState::Choose(_)));
 
-                let ar = r1.unwrap();
+        // Soft locks only apply once a mechanism is chosen
+        let admin_begin = AuthEvent::begin_mech(sessionid, AuthMech::Password);
+
+        let r2 = idms_auth
+            .auth(&admin_begin, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
+        let ar = r2.unwrap();
+        let AuthResult {
+            sessionid: _,
+            state,
+            delay,
+        } = ar;
+
+        debug_assert!(delay.is_none());
+        match state {
+            AuthState::Denied(reason) => {
+                assert!(reason == "Account is temporarily locked");
+            }
+            _ => {
+                error!("Sessions was not denied (softlock)");
+                panic!();
+            }
+        };
+
+        idms_auth.commit().expect("Must not fail");
+
+        // Auth invalid once softlock pass (count == 2, exp_at grows)
+        // Tested in the softlock state machine.
+
+        // Auth valid once softlock pass, valid. Count remains.
+        let sid =
+            init_admin_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME + 2), "admin")
+                .await;
+
+        let mut idms_auth = idms.auth().await;
+        let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);
+
+        // Expect success
+        let r2 = idms_auth
+            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME + 2))
+            .await;
+        debug!("r2 ==> {:?}", r2);
+
+        match r2 {
+            Ok(ar) => {
                 let AuthResult {
                     sessionid: _,
                     state,
                     delay,
                 } = ar;
-
                 debug_assert!(delay.is_none());
                 match state {
-                    AuthState::Denied(_) => {}
+                    AuthState::Success(_uat, AuthIssueSession::Token) => {
+                        // Check the uat.
+                    }
                     _ => {
+                        error!("A critical error has occurred! We have a non-succcess result!");
                         panic!();
                     }
-                };
-
-                idms_auth.commit().expect("Must not fail");
-            }
-        )
-    }
-
-    #[test]
-    fn test_idm_unix_valid_from_expire() {
-        run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
-                // Any account that is expired can't unix auth.
-                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
-                    .expect("Failed to setup admin account");
-                task::block_on(set_admin_valid_time(qs));
-
-                let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
-                let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
-
-                // make the admin a valid posix account
-                let mut idms_prox_write =
-                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                let me_posix = unsafe {
-                    ModifyEvent::new_internal_invalid(
-                        filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                        ModifyList::new_list(vec![
-                            Modify::Present(
-                                AttrString::from("class"),
-                                Value::new_class("posixaccount"),
-                            ),
-                            Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                        ]),
-                    )
-                };
-                assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
-
-                let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
-
-                assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
-                assert!(idms_prox_write.commit().is_ok());
-
-                // Now check auth when the time is too high or too low.
-                let mut idms_auth = idms.auth();
-                let uuae_good = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
-
-                let a1 = task::block_on(idms_auth.auth_unix(&uuae_good, time_low));
-                // Should this actually send an error with the details? Or just silently act as
-                // badpw?
-                match a1 {
-                    Ok(None) => {}
-                    _ => assert!(false),
-                };
-
-                let a2 = task::block_on(idms_auth.auth_unix(&uuae_good, time_high));
-                match a2 {
-                    Ok(None) => {}
-                    _ => assert!(false),
-                };
-
-                idms_auth.commit().expect("Must not fail");
-                // Also check the generated unix tokens are invalid.
-                let mut idms_prox_read = task::block_on(idms.proxy_read());
-                let uute = UnixUserTokenEvent::new_internal(UUID_ADMIN);
-
-                let tok_r = idms_prox_read
-                    .get_unixusertoken(&uute, time_low)
-                    .expect("Failed to generate unix user token");
-
-                assert!(tok_r.name == "admin");
-                assert!(!tok_r.valid);
-
-                let tok_r = idms_prox_read
-                    .get_unixusertoken(&uute, time_high)
-                    .expect("Failed to generate unix user token");
-
-                assert!(tok_r.name == "admin");
-                assert!(!tok_r.valid);
-            }
-        )
-    }
-
-    #[test]
-    fn test_idm_radius_valid_from_expire() {
-        run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
-                // Any account not valid/expiry should not return
-                // a radius packet.
-                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
-                    .expect("Failed to setup admin account");
-                task::block_on(set_admin_valid_time(qs));
-
-                let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
-                let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
-
-                let mut idms_prox_write =
-                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
-                let _r1 = idms_prox_write
-                    .regenerate_radius_secret(&rrse)
-                    .expect("Failed to reset radius credential 1");
-                idms_prox_write.commit().expect("failed to commit");
-
-                let mut idms_prox_read = task::block_on(idms.proxy_read());
-                let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN);
-                let tok_r = idms_prox_read.get_radiusauthtoken(&rate, time_low);
-
-                if tok_r.is_err() {
-                    // Ok?
-                } else {
-                    assert!(false);
-                }
-
-                let tok_r = idms_prox_read.get_radiusauthtoken(&rate, time_high);
-
-                if tok_r.is_err() {
-                    // Ok?
-                } else {
-                    assert!(false);
                 }
             }
-        )
+            Err(e) => {
+                error!("A critical error has occurred! {:?}", e);
+                // Should not occur!
+                panic!();
+            }
+        };
+
+        idms_auth.commit().expect("Must not fail");
+
+        // Clear the auth session record
+        let da = idms_delayed.try_recv().expect("invalid");
+        assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+        idms_delayed.check_is_empty_or_panic();
+
+        // Auth valid after reset at, count == 0.
+        // Tested in the softlock state machine.
+
+        // Auth invalid, softlock present, count == 1
+        // Auth invalid after reset at, count == 0 and then to count == 1
+        // Tested in the softlock state machine.
     }
 
-    #[test]
-    fn test_idm_account_softlocking() {
-        run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
-                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
-                    .expect("Failed to setup admin account");
+    #[idm_test]
+    async fn test_idm_account_softlocking_interleaved(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        init_admin_w_password(idms, TEST_PASSWORD)
+            .await
+            .expect("Failed to setup admin account");
 
-                // Auth invalid, no softlock present.
-                let sid = init_admin_authsession_sid(
-                    idms,
-                    Duration::from_secs(TEST_CURRENT_TIME),
-                    "admin",
-                );
-                let mut idms_auth = idms.auth();
-                let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
+        // Start an *early* auth session.
+        let sid_early =
+            init_admin_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "admin").await;
 
-                let r2 = task::block_on(
-                    idms_auth.auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME)),
-                );
-                debug!("r2 ==> {:?}", r2);
+        // Start a second auth session
+        let sid_later =
+            init_admin_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "admin").await;
+        // Get the detail wrong in sid_later.
+        let mut idms_auth = idms.auth().await;
+        let anon_step = AuthEvent::cred_step_password(sid_later, TEST_PASSWORD_INC);
 
-                match r2 {
-                    Ok(ar) => {
-                        let AuthResult {
-                            sessionid: _,
-                            state,
-                            delay,
-                        } = ar;
-                        debug_assert!(delay.is_none());
-                        match state {
-                            AuthState::Denied(reason) => {
-                                assert!(reason != "Account is temporarily locked");
-                            }
-                            _ => {
-                                error!(
-                                    "A critical error has occurred! We have a non-denied result!"
-                                );
-                                panic!();
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        error!("A critical error has occurred! {:?}", e);
-                        panic!();
-                    }
-                };
-                idms_auth.commit().expect("Must not fail");
+        let r2 = idms_auth
+            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
+        debug!("r2 ==> {:?}", r2);
 
-                // Auth init, softlock present, count == 1, same time (so before unlock_at)
-                // aka Auth valid immediate, (ct < exp), autofail
-                // aka Auth invalid immediate, (ct < exp), autofail
-                let mut idms_auth = idms.auth();
-                let admin_init = AuthEvent::named_init("admin");
-
-                let r1 = task::block_on(
-                    idms_auth.auth(&admin_init, Duration::from_secs(TEST_CURRENT_TIME)),
-                );
-                let ar = r1.unwrap();
-                let AuthResult {
-                    sessionid,
-                    state,
-                    delay: _,
-                } = ar;
-                assert!(matches!(state, AuthState::Choose(_)));
-
-                // Soft locks only apply once a mechanism is chosen
-                let admin_begin = AuthEvent::begin_mech(sessionid, AuthMech::Password);
-
-                let r2 = task::block_on(
-                    idms_auth.auth(&admin_begin, Duration::from_secs(TEST_CURRENT_TIME)),
-                );
-                let ar = r2.unwrap();
+        match r2 {
+            Ok(ar) => {
                 let AuthResult {
                     sessionid: _,
                     state,
                     delay,
                 } = ar;
+                debug_assert!(delay.is_none());
+                match state {
+                    AuthState::Denied(reason) => {
+                        assert!(reason != "Account is temporarily locked");
+                    }
+                    _ => {
+                        error!("A critical error has occurred! We have a non-denied result!");
+                        panic!();
+                    }
+                }
+            }
+            Err(e) => {
+                error!("A critical error has occurred! {:?}", e);
+                panic!();
+            }
+        };
+        idms_auth.commit().expect("Must not fail");
 
+        // Now check that sid_early is denied due to softlock.
+        let mut idms_auth = idms.auth().await;
+        let anon_step = AuthEvent::cred_step_password(sid_early, TEST_PASSWORD);
+
+        // Expect success
+        let r2 = idms_auth
+            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
+        debug!("r2 ==> {:?}", r2);
+        match r2 {
+            Ok(ar) => {
+                let AuthResult {
+                    sessionid: _,
+                    state,
+                    delay,
+                } = ar;
                 debug_assert!(delay.is_none());
                 match state {
                     AuthState::Denied(reason) => {
                         assert!(reason == "Account is temporarily locked");
                     }
                     _ => {
-                        error!("Sessions was not denied (softlock)");
+                        error!("A critical error has occurred! We have a non-denied result!");
                         panic!();
                     }
-                };
-
-                idms_auth.commit().expect("Must not fail");
-
-                // Auth invalid once softlock pass (count == 2, exp_at grows)
-                // Tested in the softlock state machine.
-
-                // Auth valid once softlock pass, valid. Count remains.
-                let sid = init_admin_authsession_sid(
-                    idms,
-                    Duration::from_secs(TEST_CURRENT_TIME + 2),
-                    "admin",
-                );
-
-                let mut idms_auth = idms.auth();
-                let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);
-
-                // Expect success
-                let r2 = task::block_on(
-                    idms_auth.auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME + 2)),
-                );
-                debug!("r2 ==> {:?}", r2);
-
-                match r2 {
-                    Ok(ar) => {
-                        let AuthResult {
-                            sessionid: _,
-                            state,
-                            delay,
-                        } = ar;
-                        debug_assert!(delay.is_none());
-                        match state {
-                            AuthState::Success(_uat, AuthIssueSession::Token) => {
-                                // Check the uat.
-                            }
-                            _ => {
-                                error!(
-                                    "A critical error has occurred! We have a non-succcess result!"
-                                );
-                                panic!();
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        error!("A critical error has occurred! {:?}", e);
-                        // Should not occur!
-                        panic!();
-                    }
-                };
-
-                idms_auth.commit().expect("Must not fail");
-
-                // Clear the auth session record
-                let da = idms_delayed.try_recv().expect("invalid");
-                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
-                idms_delayed.check_is_empty_or_panic();
-
-                // Auth valid after reset at, count == 0.
-                // Tested in the softlock state machine.
-
-                // Auth invalid, softlock present, count == 1
-                // Auth invalid after reset at, count == 0 and then to count == 1
-                // Tested in the softlock state machine.
-            }
-        )
-    }
-
-    #[test]
-    fn test_idm_account_softlocking_interleaved() {
-        run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
-                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
-                    .expect("Failed to setup admin account");
-
-                // Start an *early* auth session.
-                let sid_early = init_admin_authsession_sid(
-                    idms,
-                    Duration::from_secs(TEST_CURRENT_TIME),
-                    "admin",
-                );
-
-                // Start a second auth session
-                let sid_later = init_admin_authsession_sid(
-                    idms,
-                    Duration::from_secs(TEST_CURRENT_TIME),
-                    "admin",
-                );
-                // Get the detail wrong in sid_later.
-                let mut idms_auth = idms.auth();
-                let anon_step = AuthEvent::cred_step_password(sid_later, TEST_PASSWORD_INC);
-
-                let r2 = task::block_on(
-                    idms_auth.auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME)),
-                );
-                debug!("r2 ==> {:?}", r2);
-
-                match r2 {
-                    Ok(ar) => {
-                        let AuthResult {
-                            sessionid: _,
-                            state,
-                            delay,
-                        } = ar;
-                        debug_assert!(delay.is_none());
-                        match state {
-                            AuthState::Denied(reason) => {
-                                assert!(reason != "Account is temporarily locked");
-                            }
-                            _ => {
-                                error!(
-                                    "A critical error has occurred! We have a non-denied result!"
-                                );
-                                panic!();
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        error!("A critical error has occurred! {:?}", e);
-                        panic!();
-                    }
-                };
-                idms_auth.commit().expect("Must not fail");
-
-                // Now check that sid_early is denied due to softlock.
-                let mut idms_auth = idms.auth();
-                let anon_step = AuthEvent::cred_step_password(sid_early, TEST_PASSWORD);
-
-                // Expect success
-                let r2 = task::block_on(
-                    idms_auth.auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME)),
-                );
-                debug!("r2 ==> {:?}", r2);
-                match r2 {
-                    Ok(ar) => {
-                        let AuthResult {
-                            sessionid: _,
-                            state,
-                            delay,
-                        } = ar;
-                        debug_assert!(delay.is_none());
-                        match state {
-                            AuthState::Denied(reason) => {
-                                assert!(reason == "Account is temporarily locked");
-                            }
-                            _ => {
-                                error!(
-                                    "A critical error has occurred! We have a non-denied result!"
-                                );
-                                panic!();
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        error!("A critical error has occurred! {:?}", e);
-                        panic!();
-                    }
-                };
-                idms_auth.commit().expect("Must not fail");
-            }
-        )
-    }
-
-    #[test]
-    fn test_idm_account_unix_softlocking() {
-        run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
-                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
-                    .expect("Failed to setup admin account");
-                // make the admin a valid posix account
-                let mut idms_prox_write =
-                    task::block_on(idms.proxy_write(duration_from_epoch_now()));
-                let me_posix = unsafe {
-                    ModifyEvent::new_internal_invalid(
-                        filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                        ModifyList::new_list(vec![
-                            Modify::Present(
-                                AttrString::from("class"),
-                                Value::new_class("posixaccount"),
-                            ),
-                            Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                        ]),
-                    )
-                };
-                assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
-
-                let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
-                assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
-                assert!(idms_prox_write.commit().is_ok());
-
-                let mut idms_auth = idms.auth();
-                let uuae_good = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
-                let uuae_bad = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD_INC);
-
-                let a2 = task::block_on(
-                    idms_auth.auth_unix(&uuae_bad, Duration::from_secs(TEST_CURRENT_TIME)),
-                );
-                match a2 {
-                    Ok(None) => {}
-                    _ => assert!(false),
-                };
-
-                // Now if we immediately auth again, should fail at same time due to SL
-                let a1 = task::block_on(
-                    idms_auth.auth_unix(&uuae_good, Duration::from_secs(TEST_CURRENT_TIME)),
-                );
-                match a1 {
-                    Ok(None) => {}
-                    _ => assert!(false),
-                };
-
-                // And then later, works because of SL lifting.
-                let a1 = task::block_on(
-                    idms_auth.auth_unix(&uuae_good, Duration::from_secs(TEST_CURRENT_TIME + 2)),
-                );
-                match a1 {
-                    Ok(Some(_tok)) => {}
-                    _ => assert!(false),
-                };
-
-                assert!(idms_auth.commit().is_ok());
-            }
-        )
-    }
-
-    #[test]
-    fn test_idm_jwt_uat_expiry() {
-        run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
-                let ct = Duration::from_secs(TEST_CURRENT_TIME);
-                let expiry = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
-                // Do an authenticate
-                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
-                    .expect("Failed to setup admin account");
-                let token = check_admin_password(idms, TEST_PASSWORD);
-
-                // Clear out the queued session record
-                let da = idms_delayed.try_recv().expect("invalid");
-                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
-                // Persist it.
-                let r = task::block_on(idms.delayed_action(duration_from_epoch_now(), da));
-                assert!(Ok(true) == r);
-                idms_delayed.check_is_empty_or_panic();
-
-                let mut idms_prox_read = task::block_on(idms.proxy_read());
-
-                // Check it's valid.
-                idms_prox_read
-                    .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
-                    .expect("Failed to validate");
-
-                // In X time it should be INVALID
-                match idms_prox_read.validate_and_parse_token_to_ident(Some(token.as_str()), expiry)
-                {
-                    Err(OperationError::SessionExpired) => {}
-                    _ => assert!(false),
                 }
             }
-        )
-    }
-
-    #[test]
-    fn test_idm_expired_auth_session_cleanup() {
-        run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
-                let ct = Duration::from_secs(TEST_CURRENT_TIME);
-                let expiry_a = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
-                let expiry_b = ct + Duration::from_secs((AUTH_SESSION_EXPIRY + 1) * 2);
-
-                let session_a = Uuid::new_v4();
-                let session_b = Uuid::new_v4();
-
-                // We need to put the credential on the admin.
-                let cred_id = task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
-                    .expect("Failed to setup admin account");
-
-                // Assert no sessions present
-                let mut idms_prox_read = task::block_on(idms.proxy_read());
-                let admin = idms_prox_read
-                    .qs_read
-                    .internal_search_uuid(UUID_ADMIN)
-                    .expect("failed");
-                let sessions = admin.get_ava_as_session_map("user_auth_token_session");
-                assert!(sessions.is_none());
-                drop(idms_prox_read);
-
-                let da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
-                    target_uuid: UUID_ADMIN,
-                    session_id: session_a,
-                    cred_id,
-                    label: "Test Session A".to_string(),
-                    expiry: Some(OffsetDateTime::unix_epoch() + expiry_a),
-                    issued_at: OffsetDateTime::unix_epoch() + ct,
-                    issued_by: IdentityId::User(UUID_ADMIN),
-                    scope: SessionScope::ReadOnly,
-                });
-                // Persist it.
-                let r = task::block_on(idms.delayed_action(ct, da));
-                assert!(Ok(true) == r);
-
-                // Check it was written, and check
-                let mut idms_prox_read = task::block_on(idms.proxy_read());
-                let admin = idms_prox_read
-                    .qs_read
-                    .internal_search_uuid(UUID_ADMIN)
-                    .expect("failed");
-                let sessions = admin
-                    .get_ava_as_session_map("user_auth_token_session")
-                    .expect("Sessions must be present!");
-                assert!(sessions.len() == 1);
-                let session_id_a = sessions
-                    .keys()
-                    .copied()
-                    .next()
-                    .expect("Could not access session id");
-                assert!(session_id_a == session_a);
-
-                drop(idms_prox_read);
-
-                // When we re-auth, this is what triggers the session cleanup via the delayed action.
-
-                let da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
-                    target_uuid: UUID_ADMIN,
-                    session_id: session_b,
-                    cred_id,
-                    label: "Test Session B".to_string(),
-                    expiry: Some(OffsetDateTime::unix_epoch() + expiry_b),
-                    issued_at: OffsetDateTime::unix_epoch() + ct,
-                    issued_by: IdentityId::User(UUID_ADMIN),
-                    scope: SessionScope::ReadOnly,
-                });
-                // Persist it.
-                let r = task::block_on(idms.delayed_action(expiry_a, da));
-                assert!(Ok(true) == r);
-
-                let mut idms_prox_read = task::block_on(idms.proxy_read());
-                let admin = idms_prox_read
-                    .qs_read
-                    .internal_search_uuid(UUID_ADMIN)
-                    .expect("failed");
-                let sessions = admin
-                    .get_ava_as_session_map("user_auth_token_session")
-                    .expect("Sessions must be present!");
-                trace!(?sessions);
-                assert!(sessions.len() == 1);
-                let session_id_b = sessions
-                    .keys()
-                    .copied()
-                    .next()
-                    .expect("Could not access session id");
-                assert!(session_id_b == session_b);
-
-                assert!(session_id_a != session_id_b);
+            Err(e) => {
+                error!("A critical error has occurred! {:?}", e);
+                panic!();
             }
-        )
+        };
+        idms_auth.commit().expect("Must not fail");
     }
 
-    #[test]
-    fn test_idm_account_session_validation() {
-        run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
-                use compact_jwt::{Jws, JwsUnverified};
-                use kanidm_proto::v1::UserAuthToken;
-                use std::str::FromStr;
+    #[idm_test]
+    async fn test_idm_account_unix_softlocking(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        init_admin_w_password(idms, TEST_PASSWORD)
+            .await
+            .expect("Failed to setup admin account");
+        // make the admin a valid posix account
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        let me_posix = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iname("admin"))),
+                ModifyList::new_list(vec![
+                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+                ]),
+            )
+        };
+        assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
-                let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
+        assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
 
-                let post_grace = ct + GRACE_WINDOW + Duration::from_secs(1);
-                let expiry = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
+        let mut idms_auth = idms.auth().await;
+        let uuae_good = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
+        let uuae_bad = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD_INC);
 
-                // Assert that our grace time is less than expiry, so we know the failure is due to
-                // this.
-                assert!(post_grace < expiry);
+        let a2 = idms_auth
+            .auth_unix(&uuae_bad, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
+        match a2 {
+            Ok(None) => {}
+            _ => assert!(false),
+        };
 
-                // Do an authenticate
-                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
-                    .expect("Failed to setup admin account");
-                let token = check_admin_password(idms, TEST_PASSWORD);
+        // Now if we immediately auth again, should fail at same time due to SL
+        let a1 = idms_auth
+            .auth_unix(&uuae_good, Duration::from_secs(TEST_CURRENT_TIME))
+            .await;
+        match a1 {
+            Ok(None) => {}
+            _ => assert!(false),
+        };
 
-                // Process the session info.
-                let da = idms_delayed.try_recv().expect("invalid");
-                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
-                let r = task::block_on(idms.delayed_action(ct, da));
-                assert!(Ok(true) == r);
+        // And then later, works because of SL lifting.
+        let a1 = idms_auth
+            .auth_unix(&uuae_good, Duration::from_secs(TEST_CURRENT_TIME + 2))
+            .await;
+        match a1 {
+            Ok(Some(_tok)) => {}
+            _ => assert!(false),
+        };
 
-                let uat_unverified =
-                    JwsUnverified::from_str(&token).expect("Failed to parse apitoken");
-                let uat_inner: Jws<UserAuthToken> = uat_unverified
-                    .validate_embeded()
-                    .expect("Embedded jwk not found");
-                let uat_inner = uat_inner.into_inner();
-
-                let mut idms_prox_read = task::block_on(idms.proxy_read());
-
-                // Check it's valid.
-                idms_prox_read
-                    .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
-                    .expect("Failed to validate");
-
-                // If the auth session record wasn't processed, this will fail.
-                idms_prox_read
-                    .validate_and_parse_token_to_ident(Some(token.as_str()), post_grace)
-                    .expect("Failed to validate");
-
-                drop(idms_prox_read);
-
-                // Mark the session as invalid now.
-                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-                let dte =
-                    DestroySessionTokenEvent::new_internal(uat_inner.uuid, uat_inner.session_id);
-                assert!(idms_prox_write.account_destroy_session_token(&dte).is_ok());
-                assert!(idms_prox_write.commit().is_ok());
-
-                // Now check again with the session destroyed.
-                let mut idms_prox_read = task::block_on(idms.proxy_read());
-
-                // Now, within gracewindow, it's still valid.
-                idms_prox_read
-                    .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
-                    .expect("Failed to validate");
-
-                // post grace, it's not valid.
-                match idms_prox_read
-                    .validate_and_parse_token_to_ident(Some(token.as_str()), post_grace)
-                {
-                    Err(OperationError::SessionExpired) => {}
-                    _ => assert!(false),
-                }
-            }
-        )
+        assert!(idms_auth.commit().is_ok());
     }
 
-    #[test]
-    fn test_idm_uat_claim_insertion() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+    #[idm_test]
+    async fn test_idm_jwt_uat_expiry(idms: &IdmServer, idms_delayed: &mut IdmServerDelayed) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let expiry = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
+        // Do an authenticate
+        init_admin_w_password(idms, TEST_PASSWORD)
+            .await
+            .expect("Failed to setup admin account");
+        let token = check_admin_password(idms, TEST_PASSWORD).await;
 
-            // get an account.
-            let account = idms_prox_write
-                .target_to_account(UUID_ADMIN)
-                .expect("account must exist");
+        // Clear out the queued session record
+        let da = idms_delayed.try_recv().expect("invalid");
+        assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+        // Persist it.
+        let r = idms.delayed_action(duration_from_epoch_now(), da).await;
+        assert!(Ok(true) == r);
+        idms_delayed.check_is_empty_or_panic();
 
-            // Create some fake UATs, then process them and see what claims fall out 🥳
-            let session_id = uuid::Uuid::new_v4();
+        let mut idms_prox_read = idms.proxy_read().await;
 
-            // For the different auth types, check that we get the correct claims:
+        // Check it's valid.
+        idms_prox_read
+            .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
+            .expect("Failed to validate");
 
-            // == anonymous
-            let uat = account
-                .to_userauthtoken(session_id, ct, AuthType::Anonymous, None)
-                .expect("Unable to create uat");
-            let ident = idms_prox_write
-                .process_uat_to_identity(&uat, ct)
-                .expect("Unable to process uat");
-
-            assert!(!ident.has_claim("authtype_anonymous"));
-            // Does NOT have this
-            assert!(!ident.has_claim("authlevel_strong"));
-            assert!(!ident.has_claim("authclass_single"));
-            assert!(!ident.has_claim("authclass_mfa"));
-
-            // == unixpassword
-            let uat = account
-                .to_userauthtoken(session_id, ct, AuthType::UnixPassword, None)
-                .expect("Unable to create uat");
-            let ident = idms_prox_write
-                .process_uat_to_identity(&uat, ct)
-                .expect("Unable to process uat");
-
-            assert!(!ident.has_claim("authtype_unixpassword"));
-            assert!(!ident.has_claim("authclass_single"));
-            // Does NOT have this
-            assert!(!ident.has_claim("authlevel_strong"));
-            assert!(!ident.has_claim("authclass_mfa"));
-
-            // == password
-            let uat = account
-                .to_userauthtoken(session_id, ct, AuthType::Password, None)
-                .expect("Unable to create uat");
-            let ident = idms_prox_write
-                .process_uat_to_identity(&uat, ct)
-                .expect("Unable to process uat");
-
-            assert!(!ident.has_claim("authtype_password"));
-            assert!(!ident.has_claim("authclass_single"));
-            // Does NOT have this
-            assert!(!ident.has_claim("authlevel_strong"));
-            assert!(!ident.has_claim("authclass_mfa"));
-
-            // == generatedpassword
-            let uat = account
-                .to_userauthtoken(session_id, ct, AuthType::GeneratedPassword, None)
-                .expect("Unable to create uat");
-            let ident = idms_prox_write
-                .process_uat_to_identity(&uat, ct)
-                .expect("Unable to process uat");
-
-            assert!(!ident.has_claim("authtype_generatedpassword"));
-            assert!(!ident.has_claim("authclass_single"));
-            assert!(!ident.has_claim("authlevel_strong"));
-            // Does NOT have this
-            assert!(!ident.has_claim("authclass_mfa"));
-
-            // == webauthn
-            let uat = account
-                .to_userauthtoken(session_id, ct, AuthType::Passkey, None)
-                .expect("Unable to create uat");
-            let ident = idms_prox_write
-                .process_uat_to_identity(&uat, ct)
-                .expect("Unable to process uat");
-
-            assert!(!ident.has_claim("authtype_webauthn"));
-            assert!(!ident.has_claim("authclass_single"));
-            assert!(!ident.has_claim("authlevel_strong"));
-            // Does NOT have this
-            assert!(!ident.has_claim("authclass_mfa"));
-
-            // == passwordmfa
-            let uat = account
-                .to_userauthtoken(session_id, ct, AuthType::PasswordMfa, None)
-                .expect("Unable to create uat");
-            let ident = idms_prox_write
-                .process_uat_to_identity(&uat, ct)
-                .expect("Unable to process uat");
-
-            assert!(!ident.has_claim("authtype_passwordmfa"));
-            assert!(!ident.has_claim("authlevel_strong"));
-            assert!(!ident.has_claim("authclass_mfa"));
-            // Does NOT have this
-            assert!(!ident.has_claim("authclass_single"));
-        })
+        // In X time it should be INVALID
+        match idms_prox_read.validate_and_parse_token_to_ident(Some(token.as_str()), expiry) {
+            Err(OperationError::SessionExpired) => {}
+            _ => assert!(false),
+        }
     }
 
-    #[test]
-    fn test_idm_jwt_uat_token_key_reload() {
-        run_idm_test!(
-            |qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
-                let ct = Duration::from_secs(TEST_CURRENT_TIME);
+    #[idm_test]
+    async fn test_idm_expired_auth_session_cleanup(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let expiry_a = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
+        let expiry_b = ct + Duration::from_secs((AUTH_SESSION_EXPIRY + 1) * 2);
 
-                task::block_on(init_admin_w_password(qs, TEST_PASSWORD))
-                    .expect("Failed to setup admin account");
-                let token = check_admin_password(idms, TEST_PASSWORD);
+        let session_a = Uuid::new_v4();
+        let session_b = Uuid::new_v4();
 
-                // Clear the session record
-                let da = idms_delayed.try_recv().expect("invalid");
-                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
-                idms_delayed.check_is_empty_or_panic();
+        // We need to put the credential on the admin.
+        let cred_id = init_admin_w_password(idms, TEST_PASSWORD)
+            .await
+            .expect("Failed to setup admin account");
 
-                let mut idms_prox_read = task::block_on(idms.proxy_read());
+        // Assert no sessions present
+        let mut idms_prox_read = idms.proxy_read().await;
+        let admin = idms_prox_read
+            .qs_read
+            .internal_search_uuid(UUID_ADMIN)
+            .expect("failed");
+        let sessions = admin.get_ava_as_session_map("user_auth_token_session");
+        assert!(sessions.is_none());
+        drop(idms_prox_read);
 
-                // Check it's valid.
-                idms_prox_read
-                    .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
-                    .expect("Failed to validate");
+        let da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
+            target_uuid: UUID_ADMIN,
+            session_id: session_a,
+            cred_id,
+            label: "Test Session A".to_string(),
+            expiry: Some(OffsetDateTime::unix_epoch() + expiry_a),
+            issued_at: OffsetDateTime::unix_epoch() + ct,
+            issued_by: IdentityId::User(UUID_ADMIN),
+            scope: SessionScope::ReadOnly,
+        });
+        // Persist it.
+        let r = idms.delayed_action(ct, da).await;
+        assert!(Ok(true) == r);
 
-                drop(idms_prox_read);
+        // Check it was written, and check
+        let mut idms_prox_read = idms.proxy_read().await;
+        let admin = idms_prox_read
+            .qs_read
+            .internal_search_uuid(UUID_ADMIN)
+            .expect("failed");
+        let sessions = admin
+            .get_ava_as_session_map("user_auth_token_session")
+            .expect("Sessions must be present!");
+        assert!(sessions.len() == 1);
+        let session_id_a = sessions
+            .keys()
+            .copied()
+            .next()
+            .expect("Could not access session id");
+        assert!(session_id_a == session_a);
 
-                // Now reset the token_key - we can cheat and push this
-                // through the migrate 3 to 4 code.
-                //
-                // fernet_private_key_str
-                // es256_private_key_der
-                let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
-                let me_reset_tokens = unsafe {
-                    ModifyEvent::new_internal_invalid(
-                        filter!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO))),
-                        ModifyList::new_list(vec![
-                            Modify::Purged(AttrString::from("fernet_private_key_str")),
-                            Modify::Purged(AttrString::from("es256_private_key_der")),
-                            Modify::Purged(AttrString::from("domain_token_key")),
-                        ]),
-                    )
-                };
-                assert!(idms_prox_write.qs_write.modify(&me_reset_tokens).is_ok());
-                assert!(idms_prox_write.commit().is_ok());
-                // Check the old token is invalid, due to reload.
-                let new_token = check_admin_password(idms, TEST_PASSWORD);
+        drop(idms_prox_read);
 
-                // Clear the session record
-                let da = idms_delayed.try_recv().expect("invalid");
-                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
-                idms_delayed.check_is_empty_or_panic();
+        // When we re-auth, this is what triggers the session cleanup via the delayed action.
 
-                let mut idms_prox_read = task::block_on(idms.proxy_read());
-                assert!(idms_prox_read
-                    .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
-                    .is_err());
-                // A new token will work due to the matching key.
-                idms_prox_read
-                    .validate_and_parse_token_to_ident(Some(new_token.as_str()), ct)
-                    .expect("Failed to validate");
-            }
-        )
+        let da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
+            target_uuid: UUID_ADMIN,
+            session_id: session_b,
+            cred_id,
+            label: "Test Session B".to_string(),
+            expiry: Some(OffsetDateTime::unix_epoch() + expiry_b),
+            issued_at: OffsetDateTime::unix_epoch() + ct,
+            issued_by: IdentityId::User(UUID_ADMIN),
+            scope: SessionScope::ReadOnly,
+        });
+        // Persist it.
+        let r = idms.delayed_action(expiry_a, da).await;
+        assert!(Ok(true) == r);
+
+        let mut idms_prox_read = idms.proxy_read().await;
+        let admin = idms_prox_read
+            .qs_read
+            .internal_search_uuid(UUID_ADMIN)
+            .expect("failed");
+        let sessions = admin
+            .get_ava_as_session_map("user_auth_token_session")
+            .expect("Sessions must be present!");
+        trace!(?sessions);
+        assert!(sessions.len() == 1);
+        let session_id_b = sessions
+            .keys()
+            .copied()
+            .next()
+            .expect("Could not access session id");
+        assert!(session_id_b == session_b);
+
+        assert!(session_id_a != session_id_b);
     }
 
-    #[test]
-    fn test_idm_service_account_to_person() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let mut idms_prox_write = task::block_on(idms.proxy_write(ct));
+    #[idm_test]
+    async fn test_idm_account_session_validation(
+        idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
+    ) {
+        use compact_jwt::{Jws, JwsUnverified};
+        use kanidm_proto::v1::UserAuthToken;
+        use std::str::FromStr;
 
-            let ident = Identity::from_internal();
-            let target_uuid = Uuid::new_v4();
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-            // Create a service account
-            let e = entry_init!(
-                ("class", Value::new_class("object")),
-                ("class", Value::new_class("account")),
-                ("class", Value::new_class("service_account")),
-                ("name", Value::new_iname("testaccount")),
-                ("uuid", Value::Uuid(target_uuid)),
-                ("description", Value::new_utf8s("testaccount")),
-                ("displayname", Value::new_utf8s("Test Account"))
-            );
+        let post_grace = ct + GRACE_WINDOW + Duration::from_secs(1);
+        let expiry = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
 
-            let ce = CreateEvent::new_internal(vec![e]);
-            let cr = idms_prox_write.qs_write.create(&ce);
-            assert!(cr.is_ok());
+        // Assert that our grace time is less than expiry, so we know the failure is due to
+        // this.
+        assert!(post_grace < expiry);
 
-            // Do the migrate.
-            assert!(idms_prox_write
-                .service_account_into_person(&ident, target_uuid)
-                .is_ok());
+        // Do an authenticate
+        init_admin_w_password(idms, TEST_PASSWORD)
+            .await
+            .expect("Failed to setup admin account");
+        let token = check_admin_password(idms, TEST_PASSWORD).await;
 
-            // Any checks?
-        })
+        // Process the session info.
+        let da = idms_delayed.try_recv().expect("invalid");
+        assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+        let r = idms.delayed_action(ct, da).await;
+        assert!(Ok(true) == r);
+
+        let uat_unverified = JwsUnverified::from_str(&token).expect("Failed to parse apitoken");
+        let uat_inner: Jws<UserAuthToken> = uat_unverified
+            .validate_embeded()
+            .expect("Embedded jwk not found");
+        let uat_inner = uat_inner.into_inner();
+
+        let mut idms_prox_read = idms.proxy_read().await;
+
+        // Check it's valid.
+        idms_prox_read
+            .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
+            .expect("Failed to validate");
+
+        // If the auth session record wasn't processed, this will fail.
+        idms_prox_read
+            .validate_and_parse_token_to_ident(Some(token.as_str()), post_grace)
+            .expect("Failed to validate");
+
+        drop(idms_prox_read);
+
+        // Mark the session as invalid now.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let dte = DestroySessionTokenEvent::new_internal(uat_inner.uuid, uat_inner.session_id);
+        assert!(idms_prox_write.account_destroy_session_token(&dte).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Now check again with the session destroyed.
+        let mut idms_prox_read = idms.proxy_read().await;
+
+        // Now, within gracewindow, it's still valid.
+        idms_prox_read
+            .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
+            .expect("Failed to validate");
+
+        // post grace, it's not valid.
+        match idms_prox_read.validate_and_parse_token_to_ident(Some(token.as_str()), post_grace) {
+            Err(OperationError::SessionExpired) => {}
+            _ => assert!(false),
+        }
+    }
+
+    #[idm_test]
+    async fn test_idm_uat_claim_insertion(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        // get an account.
+        let account = idms_prox_write
+            .target_to_account(UUID_ADMIN)
+            .expect("account must exist");
+
+        // Create some fake UATs, then process them and see what claims fall out 🥳
+        let session_id = uuid::Uuid::new_v4();
+
+        // For the different auth types, check that we get the correct claims:
+
+        // == anonymous
+        let uat = account
+            .to_userauthtoken(session_id, ct, AuthType::Anonymous, None)
+            .expect("Unable to create uat");
+        let ident = idms_prox_write
+            .process_uat_to_identity(&uat, ct)
+            .expect("Unable to process uat");
+
+        assert!(!ident.has_claim("authtype_anonymous"));
+        // Does NOT have this
+        assert!(!ident.has_claim("authlevel_strong"));
+        assert!(!ident.has_claim("authclass_single"));
+        assert!(!ident.has_claim("authclass_mfa"));
+
+        // == unixpassword
+        let uat = account
+            .to_userauthtoken(session_id, ct, AuthType::UnixPassword, None)
+            .expect("Unable to create uat");
+        let ident = idms_prox_write
+            .process_uat_to_identity(&uat, ct)
+            .expect("Unable to process uat");
+
+        assert!(!ident.has_claim("authtype_unixpassword"));
+        assert!(!ident.has_claim("authclass_single"));
+        // Does NOT have this
+        assert!(!ident.has_claim("authlevel_strong"));
+        assert!(!ident.has_claim("authclass_mfa"));
+
+        // == password
+        let uat = account
+            .to_userauthtoken(session_id, ct, AuthType::Password, None)
+            .expect("Unable to create uat");
+        let ident = idms_prox_write
+            .process_uat_to_identity(&uat, ct)
+            .expect("Unable to process uat");
+
+        assert!(!ident.has_claim("authtype_password"));
+        assert!(!ident.has_claim("authclass_single"));
+        // Does NOT have this
+        assert!(!ident.has_claim("authlevel_strong"));
+        assert!(!ident.has_claim("authclass_mfa"));
+
+        // == generatedpassword
+        let uat = account
+            .to_userauthtoken(session_id, ct, AuthType::GeneratedPassword, None)
+            .expect("Unable to create uat");
+        let ident = idms_prox_write
+            .process_uat_to_identity(&uat, ct)
+            .expect("Unable to process uat");
+
+        assert!(!ident.has_claim("authtype_generatedpassword"));
+        assert!(!ident.has_claim("authclass_single"));
+        assert!(!ident.has_claim("authlevel_strong"));
+        // Does NOT have this
+        assert!(!ident.has_claim("authclass_mfa"));
+
+        // == webauthn
+        let uat = account
+            .to_userauthtoken(session_id, ct, AuthType::Passkey, None)
+            .expect("Unable to create uat");
+        let ident = idms_prox_write
+            .process_uat_to_identity(&uat, ct)
+            .expect("Unable to process uat");
+
+        assert!(!ident.has_claim("authtype_webauthn"));
+        assert!(!ident.has_claim("authclass_single"));
+        assert!(!ident.has_claim("authlevel_strong"));
+        // Does NOT have this
+        assert!(!ident.has_claim("authclass_mfa"));
+
+        // == passwordmfa
+        let uat = account
+            .to_userauthtoken(session_id, ct, AuthType::PasswordMfa, None)
+            .expect("Unable to create uat");
+        let ident = idms_prox_write
+            .process_uat_to_identity(&uat, ct)
+            .expect("Unable to process uat");
+
+        assert!(!ident.has_claim("authtype_passwordmfa"));
+        assert!(!ident.has_claim("authlevel_strong"));
+        assert!(!ident.has_claim("authclass_mfa"));
+        // Does NOT have this
+        assert!(!ident.has_claim("authclass_single"));
+    }
+
+    #[idm_test]
+    async fn test_idm_jwt_uat_token_key_reload(
+        idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        init_admin_w_password(idms, TEST_PASSWORD)
+            .await
+            .expect("Failed to setup admin account");
+        let token = check_admin_password(idms, TEST_PASSWORD).await;
+
+        // Clear the session record
+        let da = idms_delayed.try_recv().expect("invalid");
+        assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+        idms_delayed.check_is_empty_or_panic();
+
+        let mut idms_prox_read = idms.proxy_read().await;
+
+        // Check it's valid.
+        idms_prox_read
+            .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
+            .expect("Failed to validate");
+
+        drop(idms_prox_read);
+
+        // Now reset the token_key - we can cheat and push this
+        // through the migrate 3 to 4 code.
+        //
+        // fernet_private_key_str
+        // es256_private_key_der
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let me_reset_tokens = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO))),
+                ModifyList::new_list(vec![
+                    Modify::Purged(AttrString::from("fernet_private_key_str")),
+                    Modify::Purged(AttrString::from("es256_private_key_der")),
+                    Modify::Purged(AttrString::from("domain_token_key")),
+                ]),
+            )
+        };
+        assert!(idms_prox_write.qs_write.modify(&me_reset_tokens).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
+        // Check the old token is invalid, due to reload.
+        let new_token = check_admin_password(idms, TEST_PASSWORD).await;
+
+        // Clear the session record
+        let da = idms_delayed.try_recv().expect("invalid");
+        assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+        idms_delayed.check_is_empty_or_panic();
+
+        let mut idms_prox_read = idms.proxy_read().await;
+        assert!(idms_prox_read
+            .validate_and_parse_token_to_ident(Some(token.as_str()), ct)
+            .is_err());
+        // A new token will work due to the matching key.
+        idms_prox_read
+            .validate_and_parse_token_to_ident(Some(new_token.as_str()), ct)
+            .expect("Failed to validate");
+    }
+
+    #[idm_test]
+    async fn test_idm_service_account_to_person(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let ident = Identity::from_internal();
+        let target_uuid = Uuid::new_v4();
+
+        // Create a service account
+        let e = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("service_account")),
+            ("name", Value::new_iname("testaccount")),
+            ("uuid", Value::Uuid(target_uuid)),
+            ("description", Value::new_utf8s("testaccount")),
+            ("displayname", Value::new_utf8s("Test Account"))
+        );
+
+        let ce = CreateEvent::new_internal(vec![e]);
+        let cr = idms_prox_write.qs_write.create(&ce);
+        assert!(cr.is_ok());
+
+        // Do the migrate.
+        assert!(idms_prox_write
+            .service_account_into_person(&ident, target_uuid)
+            .is_ok());
+
+        // Any checks?
     }
 }

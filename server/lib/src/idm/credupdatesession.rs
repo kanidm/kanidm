@@ -1741,7 +1741,7 @@ mod tests {
         pw: &str,
         ct: Duration,
     ) -> Option<String> {
-        let mut idms_auth = idms.auth();
+        let mut idms_auth = idms.auth().await;
 
         let auth_init = AuthEvent::named_init("testperson");
 
@@ -1800,7 +1800,7 @@ mod tests {
         token: &Totp,
         ct: Duration,
     ) -> Option<String> {
-        let mut idms_auth = idms.auth();
+        let mut idms_auth = idms.auth().await;
 
         let auth_init = AuthEvent::named_init("testperson");
 
@@ -1873,7 +1873,7 @@ mod tests {
         code: &str,
         ct: Duration,
     ) -> Option<String> {
-        let mut idms_auth = idms.auth();
+        let mut idms_auth = idms.auth().await;
 
         let auth_init = AuthEvent::named_init("testperson");
 
@@ -1948,7 +1948,7 @@ mod tests {
         origin: Url,
         ct: Duration,
     ) -> Option<String> {
-        let mut idms_auth = idms.auth();
+        let mut idms_auth = idms.auth().await;
 
         let auth_init = AuthEvent::named_init("testperson");
 

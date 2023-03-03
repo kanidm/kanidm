@@ -120,7 +120,7 @@ mod tests {
         wa: &mut WebauthnAuthenticator<SoftPasskey>,
         idms_delayed: &mut IdmServerDelayed,
     ) -> Option<String> {
-        let mut idms_auth = idms.auth();
+        let mut idms_auth = idms.auth().await;
         let origin = idms_auth.get_origin().clone();
 
         let auth_init = AuthEvent::named_init("testperson");

@@ -378,7 +378,7 @@ impl LdapServer {
         );
         let ct = duration_from_epoch_now();
 
-        let mut idm_auth = idms.auth_async().await;
+        let mut idm_auth = idms.auth().await;
 
         let target_uuid: Uuid = if dn.is_empty() {
             if pw.is_empty() {
