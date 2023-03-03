@@ -1822,7 +1822,7 @@ mod tests {
             .expect("Failed to perform oauth2 permit");
 
         // Assert that the consent was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
             _ => assert!(false),
         }
@@ -1847,7 +1847,7 @@ mod tests {
             .expect("Failed to perform oauth2 token exchange");
 
         // Assert that the session creation was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2SessionRecord(_)) => {}
             _ => assert!(false),
         }
@@ -2154,7 +2154,7 @@ mod tests {
             .expect("Failed to perform oauth2 permit");
 
         // Assert that the consent was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
             _ => assert!(false),
         }
@@ -2319,7 +2319,7 @@ mod tests {
             .expect("Failed to perform oauth2 permit");
 
         // Assert that the consent was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
             _ => assert!(false),
         }
@@ -2337,7 +2337,7 @@ mod tests {
             .expect("Unable to exchange for oauth2 token");
 
         // Assert that the session creation was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2SessionRecord(_)) => {}
             _ => assert!(false),
         }
@@ -2423,7 +2423,7 @@ mod tests {
             .expect("Failed to perform oauth2 permit");
 
         // Assert that the consent was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
             _ => assert!(false),
         }
@@ -2443,7 +2443,7 @@ mod tests {
         drop(idms_prox_read);
 
         // Assert that the session creation was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2SessionRecord(osr)) => {
                 // Process it to ensure the record exists.
                 let mut idms_prox_write = idms.proxy_write(ct).await;
@@ -2585,7 +2585,7 @@ mod tests {
             .expect("Failed to perform oauth2 permit");
 
         // Assert that the consent was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
             _ => assert!(false),
         }
@@ -2608,7 +2608,7 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
         // Assert that the session creation was submitted
-        let session_id = match idms_delayed.async_rx.blocking_recv() {
+        let session_id = match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2SessionRecord(osr)) => {
                 assert!(idms_prox_write.process_oauth2sessionrecord(&osr).is_ok());
                 osr.session_id
@@ -2920,7 +2920,7 @@ mod tests {
             .expect("Failed to perform oauth2 permit");
 
         // Assert that the consent was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
             _ => assert!(false),
         }
@@ -2941,7 +2941,7 @@ mod tests {
             .expect("Failed to perform oauth2 token exchange");
 
         // Assert that the session creation was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2SessionRecord(_)) => {}
             _ => assert!(false),
         }
@@ -3052,7 +3052,7 @@ mod tests {
             .expect("Failed to perform oauth2 permit");
 
         // Assert that the consent was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
             _ => assert!(false),
         }
@@ -3073,7 +3073,7 @@ mod tests {
             .expect("Failed to perform oauth2 token exchange");
 
         // Assert that the session creation was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2SessionRecord(_)) => {}
             _ => assert!(false),
         }
@@ -3145,7 +3145,7 @@ mod tests {
             .expect("Failed to perform oauth2 permit");
 
         // Assert that the consent was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
             _ => assert!(false),
         }
@@ -3166,7 +3166,7 @@ mod tests {
             .expect("Failed to perform oauth2 token exchange");
 
         // Assert that the session creation was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2SessionRecord(_)) => {}
             _ => assert!(false),
         }
@@ -3314,7 +3314,7 @@ mod tests {
             .expect("Failed to perform oauth2 permit");
 
         // Assert that the consent was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
             _ => assert!(false),
         }
@@ -3335,7 +3335,7 @@ mod tests {
             .expect("Failed to perform oauth2 token exchange");
 
         // Assert that the session creation was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2SessionRecord(_)) => {}
             _ => assert!(false),
         }
@@ -3395,7 +3395,7 @@ mod tests {
         drop(idms_prox_read);
 
         // Assert that the consent was submitted
-        let o2cg = match idms_delayed.async_rx.blocking_recv() {
+        let o2cg = match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2ConsentGrant(o2cg)) => o2cg,
             _ => unreachable!(),
         };
@@ -3606,7 +3606,7 @@ mod tests {
         drop(idms_prox_read);
 
         // Assert that the consent was submitted
-        let o2cg = match idms_delayed.async_rx.blocking_recv() {
+        let o2cg = match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2ConsentGrant(o2cg)) => o2cg,
             _ => unreachable!(),
         };
@@ -3711,7 +3711,7 @@ mod tests {
             .expect("Failed to perform oauth2 permit");
 
         // Assert that the consent was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
             _ => assert!(false),
         }
@@ -3804,7 +3804,7 @@ mod tests {
             .expect("Failed to perform oauth2 permit");
 
         // Assert that the consent was submitted
-        match idms_delayed.async_rx.blocking_recv() {
+        match idms_delayed.async_rx.recv().await {
             Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
             _ => assert!(false),
         }
