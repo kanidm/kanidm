@@ -1,5 +1,6 @@
 use std::env;
 
+use base64::{engine::general_purpose, Engine as _};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -52,7 +53,7 @@ pub fn apply_profile() {
     let profile = env!("KANIDM_BUILD_PROFILE");
     let contents = env!("KANIDM_BUILD_PROFILE_TOML");
 
-    let data = base64::decode(contents)
+    let data = general_purpose::STANDARD.decode(contents)
         .unwrap_or_else(|_| panic!("Failed to parse profile - {} - {}", profile, contents));
 
     let profile_cfg: ProfileConfig = toml::from_slice(&data)

@@ -10,6 +10,9 @@ use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 
+use base64::{engine::general_purpose, Engine as _};
+
+
 use base64urlsafedata::Base64UrlSafeData;
 pub use compact_jwt::{JwkKeySet, OidcToken};
 use compact_jwt::{JwsSigner, OidcClaims, OidcSubject};
@@ -1545,7 +1548,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
 fn parse_basic_authz(client_authz: &str) -> Result<(String, String), Oauth2Error> {
     // Check the client_authz
-    let authz = base64::decode(client_authz)
+    let authz = general_purpose::STANDARD.decode(client_authz)
         .map_err(|_| {
             admin_error!("Basic authz invalid base64");
             Oauth2Error::AuthenticationRequired
@@ -1619,6 +1622,7 @@ mod tests {
     use std::convert::TryFrom;
     use std::str::FromStr;
     use std::time::Duration;
+    use base64::{engine::general_purpose, Engine as _};
 
     use base64urlsafedata::Base64UrlSafeData;
     use compact_jwt::{JwaAlg, Jwk, JwkUse, JwsValidator, OidcSubject, OidcUnverified};
@@ -2181,7 +2185,7 @@ mod tests {
         );
 
         //  * doesn't have :
-        let client_authz = Some(base64::encode(format!("test_resource_server {secret}")));
+        let client_authz = Some(general_purpose::STANDARD.encode(format!("test_resource_server {secret}")));
         assert!(
             idms_prox_read
                 .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
@@ -2190,7 +2194,7 @@ mod tests {
         );
 
         //  * invalid client_id
-        let client_authz = Some(base64::encode(format!("NOT A REAL SERVER:{secret}")));
+        let client_authz = Some(general_purpose::STANDARD.encode(format!("NOT A REAL SERVER:{secret}")));
         assert!(
             idms_prox_read
                 .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
@@ -2199,7 +2203,7 @@ mod tests {
         );
 
         //  * valid client_id, but invalid secret
-        let client_authz = Some(base64::encode("test_resource_server:12345"));
+        let client_authz = Some(general_purpose::STANDARD.encode("test_resource_server:12345"));
         assert!(
             idms_prox_read
                 .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
@@ -2208,7 +2212,7 @@ mod tests {
         );
 
         // ✅ Now the valid client_authz is in place.
-        let client_authz = Some(base64::encode(format!("test_resource_server:{secret}")));
+        let client_authz = Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
         //  * expired exchange code (took too long)
         assert!(
             idms_prox_read
@@ -2291,7 +2295,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, uat, ident, _) =
             setup_oauth2_resource_server(idms, ct, true, false, false).await;
-        let client_authz = Some(base64::encode(format!("test_resource_server:{secret}")));
+        let client_authz = Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
 
         let mut idms_prox_read = idms.proxy_read().await;
 
@@ -2395,7 +2399,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, uat, ident, _) =
             setup_oauth2_resource_server(idms, ct, true, false, false).await;
-        let client_authz = Some(base64::encode(format!("test_resource_server:{secret}")));
+        let client_authz = Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
 
         let mut idms_prox_read = idms.proxy_read().await;
 
@@ -2473,7 +2477,7 @@ mod tests {
         // First, the revoke needs basic auth. Provide incorrect auth, and we fail.
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
-        let bad_client_authz = Some(base64::encode("test_resource_server:12345"));
+        let bad_client_authz = Some(general_purpose::STANDARD.encode("test_resource_server:12345"));
         let revoke_request = TokenRevokeRequest {
             token: oauth2_token.access_token.clone(),
             token_type_hint: None,
@@ -2557,7 +2561,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, uat, ident, _) =
             setup_oauth2_resource_server(idms, ct, true, false, false).await;
-        let client_authz = Some(base64::encode(format!("test_resource_server:{secret}")));
+        let client_authz = Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
 
         let mut idms_prox_read = idms.proxy_read().await;
 
@@ -2892,7 +2896,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, uat, ident, _) =
             setup_oauth2_resource_server(idms, ct, true, false, false).await;
-        let client_authz = Some(base64::encode(format!("test_resource_server:{secret}")));
+        let client_authz = Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
 
         let mut idms_prox_read = idms.proxy_read().await;
 
@@ -3024,7 +3028,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, uat, ident, _) =
             setup_oauth2_resource_server(idms, ct, true, false, true).await;
-        let client_authz = Some(base64::encode(format!("test_resource_server:{secret}")));
+        let client_authz = Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
 
         let mut idms_prox_read = idms.proxy_read().await;
 
@@ -3117,7 +3121,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, uat, ident, _) =
             setup_oauth2_resource_server(idms, ct, true, false, true).await;
-        let client_authz = Some(base64::encode(format!("test_resource_server:{secret}")));
+        let client_authz = Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
 
         let mut idms_prox_read = idms.proxy_read().await;
 
