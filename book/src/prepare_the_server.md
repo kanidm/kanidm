@@ -4,28 +4,24 @@
 
 > **NOTE** Our preferred deployment method is in containers, and this documentation assumes you're
 > running in docker. Kanidm will alternately run as a daemon/service, and server builds are
-> available for multiple platforms if you prefer this option.
+> available for multiple platforms if you prefer this option. You will
 
 We provide docker images for the server components. They can be found at:
 
 - <https://hub.docker.com/r/kanidm/server>
 - <https://hub.docker.com/r/kanidm/radius>
+- <https://hub.docker.com/r/kanidm/tools>
 
 You can fetch these by running the commands:
 
 ```bash
-docker pull kanidm/server:x86_64_latest
-docker pull kanidm/radius:latest
-```
-
-If you do not meet the [system requirements](#system-requirements) for your CPU you should use:
-
-```bash
 docker pull kanidm/server:latest
+docker pull kanidm/radius:latest
+docker pull kanidm/tools:latest
 ```
 
 You may need to adjust your example commands throughout this document to suit your desired server
-type.
+type if you choose not to use docker.
 
 ## Development Version
 
@@ -38,25 +34,13 @@ report issues, we will make every effort to help resolve them.
 
 ### CPU
 
-If you are using the x86\_64 cpu-optimised version, you must have a CPU that is from 2013 or newer
-(Haswell, Ryzen). The following instruction flags are used.
+Kanidm relies on modern CPU optimisations for many operations. As a result your cpu must be either:
 
-```asm
-cmov, cx8, fxsr, mmx, sse, sse2, cx16, sahf, popcnt, sse3, sse4.1, sse4.2, avx, avx2,
-bmi, bmi2, f16c, fma, lzcnt, movbe, xsave
-```
+- `x86_64` supporting `x86_64_v2` operations.
+- `aarch64` supporting `neon_v8` operations.
 
 Older or unsupported CPUs may raise a SIGIL (Illegal Instruction) on hardware that is not supported
 by the project.
-
-In this case, you should use the standard server:latest image.
-
-In the future we may apply a baseline of flags as a requirement for x86\_64 for the server:latest
-image. These flags will be:
-
-```asm
-cmov, cx8, fxsr, mmx, sse, sse2
-```
 
 <!-- deno-fmt-ignore-start -->
 
@@ -161,7 +145,8 @@ If these verifications pass you can now use these certificates with Kanidm. To p
 in place you can use a shell container that mounts the volume such as:
 
 ```bash
-docker run --rm -i -t -v kanidmd:/data -v /my/host/path/work:/work opensuse/leap:latest /bin/sh -c "cp /work/* /data/"
+docker run --rm -i -t -v kanidmd:/data -v /my/host/path/work:/work opensuse/leap:latest \
+    /bin/sh -c "cp /work/* /data/"
 ```
 
 OR for a shell into the volume:

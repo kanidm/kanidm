@@ -72,20 +72,20 @@ pub enum GroupOpt {
     #[clap(name = "delete")]
     Delete(Named),
     /// List the members of a group
-    #[clap(name = "list_members")]
+    #[clap(name = "list-members")]
     ListMembers(Named),
     /// Set the exact list of members that this group should contain, removing any not listed in the
     /// set operation.
-    #[clap(name = "set_members")]
+    #[clap(name = "set-members")]
     SetMembers(GroupNamedMembers),
     /// Delete all members of a group.
-    #[clap(name = "purge_members")]
+    #[clap(name = "purge-members")]
     PurgeMembers(Named),
     /// Add new members to a group
-    #[clap(name = "add_members")]
+    #[clap(name = "add-members")]
     AddMembers(GroupNamedMembers),
     /// Remove the named members from this group
-    #[clap(name = "remove_members")]
+    #[clap(name = "remove-members")]
     RemoveMembers(GroupNamedMembers),
     /// Manage posix extensions for this group allowing groups to be used on unix/linux systems
     #[clap(name = "posix")]
@@ -168,7 +168,7 @@ pub struct UseResetTokenOpt {
 pub struct AccountCreateOpt {
     #[clap(flatten)]
     aopts: AccountCommonOpt,
-    #[clap(name = "display_name")]
+    #[clap(name = "display-name")]
     display_name: String,
     #[clap(flatten)]
     copt: CommonOpt,
@@ -183,11 +183,11 @@ pub enum AccountCredential {
     #[clap(name = "update")]
     Update(AccountNamedOpt),
     /// Using a reset token, interactively reset credentials for a user
-    #[clap(name = "use_reset_token")]
+    #[clap(name = "use-reset-token")]
     UseResetToken(UseResetTokenOpt),
     /// Create a reset token that can be given to another person so they can
     /// recover or reset their account credentials.
-    #[clap(name = "create_reset_token")]
+    #[clap(name = "create-reset-token")]
     CreateResetToken(AccountNamedOpt),
 }
 
@@ -195,12 +195,12 @@ pub enum AccountCredential {
 #[derive(Debug, Subcommand)]
 pub enum AccountRadius {
     /// Show the RADIUS secret for a user.
-    #[clap(name = "show_secret")]
+    #[clap(name = "show-secret")]
     Show(AccountNamedOpt),
     /// Generate a randomized RADIUS secret for a user.
-    #[clap(name = "generate_secret")]
+    #[clap(name = "generate-secret")]
     Generate(AccountNamedOpt),
-    #[clap(name = "delete_secret")]
+    #[clap(name = "delete-secret")]
     /// Remove the configured RADIUS secret for the user.
     DeleteSecret(AccountNamedOpt),
 }
@@ -223,7 +223,7 @@ pub enum PersonPosix {
     Show(AccountNamedOpt),
     #[clap(name = "set")]
     Set(AccountPosixOpt),
-    #[clap(name = "set_password")]
+    #[clap(name = "set-password")]
     SetPassword(AccountNamedOpt),
 }
 
@@ -257,11 +257,11 @@ pub struct PersonUpdateOpt {
 
 #[derive(Debug, Subcommand)]
 pub enum AccountSsh {
-    #[clap(name = "list_publickeys")]
+    #[clap(name = "list-publickeys")]
     List(AccountNamedOpt),
-    #[clap(name = "add_publickey")]
+    #[clap(name = "add-publickey")]
     Add(AccountNamedTagPkOpt),
-    #[clap(name = "delete_publickey")]
+    #[clap(name = "delete-publickey")]
     Delete(AccountNamedTagOpt),
 }
 
@@ -271,10 +271,10 @@ pub enum AccountValidity {
     #[clap(name = "show")]
     Show(AccountNamedOpt),
     /// Set an accounts expiry time
-    #[clap(name = "expire_at")]
+    #[clap(name = "expire-at")]
     ExpireAt(AccountNamedExpireDateTimeOpt),
     /// Set an account valid from time
-    #[clap(name = "begin_from")]
+    #[clap(name = "begin-from")]
     BeginFrom(AccountNamedValidDateTimeOpt),
 }
 
@@ -292,7 +292,7 @@ pub enum AccountUserAuthToken {
         #[clap(flatten)]
         copt: CommonOpt,
         /// The UUID of the token to destroy.
-        #[clap(name = "session_id")]
+        #[clap(name = "session-id")]
         session_id: Uuid,
     },
 }
@@ -395,7 +395,7 @@ pub enum ServiceAccountApiToken {
         #[clap(flatten)]
         copt: CommonOpt,
         /// The UUID of the token to destroy.
-        #[clap(name = "token_id")]
+        #[clap(name = "token-id")]
         token_id: Uuid,
     },
 }
@@ -627,7 +627,7 @@ pub enum Oauth2Opt {
     #[clap(name = "update-scope-map", visible_aliases=&["create-scope-map"])]
     /// Update or add a new mapping from a group to scopes that it provides to members
     UpdateScopeMap(Oauth2CreateScopeMapOpt),
-    #[clap(name = "delete_scope_map")]
+    #[clap(name = "delete-scope-map")]
     /// Remove a mapping from groups to scopes
     DeleteScopeMap(Oauth2DeleteScopeMapOpt),
 
@@ -666,7 +666,7 @@ pub enum Oauth2Opt {
     SetLandingUrl {
         #[clap(flatten)]
         nopt: Named,
-        #[clap(name = "landing_url")]
+        #[clap(name = "landing-url")]
         url: String,
     },
     #[clap(name = "enable-pkce")]
@@ -696,7 +696,7 @@ pub enum Oauth2Opt {
 pub struct OptSetDomainDisplayName {
     #[clap(flatten)]
     copt: CommonOpt,
-    #[clap(name = "new_display_Name")]
+    #[clap(name = "new-display-name")]
     new_display_name: String,
 }
 
@@ -732,13 +732,13 @@ pub enum PwBadlistOpt {
 
 #[derive(Debug, Subcommand)]
 pub enum DomainOpt {
-    #[clap[name = "set_domain_display_name"]]
+    #[clap[name = "set-domain-display-name"]]
     /// Set the domain display name
     SetDomainDisplayName(OptSetDomainDisplayName),
     #[clap(name = "show")]
     /// Show information about this system's domain
     Show(CommonOpt),
-    #[clap(name = "reset_token_key")]
+    #[clap(name = "reset-token-key")]
     /// Reset this domain token signing key. This will cause all user sessions to be
     /// invalidated (logged out).
     ResetTokenKey(CommonOpt),

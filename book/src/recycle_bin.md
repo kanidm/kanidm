@@ -25,7 +25,7 @@ specification is required.
 
 ## How Long Do Items Stay in the Recycle Bin?
 
-Currently they stay up to 1 week before they are removed.
+Currently they stay up to 1 week before they are removed. This may change in the future though.
 
 ## Managing the Recycle Bin
 

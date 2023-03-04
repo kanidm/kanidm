@@ -106,7 +106,7 @@ pub async fn get_accounts() -> Result<AdminListAccountsMsg, GetError> {
         let data: Vec<Entity> = match response.json().await {
             Ok(value) => value,
 
-            // TODO: this kind of thing comes back when you're logged out:  SerdeError(Error("invalid type: string \"sessionexpired\", expected a sequence", line: 1, column: 16))', kanidmd_web_ui/src/components/admin_accounts.rs:107:27
+            // TODO: this kind of thing comes back when you're logged out:  SerdeError(Error("invalid type: string \"sessionexpired\", expected a sequence", line: 1, column: 16))', server/web_ui/src/components/admin_accounts.rs:107:27
             Err(error) => {
                 return Err(GetError {
                     err: format!("Failed to grab the account data into JSON: {:?}", error),

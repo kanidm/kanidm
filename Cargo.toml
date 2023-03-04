@@ -38,7 +38,6 @@ homepage = "https://github.com/kanidm/kanidm/"
 repository = "https://github.com/kanidm/kanidm/"
 
 [workspace.dependencies]
-async-std = { version = "^1.12.0", features = ["tokio1"] }
 async-trait = "^0.1.62"
 base32 = "^0.4.0"
 base64 = "^0.13.1"
@@ -57,12 +56,12 @@ crossbeam = "0.8.1"
 criterion = "^0.4.0"
 csv = "1.2.0"
 dialoguer = "0.10.3"
-dyn-clone = "^1.0.10"
+dyn-clone = "^1.0.11"
 fernet = "^0.2.0"
 filetime = "^0.2.20"
 futures = "^0.3.25"
 futures-concurrency = "^3.1.0"
-futures-util = "^0.3.21"
+futures-util = { version = "^0.3.21", features = ["sink"] }
 gloo = "^0.8.0"
 gloo-net = "0.2.6"
 hashbrown = { version = "0.12.3", features = ["serde", "inline-more", "ahash"] }
@@ -140,7 +139,7 @@ time = "=0.2.27"
 
 tikv-jemallocator = "0.5"
 
-tokio = "^1.24.2"
+tokio = "^1.26.0"
 tokio-openssl = "^0.6.3"
 tokio-util = "^0.7.7"
 

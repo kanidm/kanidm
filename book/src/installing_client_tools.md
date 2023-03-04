@@ -9,7 +9,7 @@
 Kanidm currently is packaged for the following systems:
 
 - OpenSUSE Tumbleweed
-- OpenSUSE Leap 15.3/15.4
+- OpenSUSE Leap 15.4
 - MacOS
 - Arch Linux
 - NixOS
@@ -92,10 +92,10 @@ dnf install kanidm-clients
 
 The tools are available as a cargo download if you have a rust tool chain available. To install rust
 you should follow the documentation for [rustup](https://rustup.rs/). These will be installed into
-your home directory. To update these, re-run the install command with the new version.
+your home directory. To update these, re-run the install command.
 
 ```bash
-cargo install --version 1.1.0-alpha.10 kanidm_tools
+cargo install kanidm_tools
 ```
 
 ## Tools Container
@@ -103,9 +103,14 @@ cargo install --version 1.1.0-alpha.10 kanidm_tools
 In some cases if your distribution does not have native kanidm-client support, and you can't access
 cargo for the install for some reason, you can use the cli tools from a docker container instead.
 
+This really is a "last resort" and we don't really recommend this for day to day usage.
+
 ```bash
+echo '{}' > ~/.cache/kanidm_tokens
+chmod 666 ~/.cache/kanidm_tokens
 docker pull kanidm/tools:latest
 docker run --rm -i -t \
+    --network host \
     -v /etc/kanidm/config:/etc/kanidm/config:ro \
     -v ~/.config/kanidm:/home/kanidm/.config/kanidm:ro \
     -v ~/.cache/kanidm_tokens:/home/kanidm/.cache/kanidm_tokens \
@@ -113,7 +118,7 @@ docker run --rm -i -t \
     /sbin/kanidm --help
 ```
 
-If you have a ca.pem you may need to bind mount this in as required.
+If you have a ca.pem you may need to bind mount this in as required as well.
 
 > **TIP** You can alias the docker run command to make the tools easier to access such as:
 
