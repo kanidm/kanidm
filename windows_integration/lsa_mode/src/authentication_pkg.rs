@@ -107,18 +107,65 @@ pub extern "system" fn ap_logon_user_ex2(
     NTSTATUS(0x0)
 }
 
-pub extern "system" fn ap_post_logon_user(post_logon_user_info: *const SECPKG_POST_LOGON_USER_INFO) -> NTSTATUS {
+pub extern "system" fn ap_post_logon_user(
+    post_logon_user_info: *const SECPKG_POST_LOGON_USER_INFO,
+) -> NTSTATUS {
     NTSTATUS(0x0)
 }
 
-pub extern "system" fn ap_logon_user_ex3(client_req: *const *const c_void, logon_type: SECURITY_LOGON_TYPE, protocol_submit_buffer: *const c_void, client_buffer_base: *const c_void, submit_buffer_size: u32, surrogate_logon: *mut SECPKG_SURROGATE_LOGON, profile_buffer: *mut *mut c_void, profile_buffer_size: *mut u32, logon_id: *mut LUID, substatus: *mut i32, token_info_type: *mut LSA_TOKEN_INFORMATION_TYPE, token_info: *mut *mut c_void, account_name: *mut *mut UNICODE_STRING, auth_authority: *mut *mut UNICODE_STRING, machine_name: *mut *mut UNICODE_STRING, primary_creds: *mut SECPKG_PRIMARY_CRED, supplemtal_creds: *mut *mut SECPKG_SUPPLEMENTAL_CRED_ARRAY) -> NTSTATUS {
+pub extern "system" fn ap_logon_user_ex3(
+    client_req: *const *const c_void,
+    logon_type: SECURITY_LOGON_TYPE,
+    protocol_submit_buffer: *const c_void,
+    client_buffer_base: *const c_void,
+    submit_buffer_size: u32,
+    surrogate_logon: *mut SECPKG_SURROGATE_LOGON,
+    profile_buffer: *mut *mut c_void,
+    profile_buffer_size: *mut u32,
+    logon_id: *mut LUID,
+    substatus: *mut i32,
+    token_info_type: *mut LSA_TOKEN_INFORMATION_TYPE,
+    token_info: *mut *mut c_void,
+    account_name: *mut *mut UNICODE_STRING,
+    auth_authority: *mut *mut UNICODE_STRING,
+    machine_name: *mut *mut UNICODE_STRING,
+    primary_creds: *mut SECPKG_PRIMARY_CRED,
+    supplemtal_creds: *mut *mut SECPKG_SUPPLEMENTAL_CRED_ARRAY,
+) -> NTSTATUS {
     NTSTATUS(0x0)
 }
 
-pub extern "system" fn ap_pre_logon_user_surrogate(client_req: *const *const c_void, logon_type: SECURITY_LOGON_TYPE, protocol_submit_buffer: *const c_void, client_buffer_base: *const c_void, submit_buffer_size: u32, surrogate_logon: *mut SECPKG_SURROGATE_LOGON, substatus: *mut i32) -> NTSTATUS {
+pub extern "system" fn ap_pre_logon_user_surrogate(
+    client_req: *const *const c_void,
+    logon_type: SECURITY_LOGON_TYPE,
+    protocol_submit_buffer: *const c_void,
+    client_buffer_base: *const c_void,
+    submit_buffer_size: u32,
+    surrogate_logon: *mut SECPKG_SURROGATE_LOGON,
+    substatus: *mut i32,
+) -> NTSTATUS {
     NTSTATUS(0x0)
 }
 
-pub extern "system" fn ap_post_logon_user_surrogate(client_req: *const *const c_void, logon_type: SECURITY_LOGON_TYPE, protocol_submit_buffer: *const c_void, client_buffer_base: *const c_void, submit_buffer_size: u32, surrogate_logon: *const SECPKG_SURROGATE_LOGON, profile_buffer: *mut c_void, profile_buffer_size: u32, logon_id: *const LUID, status: NTSTATUS, substatus: NTSTATUS, token_info_type: LSA_TOKEN_INFORMATION_TYPE, token_info: *const c_void, account_name: *const UNICODE_STRING, auth_authority: *const UNICODE_STRING, machine_name: *const UNICODE_STRING, primary_creds: *const SECPKG_PRIMARY_CRED, supplemental_creds: *const SECPKG_SUPPLEMENTAL_CRED_ARRAY) -> NTSTATUS {
+pub extern "system" fn ap_post_logon_user_surrogate(
+    client_req: *const *const c_void,
+    logon_type: SECURITY_LOGON_TYPE,
+    protocol_submit_buffer: *const c_void,
+    client_buffer_base: *const c_void,
+    submit_buffer_size: u32,
+    surrogate_logon: *const SECPKG_SURROGATE_LOGON,
+    profile_buffer: *mut c_void,
+    profile_buffer_size: u32,
+    logon_id: *const LUID,
+    status: NTSTATUS,
+    substatus: NTSTATUS,
+    token_info_type: LSA_TOKEN_INFORMATION_TYPE,
+    token_info: *const c_void,
+    account_name: *const UNICODE_STRING,
+    auth_authority: *const UNICODE_STRING,
+    machine_name: *const UNICODE_STRING,
+    primary_creds: *const SECPKG_PRIMARY_CRED,
+    supplemental_creds: *const SECPKG_SUPPLEMENTAL_CRED_ARRAY,
+) -> NTSTATUS {
     NTSTATUS(0x0)
 }

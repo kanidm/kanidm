@@ -247,7 +247,7 @@ pub extern "system" fn sp_get_remote_cred_guard_supplemental_creds(
     callback: *mut PLSA_REDIRECTED_LOGON_CALLBACK,
     cleanup_callback: *mut PLSA_REDIRECTED_LOGON_CLEANUP_CALLBACK,
     supplemental_cred_size: *mut u32,
-	supplemental_cred: *mut *mut c_void
+    supplemental_cred: *mut *mut c_void,
 ) -> NTSTATUS {
     NTSTATUS(0x0)
 }
