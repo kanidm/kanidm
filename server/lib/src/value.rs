@@ -11,7 +11,6 @@ use std::fmt;
 use std::str::FromStr;
 use std::time::Duration;
 
-
 #[cfg(test)]
 use base64::{engine::general_purpose, Engine as _};
 use compact_jwt::JwsSigner;

@@ -1,9 +1,8 @@
-use base64::{Engine, alphabet};
 use base64::engine::GeneralPurpose;
+use base64::{alphabet, Engine};
 use tracing::{debug, error, warn};
 
-
-use base64::{engine::general_purpose};
+use base64::engine::general_purpose;
 use base64urlsafedata::Base64UrlSafeData;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -284,7 +283,9 @@ impl TryFrom<&str> for Password {
 
         // Test 389ds formats
         if let Some(ds_ssha512) = value.strip_prefix("{SSHA512}") {
-            let sh = general_purpose::STANDARD.decode(ds_ssha512).map_err(|_| ())?;
+            let sh = general_purpose::STANDARD
+                .decode(ds_ssha512)
+                .map_err(|_| ())?;
             let (h, s) = sh.split_at(DS_SSHA512_HASH_LEN);
             if s.len() != DS_SSHA512_SALT_LEN {
                 return Err(());
@@ -318,17 +319,16 @@ impl TryFrom<&str> for Password {
                 let s = ab64_to_b64!(salt);
                 let base64_decoder_config = general_purpose::GeneralPurposeConfig::new()
                     .with_decode_allow_trailing_bits(true);
-                let base64_decoder = GeneralPurpose::new(&alphabet::STANDARD, base64_decoder_config);
-                let s = base64_decoder.decode(s)
-                    .map_err(|e| {
-                        error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
-                    })?;
+                let base64_decoder =
+                    GeneralPurpose::new(&alphabet::STANDARD, base64_decoder_config);
+                let s = base64_decoder.decode(s).map_err(|e| {
+                    error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
+                })?;
 
                 let h = ab64_to_b64!(hash);
-                let h = base64_decoder.decode(h)
-                    .map_err(|e| {
-                        error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
-                    })?;
+                let h = base64_decoder.decode(h).map_err(|e| {
+                    error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
+                })?;
 
                 // This is just sha1 in a trenchcoat.
                 if value.strip_prefix("{PBKDF2}").is_some()
