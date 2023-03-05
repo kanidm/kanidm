@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 
 [target.'cfg(target_family = "windows")'.dependencies]
-whoami.workspace = true
+whoami = {workspace = true}
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
-users.workspace = true
+users = {workspace = true}
