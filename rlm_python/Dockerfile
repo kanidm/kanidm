@@ -5,8 +5,7 @@ ENV TZ=Etc/UTC
 # These all need to be on one line else the cache ends up in the layers.
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-RUN --mount=type=cache,id=apt,target=/var/cache/apt \
-    apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y \
     freeradius-utils \
     hostname \
     python3 \
