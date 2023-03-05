@@ -137,25 +137,23 @@ impl ServiceAccountOpt {
                         )
                         .await
                     {
-                        Ok(new_token) => {
-                            match copt.output_mode.as_str() {
-                                "json" => {
-                                    let message = AccountChangeMessage {
-                                        output_mode: ConsoleOutputMode::JSON,
-                                        action: "api-token generate".to_string(),
-                                        result: new_token,
-                                        status: kanidm_proto::messages::MessageStatus::Success,
-                                        src_user: copt.username.clone().unwrap(),
-                                        dest_user: aopts.account_id.clone()
-                                    };
-                                    println!("{}", message.to_string());
-                                }
-                                _ => {
-                                    println!("Success: This token will only be displayed ONCE");
-                                    println!("{}", new_token)
-                                }
+                        Ok(new_token) => match copt.output_mode.as_str() {
+                            "json" => {
+                                let message = AccountChangeMessage {
+                                    output_mode: ConsoleOutputMode::JSON,
+                                    action: "api-token generate".to_string(),
+                                    result: new_token,
+                                    status: kanidm_proto::messages::MessageStatus::Success,
+                                    src_user: copt.username.clone().unwrap(),
+                                    dest_user: aopts.account_id.clone(),
+                                };
+                                println!("{}", message.to_string());
                             }
-                        }
+                            _ => {
+                                println!("Success: This token will only be displayed ONCE");
+                                println!("{}", new_token)
+                            }
+                        },
                         Err(e) => {
                             error!("Error generating service account api token -> {:?}", e);
                         }

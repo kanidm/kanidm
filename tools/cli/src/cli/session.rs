@@ -142,18 +142,20 @@ impl LoginOpt {
         self.copt.debug
     }
 
-    async fn do_password(&self, client: &mut KanidmClient, password: &Option<String>) -> Result<AuthResponse, ClientError> {
+    async fn do_password(
+        &self,
+        client: &mut KanidmClient,
+        password: &Option<String>,
+    ) -> Result<AuthResponse, ClientError> {
         let password = match password {
             Some(password) => {
                 trace!("User provided password directly, don't need to prompt.");
                 password.to_owned()
-            },
-            None => {
-                rpassword::prompt_password("Enter password: ").unwrap_or_else(|e| {
-                    error!("Failed to create password prompt -- {:?}", e);
-                    std::process::exit(1);
-                })
-            },
+            }
+            None => rpassword::prompt_password("Enter password: ").unwrap_or_else(|e| {
+                error!("Failed to create password prompt -- {:?}", e);
+                std::process::exit(1);
+            }),
         };
         client.auth_step_password(password.as_str()).await
     }

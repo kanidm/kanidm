@@ -320,18 +320,20 @@ impl PersonOpt {
                         acopt.aopts.account_id.as_str(),
                         acopt.display_name.as_str(),
                     )
-                    .await {
-                        Ok(_) => {
-                            println!("Successfully created display_name=\"{}\" username={}>",
+                    .await
+                {
+                    Ok(_) => {
+                        println!(
+                            "Successfully created display_name=\"{}\" username={}>",
                             acopt.display_name.as_str(),
                             acopt.aopts.account_id.as_str(),
                         )
-                        },
-                        Err(err) => {
-                            error!("Error -> {:?}", err);
-                        }
                     }
-                },
+                    Err(err) => {
+                        error!("Error -> {:?}", err);
+                    }
+                }
+            }
             PersonOpt::Validity { commands } => match commands {
                 AccountValidity::Show(ano) => {
                     let client = ano.copt.to_client().await;
