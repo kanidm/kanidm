@@ -28,6 +28,9 @@ pub struct CommonOpt {
     /// Path to a CA certificate file
     #[clap(parse(from_os_str), short = 'C', long = "ca", env = "KANIDM_CA_PATH")]
     pub ca_path: Option<PathBuf>,
+    /// Log format (still in very early development)
+    #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value="text")]
+    output_mode: String,
 }
 
 #[derive(Debug, Args)]
@@ -500,7 +503,11 @@ pub struct LoginOpt {
     #[clap(flatten)]
     copt: CommonOpt,
     #[clap(short, long)]
+    /// Use a passkey for authentication
     webauthn: bool,
+    #[clap(short, long, env="KANIDM_PASSWORD", hide=true)]
+    /// Supply a password to the login option
+    password: Option<String>,
 }
 
 #[derive(Debug, Args)]
