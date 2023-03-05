@@ -123,6 +123,19 @@ def kill_radius(
 
     proc.wait()
 
+def find_freeradius_bin() -> str:
+    """ finds the binary """
+    binary_paths = [
+        "/usr/sbin/radiusd",
+        "/usr/sbin/freeradius",
+    ]
+    for path in binary_paths:
+        if Path(path).exists():
+            return path
+    lookedin = ", ".join(binary_paths)
+    print(f"Failed to find FreeRADIUS binary, looked in {lookedin}")
+    sys.exit(1)
+
 def run_radiusd() -> None:
     """ run the server """
 
@@ -131,7 +144,7 @@ def run_radiusd() -> None:
     else:
         cmd_args = [ "-f", "-l", "stdout" ]
     with subprocess.Popen(
-        ["/usr/sbin/radiusd"] + cmd_args,
+        [find_freeradius_bin()] + cmd_args,
         stderr=subprocess.STDOUT,
         ) as proc:
         # print(proc, file=sys.stderr)

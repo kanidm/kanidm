@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 
 if [ -z "${IMAGE}" ]; then
     IMAGE="kanidm/radius:devel"
@@ -21,5 +22,6 @@ docker run --rm -it \
     --name radiusd \
     -v /tmp/kanidm/:/data/ \
     -v /tmp/kanidm/:/tmp/kanidm/ \
+    -v /tmp/kanidm/:/certs/ \
     -v "${CONFIG_FILE}:/data/kanidm" \
-    ${IMAGE} $@
+    "${IMAGE}" $@
