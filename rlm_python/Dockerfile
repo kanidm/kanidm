@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
     iproute2 \
     iputils-ping iputils-tracepath \
     openssl \
-    curl
+    curl && apt-get clean
 
 ADD  rlm_python/mods-available/ /etc/raddb/mods-available/
 COPY rlm_python/sites-available/ /etc/raddb/sites-available/
