@@ -28,4 +28,4 @@ kanidm-client-tools.tar.gz
 .coverage
 pykanidm/dist/
 pykanidm/site/
-./pykanidm/poetry.lock
+pykanidm/poetry.lock
