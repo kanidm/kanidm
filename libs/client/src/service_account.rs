@@ -16,6 +16,7 @@ impl KanidmClient {
             .await
     }
 
+    /// Handles creating a service account
     pub async fn idm_service_account_create(
         &self,
         name: &str,
@@ -199,6 +200,7 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<Vec<ApiToken>, ClientError> {
+        // This ends up at [kanidmd_core::actors::v1_write::QueryServerWriteV1::handle_service_account_api_token_generate]
         self.perform_get_request(format!("/v1/service_account/{}/_api_token", id).as_str())
             .await
     }
