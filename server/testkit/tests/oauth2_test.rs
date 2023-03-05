@@ -345,13 +345,6 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .validate(&jws_validator, 0)
         .expect("Failed to verify oidc");
 
-    // This is mostly checked inside of idm/oauth2.rs. This is more to check the oidc
-    // token and the userinfo endpoints.
-    assert!(oidc.iss == Url::parse(&format!("{}/oauth2/openid/test_integration", url)).unwrap());
-    eprintln!("{:?}", oidc.s_claims.email);
-    assert!(oidc.s_claims.email.as_deref() == Some("oauth_test@localhost"));
-    assert!(oidc.s_claims.email_verified == Some(true));
-
     let response = client
         .get(format!("{}/oauth2/openid/test_integration/userinfo", url))
         .bearer_auth(atr.access_token.clone())
@@ -364,8 +357,16 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .await
         .expect("Unable to decode OidcToken from userinfo");
 
-    eprintln!("{userinfo:?}");
-    eprintln!("{oidc:?}");
+    // This is mostly checked inside of idm/oauth2.rs. This is more to check the oidc
+    // token and the userinfo endpoints.
+    assert!(oidc.iss == Url::parse(&format!("{}/oauth2/openid/test_integration", url)).unwrap());
+    eprintln!("{:?}", oidc.s_claims.email);
+    assert!(oidc.s_claims.email.as_deref() == Some("oauth_test@localhost"));
+    assert!(oidc.s_claims.email_verified == Some(true));
 
+    eprintln!("userinfo {userinfo:?}");
+    eprintln!("oidc {oidc:?}");
+
+    eprintln!("comparing userinfo and oidc");
     assert!(userinfo == oidc);
 }
