@@ -3841,6 +3841,7 @@
 <a href="#3841" id="3841">3841</a>
 <a href="#3842" id="3842">3842</a>
 <a href="#3843" id="3843">3843</a>
+<a href="#3844" id="3844">3844</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations
 //!
 //! This contains the in memory and loaded set of active oauth2 resource server
@@ -3973,6 +3974,7 @@
         expiry: time::OffsetDateTime,
         uuid: Uuid,
         iat: i64,
+        exp: i64,
         nbf: i64,
         auth_time: <span class="prelude-ty">Option</span>&lt;i64&gt;,
     },
@@ -4946,9 +4948,11 @@
                 OAUTH2_ACCESS_TOKEN_EXPIRY,
             )
         };
-        <span class="comment">// let expiry = odt_ct + Duration::from_secs(expires_in as u64);
 
-        </span><span class="kw">let </span>scope = <span class="kw">if </span>code_xchg.scopes.is_empty() {
+        <span class="comment">// TODO: Make configurable from auth policy!
+        </span><span class="kw">let </span>exp = iat + (expires_in <span class="kw">as </span>i64);
+
+        <span class="kw">let </span>scope = <span class="kw">if </span>code_xchg.scopes.is_empty() {
             <span class="prelude-val">None
         </span>} <span class="kw">else </span>{
             <span class="prelude-val">Some</span>(code_xchg.scopes.join(<span class="string">&quot; &quot;</span>))
@@ -4971,9 +4975,6 @@
 
             // amr == auth method
             </span><span class="kw">let </span>amr = <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[code_xchg.uat.auth_type.to_string()]);
-
-            <span class="comment">// TODO: Make configurable from auth policy!
-            </span><span class="kw">let </span>exp = iat + (expires_in <span class="kw">as </span>i64);
 
             <span class="kw">let </span>iss = o2rs.iss.clone();
 
@@ -5035,6 +5036,7 @@
             expiry,
             uuid: code_xchg.uat.uuid,
             iat,
+            exp,
             nbf: iat,
             auth_time: <span class="prelude-val">None</span>,
         };
@@ -5118,6 +5120,7 @@
                 expiry,
                 uuid,
                 iat,
+                exp,
                 nbf,
                 auth_time: <span class="kw">_</span>,
             } =&gt; {
@@ -5127,7 +5130,6 @@
                     <span class="macro">security_info!</span>(<span class="question-mark">?</span>uuid, <span class="string">&quot;access token has expired, returning inactive&quot;</span>);
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(AccessTokenIntrospectResponse::inactive());
                 }
-                <span class="kw">let </span>exp = iat + (expiry - odt_ct).whole_seconds();
 
                 <span class="comment">// Is the user expired, or the oauth2 session invalid?
                 </span><span class="kw">let </span>valid = <span class="self">self
@@ -5165,8 +5167,8 @@
                     client_id: <span class="prelude-val">Some</span>(client_id.clone()),
                     username: <span class="prelude-val">Some</span>(account.spn),
                     token_type,
-                    exp: <span class="prelude-val">Some</span>(exp),
                     iat: <span class="prelude-val">Some</span>(iat),
+                    exp: <span class="prelude-val">Some</span>(exp),
                     nbf: <span class="prelude-val">Some</span>(nbf),
                     sub: <span class="prelude-val">Some</span>(uuid.to_string()),
                     aud: <span class="prelude-val">Some</span>(client_id),
@@ -5223,6 +5225,7 @@
                 expiry,
                 uuid,
                 iat,
+                exp,
                 nbf,
                 auth_time: <span class="kw">_</span>,
             } =&gt; {
@@ -5232,7 +5235,6 @@
                     <span class="macro">security_info!</span>(<span class="question-mark">?</span>uuid, <span class="string">&quot;access token has expired, returning inactive&quot;</span>);
                     <span class="kw">return </span><span class="prelude-val">Err</span>(Oauth2Error::InvalidToken);
                 }
-                <span class="kw">let </span>exp = iat + (expiry - odt_ct).whole_seconds();
 
                 <span class="comment">// Is the user expired, or the oauth2 session invalid?
                 </span><span class="kw">let </span>valid = <span class="self">self
