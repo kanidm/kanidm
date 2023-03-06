@@ -1845,6 +1845,8 @@
 <a href="#1845" id="1845">1845</a>
 <a href="#1846" id="1846">1846</a>
 <a href="#1847" id="1847">1847</a>
+<a href="#1848" id="1848">1848</a>
+<a href="#1849" id="1849">1849</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of
 //! the [`Value`] module allow storage and transformation of various types of input into strongly
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
@@ -1858,6 +1860,8 @@
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::time::Duration;
 
+<span class="attr">#[cfg(test)]
+</span><span class="kw">use </span>base64::{engine::general_purpose, Engine <span class="kw">as _</span>};
 <span class="kw">use </span>compact_jwt::JwsSigner;
 <span class="kw">use </span>hashbrown::HashSet;
 <span class="kw">use </span>kanidm_proto::v1::ApiTokenPurpose;
@@ -3137,7 +3141,7 @@
 
     <span class="attr">#[cfg(test)]
     </span><span class="kw">pub fn </span>new_privatebinary_base64(der: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>der = base64::decode(der).unwrap();
+        <span class="kw">let </span>der = general_purpose::STANDARD.decode(der).unwrap();
         Value::PrivateBinary(der)
     }
 

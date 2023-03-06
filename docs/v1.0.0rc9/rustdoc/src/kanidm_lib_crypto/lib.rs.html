@@ -704,8 +704,21 @@
 <a href="#704" id="704">704</a>
 <a href="#705" id="705">705</a>
 <a href="#706" id="706">706</a>
-</pre><pre class="rust"><code><span class="kw">use </span>tracing::{debug, error, warn};
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+</pre><pre class="rust"><code><span class="kw">use </span>base64::engine::GeneralPurpose;
+<span class="kw">use </span>base64::{alphabet, Engine};
+<span class="kw">use </span>tracing::{debug, error, warn};
 
+<span class="kw">use </span>base64::engine::general_purpose;
 <span class="kw">use </span>base64urlsafedata::Base64UrlSafeData;
 <span class="kw">use </span>rand::Rng;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -941,7 +954,7 @@
                 <span class="string">&quot;pbkdf2_sha256&quot; </span>=&gt; {
                     <span class="kw">let </span>c = cost.parse::&lt;usize&gt;().map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
                     <span class="kw">let </span>s: Vec&lt;<span class="kw">_</span>&gt; = salt.as_bytes().to_vec();
-                    <span class="kw">let </span>h = base64::decode(hash).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
+                    <span class="kw">let </span>h = general_purpose::STANDARD.decode(hash).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
                     <span class="kw">if </span>h.len() &lt; PBKDF2_MIN_NIST_KEY_LEN {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(());
                     }
@@ -961,7 +974,10 @@
                 }
             };
 
-            <span class="kw">let </span>h = base64::decode_config(nt_md4, base64::STANDARD_NO_PAD).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
+            <span class="kw">let </span>h = base64::engine::general_purpose::STANDARD_NO_PAD
+                .decode(nt_md4)
+                .map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
+
             <span class="kw">return </span><span class="prelude-val">Ok</span>(Password {
                 material: Kdf::NT_MD4(h),
             });
@@ -983,7 +999,9 @@
 
         <span class="comment">// Test 389ds formats
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ds_ssha512) = value.strip_prefix(<span class="string">&quot;{SSHA512}&quot;</span>) {
-            <span class="kw">let </span>sh = base64::decode(ds_ssha512).map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
+            <span class="kw">let </span>sh = general_purpose::STANDARD
+                .decode(ds_ssha512)
+                .map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
             <span class="kw">let </span>(h, s) = sh.split_at(DS_SSHA512_HASH_LEN);
             <span class="kw">if </span>s.len() != DS_SSHA512_SALT_LEN {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(());
@@ -1015,16 +1033,18 @@
                 <span class="kw">let </span>c = cost.parse::&lt;usize&gt;().map_err(|<span class="kw">_</span>| ())<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>s = <span class="macro">ab64_to_b64!</span>(salt);
-                <span class="kw">let </span>s = base64::decode_config(s, base64::STANDARD.decode_allow_trailing_bits(<span class="bool-val">true</span>))
-                    .map_err(|e| {
-                        <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Invalid base64 in oldap pbkdf2-sha1&quot;</span>);
-                    })<span class="question-mark">?</span>;
+                <span class="kw">let </span>base64_decoder_config = general_purpose::GeneralPurposeConfig::new()
+                    .with_decode_allow_trailing_bits(<span class="bool-val">true</span>);
+                <span class="kw">let </span>base64_decoder =
+                    GeneralPurpose::new(<span class="kw-2">&amp;</span>alphabet::STANDARD, base64_decoder_config);
+                <span class="kw">let </span>s = base64_decoder.decode(s).map_err(|e| {
+                    <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Invalid base64 in oldap pbkdf2-sha1&quot;</span>);
+                })<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>h = <span class="macro">ab64_to_b64!</span>(hash);
-                <span class="kw">let </span>h = base64::decode_config(h, base64::STANDARD.decode_allow_trailing_bits(<span class="bool-val">true</span>))
-                    .map_err(|e| {
-                        <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Invalid base64 in oldap pbkdf2-sha1&quot;</span>);
-                    })<span class="question-mark">?</span>;
+                <span class="kw">let </span>h = base64_decoder.decode(h).map_err(|e| {
+                    <span class="macro">error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Invalid base64 in oldap pbkdf2-sha1&quot;</span>);
+                })<span class="question-mark">?</span>;
 
                 <span class="comment">// This is just sha1 in a trenchcoat.
                 </span><span class="kw">if </span>value.strip_prefix(<span class="string">&quot;{PBKDF2}&quot;</span>).is_some()

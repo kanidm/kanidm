@@ -724,6 +724,7 @@
 <a href="#724" id="724">724</a>
 <a href="#725" id="725">725</a>
 <a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt;
 <span class="kw">use </span>std::time::Duration;
 
@@ -1386,6 +1387,7 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
+    <span class="kw">use </span>base64::{engine::general_purpose, Engine <span class="kw">as _</span>};
     <span class="kw">use </span>serde::{Deserialize, Serialize};
     <span class="kw">use </span>uuid::Uuid;
 
@@ -1433,10 +1435,10 @@
             uuid: Uuid::new_v4(),
         };
         let data = serde_cbor::to_vec(&amp;dbcred).unwrap();
-        let s = base64::encode(data);
+        let s = general_purpose::STANDARD.encode(data);
         */
         </span><span class="kw">let </span>s = <span class="string">&quot;o2hwYXNzd29yZKFmUEJLREYygwCBAIEAZmNsYWltc4BkdXVpZFAjkHFm4q5M86UcNRi4hBjN&quot;</span>;
-        <span class="kw">let </span>data = base64::decode(s).unwrap();
+        <span class="kw">let </span>data = general_purpose::STANDARD.decode(s).unwrap();
         <span class="kw">let </span>dbcred: DbCredV1 = serde_cbor::from_slice(data.as_slice()).unwrap();
 
         <span class="comment">// Test converting to the new enum format

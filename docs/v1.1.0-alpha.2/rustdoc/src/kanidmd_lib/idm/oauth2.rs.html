@@ -3828,6 +3828,19 @@
 <a href="#3828" id="3828">3828</a>
 <a href="#3829" id="3829">3829</a>
 <a href="#3830" id="3830">3830</a>
+<a href="#3831" id="3831">3831</a>
+<a href="#3832" id="3832">3832</a>
+<a href="#3833" id="3833">3833</a>
+<a href="#3834" id="3834">3834</a>
+<a href="#3835" id="3835">3835</a>
+<a href="#3836" id="3836">3836</a>
+<a href="#3837" id="3837">3837</a>
+<a href="#3838" id="3838">3838</a>
+<a href="#3839" id="3839">3839</a>
+<a href="#3840" id="3840">3840</a>
+<a href="#3841" id="3841">3841</a>
+<a href="#3842" id="3842">3842</a>
+<a href="#3843" id="3843">3843</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations
 //!
 //! This contains the in memory and loaded set of active oauth2 resource server
@@ -3839,6 +3852,8 @@
 <span class="kw">use </span>std::fmt;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::time::Duration;
+
+<span class="kw">use </span>base64::{engine::general_purpose, Engine <span class="kw">as _</span>};
 
 <span class="kw">use </span>base64urlsafedata::Base64UrlSafeData;
 <span class="kw">pub use </span>compact_jwt::{JwkKeySet, OidcToken};
@@ -5375,7 +5390,8 @@
 
 <span class="kw">fn </span>parse_basic_authz(client_authz: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(String, String), Oauth2Error&gt; {
     <span class="comment">// Check the client_authz
-    </span><span class="kw">let </span>authz = base64::decode(client_authz)
+    </span><span class="kw">let </span>authz = general_purpose::STANDARD
+        .decode(client_authz)
         .map_err(|<span class="kw">_</span>| {
             <span class="macro">admin_error!</span>(<span class="string">&quot;Basic authz invalid base64&quot;</span>);
             Oauth2Error::AuthenticationRequired
@@ -5446,6 +5462,7 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
+    <span class="kw">use </span>base64::{engine::general_purpose, Engine <span class="kw">as _</span>};
     <span class="kw">use </span>std::convert::TryFrom;
     <span class="kw">use </span>std::str::FromStr;
     <span class="kw">use </span>std::time::Duration;
@@ -6011,7 +6028,8 @@
         );
 
         <span class="comment">//  * doesn&#39;t have :
-        </span><span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server {secret}&quot;</span>)));
+        </span><span class="kw">let </span>client_authz =
+            <span class="prelude-val">Some</span>(general_purpose::STANDARD.encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server {secret}&quot;</span>)));
         <span class="macro">assert!</span>(
             idms_prox_read
                 .check_oauth2_token_exchange(client_authz.as_deref(), <span class="kw-2">&amp;</span>token_req, ct)
@@ -6020,7 +6038,8 @@
         );
 
         <span class="comment">//  * invalid client_id
-        </span><span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;NOT A REAL SERVER:{secret}&quot;</span>)));
+        </span><span class="kw">let </span>client_authz =
+            <span class="prelude-val">Some</span>(general_purpose::STANDARD.encode(<span class="macro">format!</span>(<span class="string">&quot;NOT A REAL SERVER:{secret}&quot;</span>)));
         <span class="macro">assert!</span>(
             idms_prox_read
                 .check_oauth2_token_exchange(client_authz.as_deref(), <span class="kw-2">&amp;</span>token_req, ct)
@@ -6029,7 +6048,7 @@
         );
 
         <span class="comment">//  * valid client_id, but invalid secret
-        </span><span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="string">&quot;test_resource_server:12345&quot;</span>));
+        </span><span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(general_purpose::STANDARD.encode(<span class="string">&quot;test_resource_server:12345&quot;</span>));
         <span class="macro">assert!</span>(
             idms_prox_read
                 .check_oauth2_token_exchange(client_authz.as_deref(), <span class="kw-2">&amp;</span>token_req, ct)
@@ -6038,7 +6057,8 @@
         );
 
         <span class="comment">// ✅ Now the valid client_authz is in place.
-        </span><span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
+        </span><span class="kw">let </span>client_authz =
+            <span class="prelude-val">Some</span>(general_purpose::STANDARD.encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
         <span class="comment">//  * expired exchange code (took too long)
         </span><span class="macro">assert!</span>(
             idms_prox_read
@@ -6121,7 +6141,8 @@
         <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
         <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
             setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>).<span class="kw">await</span>;
-        <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
+        <span class="kw">let </span>client_authz =
+            <span class="prelude-val">Some</span>(general_purpose::STANDARD.encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
 
         <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = idms.proxy_read().<span class="kw">await</span>;
 
@@ -6225,7 +6246,8 @@
         </span><span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
         <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
             setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>).<span class="kw">await</span>;
-        <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
+        <span class="kw">let </span>client_authz =
+            <span class="prelude-val">Some</span>(general_purpose::STANDARD.encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
 
         <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = idms.proxy_read().<span class="kw">await</span>;
 
@@ -6303,7 +6325,7 @@
         <span class="comment">// First, the revoke needs basic auth. Provide incorrect auth, and we fail.
         </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
 
-        <span class="kw">let </span>bad_client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="string">&quot;test_resource_server:12345&quot;</span>));
+        <span class="kw">let </span>bad_client_authz = <span class="prelude-val">Some</span>(general_purpose::STANDARD.encode(<span class="string">&quot;test_resource_server:12345&quot;</span>));
         <span class="kw">let </span>revoke_request = TokenRevokeRequest {
             token: oauth2_token.access_token.clone(),
             token_type_hint: <span class="prelude-val">None</span>,
@@ -6387,7 +6409,8 @@
         </span><span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
         <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
             setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>).<span class="kw">await</span>;
-        <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
+        <span class="kw">let </span>client_authz =
+            <span class="prelude-val">Some</span>(general_purpose::STANDARD.encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
 
         <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = idms.proxy_read().<span class="kw">await</span>;
 
@@ -6722,7 +6745,8 @@
         <span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
         <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
             setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>).<span class="kw">await</span>;
-        <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
+        <span class="kw">let </span>client_authz =
+            <span class="prelude-val">Some</span>(general_purpose::STANDARD.encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
 
         <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = idms.proxy_read().<span class="kw">await</span>;
 
@@ -6854,7 +6878,8 @@
         </span><span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
         <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
             setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>).<span class="kw">await</span>;
-        <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
+        <span class="kw">let </span>client_authz =
+            <span class="prelude-val">Some</span>(general_purpose::STANDARD.encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
 
         <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = idms.proxy_read().<span class="kw">await</span>;
 
@@ -6947,7 +6972,8 @@
         </span><span class="kw">let </span>ct = Duration::from_secs(TEST_CURRENT_TIME);
         <span class="kw">let </span>(secret, uat, ident, <span class="kw">_</span>) =
             setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>).<span class="kw">await</span>;
-        <span class="kw">let </span>client_authz = <span class="prelude-val">Some</span>(base64::encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
+        <span class="kw">let </span>client_authz =
+            <span class="prelude-val">Some</span>(general_purpose::STANDARD.encode(<span class="macro">format!</span>(<span class="string">&quot;test_resource_server:{secret}&quot;</span>)));
 
         <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = idms.proxy_read().<span class="kw">await</span>;
 
