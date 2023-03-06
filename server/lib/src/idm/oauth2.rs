@@ -130,6 +130,7 @@ enum Oauth2TokenType {
         expiry: time::OffsetDateTime,
         uuid: Uuid,
         iat: i64,
+        exp: i64,
         nbf: i64,
         auth_time: Option<i64>,
     },
@@ -1103,7 +1104,9 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 OAUTH2_ACCESS_TOKEN_EXPIRY,
             )
         };
-        // let expiry = odt_ct + Duration::from_secs(expires_in as u64);
+
+        // TODO: Make configurable from auth policy!
+        let exp = iat + (expires_in as i64);
 
         let scope = if code_xchg.scopes.is_empty() {
             None
@@ -1128,9 +1131,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
             // amr == auth method
             let amr = Some(vec![code_xchg.uat.auth_type.to_string()]);
-
-            // TODO: Make configurable from auth policy!
-            let exp = iat + (expires_in as i64);
 
             let iss = o2rs.iss.clone();
 
@@ -1192,6 +1192,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             expiry,
             uuid: code_xchg.uat.uuid,
             iat,
+            exp,
             nbf: iat,
             auth_time: None,
         };
@@ -1275,6 +1276,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 expiry,
                 uuid,
                 iat,
+                exp,
                 nbf,
                 auth_time: _,
             } => {
@@ -1284,7 +1286,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     security_info!(?uuid, "access token has expired, returning inactive");
                     return Ok(AccessTokenIntrospectResponse::inactive());
                 }
-                let exp = iat + (expiry - odt_ct).whole_seconds();
 
                 // Is the user expired, or the oauth2 session invalid?
                 let valid = self
@@ -1322,8 +1323,8 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     client_id: Some(client_id.clone()),
                     username: Some(account.spn),
                     token_type,
-                    exp: Some(exp),
                     iat: Some(iat),
+                    exp: Some(exp),
                     nbf: Some(nbf),
                     sub: Some(uuid.to_string()),
                     aud: Some(client_id),
@@ -1380,6 +1381,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 expiry,
                 uuid,
                 iat,
+                exp,
                 nbf,
                 auth_time: _,
             } => {
@@ -1389,7 +1391,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     security_info!(?uuid, "access token has expired, returning inactive");
                     return Err(Oauth2Error::InvalidToken);
                 }
-                let exp = iat + (expiry - odt_ct).whole_seconds();
 
                 // Is the user expired, or the oauth2 session invalid?
                 let valid = self
