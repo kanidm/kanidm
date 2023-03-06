@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 use std::{env, fs};
 
+use base64::{engine::general_purpose, Engine as _};
+
 fn main() {
     println!("cargo:rerun-if-env-changed=KANIDM_BUILD_PROFILE");
 
@@ -13,7 +15,7 @@ fn main() {
     let data =
         fs::read(&profile_path).unwrap_or_else(|_| panic!("Failed to read {:?}", profile_path));
 
-    let contents = base64::encode(data);
+    let contents = general_purpose::STANDARD.encode(data);
 
     println!("cargo:rerun-if-changed={}", profile_path.to_str().unwrap());
 
