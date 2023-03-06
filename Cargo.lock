@@ -2273,7 +2273,7 @@ dependencies = [
 name = "kanidm_lib_crypto"
 version = "0.1.0"
 dependencies = [
- "base64 0.13.1",
+ "base64 0.21.0",
  "base64urlsafedata",
  "hex",
  "kanidm_proto",
@@ -2410,7 +2410,7 @@ name = "kanidmd_lib"
 version = "1.1.0-alpha.12-dev"
 dependencies = [
  "async-trait",
- "base64 0.13.1",
+ "base64 0.21.0",
  "base64urlsafedata",
  "compact_jwt",
  "concread",
@@ -3426,7 +3426,7 @@ dependencies = [
 name = "profiles"
 version = "1.1.0-alpha.12-dev"
 dependencies = [
- "base64 0.13.1",
+ "base64 0.21.0",
  "serde",
  "toml",
 ]

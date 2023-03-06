@@ -11,6 +11,8 @@ use std::fmt;
 use std::str::FromStr;
 use std::time::Duration;
 
+#[cfg(test)]
+use base64::{engine::general_purpose, Engine as _};
 use compact_jwt::JwsSigner;
 use hashbrown::HashSet;
 use kanidm_proto::v1::ApiTokenPurpose;
@@ -1290,7 +1292,7 @@ impl Value {
 
     #[cfg(test)]
     pub fn new_privatebinary_base64(der: &str) -> Self {
-        let der = base64::decode(der).unwrap();
+        let der = general_purpose::STANDARD.decode(der).unwrap();
         Value::PrivateBinary(der)
     }
 
