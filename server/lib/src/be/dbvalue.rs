@@ -660,6 +660,7 @@ impl DbValueSetV2 {
 
 #[cfg(test)]
 mod tests {
+    use base64::{engine::general_purpose, Engine as _};
     use serde::{Deserialize, Serialize};
     use uuid::Uuid;
 
@@ -707,10 +708,10 @@ mod tests {
             uuid: Uuid::new_v4(),
         };
         let data = serde_cbor::to_vec(&dbcred).unwrap();
-        let s = base64::encode(data);
+        let s = general_purpose::STANDARD.encode(data);
         */
         let s = "o2hwYXNzd29yZKFmUEJLREYygwCBAIEAZmNsYWltc4BkdXVpZFAjkHFm4q5M86UcNRi4hBjN";
-        let data = base64::decode(s).unwrap();
+        let data = general_purpose::STANDARD.decode(s).unwrap();
         let dbcred: DbCredV1 = serde_cbor::from_slice(data.as_slice()).unwrap();
 
         // Test converting to the new enum format

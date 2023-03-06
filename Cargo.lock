@@ -2273,7 +2273,7 @@ dependencies = [
 name = "kanidm_lib_crypto"
 version = "0.1.0"
 dependencies = [
- "base64 0.13.1",
+ "base64 0.21.0",
  "base64urlsafedata",
  "hex",
  "kanidm_proto",
@@ -2410,7 +2410,7 @@ name = "kanidmd_lib"
 version = "1.1.0-alpha.12-dev"
 dependencies = [
  "async-trait",
- "base64 0.13.1",
+ "base64 0.21.0",
  "base64urlsafedata",
  "compact_jwt",
  "concread",
@@ -3426,7 +3426,7 @@ dependencies = [
 name = "profiles"
 version = "1.1.0-alpha.12-dev"
 dependencies = [
- "base64 0.13.1",
+ "base64 0.21.0",
  "serde",
  "toml",
 ]
@@ -3984,9 +3984,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.93"
+version = "1.0.94"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cad406b69c91885b5107daf2c29572f6c8cdb3c66826821e286c533490c0bc76"
+checksum = "1c533a59c9d8a93a09c6ab31f0fd5e5f4dd1b8fc9434804029839884765d04ea"
 dependencies = [
  "itoa",
  "ryu",

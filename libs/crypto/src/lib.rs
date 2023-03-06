@@ -1,5 +1,8 @@
+use base64::engine::GeneralPurpose;
+use base64::{alphabet, Engine};
 use tracing::{debug, error, warn};
 
+use base64::engine::general_purpose;
 use base64urlsafedata::Base64UrlSafeData;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -235,7 +238,7 @@ impl TryFrom<&str> for Password {
                 "pbkdf2_sha256" => {
                     let c = cost.parse::<usize>().map_err(|_| ())?;
                     let s: Vec<_> = salt.as_bytes().to_vec();
-                    let h = base64::decode(hash).map_err(|_| ())?;
+                    let h = general_purpose::STANDARD.decode(hash).map_err(|_| ())?;
                     if h.len() < PBKDF2_MIN_NIST_KEY_LEN {
                         return Err(());
                     }
@@ -255,7 +258,10 @@ impl TryFrom<&str> for Password {
                 }
             };
 
-            let h = base64::decode_config(nt_md4, base64::STANDARD_NO_PAD).map_err(|_| ())?;
+            let h = base64::engine::general_purpose::STANDARD_NO_PAD
+                .decode(nt_md4)
+                .map_err(|_| ())?;
+
             return Ok(Password {
                 material: Kdf::NT_MD4(h),
             });
@@ -277,7 +283,9 @@ impl TryFrom<&str> for Password {
 
         // Test 389ds formats
         if let Some(ds_ssha512) = value.strip_prefix("{SSHA512}") {
-            let sh = base64::decode(ds_ssha512).map_err(|_| ())?;
+            let sh = general_purpose::STANDARD
+                .decode(ds_ssha512)
+                .map_err(|_| ())?;
             let (h, s) = sh.split_at(DS_SSHA512_HASH_LEN);
             if s.len() != DS_SSHA512_SALT_LEN {
                 return Err(());
@@ -309,16 +317,18 @@ impl TryFrom<&str> for Password {
                 let c = cost.parse::<usize>().map_err(|_| ())?;
 
                 let s = ab64_to_b64!(salt);
-                let s = base64::decode_config(s, base64::STANDARD.decode_allow_trailing_bits(true))
-                    .map_err(|e| {
-                        error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
-                    })?;
+                let base64_decoder_config = general_purpose::GeneralPurposeConfig::new()
+                    .with_decode_allow_trailing_bits(true);
+                let base64_decoder =
+                    GeneralPurpose::new(&alphabet::STANDARD, base64_decoder_config);
+                let s = base64_decoder.decode(s).map_err(|e| {
+                    error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
+                })?;
 
                 let h = ab64_to_b64!(hash);
-                let h = base64::decode_config(h, base64::STANDARD.decode_allow_trailing_bits(true))
-                    .map_err(|e| {
-                        error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
-                    })?;
+                let h = base64_decoder.decode(h).map_err(|e| {
+                    error!(?e, "Invalid base64 in oldap pbkdf2-sha1");
+                })?;
 
                 // This is just sha1 in a trenchcoat.
                 if value.strip_prefix("{PBKDF2}").is_some()
