@@ -80,7 +80,7 @@ impl SessionConsistency {
                 entry.remove_avas("user_auth_token_session", invalidate);
             }
 
-            // * If a UAT is past it's expiry, remove it.
+            // * If a UAT is past its expiry, remove it.
             let expired: Option<BTreeSet<_>> = entry.get_ava_as_session_map("user_auth_token_session")
                 .map(|sessions| {
                     sessions.iter().filter_map(|(session_id, session)| {

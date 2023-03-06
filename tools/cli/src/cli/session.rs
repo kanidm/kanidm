@@ -241,7 +241,7 @@ impl LoginOpt {
         let username = match self.copt.username.as_deref() {
             Some(val) => val,
             None => {
-                error!("Please specify a username to login with!");
+                error!("Please specify a username with -D <USERNAME> to login.");
                 std::process::exit(1);
             }
         };

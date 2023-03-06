@@ -36,7 +36,7 @@ gloo = { workspace = true }
 gloo-net = { workspace = true }
 js-sys = { workspace = true }
 kanidm_proto = { workspace = true, features = ["wasm"] }
-qrcode = { workspace = true, default-features = false, features = ["svg"] }
+qrcode = { workspace = true, features = ["svg"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde-wasm-bindgen = { workspace = true }

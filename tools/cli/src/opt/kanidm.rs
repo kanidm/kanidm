@@ -502,9 +502,6 @@ pub enum RecycleOpt {
 pub struct LoginOpt {
     #[clap(flatten)]
     copt: CommonOpt,
-    #[clap(short, long)]
-    /// Use a passkey for authentication
-    webauthn: bool,
     #[clap(short, long, env="KANIDM_PASSWORD", hide=true)]
     /// Supply a password to the login option
     password: Option<String>,

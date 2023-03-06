@@ -1,7 +1,8 @@
 FROM freeradius/freeradius-server:latest
 EXPOSE 1812 1813
 ARG RADIUS_USER=freerad
-ENV TZ=Etc/UTC
+ARG TZ=Etc/UTC
+ENV TZ=$TZ
 # These all need to be on one line else the cache ends up in the layers.
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
