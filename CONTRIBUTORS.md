@@ -24,6 +24,7 @@
 - Jan Christoph Ebersbach (jceb)
 - Yuxuan Lu (leoleoasd)
 - Pi-Cla
+- Sebastiano Tocci(Seba-T)
 
 ## Acknowledgements
 
