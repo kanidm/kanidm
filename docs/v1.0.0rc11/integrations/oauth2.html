@@ -286,10 +286,15 @@ class: oauth2_resource_server
 class: oauth2_resource_server_basic
 class: object
 displayname: Nextcloud Production
-oauth2_rs_basic_secret: &lt;secret&gt;
+oauth2_rs_basic_secret: hidden
 oauth2_rs_name: nextcloud
 oauth2_rs_origin: https://nextcloud.example.com
 oauth2_rs_token_key: hidden
+</code></pre>
+<p>You can see &quot;oauth2_rs_basic_secret&quot; with:</p>
+<pre><code class="language-bash">kanidm system oauth2 show-basic-secret nextcloud
+---
+&lt;secret&gt;
 </code></pre>
 <h3 id="configure-the-resource-server"><a class="header" href="#configure-the-resource-server">Configure the Resource Server</a></h3>
 <p>On your resource server, you should configure the client ID as the &quot;oauth2_rs_name&quot; from Kanidm,
