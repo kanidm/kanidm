@@ -1431,8 +1431,6 @@
 <a href="#1431" id="1431">1431</a>
 <a href="#1432" id="1432">1432</a>
 <a href="#1433" id="1433">1433</a>
-<a href="#1434" id="1434">1434</a>
-<a href="#1435" id="1435">1435</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::TryFrom;
 <span class="kw">use </span>std::fs;
 <span class="kw">use </span>std::path::{Path, PathBuf};
@@ -1719,8 +1717,7 @@
         uat: <span class="prelude-ty">Option</span>&lt;String&gt;,
         eventid: Uuid,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;WhoamiResponse, OperationError&gt; {
-        <span class="comment">// TODO #62: Move this to IdmServer!!!
-        // Begin a read
+        <span class="comment">// Begin a read
         </span><span class="kw">let </span>ct = duration_from_epoch_now();
         <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_read = <span class="self">self</span>.idms.proxy_read().<span class="kw">await</span>;
         <span class="comment">// Make an event from the whoami request. This will process the event and
@@ -1736,7 +1733,6 @@
                 <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Invalid identity&quot;</span>);
                 e
             })<span class="question-mark">?</span>;
-
         <span class="kw">let </span>srch =
             SearchEvent::from_whoami_request(ident, <span class="kw-2">&amp;</span>idms_prox_read.qs_read).map_err(|e| {
                 <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Failed to begin whoami&quot;</span>);
