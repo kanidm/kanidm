@@ -1156,6 +1156,15 @@
 <a href="#1156" id="1156">1156</a>
 <a href="#1157" id="1157">1157</a>
 <a href="#1158" id="1158">1158</a>
+<a href="#1159" id="1159">1159</a>
+<a href="#1160" id="1160">1160</a>
+<a href="#1161" id="1161">1161</a>
+<a href="#1162" id="1162">1162</a>
+<a href="#1163" id="1163">1163</a>
+<a href="#1164" id="1164">1164</a>
+<a href="#1165" id="1165">1165</a>
+<a href="#1166" id="1166">1166</a>
+<a href="#1167" id="1167">1167</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt::{<span class="self">self</span>, Debug};
 <span class="kw">use </span>std::str::FromStr;
 
@@ -1473,14 +1482,23 @@
             }
             PersonOpt::Create(acopt) =&gt; {
                 <span class="kw">let </span>client = acopt.copt.to_client().<span class="kw">await</span>;
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
+                <span class="kw">match </span>client
                     .idm_person_account_create(
                         acopt.aopts.account_id.as_str(),
                         acopt.display_name.as_str(),
                     )
                     .<span class="kw">await
                 </span>{
-                    <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e)
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                        <span class="macro">println!</span>(
+                            <span class="string">&quot;Successfully created display_name=\&quot;{}\&quot; username={}&gt;&quot;</span>,
+                            acopt.display_name.as_str(),
+                            acopt.aopts.account_id.as_str(),
+                        )
+                    }
+                    <span class="prelude-val">Err</span>(err) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, err);
+                    }
                 }
             }
             PersonOpt::Validity { commands } =&gt; <span class="kw">match </span>commands {

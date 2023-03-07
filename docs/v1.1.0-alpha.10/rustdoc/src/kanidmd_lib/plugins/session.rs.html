@@ -801,7 +801,7 @@
                 entry.remove_avas(<span class="string">&quot;user_auth_token_session&quot;</span>, invalidate);
             }
 
-            <span class="comment">// * If a UAT is past it&#39;s expiry, remove it.
+            <span class="comment">// * If a UAT is past its expiry, remove it.
             </span><span class="kw">let </span>expired: <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;<span class="kw">_</span>&gt;&gt; = entry.get_ava_as_session_map(<span class="string">&quot;user_auth_token_session&quot;</span>)
                 .map(|sessions| {
                     sessions.iter().filter_map(|(session_id, session)| {

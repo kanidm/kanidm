@@ -905,6 +905,10 @@
 <a href="#905" id="905">905</a>
 <a href="#906" id="906">906</a>
 <a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
 </pre><pre class="rust"><code><span class="kw">use </span>clap::{Args, Subcommand};
 
 <span class="attr">#[derive(Debug, Args)]
@@ -935,6 +939,9 @@
     <span class="doccomment">/// Path to a CA certificate file
     </span><span class="attr">#[clap(parse(from_os_str), short = <span class="string">&#39;C&#39;</span>, long = <span class="string">&quot;ca&quot;</span>, env = <span class="string">&quot;KANIDM_CA_PATH&quot;</span>)]
     </span><span class="kw">pub </span>ca_path: <span class="prelude-ty">Option</span>&lt;PathBuf&gt;,
+    <span class="doccomment">/// Log format (still in very early development)
+    </span><span class="attr">#[clap(short, long = <span class="string">&quot;output&quot;</span>, env = <span class="string">&quot;KANIDM_OUTPUT&quot;</span>, default_value=<span class="string">&quot;text&quot;</span>)]
+    </span>output_mode: String,
 }
 
 <span class="attr">#[derive(Debug, Args)]
@@ -1406,8 +1413,9 @@
 </span><span class="kw">pub struct </span>LoginOpt {
     <span class="attr">#[clap(flatten)]
     </span>copt: CommonOpt,
-    <span class="attr">#[clap(short, long)]
-    </span>webauthn: bool,
+    <span class="attr">#[clap(short, long, env=<span class="string">&quot;KANIDM_PASSWORD&quot;</span>, hide=<span class="bool-val">true</span>)]
+    </span><span class="doccomment">/// Supply a password to the login option
+    </span>password: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
 
 <span class="attr">#[derive(Debug, Args)]

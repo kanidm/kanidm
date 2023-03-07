@@ -136,6 +136,18 @@
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{GroupOpt, GroupPosix};
 
 <span class="kw">impl </span>GroupOpt {
@@ -162,7 +174,12 @@
             GroupOpt::List(copt) =&gt; {
                 <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_group_list().<span class="kw">await </span>{
-                    <span class="prelude-val">Ok</span>(r) =&gt; r.iter().for_each(|ent| <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, ent)),
+                    <span class="prelude-val">Ok</span>(r) =&gt; r.iter().for_each(|ent| <span class="kw">match </span>copt.output_mode.as_str() {
+                        <span class="string">&quot;json&quot; </span>=&gt; {
+                            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, serde_json::to_string(<span class="kw-2">&amp;</span>ent.attrs).unwrap());
+                        }
+                        <span class="kw">_ </span>=&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, ent),
+                    }),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                 }
             }
@@ -170,7 +187,12 @@
                 <span class="kw">let </span>client = gcopt.copt.to_client().<span class="kw">await</span>;
                 <span class="comment">// idm_group_get
                 </span><span class="kw">match </span>client.idm_group_get(gcopt.name.as_str()).<span class="kw">await </span>{
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(e)) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, e),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(e)) =&gt; <span class="kw">match </span>gcopt.copt.output_mode.as_str() {
+                        <span class="string">&quot;json&quot; </span>=&gt; {
+                            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, serde_json::to_string(<span class="kw-2">&amp;</span>e.attrs).unwrap());
+                        }
+                        <span class="kw">_ </span>=&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, e),
+                    },
                     <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; <span class="macro">warn!</span>(<span class="string">&quot;No matching group &#39;{}&#39;&quot;</span>, gcopt.name.as_str()),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                 }
@@ -178,7 +200,9 @@
             GroupOpt::Create(gcopt) =&gt; {
                 <span class="kw">let </span>client = gcopt.copt.to_client().<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_group_create(gcopt.name.as_str()).<span class="kw">await </span>{
-                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
+                    <span class="prelude-val">Err</span>(err) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, err)
+                    }
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Successfully created group &#39;{}&#39;&quot;</span>, gcopt.name.as_str()),
                 }
             }
