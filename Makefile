@@ -110,6 +110,7 @@ codespell:
 	codespell -c \
 	-L crate,unexpect,Pres,pres,ACI,aci,te,ue \
 	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache' \
+	--skip='./book/book/*' \
 	--skip='./docs/*,./.git' \
 	--skip='./server/web_ui/src/external,./server/web_ui/pkg/external' \
 	--skip='./server/lib/src/constants/system_config.rs,./pykanidm/site,./server/lib/src/constants/*.json'

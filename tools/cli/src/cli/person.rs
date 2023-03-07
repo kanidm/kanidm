@@ -315,14 +315,23 @@ impl PersonOpt {
             }
             PersonOpt::Create(acopt) => {
                 let client = acopt.copt.to_client().await;
-                if let Err(e) = client
+                match client
                     .idm_person_account_create(
                         acopt.aopts.account_id.as_str(),
                         acopt.display_name.as_str(),
                     )
                     .await
                 {
-                    error!("Error -> {:?}", e)
+                    Ok(_) => {
+                        println!(
+                            "Successfully created display_name=\"{}\" username={}>",
+                            acopt.display_name.as_str(),
+                            acopt.aopts.account_id.as_str(),
+                        )
+                    }
+                    Err(err) => {
+                        error!("Error -> {:?}", err);
+                    }
                 }
             }
             PersonOpt::Validity { commands } => match commands {

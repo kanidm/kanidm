@@ -1,5 +1,6 @@
 """ kanidm RADIUS module """
 import asyncio
+from aiohttp.client_exceptions import ClientConnectorError
 from functools import reduce
 import json
 import logging
@@ -117,8 +118,12 @@ def authorize(
             error_message,
         )
         return radiusd.RLM_MODULE_NOTFOUND
+    except ClientConnectorError as client_error:
+        logging.error("kanidm client connector error in http layer: %s", client_error)
+        return radiusd.RLM_MODULE_FAIL
     except Exception as error_message:  # pylint: disable=broad-except
         logging.error("kanidm exception: %s, %s", type(error_message), error_message)
+        return radiusd.RLM_MODULE_FAIL
     if tok is None:
         logging.info(
             "kanidm RLM_MODULE_REJECT - unable to retrieve radius information token"

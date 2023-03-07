@@ -28,7 +28,7 @@ radius_required_groups = [
 ]
 # A mapping between Kanidm groups and VLANS
 radius_groups = [
-    { name = "radius_access_allowed", vlan = 10 },
+    { spn = "radius_access_allowed", vlan = 10 },
 ]
 
 # The default VLAN if the user does not fit into another group
