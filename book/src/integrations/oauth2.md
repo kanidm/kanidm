@@ -166,10 +166,18 @@ class: oauth2_resource_server
 class: oauth2_resource_server_basic
 class: object
 displayname: Nextcloud Production
-oauth2_rs_basic_secret: <secret>
+oauth2_rs_basic_secret: hidden
 oauth2_rs_name: nextcloud
 oauth2_rs_origin: https://nextcloud.example.com
 oauth2_rs_token_key: hidden
+```
+
+You can see "oauth2\_rs\_basic\_secret" with:
+
+```bash
+kanidm system oauth2 show-basic-secret nextcloud
+---
+<secret>
 ```
 
 ### Configure the Resource Server
