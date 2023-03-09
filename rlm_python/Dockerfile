@@ -34,7 +34,7 @@ RUN ln -s /etc/raddb/mods-available/python3 /etc/raddb/mods-enabled/python3 && \
 
 
 # Allows the radiusd user to write to the directory
-RUN chown -R $RADIUS_USER. /etc/raddb && \
+RUN chown -R $RADIUS_USER. /etc/raddb/ && \
     chmod 775 /etc/raddb/certs && \
     chmod 640 /etc/raddb/clients.conf
 
