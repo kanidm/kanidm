@@ -298,30 +298,6 @@ pub struct Application {
 }
 */
 
-#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum AuthType {
-    Anonymous,
-    UnixPassword,
-    Password,
-    GeneratedPassword,
-    PasswordMfa,
-    Passkey,
-}
-
-impl fmt::Display for AuthType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            AuthType::Anonymous => write!(f, "anonymous"),
-            AuthType::UnixPassword => write!(f, "unixpassword"),
-            AuthType::Password => write!(f, "password"),
-            AuthType::GeneratedPassword => write!(f, "generatedpassword"),
-            AuthType::PasswordMfa => write!(f, "passwordmfa"),
-            AuthType::Passkey => write!(f, "passkey"),
-        }
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[serde(rename_all = "lowercase")]
 #[derive(TryFromPrimitive)]
@@ -418,7 +394,6 @@ pub enum UatPurpose {
 #[serde(rename_all = "lowercase")]
 pub struct UserAuthToken {
     pub session_id: Uuid,
-    pub auth_type: AuthType,
     #[serde(with = "time::serde::timestamp")]
     pub issued_at: time::OffsetDateTime,
     /// If none, there is no expiry, and this is always valid. If there is

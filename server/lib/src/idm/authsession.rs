@@ -5,14 +5,13 @@
 use std::collections::BTreeMap;
 pub use std::collections::BTreeSet as Set;
 use std::convert::TryFrom;
+use std::fmt;
 use std::time::Duration;
 
 // use webauthn_rs::proto::Credential as WebauthnCredential;
 use compact_jwt::{Jws, JwsSigner};
 use hashbrown::HashSet;
-use kanidm_proto::v1::{
-    AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, AuthType, OperationError,
-};
+use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, OperationError};
 // use crossbeam::channel::Sender;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
@@ -45,6 +44,29 @@ const BAD_AUTH_TYPE_MSG: &str = "invalid authentication method in this context";
 const BAD_CREDENTIALS: &str = "invalid credential message";
 const ACCOUNT_EXPIRED: &str = "account expired";
 const PW_BADLIST_MSG: &str = "password is in badlist";
+
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+pub enum AuthType {
+    Anonymous,
+    UnixPassword,
+    Password,
+    GeneratedPassword,
+    PasswordMfa,
+    Passkey,
+}
+
+impl fmt::Display for AuthType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AuthType::Anonymous => write!(f, "anonymous"),
+            AuthType::UnixPassword => write!(f, "unixpassword"),
+            AuthType::Password => write!(f, "password"),
+            AuthType::GeneratedPassword => write!(f, "generatedpassword"),
+            AuthType::PasswordMfa => write!(f, "passwordmfa"),
+            AuthType::Passkey => write!(f, "passkey"),
+        }
+    }
+}
 
 /// A response type to indicate the progress and potential result of an authentication attempt.
 enum CredState {
@@ -858,7 +880,13 @@ impl AuthSession {
 
                         // We need to actually work this out better, and then
                         // pass it to to_userauthtoken
-                        let scope = SessionScope::ReadWrite;
+                        let scope = match auth_type {
+                            AuthType::UnixPassword | AuthType::Anonymous => SessionScope::ReadOnly,
+                            AuthType::GeneratedPassword => SessionScope::ReadWrite,
+                            AuthType::Password | AuthType::PasswordMfa | AuthType::Passkey => {
+                                SessionScope::PrivilegeCapable
+                            }
+                        };
 
                         security_info!(
                             "Issuing {:?} session {} for {} {}",
@@ -870,12 +898,7 @@ impl AuthSession {
 
                         let uat = self
                             .account
-                            .to_userauthtoken(
-                                session_id,
-                                *time,
-                                auth_type.clone(),
-                                Some(AUTH_SESSION_EXPIRY),
-                            )
+                            .to_userauthtoken(session_id, scope, *time)
                             .ok_or(OperationError::InvalidState)?;
 
                         // Queue the session info write.

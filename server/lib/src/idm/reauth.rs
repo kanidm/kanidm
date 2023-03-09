@@ -1,21 +1,148 @@
 use crate::prelude::*;
 
+use crate::credential::softlock::CredSoftLock;
+use crate::idm::account::Account;
+use crate::idm::authsession::AuthSession;
 use crate::idm::event::AuthResult;
 use crate::idm::server::IdmServerAuthTransaction;
+use crate::utils::uuid_from_duration;
 
-#[derive(Debug)]
-pub struct ReauthEvent {
-    // pub ident: Option<Identity>,
-    // pub step: AuthEventStep,
-    // pub sessionid: Option<Uuid>,
-}
+// use webauthn_rs::prelude::Webauthn;
+
+use std::sync::Arc;
+use tokio::sync::Mutex;
+
+use kanidm_proto::v1::{AuthCredential, AuthIssueSession};
+
+use super::server::CredSoftLockMutex;
 
 impl<'a> IdmServerAuthTransaction<'a> {
-    pub async fn reauth(
+    pub async fn reauth_init(
         &mut self,
-        _ae: &ReauthEvent,
-        _ct: Duration,
+        ident: Identity,
+        issue: AuthIssueSession,
+        ct: Duration,
     ) -> Result<AuthResult, OperationError> {
+        // re-auth only works on users, so lets get the user account.
+        // hint - it's in the ident!
+        let entry = match ident.get_user_entry() {
+            Some(entry) => entry,
+            None => {
+                error!("Ident is not a user and has no entry associated. Unable to proceed.");
+                return Err(OperationError::InvalidState);
+            }
+        };
+
+        // Setup the account record.
+        let account = Account::try_from_entry_ro(entry.as_ref(), &mut self.qs_read)?;
+
+        security_info!(
+            username = %account.name,
+            issue = ?issue,
+            uuid = %account.uuid,
+            "Initiating Re-Authentication Session",
+        );
+
+        // Check that the entry/session can be re-authed.
+        let session = entry
+            .get_ava_as_session_map("user_auth_token_session")
+            .and_then(|sessions| sessions.get(&ident.session_id))
+            .ok_or_else(|| {
+                error!("Ident session is not present in entry. Perhaps replication is delayed?");
+                OperationError::InvalidState
+            })?;
+
+        match session.scope {
+            SessionScope::PrivilegeCapable => {
+                // Yes! This session can re-auth!
+            }
+            SessionScope::ReadOnly | SessionScope::ReadWrite | SessionScope::Synchronise => {
+                // These can not!
+                error!("Session scope is not PrivilegeCapable and can not be used in re-auth.");
+                return Err(OperationError::InvalidState);
+            }
+        };
+
+        // Get the credential id.
+        let session_cred_id = session.cred_id;
+
+        // == Everything Checked Out! ==
+        // Let's setup to proceed with the re-auth.
+
+        // Allocate the session id based on current time / sid.
+        let sessionid = uuid_from_duration(ct, self.sid);
+
+        // Start getting things.
+        let _session_ticket = self.session_ticket.acquire().await;
+
+        // Setup soft locks here if required.
+        let _maybe_slock_ref = account
+            .primary_cred_uuid_and_policy()
+            .map(|(cred_uuid, policy)| {
+                // Acquire the softlock map
+                //
+                // We have no issue calling this with .write here, since we
+                // already hold the session_ticket above.
+                let mut softlock_write = self.softlocks.write();
+                let slock_ref: CredSoftLockMutex =
+                    if let Some(slock_ref) = softlock_write.get(&cred_uuid) {
+                        slock_ref.clone()
+                    } else {
+                        // Create if not exist, and the cred type supports softlocking.
+                        let slock = Arc::new(Mutex::new(CredSoftLock::new(policy)));
+                        softlock_write.insert(cred_uuid, slock.clone());
+                        slock
+                    };
+                softlock_write.commit();
+                slock_ref
+            });
+
+        // Check if the cred is locked! We want to fail fast here!
+        // todo!();
+
+        // Create a re-auth session
+        let (auth_session, state) =
+            AuthSession::new_reauth(account, session_cred_id, issue, self.webauthn, ct);
+
+        // Push the re-auth session to the session maps.
+        match auth_session {
+            Some(auth_session) => {
+                let mut session_write = self.sessions.write();
+                if session_write.contains_key(&sessionid) {
+                    // If we have a session of the same id, return an error (despite how
+                    // unlikely this is ...
+                    Err(OperationError::InvalidSessionState)
+                } else {
+                    session_write.insert(sessionid, Arc::new(Mutex::new(auth_session)));
+                    // Debugging: ensure we really inserted ...
+                    debug_assert!(session_write.get(&sessionid).is_some());
+                    Ok(())
+                }?;
+                session_write.commit();
+            }
+            None => {
+                security_info!("Authentication Session Unable to begin");
+            }
+        };
+
+        Ok(AuthResult { sessionid, state })
+    }
+
+    pub async fn reauth_step(
+        &mut self,
+        _ident: Identity,
+        _ct: Duration,
+        _ra_session_id: Uuid,
+        _cred: AuthCredential,
+    ) -> Result<AuthResult, OperationError> {
+        // Does our session id exist?
+
+        // If so, remove it from the tree and release the lock.
+
+        // Update the slock.
+
+        // On success, re-issue the session with updated scope/values.
+
         todo!();
     }
 }
@@ -127,11 +254,7 @@ mod tests {
 
         let r1 = idms_auth.auth(&auth_init, ct).await;
         let ar = r1.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         if !matches!(state, AuthState::Choose(_)) {
             debug!("Can't proceed - {:?}", state);
@@ -142,11 +265,7 @@ mod tests {
 
         let r2 = idms_auth.auth(&auth_begin, ct).await;
         let ar = r2.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         trace!(?state);
 
@@ -174,7 +293,6 @@ mod tests {
             Ok(AuthResult {
                 sessionid: _,
                 state: AuthState::Success(token, AuthIssueSession::Token),
-                delay: _,
             }) => {
                 // Process the webauthn update
                 let da = idms_delayed.try_recv().expect("invalid");
@@ -220,13 +338,27 @@ mod tests {
         // Token_str to uat
         let ident = token_to_ident(idms, ct, Some(token.as_str())).await;
 
-        // Check that the rw entitlement is not present, and that re-auth is allowed.
-        // assert!(matches!(ident.access_scope(), AccessScope::ReadOnly));
-        assert!(matches!(ident.access_scope(), AccessScope::ReadWrite));
+        // Check that the rw entitlement is not present
+        debug!(?ident);
+        assert!(matches!(ident.access_scope(), AccessScope::ReadOnly));
 
-        // Assert the session is rw capable though.
+        // Assert the session is rw capable though which is what will allow the re-auth
+        // to proceed.
 
-        // Do a re-auth
+        let session = ident.get_session().expect("Unable to access sessions");
+
+        assert!(matches!(session.scope, SessionScope::PrivilegeCapable));
+
+        // Start the re-auth
+
+        let mut auth_txn = idms.auth().await;
+
+        let auth_allowed = auth_txn
+            .reauth_init(ident, AuthIssueSession::Token, ct)
+            .await
+            .expect("Failed to start reauth.");
+
+        // match
 
         // They now have the entitlement.
     }

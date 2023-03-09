@@ -27,7 +27,7 @@ use kanidm_proto::oauth2::{
     ClaimType, DisplayValue, GrantType, IdTokenSignAlg, ResponseMode, ResponseType, SubjectType,
     TokenEndpointAuthMethod,
 };
-use kanidm_proto::v1::{AuthType, UserAuthToken};
+use kanidm_proto::v1::UserAuthToken;
 use openssl::sha;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -126,7 +126,6 @@ enum Oauth2TokenType {
         scopes: Vec<String>,
         parent_session_id: Uuid,
         session_id: Uuid,
-        auth_type: AuthType,
         expiry: time::OffsetDateTime,
         uuid: Uuid,
         iat: i64,
@@ -641,8 +640,8 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         // NOTE: login_hint is handled in the UI code, not here.
 
-        // Deny any uat with an auth method of anonymous
-        if uat.auth_type == AuthType::Anonymous {
+        // Deny anonymous access to oauth2
+        if uat.uuid == UUID_ANONYMOUS {
             admin_error!(
                 "Invalid oauth2 request - refusing to allow user that authenticated with anonymous"
             );
@@ -1130,7 +1129,9 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             // TODO: If max_age was requested in the request, we MUST provide auth_time.
 
             // amr == auth method
-            let amr = Some(vec![code_xchg.uat.auth_type.to_string()]);
+            // We removed this from uat, and I think that it's okay here. AMR is a bit useless anyway
+            // since there is no standard for what it should look like wrt to cred strength.
+            let amr = None;
 
             let iss = o2rs.iss.clone();
 
@@ -1188,7 +1189,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             scopes: code_xchg.scopes,
             parent_session_id,
             session_id,
-            auth_type: code_xchg.uat.auth_type,
             expiry,
             uuid: code_xchg.uat.uuid,
             iat,
@@ -1272,7 +1272,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 scopes,
                 parent_session_id,
                 session_id,
-                auth_type: _,
                 expiry,
                 uuid,
                 iat,
@@ -1377,7 +1376,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 scopes,
                 parent_session_id,
                 session_id,
-                auth_type,
                 expiry,
                 uuid,
                 iat,
@@ -1413,7 +1411,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     Err(err) => return Err(Oauth2Error::ServerError(err)),
                 };
 
-                let amr = Some(vec![auth_type.to_string()]);
+                let amr = None;
 
                 let iss = o2rs.iss.clone();
 
@@ -1628,7 +1626,7 @@ mod tests {
     use base64urlsafedata::Base64UrlSafeData;
     use compact_jwt::{JwaAlg, Jwk, JwkUse, JwsValidator, OidcSubject, OidcUnverified};
     use kanidm_proto::oauth2::*;
-    use kanidm_proto::v1::{AuthType, UserAuthToken};
+    use kanidm_proto::v1::UserAuthToken;
     use openssl::sha;
 
     use crate::idm::delayed::DelayedAction;
@@ -1753,12 +1751,7 @@ mod tests {
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
-            .to_userauthtoken(
-                session_id,
-                ct,
-                AuthType::PasswordMfa,
-                Some(AUTH_SESSION_EXPIRY),
-            )
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -1769,18 +1762,14 @@ mod tests {
         (secret, uat, ident, uuid)
     }
 
-    async fn setup_idm_admin(
-        idms: &IdmServer,
-        ct: Duration,
-        authtype: AuthType,
-    ) -> (UserAuthToken, Identity) {
+    async fn setup_idm_admin(idms: &IdmServer, ct: Duration) -> (UserAuthToken, Identity) {
         let mut idms_prox_write = idms.proxy_write(ct).await;
         let account = idms_prox_write
             .target_to_account(UUID_IDM_ADMIN)
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
-            .to_userauthtoken(session_id, ct, authtype, Some(AUTH_SESSION_EXPIRY))
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -1871,9 +1860,8 @@ mod tests {
         let (_secret, uat, ident, _) =
             setup_oauth2_resource_server(idms, ct, true, false, false).await;
 
-        let (anon_uat, anon_ident) = setup_idm_admin(idms, ct, AuthType::Anonymous).await;
-        let (idm_admin_uat, idm_admin_ident) =
-            setup_idm_admin(idms, ct, AuthType::PasswordMfa).await;
+        let (anon_uat, anon_ident) = setup_idm_admin(idms, ct).await;
+        let (idm_admin_uat, idm_admin_ident) = setup_idm_admin(idms, ct).await;
 
         // Need a uat from a user not in the group. Probs anonymous.
         let idms_prox_read = idms.proxy_read().await;
@@ -2043,12 +2031,7 @@ mod tests {
                 .expect("account must exist");
             let session_id = uuid::Uuid::new_v4();
             let uat2 = account
-                .to_userauthtoken(
-                    session_id,
-                    ct,
-                    AuthType::PasswordMfa,
-                    Some(AUTH_SESSION_EXPIRY),
-                )
+                .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
                 .expect("Unable to create uat");
             let ident2 = idms_prox_write
                 .process_uat_to_identity(&uat2, ct)
@@ -2682,12 +2665,7 @@ mod tests {
                 .expect("account must exist");
             let session_id = uuid::Uuid::new_v4();
             let uat2 = account
-                .to_userauthtoken(
-                    session_id,
-                    ct,
-                    AuthType::PasswordMfa,
-                    Some(AUTH_SESSION_EXPIRY),
-                )
+                .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
                 .expect("Unable to create uat");
             let ident2 = idms_prox_write
                 .process_uat_to_identity(&uat2, ct)
@@ -2996,7 +2974,7 @@ mod tests {
         assert!(oidc.nonce == Some("abcdef".to_string()));
         assert!(oidc.at_hash.is_none());
         assert!(oidc.acr.is_none());
-        assert!(oidc.amr == Some(vec!["passwordmfa".to_string()]));
+        assert!(oidc.amr == None);
         assert!(oidc.azp == Some("test_resource_server".to_string()));
         assert!(oidc.jti.is_none());
         assert!(oidc.s_claims.name == Some("System Administrator".to_string()));

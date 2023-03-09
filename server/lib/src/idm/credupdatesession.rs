@@ -1747,11 +1747,7 @@ mod tests {
 
         let r1 = idms_auth.auth(&auth_init, ct).await;
         let ar = r1.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         if !matches!(state, AuthState::Choose(_)) {
             debug!("Can't proceed - {:?}", state);
@@ -1762,11 +1758,7 @@ mod tests {
 
         let r2 = idms_auth.auth(&auth_begin, ct).await;
         let ar = r2.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         assert!(matches!(state, AuthState::Continue(_)));
 
@@ -1781,7 +1773,6 @@ mod tests {
             Ok(AuthResult {
                 sessionid: _,
                 state: AuthState::Success(token, AuthIssueSession::Token),
-                delay: _,
             }) => {
                 // Process the auth session
                 let da = idms_delayed.try_recv().expect("invalid");
@@ -1806,11 +1797,7 @@ mod tests {
 
         let r1 = idms_auth.auth(&auth_init, ct).await;
         let ar = r1.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         if !matches!(state, AuthState::Choose(_)) {
             debug!("Can't proceed - {:?}", state);
@@ -1821,11 +1808,7 @@ mod tests {
 
         let r2 = idms_auth.auth(&auth_begin, ct).await;
         let ar = r2.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         assert!(matches!(state, AuthState::Continue(_)));
 
@@ -1836,11 +1819,7 @@ mod tests {
         let totp_step = AuthEvent::cred_step_totp(sessionid, totp);
         let r2 = idms_auth.auth(&totp_step, ct).await;
         let ar = r2.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         assert!(matches!(state, AuthState::Continue(_)));
 
@@ -1855,7 +1834,6 @@ mod tests {
             Ok(AuthResult {
                 sessionid: _,
                 state: AuthState::Success(token, AuthIssueSession::Token),
-                delay: _,
             }) => {
                 // Process the auth session
                 let da = idms_delayed.try_recv().expect("invalid");
@@ -1879,11 +1857,7 @@ mod tests {
 
         let r1 = idms_auth.auth(&auth_init, ct).await;
         let ar = r1.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         if !matches!(state, AuthState::Choose(_)) {
             debug!("Can't proceed - {:?}", state);
@@ -1894,22 +1868,14 @@ mod tests {
 
         let r2 = idms_auth.auth(&auth_begin, ct).await;
         let ar = r2.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         assert!(matches!(state, AuthState::Continue(_)));
 
         let code_step = AuthEvent::cred_step_backup_code(sessionid, code);
         let r2 = idms_auth.auth(&code_step, ct).await;
         let ar = r2.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         assert!(matches!(state, AuthState::Continue(_)));
 
@@ -1924,7 +1890,6 @@ mod tests {
             Ok(AuthResult {
                 sessionid: _,
                 state: AuthState::Success(token, AuthIssueSession::Token),
-                delay: _,
             }) => {
                 // There now should be a backup code invalidation present
                 let da = idms_delayed.try_recv().expect("invalid");
@@ -1954,11 +1919,7 @@ mod tests {
 
         let r1 = idms_auth.auth(&auth_init, ct).await;
         let ar = r1.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         if !matches!(state, AuthState::Choose(_)) {
             debug!("Can't proceed - {:?}", state);
@@ -1969,11 +1930,7 @@ mod tests {
 
         let r2 = idms_auth.auth(&auth_begin, ct).await;
         let ar = r2.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         trace!(?state);
 
@@ -2001,7 +1958,6 @@ mod tests {
             Ok(AuthResult {
                 sessionid: _,
                 state: AuthState::Success(token, AuthIssueSession::Token),
-                delay: _,
             }) => {
                 // Process the webauthn update
                 let da = idms_delayed.try_recv().expect("invalid");

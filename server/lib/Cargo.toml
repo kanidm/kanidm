@@ -55,7 +55,7 @@ smolset.workspace = true
 sshkeys.workspace = true
 tide.workspace = true
 time = { workspace = true, features = ["serde", "std"] }
-tokio = { workspace = true, features = ["net", "sync", "time"] }
+tokio = { workspace = true, features = ["net", "sync", "time", "rt"] }
 tokio-util = { workspace = true, features = ["codec"] }
 toml.workspace = true
 touch.workspace = true

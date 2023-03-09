@@ -2,8 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
 
 use kanidm_proto::v1::{
-    AuthType, BackupCodesView, CredentialStatus, OperationError, UatPurpose, UatStatus, UiHint,
-    UserAuthToken,
+    BackupCodesView, CredentialStatus, OperationError, UatPurpose, UatStatus, UiHint, UserAuthToken,
 };
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -197,27 +196,43 @@ impl Account {
     pub(crate) fn to_userauthtoken(
         &self,
         session_id: Uuid,
+        scope: SessionScope,
         ct: Duration,
-        auth_type: AuthType,
-        expiry_secs: Option<u64>,
     ) -> Option<UserAuthToken> {
-        // This could consume self?
-        // The cred handler provided is what authenticated this user, so we can use it to
-        // process what the proper claims should be.
-        // Get the claims from the cred_h
-
         // TODO: Apply policy to this expiry time.
-        let expiry = expiry_secs
-            .map(|offset| OffsetDateTime::unix_epoch() + ct + Duration::from_secs(offset));
-
         let issued_at = OffsetDateTime::unix_epoch() + ct;
 
-        // TODO: Apply priv expiry, and what type of token this is (ident, ro, rw).
-        let purpose = UatPurpose::ReadWrite { expiry };
+        let expiry =
+            Some(OffsetDateTime::unix_epoch() + ct + Duration::from_secs(AUTH_SESSION_EXPIRY));
+
+        let (purpose, expiry) = match scope {
+            // Issue an invalid/expired session.
+            SessionScope::Synchronise => {
+                warn!(
+                    "Should be impossible to issue sync sessions with a uat. Refusing to proceed."
+                );
+                return None;
+            }
+            SessionScope::ReadOnly => (UatPurpose::ReadOnly, expiry),
+            SessionScope::ReadWrite => {
+                // These sessions are always rw, and so have limited life.
+                (UatPurpose::ReadWrite { expiry }, expiry)
+            }
+            SessionScope::PrivilegeCapable =>
+            // Return a rw capable session with the expiry currently invalid.
+            // These sessions COULD live forever since they can re-auth properly.
+            // Today I'm setting this to 24hr though.
+            {
+                (
+                    UatPurpose::ReadWrite { expiry: None },
+                    Some(OffsetDateTime::unix_epoch() + ct + Duration::from_secs(86400)),
+                )
+            }
+        };
 
         Some(UserAuthToken {
             session_id,
-            auth_type,
+
             expiry,
             issued_at,
             purpose,
@@ -457,7 +472,7 @@ impl Account {
         // Anonymous does NOT record it's sessions, so we simply check the expiry time
         // of the token. This is already done for us as noted above.
 
-        if uat.auth_type == AuthType::Anonymous {
+        if uat.uuid == UUID_ANONYMOUS {
             security_info!("Anonymous sessions do not have session records, session is valid.");
             true
         } else {
@@ -683,7 +698,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-    use kanidm_proto::v1::{AuthType, UiHint};
+    use kanidm_proto::v1::UiHint;
 
     #[test]
     fn test_idm_account_from_anonymous() {
@@ -719,7 +734,7 @@ mod tests {
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
-            .to_userauthtoken(session_id, ct, AuthType::Passkey, None)
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect("Unable to create uat");
 
         // Check the ui hints are as expected.
@@ -744,7 +759,7 @@ mod tests {
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
-            .to_userauthtoken(session_id, ct, AuthType::Passkey, None)
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect("Unable to create uat");
 
         assert!(uat.ui_hints.len() == 2);
@@ -769,7 +784,7 @@ mod tests {
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
-            .to_userauthtoken(session_id, ct, AuthType::Passkey, None)
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect("Unable to create uat");
 
         assert!(uat.ui_hints.len() == 3);
