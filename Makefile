@@ -108,8 +108,8 @@ install-tools:
 .PHONY: codespell
 codespell:
 	codespell -c \
-	-L crate,unexpect,Pres,pres,ACI,aci,te,ue \
-	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache' \
+	-L crate,unexpect,Pres,pres,ACI,aci,te,ue,aNULL \
+	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache,./pykanidm/poetry.lock' \
 	--skip='./book/book/*' \
 	--skip='./docs/*,./.git' \
 	--skip='./server/web_ui/src/external,./server/web_ui/pkg/external' \

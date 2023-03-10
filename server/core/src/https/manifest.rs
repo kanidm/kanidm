@@ -94,7 +94,7 @@ enum DisplayMode {
     Browser,
 }
 
-/// Generates a manifest.json file for progressive web app usag
+/// Generates a manifest.json file for progressive web app usage
 pub async fn manifest(req: tide::Request<AppState>) -> tide::Result {
     let mut res = tide::Response::new(200);
     let (eventid, _) = req.new_eventid();
