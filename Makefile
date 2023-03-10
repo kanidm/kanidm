@@ -108,7 +108,7 @@ install-tools:
 .PHONY: codespell
 codespell:
 	codespell -c \
-	-L crate,unexpect,Pres,pres,ACI,aci,te,ue,aNULL \
+	-L 'crate,unexpect,Pres,pres,ACI,aci,te,ue,aNULL' \
 	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache,./pykanidm/poetry.lock' \
 	--skip='./book/book/*' \
 	--skip='./docs/*,./.git' \
