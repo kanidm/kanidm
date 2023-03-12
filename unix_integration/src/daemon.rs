@@ -43,6 +43,7 @@ use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_u
 
 //=== the codec
 
+use std::process::ExitCode;
 type AsyncTaskRequest = (TaskRequest, oneshot::Sender<()>);
 
 struct ClientCodec;
@@ -746,6 +747,7 @@ async fn main() {
             server.await;
             ExitCode::SUCCESS
     })
-    .await
+    .await;
+    ExitCode::SUCCESS
     // TODO: can we catch signals to clean up sockets etc, especially handy when running as root
 }
