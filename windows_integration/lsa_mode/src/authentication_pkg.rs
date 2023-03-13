@@ -154,7 +154,7 @@ pub extern "system" fn ap_post_logon_user_surrogate(
     client_buffer_base: *const c_void,
     submit_buffer_size: u32,
     surrogate_logon: *const SECPKG_SURROGATE_LOGON,
-    profile_buffer: *mut c_void,
+    profile_buffer: *const c_void,
     profile_buffer_size: u32,
     logon_id: *const LUID,
     status: NTSTATUS,
