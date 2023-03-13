@@ -24,7 +24,12 @@ impl GroupOpt {
             GroupOpt::List(copt) => {
                 let client = copt.to_client().await;
                 match client.idm_group_list().await {
-                    Ok(r) => r.iter().for_each(|ent| println!("{}", ent)),
+                    Ok(r) => r.iter().for_each(|ent| match copt.output_mode.as_str() {
+                        "json" => {
+                            println!("{}", serde_json::to_string(&ent.attrs).unwrap());
+                        }
+                        _ => println!("{}", ent),
+                    }),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
@@ -32,7 +37,12 @@ impl GroupOpt {
                 let client = gcopt.copt.to_client().await;
                 // idm_group_get
                 match client.idm_group_get(gcopt.name.as_str()).await {
-                    Ok(Some(e)) => println!("{}", e),
+                    Ok(Some(e)) => match gcopt.copt.output_mode.as_str() {
+                        "json" => {
+                            println!("{}", serde_json::to_string(&e.attrs).unwrap());
+                        }
+                        _ => println!("{}", e),
+                    },
                     Ok(None) => warn!("No matching group '{}'", gcopt.name.as_str()),
                     Err(e) => error!("Error -> {:?}", e),
                 }
@@ -40,7 +50,9 @@ impl GroupOpt {
             GroupOpt::Create(gcopt) => {
                 let client = gcopt.copt.to_client().await;
                 match client.idm_group_create(gcopt.name.as_str()).await {
-                    Err(e) => error!("Error -> {:?}", e),
+                    Err(err) => {
+                        error!("Error -> {:?}", err)
+                    }
                     Ok(_) => println!("Successfully created group '{}'", gcopt.name.as_str()),
                 }
             }

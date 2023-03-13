@@ -23,7 +23,9 @@
 - Kaleb Olson (kalebo)
 - Jan Christoph Ebersbach (jceb)
 - Yuxuan Lu (leoleoasd)
+- h7x4
 - Pi-Cla
+- Sebastiano Tocci(Seba-T)
 
 ## Acknowledgements
 

@@ -284,7 +284,6 @@ impl QueryServerReadV1 {
         uat: Option<String>,
         eventid: Uuid,
     ) -> Result<WhoamiResponse, OperationError> {
-        // TODO #62: Move this to IdmServer!!!
         // Begin a read
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
@@ -301,7 +300,6 @@ impl QueryServerReadV1 {
                 admin_error!(?e, "Invalid identity");
                 e
             })?;
-
         let srch =
             SearchEvent::from_whoami_request(ident, &idms_prox_read.qs_read).map_err(|e| {
                 admin_error!(?e, "Failed to begin whoami");
