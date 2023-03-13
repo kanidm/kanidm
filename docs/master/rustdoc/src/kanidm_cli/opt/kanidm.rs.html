@@ -909,6 +909,7 @@
 <a href="#909" id="909">909</a>
 <a href="#910" id="910">910</a>
 <a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
 </pre><pre class="rust"><code><span class="kw">use </span>clap::{Args, Subcommand};
 
 <span class="attr">#[derive(Debug, Args)]
@@ -947,7 +948,8 @@
 <span class="attr">#[derive(Debug, Args)]
 </span><span class="kw">pub struct </span>GroupNamedMembers {
     name: String,
-    members: Vec&lt;String&gt;,
+    <span class="attr">#[clap(required=<span class="bool-val">true</span>,min_values=<span class="number">1</span>)]
+    </span>members: Vec&lt;String&gt;,
     <span class="attr">#[clap(flatten)]
     </span>copt: CommonOpt,
 }
@@ -1628,7 +1630,7 @@
     </span>Upload {
         <span class="attr">#[clap(flatten)]
         </span>copt: CommonOpt,
-        <span class="attr">#[clap(parse(from_os_str))]
+        <span class="attr">#[clap(parse(from_os_str),required=<span class="bool-val">true</span>,min_values=<span class="number">1</span>)]
         </span>paths: Vec&lt;PathBuf&gt;,
         <span class="doccomment">/// Perform a dry run and display the list that would have been uploaded instead.
         </span><span class="attr">#[clap(short = <span class="string">&#39;n&#39;</span>, long)]
@@ -1640,7 +1642,7 @@
     </span>Remove {
         <span class="attr">#[clap(flatten)]
         </span>copt: CommonOpt,
-        <span class="attr">#[clap(parse(from_os_str))]
+        <span class="attr">#[clap(parse(from_os_str), required=<span class="bool-val">true</span>, min_values=<span class="number">1</span>)]
         </span>paths: Vec&lt;PathBuf&gt;,
     }
 }
