@@ -427,7 +427,11 @@ async fn main() -> ExitCode {
 
 
     #[allow(clippy::expect_used)]
-    let cfg_path_str = clap_args.get_one::<String>("client-config").expect("Failed to pull the client config path");
+    let Some(cfg_path_str) = clap_args.get_one::<String>("client-config") else {
+        error!("Failed to pull the client config path");
+        return ExitCode::FAILURE;
+    };
+    //let cfg_path_str = clap_args.get_one::<String>("client-config").expect("Failed to pull the client config path");
     let cfg_path: PathBuf =  PathBuf::from(cfg_path_str);
 
     if !cfg_path.exists() {
@@ -459,7 +463,11 @@ async fn main() -> ExitCode {
     }
 
     #[allow(clippy::expect_used)]
-    let unixd_path_str = clap_args.get_one::<String>("unixd-config").expect("Failed to pull the unixd config path");
+    let Some(unixd_path_str) = clap_args.get_one::<String>("unixd-config") else {
+        error!("Failed to pull the unixd config path");
+        return ExitCode::FAILURE;
+    };
+    //let unixd_path_str = clap_args.get_one::<String>("unixd-config").expect("Failed to pull the unixd config path");
     let unixd_path = PathBuf::from(unixd_path_str);
 
     if !unixd_path.exists() {
