@@ -1,3 +1,5 @@
+use std::u32;
+
 use windows::Win32::{Foundation::*, Security::Authentication::Identity::*};
 use authentication_pkg as authpkg;
 use security_pkg as secpkg;
@@ -9,11 +11,14 @@ mod security_pkg;
 #[allow(non_snake_case)]
 pub extern "system" fn SpLsaModeInitialize(
     lsaversion: u32,
-    packageversion: *mut u32,
+    pkg_ver: *mut u32,
     pptables: *mut *mut SECPKG_FUNCTION_TABLE,
     pctables: *mut u32,
 ) -> NTSTATUS {
     unsafe {
+        *pkg_ver = 1u32;
+        *pctables = 39u32;
+
         let mut tbl_ref = *(*pptables);
 
         // Authentication Package
@@ -28,7 +33,7 @@ pub extern "system" fn SpLsaModeInitialize(
         tbl_ref.PostLogonUser = Some(authpkg::ap_post_logon_user);
         tbl_ref.LogonUserEx3 = Some(authpkg::ap_logon_user_ex3);
         tbl_ref.PreLogonUserSurrogate = Some(authpkg::ap_pre_logon_user_surrogate);
-        tbl_ref.PostLogonUserSurrogate = Some(authpkg::ap_post_logon_user_surrogate)
+        tbl_ref.PostLogonUserSurrogate = Some(authpkg::ap_post_logon_user_surrogate);
 
         // Security Package
         tbl_ref.Initialize = Some(secpkg::sp_initialise);
@@ -61,6 +66,5 @@ pub extern "system" fn SpLsaModeInitialize(
         tbl_ref.GetRemoteCredGuardSupplementalCreds = Some(secpkg::sp_get_remote_cred_guard_supplemental_creds);
         tbl_ref.GetTbalSupplementalCreds = Some(secpkg::sp_get_tbal_supplemental_creds);
     }
-
     NTSTATUS(0x0)
 }
