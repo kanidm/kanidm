@@ -10,15 +10,15 @@ pub extern "system" fn sp_initialise(
     parameters: *const SECPKG_PARAMETERS,
     func_table: *const LSA_SECPKG_FUNCTION_TABLE,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_shutdown() -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_get_info(pkg_info: *mut SecPkgInfoA) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_accept_credentials(
@@ -27,7 +27,7 @@ pub extern "system" fn sp_accept_credentials(
     primary_creds: *const SECPKG_PRIMARY_CRED,
     supplemental_creds: *const SECPKG_SUPPLEMENTAL_CRED,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_acquire_credentials_handle(
@@ -40,7 +40,7 @@ pub extern "system" fn sp_acquire_credentials_handle(
     cred_handle: *mut usize,
     expire_time: *mut i64,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_query_credentials_attributes(
@@ -48,26 +48,26 @@ pub extern "system" fn sp_query_credentials_attributes(
     cred_attribute: u32,
     buffer: *mut c_void,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_free_credentials_handle(cred_handle: usize) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_save_credentials(cred_size: usize, creds: *const SecBuffer) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_get_credentials(cred_handle: usize, creds: *mut SecBuffer) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_delete_credentials(
     cred_handle: usize,
     creds: *const SecBuffer,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_init_lsa_mode_context(
@@ -84,7 +84,7 @@ pub extern "system" fn sp_init_lsa_mode_context(
     mapped_ctx: *mut BOOLEAN,
     ctx_data: *mut SecBuffer,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_accept_lsa_mode_context(
@@ -100,18 +100,18 @@ pub extern "system" fn sp_accept_lsa_mode_context(
     mapped_ctx: *mut BOOLEAN,
     ctx_data: *mut SecBuffer,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_delete_ctx(ctx_handle: usize) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_apply_control_token(
     ctx_handle: usize,
     control_token: *const SecBufferDesc,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_get_user_info(
@@ -119,14 +119,14 @@ pub extern "system" fn sp_get_user_info(
     flags: u32,
     user_data: *mut *mut SECURITY_USER_DATA,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_get_extended_info(
     class: SECPKG_EXTENDED_INFORMATION_CLASS,
     pp_info: *mut *mut SECPKG_EXTENDED_INFORMATION,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_query_ctx_attributes(
@@ -134,7 +134,7 @@ pub extern "system" fn sp_query_ctx_attributes(
     ctx_attribute: u32,
     buffer: *mut c_void,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_add_creds(
@@ -147,14 +147,14 @@ pub extern "system" fn sp_add_creds(
     get_key_arg: *const c_void,
     expire_time: *mut i64,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_set_extended_info(
     class: SECPKG_EXTENDED_INFORMATION_CLASS,
     info: *const SECPKG_EXTENDED_INFORMATION,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_set_ctx_attributes(
@@ -163,7 +163,7 @@ pub extern "system" fn sp_set_ctx_attributes(
     buffer: *const c_void,
     buffer_size: u32,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_change_account_password(
@@ -174,7 +174,7 @@ pub extern "system" fn sp_change_account_password(
     impersonating: BOOLEAN,
     output: *mut SecBufferDesc,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_query_metadata(
@@ -185,7 +185,7 @@ pub extern "system" fn sp_query_metadata(
     metadata: *mut *mut u8,
     ctx_handle: *mut usize,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_exchange_metadata(
@@ -196,7 +196,7 @@ pub extern "system" fn sp_exchange_metadata(
     metadata: *const u8,
     ctx_handle: *mut usize,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_get_cred_ui_ctx(
@@ -205,7 +205,7 @@ pub extern "system" fn sp_get_cred_ui_ctx(
     flat_cred_ui_ctx_length: *mut u32,
     flat_cred_ui_ctx: *mut *mut u8,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_update_creds(
@@ -214,7 +214,7 @@ pub extern "system" fn sp_update_creds(
     flat_cred_ui_ctx_length: u32,
     flat_cred_ui_ctx: *const u8,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_validate_target_info(
@@ -224,7 +224,7 @@ pub extern "system" fn sp_validate_target_info(
     submit_buffer_length: u32,
     target_info: *const SECPKG_TARGETINFO,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_get_remote_cred_guard_logon_buffer(
@@ -237,7 +237,7 @@ pub extern "system" fn sp_get_remote_cred_guard_logon_buffer(
     logon_buffer_size: *mut u32,
     logon_buffer: *mut *mut c_void,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_get_remote_cred_guard_supplemental_creds(
@@ -249,7 +249,7 @@ pub extern "system" fn sp_get_remote_cred_guard_supplemental_creds(
     supplemental_cred_size: *mut u32,
     supplemental_cred: *mut *mut c_void,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn sp_get_tbal_supplemental_creds(
@@ -257,5 +257,5 @@ pub extern "system" fn sp_get_tbal_supplemental_creds(
     supplemental_cred_size: *mut u32,
     supplemental_creds: *mut *mut c_void,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }

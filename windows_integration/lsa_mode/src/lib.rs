@@ -66,5 +66,5 @@ pub extern "system" fn SpLsaModeInitialize(
         tbl_ref.GetRemoteCredGuardSupplementalCreds = Some(secpkg::sp_get_remote_cred_guard_supplemental_creds);
         tbl_ref.GetTbalSupplementalCreds = Some(secpkg::sp_get_tbal_supplemental_creds);
     }
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }

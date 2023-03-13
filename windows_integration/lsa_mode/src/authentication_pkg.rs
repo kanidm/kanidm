@@ -8,7 +8,7 @@ pub extern "system" fn ap_initialise_pkg(
     confidentiality: *const STRING,
     auth_pkg_name: *mut *mut STRING,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn ap_logon_user(
@@ -26,7 +26,7 @@ pub extern "system" fn ap_logon_user(
     account_name: *mut *mut UNICODE_STRING,
     auth_authority: *mut *mut UNICODE_STRING,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn ap_call_package(
@@ -38,7 +38,7 @@ pub extern "system" fn ap_call_package(
     return_buffer_length: *mut u32,
     protcol_status: *mut i32,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn ap_call_package_untrusted(
@@ -50,7 +50,7 @@ pub extern "system" fn ap_call_package_untrusted(
     return_buffer_length: *mut u32,
     protcol_status: *mut i32,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn ap_call_package_passthrough(
@@ -62,7 +62,7 @@ pub extern "system" fn ap_call_package_passthrough(
     return_buffer_length: *mut u32,
     protcol_status: *mut i32,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn ap_logon_terminated(logon_id: *const LUID) {}
@@ -83,7 +83,7 @@ pub extern "system" fn ap_logon_user_ex(
     auth_authority: *mut *mut UNICODE_STRING,
     machinename: *mut *mut UNICODE_STRING,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn ap_logon_user_ex2(
@@ -104,13 +104,13 @@ pub extern "system" fn ap_logon_user_ex2(
     primary_credentials: *mut SECPKG_PRIMARY_CRED,
     supplemental_credentials: *mut *mut SECPKG_SUPPLEMENTAL_CRED_ARRAY,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn ap_post_logon_user(
     post_logon_user_info: *const SECPKG_POST_LOGON_USER_INFO,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn ap_logon_user_ex3(
@@ -132,7 +132,7 @@ pub extern "system" fn ap_logon_user_ex3(
     primary_creds: *mut SECPKG_PRIMARY_CRED,
     supplemtal_creds: *mut *mut SECPKG_SUPPLEMENTAL_CRED_ARRAY,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn ap_pre_logon_user_surrogate(
@@ -144,7 +144,7 @@ pub extern "system" fn ap_pre_logon_user_surrogate(
     surrogate_logon: *mut SECPKG_SURROGATE_LOGON,
     substatus: *mut i32,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
 
 pub extern "system" fn ap_post_logon_user_surrogate(
@@ -167,5 +167,5 @@ pub extern "system" fn ap_post_logon_user_surrogate(
     primary_creds: *const SECPKG_PRIMARY_CRED,
     supplemental_creds: *const SECPKG_SUPPLEMENTAL_CRED_ARRAY,
 ) -> NTSTATUS {
-    NTSTATUS(0x0)
+    STATUS_SUCCESS
 }
