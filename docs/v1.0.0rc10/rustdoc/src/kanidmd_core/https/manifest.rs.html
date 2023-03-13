@@ -252,7 +252,7 @@
     </span>Browser,
 }
 
-<span class="doccomment">/// Generates a manifest.json file for progressive web app usag
+<span class="doccomment">/// Generates a manifest.json file for progressive web app usage
 </span><span class="kw">pub async fn </span>manifest(req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
     <span class="kw">let </span><span class="kw-2">mut </span>res = tide::Response::new(<span class="number">200</span>);
     <span class="kw">let </span>(eventid, <span class="kw">_</span>) = req.new_eventid();
