@@ -36,6 +36,7 @@ pub struct CommonOpt {
 #[derive(Debug, Args)]
 pub struct GroupNamedMembers {
     name: String,
+    #[clap(required=true,min_values=1)]
     members: Vec<String>,
     #[clap(flatten)]
     copt: CommonOpt,
@@ -592,7 +593,7 @@ pub struct Oauth2SetDisplayname {
 pub struct Oauth2SetImplicitScopes {
     #[clap(flatten)]
     nopt: Named,
-    #[clap(name = "scopes")]
+    #[clap(name = "scopes")] // TODO: is this required, or is null implying un-setting it?
     scopes: Vec<String>,
 }
 
@@ -602,7 +603,7 @@ pub struct Oauth2CreateScopeMapOpt {
     nopt: Named,
     #[clap(name = "group")]
     group: String,
-    #[clap(name = "scopes")]
+    #[clap(name = "scopes")] // TODO: is this required, or is null implying a default?
     scopes: Vec<String>,
 }
 
@@ -717,7 +718,7 @@ pub enum PwBadlistOpt {
     Upload {
         #[clap(flatten)]
         copt: CommonOpt,
-        #[clap(parse(from_os_str))]
+        #[clap(parse(from_os_str),required=true,min_values=1)]
         paths: Vec<PathBuf>,
         /// Perform a dry run and display the list that would have been uploaded instead.
         #[clap(short = 'n', long)]
@@ -729,7 +730,7 @@ pub enum PwBadlistOpt {
     Remove {
         #[clap(flatten)]
         copt: CommonOpt,
-        #[clap(parse(from_os_str))]
+        #[clap(parse(from_os_str), required=true, min_values=1)]
         paths: Vec<PathBuf>,
     }
 }
