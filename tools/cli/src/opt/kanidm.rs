@@ -593,7 +593,7 @@ pub struct Oauth2SetDisplayname {
 pub struct Oauth2SetImplicitScopes {
     #[clap(flatten)]
     nopt: Named,
-    #[clap(name = "scopes")] // TODO: is this required, or is null implying un-setting it?
+    #[clap(name = "scopes")]
     scopes: Vec<String>,
 }
 
@@ -603,7 +603,7 @@ pub struct Oauth2CreateScopeMapOpt {
     nopt: Named,
     #[clap(name = "group")]
     group: String,
-    #[clap(name = "scopes")] // TODO: is this required, or is null implying a default?
+    #[clap(name = "scopes")]
     scopes: Vec<String>,
 }
 
