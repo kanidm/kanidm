@@ -1,13 +1,44 @@
 use std::ffi::c_void;
+use windows::core::PSTR;
 use windows::Win32::{Foundation::*, Security::Authentication::Identity::*, System::Kernel::*};
+
+struct AuthPkg {
+    /// The authentication package id assigned by the local security authority
+    api: Option<u32>,
+    /// The lsa dispatch table
+    ldt: Option<*const LSA_DISPATCH_TABLE>,
+}
+
+static mut AUTH_PKG: AuthPkg = AuthPkg {
+    api: None,
+    ldt: None,
+};
 
 pub extern "system" fn ap_initialise_pkg(
     auth_pkg_id: u32,
     lsa_dispatch_table: *const LSA_DISPATCH_TABLE,
-    db: *const STRING,
-    confidentiality: *const STRING,
+    _: *const STRING,
+    _: *const STRING,
     auth_pkg_name: *mut *mut STRING,
 ) -> NTSTATUS {
+    let mut pkg_name = env!("CARGO_PKG_NAME").to_owned();
+    let pkg_name_len = match u16::try_from(pkg_name.len()) {
+        Ok(len) => len,
+        Err(_) => return STATUS_UNSUCCESSFUL,
+    };
+
+    let ap_name = STRING {
+        Length: pkg_name_len,
+        MaximumLength: pkg_name_len,
+        Buffer: PSTR(pkg_name.as_mut_ptr()),
+    };
+
+    unsafe {
+        **auth_pkg_name = ap_name;
+        AUTH_PKG.ldt = Some(lsa_dispatch_table);
+        AUTH_PKG.api = Some(auth_pkg_id);
+    }
+
     STATUS_SUCCESS
 }
 
