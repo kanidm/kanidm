@@ -475,7 +475,7 @@ impl KanidmClient {
             warn!(server_version = ?ver, client_version = ?EXPECT_VERSION, "Mismatched client and server version - features may not work, or other unforeseen errors may occur.")
         }
 
-        // debug_assert!(matching);
+        debug_assert!(matching);
 
         // Check is done once, mark as no longer needing to occur
         *guard = false;
