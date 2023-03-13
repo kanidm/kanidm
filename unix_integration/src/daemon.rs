@@ -425,14 +425,13 @@ async fn main() -> ExitCode {
     debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
     debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
 
-
     #[allow(clippy::expect_used)]
     let Some(cfg_path_str) = clap_args.get_one::<String>("client-config") else {
         error!("Failed to pull the client config path");
         return ExitCode::FAILURE;
     };
     //let cfg_path_str = clap_args.get_one::<String>("client-config").expect("Failed to pull the client config path");
-    let cfg_path: PathBuf =  PathBuf::from(cfg_path_str);
+    let cfg_path: PathBuf = PathBuf::from(cfg_path_str);
 
     if !cfg_path.exists() {
         // there's no point trying to start up if we can't read a usable config!
@@ -665,12 +664,13 @@ async fn main() -> ExitCode {
         .set_global(true)
         // Fall back to stderr
         .map_sender(|sender| sender.or_stderr())
-        .build_on(|subscriber| subscriber
-            .with(EnvFilter::try_from_default_env()
-                .or_else(|_| EnvFilter::try_new("info"))
-                .expect("Failed to init envfilter")
+        .build_on(|subscriber| {
+            subscriber.with(
+                EnvFilter::try_from_default_env()
+                    .or_else(|_| EnvFilter::try_new("info"))
+                    .expect("Failed to init envfilter"),
             )
-        )
+        })
         .on(async {
             if clap_args.get_flag("skip-root-check") {
                 warn!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
@@ -945,7 +945,8 @@ async fn main() -> ExitCode {
                             // It did? Great, now we can wait and spin on that one
                             // client.
                             if let Err(e) =
-                                handle_task_client(socket, &task_channel_tx, &mut task_channel_rx).await
+                                handle_task_client(socket, &task_channel_tx, &mut task_channel_rx)
+                                    .await
                             {
                                 error!("Task client error occurred; error = {:?}", e);
                             }
@@ -968,7 +969,8 @@ async fn main() -> ExitCode {
                         Ok((socket, _addr)) => {
                             let cachelayer_ref = cachelayer.clone();
                             tokio::spawn(async move {
-                                if let Err(e) = handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
+                                if let Err(e) =
+                                    handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
                                 {
                                     error!("handle_client error occurred; error = {:?}", e);
                                 }
