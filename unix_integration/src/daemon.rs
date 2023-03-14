@@ -424,7 +424,6 @@ async fn main() {
     debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
     debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
 
-    #[allow(clippy::expect_used)]
     let Some(cfg_path_str) = clap_args.get_one::<String>("client-config") else {
         error!("Failed to pull the client config path");
         return ExitCode::FAILURE;
@@ -460,7 +459,6 @@ async fn main() {
         }
     }
 
-    #[allow(clippy::expect_used)]
     let Some(unixd_path_str) = clap_args.get_one::<String>("unixd-config") else {
         error!("Failed to pull the unixd config path");
         return ExitCode::FAILURE;
