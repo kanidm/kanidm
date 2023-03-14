@@ -416,13 +416,17 @@ async fn main() {
         )
         .get_matches();
 
+    if clap_args.get_flag("debug") {
+        std::env::set_var("RUST_LOG", "debug");
+    }
+
     tracing_forest::worker_task()
         .set_global(true)
         // Fall back to stderr
         .map_sender(|sender| sender.or_stderr())
         .build_on(|subscriber| subscriber
             .with(EnvFilter::try_from_default_env()
-                .or_else(|_| EnvFilter::try_new("debug"))
+                .or_else(|_| EnvFilter::try_new("info"))
                 .expect("Failed to init envfilter")
             )
         )
@@ -434,9 +438,6 @@ async fn main() {
                 error!("Refusing to run - this process must not operate as root.");
                 return
             };
-            if clap_args.get_flag("debug") {
-                std::env::set_var("RUST_LOG", "debug");
-            }
 
             debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
             debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
