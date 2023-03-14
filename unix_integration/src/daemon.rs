@@ -417,10 +417,6 @@ async fn main() -> ExitCode {
         )
         .get_matches();
 
-    if clap_args.get_flag("debug") {
-        std::env::set_var("RUST_LOG", "debug");
-    }
-
     tracing_forest::worker_task()
         .set_global(true)
         // Fall back to stderr
@@ -437,8 +433,11 @@ async fn main() -> ExitCode {
                 // TODO: this wording is not great m'kay.
             } else if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
                 error!("Refusing to run - this process must not operate as root.");
-                return ExitCode::FAILURE
+                return;
             };
+            if clap_args.get_flag("debug") {
+                std::env::set_var("RUST_LOG", "debug");
+            }
 
             debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
             debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
