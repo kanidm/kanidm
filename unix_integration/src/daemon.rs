@@ -416,17 +416,6 @@ async fn main() {
         )
         .get_matches();
 
-    if clap_args.get_flag("skip-root-check") {
-        warn!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
-        // TODO: this wording is not great m'kay.
-    } else if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
-        error!("Refusing to run - this process must not operate as root.");
-        return;
-    };
-    if clap_args.get_flag("debug") {
-        std::env::set_var("RUST_LOG", "debug");
-    }
-
     tracing_forest::worker_task()
         .set_global(true)
         // Fall back to stderr
@@ -438,6 +427,17 @@ async fn main() {
             )
         )
         .on(async {
+            if clap_args.get_flag("skip-root-check") {
+                warn!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
+                // TODO: this wording is not great m'kay.
+            } else if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
+                error!("Refusing to run - this process must not operate as root.");
+                return;
+            };
+            if clap_args.get_flag("debug") {
+                std::env::set_var("RUST_LOG", "debug");
+            }
+
             debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
             debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
 
