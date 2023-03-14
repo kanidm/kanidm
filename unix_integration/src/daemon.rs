@@ -363,7 +363,7 @@ async fn handle_client(
     Ok(())
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();
