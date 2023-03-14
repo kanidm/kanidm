@@ -365,7 +365,7 @@ async fn handle_client(
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() -> ExitCode {
+async fn main() {
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();
     let cgid = get_current_gid();
