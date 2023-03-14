@@ -422,7 +422,7 @@ async fn main() {
         .map_sender(|sender| sender.or_stderr())
         .build_on(|subscriber| subscriber
             .with(EnvFilter::try_from_default_env()
-                .or_else(|_| EnvFilter::try_new("info"))
+                .or_else(|_| EnvFilter::try_new("debug"))
                 .expect("Failed to init envfilter")
             )
         )
