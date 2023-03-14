@@ -2343,6 +2343,7 @@ dependencies = [
 name = "kanidm_unix_int"
 version = "1.1.0-alpha.12-dev"
 dependencies = [
+ "anyhow",
  "bytes",
  "clap",
  "clap_complete",
