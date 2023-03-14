@@ -433,7 +433,7 @@ async fn main() -> ExitCode {
                 // TODO: this wording is not great m'kay.
             } else if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
                 error!("Refusing to run - this process must not operate as root.");
-                return;
+                return
             };
             if clap_args.get_flag("debug") {
                 std::env::set_var("RUST_LOG", "debug");
@@ -444,7 +444,7 @@ async fn main() -> ExitCode {
 
             let Some(cfg_path_str) = clap_args.get_one::<String>("client-config") else {
                 error!("Failed to pull the client config path");
-                return ExitCode::FAILURE
+                return
             };
             let cfg_path: PathBuf =  PathBuf::from(cfg_path_str);
 
@@ -478,7 +478,7 @@ async fn main() -> ExitCode {
 
             let Some(unixd_path_str) = clap_args.get_one::<String>("unixd-config") else {
                 error!("Failed to pull the unixd config path");
-                return ExitCode::FAILURE
+                return
             };
             let unixd_path = PathBuf::from(unixd_path_str);
 
