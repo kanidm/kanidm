@@ -40,9 +40,9 @@ use tokio::time;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
-//=== the codec
+use anyhow::{Result, self};
 
-use std::process::ExitCode;
+//=== the codec
 type AsyncTaskRequest = (TaskRequest, oneshot::Sender<()>);
 
 struct ClientCodec;
@@ -421,73 +421,69 @@ async fn main() {
         std::env::set_var("RUST_LOG", "debug");
     }
 
-    debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
-    debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
+    println!("DEBUG: Profile -> {}", env!("KANIDM_PROFILE_NAME"));
+    println!("DEBUG: CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
+    println!("###################################");
+    println!("Starting up:\n###################################");
 
     let Some(cfg_path_str) = clap_args.get_one::<String>("client-config") else {
-        error!("Failed to pull the client config path");
-        return ExitCode::FAILURE;
+        anyhow::bail!("Failed to pull the client config path");
     };
     //let cfg_path_str = clap_args.get_one::<String>("client-config").expect("Failed to pull the client config path");
     let cfg_path: PathBuf = PathBuf::from(cfg_path_str);
 
     if !cfg_path.exists() {
         // there's no point trying to start up if we can't read a usable config!
-        error!(
+        anyhow::bail!(
             "Client config missing from {} - cannot start up. Quitting.",
             cfg_path_str
         );
-        return ExitCode::FAILURE;
     } else {
         let cfg_meta = match metadata(&cfg_path) {
             Ok(v) => v,
             Err(e) => {
-                error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
-                return ExitCode::FAILURE;
+                anyhow::bail!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
             }
         };
         if !kanidm_lib_file_permissions::readonly(&cfg_meta) {
-            warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
+            println!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
                 cfg_path_str
                 );
         }
 
         if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
-            warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
+            println!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
                 cfg_path_str
             );
         }
     }
 
     let Some(unixd_path_str) = clap_args.get_one::<String>("unixd-config") else {
-        error!("Failed to pull the unixd config path");
-        return ExitCode::FAILURE;
+        anyhow::bail!("Failed to pull the unixd config path");
     };
     //let unixd_path_str = clap_args.get_one::<String>("unixd-config").expect("Failed to pull the unixd config path");
     let unixd_path = PathBuf::from(unixd_path_str);
 
     if !unixd_path.exists() {
         // there's no point trying to start up if we can't read a usable config!
-        error!(
+        anyhow::bail!(
             "unixd config missing from {} - cannot start up. Quitting.",
             unixd_path_str
         );
-        return ExitCode::FAILURE;
     } else {
         let unixd_meta = match metadata(&unixd_path) {
             Ok(v) => v,
             Err(e) => {
-                error!("Unable to read metadata for {} - {:?}", unixd_path_str, e);
-                return ExitCode::FAILURE;
+                anyhow::bail!("Unable to read metadata for {} - {:?}", unixd_path_str, e);
             }
         };
         if !kanidm_lib_file_permissions::readonly(&unixd_meta) {
-            warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
+            println!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
                 unixd_path_str);
         }
 
         if unixd_meta.uid() == cuid || unixd_meta.uid() == ceuid {
-            warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
+            println!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
                 unixd_path_str
             );
         }
@@ -497,16 +493,14 @@ async fn main() {
     let cb = match KanidmClientBuilder::new().read_options_from_optional_config(&cfg_path) {
         Ok(v) => v,
         Err(_) => {
-            error!("Failed to parse {}", cfg_path_str);
-            return ExitCode::FAILURE;
+            anyhow::bail!("Failed to parse {}", cfg_path_str);
         }
     };
 
     let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config(&unixd_path) {
         Ok(v) => v,
         Err(_) => {
-            error!("Failed to parse {}", unixd_path_str);
-            return ExitCode::FAILURE;
+            anyhow::bail!("Failed to parse {}", unixd_path_str);
         }
     };
 
@@ -518,10 +512,9 @@ async fn main() {
         eprintln!("###################################");
         eprintln!("Client config (from {:#?})", &cfg_path);
         eprintln!("{}", cb);
-        return ExitCode::SUCCESS;
+        return Ok(());
     }
-
-    debug!("🧹 Cleaning up sockets from previous invocations");
+    println!("DEBUG: 🧹 Cleaning up sockets from previous invocations");
     rm_if_exist(cfg.sock_path.as_str());
     rm_if_exist(cfg.task_sock_path.as_str());
 
@@ -531,13 +524,12 @@ async fn main() {
         // We only need to check the parent folder path permissions as the db itself may not exist yet.
         if let Some(db_parent_path) = db_path.parent() {
             if !db_parent_path.exists() {
-                error!(
+                anyhow::bail!(
                     "Refusing to run, DB folder {} does not exist",
                     db_parent_path
                         .to_str()
                         .unwrap_or("<db_parent_path invalid>")
                 );
-                return ExitCode::FAILURE;
             }
 
             let db_par_path_buf = db_parent_path.to_path_buf();
@@ -545,34 +537,32 @@ async fn main() {
             let i_meta = match metadata(&db_par_path_buf) {
                 Ok(v) => v,
                 Err(e) => {
-                    error!(
+                    anyhow::bail!(
                         "Unable to read metadata for {} - {:?}",
                         db_par_path_buf
                             .to_str()
                             .unwrap_or("<db_par_path_buf invalid>"),
                         e
                     );
-                    return ExitCode::FAILURE;
                 }
             };
 
             if !i_meta.is_dir() {
-                error!(
+                anyhow::bail!(
                     "Refusing to run - DB folder {} may not be a directory",
                     db_par_path_buf
                         .to_str()
                         .unwrap_or("<db_par_path_buf invalid>")
                 );
-                return ExitCode::FAILURE;
             }
             if !kanidm_lib_file_permissions::readonly(&i_meta) {
-                warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
+                println!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
                 .unwrap_or("<db_par_path_buf invalid>")
                 );
             }
 
             if i_meta.mode() & 0o007 != 0 {
-                warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str()
+                println!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str()
                 .unwrap_or("<db_par_path_buf invalid>")
                 );
             }
@@ -581,22 +571,20 @@ async fn main() {
         // check to see if the db's already there
         if db_path.exists() {
             if !db_path.is_file() {
-                error!(
+                anyhow::bail!(
                     "Refusing to run - DB path {} already exists and is not a file.",
                     db_path.to_str().unwrap_or("<db_path invalid>")
                 );
-                return ExitCode::FAILURE;
             };
 
             match metadata(&db_path) {
                 Ok(v) => v,
                 Err(e) => {
-                    error!(
+                    anyhow::bail!(
                         "Unable to read metadata for {} - {:?}",
                         db_path.to_str().unwrap_or("<db_path invalid>"),
                         e
                     );
-                    return ExitCode::FAILURE;
                 }
             };
             // TODO: permissions dance to enumerate the user's ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.
@@ -608,8 +596,7 @@ async fn main() {
     let rsclient = match cb.build() {
         Ok(rsc) => rsc,
         Err(_e) => {
-            error!("Failed to build async client");
-            return ExitCode::FAILURE;
+            anyhow::bail!("Failed to build async client");
         }
     };
 
@@ -629,8 +616,7 @@ async fn main() {
     {
         Ok(c) => c,
         Err(_e) => {
-            error!("Failed to build cache layer.");
-            return ExitCode::FAILURE;
+            anyhow::bail!("Failed to build cache layer.");
         }
     };
 
@@ -641,8 +627,7 @@ async fn main() {
     let listener = match UnixListener::bind(cfg.sock_path.as_str()) {
         Ok(l) => l,
         Err(_e) => {
-            error!("Failed to bind UNIX socket at {}", cfg.sock_path.as_str());
-            return ExitCode::FAILURE;
+            anyhow::bail!("Failed to bind UNIX socket at {}", cfg.sock_path.as_str());
         }
     };
     // Setup the root-only socket. Take away all others.
@@ -650,12 +635,13 @@ async fn main() {
     let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
         Ok(l) => l,
         Err(_e) => {
-            error!("Failed to bind UNIX socket {}", cfg.sock_path.as_str());
-            return ExitCode::FAILURE;
+            anyhow::bail!("Failed to bind UNIX socket {}", cfg.sock_path.as_str());
         }
     };
     // Undo it.
     let _ = unsafe { umask(before) };
+
+    println!("Start up complete.\n###################################");
 
     tracing_forest::worker_task()
         .set_global(true)
@@ -686,26 +672,26 @@ async fn main() {
             };
             let cfg_path: PathBuf =  PathBuf::from(cfg_path_str);
 
-            if !cfg_path.exists() {
-                // there's no point trying to start up if we can't read a usable config!
-                error!(
-                    "Client config missing from {} - cannot start up. Quitting.",
-                    cfg_path_str
+    if !cfg_path.exists() {
+        // there's no point trying to start up if we can't read a usable config!
+        error!(
+            "Client config missing from {} - cannot start up. Quitting.",
+            cfg_path_str
+        );
+        return ExitCode::FAILURE;
+    } else {
+        let cfg_meta = match metadata(&cfg_path) {
+            Ok(v) => v,
+            Err(e) => {
+                error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
+                return ExitCode::FAILURE;
+            }
+        };
+        if !kanidm_lib_file_permissions::readonly(&cfg_meta) {
+            warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
+                cfg_path_str
                 );
-                return
-            } else {
-                let cfg_meta = match metadata(&cfg_path) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
-                        return
-                    }
-                };
-                if !kanidm_lib_file_permissions::readonly(&cfg_meta) {
-                    warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
-                        cfg_path_str
-                        );
-                }
+        }
 
                 if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
                     warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
@@ -720,25 +706,25 @@ async fn main() {
             };
             let unixd_path = PathBuf::from(unixd_path_str);
 
-            if !unixd_path.exists() {
-                // there's no point trying to start up if we can't read a usable config!
-                error!(
-                    "unixd config missing from {} - cannot start up. Quitting.",
-                    unixd_path_str
-                );
-                return
-            } else {
-                let unixd_meta = match metadata(&unixd_path) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        error!("Unable to read metadata for {} - {:?}", unixd_path_str, e);
-                        return
-                    }
-                };
-                if !kanidm_lib_file_permissions::readonly(&unixd_meta) {
-                    warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
-                        unixd_path_str);
-                }
+    if !unixd_path.exists() {
+        // there's no point trying to start up if we can't read a usable config!
+        error!(
+            "unixd config missing from {} - cannot start up. Quitting.",
+            unixd_path_str
+        );
+        return ExitCode::FAILURE;
+    } else {
+        let unixd_meta = match metadata(&unixd_path) {
+            Ok(v) => v,
+            Err(e) => {
+                error!("Unable to read metadata for {} - {:?}", unixd_path_str, e);
+                return ExitCode::FAILURE;
+            }
+        };
+        if !kanidm_lib_file_permissions::readonly(&unixd_meta) {
+            warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
+                unixd_path_str);
+        }
 
                 if unixd_meta.uid() == cuid || unixd_meta.uid() == ceuid {
                     warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
@@ -781,51 +767,51 @@ async fn main() {
 
 
 
-            // Check the db path will be okay.
-            if !cfg.db_path.is_empty() {
-                let db_path = PathBuf::from(cfg.db_path.as_str());
-                // We only need to check the parent folder path permissions as the db itself may not exist yet.
-                if let Some(db_parent_path) = db_path.parent() {
-                    if !db_parent_path.exists() {
-                        error!(
-                            "Refusing to run, DB folder {} does not exist",
-                            db_parent_path
-                                .to_str()
-                                .unwrap_or("<db_parent_path invalid>")
-                        );
-                        return
-                    }
+    // Check the db path will be okay.
+    if !cfg.db_path.is_empty() {
+        let db_path = PathBuf::from(cfg.db_path.as_str());
+        // We only need to check the parent folder path permissions as the db itself may not exist yet.
+        if let Some(db_parent_path) = db_path.parent() {
+            if !db_parent_path.exists() {
+                error!(
+                    "Refusing to run, DB folder {} does not exist",
+                    db_parent_path
+                        .to_str()
+                        .unwrap_or("<db_parent_path invalid>")
+                );
+                return ExitCode::FAILURE;
+            }
 
                     let db_par_path_buf = db_parent_path.to_path_buf();
 
-                    let i_meta = match metadata(&db_par_path_buf) {
-                        Ok(v) => v,
-                        Err(e) => {
-                            error!(
-                                "Unable to read metadata for {} - {:?}",
-                                db_par_path_buf
-                                    .to_str()
-                                    .unwrap_or("<db_par_path_buf invalid>"),
-                                e
-                            );
-                            return
-                        }
-                    };
+            let i_meta = match metadata(&db_par_path_buf) {
+                Ok(v) => v,
+                Err(e) => {
+                    error!(
+                        "Unable to read metadata for {} - {:?}",
+                        db_par_path_buf
+                            .to_str()
+                            .unwrap_or("<db_par_path_buf invalid>"),
+                        e
+                    );
+                    return ExitCode::FAILURE;
+                }
+            };
 
-                    if !i_meta.is_dir() {
-                        error!(
-                            "Refusing to run - DB folder {} may not be a directory",
-                            db_par_path_buf
-                                .to_str()
-                                .unwrap_or("<db_par_path_buf invalid>")
-                        );
-                        return
-                    }
-                    if !kanidm_lib_file_permissions::readonly(&i_meta) {
-                        warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
+            if !i_meta.is_dir() {
+                error!(
+                    "Refusing to run - DB folder {} may not be a directory",
+                    db_par_path_buf
+                        .to_str()
                         .unwrap_or("<db_par_path_buf invalid>")
-                        );
-                    }
+                );
+                return ExitCode::FAILURE;
+            }
+            if !kanidm_lib_file_permissions::readonly(&i_meta) {
+                warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
+                .unwrap_or("<db_par_path_buf invalid>")
+                );
+            }
 
                     if i_meta.mode() & 0o007 != 0 {
                         warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str()
@@ -834,30 +820,30 @@ async fn main() {
                     }
                 }
 
-                // check to see if the db's already there
-                if db_path.exists() {
-                    if !db_path.is_file() {
-                        error!(
-                            "Refusing to run - DB path {} already exists and is not a file.",
-                            db_path.to_str().unwrap_or("<db_path invalid>")
-                        );
-                        return
-                    };
+        // check to see if the db's already there
+        if db_path.exists() {
+            if !db_path.is_file() {
+                error!(
+                    "Refusing to run - DB path {} already exists and is not a file.",
+                    db_path.to_str().unwrap_or("<db_path invalid>")
+                );
+                return ExitCode::FAILURE;
+            };
 
-                    match metadata(&db_path) {
-                        Ok(v) => v,
-                        Err(e) => {
-                            error!(
-                                "Unable to read metadata for {} - {:?}",
-                                db_path.to_str().unwrap_or("<db_path invalid>"),
-                                e
-                            );
-                            return
-                        }
-                    };
-                    // TODO: permissions dance to enumerate the user's ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.
-                };
-            }
+            match metadata(&db_path) {
+                Ok(v) => v,
+                Err(e) => {
+                    error!(
+                        "Unable to read metadata for {} - {:?}",
+                        db_path.to_str().unwrap_or("<db_path invalid>"),
+                        e
+                    );
+                    return ExitCode::FAILURE;
+                }
+            };
+            // TODO: permissions dance to enumerate the user's ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.
+        };
+    }
 
             let cb = cb.connect_timeout(cfg.conn_timeout);
 
@@ -893,27 +879,26 @@ async fn main() {
 
             let cachelayer = Arc::new(cl_inner);
 
-            // Set the umask while we open the path for most clients.
-            let before = unsafe { umask(0) };
-            let listener = match UnixListener::bind(cfg.sock_path.as_str()) {
-                Ok(l) => l,
-                Err(_e) => {
-                    error!("Failed to bind UNIX socket at {}", cfg.sock_path.as_str());
-                    return
-                }
-            };
-            // Setup the root-only socket. Take away all others.
-            let _ = unsafe { umask(0o0077) };
-            let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
-                Ok(l) => l,
-                Err(_e) => {
-                    error!("Failed to bind UNIX socket {}", cfg.sock_path.as_str());
-                    return
-                }
-            };
-
-            // Undo it.
-            let _ = unsafe { umask(before) };
+    // Set the umask while we open the path for most clients.
+    let before = unsafe { umask(0) };
+    let listener = match UnixListener::bind(cfg.sock_path.as_str()) {
+        Ok(l) => l,
+        Err(_e) => {
+            error!("Failed to bind UNIX socket at {}", cfg.sock_path.as_str());
+            return ExitCode::FAILURE;
+        }
+    };
+    // Setup the root-only socket. Take away all others.
+    let _ = unsafe { umask(0o0077) };
+    let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
+        Ok(l) => l,
+        Err(_e) => {
+            error!("Failed to bind UNIX socket {}", cfg.sock_path.as_str());
+            return ExitCode::FAILURE;
+        }
+    };
+    // Undo it.
+    let _ = unsafe { umask(before) };
 
             let (task_channel_tx, mut task_channel_rx) = channel(16);
             let task_channel_tx = Arc::new(task_channel_tx);
@@ -985,6 +970,6 @@ async fn main() {
             server.await;
         })
         .await;
-    ExitCode::SUCCESS
+    Ok(())
     // TODO: can we catch signals to clean up sockets etc, especially handy when running as root
 }

@@ -178,6 +178,7 @@ walkdir = "2"
 yew = "^0.20.0"
 yew-router = "^0.17.0"
 zxcvbn = "^2.2.1"
+anyhow = "^1.0.69"
 
 # enshrinken the WASMs
 [profile.release.package.kanidmd_web_ui]
