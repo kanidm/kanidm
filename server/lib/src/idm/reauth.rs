@@ -76,29 +76,43 @@ impl<'a> IdmServerAuthTransaction<'a> {
         let _session_ticket = self.session_ticket.acquire().await;
 
         // Setup soft locks here if required.
-        let _maybe_slock_ref = account
+        let is_valid = account
             .primary_cred_uuid_and_policy()
-            .map(|(cred_uuid, policy)| {
+            .and_then(|(cred_uuid, policy)| {
                 // Acquire the softlock map
                 //
                 // We have no issue calling this with .write here, since we
                 // already hold the session_ticket above.
-                let mut softlock_write = self.softlocks.write();
-                let slock_ref: CredSoftLockMutex =
-                    if let Some(slock_ref) = softlock_write.get(&cred_uuid) {
-                        slock_ref.clone()
-                    } else {
-                        // Create if not exist, and the cred type supports softlocking.
-                        let slock = Arc::new(Mutex::new(CredSoftLock::new(policy)));
-                        softlock_write.insert(cred_uuid, slock.clone());
-                        slock
-                    };
-                softlock_write.commit();
-                slock_ref
-            });
+                //
+                // We only do this if the primary credential being used here is for
+                // this re-auth session. Else passkeys/devicekeys are not bounded by this
+                // problem.
+                if cred_uuid == session_cred_id {
+                    let mut softlock_write = self.softlocks.write();
+                    let slock_ref: CredSoftLockMutex =
+                        if let Some(slock_ref) = softlock_write.get(&cred_uuid) {
+                            slock_ref.clone()
+                        } else {
+                            // Create if not exist, and the cred type supports softlocking.
+                            let slock = Arc::new(Mutex::new(CredSoftLock::new(policy)));
+                            softlock_write.insert(cred_uuid, slock.clone());
+                            slock
+                        };
+                    softlock_write.commit();
+                    slock_ref.apply_time_step(ct);
+                    Some(slock_ref.is_valid())
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(true);
 
-        // Check if the cred is locked! We want to fail fast here!
-        // todo!();
+        // Check if the cred is locked! We want to fail fast here! Unlike the auth flow we have
+        // already selected our credential so we can test it's slock, else we could be allowing
+        // 1-attempt per-reauth.
+        if !is_valid {
+            todo!()
+        }
 
         // Create a re-auth session
         let (auth_session, state) =
@@ -361,5 +375,10 @@ mod tests {
         // match
 
         // They now have the entitlement.
+    }
+
+    #[idm_test]
+    async fn test_idm_reauth_softlocked_pw(idms: &IdmServer, idms_delayed: &mut IdmServerDelayed) {
+        todo!();
     }
 }

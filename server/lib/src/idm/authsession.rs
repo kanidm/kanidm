@@ -768,6 +768,20 @@ impl AuthSession {
         }
     }
 
+    /// Build a new auth session which has been preconfigured for re-authentication.
+    /// This differs from [`AuthSession::new`] as we preselect the credential that
+    /// will be used in this operation based on the credential id that was used in the
+    /// initial authentication.
+    pub(crate) fn new_reauth(
+        account: Account,
+        cred_id: Uuid,
+        issue: AuthIssueSession,
+        webauthn: &Webauthn,
+        ct: Duration,
+    ) -> (Option<Self>, AuthState) {
+        todo!();
+    }
+
     // This is used for softlock identification only.
     pub fn get_credential_uuid(&self) -> Result<Option<Uuid>, OperationError> {
         match &self.state {
