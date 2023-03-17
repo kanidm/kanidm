@@ -41,9 +41,8 @@ use tokio::time;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
-use anyhow::{Result, self};
-
 //=== the codec
+
 type AsyncTaskRequest = (TaskRequest, oneshot::Sender<()>);
 
 struct ClientCodec;
@@ -422,241 +421,16 @@ async fn main() -> ExitCode {
         std::env::set_var("RUST_LOG", "debug");
     }
 
-    println!("DEBUG: Profile -> {}", env!("KANIDM_PROFILE_NAME"));
-    println!("DEBUG: CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
-    println!("###################################");
-    println!("Starting up:\n###################################");
-
-    #[allow(clippy::expect_used)]
-    let Some(cfg_path_str) = clap_args.get_one::<String>("client-config") else {
-        anyhow::bail!("Failed to pull the client config path");
-    };
-    //let cfg_path_str = clap_args.get_one::<String>("client-config").expect("Failed to pull the client config path");
-    let cfg_path: PathBuf = PathBuf::from(cfg_path_str);
-
-    if !cfg_path.exists() {
-        // there's no point trying to start up if we can't read a usable config!
-        anyhow::bail!(
-            "Client config missing from {} - cannot start up. Quitting.",
-            cfg_path_str
-        );
-    } else {
-        let cfg_meta = match metadata(&cfg_path) {
-            Ok(v) => v,
-            Err(e) => {
-                anyhow::bail!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
-            }
-        };
-        if !kanidm_lib_file_permissions::readonly(&cfg_meta) {
-            println!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
-                cfg_path_str
-                );
-        }
-
-        if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
-            println!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
-                cfg_path_str
-            );
-        }
-    }
-
-    #[allow(clippy::expect_used)]
-    let Some(unixd_path_str) = clap_args.get_one::<String>("unixd-config") else {
-        anyhow::bail!("Failed to pull the unixd config path");
-    };
-    //let unixd_path_str = clap_args.get_one::<String>("unixd-config").expect("Failed to pull the unixd config path");
-    let unixd_path = PathBuf::from(unixd_path_str);
-
-    if !unixd_path.exists() {
-        // there's no point trying to start up if we can't read a usable config!
-        anyhow::bail!(
-            "unixd config missing from {} - cannot start up. Quitting.",
-            unixd_path_str
-        );
-    } else {
-        let unixd_meta = match metadata(&unixd_path) {
-            Ok(v) => v,
-            Err(e) => {
-                anyhow::bail!("Unable to read metadata for {} - {:?}", unixd_path_str, e);
-            }
-        };
-        if !kanidm_lib_file_permissions::readonly(&unixd_meta) {
-            println!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
-                unixd_path_str);
-        }
-
-        if unixd_meta.uid() == cuid || unixd_meta.uid() == ceuid {
-            println!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
-                unixd_path_str
-            );
-        }
-    }
-
-    // setup
-    let cb = match KanidmClientBuilder::new().read_options_from_optional_config(&cfg_path) {
-        Ok(v) => v,
-        Err(_) => {
-            anyhow::bail!("Failed to parse {}", cfg_path_str);
-        }
-    };
-
-    let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config(&unixd_path) {
-        Ok(v) => v,
-        Err(_) => {
-            anyhow::bail!("Failed to parse {}", unixd_path_str);
-        }
-    };
-
-    if clap_args.get_flag("configtest") {
-        eprintln!("###################################");
-        eprintln!("Dumping configs:\n###################################");
-        eprintln!("kanidm_unixd config (from {:#?})", &unixd_path);
-        eprintln!("{}", cfg);
-        eprintln!("###################################");
-        eprintln!("Client config (from {:#?})", &cfg_path);
-        eprintln!("{}", cb);
-        return Ok(());
-    }
-    println!("DEBUG: 🧹 Cleaning up sockets from previous invocations");
-    rm_if_exist(cfg.sock_path.as_str());
-    rm_if_exist(cfg.task_sock_path.as_str());
-
-    // Check the db path will be okay.
-    if !cfg.db_path.is_empty() {
-        let db_path = PathBuf::from(cfg.db_path.as_str());
-        // We only need to check the parent folder path permissions as the db itself may not exist yet.
-        if let Some(db_parent_path) = db_path.parent() {
-            if !db_parent_path.exists() {
-                anyhow::bail!(
-                    "Refusing to run, DB folder {} does not exist",
-                    db_parent_path
-                        .to_str()
-                        .unwrap_or("<db_parent_path invalid>")
-                );
-            }
-
-            let db_par_path_buf = db_parent_path.to_path_buf();
-
-            let i_meta = match metadata(&db_par_path_buf) {
-                Ok(v) => v,
-                Err(e) => {
-                    anyhow::bail!(
-                        "Unable to read metadata for {} - {:?}",
-                        db_par_path_buf
-                            .to_str()
-                            .unwrap_or("<db_par_path_buf invalid>"),
-                        e
-                    );
-                }
-            };
-
-            if !i_meta.is_dir() {
-                anyhow::bail!(
-                    "Refusing to run - DB folder {} may not be a directory",
-                    db_par_path_buf
-                        .to_str()
-                        .unwrap_or("<db_par_path_buf invalid>")
-                );
-            }
-            if !kanidm_lib_file_permissions::readonly(&i_meta) {
-                println!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
-                .unwrap_or("<db_par_path_buf invalid>")
-                );
-            }
-
-            if i_meta.mode() & 0o007 != 0 {
-                println!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str()
-                .unwrap_or("<db_par_path_buf invalid>")
-                );
-            }
-        }
-
-        // check to see if the db's already there
-        if db_path.exists() {
-            if !db_path.is_file() {
-                anyhow::bail!(
-                    "Refusing to run - DB path {} already exists and is not a file.",
-                    db_path.to_str().unwrap_or("<db_path invalid>")
-                );
-            };
-
-            match metadata(&db_path) {
-                Ok(v) => v,
-                Err(e) => {
-                    anyhow::bail!(
-                        "Unable to read metadata for {} - {:?}",
-                        db_path.to_str().unwrap_or("<db_path invalid>"),
-                        e
-                    );
-                }
-            };
-            // TODO: permissions dance to enumerate the user's ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.
-        };
-    }
-
-    let cb = cb.connect_timeout(cfg.conn_timeout);
-
-    let rsclient = match cb.build() {
-        Ok(rsc) => rsc,
-        Err(_e) => {
-            anyhow::bail!("Failed to build async client");
-        }
-    };
-
-    let cl_inner = match CacheLayer::new(
-        cfg.db_path.as_str(), // The sqlite db path
-        cfg.cache_timeout,
-        rsclient,
-        cfg.pam_allowed_login_groups.clone(),
-        cfg.default_shell.clone(),
-        cfg.home_prefix.clone(),
-        cfg.home_attr,
-        cfg.home_alias,
-        cfg.uid_attr_map,
-        cfg.gid_attr_map,
-    )
-    .await
-    {
-        Ok(c) => c,
-        Err(_e) => {
-            anyhow::bail!("Failed to build cache layer.");
-        }
-    };
-
-    let cachelayer = Arc::new(cl_inner);
-
-    // Set the umask while we open the path for most clients.
-    let before = unsafe { umask(0) };
-    let listener = match UnixListener::bind(cfg.sock_path.as_str()) {
-        Ok(l) => l,
-        Err(_e) => {
-            anyhow::bail!("Failed to bind UNIX socket at {}", cfg.sock_path.as_str());
-        }
-    };
-    // Setup the root-only socket. Take away all others.
-    let _ = unsafe { umask(0o0077) };
-    let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
-        Ok(l) => l,
-        Err(_e) => {
-            anyhow::bail!("Failed to bind UNIX socket {}", cfg.sock_path.as_str());
-        }
-    };
-    // Undo it.
-    let _ = unsafe { umask(before) };
-
-    println!("Start up complete.\n###################################");
-
     tracing_forest::worker_task()
         .set_global(true)
         // Fall back to stderr
         .map_sender(|sender| sender.or_stderr())
-        .build_on(|subscriber| {
-            subscriber.with(
-                EnvFilter::try_from_default_env()
-                    .or_else(|_| EnvFilter::try_new("info"))
-                    .expect("Failed to init envfilter"),
+        .build_on(|subscriber| subscriber
+            .with(EnvFilter::try_from_default_env()
+                .or_else(|_| EnvFilter::try_new("info"))
+                .expect("Failed to init envfilter")
             )
-        })
+        )
         .on(async {
             if clap_args.get_flag("skip-root-check") {
                 warn!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
@@ -904,6 +678,20 @@ async fn main() -> ExitCode {
             // Undo it.
             let _ = unsafe { umask(before) };
 
+    println!("Start up complete.\n###################################");
+
+    tracing_forest::worker_task()
+        .set_global(true)
+        // Fall back to stderr
+        .map_sender(|sender| sender.or_stderr())
+        .build_on(|subscriber| {
+            subscriber.with(
+                EnvFilter::try_from_default_env()
+                    .or_else(|_| EnvFilter::try_new("info"))
+                    .expect("Failed to init envfilter"),
+            )
+        })
+        .on(async {
             let (task_channel_tx, mut task_channel_rx) = channel(16);
             let task_channel_tx = Arc::new(task_channel_tx);
 
@@ -931,8 +719,7 @@ async fn main() -> ExitCode {
                             // It did? Great, now we can wait and spin on that one
                             // client.
                             if let Err(e) =
-                                handle_task_client(socket, &task_channel_tx, &mut task_channel_rx)
-                                    .await
+                                handle_task_client(socket, &task_channel_tx, &mut task_channel_rx).await
                             {
                                 error!("Task client error occurred; error = {:?}", e);
                             }
@@ -955,8 +742,7 @@ async fn main() -> ExitCode {
                         Ok((socket, _addr)) => {
                             let cachelayer_ref = cachelayer.clone();
                             tokio::spawn(async move {
-                                if let Err(e) =
-                                    handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
+                                if let Err(e) = handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
                                 {
                                     error!("handle_client error occurred; error = {:?}", e);
                                 }
