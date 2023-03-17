@@ -427,6 +427,7 @@ async fn main() {
     println!("###################################");
     println!("Starting up:\n###################################");
 
+    #[allow(clippy::expect_used)]
     let Some(cfg_path_str) = clap_args.get_one::<String>("client-config") else {
         anyhow::bail!("Failed to pull the client config path");
     };
@@ -459,6 +460,7 @@ async fn main() {
         }
     }
 
+    #[allow(clippy::expect_used)]
     let Some(unixd_path_str) = clap_args.get_one::<String>("unixd-config") else {
         anyhow::bail!("Failed to pull the unixd config path");
     };
