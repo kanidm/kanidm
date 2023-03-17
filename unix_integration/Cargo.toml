@@ -81,8 +81,6 @@ tracing.workspace = true
 reqwest = { workspace = true, default-features = false }
 walkdir.workspace = true
 
-anyhow = { workspace = true }
-
 [target.'cfg(not(target_family = "windows"))'.dependencies]
 users.workspace = true
 
