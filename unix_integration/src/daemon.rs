@@ -18,6 +18,7 @@ use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
+use std::process::ExitCode;
 
 use bytes::{BufMut, BytesMut};
 use clap::{Arg, ArgAction, Command};
@@ -364,7 +365,7 @@ async fn handle_client(
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() {
+async fn main() -> ExitCode {
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();
     let cgid = get_current_gid();
@@ -436,7 +437,7 @@ async fn main() {
                 // TODO: this wording is not great m'kay.
             } else if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
                 error!("Refusing to run - this process must not operate as root.");
-                return
+                return ExitCode::FAILURE
             };
 
             debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
@@ -444,7 +445,7 @@ async fn main() {
 
             let Some(cfg_path_str) = clap_args.get_one::<String>("client-config") else {
                 error!("Failed to pull the client config path");
-                return
+                return ExitCode::FAILURE
             };
             let cfg_path: PathBuf =  PathBuf::from(cfg_path_str);
 
@@ -454,13 +455,13 @@ async fn main() {
                     "Client config missing from {} - cannot start up. Quitting.",
                     cfg_path_str
                 );
-                return
+                return ExitCode::FAILURE
             } else {
                 let cfg_meta = match metadata(&cfg_path) {
                     Ok(v) => v,
                     Err(e) => {
                         error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
-                        return
+                        return ExitCode::FAILURE
                     }
                 };
                 if !kanidm_lib_file_permissions::readonly(&cfg_meta) {
@@ -478,7 +479,7 @@ async fn main() {
 
             let Some(unixd_path_str) = clap_args.get_one::<String>("unixd-config") else {
                 error!("Failed to pull the unixd config path");
-                return
+                return ExitCode::FAILURE
             };
             let unixd_path = PathBuf::from(unixd_path_str);
 
@@ -488,13 +489,13 @@ async fn main() {
                     "unixd config missing from {} - cannot start up. Quitting.",
                     unixd_path_str
                 );
-                return
+                return ExitCode::FAILURE
             } else {
                 let unixd_meta = match metadata(&unixd_path) {
                     Ok(v) => v,
                     Err(e) => {
                         error!("Unable to read metadata for {} - {:?}", unixd_path_str, e);
-                        return
+                        return ExitCode::FAILURE
                     }
                 };
                 if !kanidm_lib_file_permissions::readonly(&unixd_meta) {
@@ -514,7 +515,7 @@ async fn main() {
                 Ok(v) => v,
                 Err(_) => {
                     error!("Failed to parse {}", cfg_path_str);
-                    return
+                    return ExitCode::FAILURE
                 }
             };
 
@@ -522,7 +523,7 @@ async fn main() {
                 Ok(v) => v,
                 Err(_) => {
                     error!("Failed to parse {}", unixd_path_str);
-                    return
+                    return ExitCode::FAILURE
                 }
             };
 
@@ -534,7 +535,7 @@ async fn main() {
                 eprintln!("###################################");
                 eprintln!("Client config (from {:#?})", &cfg_path);
                 eprintln!("{}", cb);
-                return;
+                return ExitCode::SUCCESS;
             }
 
             debug!("🧹 Cleaning up sockets from previous invocations");
@@ -555,7 +556,7 @@ async fn main() {
                                 .to_str()
                                 .unwrap_or("<db_parent_path invalid>")
                         );
-                        return
+                        return ExitCode::FAILURE
                     }
 
                     let db_par_path_buf = db_parent_path.to_path_buf();
@@ -570,7 +571,7 @@ async fn main() {
                                     .unwrap_or("<db_par_path_buf invalid>"),
                                 e
                             );
-                            return
+                            return ExitCode::FAILURE
                         }
                     };
 
@@ -581,7 +582,7 @@ async fn main() {
                                 .to_str()
                                 .unwrap_or("<db_par_path_buf invalid>")
                         );
-                        return
+                        return ExitCode::FAILURE
                     }
                     if !kanidm_lib_file_permissions::readonly(&i_meta) {
                         warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
@@ -603,7 +604,7 @@ async fn main() {
                             "Refusing to run - DB path {} already exists and is not a file.",
                             db_path.to_str().unwrap_or("<db_path invalid>")
                         );
-                        return
+                        return ExitCode::FAILURE
                     };
 
                     match metadata(&db_path) {
@@ -614,7 +615,7 @@ async fn main() {
                                 db_path.to_str().unwrap_or("<db_path invalid>"),
                                 e
                             );
-                            return
+                            return ExitCode::FAILURE
                         }
                     };
                     // TODO: permissions dance to enumerate the user's ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.
@@ -627,7 +628,7 @@ async fn main() {
                 Ok(rsc) => rsc,
                 Err(_e) => {
                     error!("Failed to build async client");
-                    return
+                    return ExitCode::FAILURE
                 }
             };
 
@@ -649,7 +650,7 @@ async fn main() {
                 Ok(c) => c,
                 Err(_e) => {
                     error!("Failed to build cache layer.");
-                    return
+                    return ExitCode::FAILURE
                 }
             };
 
@@ -661,7 +662,7 @@ async fn main() {
                 Ok(l) => l,
                 Err(_e) => {
                     error!("Failed to bind UNIX socket at {}", cfg.sock_path.as_str());
-                    return
+                    return ExitCode::FAILURE
                 }
             };
             // Setup the root-only socket. Take away all others.
@@ -670,7 +671,7 @@ async fn main() {
                 Ok(l) => l,
                 Err(_e) => {
                     error!("Failed to bind UNIX socket {}", cfg.sock_path.as_str());
-                    return
+                    return ExitCode::FAILURE
                 }
             };
 
@@ -743,7 +744,8 @@ async fn main() {
             info!("Server started ...");
 
             server.await;
+            ExitCode::SUCCESS
     })
-    .await;
+    .await
     // TODO: can we catch signals to clean up sockets etc, especially handy when running as root
 }

@@ -4709,8 +4709,8 @@ dependencies = [
 
 [[package]]
 name = "tracing-forest"
-version = "0.1.4"
-source = "git+https://github.com/QnnOkabayashi/tracing-forest.git?rev=48d78f7294ceee47a22eee5c80964143c4fb3fe1#48d78f7294ceee47a22eee5c80964143c4fb3fe1"
+version = "0.1.5"
+source = "git+https://github.com/QnnOkabayashi/tracing-forest.git?rev=77daf8c8abf010b87d45ece2bf656983c6f8cecb#77daf8c8abf010b87d45ece2bf656983c6f8cecb"
 dependencies = [
  "smallvec",
  "thiserror",
