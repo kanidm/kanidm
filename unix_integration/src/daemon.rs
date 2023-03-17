@@ -678,20 +678,6 @@ async fn main() -> ExitCode {
             // Undo it.
             let _ = unsafe { umask(before) };
 
-    println!("Start up complete.\n###################################");
-
-    tracing_forest::worker_task()
-        .set_global(true)
-        // Fall back to stderr
-        .map_sender(|sender| sender.or_stderr())
-        .build_on(|subscriber| {
-            subscriber.with(
-                EnvFilter::try_from_default_env()
-                    .or_else(|_| EnvFilter::try_new("info"))
-                    .expect("Failed to init envfilter"),
-            )
-        })
-        .on(async {
             let (task_channel_tx, mut task_channel_rx) = channel(16);
             let task_channel_tx = Arc::new(task_channel_tx);
 
