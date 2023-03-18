@@ -48,7 +48,7 @@ text=The server must not be running at this point, as it requires exclusive acce
 
 ```bash
 docker run --rm -i -t -v kanidmd:/data \
-    kanidm/server:latest /sbin/kanidmd recover-account -c /data/server.toml admin
+    kanidm/server:latest /sbin/kanidmd recover_account -c /data/server.toml admin
 # success - recovery of account password for admin: vv...
 ```
 
