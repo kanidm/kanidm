@@ -167,18 +167,18 @@ async fn main() {
                 let cfg_meta = read_file_metadata(&(opt.commands.commonopt().config_path));
 
                 if !kanidm_lib_file_permissions::readonly(&cfg_meta) {
-                    eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
+                    warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
                     opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path"));
                 }
 
                 if cfg_meta.mode() & 0o007 != 0 {
-                    eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...",
+                    warn!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...",
                     opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
                     );
                 }
 
                 if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
-                    eprintln!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
+                    warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
                     opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
                     );
                 }
@@ -188,7 +188,7 @@ async fn main() {
             let sconfig = match ServerConfig::new(&(opt.commands.commonopt().config_path)) {
                 Ok(c) => c,
                 Err(e) => {
-                    eprintln!("Config Parse failure {:?}", e);
+                    error!("Config Parse failure {:?}", e);
                     std::process::exit(1);
                 }
             };
@@ -198,7 +198,7 @@ async fn main() {
             // We can't check the db_path permissions because it may not exist yet!
             if let Some(db_parent_path) = db_path.parent() {
                 if !db_parent_path.exists() {
-                    eprintln!(
+                    warn!(
                         "DB folder {} may not exist, server startup may FAIL!",
                         db_parent_path.to_str().unwrap_or("invalid file path")
                     );
@@ -207,7 +207,7 @@ async fn main() {
                 let db_par_path_buf = db_parent_path.to_path_buf();
                 let i_meta = read_file_metadata(&db_par_path_buf);
                 if !i_meta.is_dir() {
-                    eprintln!(
+                    error!(
                         "ERROR: Refusing to run - DB folder {} may not be a directory",
                         db_par_path_buf.to_str().unwrap_or("invalid file path")
                     );
@@ -215,11 +215,11 @@ async fn main() {
                 }
 
                 if kanidm_lib_file_permissions::readonly(&i_meta) {
-                    eprintln!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
+                    warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
                 }
                 #[cfg(not(target_os="windows"))]
                 if i_meta.mode() & 0o007 != 0 {
-                    eprintln!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
+                    warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
                 }
             }
 
@@ -243,9 +243,9 @@ async fn main() {
                 KanidmdOpt::Server(_sopt) | KanidmdOpt::ConfigTest(_sopt) => {
                     let config_test = matches!(&opt.commands, KanidmdOpt::ConfigTest(_));
                     if config_test {
-                        eprintln!("Running in server configuration test mode ...");
+                        debug!("Running in server configuration test mode ...");
                     } else {
-                        eprintln!("Running in server mode ...");
+                        debug!("Running in server mode ...");
                     };
 
                     // configuration options that only relate to server mode
@@ -256,7 +256,7 @@ async fn main() {
 
                         let i_meta = read_file_metadata(&i_path);
                         if !kanidm_lib_file_permissions::readonly(&i_meta) {
-                            eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
+                            warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
                         }
                     }
 
@@ -265,11 +265,11 @@ async fn main() {
 
                             let i_meta = read_file_metadata(&i_path);
                             if !kanidm_lib_file_permissions::readonly(&i_meta) {
-                                eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
+                                warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
                             }
                             #[cfg(not(target_os="windows"))]
                             if i_meta.mode() & 0o007 != 0 {
-                                eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...", i_str);
+                                warn!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...", i_str);
                             }
                     }
 
@@ -325,18 +325,18 @@ async fn main() {
                                     }
                                     }
                                 }
-                                eprintln!("Signal received, shutting down");
+                                debug!("Signal received, shutting down");
                                 // Send a broadcast that we are done.
                                 sctx.shutdown().await;
                             }
                             Err(_) => {
-                                eprintln!("Failed to start server core!");
+                                error!("Failed to start server core!");
                                 // We may need to return an exit code here, but that may take some re-architecting
                                 // to ensure we drop everything cleanly.
                                 return;
                             }
                         }
-                        eprintln!("Stopped 🛑 ");
+                        info!("Stopped 🛑 ");
                     }
 
 
@@ -344,11 +344,11 @@ async fn main() {
                 KanidmdOpt::Database {
                     commands: DbCommands::Backup(bopt),
                 } => {
-                    eprintln!("Running in backup mode ...");
+                    debug!("Running in backup mode ...");
                     let p = match bopt.path.to_str() {
                         Some(p) => p,
                         None => {
-                            eprintln!("Invalid backup path");
+                            error!("Invalid backup path");
                             std::process::exit(1);
                         }
                     };
@@ -357,7 +357,7 @@ async fn main() {
                 KanidmdOpt::Database {
                     commands: DbCommands::Restore(ropt),
                 } => {
-                    eprintln!("Running in restore mode ...");
+                    debug!("Running in restore mode ...");
                     let p = match ropt.path.to_str() {
                         Some(p) => p,
                         None => {
@@ -370,59 +370,59 @@ async fn main() {
                 KanidmdOpt::Database {
                     commands: DbCommands::Verify(_vopt),
                 } => {
-                    eprintln!("Running in db verification mode ...");
+                    debug!("Running in db verification mode ...");
                     verify_server_core(&config).await;
                 }
                 KanidmdOpt::RecoverAccount(raopt) => {
-                    eprintln!("Running account recovery ...");
+                    debug!("Running account recovery ...");
                     recover_account_core(&config, &raopt.name).await;
                 }
                 KanidmdOpt::Database {
                     commands: DbCommands::Reindex(_copt),
                 } => {
-                    eprintln!("Running in reindex mode ...");
+                    debug!("Running in reindex mode ...");
                     reindex_server_core(&config).await;
                 }
                 KanidmdOpt::DbScan {
                     commands: DbScanOpt::ListIndexes(_),
                 } => {
-                    eprintln!("👀 db scan - list indexes");
+                    debug!("👀 db scan - list indexes");
                     dbscan_list_indexes_core(&config);
                 }
                 KanidmdOpt::DbScan {
                     commands: DbScanOpt::ListId2Entry(_),
                 } => {
-                    eprintln!("👀 db scan - list id2entry");
+                    debug!("👀 db scan - list id2entry");
                     dbscan_list_id2entry_core(&config);
                 }
                 KanidmdOpt::DbScan {
                     commands: DbScanOpt::ListIndexAnalysis(_),
                 } => {
-                    eprintln!("👀 db scan - list index analysis");
+                    debug!("👀 db scan - list index analysis");
                     dbscan_list_index_analysis_core(&config);
                 }
                 KanidmdOpt::DbScan {
                     commands: DbScanOpt::ListIndex(dopt),
                 } => {
-                    eprintln!("👀 db scan - list index content - {}", dopt.index_name);
+                    debug!("👀 db scan - list index content - {}", dopt.index_name);
                     dbscan_list_index_core(&config, dopt.index_name.as_str());
                 }
                 KanidmdOpt::DbScan {
                     commands: DbScanOpt::GetId2Entry(dopt),
                 } => {
-                    eprintln!("👀 db scan - get id2 entry - {}", dopt.id);
+                    debug!("👀 db scan - get id2 entry - {}", dopt.id);
                     dbscan_get_id2entry_core(&config, dopt.id);
                 }
                 KanidmdOpt::DomainSettings {
                     commands: DomainSettingsCmds::DomainChange(_dopt),
                 } => {
-                    eprintln!("Running in domain name change mode ... this may take a long time ...");
+                    debug!("Running in domain name change mode ... this may take a long time ...");
                     domain_rename_core(&config).await;
                 }
                 KanidmdOpt::Database {
                     commands: DbCommands::Vacuum(_copt),
                 } => {
-                    eprintln!("Running in vacuum mode ...");
+                    debug!("Running in vacuum mode ...");
                     vacuum_server_core(&config);
                 }
                 KanidmdOpt::HealthCheck(sopt) => {
@@ -478,12 +478,12 @@ async fn main() {
                                     format!("Failed to complete healthcheck: {:?}", error)
                                 }
                             };
-                            eprintln!("CRITICAL: {error_message}");
+                            error!("CRITICAL: {error_message}");
                             exit(1);
                         }
                     };
                     debug!("Request: {req:?}");
-                    println!("OK")
+                    info!("OK")
                 }
                 KanidmdOpt::Version(_) => {}
             }
