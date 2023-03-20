@@ -150,7 +150,7 @@ tracing = { version = "^0.1.37" }
 tracing-subscriber = { version = "^0.3.16", features = ["env-filter"] }
 
 # tracing-forest = { path = "/Users/william/development/tracing-forest/tracing-forest" }
-tracing-forest = { git = "https://github.com/QnnOkabayashi/tracing-forest.git", rev = "48d78f7294ceee47a22eee5c80964143c4fb3fe1" }
+tracing-forest = { git = "https://github.com/QnnOkabayashi/tracing-forest.git", rev = "77daf8c8abf010b87d45ece2bf656983c6f8cecb" }
 
 url = "^2.3.1"
 urlencoding = "2.1.2"
