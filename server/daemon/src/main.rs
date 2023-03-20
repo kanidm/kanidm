@@ -88,7 +88,7 @@ fn read_file_metadata(path: &PathBuf) -> Metadata {
     match metadata(path) {
         Ok(m) => m,
         Err(e) => {
-            eprintln!(
+            error!(
                 "Unable to read metadata for '{}' - {:?}",
                 path.to_str().unwrap_or("invalid file path"),
                 e
@@ -107,14 +107,14 @@ fn get_user_details_unix() -> (u32, u32) {
     let cegid = get_effective_gid();
 
     if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
-        eprintln!("WARNING: This is running as uid == 0 (root) which may be a security risk.");
+        warn!("This is running as uid == 0 (root) which may be a security risk.");
         // eprintln!("ERROR: Refusing to run - this process must not operate as root.");
         // std::process::exit(1);
     }
 
     if cuid != ceuid || cgid != cegid {
-        eprintln!("{} != {} || {} != {}", cuid, ceuid, cgid, cegid);
-        eprintln!("ERROR: Refusing to run - uid and euid OR gid and egid must be consistent.");
+        error!("{} != {} || {} != {}", cuid, ceuid, cgid, cegid);
+        error!("Refusing to run - uid and euid OR gid and egid must be consistent.");
         std::process::exit(1);
     }
     (cuid, ceuid)
@@ -123,7 +123,7 @@ fn get_user_details_unix() -> (u32, u32) {
 /// Get information on the windows username
 #[cfg(target_family = "windows")]
 fn get_user_details_windows() {
-    eprintln!(
+    debug!(
         "Running on windows, current username is: {:?}",
         whoami::username()
     );
@@ -361,7 +361,7 @@ async fn main() {
                     let p = match ropt.path.to_str() {
                         Some(p) => p,
                         None => {
-                            eprintln!("Invalid restore path");
+                            error!("Invalid restore path");
                             std::process::exit(1);
                         }
                     };
