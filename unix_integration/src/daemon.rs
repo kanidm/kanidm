@@ -363,7 +363,7 @@ async fn handle_client(
     Ok(())
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();
@@ -416,13 +416,6 @@ async fn main() {
         )
         .get_matches();
 
-    if clap_args.get_flag("skip-root-check") {
-        warn!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
-        // TODO: this wording is not great m'kay.
-    } else if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
-        error!("Refusing to run - this process must not operate as root.");
-        return;
-    };
     if clap_args.get_flag("debug") {
         std::env::set_var("RUST_LOG", "debug");
     }
@@ -438,12 +431,21 @@ async fn main() {
             )
         )
         .on(async {
+            if clap_args.get_flag("skip-root-check") {
+                warn!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
+                // TODO: this wording is not great m'kay.
+            } else if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
+                error!("Refusing to run - this process must not operate as root.");
+                return
+            };
+
             debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
             debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
 
-
-            #[allow(clippy::expect_used)]
-            let cfg_path_str = clap_args.get_one::<String>("client-config").expect("Failed to pull the client config path");
+            let Some(cfg_path_str) = clap_args.get_one::<String>("client-config") else {
+                error!("Failed to pull the client config path");
+                return
+            };
             let cfg_path: PathBuf =  PathBuf::from(cfg_path_str);
 
             if !cfg_path.exists() {
@@ -474,8 +476,10 @@ async fn main() {
                 }
             }
 
-            #[allow(clippy::expect_used)]
-            let unixd_path_str = clap_args.get_one::<String>("unixd-config").expect("Failed to pull the unixd config path");
+            let Some(unixd_path_str) = clap_args.get_one::<String>("unixd-config") else {
+                error!("Failed to pull the unixd config path");
+                return
+            };
             let unixd_path = PathBuf::from(unixd_path_str);
 
             if !unixd_path.exists() {
