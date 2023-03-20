@@ -12,7 +12,7 @@ Both subjects will have to be connected to a Kanidm server (not necessarily the 
 
 ### High level overview:
 
-The idea is to associate a [ECDH](https://docs.rs/openssl/latest/openssl/pkey_ctx/struct.PkeyCtxRef.html#method.derive_set_peer) public/secret key pair with each user. If two users want to authenticate each other, their private key and the other subject's public keys will be used to create a shared secret, that together with their UUIDs will form a unique TTOP. Kanidm currently doesn't support ECDH keys for users, but once they will be implemented we will be able to use them for other purposes as well.
+The idea is to associate a [ECDH](https://docs.rs/openssl/latest/openssl/pkey_ctx/struct.PkeyCtxRef.html#method.derive_set_peer) public/secret key pair with each user. If two users want to authenticate each other, their private key and the other subject's public keys will be used to create a shared secret, that together with their UUIDs will form a unique TOTP. Kanidm currently doesn't support ECDH keys for users, but once they will be implemented we will be able to use them for other purposes as well.
 
 ### Trust bond between servers:
 
