@@ -12,7 +12,7 @@ Both subjects will have to be connected to a Kanidm server (not necessarily the 
 
 ### High level overview:
 
-The idea is to associate a [ECDH](https://docs.rs/openssl/latest/openssl/pkey_ctx/struct.PkeyCtxRef.html#method.derive_set_peer) public/secret key pair with each user. If two users want to authenticate each other, their private key and the other subject's public keys will be used to encrypt an HMAC message that uses both of the users UUID. Kanidm currently doesn't support ECDH keys for users, but once they will be implemented we will be able to use them for other purposes as well.
+The idea is to associate a [ECDH](https://docs.rs/openssl/latest/openssl/pkey_ctx/struct.PkeyCtxRef.html#method.derive_set_peer) public/secret key pair with each user. If two users want to authenticate each other, their private key and the other subject's public keys will be used to create a shared secret, that together with their UUIDs will form a unique TTOP. Kanidm currently doesn't support ECDH keys for users, but once they will be implemented we will be able to use them for other purposes as well.
 
 ### Trust bond between servers:
 
@@ -88,11 +88,10 @@ In this case the servers will be a full replica of each other, and therefore the
   1. Alice shares her SPN with Bob and asks for Bob's SPN
   1. Bob receives Alice's SPN and replies by sending his SPN
   1. Both Alice and Bob insert the acquired information in their Kanidm client.
-  1. The servers derive a key from their users' UUIDs
-  1. The servers compute a HMAC hash using the derived key as key, the current time and the user's UUID
-  1. The servers will then encrypt the hash using the private key of the respective users and the public key of the other user.
-  1. The encrypted hash will be transformed in a more human readable format for the users, so that they will be able to easily communicate it to each other, ie in a phone call or in a chat.
-  1. The servers will then decrypt the message using their users' private key and the public key associated with the SPN they received, and will compare the decrypted hash with the one computed locally.
+  1. The servers compute the ECDH shared key by using their user's private key and the other's users public key. DH guarantees that the servers will derive the same shared secret.
+  1. The servers compute a HMAC hash using the derived key as key, the current time and the user's UUID. These will be the TOTPs. Since each server will use its own user's UUID, there will be two different TOTPS. Note that both servers will compute both the TOTPs locally, as they will be needed for verification later.
+  1. The TOPTs will be transformed in a more human readable format for the users, so that they can be easily shared by humans, ie in a phone call or in a chat.
+  1. The users will then input the received TOTP into their kanidm server, which will check if the TOTP matches the one computed locally at step 5
 
   ```
                   ┌──────────────────────────────────────────┐
