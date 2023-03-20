@@ -743,6 +743,12 @@
 <a href="#743" id="743">743</a>
 <a href="#744" id="744">744</a>
 <a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
 </pre><pre class="rust"><code><span class="attr">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -761,6 +767,7 @@
 <span class="kw">use </span>std::io::{Error <span class="kw">as </span>IoError, ErrorKind};
 <span class="kw">use </span>std::os::unix::fs::MetadataExt;
 <span class="kw">use </span>std::path::{Path, PathBuf};
+<span class="kw">use </span>std::process::ExitCode;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::time::Duration;
 
@@ -1108,8 +1115,8 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="attr">#[tokio::main]
-</span><span class="kw">async fn </span>main() {
+<span class="attr">#[tokio::main(flavor = <span class="string">&quot;current_thread&quot;</span>)]
+</span><span class="kw">async fn </span>main() -&gt; ExitCode {
     <span class="kw">let </span>cuid = get_current_uid();
     <span class="kw">let </span>ceuid = get_effective_uid();
     <span class="kw">let </span>cgid = get_current_gid();
@@ -1161,13 +1168,6 @@
         )
         .get_matches();
 
-    <span class="kw">if </span>clap_args.get_flag(<span class="string">&quot;skip-root-check&quot;</span>) {
-        <span class="macro">warn!</span>(<span class="string">&quot;Skipping root user check, if you&#39;re running this for testing, ensure you clean up temporary files.&quot;</span>)
-        <span class="comment">// TODO: this wording is not great m&#39;kay.
-    </span>} <span class="kw">else if </span>cuid == <span class="number">0 </span>|| ceuid == <span class="number">0 </span>|| cgid == <span class="number">0 </span>|| cegid == <span class="number">0 </span>{
-        <span class="macro">error!</span>(<span class="string">&quot;Refusing to run - this process must not operate as root.&quot;</span>);
-        <span class="kw">return</span>;
-    };
     <span class="kw">if </span>clap_args.get_flag(<span class="string">&quot;debug&quot;</span>) {
         std::env::set_var(<span class="string">&quot;RUST_LOG&quot;</span>, <span class="string">&quot;debug&quot;</span>);
     }
@@ -1183,12 +1183,21 @@
             )
         )
         .on(<span class="kw">async </span>{
+            <span class="kw">if </span>clap_args.get_flag(<span class="string">&quot;skip-root-check&quot;</span>) {
+                <span class="macro">warn!</span>(<span class="string">&quot;Skipping root user check, if you&#39;re running this for testing, ensure you clean up temporary files.&quot;</span>)
+                <span class="comment">// TODO: this wording is not great m&#39;kay.
+            </span>} <span class="kw">else if </span>cuid == <span class="number">0 </span>|| ceuid == <span class="number">0 </span>|| cgid == <span class="number">0 </span>|| cegid == <span class="number">0 </span>{
+                <span class="macro">error!</span>(<span class="string">&quot;Refusing to run - this process must not operate as root.&quot;</span>);
+                <span class="kw">return </span>ExitCode::FAILURE
+            };
+
             <span class="macro">debug!</span>(<span class="string">&quot;Profile -&gt; {}&quot;</span>, <span class="macro">env!</span>(<span class="string">&quot;KANIDM_PROFILE_NAME&quot;</span>));
             <span class="macro">debug!</span>(<span class="string">&quot;CPU Flags -&gt; {}&quot;</span>, <span class="macro">env!</span>(<span class="string">&quot;KANIDM_CPU_FLAGS&quot;</span>));
 
-
-            <span class="attr">#[allow(clippy::expect_used)]
-            </span><span class="kw">let </span>cfg_path_str = clap_args.get_one::&lt;String&gt;(<span class="string">&quot;client-config&quot;</span>).expect(<span class="string">&quot;Failed to pull the client config path&quot;</span>);
+            <span class="kw">let </span><span class="prelude-val">Some</span>(cfg_path_str) = clap_args.get_one::&lt;String&gt;(<span class="string">&quot;client-config&quot;</span>) <span class="kw">else </span>{
+                <span class="macro">error!</span>(<span class="string">&quot;Failed to pull the client config path&quot;</span>);
+                <span class="kw">return </span>ExitCode::FAILURE
+            };
             <span class="kw">let </span>cfg_path: PathBuf =  PathBuf::from(cfg_path_str);
 
             <span class="kw">if </span>!cfg_path.exists() {
@@ -1197,14 +1206,14 @@
                     <span class="string">&quot;Client config missing from {} - cannot start up. Quitting.&quot;</span>,
                     cfg_path_str
                 );
-                <span class="kw">return
-            </span>} <span class="kw">else </span>{
+                <span class="kw">return </span>ExitCode::FAILURE
+            } <span class="kw">else </span>{
                 <span class="kw">let </span>cfg_meta = <span class="kw">match </span>metadata(<span class="kw-2">&amp;</span>cfg_path) {
                     <span class="prelude-val">Ok</span>(v) =&gt; v,
                     <span class="prelude-val">Err</span>(e) =&gt; {
                         <span class="macro">error!</span>(<span class="string">&quot;Unable to read metadata for {} - {:?}&quot;</span>, cfg_path_str, e);
-                        <span class="kw">return
-                    </span>}
+                        <span class="kw">return </span>ExitCode::FAILURE
+                    }
                 };
                 <span class="kw">if </span>!kanidm_lib_file_permissions::readonly(<span class="kw-2">&amp;</span>cfg_meta) {
                     <span class="macro">warn!</span>(<span class="string">&quot;permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...&quot;</span>,
@@ -1219,8 +1228,10 @@
                 }
             }
 
-            <span class="attr">#[allow(clippy::expect_used)]
-            </span><span class="kw">let </span>unixd_path_str = clap_args.get_one::&lt;String&gt;(<span class="string">&quot;unixd-config&quot;</span>).expect(<span class="string">&quot;Failed to pull the unixd config path&quot;</span>);
+            <span class="kw">let </span><span class="prelude-val">Some</span>(unixd_path_str) = clap_args.get_one::&lt;String&gt;(<span class="string">&quot;unixd-config&quot;</span>) <span class="kw">else </span>{
+                <span class="macro">error!</span>(<span class="string">&quot;Failed to pull the unixd config path&quot;</span>);
+                <span class="kw">return </span>ExitCode::FAILURE
+            };
             <span class="kw">let </span>unixd_path = PathBuf::from(unixd_path_str);
 
             <span class="kw">if </span>!unixd_path.exists() {
@@ -1229,14 +1240,14 @@
                     <span class="string">&quot;unixd config missing from {} - cannot start up. Quitting.&quot;</span>,
                     unixd_path_str
                 );
-                <span class="kw">return
-            </span>} <span class="kw">else </span>{
+                <span class="kw">return </span>ExitCode::FAILURE
+            } <span class="kw">else </span>{
                 <span class="kw">let </span>unixd_meta = <span class="kw">match </span>metadata(<span class="kw-2">&amp;</span>unixd_path) {
                     <span class="prelude-val">Ok</span>(v) =&gt; v,
                     <span class="prelude-val">Err</span>(e) =&gt; {
                         <span class="macro">error!</span>(<span class="string">&quot;Unable to read metadata for {} - {:?}&quot;</span>, unixd_path_str, e);
-                        <span class="kw">return
-                    </span>}
+                        <span class="kw">return </span>ExitCode::FAILURE
+                    }
                 };
                 <span class="kw">if </span>!kanidm_lib_file_permissions::readonly(<span class="kw-2">&amp;</span>unixd_meta) {
                     <span class="macro">warn!</span>(<span class="string">&quot;permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...&quot;</span>,
@@ -1255,16 +1266,16 @@
                 <span class="prelude-val">Ok</span>(v) =&gt; v,
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;Failed to parse {}&quot;</span>, cfg_path_str);
-                    <span class="kw">return
-                </span>}
+                    <span class="kw">return </span>ExitCode::FAILURE
+                }
             };
 
             <span class="kw">let </span>cfg = <span class="kw">match </span>KanidmUnixdConfig::new().read_options_from_optional_config(<span class="kw-2">&amp;</span>unixd_path) {
                 <span class="prelude-val">Ok</span>(v) =&gt; v,
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;Failed to parse {}&quot;</span>, unixd_path_str);
-                    <span class="kw">return
-                </span>}
+                    <span class="kw">return </span>ExitCode::FAILURE
+                }
             };
 
             <span class="kw">if </span>clap_args.get_flag(<span class="string">&quot;configtest&quot;</span>) {
@@ -1275,7 +1286,7 @@
                 <span class="macro">eprintln!</span>(<span class="string">&quot;###################################&quot;</span>);
                 <span class="macro">eprintln!</span>(<span class="string">&quot;Client config (from {:#?})&quot;</span>, <span class="kw-2">&amp;</span>cfg_path);
                 <span class="macro">eprintln!</span>(<span class="string">&quot;{}&quot;</span>, cb);
-                <span class="kw">return</span>;
+                <span class="kw">return </span>ExitCode::SUCCESS;
             }
 
             <span class="macro">debug!</span>(<span class="string">&quot;🧹 Cleaning up sockets from previous invocations&quot;</span>);
@@ -1296,8 +1307,8 @@
                                 .to_str()
                                 .unwrap_or(<span class="string">&quot;&lt;db_parent_path invalid&gt;&quot;</span>)
                         );
-                        <span class="kw">return
-                    </span>}
+                        <span class="kw">return </span>ExitCode::FAILURE
+                    }
 
                     <span class="kw">let </span>db_par_path_buf = db_parent_path.to_path_buf();
 
@@ -1311,8 +1322,8 @@
                                     .unwrap_or(<span class="string">&quot;&lt;db_par_path_buf invalid&gt;&quot;</span>),
                                 e
                             );
-                            <span class="kw">return
-                        </span>}
+                            <span class="kw">return </span>ExitCode::FAILURE
+                        }
                     };
 
                     <span class="kw">if </span>!i_meta.is_dir() {
@@ -1322,8 +1333,8 @@
                                 .to_str()
                                 .unwrap_or(<span class="string">&quot;&lt;db_par_path_buf invalid&gt;&quot;</span>)
                         );
-                        <span class="kw">return
-                    </span>}
+                        <span class="kw">return </span>ExitCode::FAILURE
+                    }
                     <span class="kw">if </span>!kanidm_lib_file_permissions::readonly(<span class="kw-2">&amp;</span>i_meta) {
                         <span class="macro">warn!</span>(<span class="string">&quot;WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!&quot;</span>, db_par_path_buf.to_str()
                         .unwrap_or(<span class="string">&quot;&lt;db_par_path_buf invalid&gt;&quot;</span>)
@@ -1344,8 +1355,8 @@
                             <span class="string">&quot;Refusing to run - DB path {} already exists and is not a file.&quot;</span>,
                             db_path.to_str().unwrap_or(<span class="string">&quot;&lt;db_path invalid&gt;&quot;</span>)
                         );
-                        <span class="kw">return
-                    </span>};
+                        <span class="kw">return </span>ExitCode::FAILURE
+                    };
 
                     <span class="kw">match </span>metadata(<span class="kw-2">&amp;</span>db_path) {
                         <span class="prelude-val">Ok</span>(v) =&gt; v,
@@ -1355,8 +1366,8 @@
                                 db_path.to_str().unwrap_or(<span class="string">&quot;&lt;db_path invalid&gt;&quot;</span>),
                                 e
                             );
-                            <span class="kw">return
-                        </span>}
+                            <span class="kw">return </span>ExitCode::FAILURE
+                        }
                     };
                     <span class="comment">// TODO: permissions dance to enumerate the user&#39;s ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.
                 </span>};
@@ -1368,8 +1379,8 @@
                 <span class="prelude-val">Ok</span>(rsc) =&gt; rsc,
                 <span class="prelude-val">Err</span>(_e) =&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;Failed to build async client&quot;</span>);
-                    <span class="kw">return
-                </span>}
+                    <span class="kw">return </span>ExitCode::FAILURE
+                }
             };
 
 
@@ -1390,8 +1401,8 @@
                 <span class="prelude-val">Ok</span>(c) =&gt; c,
                 <span class="prelude-val">Err</span>(_e) =&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;Failed to build cache layer.&quot;</span>);
-                    <span class="kw">return
-                </span>}
+                    <span class="kw">return </span>ExitCode::FAILURE
+                }
             };
 
             <span class="kw">let </span>cachelayer = Arc::new(cl_inner);
@@ -1402,8 +1413,8 @@
                 <span class="prelude-val">Ok</span>(l) =&gt; l,
                 <span class="prelude-val">Err</span>(_e) =&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;Failed to bind UNIX socket at {}&quot;</span>, cfg.sock_path.as_str());
-                    <span class="kw">return
-                </span>}
+                    <span class="kw">return </span>ExitCode::FAILURE
+                }
             };
             <span class="comment">// Setup the root-only socket. Take away all others.
             </span><span class="kw">let _ </span>= <span class="kw">unsafe </span>{ umask(<span class="number">0o0077</span>) };
@@ -1411,8 +1422,8 @@
                 <span class="prelude-val">Ok</span>(l) =&gt; l,
                 <span class="prelude-val">Err</span>(_e) =&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;Failed to bind UNIX socket {}&quot;</span>, cfg.sock_path.as_str());
-                    <span class="kw">return
-                </span>}
+                    <span class="kw">return </span>ExitCode::FAILURE
+                }
             };
 
             <span class="comment">// Undo it.
@@ -1484,9 +1495,10 @@
             <span class="macro">info!</span>(<span class="string">&quot;Server started ...&quot;</span>);
 
             server.<span class="kw">await</span>;
+            ExitCode::SUCCESS
     })
-    .<span class="kw">await</span>;
-    <span class="comment">// TODO: can we catch signals to clean up sockets etc, especially handy when running as root
+    .<span class="kw">await
+    </span><span class="comment">// TODO: can we catch signals to clean up sockets etc, especially handy when running as root
 </span>}
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidm_unixd" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0 (2c8cc3432 2023-03-06)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>
