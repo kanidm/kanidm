@@ -3,9 +3,9 @@ ARG BASE_IMAGE=opensuse/tumbleweed:latest
 FROM ${BASE_IMAGE} AS repos
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
-    zypper mr -k repo-oss && \
-    zypper mr -k repo-non-oss && \
-    zypper mr -k repo-update && \
+    zypper mr -k repo-oss; \
+    zypper mr -k repo-non-oss; \
+    zypper mr -k repo-update; \
     zypper dup -y
 
 FROM repos AS builder
