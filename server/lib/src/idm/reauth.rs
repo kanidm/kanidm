@@ -76,7 +76,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         let _session_ticket = self.session_ticket.acquire().await;
 
         // Setup soft locks here if required.
-        let is_valid = account
+        let maybe_slock = account
             .primary_cred_uuid_and_policy()
             .and_then(|(cred_uuid, policy)| {
                 // Acquire the softlock map
@@ -99,17 +99,24 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             slock
                         };
                     softlock_write.commit();
-                    slock_ref.apply_time_step(ct);
-                    Some(slock_ref.is_valid())
+                    Some(slock_ref)
                 } else {
                     None
                 }
-            })
-            .unwrap_or(true);
+            });
 
         // Check if the cred is locked! We want to fail fast here! Unlike the auth flow we have
         // already selected our credential so we can test it's slock, else we could be allowing
         // 1-attempt per-reauth.
+
+        let is_valid = if let Some(slock_ref) = maybe_slock {
+            let mut slock = slock_ref.lock().await;
+            slock.apply_time_step(ct);
+            slock.is_valid()
+        } else {
+            true
+        };
+
         if !is_valid {
             todo!()
         }
@@ -336,6 +343,23 @@ mod tests {
             .expect("Invalid UAT")
     }
 
+    async fn reauth_passkey(
+        idms: &IdmServer,
+        ct: Duration,
+        ident: &Identity,
+        wa: &mut WebauthnAuthenticator<SoftPasskey>,
+        idms_delayed: &mut IdmServerDelayed,
+    ) -> Result< (), () > {
+        let mut idms_auth = idms.auth().await;
+        let origin = idms_auth.get_origin().clone();
+
+        let auth_allowed = idms_auth
+            .reauth_init(ident.clone(), AuthIssueSession::Token, ct)
+            .await
+            .expect("Failed to start reauth.");
+
+    }
+
     #[idm_test]
     async fn test_idm_reauth_passkey(idms: &IdmServer, idms_delayed: &mut IdmServerDelayed) {
         let ct = duration_from_epoch_now();
@@ -364,13 +388,9 @@ mod tests {
         assert!(matches!(session.scope, SessionScope::PrivilegeCapable));
 
         // Start the re-auth
+        let result = reauth_passkey(idms, ct, &ident, &mut passkey, idms_delayed);
 
-        let mut auth_txn = idms.auth().await;
 
-        let auth_allowed = auth_txn
-            .reauth_init(ident, AuthIssueSession::Token, ct)
-            .await
-            .expect("Failed to start reauth.");
 
         // match
 

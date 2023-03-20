@@ -249,6 +249,37 @@ impl TryFrom<(&BTreeMap<Uuid, (String, PasskeyV4)>, &Webauthn)> for CredHandler 
     }
 }
 
+impl TryFrom<(Uuid, &PasskeyV4, &Webauthn)> for CredHandler {
+    type Error = ();
+    fn try_from(
+        (cred_id, pk, webauthn): (Uuid, &PasskeyV4, &Webauthn),
+    ) -> Result<Self, Self::Error> {
+
+        let cred_ids = btreemap!(
+            (pk.cred_id().clone(), cred_id)
+        );
+        let pks = vec![pk.clone()];
+
+        webauthn
+            .start_passkey_authentication(pks.as_slice())
+            .map(|(chal, wan_state)| CredHandler::Passkey {
+                c_wan: CredWebauthn {
+                    chal,
+                    wan_state,
+                    state: CredVerifyState::Init,
+                },
+                cred_ids,
+            })
+            .map_err(|e| {
+                security_info!(
+                    ?e,
+                    "Unable to create passkey webauthn authentication challenge"
+                );
+                // maps to unit.
+            })
+    }
+}
+
 impl CredHandler {
     /// Determine if this password factor requires an upgrade of it's cryptographic type. If
     /// so, send an asynchronous event into the queue that will allow the password to have it's
@@ -735,7 +766,7 @@ impl AuthSession {
                 };
 
                 if handlers.is_empty() {
-                    security_info!("account has no primary credentials");
+                    security_info!("account has no available credentials");
                     AuthSessionState::Denied("invalid credential state")
                 } else {
                     AuthSessionState::Init(handlers)
@@ -779,7 +810,85 @@ impl AuthSession {
         webauthn: &Webauthn,
         ct: Duration,
     ) -> (Option<Self>, AuthState) {
-        todo!();
+
+        /// An inner enum to allow us to more easily define state within this fn
+        enum State {
+            Expired,
+            NoMatchingCred,
+            Proceed(CredHandler),
+        }
+
+        let state = if account.is_within_valid_time(ct) {
+            // Get the credential that matches this cred_id.
+            //
+            // To make this work "cleanly" we can't really nest a bunch of if
+            // statements like if primary and if primary.cred_id because the logic will
+            // just be chaos. So for now we build this as a mut option.
+            //
+            // Do we need to double check for anon here? I don't think so since the
+            // anon cred_id won't ever exist on an account.
+
+            let mut cred_handler = None;
+
+            if let Some(primary) = account.primary.as_ref() {
+                if primary.uuid == cred_id {
+                    if let Ok(ch) = CredHandler::try_from((primary, webauthn)) {
+                        // Update it.
+                        debug_assert!(cred_handler.is_none());
+                        cred_handler = Some(ch);
+                    } else {
+                        security_critical!(
+                            "corrupt credentials, unable to start primary credhandler"
+                        );
+                    }
+                }
+            }
+
+            if let Some(pk) = account.passkeys.get(&cred_id).map(|(_, pk)| pk) {
+                if let Ok(ch) = CredHandler::try_from((cred_id, pk, webauthn)) {
+                    // Update it.
+                    debug_assert!(cred_handler.is_none());
+                    cred_handler = Some(ch);
+                } else {
+                    security_critical!(
+                        "corrupt credentials, unable to start primary credhandler"
+                    );
+                }
+            }
+
+            // Did anything get set-up?
+
+            if let Some(cred_handler) = cred_handler {
+                State::Proceed(cred_handler)
+            } else {
+                State::NoMatchingCred
+            }
+        } else {
+            State::Expired
+        };
+
+
+        match state {
+            State::Proceed(handler) => {
+                let allow = handler.next_auth_allowed();
+                let auth_session = AuthSession {
+                    account,
+                    state: AuthSessionState::InProgress(handler),
+                    issue,
+                };
+
+                let as_state = AuthState::Continue(allow);
+                (Some(auth_session), as_state)
+            }
+            State::Expired => {
+                security_info!("account expired");
+                (None, AuthState::Denied(ACCOUNT_EXPIRED.to_string()))
+            }
+            State::NoMatchingCred => {
+                security_error!("Unable to select a credential for authentication");
+                (None, AuthState::Denied(BAD_CREDENTIALS.to_string()))
+            }
+        }
     }
 
     // This is used for softlock identification only.
