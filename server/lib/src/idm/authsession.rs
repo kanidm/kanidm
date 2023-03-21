@@ -73,7 +73,7 @@ impl fmt::Display for AuthType {
 #[derive(Debug, Clone)]
 enum AuthIntent {
     InitialAuth,
-    Reauth,
+    Reauth { session_id: Uuid },
 }
 
 /// A response type to indicate the progress and potential result of an authentication attempt.
@@ -815,6 +815,7 @@ impl AuthSession {
     /// initial authentication.
     pub(crate) fn new_reauth(
         account: Account,
+        session_id: Uuid,
         cred_id: Uuid,
         issue: AuthIssueSession,
         webauthn: &Webauthn,
@@ -881,7 +882,7 @@ impl AuthSession {
                     account,
                     state: AuthSessionState::InProgress(handler),
                     issue,
-                    intent: AuthIntent::Reauth,
+                    intent: AuthIntent::Reauth { session_id },
                 };
 
                 let as_state = AuthState::Continue(allow);
@@ -1067,73 +1068,91 @@ impl AuthSession {
         cred_id: Uuid,
     ) -> Result<UserAuthToken, OperationError> {
         security_info!("Successful cred handling");
-        let session_id = Uuid::new_v4();
+        match self.intent {
+            AuthIntent::InitialAuth => {
+                let session_id = Uuid::new_v4();
+                // We need to actually work this out better, and then
+                // pass it to to_userauthtoken
+                let scope = match auth_type {
+                    AuthType::UnixPassword | AuthType::Anonymous => SessionScope::ReadOnly,
+                    AuthType::GeneratedPassword => SessionScope::ReadWrite,
+                    AuthType::Password | AuthType::PasswordMfa | AuthType::Passkey => {
+                        SessionScope::PrivilegeCapable
+                    }
+                };
 
-        // We need to actually work this out better, and then
-        // pass it to to_userauthtoken
-        let scope = match auth_type {
-            AuthType::UnixPassword | AuthType::Anonymous => SessionScope::ReadOnly,
-            AuthType::GeneratedPassword => SessionScope::ReadWrite,
-            AuthType::Password | AuthType::PasswordMfa | AuthType::Passkey => {
-                SessionScope::PrivilegeCapable
-            }
-        };
-
-        security_info!(
-            "Issuing {:?} session {} for {} {}",
-            self.issue,
-            session_id,
-            self.account.spn,
-            self.account.uuid
-        );
-
-        let uat = match self.intent {
-            AuthIntent::InitialAuth => self
-                .account
-                .to_userauthtoken(session_id, scope, time)
-                .ok_or(OperationError::InvalidState)?,
-            AuthIntent::Reauth => {
-                todo!();
-            }
-        };
-
-        // Queue the session info write.
-        // This is dependent on the type of authentication factors
-        // used. Generally we won't submit for Anonymous. Add an extra
-        // safety barrier for auth types that shouldn't be here. Generally we
-        // submit session info for everything else.
-        match auth_type {
-            AuthType::Anonymous => {
-                // Skip - these sessions are not validated by session id.
-            }
-            AuthType::UnixPassword => {
-                // Impossibru!
-                admin_error!("Impossible auth type (UnixPassword) found");
-                return Err(OperationError::InvalidState);
-            }
-            AuthType::Password
-            | AuthType::GeneratedPassword
-            | AuthType::PasswordMfa
-            | AuthType::Passkey => {
-                trace!("⚠️   Queued AuthSessionRecord for {}", self.account.uuid);
-                async_tx.send(DelayedAction::AuthSessionRecord(AuthSessionRecord {
-                    target_uuid: self.account.uuid,
+                security_info!(
+                    "Issuing {:?} session {} for {} {}",
+                    self.issue,
                     session_id,
-                    cred_id,
-                    label: "Auth Session".to_string(),
-                    expiry: uat.expiry,
-                    issued_at: uat.issued_at,
-                    issued_by: IdentityId::User(self.account.uuid),
-                    scope,
-                }))
-                .map_err(|_| {
-                    admin_error!("unable to queue failing authentication as the session will not validate ... ");
-                    OperationError::InvalidState
-                })?;
-            }
-        };
+                    self.account.spn,
+                    self.account.uuid
+                );
 
-        Ok(uat)
+                let uat = self
+                    .account
+                    .to_userauthtoken(session_id, scope, time)
+                    .ok_or(OperationError::InvalidState)?;
+
+                // Queue the session info write.
+                // This is dependent on the type of authentication factors
+                // used. Generally we won't submit for Anonymous. Add an extra
+                // safety barrier for auth types that shouldn't be here. Generally we
+                // submit session info for everything else.
+                match auth_type {
+                    AuthType::Anonymous => {
+                        // Skip - these sessions are not validated by session id.
+                    }
+                    AuthType::UnixPassword => {
+                        // Impossibru!
+                        admin_error!("Impossible auth type (UnixPassword) found");
+                        return Err(OperationError::InvalidState);
+                    }
+                    AuthType::Password
+                    | AuthType::GeneratedPassword
+                    | AuthType::PasswordMfa
+                    | AuthType::Passkey => {
+                        trace!("⚠️   Queued AuthSessionRecord for {}", self.account.uuid);
+                        async_tx.send(DelayedAction::AuthSessionRecord(AuthSessionRecord {
+                            target_uuid: self.account.uuid,
+                            session_id,
+                            cred_id,
+                            label: "Auth Session".to_string(),
+                            expiry: uat.expiry,
+                            issued_at: uat.issued_at,
+                            issued_by: IdentityId::User(self.account.uuid),
+                            scope,
+                        }))
+                        .map_err(|_| {
+                            admin_error!("unable to queue failing authentication as the session will not validate ... ");
+                            OperationError::InvalidState
+                        })?;
+                    }
+                };
+
+                Ok(uat)
+            }
+            AuthIntent::Reauth { session_id } => {
+                // Sanity check - We have already been really strict about what session types
+                // can actually trigger a re-auth, but we recheck here for paranoia!
+                let scope = match auth_type {
+                    AuthType::UnixPassword | AuthType::Anonymous | AuthType::GeneratedPassword => {
+                        error!("AuthType used in Reauth is not valid for session re-issuance. Rejecting");
+                        return Err(OperationError::InvalidState);
+                    }
+                    AuthType::Password | AuthType::PasswordMfa | AuthType::Passkey => {
+                        SessionScope::PrivilegeCapable
+                    }
+                };
+
+                let uat = self
+                    .account
+                    .to_reissue_userauthtoken(session_id, scope, time)
+                    .ok_or(OperationError::InvalidState)?;
+
+                Ok(uat)
+            }
+        }
     }
 
     /// End the session, defaulting to a denied.

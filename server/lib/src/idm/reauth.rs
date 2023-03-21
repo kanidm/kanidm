@@ -69,7 +69,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         // == Everything Checked Out! ==
         // Let's setup to proceed with the re-auth.
 
-        // Allocate the session id based on current time / sid.
+        // Allocate the *authentication* session id based on current time / sid.
         let sessionid = uuid_from_duration(ct, self.sid);
 
         // Start getting things.
@@ -122,8 +122,14 @@ impl<'a> IdmServerAuthTransaction<'a> {
         }
 
         // Create a re-auth session
-        let (auth_session, state) =
-            AuthSession::new_reauth(account, session_cred_id, issue, self.webauthn, ct);
+        let (auth_session, state) = AuthSession::new_reauth(
+            account,
+            ident.get_session_id(),
+            session_cred_id,
+            issue,
+            self.webauthn,
+            ct,
+        );
 
         // Push the re-auth session to the session maps.
         match auth_session {
@@ -393,13 +399,8 @@ mod tests {
                 let r = idms.delayed_action(ct, da).await;
                 assert!(r.is_ok());
 
-                // Process the auth session
-                let da = idms_delayed.try_recv().expect("invalid");
-                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
-                // We have to actually write this one else the following tests
-                // won't work!
-                let r = idms.delayed_action(ct, da).await;
-                assert!(r.is_ok());
+                // NOTE: Unlike initial auth we don't need to check the auth session in the queue
+                // since we don't re-issue it.
 
                 Some(token)
             }

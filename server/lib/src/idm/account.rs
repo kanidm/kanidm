@@ -232,7 +232,53 @@ impl Account {
 
         Some(UserAuthToken {
             session_id,
+            expiry,
+            issued_at,
+            purpose,
+            uuid: self.uuid,
+            displayname: self.displayname.clone(),
+            spn: self.spn.clone(),
+            mail_primary: self.mail_primary.clone(),
+            ui_hints: self.ui_hints.clone(),
+            // application: None,
+            // groups: self.groups.iter().map(|g| g.to_proto()).collect(),
+        })
+    }
 
+    /// Given the session_id and other metadata, reissue a user authentication token
+    /// that has elevated privileges. In the future we may adapt this to change what
+    /// scopes are granted per-reauth.
+    pub(crate) fn to_reissue_userauthtoken(
+        &self,
+        session_id: Uuid,
+        scope: SessionScope,
+        ct: Duration,
+    ) -> Option<UserAuthToken> {
+        let issued_at = OffsetDateTime::unix_epoch() + ct;
+
+        let (purpose, expiry) = match scope {
+            SessionScope::Synchronise | SessionScope::ReadOnly | SessionScope::ReadWrite => {
+                warn!(
+                    "Impossible state, should not be re-issuing for session scope {:?}",
+                    scope
+                );
+                return None;
+            }
+            SessionScope::PrivilegeCapable =>
+            // Return a ReadWrite session with an inner expiry for the privileges
+            {
+                let expiry = Some(
+                    OffsetDateTime::unix_epoch() + ct + Duration::from_secs(AUTH_PRIVILEGE_EXPIRY),
+                );
+                (
+                    UatPurpose::ReadWrite { expiry },
+                    Some(OffsetDateTime::unix_epoch() + ct + Duration::from_secs(86400)),
+                )
+            }
+        };
+
+        Some(UserAuthToken {
+            session_id,
             expiry,
             issued_at,
             purpose,
