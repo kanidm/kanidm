@@ -1104,7 +1104,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     auth_session
                         .validate_creds(
                             &creds.cred,
-                            &ct,
+                            ct,
                             &self.async_tx,
                             self.webauthn,
                             pw_badlist_cache,

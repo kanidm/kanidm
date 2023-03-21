@@ -1228,7 +1228,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
             MfaRegState::TotpInit(totp_token)
             | MfaRegState::TotpTryAgain(totp_token)
             | MfaRegState::TotpInvalidSha1(totp_token, _, _) => {
-                if totp_token.verify(totp_chal, &ct) {
+                if totp_token.verify(totp_chal, ct) {
                     // It was valid. Update the credential.
                     let ncred = session
                         .primary
@@ -1250,7 +1250,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
                     // check that just in case.
                     let token_sha1 = totp_token.clone().downgrade_to_legacy();
 
-                    if token_sha1.verify(totp_chal, &ct) {
+                    if token_sha1.verify(totp_chal, ct) {
                         // Greeeaaaaaatttt. It's a broken app. Let's check the user
                         // knows this is broken, before we proceed.
                         session.mfaregstate = MfaRegState::TotpInvalidSha1(

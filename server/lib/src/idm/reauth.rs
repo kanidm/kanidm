@@ -349,7 +349,7 @@ mod tests {
         ident: &Identity,
         wa: &mut WebauthnAuthenticator<SoftPasskey>,
         idms_delayed: &mut IdmServerDelayed,
-    ) -> Result< (), () > {
+    ) -> Option<String> {
         let mut idms_auth = idms.auth().await;
         let origin = idms_auth.get_origin().clone();
 
@@ -358,6 +358,53 @@ mod tests {
             .await
             .expect("Failed to start reauth.");
 
+        let AuthResult { sessionid, state } = auth_allowed;
+
+        trace!(?state);
+
+        let rcr = match state {
+            AuthState::Continue(mut allowed) => match allowed.pop() {
+                Some(AuthAllowed::Passkey(rcr)) => rcr,
+                _ => return None,
+            },
+            _ => unreachable!(),
+        };
+
+        trace!(?rcr);
+
+        let resp = wa
+            .do_authentication(origin, rcr)
+            .expect("failed to use softtoken to authenticate");
+
+        let passkey_step = AuthEvent::cred_step_passkey(sessionid, resp);
+
+        let r3 = idms_auth.auth(&passkey_step, ct).await;
+        debug!("r3 ==> {:?}", r3);
+        idms_auth.commit().expect("Must not fail");
+
+        match r3 {
+            Ok(AuthResult {
+                sessionid: _,
+                state: AuthState::Success(token, AuthIssueSession::Token),
+            }) => {
+                // Process the webauthn update
+                let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::WebauthnCounterIncrement(_)));
+                let r = idms.delayed_action(ct, da).await;
+                assert!(r.is_ok());
+
+                // Process the auth session
+                let da = idms_delayed.try_recv().expect("invalid");
+                assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
+                // We have to actually write this one else the following tests
+                // won't work!
+                let r = idms.delayed_action(ct, da).await;
+                assert!(r.is_ok());
+
+                Some(token)
+            }
+            _ => unreachable!(),
+        }
     }
 
     #[idm_test]
@@ -388,17 +435,23 @@ mod tests {
         assert!(matches!(session.scope, SessionScope::PrivilegeCapable));
 
         // Start the re-auth
-        let result = reauth_passkey(idms, ct, &ident, &mut passkey, idms_delayed);
+        let token = reauth_passkey(idms, ct, &ident, &mut passkey, idms_delayed)
+            .await
+            .expect("Failed to get new session token");
 
-
-
-        // match
+        // Token_str to uat
+        let ident = token_to_ident(idms, ct, Some(token.as_str())).await;
 
         // They now have the entitlement.
+        debug!(?ident);
+        assert!(matches!(ident.access_scope(), AccessScope::ReadWrite));
     }
 
     #[idm_test]
-    async fn test_idm_reauth_softlocked_pw(idms: &IdmServer, idms_delayed: &mut IdmServerDelayed) {
+    async fn test_idm_reauth_softlocked_pw(
+        _idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
         todo!();
     }
 }
