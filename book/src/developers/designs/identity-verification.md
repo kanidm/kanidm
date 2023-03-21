@@ -88,10 +88,17 @@ In this case the servers will be a full replica of each other, and therefore the
   1. Alice shares her SPN with Bob and asks for Bob's SPN
   1. Bob receives Alice's SPN and replies by sending his SPN
   1. Both Alice and Bob insert the acquired information in their Kanidm client.
-  1. The servers compute the ECDH shared key by using their user's private key and the other's users public key. DH guarantees that the servers will derive the same shared secret.
-  1. The servers compute a HMAC hash using the derived key as key, the current time and the user's UUID. These will be the TOTPs. Since each server will use its own user's UUID, there will be two different TOTPS. Note that both servers will compute both the TOTPs locally, as they will be needed for verification later.
+  1. The servers compute the ECDH shared key, let's call it _X_, by using their user's private key and the other's users public key. DH guarantees that the servers will derive the same shared secret.
+  1. The servers compute the TOTPs by concatenating the bytes of the shared key _X_ with the bytes of the users UUID. Since there are two different UUIDs, there will be two different TOTPs, from now on named as follows:
+
+     - TOTP secret a: _secret X as bytes + Alice's UUID as bytes_
+     - TOTP secret b: _secret X as bytes + Bob's UUID as bytes_.
+
+     Note that each server will compute both TOTPs locally.
+
   1. The TOPTs will be transformed in a more human readable format for the users, so that they can be easily shared by humans, ie in a phone call or in a chat.
-  1. The users will then input the received TOTP into their kanidm server, which will check if the TOTP matches the one computed locally at step 5
+  1. The users will then input the received TOTP into their kanidm server, which will check if the TOTPs match the ones computed locally at step 5. In our example Alice will provide <ins>TOTP secret a</ins> to Bob, while the latter will provide <ins>TOTP secret b</ins> to Alice.
+     Alice's server will check if the received TOTP matches TOTP secret b, while Bob's server will check if the received TOTP matches TOTP secret a.
 
   ```
                   ┌──────────────────────────────────────────┐
