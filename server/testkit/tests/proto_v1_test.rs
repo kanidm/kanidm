@@ -1320,3 +1320,8 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
 
     // No need to test expiry, that's validated in the server internal tests.
 }
+
+#[kanidmd_testkit::test]
+async fn test_server_user_auth_reauthentication(_rsclient: KanidmClient) {
+    todo!();
+}

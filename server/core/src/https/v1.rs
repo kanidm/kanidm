@@ -1094,7 +1094,6 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
             let AuthResult {
                 state,
                 sessionid,
-                delay: _,
             } = ar;
             // Do some response/state management.
             match state {
