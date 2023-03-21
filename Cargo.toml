@@ -38,7 +38,7 @@ homepage = "https://github.com/kanidm/kanidm/"
 repository = "https://github.com/kanidm/kanidm/"
 
 [workspace.dependencies]
-async-trait = "^0.1.66"
+async-trait = "^0.1.67"
 base32 = "^0.4.0"
 base64 = "^0.21.0"
 base64urlsafedata = "0.1.3"
@@ -150,7 +150,7 @@ tracing = { version = "^0.1.37" }
 tracing-subscriber = { version = "^0.3.16", features = ["env-filter"] }
 
 # tracing-forest = { path = "/Users/william/development/tracing-forest/tracing-forest" }
-tracing-forest = { git = "https://github.com/QnnOkabayashi/tracing-forest.git", rev = "48d78f7294ceee47a22eee5c80964143c4fb3fe1" }
+tracing-forest = { git = "https://github.com/QnnOkabayashi/tracing-forest.git", rev = "77daf8c8abf010b87d45ece2bf656983c6f8cecb" }
 
 url = "^2.3.1"
 urlencoding = "2.1.2"
@@ -172,12 +172,12 @@ webauthn-rs-proto = "0.4.8"
 # webauthn-rs-core = { path = "../webauthn-rs/webauthn-rs-core" }
 # webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
 web-sys = "^0.3.61"
-whoami = "^1.3.0"
+whoami = "^1.4.0"
 walkdir = "2"
 
 yew = "^0.20.0"
 yew-router = "^0.17.0"
-zxcvbn = "^2.2.1"
+zxcvbn = "^2.2.2"
 
 # enshrinken the WASMs
 [profile.release.package.kanidmd_web_ui]
