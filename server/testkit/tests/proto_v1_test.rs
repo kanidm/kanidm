@@ -1079,8 +1079,9 @@ async fn test_server_credential_update_session_totp_pw(rsclient: KanidmClient) {
     assert!(res.is_ok());
 }
 
-#[kanidmd_testkit::test]
-async fn test_server_credential_update_session_passkey(rsclient: KanidmClient) {
+async fn setup_demo_account_passkey(rsclient: &KanidmClient)
+    -> WebauthnAuthenticator<SoftPasskey>
+{
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -1154,6 +1155,14 @@ async fn test_server_credential_update_session_passkey(rsclient: KanidmClient) {
 
     // Assert it now works.
     let _ = rsclient.logout();
+
+    wa
+}
+
+#[kanidmd_testkit::test]
+async fn test_server_credential_update_session_passkey(rsclient: KanidmClient) {
+    let mut wa = setup_demo_account_passkey(&rsclient).await;
+
     let res = rsclient
         .auth_passkey_begin("demo_account")
         .await
@@ -1323,5 +1332,32 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
 
 #[kanidmd_testkit::test]
 async fn test_server_user_auth_reauthentication(_rsclient: KanidmClient) {
-    todo!();
+    let mut wa = setup_demo_account_passkey(&rsclient).await;
+
+    let res = rsclient
+        .auth_passkey_begin("demo_account")
+        .await
+        .expect("Failed to start passkey auth");
+
+    let pkc = wa
+        .do_authentication(rsclient.get_origin().clone(), res)
+        .map(Box::new)
+        .expect("Failed to authentication with soft passkey");
+
+    let res = rsclient.auth_passkey_complete(pkc).await;
+    assert!(res.is_ok());
+
+    // The auth is done, now we have to setup to re-auth for our session.
+    // Should we bother looking at the internals of the token here to assert
+    // it all worked? I don't think we have to because the server tests have
+    // already checked all those bits.
+
+    let res = rsclient
+        // TODO! Should we actually be able to track what was used here? Or
+        // do we just assume?
+        .reauth_passkey_begin()
+        .await
+        .expect("Failed to start passkey re-authentication");
+
+
 }

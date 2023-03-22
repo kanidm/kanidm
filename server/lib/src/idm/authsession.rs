@@ -24,6 +24,8 @@ use webauthn_rs::prelude::{
     Webauthn,
 };
 
+use time::OffsetDateTime;
+use crate::value::Session;
 use crate::credential::totp::Totp;
 use crate::credential::{BackupCodes, Credential, CredentialType, Password};
 use crate::idm::account::Account;
@@ -73,7 +75,10 @@ impl fmt::Display for AuthType {
 #[derive(Debug, Clone)]
 enum AuthIntent {
     InitialAuth,
-    Reauth { session_id: Uuid },
+    Reauth {
+        session_id: Uuid,
+        session_expiry: Option<OffsetDateTime>,
+    },
 }
 
 /// A response type to indicate the progress and potential result of an authentication attempt.
@@ -816,6 +821,7 @@ impl AuthSession {
     pub(crate) fn new_reauth(
         account: Account,
         session_id: Uuid,
+        session: &Session,
         cred_id: Uuid,
         issue: AuthIssueSession,
         webauthn: &Webauthn,
@@ -882,7 +888,10 @@ impl AuthSession {
                     account,
                     state: AuthSessionState::InProgress(handler),
                     issue,
-                    intent: AuthIntent::Reauth { session_id },
+                    intent: AuthIntent::Reauth {
+                        session_id,
+                        session_expiry: session.expiry.clone(),
+                    },
                 };
 
                 let as_state = AuthState::Continue(allow);
@@ -1132,7 +1141,7 @@ impl AuthSession {
 
                 Ok(uat)
             }
-            AuthIntent::Reauth { session_id } => {
+            AuthIntent::Reauth { session_id, session_expiry } => {
                 // Sanity check - We have already been really strict about what session types
                 // can actually trigger a re-auth, but we recheck here for paranoia!
                 let scope = match auth_type {
@@ -1147,7 +1156,7 @@ impl AuthSession {
 
                 let uat = self
                     .account
-                    .to_reissue_userauthtoken(session_id, scope, time)
+                    .to_reissue_userauthtoken(session_id, session_expiry, scope, time)
                     .ok_or(OperationError::InvalidState)?;
 
                 Ok(uat)

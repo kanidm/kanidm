@@ -200,6 +200,10 @@ impl Account {
         ct: Duration,
     ) -> Option<UserAuthToken> {
         // TODO: Apply policy to this expiry time.
+        // We have to remove the nanoseconds because when we transmit this / serialise it we drop
+        // the nanoseconds, but if we haven't done a serialise on the server our db cache has the
+        // ns value which breaks some checks.
+        let ct = ct - Duration::from_nanos(ct.subsec_nanos() as u64);
         let issued_at = OffsetDateTime::unix_epoch() + ct;
 
         let expiry =
@@ -251,6 +255,7 @@ impl Account {
     pub(crate) fn to_reissue_userauthtoken(
         &self,
         session_id: Uuid,
+        session_expiry: Option<OffsetDateTime>,
         scope: SessionScope,
         ct: Duration,
     ) -> Option<UserAuthToken> {
@@ -272,7 +277,10 @@ impl Account {
                 );
                 (
                     UatPurpose::ReadWrite { expiry },
-                    Some(OffsetDateTime::unix_epoch() + ct + Duration::from_secs(86400)),
+                    // Needs to come from the actual original session. If we don't do this we have
+                    // to re-update the expiry in the DB. We don't want a re-auth to extend a time
+                    // bound session.
+                    session_expiry
                 )
             }
         };
@@ -525,12 +533,19 @@ impl Account {
             // Get the sessions.
             let session_present = entry
                 .get_ava_as_session_map("user_auth_token_session")
-                .map(|session_map| session_map.get(&uat.session_id).is_some())
-                .unwrap_or(false);
+                .and_then(|session_map| session_map.get(&uat.session_id));
 
-            if session_present {
+            if let Some(session) = session_present {
                 security_info!("A valid session value exists for this token");
-                true
+
+                if session.expiry == uat.expiry {
+                    true
+                } else {
+                    security_info!("Session and uat expiry are not consistent, rejecting.");
+                    debug!(ses_exp = ?session.expiry, uat_exp = ?uat.expiry);
+                    false
+                }
+
             } else {
                 let grace = uat.issued_at + GRACE_WINDOW;
                 let current = time::OffsetDateTime::unix_epoch() + ct;

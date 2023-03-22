@@ -132,7 +132,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
         // Create a re-auth session
         let (auth_session, state) = AuthSession::new_reauth(
             account,
-            ident.get_session_id(),
+            ident.session_id,
+            session,
             session_cred_id,
             issue,
             self.webauthn,
