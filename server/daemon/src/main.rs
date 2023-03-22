@@ -246,9 +246,9 @@ async fn main() -> ExitCode {
                 KanidmdOpt::Server(_sopt) | KanidmdOpt::ConfigTest(_sopt) => {
                     let config_test = matches!(&opt.commands, KanidmdOpt::ConfigTest(_));
                     if config_test {
-                        debug!("Running in server configuration test mode ...");
+                        info!("Running in server configuration test mode ...");
                     } else {
-                        debug!("Running in server mode ...");
+                        info!("Running in server mode ...");
                     };
 
                     // configuration options that only relate to server mode
@@ -366,7 +366,7 @@ async fn main() -> ExitCode {
                 KanidmdOpt::Database {
                     commands: DbCommands::Backup(bopt),
                 } => {
-                    debug!("Running in backup mode ...");
+                    info!("Running in backup mode ...");
                     let p = match bopt.path.to_str() {
                         Some(p) => p,
                         None => {
@@ -379,7 +379,7 @@ async fn main() -> ExitCode {
                 KanidmdOpt::Database {
                     commands: DbCommands::Restore(ropt),
                 } => {
-                    debug!("Running in restore mode ...");
+                    info!("Running in restore mode ...");
                     let p = match ropt.path.to_str() {
                         Some(p) => p,
                         None => {
@@ -392,59 +392,59 @@ async fn main() -> ExitCode {
                 KanidmdOpt::Database {
                     commands: DbCommands::Verify(_vopt),
                 } => {
-                    debug!("Running in db verification mode ...");
+                    info!("Running in db verification mode ...");
                     verify_server_core(&config).await;
                 }
                 KanidmdOpt::RecoverAccount(raopt) => {
-                    debug!("Running account recovery ...");
+                    info!("Running account recovery ...");
                     recover_account_core(&config, &raopt.name).await;
                 }
                 KanidmdOpt::Database {
                     commands: DbCommands::Reindex(_copt),
                 } => {
-                    debug!("Running in reindex mode ...");
+                    info!("Running in reindex mode ...");
                     reindex_server_core(&config).await;
                 }
                 KanidmdOpt::DbScan {
                     commands: DbScanOpt::ListIndexes(_),
                 } => {
-                    debug!("👀 db scan - list indexes");
+                    info!("👀 db scan - list indexes");
                     dbscan_list_indexes_core(&config);
                 }
                 KanidmdOpt::DbScan {
                     commands: DbScanOpt::ListId2Entry(_),
                 } => {
-                    debug!("👀 db scan - list id2entry");
+                    info!("👀 db scan - list id2entry");
                     dbscan_list_id2entry_core(&config);
                 }
                 KanidmdOpt::DbScan {
                     commands: DbScanOpt::ListIndexAnalysis(_),
                 } => {
-                    debug!("👀 db scan - list index analysis");
+                    info!("👀 db scan - list index analysis");
                     dbscan_list_index_analysis_core(&config);
                 }
                 KanidmdOpt::DbScan {
                     commands: DbScanOpt::ListIndex(dopt),
                 } => {
-                    debug!("👀 db scan - list index content - {}", dopt.index_name);
+                    info!("👀 db scan - list index content - {}", dopt.index_name);
                     dbscan_list_index_core(&config, dopt.index_name.as_str());
                 }
                 KanidmdOpt::DbScan {
                     commands: DbScanOpt::GetId2Entry(dopt),
                 } => {
-                    debug!("👀 db scan - get id2 entry - {}", dopt.id);
+                    info!("👀 db scan - get id2 entry - {}", dopt.id);
                     dbscan_get_id2entry_core(&config, dopt.id);
                 }
                 KanidmdOpt::DomainSettings {
                     commands: DomainSettingsCmds::DomainChange(_dopt),
                 } => {
-                    debug!("Running in domain name change mode ... this may take a long time ...");
+                    info!("Running in domain name change mode ... this may take a long time ...");
                     domain_rename_core(&config).await;
                 }
                 KanidmdOpt::Database {
                     commands: DbCommands::Vacuum(_copt),
                 } => {
-                    debug!("Running in vacuum mode ...");
+                    info!("Running in vacuum mode ...");
                     vacuum_server_core(&config);
                 }
                 KanidmdOpt::HealthCheck(sopt) => {
