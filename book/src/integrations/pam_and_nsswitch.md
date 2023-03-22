@@ -42,7 +42,7 @@ systemctl status kanidm-unixd-tasks
 > provides supporting Kanidm's capabilities.
 
 Both unixd daemons use the connection configuration from /etc/kanidm/config. This is the covered in
-[client_tools](./client_tools.md#kanidm-configuration).
+[client_tools](../client_tools.md#kanidm-configuration).
 
 You can also configure some unixd-specific options with the file /etc/kanidm/unixd:
 
@@ -119,8 +119,8 @@ passwd: compat kanidm
 group: compat kanidm
 ```
 
-You can [create a user](./accounts_and_groups.md#creating-accounts) then
-[enable POSIX feature on the user](./posix_accounts.md#enabling-posix-attributes-on-accounts).
+You can [create a user](../accounts_and_groups.md#creating-accounts) then
+[enable POSIX feature on the user](../posix_accounts.md#enabling-posix-attributes-on-accounts).
 
 You can then test that the POSIX extended user is able to be resolved with:
 
