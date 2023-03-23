@@ -1476,7 +1476,7 @@ disabled, your system will function as usual. It is, however, recommended due to
 provides supporting Kanidm's capabilities.</p>
 </blockquote>
 <p>Both unixd daemons use the connection configuration from /etc/kanidm/config. This is the covered in
-<a href="integrations/./client_tools.html#kanidm-configuration">client_tools</a>.</p>
+<a href="integrations/../client_tools.html#kanidm-configuration">client_tools</a>.</p>
 <p>You can also configure some unixd-specific options with the file /etc/kanidm/unixd:</p>
 <pre><code class="language-toml">pam_allowed_login_groups = [&quot;posix_group&quot;]
 default_shell = &quot;/bin/sh&quot;
@@ -1528,8 +1528,8 @@ when first created. Defaults to false.</p>
 <pre><code>passwd: compat kanidm
 group: compat kanidm
 </code></pre>
-<p>You can <a href="integrations/./accounts_and_groups.html#creating-accounts">create a user</a> then
-<a href="integrations/./posix_accounts.html#enabling-posix-attributes-on-accounts">enable POSIX feature on the user</a>.</p>
+<p>You can <a href="integrations/../accounts_and_groups.html#creating-accounts">create a user</a> then
+<a href="integrations/../posix_accounts.html#enabling-posix-attributes-on-accounts">enable POSIX feature on the user</a>.</p>
 <p>You can then test that the POSIX extended user is able to be resolved with:</p>
 <pre><code class="language-bash">getent passwd &lt;account name&gt;
 getent passwd testunix
