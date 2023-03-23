@@ -347,7 +347,7 @@ async fn main() -> ExitCode {
                                     }
                                     }
                                 }
-                                debug!("Signal received, shutting down");
+                                info!("Signal received, shutting down");
                                 // Send a broadcast that we are done.
                                 sctx.shutdown().await;
                             }

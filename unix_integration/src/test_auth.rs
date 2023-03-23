@@ -44,8 +44,6 @@ async fn main() -> ExitCode {
         }
     };
 
-    //let password = rpassword::prompt_password("Enter Unix password: ").unwrap();
-
     let req = ClientRequest::PamAuthenticate(opt.account_id.clone(), password);
     let sereq = ClientRequest::PamAccountAllowed(opt.account_id);
 
