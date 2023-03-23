@@ -14,11 +14,11 @@
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-use std::fs::{metadata, Metadata};
+use std::fs::metadata;
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
-use std::process::exit;
+use std::process::ExitCode;
 
 use clap::{Args, Parser, Subcommand};
 use kanidmd_core::config::{Configuration, ServerConfig};
@@ -84,53 +84,17 @@ impl KanidmdOpt {
     }
 }
 
-fn read_file_metadata(path: &PathBuf) -> Metadata {
-    match metadata(path) {
-        Ok(m) => m,
-        Err(e) => {
-            eprintln!(
-                "Unable to read metadata for '{}' - {:?}",
-                path.to_str().unwrap_or("invalid file path"),
-                e
-            );
-            std::process::exit(1);
-        }
-    }
-}
-
-/// Gets the user details if we're running in unix-land
-#[cfg(not(target_family = "windows"))]
-fn get_user_details_unix() -> (u32, u32) {
-    let cuid = get_current_uid();
-    let ceuid = get_effective_uid();
-    let cgid = get_current_gid();
-    let cegid = get_effective_gid();
-
-    if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
-        eprintln!("WARNING: This is running as uid == 0 (root) which may be a security risk.");
-        // eprintln!("ERROR: Refusing to run - this process must not operate as root.");
-        // std::process::exit(1);
-    }
-
-    if cuid != ceuid || cgid != cegid {
-        eprintln!("{} != {} || {} != {}", cuid, ceuid, cgid, cegid);
-        eprintln!("ERROR: Refusing to run - uid and euid OR gid and egid must be consistent.");
-        std::process::exit(1);
-    }
-    (cuid, ceuid)
-}
-
 /// Get information on the windows username
 #[cfg(target_family = "windows")]
 fn get_user_details_windows() {
-    eprintln!(
+    debug!(
         "Running on windows, current username is: {:?}",
         whoami::username()
     );
 }
 
 #[tokio::main(flavor = "multi_thread")]
-async fn main() {
+async fn main() -> ExitCode {
     tracing_forest::worker_task()
         .set_global(true)
         .set_tag(sketching::event_tagger)
@@ -149,7 +113,25 @@ async fn main() {
 
             // Get info about who we are.
             #[cfg(target_family = "unix")]
-            let (cuid, ceuid) = get_user_details_unix();
+            let (cuid, ceuid) = {
+                let cuid = get_current_uid();
+                let ceuid = get_effective_uid();
+                let cgid = get_current_gid();
+                let cegid = get_effective_gid();
+
+                if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
+                    warn!("This is running as uid == 0 (root) which may be a security risk.");
+                    // eprintln!("ERROR: Refusing to run - this process must not operate as root.");
+                    // std::process::exit(1);
+                }
+
+                if cuid != ceuid || cgid != cegid {
+                    error!("{} != {} || {} != {}", cuid, ceuid, cgid, cegid);
+                    error!("Refusing to run - uid and euid OR gid and egid must be consistent.");
+                    return ExitCode::FAILURE
+                }
+                (cuid, ceuid)
+            };
 
             // Read cli args, determine if we should backup/restore
             let opt = KanidmdParser::parse();
@@ -157,28 +139,39 @@ async fn main() {
             // print the app version and bail
             if let KanidmdOpt::Version(_) = &opt.commands {
                 kanidm_proto::utils::show_version("kanidmd");
-                exit(0);
+                return ExitCode::SUCCESS
             };
 
             let mut config = Configuration::new();
             // Check the permissions are OK.
             #[cfg(target_family = "unix")]
             {
-                let cfg_meta = read_file_metadata(&(opt.commands.commonopt().config_path));
+                let cfg_path = &opt.commands.commonopt().config_path;
+                let cfg_meta = match metadata(cfg_path) {
+                    Ok(m) => m,
+                    Err(e) => {
+                        error!(
+                            "Unable to read metadata for '{}' - {:?}",
+                            cfg_path.to_str().unwrap_or("invalid file path"),
+                            e
+                        );
+                        return ExitCode::FAILURE
+                    }
+                };
 
                 if !kanidm_lib_file_permissions::readonly(&cfg_meta) {
-                    eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
+                    warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
                     opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path"));
                 }
 
                 if cfg_meta.mode() & 0o007 != 0 {
-                    eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...",
+                    warn!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...",
                     opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
                     );
                 }
 
                 if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
-                    eprintln!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
+                    warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
                     opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
                     );
                 }
@@ -188,8 +181,8 @@ async fn main() {
             let sconfig = match ServerConfig::new(&(opt.commands.commonopt().config_path)) {
                 Ok(c) => c,
                 Err(e) => {
-                    eprintln!("Config Parse failure {:?}", e);
-                    std::process::exit(1);
+                    error!("Config Parse failure {:?}", e);
+                    return ExitCode::FAILURE
                 }
             };
             // Check the permissions of the files from the configuration.
@@ -198,28 +191,38 @@ async fn main() {
             // We can't check the db_path permissions because it may not exist yet!
             if let Some(db_parent_path) = db_path.parent() {
                 if !db_parent_path.exists() {
-                    eprintln!(
+                    warn!(
                         "DB folder {} may not exist, server startup may FAIL!",
                         db_parent_path.to_str().unwrap_or("invalid file path")
                     );
                 }
 
                 let db_par_path_buf = db_parent_path.to_path_buf();
-                let i_meta = read_file_metadata(&db_par_path_buf);
+                let i_meta = match metadata(&db_par_path_buf) {
+                    Ok(m) => m,
+                    Err(e) => {
+                        error!(
+                            "Unable to read metadata for '{}' - {:?}",
+                            &db_par_path_buf.to_str().unwrap_or("invalid file path"),
+                            e
+                        );
+                        return ExitCode::FAILURE
+                    }
+                };
                 if !i_meta.is_dir() {
-                    eprintln!(
+                    error!(
                         "ERROR: Refusing to run - DB folder {} may not be a directory",
                         db_par_path_buf.to_str().unwrap_or("invalid file path")
                     );
-                    std::process::exit(1);
+                    return ExitCode::FAILURE
                 }
 
                 if kanidm_lib_file_permissions::readonly(&i_meta) {
-                    eprintln!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
+                    warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
                 }
                 #[cfg(not(target_os="windows"))]
                 if i_meta.mode() & 0o007 != 0 {
-                    eprintln!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
+                    warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
                 }
             }
 
@@ -243,9 +246,9 @@ async fn main() {
                 KanidmdOpt::Server(_sopt) | KanidmdOpt::ConfigTest(_sopt) => {
                     let config_test = matches!(&opt.commands, KanidmdOpt::ConfigTest(_));
                     if config_test {
-                        eprintln!("Running in server configuration test mode ...");
+                        info!("Running in server configuration test mode ...");
                     } else {
-                        eprintln!("Running in server mode ...");
+                        info!("Running in server mode ...");
                     };
 
                     // configuration options that only relate to server mode
@@ -253,24 +256,43 @@ async fn main() {
 
                     if let Some(i_str) = &(sconfig.tls_chain) {
                         let i_path = PathBuf::from(i_str.as_str());
-
-                        let i_meta = read_file_metadata(&i_path);
+                        let i_meta = match metadata(&i_path) {
+                            Ok(m) => m,
+                            Err(e) => {
+                                error!(
+                                    "Unable to read metadata for '{}' - {:?}",
+                                    &i_path.to_str().unwrap_or("invalid file path"),
+                                    e
+                                );
+                                return ExitCode::FAILURE
+                            }
+                        };
                         if !kanidm_lib_file_permissions::readonly(&i_meta) {
-                            eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
+                            warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
                         }
                     }
 
                     if let Some(i_str) = &(sconfig.tls_key) {
                         let i_path = PathBuf::from(i_str.as_str());
 
-                            let i_meta = read_file_metadata(&i_path);
-                            if !kanidm_lib_file_permissions::readonly(&i_meta) {
-                                eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
+                        let i_meta = match metadata(&i_path) {
+                            Ok(m) => m,
+                            Err(e) => {
+                                error!(
+                                    "Unable to read metadata for '{}' - {:?}",
+                                    &i_path.to_str().unwrap_or("invalid file path"),
+                                    e
+                                );
+                                return ExitCode::FAILURE
                             }
-                            #[cfg(not(target_os="windows"))]
-                            if i_meta.mode() & 0o007 != 0 {
-                                eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...", i_str);
-                            }
+                        };
+                        if !kanidm_lib_file_permissions::readonly(&i_meta) {
+                            warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
+                        }
+                        #[cfg(not(target_os="windows"))]
+                        if i_meta.mode() & 0o007 != 0 {
+                            warn!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...", i_str);
+                        }
                     }
 
                     let sctx = create_server_core(config, config_test).await;
@@ -325,18 +347,18 @@ async fn main() {
                                     }
                                     }
                                 }
-                                eprintln!("Signal received, shutting down");
+                                info!("Signal received, shutting down");
                                 // Send a broadcast that we are done.
                                 sctx.shutdown().await;
                             }
                             Err(_) => {
-                                eprintln!("Failed to start server core!");
+                                error!("Failed to start server core!");
                                 // We may need to return an exit code here, but that may take some re-architecting
                                 // to ensure we drop everything cleanly.
-                                return;
+                                return ExitCode::FAILURE
                             }
                         }
-                        eprintln!("Stopped 🛑 ");
+                        info!("Stopped 🛑 ");
                     }
 
 
@@ -344,12 +366,12 @@ async fn main() {
                 KanidmdOpt::Database {
                     commands: DbCommands::Backup(bopt),
                 } => {
-                    eprintln!("Running in backup mode ...");
+                    info!("Running in backup mode ...");
                     let p = match bopt.path.to_str() {
                         Some(p) => p,
                         None => {
-                            eprintln!("Invalid backup path");
-                            std::process::exit(1);
+                            error!("Invalid backup path");
+                            return ExitCode::FAILURE
                         }
                     };
                     backup_server_core(&config, p);
@@ -357,12 +379,12 @@ async fn main() {
                 KanidmdOpt::Database {
                     commands: DbCommands::Restore(ropt),
                 } => {
-                    eprintln!("Running in restore mode ...");
+                    info!("Running in restore mode ...");
                     let p = match ropt.path.to_str() {
                         Some(p) => p,
                         None => {
-                            eprintln!("Invalid restore path");
-                            std::process::exit(1);
+                            error!("Invalid restore path");
+                            return ExitCode::FAILURE
                         }
                     };
                     restore_server_core(&config, p).await;
@@ -370,59 +392,59 @@ async fn main() {
                 KanidmdOpt::Database {
                     commands: DbCommands::Verify(_vopt),
                 } => {
-                    eprintln!("Running in db verification mode ...");
+                    info!("Running in db verification mode ...");
                     verify_server_core(&config).await;
                 }
                 KanidmdOpt::RecoverAccount(raopt) => {
-                    eprintln!("Running account recovery ...");
+                    info!("Running account recovery ...");
                     recover_account_core(&config, &raopt.name).await;
                 }
                 KanidmdOpt::Database {
                     commands: DbCommands::Reindex(_copt),
                 } => {
-                    eprintln!("Running in reindex mode ...");
+                    info!("Running in reindex mode ...");
                     reindex_server_core(&config).await;
                 }
                 KanidmdOpt::DbScan {
                     commands: DbScanOpt::ListIndexes(_),
                 } => {
-                    eprintln!("👀 db scan - list indexes");
+                    info!("👀 db scan - list indexes");
                     dbscan_list_indexes_core(&config);
                 }
                 KanidmdOpt::DbScan {
                     commands: DbScanOpt::ListId2Entry(_),
                 } => {
-                    eprintln!("👀 db scan - list id2entry");
+                    info!("👀 db scan - list id2entry");
                     dbscan_list_id2entry_core(&config);
                 }
                 KanidmdOpt::DbScan {
                     commands: DbScanOpt::ListIndexAnalysis(_),
                 } => {
-                    eprintln!("👀 db scan - list index analysis");
+                    info!("👀 db scan - list index analysis");
                     dbscan_list_index_analysis_core(&config);
                 }
                 KanidmdOpt::DbScan {
                     commands: DbScanOpt::ListIndex(dopt),
                 } => {
-                    eprintln!("👀 db scan - list index content - {}", dopt.index_name);
+                    info!("👀 db scan - list index content - {}", dopt.index_name);
                     dbscan_list_index_core(&config, dopt.index_name.as_str());
                 }
                 KanidmdOpt::DbScan {
                     commands: DbScanOpt::GetId2Entry(dopt),
                 } => {
-                    eprintln!("👀 db scan - get id2 entry - {}", dopt.id);
+                    info!("👀 db scan - get id2 entry - {}", dopt.id);
                     dbscan_get_id2entry_core(&config, dopt.id);
                 }
                 KanidmdOpt::DomainSettings {
                     commands: DomainSettingsCmds::DomainChange(_dopt),
                 } => {
-                    eprintln!("Running in domain name change mode ... this may take a long time ...");
+                    info!("Running in domain name change mode ... this may take a long time ...");
                     domain_rename_core(&config).await;
                 }
                 KanidmdOpt::Database {
                     commands: DbCommands::Vacuum(_copt),
                 } => {
-                    eprintln!("Running in vacuum mode ...");
+                    info!("Running in vacuum mode ...");
                     vacuum_server_core(&config);
                 }
                 KanidmdOpt::HealthCheck(sopt) => {
@@ -478,15 +500,16 @@ async fn main() {
                                     format!("Failed to complete healthcheck: {:?}", error)
                                 }
                             };
-                            eprintln!("CRITICAL: {error_message}");
-                            exit(1);
+                            error!("CRITICAL: {error_message}");
+                            return ExitCode::FAILURE
                         }
                     };
                     debug!("Request: {req:?}");
-                    println!("OK")
+                    info!("OK")
                 }
                 KanidmdOpt::Version(_) => {}
             }
+            ExitCode::SUCCESS
         })
-        .await;
+        .await
 }

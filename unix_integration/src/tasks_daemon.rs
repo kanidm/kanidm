@@ -14,6 +14,7 @@ use std::ffi::CString;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::symlink;
 use std::path::Path;
+use std::process::ExitCode;
 use std::time::Duration;
 use std::{fs, io};
 
@@ -217,17 +218,12 @@ async fn handle_tasks(stream: UnixStream, cfg: &KanidmUnixdConfig) {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> ExitCode {
     // let cuid = get_current_uid();
     // let cgid = get_current_gid();
     // We only need to check effective id
     let ceuid = get_effective_uid();
     let cegid = get_effective_gid();
-
-    if ceuid != 0 || cegid != 0 {
-        eprintln!("Refusing to run - this process *MUST* operate as root.");
-        std::process::exit(1);
-    }
 
     tracing_forest::worker_task()
         .set_global(true)
@@ -241,12 +237,17 @@ async fn main() {
             )
         })
         .on(async {
+            if ceuid != 0 || cegid != 0 {
+                error!("Refusing to run - this process *MUST* operate as root.");
+                return ExitCode::FAILURE;
+            }
+
             let unixd_path = Path::new(DEFAULT_CONFIG_PATH);
             let unixd_path_str = match unixd_path.to_str() {
                 Some(cps) => cps,
                 None => {
                     error!("Unable to turn unixd_path to str");
-                    std::process::exit(1);
+                    return ExitCode::FAILURE;
                 }
             };
 
@@ -254,7 +255,7 @@ async fn main() {
                 Ok(v) => v,
                 Err(_) => {
                     error!("Failed to parse {}", unixd_path_str);
-                    std::process::exit(1);
+                    return ExitCode::FAILURE;
                 }
             };
 
@@ -284,6 +285,7 @@ async fn main() {
             };
 
             server.await;
+            ExitCode::SUCCESS
         })
-        .await;
+        .await
 }

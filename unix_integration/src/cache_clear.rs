@@ -13,6 +13,8 @@
 #[macro_use]
 extern crate tracing;
 
+use std::process::ExitCode;
+
 use clap::Parser;
 use futures::executor::block_on;
 use kanidm_unix_common::client::call_daemon;
@@ -23,14 +25,14 @@ use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 include!("./opt/cache_clear.rs");
 
 #[tokio::main]
-async fn main() {
+async fn main() -> ExitCode {
     let opt = CacheClearOpt::parse();
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     }
     if opt.version {
         println!("{}", kanidm_proto::utils::get_version("kanidm_cache_clear"));
-        std::process::exit(0);
+        return ExitCode::SUCCESS;
     }
     sketching::tracing_subscriber::fmt::init();
 
@@ -41,13 +43,13 @@ async fn main() {
         Ok(c) => c,
         Err(_e) => {
             error!("Failed to parse {}", DEFAULT_CONFIG_PATH);
-            std::process::exit(1);
+            return ExitCode::FAILURE;
         }
     };
 
     if !opt.really {
         error!("Are you sure you want to proceed? If so use --really");
-        return;
+        return ExitCode::SUCCESS;
     }
 
     let req = ClientRequest::ClearCache;
@@ -62,5 +64,6 @@ async fn main() {
         Err(e) => {
             error!("Error -> {:?}", e);
         }
-    }
+    };
+    ExitCode::SUCCESS
 }
