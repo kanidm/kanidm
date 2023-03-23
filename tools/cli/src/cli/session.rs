@@ -1,3 +1,4 @@
+use crate::common::OpType;
 use std::collections::BTreeMap;
 use std::fs::{create_dir, File};
 use std::io::{self, BufReader, BufWriter, ErrorKind, Write};
@@ -405,7 +406,7 @@ impl LogoutOpt {
                 },
             }
         } else {
-            let client = self.copt.to_client().await;
+            let client = self.copt.to_client(OpType::Read).await;
             let token = match client.get_token().await {
                 Some(t) => t,
                 None => {

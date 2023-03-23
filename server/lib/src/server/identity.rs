@@ -158,6 +158,12 @@ impl Identity {
         self.scope
     }
 
+    pub fn project_with_scope(&self, scope: AccessScope) -> Self {
+        let mut new = self.clone();
+        new.scope = scope;
+        new
+    }
+
     pub fn get_session_id(&self) -> Uuid {
         self.session_id
     }

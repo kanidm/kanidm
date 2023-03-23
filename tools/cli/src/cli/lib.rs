@@ -14,8 +14,8 @@
 #[macro_use]
 extern crate tracing;
 
+use crate::common::OpType;
 use std::path::PathBuf;
-
 use uuid::Uuid;
 
 include!("../opt/kanidm.rs");
@@ -43,7 +43,7 @@ impl SelfOpt {
     pub async fn exec(&self) {
         match self {
             SelfOpt::Whoami(copt) => {
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Read).await;
 
                 match client.whoami().await {
                     Ok(o_ent) => {

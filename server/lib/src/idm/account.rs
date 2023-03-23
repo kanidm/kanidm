@@ -280,7 +280,7 @@ impl Account {
                     // Needs to come from the actual original session. If we don't do this we have
                     // to re-update the expiry in the DB. We don't want a re-auth to extend a time
                     // bound session.
-                    session_expiry
+                    session_expiry,
                 )
             }
         };
@@ -545,7 +545,6 @@ impl Account {
                     debug!(ses_exp = ?session.expiry, uat_exp = ?uat.expiry);
                     false
                 }
-
             } else {
                 let grace = uat.issued_at + GRACE_WINDOW;
                 let current = time::OffsetDateTime::unix_epoch() + ct;
@@ -612,8 +611,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     f_eq("user_auth_token_session", PartialValue::Refer(dte.token_id))
                 ])),
                 &modlist,
-                // Provide the event to impersonate
-                &dte.ident,
+                // Provide the event to impersonate. Notice how we project this with readwrite
+                // capability? This is because without this we'd force re-auths to end
+                // a session and we don't want that! you should always be able to logout!
+                &dte.ident.project_with_scope(AccessScope::ReadWrite),
             )
             .map_err(|e| {
                 admin_error!("Failed to destroy user auth token {:?}", e);

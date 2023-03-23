@@ -2489,6 +2489,7 @@ dependencies = [
  "serde_json",
  "sketching",
  "testkit-macros",
+ "time 0.2.27",
  "tokio",
  "tracing",
  "url",

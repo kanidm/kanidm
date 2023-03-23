@@ -1,3 +1,4 @@
+use crate::common::OpType;
 use crate::DomainOpt;
 
 impl DomainOpt {
@@ -15,7 +16,7 @@ impl DomainOpt {
                     "Attempting to set the domain's display name to: {:?}",
                     opt.new_display_name
                 );
-                let client = opt.copt.to_client().await;
+                let client = opt.copt.to_client(OpType::Write).await;
                 match client
                     .idm_domain_set_display_name(&opt.new_display_name)
                     .await
@@ -25,14 +26,14 @@ impl DomainOpt {
                 }
             }
             DomainOpt::Show(copt) => {
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Read).await;
                 match client.idm_domain_get().await {
                     Ok(e) => println!("{}", e),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             DomainOpt::ResetTokenKey(copt) => {
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Write).await;
                 match client.idm_domain_reset_token_key().await {
                     Ok(_) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),

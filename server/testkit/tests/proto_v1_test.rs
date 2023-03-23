@@ -1052,7 +1052,20 @@ async fn test_server_credential_update_session_totp_pw(rsclient: KanidmClient) {
         .await;
     assert!(res.is_ok());
 
-    // We are now authed as the demo_account
+    // We are now authed as the demo_account, however we need to priv auth to get write
+    // access to self for credential updates.
+    let totp_chal = totp
+        .do_totp_duration_from_epoch(
+            &SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap(),
+        )
+        .expect("Failed to do totp?");
+
+    let res = rsclient
+        .reauth_password_totp("sohdi3iuHo6mai7noh0a", totp_chal)
+        .await;
+    assert!(res.is_ok());
 
     // Self create the session and remove the totp now.
     let (session_token, _status) = rsclient
@@ -1079,9 +1092,7 @@ async fn test_server_credential_update_session_totp_pw(rsclient: KanidmClient) {
     assert!(res.is_ok());
 }
 
-async fn setup_demo_account_passkey(rsclient: &KanidmClient)
-    -> WebauthnAuthenticator<SoftPasskey>
-{
+async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> WebauthnAuthenticator<SoftPasskey> {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
@@ -1331,7 +1342,7 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_server_user_auth_reauthentication(_rsclient: KanidmClient) {
+async fn test_server_user_auth_reauthentication(rsclient: KanidmClient) {
     let mut wa = setup_demo_account_passkey(&rsclient).await;
 
     let res = rsclient
@@ -1347,6 +1358,21 @@ async fn test_server_user_auth_reauthentication(_rsclient: KanidmClient) {
     let res = rsclient.auth_passkey_complete(pkc).await;
     assert!(res.is_ok());
 
+    // Assert we are still readonly
+    let token = rsclient
+        .get_token()
+        .await
+        .expect("Must have a bearer token");
+    let jwtu = JwsUnverified::from_str(&token).expect("Failed to parse jwsu");
+
+    let uat: UserAuthToken = jwtu
+        .validate_embeded()
+        .map(|jws| jws.into_inner())
+        .expect("Unable to open up token.");
+
+    let now = time::OffsetDateTime::now_utc();
+    assert!(uat.purpose_readwrite_active(now) == false);
+
     // The auth is done, now we have to setup to re-auth for our session.
     // Should we bother looking at the internals of the token here to assert
     // it all worked? I don't think we have to because the server tests have
@@ -1359,5 +1385,27 @@ async fn test_server_user_auth_reauthentication(_rsclient: KanidmClient) {
         .await
         .expect("Failed to start passkey re-authentication");
 
+    let pkc = wa
+        .do_authentication(rsclient.get_origin().clone(), res)
+        .map(Box::new)
+        .expect("Failed to re-authenticate with soft passkey");
 
+    let res = rsclient.reauth_passkey_complete(pkc).await;
+    assert!(res.is_ok());
+
+    // assert we are elevated now
+    let token = rsclient
+        .get_token()
+        .await
+        .expect("Must have a bearer token");
+    let jwtu = JwsUnverified::from_str(&token).expect("Failed to parse jwsu");
+
+    let uat: UserAuthToken = jwtu
+        .validate_embeded()
+        .map(|jws| jws.into_inner())
+        .expect("Unable to open up token.");
+
+    let now = time::OffsetDateTime::now_utc();
+    eprintln!("{:?} {:?}", now, uat.purpose);
+    assert!(uat.purpose_readwrite_active(now) == true);
 }

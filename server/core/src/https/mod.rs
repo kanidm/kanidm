@@ -535,6 +535,9 @@ pub fn create_https_server(
     appserver
         .at("/v1/auth/valid")
         .mapped_get(&mut routemap, auth_valid);
+    appserver
+        .at("/v1/reauth")
+        .mapped_post(&mut routemap, reauth);
 
     appserver.at("/v1/logout").mapped_get(&mut routemap, logout);
 

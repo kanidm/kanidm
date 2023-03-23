@@ -1,3 +1,4 @@
+use crate::common::OpType;
 use crate::{GroupOpt, GroupPosix};
 
 impl GroupOpt {
@@ -22,7 +23,7 @@ impl GroupOpt {
     pub async fn exec(&self) {
         match self {
             GroupOpt::List(copt) => {
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Read).await;
                 match client.idm_group_list().await {
                     Ok(r) => r.iter().for_each(|ent| match copt.output_mode.as_str() {
                         "json" => {
@@ -34,7 +35,7 @@ impl GroupOpt {
                 }
             }
             GroupOpt::Get(gcopt) => {
-                let client = gcopt.copt.to_client().await;
+                let client = gcopt.copt.to_client(OpType::Read).await;
                 // idm_group_get
                 match client.idm_group_get(gcopt.name.as_str()).await {
                     Ok(Some(e)) => match gcopt.copt.output_mode.as_str() {
@@ -48,7 +49,7 @@ impl GroupOpt {
                 }
             }
             GroupOpt::Create(gcopt) => {
-                let client = gcopt.copt.to_client().await;
+                let client = gcopt.copt.to_client(OpType::Write).await;
                 match client.idm_group_create(gcopt.name.as_str()).await {
                     Err(err) => {
                         error!("Error -> {:?}", err)
@@ -57,14 +58,14 @@ impl GroupOpt {
                 }
             }
             GroupOpt::Delete(gcopt) => {
-                let client = gcopt.copt.to_client().await;
+                let client = gcopt.copt.to_client(OpType::Write).await;
                 match client.idm_group_delete(gcopt.name.as_str()).await {
                     Err(e) => error!("Error -> {:?}", e),
                     Ok(_) => println!("Successfully deleted group {}", gcopt.name.as_str()),
                 }
             }
             GroupOpt::PurgeMembers(gcopt) => {
-                let client = gcopt.copt.to_client().await;
+                let client = gcopt.copt.to_client(OpType::Write).await;
                 match client.idm_group_purge_members(gcopt.name.as_str()).await {
                     Err(e) => error!("Error -> {:?}", e),
                     Ok(_) => println!(
@@ -74,7 +75,7 @@ impl GroupOpt {
                 }
             }
             GroupOpt::ListMembers(gcopt) => {
-                let client = gcopt.copt.to_client().await;
+                let client = gcopt.copt.to_client(OpType::Read).await;
                 match client.idm_group_get_members(gcopt.name.as_str()).await {
                     Ok(Some(groups)) => groups.iter().for_each(|m| println!("{:?}", m)),
                     Ok(None) => warn!("No members in group {}", gcopt.name.as_str()),
@@ -82,7 +83,7 @@ impl GroupOpt {
                 }
             }
             GroupOpt::AddMembers(gcopt) => {
-                let client = gcopt.copt.to_client().await;
+                let client = gcopt.copt.to_client(OpType::Write).await;
                 let new_members: Vec<&str> = gcopt.members.iter().map(String::as_str).collect();
 
                 match client
@@ -99,7 +100,7 @@ impl GroupOpt {
             }
 
             GroupOpt::RemoveMembers(gcopt) => {
-                let client = gcopt.copt.to_client().await;
+                let client = gcopt.copt.to_client(OpType::Write).await;
                 let remove_members: Vec<&str> = gcopt.members.iter().map(String::as_str).collect();
 
                 match client
@@ -112,7 +113,7 @@ impl GroupOpt {
             }
 
             GroupOpt::SetMembers(gcopt) => {
-                let client = gcopt.copt.to_client().await;
+                let client = gcopt.copt.to_client(OpType::Write).await;
                 let new_members: Vec<&str> = gcopt.members.iter().map(String::as_str).collect();
 
                 match client
@@ -125,14 +126,14 @@ impl GroupOpt {
             }
             GroupOpt::Posix { commands } => match commands {
                 GroupPosix::Show(gcopt) => {
-                    let client = gcopt.copt.to_client().await;
+                    let client = gcopt.copt.to_client(OpType::Read).await;
                     match client.idm_group_unix_token_get(gcopt.name.as_str()).await {
                         Ok(token) => println!("{}", token),
                         Err(e) => error!("Error -> {:?}", e),
                     }
                 }
                 GroupPosix::Set(gcopt) => {
-                    let client = gcopt.copt.to_client().await;
+                    let client = gcopt.copt.to_client(OpType::Write).await;
                     match client
                         .idm_group_unix_extend(gcopt.name.as_str(), gcopt.gidnumber)
                         .await

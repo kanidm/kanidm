@@ -13,7 +13,7 @@ use crate::utils::uuid_from_duration;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use kanidm_proto::v1::{AuthCredential, AuthIssueSession};
+use kanidm_proto::v1::AuthIssueSession;
 
 use super::server::CredSoftLockMutex;
 
@@ -162,24 +162,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
         };
 
         Ok(AuthResult { sessionid, state })
-    }
-
-    pub async fn reauth_step(
-        &mut self,
-        _ident: Identity,
-        _ct: Duration,
-        _ra_session_id: Uuid,
-        _cred: AuthCredential,
-    ) -> Result<AuthResult, OperationError> {
-        // Does our session id exist?
-
-        // If so, remove it from the tree and release the lock.
-
-        // Update the slock.
-
-        // On success, re-issue the session with updated scope/values.
-
-        todo!();
     }
 }
 

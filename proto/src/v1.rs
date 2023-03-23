@@ -449,6 +449,15 @@ impl UserAuthToken {
     pub fn name(&self) -> &str {
         self.spn.split_once('@').map(|x| x.0).unwrap_or(&self.spn)
     }
+
+    /// Show if the uat at a current point in time has active read-write
+    /// capabilities.
+    pub fn purpose_readwrite_active(&self, ct: time::OffsetDateTime) -> bool {
+        match self.purpose {
+            UatPurpose::ReadWrite { expiry: Some(exp) } => ct < exp,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]

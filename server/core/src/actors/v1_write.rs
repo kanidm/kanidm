@@ -3,9 +3,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use kanidm_proto::v1::{
-    AccountUnixExtend, CUIntentToken, CUSessionToken, CUStatus, CreateRequest,
-    DeleteRequest, Entry as ProtoEntry, GroupUnixExtend, Modify as ProtoModify,
-    ModifyList as ProtoModifyList, ModifyRequest, OperationError,
+    AccountUnixExtend, CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest,
+    Entry as ProtoEntry, GroupUnixExtend, Modify as ProtoModify, ModifyList as ProtoModifyList,
+    ModifyRequest, OperationError,
 };
 use time::OffsetDateTime;
 use tracing::{info, instrument, span, trace, Level};

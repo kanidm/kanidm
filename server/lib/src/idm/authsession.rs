@@ -24,8 +24,6 @@ use webauthn_rs::prelude::{
     Webauthn,
 };
 
-use time::OffsetDateTime;
-use crate::value::Session;
 use crate::credential::totp::Totp;
 use crate::credential::{BackupCodes, Credential, CredentialType, Password};
 use crate::idm::account::Account;
@@ -34,6 +32,8 @@ use crate::idm::delayed::{
 };
 use crate::idm::AuthState;
 use crate::prelude::*;
+use crate::value::Session;
+use time::OffsetDateTime;
 
 // Each CredHandler takes one or more credentials and determines if the
 // handlers requirements can be 100% fulfilled. This is where MFA or other
@@ -1141,7 +1141,10 @@ impl AuthSession {
 
                 Ok(uat)
             }
-            AuthIntent::Reauth { session_id, session_expiry } => {
+            AuthIntent::Reauth {
+                session_id,
+                session_expiry,
+            } => {
                 // Sanity check - We have already been really strict about what session types
                 // can actually trigger a re-auth, but we recheck here for paranoia!
                 let scope = match auth_type {
