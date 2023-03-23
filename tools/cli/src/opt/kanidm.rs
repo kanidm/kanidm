@@ -509,6 +509,12 @@ pub struct LoginOpt {
 }
 
 #[derive(Debug, Args)]
+pub struct ReauthOpt {
+    #[clap(flatten)]
+    copt: CommonOpt,
+}
+
+#[derive(Debug, Args)]
 pub struct LogoutOpt {
     #[clap(flatten)]
     copt: CommonOpt,
@@ -854,6 +860,8 @@ pub enum SystemOpt {
 pub enum KanidmClientOpt {
     /// Login to an account to use with future cli operations
     Login(LoginOpt),
+    /// Reauthenticate to access privileged functions of this account for a short period.
+    Reauth(ReauthOpt),
     /// Logout of an active cli session
     Logout(LogoutOpt),
     /// Manage active cli sessions
