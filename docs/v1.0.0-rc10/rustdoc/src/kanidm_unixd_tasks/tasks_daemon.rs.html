@@ -287,6 +287,8 @@
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
 </pre><pre class="rust"><code><span class="attr">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -303,6 +305,7 @@
 <span class="kw">use </span>std::os::unix::ffi::OsStrExt;
 <span class="kw">use </span>std::os::unix::fs::symlink;
 <span class="kw">use </span>std::path::Path;
+<span class="kw">use </span>std::process::ExitCode;
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{fs, io};
 
@@ -506,17 +509,12 @@
 }
 
 <span class="attr">#[tokio::main]
-</span><span class="kw">async fn </span>main() {
+</span><span class="kw">async fn </span>main() -&gt; ExitCode {
     <span class="comment">// let cuid = get_current_uid();
     // let cgid = get_current_gid();
     // We only need to check effective id
     </span><span class="kw">let </span>ceuid = get_effective_uid();
     <span class="kw">let </span>cegid = get_effective_gid();
-
-    <span class="kw">if </span>ceuid != <span class="number">0 </span>|| cegid != <span class="number">0 </span>{
-        <span class="macro">eprintln!</span>(<span class="string">&quot;Refusing to run - this process *MUST* operate as root.&quot;</span>);
-        std::process::exit(<span class="number">1</span>);
-    }
 
     tracing_forest::worker_task()
         .set_global(<span class="bool-val">true</span>)
@@ -530,12 +528,17 @@
             )
         })
         .on(<span class="kw">async </span>{
+            <span class="kw">if </span>ceuid != <span class="number">0 </span>|| cegid != <span class="number">0 </span>{
+                <span class="macro">error!</span>(<span class="string">&quot;Refusing to run - this process *MUST* operate as root.&quot;</span>);
+                <span class="kw">return </span>ExitCode::FAILURE;
+            }
+
             <span class="kw">let </span>unixd_path = Path::new(DEFAULT_CONFIG_PATH);
             <span class="kw">let </span>unixd_path_str = <span class="kw">match </span>unixd_path.to_str() {
                 <span class="prelude-val">Some</span>(cps) =&gt; cps,
                 <span class="prelude-val">None </span>=&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;Unable to turn unixd_path to str&quot;</span>);
-                    std::process::exit(<span class="number">1</span>);
+                    <span class="kw">return </span>ExitCode::FAILURE;
                 }
             };
 
@@ -543,7 +546,7 @@
                 <span class="prelude-val">Ok</span>(v) =&gt; v,
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;Failed to parse {}&quot;</span>, unixd_path_str);
-                    std::process::exit(<span class="number">1</span>);
+                    <span class="kw">return </span>ExitCode::FAILURE;
                 }
             };
 
@@ -573,8 +576,9 @@
             };
 
             server.<span class="kw">await</span>;
+            ExitCode::SUCCESS
         })
-        .<span class="kw">await</span>;
-}
+        .<span class="kw">await
+</span>}
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidm_unixd_tasks" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0 (2c8cc3432 2023-03-06)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>

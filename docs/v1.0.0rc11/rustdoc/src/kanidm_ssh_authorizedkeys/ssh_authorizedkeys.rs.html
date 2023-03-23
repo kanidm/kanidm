@@ -79,6 +79,8 @@
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
 </pre><pre class="rust"><code><span class="attr">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -95,6 +97,7 @@
 </span><span class="kw">extern crate </span>tracing;
 
 <span class="kw">use </span>std::path::PathBuf;
+<span class="kw">use </span>std::process::ExitCode;
 
 <span class="kw">use </span>clap::Parser;
 <span class="kw">use </span>futures::executor::block_on;
@@ -106,7 +109,7 @@
 <span class="macro">include!</span>(<span class="string">&quot;./opt/ssh_authorizedkeys.rs&quot;</span>);
 
 <span class="attr">#[tokio::main]
-</span><span class="kw">async fn </span>main() {
+</span><span class="kw">async fn </span>main() -&gt; ExitCode {
     <span class="kw">let </span>opt = SshAuthorizedOpt::parse();
     <span class="kw">if </span>opt.debug {
         ::std::env::set_var(<span class="string">&quot;RUST_LOG&quot;</span>, <span class="string">&quot;kanidm=debug,kanidm_client=debug&quot;</span>);
@@ -116,7 +119,7 @@
             <span class="string">&quot;{}&quot;</span>,
             kanidm_proto::utils::get_version(<span class="string">&quot;kanidm_ssh_authorizedkeys&quot;</span>)
         );
-        std::process::exit(<span class="number">0</span>);
+        <span class="kw">return </span>ExitCode::SUCCESS;
     }
     sketching::tracing_subscriber::fmt::init();
 
@@ -127,7 +130,7 @@
         <span class="prelude-val">Ok</span>(c) =&gt; c,
         <span class="prelude-val">Err</span>(e) =&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;Failed to parse {}: {:?}&quot;</span>, DEFAULT_CONFIG_PATH, e);
-            std::process::exit(<span class="number">1</span>);
+            <span class="kw">return </span>ExitCode::FAILURE;
         }
     };
 
@@ -142,7 +145,7 @@
             <span class="string">&quot;Failed to find unix socket at {}, quitting!&quot;</span>,
             cfg.sock_path.as_str()
         );
-        std::process::exit(<span class="number">1</span>);
+        <span class="kw">return </span>ExitCode::FAILURE;
     }
     <span class="kw">let </span>req = ClientRequest::SshKey(opt.account_id);
 
@@ -158,7 +161,8 @@
         <span class="prelude-val">Err</span>(e) =&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;Error calling kanidm_unixd -&gt; {:?}&quot;</span>, e);
         }
-    }
+    };
+    ExitCode::SUCCESS
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidm_ssh_authorizedkeys" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0 (2c8cc3432 2023-03-06)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>

@@ -64,6 +64,9 @@
 <a href="#64" id="64">64</a>
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
 </pre><pre class="rust"><code><span class="attr">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -79,6 +82,8 @@
 #[macro_use]
 </span><span class="kw">extern crate </span>tracing;
 
+<span class="kw">use </span>std::process::ExitCode;
+
 <span class="kw">use </span>clap::Parser;
 <span class="kw">use </span>futures::executor::block_on;
 <span class="kw">use </span>kanidm_unix_common::client::call_daemon;
@@ -89,14 +94,14 @@
 <span class="macro">include!</span>(<span class="string">&quot;./opt/cache_clear.rs&quot;</span>);
 
 <span class="attr">#[tokio::main]
-</span><span class="kw">async fn </span>main() {
+</span><span class="kw">async fn </span>main() -&gt; ExitCode {
     <span class="kw">let </span>opt = CacheClearOpt::parse();
     <span class="kw">if </span>opt.debug {
         ::std::env::set_var(<span class="string">&quot;RUST_LOG&quot;</span>, <span class="string">&quot;kanidm=debug,kanidm_client=debug&quot;</span>);
     }
     <span class="kw">if </span>opt.version {
         <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, kanidm_proto::utils::get_version(<span class="string">&quot;kanidm_cache_clear&quot;</span>));
-        std::process::exit(<span class="number">0</span>);
+        <span class="kw">return </span>ExitCode::SUCCESS;
     }
     sketching::tracing_subscriber::fmt::init();
 
@@ -107,13 +112,13 @@
         <span class="prelude-val">Ok</span>(c) =&gt; c,
         <span class="prelude-val">Err</span>(_e) =&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;Failed to parse {}&quot;</span>, DEFAULT_CONFIG_PATH);
-            std::process::exit(<span class="number">1</span>);
+            <span class="kw">return </span>ExitCode::FAILURE;
         }
     };
 
     <span class="kw">if </span>!opt.really {
         <span class="macro">error!</span>(<span class="string">&quot;Are you sure you want to proceed? If so use --really&quot;</span>);
-        <span class="kw">return</span>;
+        <span class="kw">return </span>ExitCode::SUCCESS;
     }
 
     <span class="kw">let </span>req = ClientRequest::ClearCache;
@@ -128,7 +133,8 @@
         <span class="prelude-val">Err</span>(e) =&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
         }
-    }
+    };
+    ExitCode::SUCCESS
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidm_cache_clear" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0 (2c8cc3432 2023-03-06)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>

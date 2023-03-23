@@ -78,9 +78,23 @@
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
 </pre><pre class="rust"><code><span class="attr">#![deny(warnings)]
 #[macro_use]
 </span><span class="kw">extern crate </span>tracing;
+
+<span class="kw">use </span>std::process::ExitCode;
 
 <span class="kw">use </span>clap::Parser;
 <span class="kw">use </span>futures::executor::block_on;
@@ -98,7 +112,7 @@
 }
 
 <span class="attr">#[tokio::main]
-</span><span class="kw">async fn </span>main() {
+</span><span class="kw">async fn </span>main() -&gt; ExitCode {
     <span class="kw">let </span>opt = ClientOpt::parse();
     <span class="kw">if </span>opt.debug {
         ::std::env::set_var(<span class="string">&quot;RUST_LOG&quot;</span>, <span class="string">&quot;kanidm=debug,kanidm_client=debug&quot;</span>);
@@ -107,11 +121,20 @@
 
     <span class="macro">debug!</span>(<span class="string">&quot;Starting PAM auth tester tool ...&quot;</span>);
 
-    <span class="kw">let </span>cfg = KanidmUnixdConfig::new()
+    <span class="kw">let </span><span class="prelude-val">Ok</span>(cfg) = KanidmUnixdConfig::new()
         .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
-        .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;Failed to parse {}&quot;</span>, DEFAULT_CONFIG_PATH));
+        <span class="kw">else </span>{
+            <span class="macro">error!</span>(<span class="string">&quot;Failed to parse {}&quot;</span>, DEFAULT_CONFIG_PATH);
+            <span class="kw">return </span>ExitCode::FAILURE
+        };
 
-    <span class="kw">let </span>password = rpassword::prompt_password(<span class="string">&quot;Enter Unix password: &quot;</span>).unwrap();
+    <span class="kw">let </span>password = <span class="kw">match </span>rpassword::prompt_password(<span class="string">&quot;Enter Unix password: &quot;</span>) {
+        <span class="prelude-val">Ok</span>(p) =&gt; p,
+        <span class="prelude-val">Err</span>(e) =&gt; {
+            <span class="macro">error!</span>(<span class="string">&quot;Problem getting input password: {}&quot;</span>, e);
+            <span class="kw">return </span>ExitCode::FAILURE;
+        }
+    };
 
     <span class="kw">let </span>req = ClientRequest::PamAuthenticate(opt.account_id.clone(), password);
     <span class="kw">let </span>sereq = ClientRequest::PamAccountAllowed(opt.account_id);
@@ -135,7 +158,7 @@
         <span class="prelude-val">Err</span>(e) =&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
         }
-    }
+    };
 
     <span class="kw">match </span>block_on(call_daemon(cfg.sock_path.as_str(), sereq)) {
         <span class="prelude-val">Ok</span>(r) =&gt; <span class="kw">match </span>r {
@@ -156,7 +179,8 @@
         <span class="prelude-val">Err</span>(e) =&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
         }
-    }
+    };
+    ExitCode::SUCCESS
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kanidm_test_auth" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0 (2c8cc3432 2023-03-06)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>
