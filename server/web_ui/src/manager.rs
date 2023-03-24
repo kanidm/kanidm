@@ -12,7 +12,7 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::credential::reset::CredentialResetApp;
-use crate::login::LoginApp;
+use crate::login::{LoginApp, LoginWorkflow};
 use crate::oauth2::Oauth2App;
 use crate::views::{ViewRoute, ViewsApp};
 
@@ -27,6 +27,9 @@ pub enum Route {
 
     #[at("/ui/login")]
     Login,
+
+    #[at("/ui/reauth")]
+    Reauth,
 
     #[at("/ui/oauth2")]
     Oauth2,
@@ -57,7 +60,9 @@ fn switch(route: Route) -> Html {
         #[allow(clippy::let_unit_value)]
         Route::Landing => html! { <Landing /> },
         #[allow(clippy::let_unit_value)]
-        Route::Login => html! { <LoginApp /> },
+        Route::Login => html! { <LoginApp workflow={ LoginWorkflow::Login } /> },
+        #[allow(clippy::let_unit_value)]
+        Route::Reauth => html! { <LoginApp workflow={ LoginWorkflow::Reauth } /> },
         #[allow(clippy::let_unit_value)]
         Route::Oauth2 => html! { <Oauth2App /> },
         #[allow(clippy::let_unit_value)]

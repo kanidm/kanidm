@@ -325,7 +325,7 @@ impl PersonOpt {
                 {
                     Ok(_) => {
                         println!(
-                            "Successfully created display_name=\"{}\" username={}>",
+                            "Successfully created display_name=\"{}\" username={}",
                             acopt.display_name.as_str(),
                             acopt.aopts.account_id.as_str(),
                         )
