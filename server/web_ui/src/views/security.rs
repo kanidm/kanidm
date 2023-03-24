@@ -209,7 +209,7 @@ impl Component for SecurityApp {
                 if uat.ui_hints.contains(&UiHint::PosixAccount) {
                   <div>
                       <p>
-                        <ChangeUnixPassword uat={ uat }/>
+                        <ChangeUnixPassword uat={ uat } enabled={ is_priv_able } />
                       </p>
                   </div>
                 }
