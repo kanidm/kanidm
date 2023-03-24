@@ -7,9 +7,9 @@ of operations from new user onboarding, credential resets, and self service.
 
 ### Passkeys
 
-This is the preferred method of authentication in Kanidm. Passkeys represent "all possible cryptographic"
-authenticators that support Webauthn. Examples of this include Yubikeys, TouchID, Windows Hello, TPM's
-and more.
+This is the preferred method of authentication in Kanidm. Passkeys represent "all possible
+cryptographic" authenticators that support Webauthn. Examples of this include Yubikeys, TouchID,
+Windows Hello, TPM's and more.
 
 These devices are unphishable, self contained multifactor authenticators and are considered the most
 secure method of authentication in Kanidm.
@@ -27,11 +27,11 @@ text=Kanidm's definition of Passkeys differs to other systems. This is because w
 ### Password + TOTP
 
 This is a classic Time-based One Time Password combined with a password. Different to other systems
-Kanidm will prompt for the TOTP *first* before the password. This is to prevent drive by bruteforce
+Kanidm will prompt for the TOTP _first_ before the password. This is to prevent drive by bruteforce
 against the password of the account and testing if the password is vulnerable.
 
-While this authentication method is mostly secure, we do not advise it for high security environments
-due to the fact it is still possible to perform realtime phishing attacks.
+While this authentication method is mostly secure, we do not advise it for high security
+environments due to the fact it is still possible to perform realtime phishing attacks.
 
 ## Resetting Person Account Credentials
 
@@ -80,8 +80,8 @@ kanidm person credential create-reset-token demo_user --name idm_admin
 If the user wishes you can direct them to `https://idm.mydomain.name/ui/reset` where they can
 manually enter their token value.
 
-Each token can be used only once within a 24 hour period. Once the credentials have been set the token
-is immediately invalidated.
+Each token can be used only once within a 24 hour period. Once the credentials have been set the
+token is immediately invalidated.
 
 ### Resetting Credentials Directly
 
@@ -114,11 +114,11 @@ kanidm self whoami --name demo_user
 
 ## Reauthentication / Privilege Access Mode
 
-To allow for longer lived sessions in Kanidm, by default sessions are issued in a "privilege capable" but
-read-only mode. In order to access privileges for a short time, you must re-authenticate. This re-issues
-your session with a small time limited read-write session internally. You can consider this to be
-like `sudo` on a unix system or `UAC` on windows where you reauthenticate for short periods to access higher
-levels of privilege.
+To allow for longer lived sessions in Kanidm, by default sessions are issued in a "privilege
+capable" but read-only mode. In order to access privileges for a short time, you must
+re-authenticate. This re-issues your session with a small time limited read-write session
+internally. You can consider this to be like `sudo` on a unix system or `UAC` on windows where you
+reauthenticate for short periods to access higher levels of privilege.
 
 When using a user command that requires these privileges you will be warned:
 
@@ -133,8 +133,5 @@ To reauthenticate
 kanidm reauth -D william
 ```
 
-> **NOTE** During reauthentication can only use the same credential that was used to initially authenticate
-> to the session. The reauth flow will not allow any other credentials to be used!
-
-
-
+> **NOTE** During reauthentication can only use the same credential that was used to initially
+> authenticate to the session. The reauth flow will not allow any other credentials to be used!
