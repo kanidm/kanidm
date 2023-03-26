@@ -2,6 +2,8 @@
 #[macro_use]
 extern crate tracing;
 
+use std::process::ExitCode;
+
 use clap::Parser;
 use futures::executor::block_on;
 use kanidm_unix_common::client::call_daemon;
@@ -18,7 +20,7 @@ struct ClientOpt {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> ExitCode {
     let opt = ClientOpt::parse();
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
@@ -27,11 +29,20 @@ async fn main() {
 
     debug!("Starting PAM auth tester tool ...");
 
-    let cfg = KanidmUnixdConfig::new()
+    let Ok(cfg) = KanidmUnixdConfig::new()
         .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
-        .unwrap_or_else(|_| panic!("Failed to parse {}", DEFAULT_CONFIG_PATH));
+        else {
+            error!("Failed to parse {}", DEFAULT_CONFIG_PATH);
+            return ExitCode::FAILURE
+        };
 
-    let password = rpassword::prompt_password("Enter Unix password: ").unwrap();
+    let password = match rpassword::prompt_password("Enter Unix password: ") {
+        Ok(p) => p,
+        Err(e) => {
+            error!("Problem getting input password: {}", e);
+            return ExitCode::FAILURE;
+        }
+    };
 
     let req = ClientRequest::PamAuthenticate(opt.account_id.clone(), password);
     let sereq = ClientRequest::PamAccountAllowed(opt.account_id);
@@ -55,7 +66,7 @@ async fn main() {
         Err(e) => {
             error!("Error -> {:?}", e);
         }
-    }
+    };
 
     match block_on(call_daemon(cfg.sock_path.as_str(), sereq)) {
         Ok(r) => match r {
@@ -76,5 +87,6 @@ async fn main() {
         Err(e) => {
             error!("Error -> {:?}", e);
         }
-    }
+    };
+    ExitCode::SUCCESS
 }

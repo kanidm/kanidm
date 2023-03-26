@@ -14,6 +14,7 @@
 extern crate tracing;
 
 use std::path::PathBuf;
+use std::process::ExitCode;
 
 use clap::Parser;
 use futures::executor::block_on;
@@ -25,7 +26,7 @@ use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 include!("./opt/ssh_authorizedkeys.rs");
 
 #[tokio::main]
-async fn main() {
+async fn main() -> ExitCode {
     let opt = SshAuthorizedOpt::parse();
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
@@ -35,7 +36,7 @@ async fn main() {
             "{}",
             kanidm_proto::utils::get_version("kanidm_ssh_authorizedkeys")
         );
-        std::process::exit(0);
+        return ExitCode::SUCCESS;
     }
     sketching::tracing_subscriber::fmt::init();
 
@@ -46,7 +47,7 @@ async fn main() {
         Ok(c) => c,
         Err(e) => {
             error!("Failed to parse {}: {:?}", DEFAULT_CONFIG_PATH, e);
-            std::process::exit(1);
+            return ExitCode::FAILURE;
         }
     };
 
@@ -61,7 +62,7 @@ async fn main() {
             "Failed to find unix socket at {}, quitting!",
             cfg.sock_path.as_str()
         );
-        std::process::exit(1);
+        return ExitCode::FAILURE;
     }
     let req = ClientRequest::SshKey(opt.account_id);
 
@@ -77,5 +78,6 @@ async fn main() {
         Err(e) => {
             error!("Error calling kanidm_unixd -> {:?}", e);
         }
-    }
+    };
+    ExitCode::SUCCESS
 }
