@@ -133,8 +133,8 @@ ldapwhoami -H ldaps://idm.example.com -x -D "dn=token" -w "..."
 
 ## Example
 
-Given a default install with domain "example.com" the configured LDAP DN will be
-"dc=example,dc=com".
+Given a default install with domain "idm.example.com" the configured LDAP DN will be
+"dc=idm,dc=example,dc=com".
 
 ```toml
 # from server.toml
@@ -146,19 +146,19 @@ This can be queried with:
 ```bash
 LDAPTLS_CACERT=ca.pem ldapsearch \
     -H ldaps://127.0.0.1:3636 \
-    -b 'dc=example,dc=com' \
+    -b 'dc=idm,dc=example,dc=com' \
     -x '(name=test1)'
 
-# test1@example.com, example.com
-dn: spn=test1@example.com,dc=example,dc=com
+# test1@example.com, idm.example.com
+dn: spn=test1@idm.example.com,dc=idm,dc=example,dc=com
 objectclass: account
 objectclass: memberof
 objectclass: object
 objectclass: person
 displayname: Test User
-memberof: spn=group240@example.com,dc=example,dc=com
+memberof: spn=group240@idm.example.com,dc=idm,dc=example,dc=com
 name: test1
-spn: test1@example.com
+spn: test1@idm.example.com
 entryuuid: 22a65b6c-80c8-4e1a-9b76-3f3afdff8400
 ```
 
@@ -172,21 +172,21 @@ the object listed above (if it was a POSIX account, that is).
 
 ```bash
 ldapwhoami ... -x -D 'name=test1'
-ldapwhoami ... -x -D 'spn=test1@example.com'
-ldapwhoami ... -x -D 'test1@example.com'
+ldapwhoami ... -x -D 'spn=test1@idm.example.com'
+ldapwhoami ... -x -D 'test1@idm.example.com'
 ldapwhoami ... -x -D 'test1'
 ldapwhoami ... -x -D '22a65b6c-80c8-4e1a-9b76-3f3afdff8400'
-ldapwhoami ... -x -D 'spn=test1@example.com,dc=example,dc=com'
-ldapwhoami ... -x -D 'name=test1,dc=example,dc=com'
+ldapwhoami ... -x -D 'spn=test1@idm.example.com,dc=idm,dc=example,dc=com'
+ldapwhoami ... -x -D 'name=test1,dc=idm,dc=example,dc=com'
 ```
 
 Most LDAP clients are very picky about TLS, and can be very hard to debug or display errors. For
 example these commands:
 
 ```bash
-ldapsearch -H ldaps://127.0.0.1:3636 -b 'dc=example,dc=com' -x '(name=test1)'
-ldapsearch -H ldap://127.0.0.1:3636 -b 'dc=example,dc=com' -x '(name=test1)'
-ldapsearch -H ldap://127.0.0.1:3389 -b 'dc=example,dc=com' -x '(name=test1)'
+ldapsearch -H ldaps://127.0.0.1:3636 -b 'dc=idm,dc=example,dc=com' -x '(name=test1)'
+ldapsearch -H ldap://127.0.0.1:3636 -b 'dc=idm,dc=example,dc=com' -x '(name=test1)'
+ldapsearch -H ldap://127.0.0.1:3389 -b 'dc=idm,dc=example,dc=com' -x '(name=test1)'
 ```
 
 All give the same error:
