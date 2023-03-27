@@ -1,3 +1,4 @@
+use crate::common::OpType;
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use time::OffsetDateTime;
 
@@ -49,7 +50,7 @@ impl ServiceAccountOpt {
         match self {
             ServiceAccountOpt::Credential { commands } => match commands {
                 ServiceAccountCredential::Status(apo) => {
-                    let client = apo.copt.to_client().await;
+                    let client = apo.copt.to_client(OpType::Read).await;
                     match client
                         .idm_service_account_get_credential_status(apo.aopts.account_id.as_str())
                         .await
@@ -63,7 +64,7 @@ impl ServiceAccountOpt {
                     }
                 }
                 ServiceAccountCredential::GeneratePw(apo) => {
-                    let client = apo.copt.to_client().await;
+                    let client = apo.copt.to_client(OpType::Write).await;
                     match client
                         .idm_service_account_generate_password(apo.aopts.account_id.as_str())
                         .await
@@ -79,7 +80,7 @@ impl ServiceAccountOpt {
             }, // End ServiceAccountOpt::Credential
             ServiceAccountOpt::ApiToken { commands } => match commands {
                 ServiceAccountApiToken::Status(apo) => {
-                    let client = apo.copt.to_client().await;
+                    let client = apo.copt.to_client(OpType::Read).await;
                     match client
                         .idm_service_account_list_api_token(apo.aopts.account_id.as_str())
                         .await
@@ -126,7 +127,7 @@ impl ServiceAccountOpt {
                         None
                     };
 
-                    let client = copt.to_client().await;
+                    let client = copt.to_client(OpType::Write).await;
 
                     match client
                         .idm_service_account_generate_api_token(
@@ -164,7 +165,7 @@ impl ServiceAccountOpt {
                     copt,
                     token_id,
                 } => {
-                    let client = copt.to_client().await;
+                    let client = copt.to_client(OpType::Write).await;
                     match client
                         .idm_service_account_destroy_api_token(aopts.account_id.as_str(), *token_id)
                         .await
@@ -180,7 +181,7 @@ impl ServiceAccountOpt {
             }, // End ServiceAccountOpt::ApiToken
             ServiceAccountOpt::Posix { commands } => match commands {
                 ServiceAccountPosix::Show(aopt) => {
-                    let client = aopt.copt.to_client().await;
+                    let client = aopt.copt.to_client(OpType::Read).await;
                     match client
                         .idm_account_unix_token_get(aopt.aopts.account_id.as_str())
                         .await
@@ -192,7 +193,7 @@ impl ServiceAccountOpt {
                     }
                 }
                 ServiceAccountPosix::Set(aopt) => {
-                    let client = aopt.copt.to_client().await;
+                    let client = aopt.copt.to_client(OpType::Write).await;
                     if let Err(e) = client
                         .idm_service_account_unix_extend(
                             aopt.aopts.account_id.as_str(),
@@ -207,7 +208,7 @@ impl ServiceAccountOpt {
             }, // end ServiceAccountOpt::Posix
             ServiceAccountOpt::Session { commands } => match commands {
                 AccountUserAuthToken::Status(apo) => {
-                    let client = apo.copt.to_client().await;
+                    let client = apo.copt.to_client(OpType::Read).await;
                     match client
                         .idm_account_list_user_auth_token(apo.aopts.account_id.as_str())
                         .await
@@ -231,7 +232,7 @@ impl ServiceAccountOpt {
                     copt,
                     session_id,
                 } => {
-                    let client = copt.to_client().await;
+                    let client = copt.to_client(OpType::Write).await;
                     match client
                         .idm_account_destroy_user_auth_token(aopts.account_id.as_str(), *session_id)
                         .await
@@ -247,7 +248,7 @@ impl ServiceAccountOpt {
             }, // End ServiceAccountOpt::Session
             ServiceAccountOpt::Ssh { commands } => match commands {
                 AccountSsh::List(aopt) => {
-                    let client = aopt.copt.to_client().await;
+                    let client = aopt.copt.to_client(OpType::Read).await;
 
                     match client
                         .idm_account_get_ssh_pubkeys(aopt.aopts.account_id.as_str())
@@ -260,7 +261,7 @@ impl ServiceAccountOpt {
                     }
                 }
                 AccountSsh::Add(aopt) => {
-                    let client = aopt.copt.to_client().await;
+                    let client = aopt.copt.to_client(OpType::Write).await;
                     if let Err(e) = client
                         .idm_service_account_post_ssh_pubkey(
                             aopt.aopts.account_id.as_str(),
@@ -273,7 +274,7 @@ impl ServiceAccountOpt {
                     }
                 }
                 AccountSsh::Delete(aopt) => {
-                    let client = aopt.copt.to_client().await;
+                    let client = aopt.copt.to_client(OpType::Write).await;
                     if let Err(e) = client
                         .idm_service_account_delete_ssh_pubkey(
                             aopt.aopts.account_id.as_str(),
@@ -286,14 +287,14 @@ impl ServiceAccountOpt {
                 }
             }, // end ServiceAccountOpt::Ssh
             ServiceAccountOpt::List(copt) => {
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Read).await;
                 match client.idm_service_account_list().await {
                     Ok(r) => r.iter().for_each(|ent| println!("{}", ent)),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             ServiceAccountOpt::Update(aopt) => {
-                let client = aopt.copt.to_client().await;
+                let client = aopt.copt.to_client(OpType::Write).await;
                 match client
                     .idm_service_account_update(
                         aopt.aopts.account_id.as_str(),
@@ -308,7 +309,7 @@ impl ServiceAccountOpt {
                 }
             }
             ServiceAccountOpt::Get(aopt) => {
-                let client = aopt.copt.to_client().await;
+                let client = aopt.copt.to_client(OpType::Read).await;
                 match client
                     .idm_service_account_get(aopt.aopts.account_id.as_str())
                     .await
@@ -319,7 +320,7 @@ impl ServiceAccountOpt {
                 }
             }
             ServiceAccountOpt::Delete(aopt) => {
-                let client = aopt.copt.to_client().await;
+                let client = aopt.copt.to_client(OpType::Write).await;
                 let mut modmessage = AccountChangeMessage {
                     output_mode: ConsoleOutputMode::Text,
                     action: "account delete".to_string(),
@@ -348,7 +349,7 @@ impl ServiceAccountOpt {
                 };
             }
             ServiceAccountOpt::Create(acopt) => {
-                let client = acopt.copt.to_client().await;
+                let client = acopt.copt.to_client(OpType::Write).await;
                 if let Err(e) = client
                     .idm_service_account_create(
                         acopt.aopts.account_id.as_str(),
@@ -361,7 +362,7 @@ impl ServiceAccountOpt {
             }
             ServiceAccountOpt::Validity { commands } => match commands {
                 AccountValidity::Show(ano) => {
-                    let client = ano.copt.to_client().await;
+                    let client = ano.copt.to_client(OpType::Read).await;
 
                     println!("user: {}", ano.aopts.account_id.as_str());
                     let ex = match client
@@ -425,7 +426,7 @@ impl ServiceAccountOpt {
                     }
                 }
                 AccountValidity::ExpireAt(ano) => {
-                    let client = ano.copt.to_client().await;
+                    let client = ano.copt.to_client(OpType::Write).await;
                     if matches!(ano.datetime.as_str(), "never" | "clear") {
                         // Unset the value
                         match client
@@ -460,7 +461,7 @@ impl ServiceAccountOpt {
                     }
                 }
                 AccountValidity::BeginFrom(ano) => {
-                    let client = ano.copt.to_client().await;
+                    let client = ano.copt.to_client(OpType::Write).await;
                     if matches!(ano.datetime.as_str(), "any" | "clear" | "whenever") {
                         // Unset the value
                         match client
@@ -497,7 +498,7 @@ impl ServiceAccountOpt {
                 }
             }, // end ServiceAccountOpt::Validity
             ServiceAccountOpt::IntoPerson(aopt) => {
-                let client = aopt.copt.to_client().await;
+                let client = aopt.copt.to_client(OpType::Write).await;
                 match client
                     .idm_service_account_into_person(aopt.aopts.account_id.as_str())
                     .await

@@ -47,6 +47,7 @@ url = { workspace = true }
 uuid = { workspace = true }
 yew = { workspace = true, features = ["csr"] }
 yew-router = { workspace = true }
+time.workspace = true
 
 
 [dependencies.web-sys]

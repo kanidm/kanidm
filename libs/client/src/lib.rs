@@ -540,13 +540,15 @@ impl KanidmClient {
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
-        /*
-        let response = if let Some(token) = &self.bearer_token {
-            response.bearer_auth(token)
-        } else {
-            response
+        // If we have a bearer token, set it now.
+        let response = {
+            let tguard = self.bearer_token.read().await;
+            if let Some(token) = &(*tguard) {
+                response.bearer_auth(token)
+            } else {
+                response
+            }
         };
-        */
 
         // If we have a session header, set it now.
         let response = {
@@ -900,7 +902,10 @@ impl KanidmClient {
 
     pub async fn auth_step_init(&self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
         let auth_init = AuthRequest {
-            step: AuthStep::Init(ident.to_string()),
+            step: AuthStep::Init2 {
+                username: ident.to_string(),
+                issue: AuthIssueSession::Token,
+            },
         };
 
         let r: Result<AuthResponse, _> =
@@ -1212,6 +1217,100 @@ impl KanidmClient {
     }
 
     pub async fn auth_passkey_complete(
+        &self,
+        pkc: Box<PublicKeyCredential>,
+    ) -> Result<(), ClientError> {
+        let r = self.auth_step_passkey_complete(pkc).await?;
+        match r.state {
+            AuthState::Success(_token) => Ok(()),
+            _ => Err(ClientError::AuthenticationFailed),
+        }
+    }
+
+    pub async fn reauth_begin(&self) -> Result<Vec<AuthAllowed>, ClientError> {
+        let issue = AuthIssueSession::Token;
+        let r: Result<AuthResponse, _> = self.perform_auth_post_request("/v1/reauth", issue).await;
+
+        r.map(|v| {
+            debug!("Authentication Session ID -> {:?}", v.sessionid);
+            v.state
+        })
+        .and_then(|state| match state {
+            AuthState::Continue(allowed) => Ok(allowed),
+            _ => Err(ClientError::AuthenticationFailed),
+        })
+    }
+
+    pub async fn reauth_simple_password(&self, password: &str) -> Result<(), ClientError> {
+        let state = match self.reauth_begin().await {
+            Ok(mut s) => s.pop(),
+            Err(e) => return Err(e),
+        };
+
+        match state {
+            Some(AuthAllowed::Password) => {}
+            _ => {
+                return Err(ClientError::AuthenticationFailed);
+            }
+        };
+
+        let r = self.auth_step_password(password).await?;
+
+        match r.state {
+            AuthState::Success(_) => Ok(()),
+            _ => Err(ClientError::AuthenticationFailed),
+        }
+    }
+
+    pub async fn reauth_password_totp(&self, password: &str, totp: u32) -> Result<(), ClientError> {
+        let state = match self.reauth_begin().await {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+
+        if !state.contains(&AuthAllowed::Totp) {
+            debug!("TOTP step not offered.");
+            return Err(ClientError::AuthenticationFailed);
+        }
+
+        let r = self.auth_step_totp(totp).await?;
+
+        // Should need to continue.
+        match r.state {
+            AuthState::Continue(allowed) => {
+                if !allowed.contains(&AuthAllowed::Password) {
+                    debug!("Password step not offered.");
+                    return Err(ClientError::AuthenticationFailed);
+                }
+            }
+            _ => {
+                debug!("Invalid AuthState presented.");
+                return Err(ClientError::AuthenticationFailed);
+            }
+        };
+
+        let r = self.auth_step_password(password).await?;
+
+        match r.state {
+            AuthState::Success(_token) => Ok(()),
+            _ => Err(ClientError::AuthenticationFailed),
+        }
+    }
+
+    pub async fn reauth_passkey_begin(&self) -> Result<RequestChallengeResponse, ClientError> {
+        let state = match self.reauth_begin().await {
+            Ok(mut s) => s.pop(),
+            Err(e) => return Err(e),
+        };
+
+        // State is now a set of auth continues.
+        match state {
+            Some(AuthAllowed::Passkey(r)) => Ok(r),
+            _ => Err(ClientError::AuthenticationFailed),
+        }
+    }
+
+    pub async fn reauth_passkey_complete(
         &self,
         pkc: Box<PublicKeyCredential>,
     ) -> Result<(), ClientError> {

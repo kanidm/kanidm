@@ -1064,6 +1064,25 @@ pub async fn do_nothing(_req: tide::Request<AppState>) -> tide::Result {
     Ok(res)
 }
 
+pub async fn reauth(mut req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let (eventid, hvalue) = req.new_eventid();
+
+    let obj: AuthIssueSession = req.body_json().await.map_err(|e| {
+        debug!("Failed get body JSON? {:?}", e);
+        e
+    })?;
+
+    let inter = req
+        .state()
+        // This may change in the future ...
+        .qe_r_ref
+        .handle_reauth(uat, obj, eventid)
+        .await;
+
+    auth_session_state_management(req, inter, hvalue)
+}
+
 pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
     // First, deal with some state management.
     // Do anything here first that's needed like getting the session details
@@ -1077,25 +1096,28 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
         e
     })?;
 
-    let mut auth_session_id_tok = None;
-
     // We probably need to know if we allocate the cookie, that this is a
     // new session, and in that case, anything *except* authrequest init is
     // invalid.
-    let res: Result<AuthResponse, _> = match req
+    let inter = req
         .state()
         // This may change in the future ...
         .qe_r_ref
         .handle_auth(maybe_sessionid, obj, eventid)
-        .await
-    {
-        // .and_then(|ar| {
-        Ok(ar) => {
-            let AuthResult {
-                state,
-                sessionid,
-                delay: _,
-            } = ar;
+        .await;
+
+    auth_session_state_management(req, inter, hvalue)
+}
+
+fn auth_session_state_management(
+    mut req: tide::Request<AppState>,
+    inter: Result<AuthResult, OperationError>,
+    hvalue: String,
+) -> tide::Result {
+    let mut auth_session_id_tok = None;
+
+    let res: Result<AuthResponse, _> = match inter {
+        Ok(AuthResult { state, sessionid }) => {
             // Do some response/state management.
             match state {
                 AuthState::Choose(allowed) => {
@@ -1131,6 +1153,7 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                     let msession = req.session_mut();
                     // Ensure the auth-session-id is set
                     msession.remove("auth-session-id");
+                    trace!(?sessionid, "🔥  🔥 ");
                     msession
                         .insert("auth-session-id", sessionid)
                         .map_err(|e| {

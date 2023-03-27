@@ -14,6 +14,7 @@
 
 - [Administration](administrivia.md)
   - [Accounts and Groups](accounts_and_groups.md)
+  - [Authentication and Credentials](authentication.md)
   - [POSIX Accounts and Groups](posix_accounts.md)
   - [Backup and Restore](backup_restore.md)
   - [Database Maintenance](database_maint.md)

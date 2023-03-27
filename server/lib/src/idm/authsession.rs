@@ -5,13 +5,14 @@
 use std::collections::BTreeMap;
 pub use std::collections::BTreeSet as Set;
 use std::convert::TryFrom;
+use std::fmt;
 use std::time::Duration;
 
 // use webauthn_rs::proto::Credential as WebauthnCredential;
 use compact_jwt::{Jws, JwsSigner};
 use hashbrown::HashSet;
 use kanidm_proto::v1::{
-    AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, AuthType, OperationError,
+    AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, OperationError, UserAuthToken,
 };
 // use crossbeam::channel::Sender;
 use tokio::sync::mpsc::UnboundedSender as Sender;
@@ -31,6 +32,8 @@ use crate::idm::delayed::{
 };
 use crate::idm::AuthState;
 use crate::prelude::*;
+use crate::value::Session;
+use time::OffsetDateTime;
 
 // Each CredHandler takes one or more credentials and determines if the
 // handlers requirements can be 100% fulfilled. This is where MFA or other
@@ -45,6 +48,38 @@ const BAD_AUTH_TYPE_MSG: &str = "invalid authentication method in this context";
 const BAD_CREDENTIALS: &str = "invalid credential message";
 const ACCOUNT_EXPIRED: &str = "account expired";
 const PW_BADLIST_MSG: &str = "password is in badlist";
+
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+pub enum AuthType {
+    Anonymous,
+    UnixPassword,
+    Password,
+    GeneratedPassword,
+    PasswordMfa,
+    Passkey,
+}
+
+impl fmt::Display for AuthType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AuthType::Anonymous => write!(f, "anonymous"),
+            AuthType::UnixPassword => write!(f, "unixpassword"),
+            AuthType::Password => write!(f, "password"),
+            AuthType::GeneratedPassword => write!(f, "generatedpassword"),
+            AuthType::PasswordMfa => write!(f, "passwordmfa"),
+            AuthType::Passkey => write!(f, "passkey"),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+enum AuthIntent {
+    InitialAuth,
+    Reauth {
+        session_id: Uuid,
+        session_expiry: Option<OffsetDateTime>,
+    },
+}
 
 /// A response type to indicate the progress and potential result of an authentication attempt.
 enum CredState {
@@ -227,6 +262,34 @@ impl TryFrom<(&BTreeMap<Uuid, (String, PasskeyV4)>, &Webauthn)> for CredHandler 
     }
 }
 
+impl TryFrom<(Uuid, &PasskeyV4, &Webauthn)> for CredHandler {
+    type Error = ();
+    fn try_from(
+        (cred_id, pk, webauthn): (Uuid, &PasskeyV4, &Webauthn),
+    ) -> Result<Self, Self::Error> {
+        let cred_ids = btreemap!((pk.cred_id().clone(), cred_id));
+        let pks = vec![pk.clone()];
+
+        webauthn
+            .start_passkey_authentication(pks.as_slice())
+            .map(|(chal, wan_state)| CredHandler::Passkey {
+                c_wan: CredWebauthn {
+                    chal,
+                    wan_state,
+                    state: CredVerifyState::Init,
+                },
+                cred_ids,
+            })
+            .map_err(|e| {
+                security_info!(
+                    ?e,
+                    "Unable to create passkey webauthn authentication challenge"
+                );
+                // maps to unit.
+            })
+    }
+}
+
 impl CredHandler {
     /// Determine if this password factor requires an upgrade of it's cryptographic type. If
     /// so, send an asynchronous event into the queue that will allow the password to have it's
@@ -322,7 +385,7 @@ impl CredHandler {
     fn validate_password_mfa(
         cred: &AuthCredential,
         cred_id: Uuid,
-        ts: &Duration,
+        ts: Duration,
         pw_mfa: &mut CredMfa,
         webauthn: &Webauthn,
         who: Uuid,
@@ -539,7 +602,7 @@ impl CredHandler {
     pub fn validate(
         &mut self,
         cred: &AuthCredential,
-        ts: &Duration,
+        ts: Duration,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
         webauthn: &Webauthn,
@@ -669,6 +732,10 @@ pub(crate) struct AuthSession {
 
     // The type of session we will issue if successful
     issue: AuthIssueSession,
+
+    // What is the "intent" behind this auth session? Are we doing an initial auth? Or a re-auth
+    // for a privilege grant?
+    intent: AuthIntent,
 }
 
 impl AuthSession {
@@ -713,7 +780,7 @@ impl AuthSession {
                 };
 
                 if handlers.is_empty() {
-                    security_info!("account has no primary credentials");
+                    security_info!("account has no available credentials");
                     AuthSessionState::Denied("invalid credential state")
                 } else {
                     AuthSessionState::Init(handlers)
@@ -734,6 +801,7 @@ impl AuthSession {
                 account,
                 state,
                 issue,
+                intent: AuthIntent::InitialAuth,
             };
             // Get the set of mechanisms that can proceed. This is tied
             // to the session so that it can mutate state and have progression
@@ -743,6 +811,100 @@ impl AuthSession {
             security_info!(?valid_mechs, "Offering auth mechanisms");
             let as_state = AuthState::Choose(valid_mechs);
             (Some(auth_session), as_state)
+        }
+    }
+
+    /// Build a new auth session which has been preconfigured for re-authentication.
+    /// This differs from [`AuthSession::new`] as we preselect the credential that
+    /// will be used in this operation based on the credential id that was used in the
+    /// initial authentication.
+    pub(crate) fn new_reauth(
+        account: Account,
+        session_id: Uuid,
+        session: &Session,
+        cred_id: Uuid,
+        issue: AuthIssueSession,
+        webauthn: &Webauthn,
+        ct: Duration,
+    ) -> (Option<Self>, AuthState) {
+        /// An inner enum to allow us to more easily define state within this fn
+        enum State {
+            Expired,
+            NoMatchingCred,
+            Proceed(CredHandler),
+        }
+
+        let state = if account.is_within_valid_time(ct) {
+            // Get the credential that matches this cred_id.
+            //
+            // To make this work "cleanly" we can't really nest a bunch of if
+            // statements like if primary and if primary.cred_id because the logic will
+            // just be chaos. So for now we build this as a mut option.
+            //
+            // Do we need to double check for anon here? I don't think so since the
+            // anon cred_id won't ever exist on an account.
+
+            let mut cred_handler = None;
+
+            if let Some(primary) = account.primary.as_ref() {
+                if primary.uuid == cred_id {
+                    if let Ok(ch) = CredHandler::try_from((primary, webauthn)) {
+                        // Update it.
+                        debug_assert!(cred_handler.is_none());
+                        cred_handler = Some(ch);
+                    } else {
+                        security_critical!(
+                            "corrupt credentials, unable to start primary credhandler"
+                        );
+                    }
+                }
+            }
+
+            if let Some(pk) = account.passkeys.get(&cred_id).map(|(_, pk)| pk) {
+                if let Ok(ch) = CredHandler::try_from((cred_id, pk, webauthn)) {
+                    // Update it.
+                    debug_assert!(cred_handler.is_none());
+                    cred_handler = Some(ch);
+                } else {
+                    security_critical!("corrupt credentials, unable to start primary credhandler");
+                }
+            }
+
+            // Did anything get set-up?
+
+            if let Some(cred_handler) = cred_handler {
+                State::Proceed(cred_handler)
+            } else {
+                State::NoMatchingCred
+            }
+        } else {
+            State::Expired
+        };
+
+        match state {
+            State::Proceed(handler) => {
+                let allow = handler.next_auth_allowed();
+                let auth_session = AuthSession {
+                    account,
+                    state: AuthSessionState::InProgress(handler),
+                    issue,
+                    intent: AuthIntent::Reauth {
+                        session_id,
+                        session_expiry: session.expiry.clone(),
+                    },
+                };
+
+                let as_state = AuthState::Continue(allow);
+                (Some(auth_session), as_state)
+            }
+            State::Expired => {
+                security_info!("account expired");
+                (None, AuthState::Denied(ACCOUNT_EXPIRED.to_string()))
+            }
+            State::NoMatchingCred => {
+                security_error!("Unable to select a credential for authentication");
+                (None, AuthState::Denied(BAD_CREDENTIALS.to_string()))
+            }
         }
     }
 
@@ -830,7 +992,7 @@ impl AuthSession {
     pub fn validate_creds(
         &mut self,
         cred: &AuthCredential,
-        time: &Duration,
+        time: Duration,
         async_tx: &Sender<DelayedAction>,
         webauthn: &Webauthn,
         pw_badlist_set: Option<&HashSet<String>>,
@@ -852,68 +1014,8 @@ impl AuthSession {
                     pw_badlist_set,
                 ) {
                     CredState::Success { auth_type, cred_id } => {
-                        security_info!("Successful cred handling");
-                        let session_id = Uuid::new_v4();
-                        let issue = self.issue;
-
-                        // We need to actually work this out better, and then
-                        // pass it to to_userauthtoken
-                        let scope = SessionScope::ReadWrite;
-
-                        security_info!(
-                            "Issuing {:?} session {} for {} {}",
-                            issue,
-                            session_id,
-                            self.account.spn,
-                            self.account.uuid
-                        );
-
-                        let uat = self
-                            .account
-                            .to_userauthtoken(
-                                session_id,
-                                *time,
-                                auth_type.clone(),
-                                Some(AUTH_SESSION_EXPIRY),
-                            )
-                            .ok_or(OperationError::InvalidState)?;
-
-                        // Queue the session info write.
-                        // This is dependent on the type of authentication factors
-                        // used. Generally we won't submit for Anonymous. Add an extra
-                        // safety barrier for auth types that shouldn't be here. Generally we
-                        // submit session info for everything else.
-                        match auth_type {
-                            AuthType::Anonymous => {
-                                // Skip - these sessions are not validated by session id.
-                            }
-                            AuthType::UnixPassword => {
-                                // Impossibru!
-                                admin_error!("Impossible auth type (UnixPassword) found");
-                                return Err(OperationError::InvalidState);
-                            }
-                            AuthType::Password
-                            | AuthType::GeneratedPassword
-                            | AuthType::PasswordMfa
-                            | AuthType::Passkey => {
-                                trace!("⚠️   Queued AuthSessionRecord for {}", self.account.uuid);
-                                async_tx.send(DelayedAction::AuthSessionRecord(AuthSessionRecord {
-                                    target_uuid: self.account.uuid,
-                                    session_id,
-                                    cred_id,
-                                    label: "Auth Session".to_string(),
-                                    expiry: uat.expiry,
-                                    issued_at: uat.issued_at,
-                                    issued_by: IdentityId::User(self.account.uuid),
-                                    scope,
-                                }))
-                                .map_err(|_| {
-                                    admin_error!("unable to queue failing authentication as the session will not validate ... ");
-                                    OperationError::InvalidState
-                                })?;
-                            }
-                        };
-
+                        // Issue the uat based on a set of factors.
+                        let uat = self.issue_uat(auth_type, time, async_tx, cred_id)?;
                         let jwt = Jws::new(uat);
 
                         // Now encrypt and prepare the token for return to the client.
@@ -930,7 +1032,7 @@ impl AuthSession {
 
                         (
                             Some(AuthSessionState::Success),
-                            Ok(AuthState::Success(token, issue)),
+                            Ok(AuthState::Success(token, self.issue)),
                         )
                     }
                     CredState::Continue(allowed) => {
@@ -965,6 +1067,104 @@ impl AuthSession {
         //  If success, to authtoken?
 
         response
+    }
+
+    fn issue_uat(
+        &mut self,
+        auth_type: AuthType,
+        time: Duration,
+        async_tx: &Sender<DelayedAction>,
+        cred_id: Uuid,
+    ) -> Result<UserAuthToken, OperationError> {
+        security_info!("Successful cred handling");
+        match self.intent {
+            AuthIntent::InitialAuth => {
+                let session_id = Uuid::new_v4();
+                // We need to actually work this out better, and then
+                // pass it to to_userauthtoken
+                let scope = match auth_type {
+                    AuthType::UnixPassword | AuthType::Anonymous => SessionScope::ReadOnly,
+                    AuthType::GeneratedPassword => SessionScope::ReadWrite,
+                    AuthType::Password | AuthType::PasswordMfa | AuthType::Passkey => {
+                        SessionScope::PrivilegeCapable
+                    }
+                };
+
+                security_info!(
+                    "Issuing {:?} session {} for {} {}",
+                    self.issue,
+                    session_id,
+                    self.account.spn,
+                    self.account.uuid
+                );
+
+                let uat = self
+                    .account
+                    .to_userauthtoken(session_id, scope, time)
+                    .ok_or(OperationError::InvalidState)?;
+
+                // Queue the session info write.
+                // This is dependent on the type of authentication factors
+                // used. Generally we won't submit for Anonymous. Add an extra
+                // safety barrier for auth types that shouldn't be here. Generally we
+                // submit session info for everything else.
+                match auth_type {
+                    AuthType::Anonymous => {
+                        // Skip - these sessions are not validated by session id.
+                    }
+                    AuthType::UnixPassword => {
+                        // Impossibru!
+                        admin_error!("Impossible auth type (UnixPassword) found");
+                        return Err(OperationError::InvalidState);
+                    }
+                    AuthType::Password
+                    | AuthType::GeneratedPassword
+                    | AuthType::PasswordMfa
+                    | AuthType::Passkey => {
+                        trace!("⚠️   Queued AuthSessionRecord for {}", self.account.uuid);
+                        async_tx.send(DelayedAction::AuthSessionRecord(AuthSessionRecord {
+                            target_uuid: self.account.uuid,
+                            session_id,
+                            cred_id,
+                            label: "Auth Session".to_string(),
+                            expiry: uat.expiry,
+                            issued_at: uat.issued_at,
+                            issued_by: IdentityId::User(self.account.uuid),
+                            scope,
+                        }))
+                        .map_err(|_| {
+                            admin_error!("unable to queue failing authentication as the session will not validate ... ");
+                            OperationError::InvalidState
+                        })?;
+                    }
+                };
+
+                Ok(uat)
+            }
+            AuthIntent::Reauth {
+                session_id,
+                session_expiry,
+            } => {
+                // Sanity check - We have already been really strict about what session types
+                // can actually trigger a re-auth, but we recheck here for paranoia!
+                let scope = match auth_type {
+                    AuthType::UnixPassword | AuthType::Anonymous | AuthType::GeneratedPassword => {
+                        error!("AuthType used in Reauth is not valid for session re-issuance. Rejecting");
+                        return Err(OperationError::InvalidState);
+                    }
+                    AuthType::Password | AuthType::PasswordMfa | AuthType::Passkey => {
+                        SessionScope::PrivilegeCapable
+                    }
+                };
+
+                let uat = self
+                    .account
+                    .to_reissue_userauthtoken(session_id, session_expiry, scope, time)
+                    .ok_or(OperationError::InvalidState)?;
+
+                Ok(uat)
+            }
+        }
     }
 
     /// End the session, defaulting to a denied.
@@ -1123,7 +1323,7 @@ mod tests {
         let jws_signer = create_jwt_signer();
         match session.validate_creds(
             &attempt,
-            &Duration::from_secs(0),
+            Duration::from_secs(0),
             &async_tx,
             &webauthn,
             Some(&pw_badlist_cache),
@@ -1141,7 +1341,7 @@ mod tests {
         let attempt = AuthCredential::Password("test_password".to_string());
         match session.validate_creds(
             &attempt,
-            &Duration::from_secs(0),
+            Duration::from_secs(0),
             &async_tx,
             &webauthn,
             Some(&pw_badlist_cache),
@@ -1181,7 +1381,7 @@ mod tests {
         let attempt = AuthCredential::Password("list@no3IBTyqHu$bad".to_string());
         match session.validate_creds(
             &attempt,
-            &Duration::from_secs(0),
+            Duration::from_secs(0),
             &async_tx,
             &webauthn,
             Some(&pw_badlist_cache),
@@ -1295,7 +1495,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Anonymous,
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1315,7 +1515,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Password(pw_bad.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1332,7 +1532,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_bad),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1351,7 +1551,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_good),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1362,7 +1562,7 @@ mod tests {
             };
             match session.validate_creds(
                 &AuthCredential::Password(pw_bad.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1381,7 +1581,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_good),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1392,7 +1592,7 @@ mod tests {
             };
             match session.validate_creds(
                 &AuthCredential::Password(pw_good.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1453,7 +1653,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_good),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1464,7 +1664,7 @@ mod tests {
             };
             match session.validate_creds(
                 &AuthCredential::Password(pw_badlist.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1599,7 +1799,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Anonymous,
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 None,
@@ -1621,7 +1821,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Passkey(resp),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 None,
@@ -1655,7 +1855,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Passkey(resp),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 None,
@@ -1698,7 +1898,7 @@ mod tests {
             // not inline.
             match session.validate_creds(
                 &AuthCredential::Passkey(resp),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 None,
@@ -1742,7 +1942,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Password(pw_bad.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1760,7 +1960,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Totp(0),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1789,7 +1989,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::SecurityKey(resp),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1813,7 +2013,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::SecurityKey(resp),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1824,7 +2024,7 @@ mod tests {
             };
             match session.validate_creds(
                 &AuthCredential::Password(pw_bad.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1854,7 +2054,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::SecurityKey(resp),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1865,7 +2065,7 @@ mod tests {
             };
             match session.validate_creds(
                 &AuthCredential::Password(pw_good.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1930,7 +2130,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Password(pw_bad.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1948,7 +2148,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_bad),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1975,7 +2175,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::SecurityKey(resp),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -1999,7 +2199,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::SecurityKey(resp),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2010,7 +2210,7 @@ mod tests {
             };
             match session.validate_creds(
                 &AuthCredential::Password(pw_bad.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2034,7 +2234,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_good),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2045,7 +2245,7 @@ mod tests {
             };
             match session.validate_creds(
                 &AuthCredential::Password(pw_bad.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2063,7 +2263,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_good),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2074,7 +2274,7 @@ mod tests {
             };
             match session.validate_creds(
                 &AuthCredential::Password(pw_good.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2103,7 +2303,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::SecurityKey(resp),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2114,7 +2314,7 @@ mod tests {
             };
             match session.validate_creds(
                 &AuthCredential::Password(pw_good.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2190,7 +2390,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Password(pw_bad.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2207,7 +2407,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::BackupCode(backup_code_bad),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2225,7 +2425,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::BackupCode(backup_code_good.clone()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2236,7 +2436,7 @@ mod tests {
             };
             match session.validate_creds(
                 &AuthCredential::Password(pw_bad.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2260,7 +2460,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::BackupCode(backup_code_good),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2271,7 +2471,7 @@ mod tests {
             };
             match session.validate_creds(
                 &AuthCredential::Password(pw_good.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2302,7 +2502,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_good),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2313,7 +2513,7 @@ mod tests {
             };
             match session.validate_creds(
                 &AuthCredential::Password(pw_good.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2380,7 +2580,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_good_a),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2391,7 +2591,7 @@ mod tests {
             };
             match session.validate_creds(
                 &AuthCredential::Password(pw_good.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2414,7 +2614,7 @@ mod tests {
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_good_b),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
@@ -2425,7 +2625,7 @@ mod tests {
             };
             match session.validate_creds(
                 &AuthCredential::Password(pw_good.to_string()),
-                &ts,
+                ts,
                 &async_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),

@@ -240,7 +240,7 @@ impl Totp {
         self.do_totp_duration_from_epoch(&dur)
     }
 
-    pub fn verify(&self, chal: u32, time: &Duration) -> bool {
+    pub fn verify(&self, chal: u32, time: Duration) -> bool {
         let secs = time.as_secs();
         let counter = secs / self.step;
         // Any error becomes a failure.
@@ -405,12 +405,12 @@ mod tests {
         let otp = Totp::new(key, TOTP_DEFAULT_STEP, TotpAlgo::Sha512, TotpDigits::Six);
         let d = Duration::from_secs(secs);
         // Step
-        assert!(otp.verify(952181, &d));
+        assert!(otp.verify(952181, d));
         // Step - 1
-        assert!(otp.verify(685469, &d));
+        assert!(otp.verify(685469, d));
         // This is step - 2
-        assert!(!otp.verify(217213, &d));
+        assert!(!otp.verify(217213, d));
         // This is step + 1
-        assert!(!otp.verify(972806, &d));
+        assert!(!otp.verify(972806, d));
     }
 }

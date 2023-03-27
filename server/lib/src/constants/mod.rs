@@ -78,6 +78,8 @@ pub const PW_MIN_LENGTH: usize = 10;
 
 // Default
 pub const AUTH_SESSION_EXPIRY: u64 = 3600;
+// Ten minutes by default;
+pub const AUTH_PRIVILEGE_EXPIRY: u64 = 600;
 
 // The time that a token can be used before session
 // status is enforced. This needs to be longer than

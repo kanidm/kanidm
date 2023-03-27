@@ -3,9 +3,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use kanidm_proto::v1::{
-    AccountUnixExtend, AuthType, CUIntentToken, CUSessionToken, CUStatus, CreateRequest,
-    DeleteRequest, Entry as ProtoEntry, GroupUnixExtend, Modify as ProtoModify,
-    ModifyList as ProtoModifyList, ModifyRequest, OperationError,
+    AccountUnixExtend, CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest,
+    Entry as ProtoEntry, GroupUnixExtend, Modify as ProtoModify, ModifyList as ProtoModifyList,
+    ModifyRequest, OperationError,
 };
 use time::OffsetDateTime;
 use tracing::{info, instrument, span, trace, Level};
@@ -567,7 +567,7 @@ impl QueryServerWriteV1 {
                     .map(|ident| (ident, uat))
             })?;
 
-        if uat.auth_type == AuthType::Anonymous {
+        if uat.uuid == UUID_ANONYMOUS {
             info!("Ignoring request to logout anonymous session - these sessions are not recorded");
             return Ok(());
         }

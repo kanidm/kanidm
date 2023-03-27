@@ -119,38 +119,6 @@ text=Persons may change their own displayname, name, and legal name at any time.
 
 <!-- deno-fmt-ignore-end -->
 
-## Resetting Person Account Credentials
-
-Members of the `idm_account_manage_priv` group have the rights to manage person and service accounts
-security and login aspects. This includes resetting account credentials.
-
-You can perform a password reset on the demo\_user, for example as the idm\_admin user, who is a
-default member of this group. The lines below prefixed with `#` are the interactive credential
-update interface.
-
-```bash
-kanidm person credential update demo_user --name idm_admin
-# spn: demo_user@idm.example.com
-# Name: Demonstration User
-# Primary Credential:
-# uuid: 0e19cd08-f943-489e-8ff2-69f9eacb1f31
-# generated password: set
-# Can Commit: true
-# 
-# cred update (? for help) # : pass
-# New password: 
-# New password: [hidden]
-# Confirm password: 
-# Confirm password: [hidden]
-# success
-# 
-# cred update (? for help) # : commit
-# Do you want to commit your changes? yes
-# success
-kanidm login --name demo_user
-kanidm self whoami --name demo_user
-```
-
 ## Creating Service Accounts
 
 The `admin` service account can be used to create service accounts.

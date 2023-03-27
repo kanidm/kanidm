@@ -27,6 +27,7 @@ pub enum Msg {
         emsg: String,
         kopid: Option<String>,
     },
+    RequestReauth,
 }
 
 impl From<FetchError> for Msg {
@@ -76,7 +77,7 @@ impl Component for SecurityApp {
                 let id = uat.uuid.to_string();
 
                 ctx.link().send_future(async {
-                    match Self::fetch_token_valid(id).await {
+                    match Self::request_credential_update(id).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
@@ -98,6 +99,18 @@ impl Component for SecurityApp {
                 // the state.
                 false
             }
+            Msg::RequestReauth => {
+                models::push_return_location(models::Location::Views(ViewRoute::Security));
+
+                ctx.link()
+                    .navigator()
+                    .expect_throw("failed to read history")
+                    .push(&Route::Reauth);
+
+                // No need to redraw, or reset state, since this redirect will destroy
+                // the state.
+                false
+            }
             Msg::Error { emsg, kopid } => {
                 self.state = State::Error { emsg, kopid };
                 true
@@ -111,8 +124,20 @@ impl Component for SecurityApp {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        let uat = ctx.props().current_user_uat.clone();
+
+        let jsdate = js_sys::Date::new_0();
+        let isotime: String = jsdate.to_iso_string().into();
+        // TODO: Actually check the time of expiry on the uat and have a timer set that
+        // re-locks things nicely.
+        let time = time::OffsetDateTime::parse(&isotime, time::Format::Rfc3339)
+            .map(|odt| odt + time::Duration::new(60, 0))
+            .expect_throw("Unable to process time stamp");
+
+        let is_priv_able = uat.purpose_readwrite_active(time);
+
         let submit_enabled = match self.state {
-            State::Init | State::Error { .. } => true,
+            State::Init | State::Error { .. } => is_priv_able,
             State::Waiting => false,
         };
 
@@ -132,7 +157,31 @@ impl Component for SecurityApp {
             _ => html! { <></> },
         };
 
-        let uat = ctx.props().current_user_uat.clone();
+        let unlock = if is_priv_able {
+            html! {
+              <div>
+               <button type="button" class="btn btn-primary"
+                 disabled=true
+               >
+                 { "Security Settings Unlocked 🔓" }
+               </button>
+              </div>
+            }
+        } else {
+            html! {
+              <div>
+               <button type="button" class="btn btn-primary"
+                 onclick={
+                    ctx.link().callback(|_e| {
+                        Msg::RequestReauth
+                    })
+                 }
+               >
+                 { "Unlock Security Settings 🔒" }
+               </button>
+              </div>
+            }
+        };
 
         html! {
             <>
@@ -140,12 +189,13 @@ impl Component for SecurityApp {
                 <h2>{ "Security" }</h2>
               </div>
               { flash }
+              { unlock }
+              <hr/>
               <div>
                 <p>
                    <button type="button" class="btn btn-primary"
                      disabled={ !submit_enabled }
                      onclick={
-                        // TODO: figure out if we need the e here? :)
                         ctx.link().callback(|_e| {
                             Msg::RequestCredentialUpdate
                         })
@@ -159,7 +209,7 @@ impl Component for SecurityApp {
                 if uat.ui_hints.contains(&UiHint::PosixAccount) {
                   <div>
                       <p>
-                        <ChangeUnixPassword uat={ uat }/>
+                        <ChangeUnixPassword uat={ uat } enabled={ is_priv_able } />
                       </p>
                   </div>
                 }
@@ -169,7 +219,7 @@ impl Component for SecurityApp {
 }
 
 impl SecurityApp {
-    async fn fetch_token_valid(id: String) -> Result<Msg, FetchError> {
+    async fn request_credential_update(id: String) -> Result<Msg, FetchError> {
         let mut opts = RequestInit::new();
         opts.method("GET");
         opts.mode(RequestMode::SameOrigin);

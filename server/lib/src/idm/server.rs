@@ -56,8 +56,8 @@ use crate::prelude::*;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
 use crate::value::{Oauth2Session, Session};
 
-type AuthSessionMutex = Arc<Mutex<AuthSession>>;
-type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
+pub(crate) type AuthSessionMutex = Arc<Mutex<AuthSession>>;
+pub(crate) type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
 
 #[derive(Clone)]
 pub struct DomainKeys {
@@ -91,18 +91,18 @@ pub struct IdmServer {
 
 /// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
 pub struct IdmServerAuthTransaction<'a> {
-    session_ticket: &'a Semaphore,
-    sessions: &'a BptreeMap<Uuid, AuthSessionMutex>,
-    softlocks: &'a HashMap<Uuid, CredSoftLockMutex>,
+    pub(crate) session_ticket: &'a Semaphore,
+    pub(crate) sessions: &'a BptreeMap<Uuid, AuthSessionMutex>,
+    pub(crate) softlocks: &'a HashMap<Uuid, CredSoftLockMutex>,
 
     pub qs_read: QueryServerReadTransaction<'a>,
     /// Thread/Server ID
-    sid: Sid,
+    pub(crate) sid: Sid,
     // For flagging eventual actions.
-    async_tx: Sender<DelayedAction>,
-    webauthn: &'a Webauthn,
-    pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
-    domain_keys: CowCellReadTxn<DomainKeys>,
+    pub(crate) async_tx: Sender<DelayedAction>,
+    pub(crate) webauthn: &'a Webauthn,
+    pub(crate) pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
+    pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
 }
 
 pub struct IdmServerCredUpdateTransaction<'a> {
@@ -661,7 +661,7 @@ pub trait IdmServerTransaction<'a> {
 
         let scope = match uat.purpose {
             UatPurpose::ReadOnly => AccessScope::ReadOnly,
-            UatPurpose::ReadWrite { expiry: None } => AccessScope::ReadWrite,
+            UatPurpose::ReadWrite { expiry: None } => AccessScope::ReadOnly,
             UatPurpose::ReadWrite {
                 expiry: Some(expiry),
             } => {
@@ -910,9 +910,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         ae: &AuthEvent,
         ct: Duration,
     ) -> Result<AuthResult, OperationError> {
-        trace!(?ae, "Received");
         // Match on the auth event, to see what we need to do.
-
         match &ae.step {
             AuthEventStep::Init(init) => {
                 // lperf_segment!("idm::server::auth<Init>", || {
@@ -984,35 +982,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             slock_ref
                         });
 
-                /*
-                let mut maybe_slock = if let Some(slock_ref) = maybe_slock_ref.as_ref() {
-                    Some(slock_ref.lock().await)
-                } else {
-                    None
-                };
-
-                // Need to as_mut here so that we hold the slock for the whole operation.
-                let is_valid = if let Some(slock) = maybe_slock.as_mut() {
-                    slock.apply_time_step(ct);
-                    slock.is_valid()
-                } else {
-                    false
-                };
-                */
-
-                /*
-                let (auth_session, state) = if is_valid {
-                    AuthSession::new(account, self.webauthn, ct)
-                } else {
-                    // it's softlocked, don't even bother.
-                    security_info!("Account is softlocked, or has no credentials associated.");
-                    (
-                        None,
-                        AuthState::Denied("Account is temporarily locked".to_string()),
-                    )
-                };
-                */
-
                 let (auth_session, state) =
                     AuthSession::new(account, init.issue, self.webauthn, ct);
 
@@ -1020,6 +989,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     Some(auth_session) => {
                         let mut session_write = self.sessions.write();
                         if session_write.contains_key(&sessionid) {
+                            // If we have a session of the same id, return an error (despite how
+                            // unlikely this is ...
                             Err(OperationError::InvalidSessionState)
                         } else {
                             session_write.insert(sessionid, Arc::new(Mutex::new(auth_session)));
@@ -1034,23 +1005,9 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     }
                 };
 
-                // TODO: Change this william!
-                // For now ...
-                let delay = None;
-
-                // If we have a session of the same id, return an error (despite how
-                // unlikely this is ...
-
-                Ok(AuthResult {
-                    sessionid,
-                    state,
-                    delay,
-                })
+                Ok(AuthResult { sessionid, state })
             } // AuthEventStep::Init
             AuthEventStep::Begin(mech) => {
-                // lperf_segment!("idm::server::auth<Begin>", || {
-                // let _session_ticket = self.session_ticket.acquire().await;
-
                 let session_read = self.sessions.read();
                 // Do we have a session?
                 let auth_session_ref = session_read
@@ -1091,13 +1048,9 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     // Fail the session
                     auth_session.end_session("Account is temporarily locked")
                 }
-                .map(|aus| {
-                    let delay = None;
-                    AuthResult {
-                        sessionid: mech.sessionid,
-                        state: aus,
-                        delay,
-                    }
+                .map(|aus| AuthResult {
+                    sessionid: mech.sessionid,
+                    state: aus,
                 })
             } // End AuthEventStep::Mech
             AuthEventStep::Cred(creds) => {
@@ -1151,7 +1104,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     auth_session
                         .validate_creds(
                             &creds.cred,
-                            &ct,
+                            ct,
                             &self.async_tx,
                             self.webauthn,
                             pw_badlist_cache,
@@ -1172,16 +1125,9 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     // Fail the session
                     auth_session.end_session("Account is temporarily locked")
                 }
-                .map(|aus| {
-                    // TODO: Change this william!
-                    // For now ...
-                    let delay = None;
-                    AuthResult {
-                        // Is this right?
-                        sessionid: creds.sessionid,
-                        state: aus,
-                        delay,
-                    }
+                .map(|aus| AuthResult {
+                    sessionid: creds.sessionid,
+                    state: aus,
                 })
             } // End AuthEventStep::Cred
         }
@@ -2246,7 +2192,7 @@ mod tests {
     use std::convert::TryFrom;
     use std::time::Duration;
 
-    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, AuthType, OperationError};
+    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, OperationError};
     use smartstring::alias::String as AttrString;
     use time::OffsetDateTime;
     use uuid::Uuid;
@@ -2284,12 +2230,7 @@ mod tests {
 
         let sid = match r1 {
             Ok(ar) => {
-                let AuthResult {
-                    sessionid,
-                    state,
-                    delay,
-                } = ar;
-                debug_assert!(delay.is_none());
+                let AuthResult { sessionid, state } = ar;
                 match state {
                     AuthState::Choose(mut conts) => {
                         // Should only be one auth mech
@@ -2330,10 +2271,8 @@ mod tests {
                 let AuthResult {
                     sessionid: _,
                     state,
-                    delay,
                 } = ar;
 
-                debug_assert!(delay.is_none());
                 match state {
                     AuthState::Continue(allowed) => {
                         // Check the uat.
@@ -2370,10 +2309,8 @@ mod tests {
                 let AuthResult {
                     sessionid: _,
                     state,
-                    delay,
                 } = ar;
 
-                debug_assert!(delay.is_none());
                 match state {
                     AuthState::Success(_uat, AuthIssueSession::Token) => {
                         // Check the uat.
@@ -2453,13 +2390,8 @@ mod tests {
 
         let r1 = idms_auth.auth(&admin_init, ct).await;
         let ar = r1.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
-        debug_assert!(delay.is_none());
         assert!(matches!(state, AuthState::Choose(_)));
 
         // Now push that we want the Password Mech.
@@ -2467,13 +2399,7 @@ mod tests {
 
         let r2 = idms_auth.auth(&admin_begin, ct).await;
         let ar = r2.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay,
-        } = ar;
-
-        debug_assert!(delay.is_none());
+        let AuthResult { sessionid, state } = ar;
 
         match state {
             AuthState::Continue(_) => {}
@@ -2506,10 +2432,7 @@ mod tests {
                 let AuthResult {
                     sessionid: _,
                     state,
-                    delay,
                 } = ar;
-
-                debug_assert!(delay.is_none());
 
                 match state {
                     AuthState::Success(token, AuthIssueSession::Token) => {
@@ -2577,9 +2500,7 @@ mod tests {
                 let AuthResult {
                     sessionid: _,
                     state,
-                    delay,
                 } = ar;
-                debug_assert!(delay.is_none());
                 match state {
                     AuthState::Success(_uat, AuthIssueSession::Token) => {
                         // Check the uat.
@@ -2626,9 +2547,7 @@ mod tests {
                 let AuthResult {
                     sessionid: _,
                     state,
-                    delay,
                 } = ar;
-                debug_assert!(delay.is_none());
                 match state {
                     AuthState::Denied(_reason) => {
                         // Check the uat.
@@ -3074,10 +2993,8 @@ mod tests {
         let AuthResult {
             sessionid: _,
             state,
-            delay,
         } = ar;
 
-        debug_assert!(delay.is_none());
         match state {
             AuthState::Denied(_) => {}
             _ => {
@@ -3096,10 +3013,8 @@ mod tests {
         let AuthResult {
             sessionid: _,
             state,
-            delay,
         } = ar;
 
-        debug_assert!(delay.is_none());
         match state {
             AuthState::Denied(_) => {}
             _ => {
@@ -3243,9 +3158,7 @@ mod tests {
                 let AuthResult {
                     sessionid: _,
                     state,
-                    delay,
                 } = ar;
-                debug_assert!(delay.is_none());
                 match state {
                     AuthState::Denied(reason) => {
                         assert!(reason != "Account is temporarily locked");
@@ -3273,11 +3186,7 @@ mod tests {
             .auth(&admin_init, Duration::from_secs(TEST_CURRENT_TIME))
             .await;
         let ar = r1.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
         assert!(matches!(state, AuthState::Choose(_)));
 
         // Soft locks only apply once a mechanism is chosen
@@ -3290,10 +3199,8 @@ mod tests {
         let AuthResult {
             sessionid: _,
             state,
-            delay,
         } = ar;
 
-        debug_assert!(delay.is_none());
         match state {
             AuthState::Denied(reason) => {
                 assert!(reason == "Account is temporarily locked");
@@ -3328,9 +3235,7 @@ mod tests {
                 let AuthResult {
                     sessionid: _,
                     state,
-                    delay,
                 } = ar;
-                debug_assert!(delay.is_none());
                 match state {
                     AuthState::Success(_uat, AuthIssueSession::Token) => {
                         // Check the uat.
@@ -3393,9 +3298,7 @@ mod tests {
                 let AuthResult {
                     sessionid: _,
                     state,
-                    delay,
                 } = ar;
-                debug_assert!(delay.is_none());
                 match state {
                     AuthState::Denied(reason) => {
                         assert!(reason != "Account is temporarily locked");
@@ -3427,9 +3330,7 @@ mod tests {
                 let AuthResult {
                     sessionid: _,
                     state,
-                    delay,
                 } = ar;
-                debug_assert!(delay.is_none());
                 match state {
                     AuthState::Denied(reason) => {
                         assert!(reason == "Account is temporarily locked");
@@ -3722,7 +3623,7 @@ mod tests {
 
         // == anonymous
         let uat = account
-            .to_userauthtoken(session_id, ct, AuthType::Anonymous, None)
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -3736,7 +3637,7 @@ mod tests {
 
         // == unixpassword
         let uat = account
-            .to_userauthtoken(session_id, ct, AuthType::UnixPassword, None)
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -3750,7 +3651,7 @@ mod tests {
 
         // == password
         let uat = account
-            .to_userauthtoken(session_id, ct, AuthType::Password, None)
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -3764,7 +3665,7 @@ mod tests {
 
         // == generatedpassword
         let uat = account
-            .to_userauthtoken(session_id, ct, AuthType::GeneratedPassword, None)
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -3778,7 +3679,7 @@ mod tests {
 
         // == webauthn
         let uat = account
-            .to_userauthtoken(session_id, ct, AuthType::Passkey, None)
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -3792,7 +3693,7 @@ mod tests {
 
         // == passwordmfa
         let uat = account
-            .to_userauthtoken(session_id, ct, AuthType::PasswordMfa, None)
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)

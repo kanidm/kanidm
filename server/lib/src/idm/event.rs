@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use crate::idm::AuthState;
 use crate::prelude::*;
 use kanidm_proto::v1::OperationError;
@@ -480,7 +478,6 @@ impl AuthEvent {
 pub struct AuthResult {
     pub sessionid: Uuid,
     pub state: AuthState,
-    pub delay: Option<Duration>,
 }
 
 /*

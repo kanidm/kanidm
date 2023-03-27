@@ -1,3 +1,4 @@
+use crate::common::OpType;
 use crate::PwBadlistOpt;
 use futures_concurrency::prelude::*;
 // use std::thread;
@@ -19,7 +20,7 @@ impl PwBadlistOpt {
     pub async fn exec(&self) {
         match self {
             PwBadlistOpt::Show(copt) => {
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Read).await;
                 match client.system_password_badlist_get().await {
                     Ok(list) => {
                         for i in list {
@@ -121,7 +122,7 @@ impl PwBadlistOpt {
                         println!("{}", pw);
                     }
                 } else {
-                    let client = copt.to_client().await;
+                    let client = copt.to_client(OpType::Write).await;
                     match client.system_password_badlist_append(filt_pwset).await {
                         Ok(_) => println!("Success"),
                         Err(e) => eprintln!("{:?}", e),
@@ -129,7 +130,7 @@ impl PwBadlistOpt {
                 }
             } // End Upload
             PwBadlistOpt::Remove { copt, paths } => {
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Write).await;
 
                 let mut pwset: Vec<String> = Vec::new();
 

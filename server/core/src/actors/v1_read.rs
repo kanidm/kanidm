@@ -5,9 +5,9 @@ use std::sync::Arc;
 
 use kanidm_proto::internal::AppLink;
 use kanidm_proto::v1::{
-    ApiToken, AuthRequest, BackupCodesView, CURequest, CUSessionToken, CUStatus, CredentialStatus,
-    Entry as ProtoEntry, OperationError, RadiusAuthToken, SearchRequest, SearchResponse, UatStatus,
-    UnixGroupToken, UnixUserToken, UserAuthToken, WhoamiResponse,
+    ApiToken, AuthIssueSession, AuthRequest, BackupCodesView, CURequest, CUSessionToken, CUStatus,
+    CredentialStatus, Entry as ProtoEntry, OperationError, RadiusAuthToken, SearchRequest,
+    SearchResponse, UatStatus, UnixGroupToken, UnixUserToken, UserAuthToken, WhoamiResponse,
 };
 use ldap3_proto::simple::*;
 use regex::Regex;
@@ -103,7 +103,7 @@ impl QueryServerReadV1 {
     #[instrument(
         level = "info",
         name = "auth",
-        skip(self, sessionid, req, eventid)
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_auth(
@@ -141,6 +141,46 @@ impl QueryServerReadV1 {
             .and_then(|r| idm_auth.commit().map(|_| r));
 
         security_info!(?res, "Sending auth result");
+
+        res
+    }
+
+    #[instrument(
+        level = "info",
+        name = "reauth",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_reauth(
+        &self,
+        uat: Option<String>,
+        issue: AuthIssueSession,
+        eventid: Uuid,
+    ) -> Result<AuthResult, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idm_auth = self.idms.auth().await;
+        security_info!("Begin reauth event");
+
+        let ident = idm_auth
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!(?e, "Invalid identity");
+                e
+            })?;
+
+        // Trigger a session clean *before* we take any auth steps.
+        // It's important to do this before to ensure that timeouts on
+        // the session are enforced.
+        idm_auth.expire_auth_sessions(ct).await;
+
+        // Generally things like auth denied are in Ok() msgs
+        // so true errors should always trigger a rollback.
+        let res = idm_auth
+            .reauth_init(ident, issue, ct)
+            .await
+            .and_then(|r| idm_auth.commit().map(|_| r));
+
+        security_info!(?res, "Sending reauth result");
 
         res
     }
