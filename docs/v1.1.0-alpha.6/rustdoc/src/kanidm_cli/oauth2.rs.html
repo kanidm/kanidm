@@ -263,7 +263,9 @@
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
-</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::Oauth2Opt;
+<a href="#266" id="266">266</a>
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::common::OpType;
+<span class="kw">use </span><span class="kw">crate</span>::Oauth2Opt;
 
 <span class="kw">impl </span>Oauth2Opt {
     <span class="kw">pub fn </span>debug(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
@@ -293,14 +295,14 @@
     <span class="kw">pub async fn </span>exec(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match </span><span class="self">self </span>{
             Oauth2Opt::List(copt) =&gt; {
-                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = copt.to_client(OpType::Read).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_oauth2_rs_list().<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(r) =&gt; r.iter().for_each(|ent| <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, ent)),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                 }
             }
             Oauth2Opt::Get(nopt) =&gt; {
-                <span class="kw">let </span>client = nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = nopt.copt.to_client(OpType::Read).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_oauth2_rs_get(nopt.name.as_str()).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(e)) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, e),
                     <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;No matching entries&quot;</span>),
@@ -308,7 +310,7 @@
                 }
             }
             Oauth2Opt::CreateBasic(cbopt) =&gt; {
-                <span class="kw">let </span>client = cbopt.nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = cbopt.nopt.copt.to_client(OpType::Read).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_oauth2_rs_basic_create(
                         cbopt.nopt.name.as_str(),
@@ -322,7 +324,7 @@
                 }
             }
             Oauth2Opt::UpdateScopeMap(cbopt) =&gt; {
-                <span class="kw">let </span>client = cbopt.nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = cbopt.nopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_oauth2_rs_update_scope_map(
                         cbopt.nopt.name.as_str(),
@@ -336,7 +338,7 @@
                 }
             }
             Oauth2Opt::DeleteScopeMap(cbopt) =&gt; {
-                <span class="kw">let </span>client = cbopt.nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = cbopt.nopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_oauth2_rs_delete_scope_map(cbopt.nopt.name.as_str(), cbopt.group.as_str())
                     .<span class="kw">await
@@ -346,7 +348,7 @@
                 }
             }
             Oauth2Opt::UpdateSupScopeMap(cbopt) =&gt; {
-                <span class="kw">let </span>client = cbopt.nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = cbopt.nopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_oauth2_rs_update_sup_scope_map(
                         cbopt.nopt.name.as_str(),
@@ -360,7 +362,7 @@
                 }
             }
             Oauth2Opt::DeleteSupScopeMap(cbopt) =&gt; {
-                <span class="kw">let </span>client = cbopt.nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = cbopt.nopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_oauth2_rs_delete_sup_scope_map(
                         cbopt.nopt.name.as_str(),
@@ -373,7 +375,7 @@
                 }
             }
             Oauth2Opt::ResetSecrets(cbopt) =&gt; {
-                <span class="kw">let </span>client = cbopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = cbopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_oauth2_rs_update(
                         cbopt.name.as_str(),
@@ -392,7 +394,7 @@
                 }
             }
             Oauth2Opt::ShowBasicSecret(nopt) =&gt; {
-                <span class="kw">let </span>client = nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = nopt.copt.to_client(OpType::Read).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_oauth2_rs_get_basic_secret(nopt.name.as_str())
                     .<span class="kw">await
@@ -408,14 +410,14 @@
                 }
             }
             Oauth2Opt::Delete(nopt) =&gt; {
-                <span class="kw">let </span>client = nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = nopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_oauth2_rs_delete(nopt.name.as_str()).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                 }
             }
             Oauth2Opt::SetDisplayname(cbopt) =&gt; {
-                <span class="kw">let </span>client = cbopt.nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = cbopt.nopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_oauth2_rs_update(
                         cbopt.nopt.name.as_str(),
@@ -434,7 +436,7 @@
                 }
             }
             Oauth2Opt::SetName { nopt, name } =&gt; {
-                <span class="kw">let </span>client = nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = nopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_oauth2_rs_update(
                         nopt.name.as_str(),
@@ -453,7 +455,7 @@
                 }
             }
             Oauth2Opt::SetLandingUrl { nopt, url } =&gt; {
-                <span class="kw">let </span>client = nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = nopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_oauth2_rs_update(
                         nopt.name.as_str(),
@@ -472,21 +474,21 @@
                 }
             }
             Oauth2Opt::EnablePkce(nopt) =&gt; {
-                <span class="kw">let </span>client = nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = nopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_oauth2_rs_enable_pkce(nopt.name.as_str()).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                 }
             }
             Oauth2Opt::DisablePkce(nopt) =&gt; {
-                <span class="kw">let </span>client = nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = nopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_oauth2_rs_disable_pkce(nopt.name.as_str()).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                 }
             }
             Oauth2Opt::EnableLegacyCrypto(nopt) =&gt; {
-                <span class="kw">let </span>client = nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = nopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_oauth2_rs_enable_legacy_crypto(nopt.name.as_str())
                     .<span class="kw">await
@@ -496,7 +498,7 @@
                 }
             }
             Oauth2Opt::DisableLegacyCrypto(nopt) =&gt; {
-                <span class="kw">let </span>client = nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = nopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_oauth2_rs_disable_legacy_crypto(nopt.name.as_str())
                     .<span class="kw">await
@@ -506,7 +508,7 @@
                 }
             }
             Oauth2Opt::PreferShortUsername(nopt) =&gt; {
-                <span class="kw">let </span>client = nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = nopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_oauth2_rs_prefer_short_username(nopt.name.as_str())
                     .<span class="kw">await
@@ -516,7 +518,7 @@
                 }
             }
             Oauth2Opt::PreferSPNUsername(nopt) =&gt; {
-                <span class="kw">let </span>client = nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = nopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_oauth2_rs_prefer_spn_username(nopt.name.as_str())
                     .<span class="kw">await

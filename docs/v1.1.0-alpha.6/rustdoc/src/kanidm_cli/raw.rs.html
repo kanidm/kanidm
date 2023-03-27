@@ -102,7 +102,9 @@
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
+<a href="#105" id="105">105</a>
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::common::OpType;
+<span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::error::Error;
 <span class="kw">use </span>std::fs::File;
 <span class="kw">use </span>std::io::BufReader;
@@ -133,7 +135,7 @@
     <span class="kw">pub async fn </span>exec(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match </span><span class="self">self </span>{
             RawOpt::Search(sopt) =&gt; {
-                <span class="kw">let </span>client = sopt.commonopts.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = sopt.commonopts.to_client(OpType::Read).<span class="kw">await</span>;
 
                 <span class="kw">let </span>filter: Filter = <span class="kw">match </span>serde_json::from_str(sopt.filter.as_str()) {
                     <span class="prelude-val">Ok</span>(f) =&gt; f,
@@ -149,7 +151,7 @@
                 }
             }
             RawOpt::Create(copt) =&gt; {
-                <span class="kw">let </span>client = copt.commonopts.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = copt.commonopts.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="comment">// Read the file?
                 </span><span class="kw">let </span>r_entries: Vec&lt;BTreeMap&lt;String, Vec&lt;String&gt;&gt;&gt; = <span class="kw">match </span>read_file(<span class="kw-2">&amp;</span>copt.file) {
                     <span class="prelude-val">Ok</span>(r) =&gt; r,
@@ -166,7 +168,7 @@
                 }
             }
             RawOpt::Modify(mopt) =&gt; {
-                <span class="kw">let </span>client = mopt.commonopts.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = mopt.commonopts.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="comment">// Read the file?
                 </span><span class="kw">let </span>filter: Filter = <span class="kw">match </span>serde_json::from_str(mopt.filter.as_str()) {
                     <span class="prelude-val">Ok</span>(f) =&gt; f,
@@ -190,7 +192,7 @@
                 }
             }
             RawOpt::Delete(dopt) =&gt; {
-                <span class="kw">let </span>client = dopt.commonopts.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = dopt.commonopts.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">let </span>filter: Filter = <span class="kw">match </span>serde_json::from_str(dopt.filter.as_str()) {
                     <span class="prelude-val">Ok</span>(f) =&gt; f,
                     <span class="prelude-val">Err</span>(e) =&gt; {

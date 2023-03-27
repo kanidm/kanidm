@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["ReauthEvent",""]]};
+window.SIDEBAR_ITEMS = {};

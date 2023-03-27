@@ -204,6 +204,56 @@
 <a href="#204" id="204">204</a>
 <a href="#205" id="205">205</a>
 <a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
 </pre><pre class="rust"><code><span class="attr">#[cfg(debug_assertions)]
 </span><span class="kw">use </span>gloo::console;
 <span class="kw">use </span>kanidm_proto::v1::{CUSessionToken, CUStatus, UiHint};
@@ -233,6 +283,7 @@
         emsg: String,
         kopid: <span class="prelude-ty">Option</span>&lt;String&gt;,
     },
+    RequestReauth,
 }
 
 <span class="kw">impl </span>From&lt;FetchError&gt; <span class="kw">for </span>Msg {
@@ -282,7 +333,7 @@
                 <span class="kw">let </span>id = uat.uuid.to_string();
 
                 ctx.link().send_future(<span class="kw">async </span>{
-                    <span class="kw">match </span><span class="self">Self</span>::fetch_token_valid(id).<span class="kw">await </span>{
+                    <span class="kw">match </span><span class="self">Self</span>::request_credential_update(id).<span class="kw">await </span>{
                         <span class="prelude-val">Ok</span>(v) =&gt; v,
                         <span class="prelude-val">Err</span>(v) =&gt; v.into(),
                     }
@@ -304,6 +355,18 @@
                 // the state.
                 </span><span class="bool-val">false
             </span>}
+            Msg::RequestReauth =&gt; {
+                models::push_return_location(models::Location::Views(ViewRoute::Security));
+
+                ctx.link()
+                    .navigator()
+                    .expect_throw(<span class="string">&quot;failed to read history&quot;</span>)
+                    .push(<span class="kw-2">&amp;</span>Route::Reauth);
+
+                <span class="comment">// No need to redraw, or reset state, since this redirect will destroy
+                // the state.
+                </span><span class="bool-val">false
+            </span>}
             Msg::Error { emsg, kopid } =&gt; {
                 <span class="self">self</span>.state = State::Error { emsg, kopid };
                 <span class="bool-val">true
@@ -317,8 +380,20 @@
     }
 
     <span class="kw">fn </span>view(<span class="kw-2">&amp;</span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>Context&lt;<span class="self">Self</span>&gt;) -&gt; Html {
+        <span class="kw">let </span>uat = ctx.props().current_user_uat.clone();
+
+        <span class="kw">let </span>jsdate = js_sys::Date::new_0();
+        <span class="kw">let </span>isotime: String = jsdate.to_iso_string().into();
+        <span class="comment">// TODO: Actually check the time of expiry on the uat and have a timer set that
+        // re-locks things nicely.
+        </span><span class="kw">let </span>time = time::OffsetDateTime::parse(<span class="kw-2">&amp;</span>isotime, time::Format::Rfc3339)
+            .map(|odt| odt + time::Duration::new(<span class="number">60</span>, <span class="number">0</span>))
+            .expect_throw(<span class="string">&quot;Unable to process time stamp&quot;</span>);
+
+        <span class="kw">let </span>is_priv_able = uat.purpose_readwrite_active(time);
+
         <span class="kw">let </span>submit_enabled = <span class="kw">match </span><span class="self">self</span>.state {
-            State::Init | State::Error { .. } =&gt; <span class="bool-val">true</span>,
+            State::Init | State::Error { .. } =&gt; is_priv_able,
             State::Waiting =&gt; <span class="bool-val">false</span>,
         };
 
@@ -338,7 +413,31 @@
             <span class="kw">_ </span>=&gt; <span class="macro">html! </span>{ &lt;&gt;&lt;/&gt; },
         };
 
-        <span class="kw">let </span>uat = ctx.props().current_user_uat.clone();
+        <span class="kw">let </span>unlock = <span class="kw">if </span>is_priv_able {
+            <span class="macro">html! </span>{
+              &lt;div&gt;
+               &lt;button <span class="kw">type</span>=<span class="string">&quot;button&quot; </span>class=<span class="string">&quot;btn btn-primary&quot;
+                 </span>disabled=<span class="bool-val">true
+               </span>&gt;
+                 { <span class="string">&quot;Security Settings Unlocked 🔓&quot; </span>}
+               &lt;/button&gt;
+              &lt;/div&gt;
+            }
+        } <span class="kw">else </span>{
+            <span class="macro">html! </span>{
+              &lt;div&gt;
+               &lt;button <span class="kw">type</span>=<span class="string">&quot;button&quot; </span>class=<span class="string">&quot;btn btn-primary&quot;
+                 </span>onclick={
+                    ctx.link().callback(|_e| {
+                        Msg::RequestReauth
+                    })
+                 }
+               &gt;
+                 { <span class="string">&quot;Unlock Security Settings 🔒&quot; </span>}
+               &lt;/button&gt;
+              &lt;/div&gt;
+            }
+        };
 
         <span class="macro">html! </span>{
             &lt;&gt;
@@ -346,13 +445,14 @@
                 &lt;h2&gt;{ <span class="string">&quot;Security&quot; </span>}&lt;/h2&gt;
               &lt;/div&gt;
               { flash }
+              { unlock }
+              &lt;hr/&gt;
               &lt;div&gt;
                 &lt;p&gt;
                    &lt;button <span class="kw">type</span>=<span class="string">&quot;button&quot; </span>class=<span class="string">&quot;btn btn-primary&quot;
                      </span>disabled={ !submit_enabled }
                      onclick={
-                        <span class="comment">// TODO: figure out if we need the e here? :)
-                        </span>ctx.link().callback(|_e| {
+                        ctx.link().callback(|_e| {
                             Msg::RequestCredentialUpdate
                         })
                      }
@@ -365,7 +465,7 @@
                 <span class="kw">if </span>uat.ui_hints.contains(<span class="kw-2">&amp;</span>UiHint::PosixAccount) {
                   &lt;div&gt;
                       &lt;p&gt;
-                        &lt;ChangeUnixPassword uat={ uat }/&gt;
+                        &lt;ChangeUnixPassword uat={ uat } enabled={ is_priv_able } /&gt;
                       &lt;/p&gt;
                   &lt;/div&gt;
                 }
@@ -375,7 +475,7 @@
 }
 
 <span class="kw">impl </span>SecurityApp {
-    <span class="kw">async fn </span>fetch_token_valid(id: String) -&gt; <span class="prelude-ty">Result</span>&lt;Msg, FetchError&gt; {
+    <span class="kw">async fn </span>request_credential_update(id: String) -&gt; <span class="prelude-ty">Result</span>&lt;Msg, FetchError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>opts = RequestInit::new();
         opts.method(<span class="string">&quot;GET&quot;</span>);
         opts.mode(RequestMode::SameOrigin);

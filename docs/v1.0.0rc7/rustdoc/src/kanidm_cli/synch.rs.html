@@ -111,7 +111,9 @@
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
-</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::SynchOpt;
+<a href="#114" id="114">114</a>
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::common::OpType;
+<span class="kw">use </span><span class="kw">crate</span>::SynchOpt;
 <span class="kw">use </span>dialoguer::Confirm;
 
 <span class="kw">impl </span>SynchOpt {
@@ -131,14 +133,14 @@
     <span class="kw">pub async fn </span>exec(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match </span><span class="self">self </span>{
             SynchOpt::List(copt) =&gt; {
-                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = copt.to_client(OpType::Read).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_sync_account_list().<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(r) =&gt; r.iter().for_each(|ent| <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, ent)),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                 }
             }
             SynchOpt::Get(nopt) =&gt; {
-                <span class="kw">let </span>client = nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = nopt.copt.to_client(OpType::Read).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_sync_account_get(nopt.name.as_str()).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(e)) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, e),
                     <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;No matching entries&quot;</span>),
@@ -150,7 +152,7 @@
                 copt,
                 description,
             } =&gt; {
-                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_sync_account_create(account_id, description.as_deref())
                     .<span class="kw">await
@@ -164,7 +166,7 @@
                 label,
                 copt,
             } =&gt; {
-                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_sync_account_generate_token(account_id, label)
                     .<span class="kw">await
@@ -174,14 +176,14 @@
                 }
             }
             SynchOpt::DestroyToken { account_id, copt } =&gt; {
-                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_sync_account_destroy_token(account_id).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                 }
             }
             SynchOpt::ForceRefresh { account_id, copt } =&gt; {
-                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_sync_account_force_refresh(account_id).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
@@ -198,7 +200,7 @@
                     <span class="kw">return</span>;
                 }
 
-                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_sync_account_finalise(account_id).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
@@ -215,7 +217,7 @@
                     <span class="kw">return</span>;
                 }
 
-                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_sync_account_terminate(account_id).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),

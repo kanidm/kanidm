@@ -1431,6 +1431,46 @@
 <a href="#1431" id="1431">1431</a>
 <a href="#1432" id="1432">1432</a>
 <a href="#1433" id="1433">1433</a>
+<a href="#1434" id="1434">1434</a>
+<a href="#1435" id="1435">1435</a>
+<a href="#1436" id="1436">1436</a>
+<a href="#1437" id="1437">1437</a>
+<a href="#1438" id="1438">1438</a>
+<a href="#1439" id="1439">1439</a>
+<a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
+<a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
+<a href="#1446" id="1446">1446</a>
+<a href="#1447" id="1447">1447</a>
+<a href="#1448" id="1448">1448</a>
+<a href="#1449" id="1449">1449</a>
+<a href="#1450" id="1450">1450</a>
+<a href="#1451" id="1451">1451</a>
+<a href="#1452" id="1452">1452</a>
+<a href="#1453" id="1453">1453</a>
+<a href="#1454" id="1454">1454</a>
+<a href="#1455" id="1455">1455</a>
+<a href="#1456" id="1456">1456</a>
+<a href="#1457" id="1457">1457</a>
+<a href="#1458" id="1458">1458</a>
+<a href="#1459" id="1459">1459</a>
+<a href="#1460" id="1460">1460</a>
+<a href="#1461" id="1461">1461</a>
+<a href="#1462" id="1462">1462</a>
+<a href="#1463" id="1463">1463</a>
+<a href="#1464" id="1464">1464</a>
+<a href="#1465" id="1465">1465</a>
+<a href="#1466" id="1466">1466</a>
+<a href="#1467" id="1467">1467</a>
+<a href="#1468" id="1468">1468</a>
+<a href="#1469" id="1469">1469</a>
+<a href="#1470" id="1470">1470</a>
+<a href="#1471" id="1471">1471</a>
+<a href="#1472" id="1472">1472</a>
+<a href="#1473" id="1473">1473</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::TryFrom;
 <span class="kw">use </span>std::fs;
 <span class="kw">use </span>std::path::{Path, PathBuf};
@@ -1438,9 +1478,9 @@
 
 <span class="kw">use </span>kanidm_proto::internal::AppLink;
 <span class="kw">use </span>kanidm_proto::v1::{
-    ApiToken, AuthRequest, BackupCodesView, CURequest, CUSessionToken, CUStatus, CredentialStatus,
-    Entry <span class="kw">as </span>ProtoEntry, OperationError, RadiusAuthToken, SearchRequest, SearchResponse, UatStatus,
-    UnixGroupToken, UnixUserToken, UserAuthToken, WhoamiResponse,
+    ApiToken, AuthIssueSession, AuthRequest, BackupCodesView, CURequest, CUSessionToken, CUStatus,
+    CredentialStatus, Entry <span class="kw">as </span>ProtoEntry, OperationError, RadiusAuthToken, SearchRequest,
+    SearchResponse, UatStatus, UnixGroupToken, UnixUserToken, UserAuthToken, WhoamiResponse,
 };
 <span class="kw">use </span>ldap3_proto::simple::<span class="kw-2">*</span>;
 <span class="kw">use </span>regex::Regex;
@@ -1536,7 +1576,7 @@
     <span class="attr">#[instrument(
         level = <span class="string">&quot;info&quot;</span>,
         name = <span class="string">&quot;auth&quot;</span>,
-        skip(<span class="self">self</span>, sessionid, req, eventid)
+        skip_all,
         fields(uuid = <span class="question-mark">?</span>eventid)
     )]
     </span><span class="kw">pub async fn </span>handle_auth(
@@ -1574,6 +1614,46 @@
             </span>.and_then(|r| idm_auth.commit().map(|<span class="kw">_</span>| r));
 
         <span class="macro">security_info!</span>(<span class="question-mark">?</span>res, <span class="string">&quot;Sending auth result&quot;</span>);
+
+        res
+    }
+
+    <span class="attr">#[instrument(
+        level = <span class="string">&quot;info&quot;</span>,
+        name = <span class="string">&quot;reauth&quot;</span>,
+        skip_all,
+        fields(uuid = <span class="question-mark">?</span>eventid)
+    )]
+    </span><span class="kw">pub async fn </span>handle_reauth(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        uat: <span class="prelude-ty">Option</span>&lt;String&gt;,
+        issue: AuthIssueSession,
+        eventid: Uuid,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;AuthResult, OperationError&gt; {
+        <span class="kw">let </span>ct = duration_from_epoch_now();
+        <span class="kw">let </span><span class="kw-2">mut </span>idm_auth = <span class="self">self</span>.idms.auth().<span class="kw">await</span>;
+        <span class="macro">security_info!</span>(<span class="string">&quot;Begin reauth event&quot;</span>);
+
+        <span class="kw">let </span>ident = idm_auth
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span>e, <span class="string">&quot;Invalid identity&quot;</span>);
+                e
+            })<span class="question-mark">?</span>;
+
+        <span class="comment">// Trigger a session clean *before* we take any auth steps.
+        // It&#39;s important to do this before to ensure that timeouts on
+        // the session are enforced.
+        </span>idm_auth.expire_auth_sessions(ct).<span class="kw">await</span>;
+
+        <span class="comment">// Generally things like auth denied are in Ok() msgs
+        // so true errors should always trigger a rollback.
+        </span><span class="kw">let </span>res = idm_auth
+            .reauth_init(ident, issue, ct)
+            .<span class="kw">await
+            </span>.and_then(|r| idm_auth.commit().map(|<span class="kw">_</span>| r));
+
+        <span class="macro">security_info!</span>(<span class="question-mark">?</span>res, <span class="string">&quot;Sending reauth result&quot;</span>);
 
         res
     }

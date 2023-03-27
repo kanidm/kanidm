@@ -490,12 +490,7 @@
 <a href="#490" id="490">490</a>
 <a href="#491" id="491">491</a>
 <a href="#492" id="492">492</a>
-<a href="#493" id="493">493</a>
-<a href="#494" id="494">494</a>
-<a href="#495" id="495">495</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
-
-<span class="kw">use </span><span class="kw">crate</span>::idm::AuthState;
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::idm::AuthState;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>kanidm_proto::v1::OperationError;
 <span class="kw">use </span>kanidm_proto::v1::{AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthStep};
@@ -975,7 +970,6 @@
 </span><span class="kw">pub struct </span>AuthResult {
     <span class="kw">pub </span>sessionid: Uuid,
     <span class="kw">pub </span>state: AuthState,
-    <span class="kw">pub </span>delay: <span class="prelude-ty">Option</span>&lt;Duration&gt;,
 }
 
 <span class="comment">/*

@@ -126,6 +126,11 @@
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This is the top level router of the web ui for kanidm. It decides based on the incoming
 //! request, where to direct this too, and if the requirements for that request have been
 //! met before rendering. For example, if you land here with an oauth request, but you are
@@ -140,7 +145,7 @@
 <span class="kw">use </span>yew_router::prelude::<span class="kw-2">*</span>;
 
 <span class="kw">use </span><span class="kw">crate</span>::credential::reset::CredentialResetApp;
-<span class="kw">use </span><span class="kw">crate</span>::login::LoginApp;
+<span class="kw">use </span><span class="kw">crate</span>::login::{LoginApp, LoginWorkflow};
 <span class="kw">use </span><span class="kw">crate</span>::oauth2::Oauth2App;
 <span class="kw">use </span><span class="kw">crate</span>::views::{ViewRoute, ViewsApp};
 
@@ -155,6 +160,9 @@
 
     <span class="attr">#[at(<span class="string">&quot;/ui/login&quot;</span>)]
     </span>Login,
+
+    <span class="attr">#[at(<span class="string">&quot;/ui/reauth&quot;</span>)]
+    </span>Reauth,
 
     <span class="attr">#[at(<span class="string">&quot;/ui/oauth2&quot;</span>)]
     </span>Oauth2,
@@ -185,7 +193,9 @@
         <span class="attr">#[allow(clippy::let_unit_value)]
         </span>Route::Landing =&gt; <span class="macro">html! </span>{ &lt;Landing /&gt; },
         <span class="attr">#[allow(clippy::let_unit_value)]
-        </span>Route::Login =&gt; <span class="macro">html! </span>{ &lt;LoginApp /&gt; },
+        </span>Route::Login =&gt; <span class="macro">html! </span>{ &lt;LoginApp workflow={ LoginWorkflow::Login } /&gt; },
+        <span class="attr">#[allow(clippy::let_unit_value)]
+        </span>Route::Reauth =&gt; <span class="macro">html! </span>{ &lt;LoginApp workflow={ LoginWorkflow::Reauth } /&gt; },
         <span class="attr">#[allow(clippy::let_unit_value)]
         </span>Route::Oauth2 =&gt; <span class="macro">html! </span>{ &lt;Oauth2App /&gt; },
         <span class="attr">#[allow(clippy::let_unit_value)]

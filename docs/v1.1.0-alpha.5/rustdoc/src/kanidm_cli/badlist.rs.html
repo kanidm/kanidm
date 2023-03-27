@@ -169,7 +169,9 @@
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
-</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::PwBadlistOpt;
+<a href="#172" id="172">172</a>
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::common::OpType;
+<span class="kw">use </span><span class="kw">crate</span>::PwBadlistOpt;
 <span class="kw">use </span>futures_concurrency::prelude::<span class="kw-2">*</span>;
 <span class="comment">// use std::thread;
 </span><span class="kw">use </span>std::fs::File;
@@ -190,7 +192,7 @@
     <span class="kw">pub async fn </span>exec(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match </span><span class="self">self </span>{
             PwBadlistOpt::Show(copt) =&gt; {
-                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = copt.to_client(OpType::Read).<span class="kw">await</span>;
                 <span class="kw">match </span>client.system_password_badlist_get().<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(list) =&gt; {
                         <span class="kw">for </span>i <span class="kw">in </span>list {
@@ -292,7 +294,7 @@
                         <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, pw);
                     }
                 } <span class="kw">else </span>{
-                    <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>client = copt.to_client(OpType::Write).<span class="kw">await</span>;
                     <span class="kw">match </span>client.system_password_badlist_append(filt_pwset).<span class="kw">await </span>{
                         <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
                         <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, e),
@@ -300,7 +302,7 @@
                 }
             } <span class="comment">// End Upload
             </span>PwBadlistOpt::Remove { copt, paths } =&gt; {
-                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = copt.to_client(OpType::Write).<span class="kw">await</span>;
 
                 <span class="kw">let </span><span class="kw-2">mut </span>pwset: Vec&lt;String&gt; = Vec::new();
 

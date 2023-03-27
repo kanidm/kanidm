@@ -1473,9 +1473,9 @@
 <span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>kanidm_proto::v1::{
-    AccountUnixExtend, AuthType, CUIntentToken, CUSessionToken, CUStatus, CreateRequest,
-    DeleteRequest, Entry <span class="kw">as </span>ProtoEntry, GroupUnixExtend, Modify <span class="kw">as </span>ProtoModify,
-    ModifyList <span class="kw">as </span>ProtoModifyList, ModifyRequest, OperationError,
+    AccountUnixExtend, CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest,
+    Entry <span class="kw">as </span>ProtoEntry, GroupUnixExtend, Modify <span class="kw">as </span>ProtoModify, ModifyList <span class="kw">as </span>ProtoModifyList,
+    ModifyRequest, OperationError,
 };
 <span class="kw">use </span>time::OffsetDateTime;
 <span class="kw">use </span>tracing::{info, instrument, span, trace, Level};
@@ -2037,7 +2037,7 @@
                     .map(|ident| (ident, uat))
             })<span class="question-mark">?</span>;
 
-        <span class="kw">if </span>uat.auth_type == AuthType::Anonymous {
+        <span class="kw">if </span>uat.uuid == UUID_ANONYMOUS {
             <span class="macro">info!</span>(<span class="string">&quot;Ignoring request to logout anonymous session - these sessions are not recorded&quot;</span>);
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }

@@ -1165,7 +1165,9 @@
 <a href="#1165" id="1165">1165</a>
 <a href="#1166" id="1166">1166</a>
 <a href="#1167" id="1167">1167</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::fmt::{<span class="self">self</span>, Debug};
+<a href="#1168" id="1168">1168</a>
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::common::OpType;
+<span class="kw">use </span>std::fmt::{<span class="self">self</span>, Debug};
 <span class="kw">use </span>std::str::FromStr;
 
 <span class="kw">use </span>dialoguer::theme::ColorfulTheme;
@@ -1230,7 +1232,7 @@
             </span>PersonOpt::Credential { commands } =&gt; commands.exec().<span class="kw">await</span>,
             PersonOpt::Radius { commands } =&gt; <span class="kw">match </span>commands {
                 AccountRadius::Show(aopt) =&gt; {
-                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>client = aopt.copt.to_client(OpType::Read).<span class="kw">await</span>;
 
                     <span class="kw">let </span>rcred = client
                         .idm_account_radius_credential_get(aopt.aopts.account_id.as_str())
@@ -1252,7 +1254,7 @@
                     }
                 }
                 AccountRadius::Generate(aopt) =&gt; {
-                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>client = aopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
                         .idm_account_radius_credential_regenerate(aopt.aopts.account_id.as_str())
                         .<span class="kw">await
@@ -1261,7 +1263,7 @@
                     }
                 }
                 AccountRadius::DeleteSecret(aopt) =&gt; {
-                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>client = aopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                     <span class="kw">let </span><span class="kw-2">mut </span>modmessage = AccountChangeMessage {
                         output_mode: ConsoleOutputMode::Text,
                         action: <span class="string">&quot;radius account_delete&quot;</span>.to_string(),
@@ -1292,7 +1294,7 @@
             }, <span class="comment">// end PersonOpt::Radius
             </span>PersonOpt::Posix { commands } =&gt; <span class="kw">match </span>commands {
                 PersonPosix::Show(aopt) =&gt; {
-                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>client = aopt.copt.to_client(OpType::Read).<span class="kw">await</span>;
                     <span class="kw">match </span>client
                         .idm_account_unix_token_get(aopt.aopts.account_id.as_str())
                         .<span class="kw">await
@@ -1304,7 +1306,7 @@
                     }
                 }
                 PersonPosix::Set(aopt) =&gt; {
-                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>client = aopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
                         .idm_person_account_unix_extend(
                             aopt.aopts.account_id.as_str(),
@@ -1317,7 +1319,7 @@
                     }
                 }
                 PersonPosix::SetPassword(aopt) =&gt; {
-                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>client = aopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                     <span class="kw">let </span>password = <span class="kw">match </span>password_prompt(<span class="string">&quot;Enter new posix (sudo) password: &quot;</span>) {
                         <span class="prelude-val">Some</span>(v) =&gt; v,
                         <span class="prelude-val">None </span>=&gt; {
@@ -1339,7 +1341,7 @@
             }, <span class="comment">// end PersonOpt::Posix
             </span>PersonOpt::Session { commands } =&gt; <span class="kw">match </span>commands {
                 AccountUserAuthToken::Status(apo) =&gt; {
-                    <span class="kw">let </span>client = apo.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>client = apo.copt.to_client(OpType::Read).<span class="kw">await</span>;
                     <span class="kw">match </span>client
                         .idm_account_list_user_auth_token(apo.aopts.account_id.as_str())
                         .<span class="kw">await
@@ -1363,7 +1365,7 @@
                     copt,
                     session_id,
                 } =&gt; {
-                    <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>client = copt.to_client(OpType::Write).<span class="kw">await</span>;
                     <span class="kw">match </span>client
                         .idm_account_destroy_user_auth_token(aopts.account_id.as_str(), <span class="kw-2">*</span>session_id)
                         .<span class="kw">await
@@ -1379,7 +1381,7 @@
             }, <span class="comment">// End PersonOpt::Session
             </span>PersonOpt::Ssh { commands } =&gt; <span class="kw">match </span>commands {
                 AccountSsh::List(aopt) =&gt; {
-                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>client = aopt.copt.to_client(OpType::Read).<span class="kw">await</span>;
 
                     <span class="kw">match </span>client
                         .idm_account_get_ssh_pubkeys(aopt.aopts.account_id.as_str())
@@ -1392,7 +1394,7 @@
                     }
                 }
                 AccountSsh::Add(aopt) =&gt; {
-                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>client = aopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
                         .idm_person_account_post_ssh_pubkey(
                             aopt.aopts.account_id.as_str(),
@@ -1405,7 +1407,7 @@
                     }
                 }
                 AccountSsh::Delete(aopt) =&gt; {
-                    <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>client = aopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client
                         .idm_person_account_delete_ssh_pubkey(
                             aopt.aopts.account_id.as_str(),
@@ -1418,14 +1420,14 @@
                 }
             }, <span class="comment">// end PersonOpt::Ssh
             </span>PersonOpt::List(copt) =&gt; {
-                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = copt.to_client(OpType::Read).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_person_account_list().<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(r) =&gt; r.iter().for_each(|ent| <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, ent)),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                 }
             }
             PersonOpt::Update(aopt) =&gt; {
-                <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = aopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_person_account_update(
                         aopt.aopts.account_id.as_str(),
@@ -1441,7 +1443,7 @@
                 }
             }
             PersonOpt::Get(aopt) =&gt; {
-                <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = aopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_person_account_get(aopt.aopts.account_id.as_str())
                     .<span class="kw">await
@@ -1452,7 +1454,7 @@
                 }
             }
             PersonOpt::Delete(aopt) =&gt; {
-                <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = aopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">let </span><span class="kw-2">mut </span>modmessage = AccountChangeMessage {
                     output_mode: ConsoleOutputMode::Text,
                     action: <span class="string">&quot;account delete&quot;</span>.to_string(),
@@ -1481,7 +1483,7 @@
                 };
             }
             PersonOpt::Create(acopt) =&gt; {
-                <span class="kw">let </span>client = acopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = acopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_person_account_create(
                         acopt.aopts.account_id.as_str(),
@@ -1491,7 +1493,7 @@
                 </span>{
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
                         <span class="macro">println!</span>(
-                            <span class="string">&quot;Successfully created display_name=\&quot;{}\&quot; username={}&gt;&quot;</span>,
+                            <span class="string">&quot;Successfully created display_name=\&quot;{}\&quot; username={}&quot;</span>,
                             acopt.display_name.as_str(),
                             acopt.aopts.account_id.as_str(),
                         )
@@ -1503,7 +1505,7 @@
             }
             PersonOpt::Validity { commands } =&gt; <span class="kw">match </span>commands {
                 AccountValidity::Show(ano) =&gt; {
-                    <span class="kw">let </span>client = ano.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>client = ano.copt.to_client(OpType::Read).<span class="kw">await</span>;
 
                     <span class="macro">println!</span>(<span class="string">&quot;user: {}&quot;</span>, ano.aopts.account_id.as_str());
                     <span class="kw">let </span>ex = <span class="kw">match </span>client
@@ -1567,7 +1569,7 @@
                     }
                 }
                 AccountValidity::ExpireAt(ano) =&gt; {
-                    <span class="kw">let </span>client = ano.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>client = ano.copt.to_client(OpType::Write).<span class="kw">await</span>;
                     <span class="kw">if </span><span class="macro">matches!</span>(ano.datetime.as_str(), <span class="string">&quot;never&quot; </span>| <span class="string">&quot;clear&quot;</span>) {
                         <span class="comment">// Unset the value
                         </span><span class="kw">match </span>client
@@ -1602,7 +1604,7 @@
                     }
                 }
                 AccountValidity::BeginFrom(ano) =&gt; {
-                    <span class="kw">let </span>client = ano.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>client = ano.copt.to_client(OpType::Write).<span class="kw">await</span>;
                     <span class="kw">if </span><span class="macro">matches!</span>(ano.datetime.as_str(), <span class="string">&quot;any&quot; </span>| <span class="string">&quot;clear&quot; </span>| <span class="string">&quot;whenever&quot;</span>) {
                         <span class="comment">// Unset the value
                         </span><span class="kw">match </span>client
@@ -1655,7 +1657,7 @@
     <span class="kw">pub async fn </span>exec(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match </span><span class="self">self </span>{
             AccountCredential::Status(aopt) =&gt; {
-                <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = aopt.copt.to_client(OpType::Read).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_person_account_get_credential_status(aopt.aopts.account_id.as_str())
                     .<span class="kw">await
@@ -1669,7 +1671,7 @@
                 }
             }
             AccountCredential::Update(aopt) =&gt; {
-                <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = aopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_account_credential_update_begin(aopt.aopts.account_id.as_str())
                     .<span class="kw">await
@@ -1710,7 +1712,7 @@
                 }
             }
             AccountCredential::CreateResetToken(aopt) =&gt; {
-                <span class="kw">let </span>client = aopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = aopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
 
                 <span class="comment">// What&#39;s the client url?
                 </span><span class="kw">match </span>client

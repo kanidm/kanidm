@@ -915,6 +915,9 @@
 <a href="#915" id="915">915</a>
 <a href="#916" id="916">916</a>
 <a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
 </pre><pre class="rust"><code><span class="kw">mod </span>manifest;
 <span class="kw">pub mod </span>middleware;
 <span class="kw">mod </span>oauth2;
@@ -1452,6 +1455,9 @@ Disallow: /
     appserver
         .at(<span class="string">&quot;/v1/auth/valid&quot;</span>)
         .mapped_get(<span class="kw-2">&amp;mut </span>routemap, auth_valid);
+    appserver
+        .at(<span class="string">&quot;/v1/reauth&quot;</span>)
+        .mapped_post(<span class="kw-2">&amp;mut </span>routemap, reauth);
 
     appserver.at(<span class="string">&quot;/v1/logout&quot;</span>).mapped_get(<span class="kw-2">&amp;mut </span>routemap, logout);
 

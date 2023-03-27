@@ -136,6 +136,8 @@
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
 </pre><pre class="rust"><code><span class="attr">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -152,8 +154,8 @@
 #[macro_use]
 </span><span class="kw">extern crate </span>tracing;
 
+<span class="kw">use </span><span class="kw">crate</span>::common::OpType;
 <span class="kw">use </span>std::path::PathBuf;
-
 <span class="kw">use </span>uuid::Uuid;
 
 <span class="macro">include!</span>(<span class="string">&quot;../opt/kanidm.rs&quot;</span>);
@@ -181,7 +183,7 @@
     <span class="kw">pub async fn </span>exec(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match </span><span class="self">self </span>{
             SelfOpt::Whoami(copt) =&gt; {
-                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = copt.to_client(OpType::Read).<span class="kw">await</span>;
 
                 <span class="kw">match </span>client.whoami().<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(o_ent) =&gt; {
@@ -227,6 +229,7 @@
         <span class="kw">match </span><span class="self">self </span>{
             KanidmClientOpt::Raw { commands } =&gt; commands.debug(),
             KanidmClientOpt::Login(lopt) =&gt; lopt.debug(),
+            KanidmClientOpt::Reauth(lopt) =&gt; lopt.debug(),
             KanidmClientOpt::Logout(lopt) =&gt; lopt.debug(),
             KanidmClientOpt::Session { commands } =&gt; commands.debug(),
             KanidmClientOpt::CSelf { commands } =&gt; commands.debug(),
@@ -246,6 +249,7 @@
         <span class="kw">match </span><span class="self">self </span>{
             KanidmClientOpt::Raw { commands } =&gt; commands.exec().<span class="kw">await</span>,
             KanidmClientOpt::Login(lopt) =&gt; lopt.exec().<span class="kw">await</span>,
+            KanidmClientOpt::Reauth(lopt) =&gt; lopt.exec().<span class="kw">await</span>,
             KanidmClientOpt::Logout(lopt) =&gt; lopt.exec().<span class="kw">await</span>,
             KanidmClientOpt::Session { commands } =&gt; commands.exec().<span class="kw">await</span>,
             KanidmClientOpt::CSelf { commands } =&gt; commands.exec().<span class="kw">await</span>,

@@ -41,7 +41,9 @@
 <a href="#41" id="41">41</a>
 <a href="#42" id="42">42</a>
 <a href="#43" id="43">43</a>
-</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::DomainOpt;
+<a href="#44" id="44">44</a>
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::common::OpType;
+<span class="kw">use </span><span class="kw">crate</span>::DomainOpt;
 
 <span class="kw">impl </span>DomainOpt {
     <span class="kw">pub fn </span>debug(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
@@ -58,7 +60,7 @@
                     <span class="string">&quot;Attempting to set the domain&#39;s display name to: {:?}&quot;</span>,
                     opt.new_display_name
                 );
-                <span class="kw">let </span>client = opt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = opt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client
                     .idm_domain_set_display_name(<span class="kw-2">&amp;</span>opt.new_display_name)
                     .<span class="kw">await
@@ -68,14 +70,14 @@
                 }
             }
             DomainOpt::Show(copt) =&gt; {
-                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = copt.to_client(OpType::Read).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_domain_get().<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(e) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, e),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                 }
             }
             DomainOpt::ResetTokenKey(copt) =&gt; {
-                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_domain_reset_token_key().<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),

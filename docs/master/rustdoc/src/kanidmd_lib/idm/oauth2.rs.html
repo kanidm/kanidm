@@ -3820,28 +3820,6 @@
 <a href="#3820" id="3820">3820</a>
 <a href="#3821" id="3821">3821</a>
 <a href="#3822" id="3822">3822</a>
-<a href="#3823" id="3823">3823</a>
-<a href="#3824" id="3824">3824</a>
-<a href="#3825" id="3825">3825</a>
-<a href="#3826" id="3826">3826</a>
-<a href="#3827" id="3827">3827</a>
-<a href="#3828" id="3828">3828</a>
-<a href="#3829" id="3829">3829</a>
-<a href="#3830" id="3830">3830</a>
-<a href="#3831" id="3831">3831</a>
-<a href="#3832" id="3832">3832</a>
-<a href="#3833" id="3833">3833</a>
-<a href="#3834" id="3834">3834</a>
-<a href="#3835" id="3835">3835</a>
-<a href="#3836" id="3836">3836</a>
-<a href="#3837" id="3837">3837</a>
-<a href="#3838" id="3838">3838</a>
-<a href="#3839" id="3839">3839</a>
-<a href="#3840" id="3840">3840</a>
-<a href="#3841" id="3841">3841</a>
-<a href="#3842" id="3842">3842</a>
-<a href="#3843" id="3843">3843</a>
-<a href="#3844" id="3844">3844</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations
 //!
 //! This contains the in memory and loaded set of active oauth2 resource server
@@ -3871,7 +3849,7 @@
     ClaimType, DisplayValue, GrantType, IdTokenSignAlg, ResponseMode, ResponseType, SubjectType,
     TokenEndpointAuthMethod,
 };
-<span class="kw">use </span>kanidm_proto::v1::{AuthType, UserAuthToken};
+<span class="kw">use </span>kanidm_proto::v1::UserAuthToken;
 <span class="kw">use </span>openssl::sha;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>time::OffsetDateTime;
@@ -3970,7 +3948,6 @@
         scopes: Vec&lt;String&gt;,
         parent_session_id: Uuid,
         session_id: Uuid,
-        auth_type: AuthType,
         expiry: time::OffsetDateTime,
         uuid: Uuid,
         iat: i64,
@@ -4485,8 +4462,8 @@
 
         // NOTE: login_hint is handled in the UI code, not here.
 
-        // Deny any uat with an auth method of anonymous
-        </span><span class="kw">if </span>uat.auth_type == AuthType::Anonymous {
+        // Deny anonymous access to oauth2
+        </span><span class="kw">if </span>uat.uuid == UUID_ANONYMOUS {
             <span class="macro">admin_error!</span>(
                 <span class="string">&quot;Invalid oauth2 request - refusing to allow user that authenticated with anonymous&quot;
             </span>);
@@ -4974,7 +4951,9 @@
             // TODO: If max_age was requested in the request, we MUST provide auth_time.
 
             // amr == auth method
-            </span><span class="kw">let </span>amr = <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[code_xchg.uat.auth_type.to_string()]);
+            // We removed this from uat, and I think that it&#39;s okay here. AMR is a bit useless anyway
+            // since there is no standard for what it should look like wrt to cred strength.
+            </span><span class="kw">let </span>amr = <span class="prelude-val">None</span>;
 
             <span class="kw">let </span>iss = o2rs.iss.clone();
 
@@ -5032,7 +5011,6 @@
             scopes: code_xchg.scopes,
             parent_session_id,
             session_id,
-            auth_type: code_xchg.uat.auth_type,
             expiry,
             uuid: code_xchg.uat.uuid,
             iat,
@@ -5116,7 +5094,6 @@
                 scopes,
                 parent_session_id,
                 session_id,
-                auth_type: <span class="kw">_</span>,
                 expiry,
                 uuid,
                 iat,
@@ -5221,7 +5198,6 @@
                 scopes,
                 parent_session_id,
                 session_id,
-                auth_type,
                 expiry,
                 uuid,
                 iat,
@@ -5257,7 +5233,7 @@
                     <span class="prelude-val">Err</span>(err) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(Oauth2Error::ServerError(err)),
                 };
 
-                <span class="kw">let </span>amr = <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[auth_type.to_string()]);
+                <span class="kw">let </span>amr = <span class="prelude-val">None</span>;
 
                 <span class="kw">let </span>iss = o2rs.iss.clone();
 
@@ -5472,7 +5448,7 @@
     <span class="kw">use </span>base64urlsafedata::Base64UrlSafeData;
     <span class="kw">use </span>compact_jwt::{JwaAlg, Jwk, JwkUse, JwsValidator, OidcSubject, OidcUnverified};
     <span class="kw">use </span>kanidm_proto::oauth2::<span class="kw-2">*</span>;
-    <span class="kw">use </span>kanidm_proto::v1::{AuthType, UserAuthToken};
+    <span class="kw">use </span>kanidm_proto::v1::UserAuthToken;
     <span class="kw">use </span>openssl::sha;
 
     <span class="kw">use </span><span class="kw">crate</span>::idm::delayed::DelayedAction;
@@ -5597,12 +5573,7 @@
             .expect(<span class="string">&quot;account must exist&quot;</span>);
         <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
         <span class="kw">let </span>uat = account
-            .to_userauthtoken(
-                session_id,
-                ct,
-                AuthType::PasswordMfa,
-                <span class="prelude-val">Some</span>(AUTH_SESSION_EXPIRY),
-            )
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect(<span class="string">&quot;Unable to create uat&quot;</span>);
         <span class="kw">let </span>ident = idms_prox_write
             .process_uat_to_identity(<span class="kw-2">&amp;</span>uat, ct)
@@ -5613,18 +5584,14 @@
         (secret, uat, ident, uuid)
     }
 
-    <span class="kw">async fn </span>setup_idm_admin(
-        idms: <span class="kw-2">&amp;</span>IdmServer,
-        ct: Duration,
-        authtype: AuthType,
-    ) -&gt; (UserAuthToken, Identity) {
+    <span class="kw">async fn </span>setup_idm_admin(idms: <span class="kw-2">&amp;</span>IdmServer, ct: Duration) -&gt; (UserAuthToken, Identity) {
         <span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(ct).<span class="kw">await</span>;
         <span class="kw">let </span>account = idms_prox_write
             .target_to_account(UUID_IDM_ADMIN)
             .expect(<span class="string">&quot;account must exist&quot;</span>);
         <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
         <span class="kw">let </span>uat = account
-            .to_userauthtoken(session_id, ct, authtype, <span class="prelude-val">Some</span>(AUTH_SESSION_EXPIRY))
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect(<span class="string">&quot;Unable to create uat&quot;</span>);
         <span class="kw">let </span>ident = idms_prox_write
             .process_uat_to_identity(<span class="kw-2">&amp;</span>uat, ct)
@@ -5715,9 +5682,8 @@
         <span class="kw">let </span>(_secret, uat, ident, <span class="kw">_</span>) =
             setup_oauth2_resource_server(idms, ct, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>).<span class="kw">await</span>;
 
-        <span class="kw">let </span>(anon_uat, anon_ident) = setup_idm_admin(idms, ct, AuthType::Anonymous).<span class="kw">await</span>;
-        <span class="kw">let </span>(idm_admin_uat, idm_admin_ident) =
-            setup_idm_admin(idms, ct, AuthType::PasswordMfa).<span class="kw">await</span>;
+        <span class="kw">let </span>(anon_uat, anon_ident) = setup_idm_admin(idms, ct).<span class="kw">await</span>;
+        <span class="kw">let </span>(idm_admin_uat, idm_admin_ident) = setup_idm_admin(idms, ct).<span class="kw">await</span>;
 
         <span class="comment">// Need a uat from a user not in the group. Probs anonymous.
         </span><span class="kw">let </span>idms_prox_read = idms.proxy_read().<span class="kw">await</span>;
@@ -5887,12 +5853,7 @@
                 .expect(<span class="string">&quot;account must exist&quot;</span>);
             <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
             <span class="kw">let </span>uat2 = account
-                .to_userauthtoken(
-                    session_id,
-                    ct,
-                    AuthType::PasswordMfa,
-                    <span class="prelude-val">Some</span>(AUTH_SESSION_EXPIRY),
-                )
+                .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
                 .expect(<span class="string">&quot;Unable to create uat&quot;</span>);
             <span class="kw">let </span>ident2 = idms_prox_write
                 .process_uat_to_identity(<span class="kw-2">&amp;</span>uat2, ct)
@@ -6526,12 +6487,7 @@
                 .expect(<span class="string">&quot;account must exist&quot;</span>);
             <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
             <span class="kw">let </span>uat2 = account
-                .to_userauthtoken(
-                    session_id,
-                    ct,
-                    AuthType::PasswordMfa,
-                    <span class="prelude-val">Some</span>(AUTH_SESSION_EXPIRY),
-                )
+                .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
                 .expect(<span class="string">&quot;Unable to create uat&quot;</span>);
             <span class="kw">let </span>ident2 = idms_prox_write
                 .process_uat_to_identity(<span class="kw-2">&amp;</span>uat2, ct)
@@ -6840,7 +6796,7 @@
         </span><span class="macro">assert!</span>(oidc.nonce == <span class="prelude-val">Some</span>(<span class="string">&quot;abcdef&quot;</span>.to_string()));
         <span class="macro">assert!</span>(oidc.at_hash.is_none());
         <span class="macro">assert!</span>(oidc.acr.is_none());
-        <span class="macro">assert!</span>(oidc.amr == <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="string">&quot;passwordmfa&quot;</span>.to_string()]));
+        <span class="macro">assert!</span>(oidc.amr == <span class="prelude-val">None</span>);
         <span class="macro">assert!</span>(oidc.azp == <span class="prelude-val">Some</span>(<span class="string">&quot;test_resource_server&quot;</span>.to_string()));
         <span class="macro">assert!</span>(oidc.jti.is_none());
         <span class="macro">assert!</span>(oidc.s_claims.name == <span class="prelude-val">Some</span>(<span class="string">&quot;System Administrator&quot;</span>.to_string()));

@@ -780,12 +780,88 @@
 <a href="#780" id="780">780</a>
 <a href="#781" id="781">781</a>
 <a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 <span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>kanidm_proto::v1::{
-    AuthType, BackupCodesView, CredentialStatus, OperationError, UatPurpose, UatStatus, UiHint,
-    UserAuthToken,
+    BackupCodesView, CredentialStatus, OperationError, UatPurpose, UatStatus, UiHint, UserAuthToken,
 };
 <span class="kw">use </span>time::OffsetDateTime;
 <span class="kw">use </span>uuid::Uuid;
@@ -979,27 +1055,97 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_userauthtoken(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         session_id: Uuid,
+        scope: SessionScope,
         ct: Duration,
-        auth_type: AuthType,
-        expiry_secs: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;UserAuthToken&gt; {
-        <span class="comment">// This could consume self?
-        // The cred handler provided is what authenticated this user, so we can use it to
-        // process what the proper claims should be.
-        // Get the claims from the cred_h
-
-        // TODO: Apply policy to this expiry time.
-        </span><span class="kw">let </span>expiry = expiry_secs
-            .map(|offset| OffsetDateTime::unix_epoch() + ct + Duration::from_secs(offset));
-
+        <span class="comment">// TODO: Apply policy to this expiry time.
+        // We have to remove the nanoseconds because when we transmit this / serialise it we drop
+        // the nanoseconds, but if we haven&#39;t done a serialise on the server our db cache has the
+        // ns value which breaks some checks.
+        </span><span class="kw">let </span>ct = ct - Duration::from_nanos(ct.subsec_nanos() <span class="kw">as </span>u64);
         <span class="kw">let </span>issued_at = OffsetDateTime::unix_epoch() + ct;
 
-        <span class="comment">// TODO: Apply priv expiry, and what type of token this is (ident, ro, rw).
-        </span><span class="kw">let </span>purpose = UatPurpose::ReadWrite { expiry };
+        <span class="kw">let </span>expiry =
+            <span class="prelude-val">Some</span>(OffsetDateTime::unix_epoch() + ct + Duration::from_secs(AUTH_SESSION_EXPIRY));
+
+        <span class="kw">let </span>(purpose, expiry) = <span class="kw">match </span>scope {
+            <span class="comment">// Issue an invalid/expired session.
+            </span>SessionScope::Synchronise =&gt; {
+                <span class="macro">warn!</span>(
+                    <span class="string">&quot;Should be impossible to issue sync sessions with a uat. Refusing to proceed.&quot;
+                </span>);
+                <span class="kw">return </span><span class="prelude-val">None</span>;
+            }
+            SessionScope::ReadOnly =&gt; (UatPurpose::ReadOnly, expiry),
+            SessionScope::ReadWrite =&gt; {
+                <span class="comment">// These sessions are always rw, and so have limited life.
+                </span>(UatPurpose::ReadWrite { expiry }, expiry)
+            }
+            SessionScope::PrivilegeCapable =&gt;
+            <span class="comment">// Return a rw capable session with the expiry currently invalid.
+            // These sessions COULD live forever since they can re-auth properly.
+            // Today I&#39;m setting this to 24hr though.
+            </span>{
+                (
+                    UatPurpose::ReadWrite { expiry: <span class="prelude-val">None </span>},
+                    <span class="prelude-val">Some</span>(OffsetDateTime::unix_epoch() + ct + Duration::from_secs(<span class="number">86400</span>)),
+                )
+            }
+        };
 
         <span class="prelude-val">Some</span>(UserAuthToken {
             session_id,
-            auth_type,
+            expiry,
+            issued_at,
+            purpose,
+            uuid: <span class="self">self</span>.uuid,
+            displayname: <span class="self">self</span>.displayname.clone(),
+            spn: <span class="self">self</span>.spn.clone(),
+            mail_primary: <span class="self">self</span>.mail_primary.clone(),
+            ui_hints: <span class="self">self</span>.ui_hints.clone(),
+            <span class="comment">// application: None,
+            // groups: self.groups.iter().map(|g| g.to_proto()).collect(),
+        </span>})
+    }
+
+    <span class="doccomment">/// Given the session_id and other metadata, reissue a user authentication token
+    /// that has elevated privileges. In the future we may adapt this to change what
+    /// scopes are granted per-reauth.
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>to_reissue_userauthtoken(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        session_id: Uuid,
+        session_expiry: <span class="prelude-ty">Option</span>&lt;OffsetDateTime&gt;,
+        scope: SessionScope,
+        ct: Duration,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;UserAuthToken&gt; {
+        <span class="kw">let </span>issued_at = OffsetDateTime::unix_epoch() + ct;
+
+        <span class="kw">let </span>(purpose, expiry) = <span class="kw">match </span>scope {
+            SessionScope::Synchronise | SessionScope::ReadOnly | SessionScope::ReadWrite =&gt; {
+                <span class="macro">warn!</span>(
+                    <span class="string">&quot;Impossible state, should not be re-issuing for session scope {:?}&quot;</span>,
+                    scope
+                );
+                <span class="kw">return </span><span class="prelude-val">None</span>;
+            }
+            SessionScope::PrivilegeCapable =&gt;
+            <span class="comment">// Return a ReadWrite session with an inner expiry for the privileges
+            </span>{
+                <span class="kw">let </span>expiry = <span class="prelude-val">Some</span>(
+                    OffsetDateTime::unix_epoch() + ct + Duration::from_secs(AUTH_PRIVILEGE_EXPIRY),
+                );
+                (
+                    UatPurpose::ReadWrite { expiry },
+                    <span class="comment">// Needs to come from the actual original session. If we don&#39;t do this we have
+                    // to re-update the expiry in the DB. We don&#39;t want a re-auth to extend a time
+                    // bound session.
+                    </span>session_expiry,
+                )
+            }
+        };
+
+        <span class="prelude-val">Some</span>(UserAuthToken {
+            session_id,
             expiry,
             issued_at,
             purpose,
@@ -1239,20 +1385,26 @@
         <span class="comment">// Anonymous does NOT record it&#39;s sessions, so we simply check the expiry time
         // of the token. This is already done for us as noted above.
 
-        </span><span class="kw">if </span>uat.auth_type == AuthType::Anonymous {
+        </span><span class="kw">if </span>uat.uuid == UUID_ANONYMOUS {
             <span class="macro">security_info!</span>(<span class="string">&quot;Anonymous sessions do not have session records, session is valid.&quot;</span>);
             <span class="bool-val">true
         </span>} <span class="kw">else </span>{
             <span class="comment">// Get the sessions.
             </span><span class="kw">let </span>session_present = entry
                 .get_ava_as_session_map(<span class="string">&quot;user_auth_token_session&quot;</span>)
-                .map(|session_map| session_map.get(<span class="kw-2">&amp;</span>uat.session_id).is_some())
-                .unwrap_or(<span class="bool-val">false</span>);
+                .and_then(|session_map| session_map.get(<span class="kw-2">&amp;</span>uat.session_id));
 
-            <span class="kw">if </span>session_present {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(session) = session_present {
                 <span class="macro">security_info!</span>(<span class="string">&quot;A valid session value exists for this token&quot;</span>);
-                <span class="bool-val">true
-            </span>} <span class="kw">else </span>{
+
+                <span class="kw">if </span>session.expiry == uat.expiry {
+                    <span class="bool-val">true
+                </span>} <span class="kw">else </span>{
+                    <span class="macro">security_info!</span>(<span class="string">&quot;Session and uat expiry are not consistent, rejecting.&quot;</span>);
+                    <span class="macro">debug!</span>(ses_exp = <span class="question-mark">?</span>session.expiry, uat_exp = <span class="question-mark">?</span>uat.expiry);
+                    <span class="bool-val">false
+                </span>}
+            } <span class="kw">else </span>{
                 <span class="kw">let </span>grace = uat.issued_at + GRACE_WINDOW;
                 <span class="kw">let </span>current = time::OffsetDateTime::unix_epoch() + ct;
                 <span class="macro">trace!</span>(%grace, %current);
@@ -1318,8 +1470,10 @@
                     f_eq(<span class="string">&quot;user_auth_token_session&quot;</span>, PartialValue::Refer(dte.token_id))
                 ])),
                 <span class="kw-2">&amp;</span>modlist,
-                <span class="comment">// Provide the event to impersonate
-                </span><span class="kw-2">&amp;</span>dte.ident,
+                <span class="comment">// Provide the event to impersonate. Notice how we project this with readwrite
+                // capability? This is because without this we&#39;d force re-auths to end
+                // a session and we don&#39;t want that! you should always be able to logout!
+                </span><span class="kw-2">&amp;</span>dte.ident.project_with_scope(AccessScope::ReadWrite),
             )
             .map_err(|e| {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to destroy user auth token {:?}&quot;</span>, e);
@@ -1465,7 +1619,7 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
-    <span class="kw">use </span>kanidm_proto::v1::{AuthType, UiHint};
+    <span class="kw">use </span>kanidm_proto::v1::UiHint;
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_idm_account_from_anonymous() {
@@ -1501,7 +1655,7 @@
             .expect(<span class="string">&quot;account must exist&quot;</span>);
         <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
         <span class="kw">let </span>uat = account
-            .to_userauthtoken(session_id, ct, AuthType::Passkey, <span class="prelude-val">None</span>)
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect(<span class="string">&quot;Unable to create uat&quot;</span>);
 
         <span class="comment">// Check the ui hints are as expected.
@@ -1526,7 +1680,7 @@
             .expect(<span class="string">&quot;account must exist&quot;</span>);
         <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
         <span class="kw">let </span>uat = account
-            .to_userauthtoken(session_id, ct, AuthType::Passkey, <span class="prelude-val">None</span>)
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect(<span class="string">&quot;Unable to create uat&quot;</span>);
 
         <span class="macro">assert!</span>(uat.ui_hints.len() == <span class="number">2</span>);
@@ -1551,7 +1705,7 @@
             .expect(<span class="string">&quot;account must exist&quot;</span>);
         <span class="kw">let </span>session_id = uuid::Uuid::new_v4();
         <span class="kw">let </span>uat = account
-            .to_userauthtoken(session_id, ct, AuthType::Passkey, <span class="prelude-val">None</span>)
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect(<span class="string">&quot;Unable to create uat&quot;</span>);
 
         <span class="macro">assert!</span>(uat.ui_hints.len() == <span class="number">3</span>);

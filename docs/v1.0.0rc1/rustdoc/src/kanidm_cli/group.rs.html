@@ -148,7 +148,9 @@
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
-</pre><pre class="rust"><code><span class="kw">use crate</span>::{GroupOpt, GroupPosix};
+<a href="#151" id="151">151</a>
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::common::OpType;
+<span class="kw">use crate</span>::{GroupOpt, GroupPosix};
 
 <span class="kw">impl </span>GroupOpt {
     <span class="kw">pub fn </span>debug(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
@@ -172,7 +174,7 @@
     <span class="kw">pub async fn </span>exec(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match </span><span class="self">self </span>{
             GroupOpt::List(copt) =&gt; {
-                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = copt.to_client(OpType::Read).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_group_list().<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(r) =&gt; r.iter().for_each(|ent| <span class="kw">match </span>copt.output_mode.as_str() {
                         <span class="string">&quot;json&quot; </span>=&gt; {
@@ -184,7 +186,7 @@
                 }
             }
             GroupOpt::Get(gcopt) =&gt; {
-                <span class="kw">let </span>client = gcopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = gcopt.copt.to_client(OpType::Read).<span class="kw">await</span>;
                 <span class="comment">// idm_group_get
                 </span><span class="kw">match </span>client.idm_group_get(gcopt.name.as_str()).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(e)) =&gt; <span class="kw">match </span>gcopt.copt.output_mode.as_str() {
@@ -198,7 +200,7 @@
                 }
             }
             GroupOpt::Create(gcopt) =&gt; {
-                <span class="kw">let </span>client = gcopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = gcopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_group_create(gcopt.name.as_str()).<span class="kw">await </span>{
                     <span class="prelude-val">Err</span>(err) =&gt; {
                         <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, err)
@@ -207,14 +209,14 @@
                 }
             }
             GroupOpt::Delete(gcopt) =&gt; {
-                <span class="kw">let </span>client = gcopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = gcopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_group_delete(gcopt.name.as_str()).<span class="kw">await </span>{
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Successfully deleted group {}&quot;</span>, gcopt.name.as_str()),
                 }
             }
             GroupOpt::PurgeMembers(gcopt) =&gt; {
-                <span class="kw">let </span>client = gcopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = gcopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_group_purge_members(gcopt.name.as_str()).<span class="kw">await </span>{
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(
@@ -224,7 +226,7 @@
                 }
             }
             GroupOpt::ListMembers(gcopt) =&gt; {
-                <span class="kw">let </span>client = gcopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = gcopt.copt.to_client(OpType::Read).<span class="kw">await</span>;
                 <span class="kw">match </span>client.idm_group_get_members(gcopt.name.as_str()).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(groups)) =&gt; groups.iter().for_each(|m| <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, m)),
                     <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; <span class="macro">warn!</span>(<span class="string">&quot;No members in group {}&quot;</span>, gcopt.name.as_str()),
@@ -232,7 +234,7 @@
                 }
             }
             GroupOpt::AddMembers(gcopt) =&gt; {
-                <span class="kw">let </span>client = gcopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = gcopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">let </span>new_members: Vec&lt;<span class="kw-2">&amp;</span>str&gt; = gcopt.members.iter().map(String::as_str).collect();
 
                 <span class="kw">match </span>client
@@ -249,7 +251,7 @@
             }
 
             GroupOpt::RemoveMembers(gcopt) =&gt; {
-                <span class="kw">let </span>client = gcopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = gcopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">let </span>remove_members: Vec&lt;<span class="kw-2">&amp;</span>str&gt; = gcopt.members.iter().map(String::as_str).collect();
 
                 <span class="kw">match </span>client
@@ -262,7 +264,7 @@
             }
 
             GroupOpt::SetMembers(gcopt) =&gt; {
-                <span class="kw">let </span>client = gcopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = gcopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">let </span>new_members: Vec&lt;<span class="kw-2">&amp;</span>str&gt; = gcopt.members.iter().map(String::as_str).collect();
 
                 <span class="kw">match </span>client
@@ -275,14 +277,14 @@
             }
             GroupOpt::Posix { commands } =&gt; <span class="kw">match </span>commands {
                 GroupPosix::Show(gcopt) =&gt; {
-                    <span class="kw">let </span>client = gcopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>client = gcopt.copt.to_client(OpType::Read).<span class="kw">await</span>;
                     <span class="kw">match </span>client.idm_group_unix_token_get(gcopt.name.as_str()).<span class="kw">await </span>{
                         <span class="prelude-val">Ok</span>(token) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, token),
                         <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e),
                     }
                 }
                 GroupPosix::Set(gcopt) =&gt; {
-                    <span class="kw">let </span>client = gcopt.copt.to_client().<span class="kw">await</span>;
+                    <span class="kw">let </span>client = gcopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                     <span class="kw">match </span>client
                         .idm_group_unix_extend(gcopt.name.as_str(), gcopt.gidnumber)
                         .<span class="kw">await

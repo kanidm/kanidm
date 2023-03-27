@@ -39,7 +39,9 @@
 <a href="#39" id="39">39</a>
 <a href="#40" id="40">40</a>
 <a href="#41" id="41">41</a>
-</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::RecycleOpt;
+<a href="#42" id="42">42</a>
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::common::OpType;
+<span class="kw">use </span><span class="kw">crate</span>::RecycleOpt;
 
 <span class="kw">impl </span>RecycleOpt {
     <span class="kw">pub fn </span>debug(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
@@ -53,7 +55,7 @@
     <span class="kw">pub async fn </span>exec(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match </span><span class="self">self </span>{
             RecycleOpt::List(copt) =&gt; {
-                <span class="kw">let </span>client = copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = copt.to_client(OpType::Read).<span class="kw">await</span>;
                 <span class="kw">match </span>client.recycle_bin_list().<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(r) =&gt; r.iter().for_each(|e| <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, e)),
                     <span class="prelude-val">Err</span>(e) =&gt; {
@@ -62,7 +64,7 @@
                 }
             }
             RecycleOpt::Get(nopt) =&gt; {
-                <span class="kw">let </span>client = nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = nopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">match </span>client.recycle_bin_get(nopt.name.as_str()).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(e)) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, e),
                     <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;No matching entries&quot;</span>),
@@ -72,7 +74,7 @@
                 }
             }
             RecycleOpt::Revive(nopt) =&gt; {
-                <span class="kw">let </span>client = nopt.copt.to_client().<span class="kw">await</span>;
+                <span class="kw">let </span>client = nopt.copt.to_client(OpType::Write).<span class="kw">await</span>;
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = client.recycle_bin_revive(nopt.name.as_str()).<span class="kw">await </span>{
                     <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, e);
                 }
