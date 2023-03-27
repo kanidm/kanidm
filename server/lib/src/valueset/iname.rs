@@ -102,7 +102,11 @@ impl ValueSetT for ValueSetIname {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        self.set.iter().all(|s| Value::validate_iname(s.as_str()))
+        self.set.iter().all(|s| {
+            Value::validate_str_escapes(s)
+                && Value::validate_singleline(s)
+                && Value::validate_iname(s.as_str())
+        })
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {

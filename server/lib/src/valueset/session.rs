@@ -1088,7 +1088,9 @@ impl ValueSetT for ValueSetApiToken {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        true
+        self.map.iter().all(|(_, at)| {
+            Value::validate_str_escapes(&at.label) && Value::validate_singleline(&at.label)
+        })
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
