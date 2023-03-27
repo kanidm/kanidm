@@ -25,3 +25,4 @@ windows = { version = "0.44.0", features = [
 	"Win32_System_Kernel",
 	"Win32_System_Threading",
 ] }
+tracing.workspace = true
