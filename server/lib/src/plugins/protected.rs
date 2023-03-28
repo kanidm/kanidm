@@ -16,7 +16,7 @@ pub struct Protected {}
 
 lazy_static! {
     static ref ALLOWED_ATTRS: HashSet<&'static str> = {
-        let mut m = HashSet::with_capacity(8);
+        let mut m = HashSet::with_capacity(16);
         // Allow modification of some schema class types to allow local extension
         // of schema types.
         //
@@ -24,6 +24,7 @@ lazy_static! {
         m.insert("may");
         // Allow modification of some domain info types for local configuration.
         m.insert("domain_ssid");
+        m.insert("domain_ldap_basedn");
         m.insert("fernet_private_key_str");
         m.insert("es256_private_key_der");
         m.insert("badlist_password");

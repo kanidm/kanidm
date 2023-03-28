@@ -41,7 +41,7 @@ lazy_static! {
         Regex::new("(?P<name>[^@]+)@(?P<realm>[^@]+)").expect("Invalid SPN regex found")
     };
     pub static ref DISALLOWED_NAMES: HashSet<&'static str> = {
-        let mut m = HashSet::with_capacity(10);
+        let mut m = HashSet::with_capacity(16);
         m.insert("root");
         m.insert("nobody");
         m.insert("nogroup");
@@ -52,6 +52,7 @@ lazy_static! {
         m.insert("mail");
         m.insert("man");
         m.insert("administrator");
+        m.insert("dn=token");
         m
     };
 
