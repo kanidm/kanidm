@@ -67,12 +67,15 @@ impl LdapServer {
             .qs_read
             .internal_search_uuid(UUID_DOMAIN_INFO)?;
 
-        let domain_name = domain_entry
-            .get_ava_single_iname("domain_name")
+        let basedn = domain_entry
+            .get_ava_single_iutf8("domain_ldap_basedn")
             .map(|s| s.to_string())
+            .or_else(|| {
+                domain_entry
+                    .get_ava_single_iname("domain_name")
+                    .map(|domain_name| ldap_domain_to_dc(domain_name))
+            })
             .ok_or(OperationError::InvalidEntryState)?;
-
-        let basedn = ldap_domain_to_dc(domain_name.as_str());
 
         let dnre = Regex::new(format!("^((?P<attr>[^=]+)=(?P<val>[^=]+),)?{basedn}$").as_str())
             .map_err(|_| OperationError::InvalidEntryState)?;
@@ -84,27 +87,27 @@ impl LdapServer {
             dn: "".to_string(),
             attributes: vec![
                 LdapPartialAttribute {
-                    atype: "objectClass".to_string(),
+                    atype: "objectclass".to_string(),
                     vals: vec!["top".as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
-                    atype: "vendorName".to_string(),
+                    atype: "vendorname".to_string(),
                     vals: vec!["Kanidm Project".as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
-                    atype: "vendorVersion".to_string(),
-                    vals: vec!["kanidm_ldap_1.0.0".as_bytes().to_vec()],
+                    atype: "vendorversion".to_string(),
+                    vals: vec![env!("CARGO_PKG_VERSION").as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
-                    atype: "supportedLDAPVersion".to_string(),
+                    atype: "supportedldapversion".to_string(),
                     vals: vec!["3".as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
-                    atype: "supportedExtension".to_string(),
+                    atype: "supportedextension".to_string(),
                     vals: vec!["1.3.6.1.4.1.4203.1.11.3".as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
-                    atype: "supportedFeatures".to_string(),
+                    atype: "supportedfeatures".to_string(),
                     vals: vec!["1.3.6.1.4.1.4203.1.5.1".as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
@@ -1156,6 +1159,93 @@ mod tests {
                     ("displayname", "testperson1"),
                     ("uuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                     ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                );
+            }
+            _ => assert!(false),
+        };
+    }
+
+    #[idm_test]
+    async fn test_ldap_rootdse_basedn_change(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+
+        let sr = SearchRequest {
+            msgid: 1,
+            base: "".to_string(),
+            scope: LdapSearchScope::Base,
+            filter: LdapFilter::Present("objectclass".to_string()),
+            attrs: vec!["*".to_string()],
+        };
+        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
+
+        trace!(?r1);
+
+        // The result, and the ldap proto success msg.
+        assert!(r1.len() == 2);
+        match &r1[0].op {
+            LdapOp::SearchResultEntry(lsre) => {
+                assert_entry_contains!(
+                    lsre,
+                    "",
+                    ("objectclass", "top"),
+                    ("vendorname", "Kanidm Project"),
+                    ("supportedldapversion", "3"),
+                    ("defaultnamingcontext", "dc=example,dc=com")
+                );
+            }
+            _ => assert!(false),
+        };
+
+        drop(ldaps);
+
+        // Change the domain basedn
+
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        // make the admin a valid posix account
+        let me_posix = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO))),
+                ModifyList::new_purge_and_set(
+                    "domain_ldap_basedn",
+                    Value::new_iutf8("o=kanidmproject"),
+                ),
+            )
+        };
+        assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Now re-test
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+
+        let sr = SearchRequest {
+            msgid: 1,
+            base: "".to_string(),
+            scope: LdapSearchScope::Base,
+            filter: LdapFilter::Present("objectclass".to_string()),
+            attrs: vec!["*".to_string()],
+        };
+        let r1 = ldaps.do_search(idms, &sr, &anon_t).await.unwrap();
+
+        trace!(?r1);
+
+        // The result, and the ldap proto success msg.
+        assert!(r1.len() == 2);
+        match &r1[0].op {
+            LdapOp::SearchResultEntry(lsre) => {
+                assert_entry_contains!(
+                    lsre,
+                    "",
+                    ("objectclass", "top"),
+                    ("vendorname", "Kanidm Project"),
+                    ("supportedldapversion", "3"),
+                    ("defaultnamingcontext", "o=kanidmproject")
                 );
             }
             _ => assert!(false),

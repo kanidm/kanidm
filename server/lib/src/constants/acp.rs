@@ -1171,6 +1171,7 @@ pub const JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &str = r#"{
         "acp_search_attr": [
             "domain_display_name",
             "domain_name",
+            "domain_ldap_basedn",
             "domain_ssid",
             "domain_uuid",
             "es256_private_key_der",
@@ -1181,6 +1182,7 @@ pub const JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &str = r#"{
         ],
         "acp_modify_removedattr": [
             "domain_display_name",
+            "domain_ldap_basedn",
             "domain_ssid",
             "es256_private_key_der",
             "cookie_private_key",
@@ -1188,6 +1190,7 @@ pub const JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &str = r#"{
         ],
         "acp_modify_presentattr": [
             "domain_display_name",
+            "domain_ldap_basedn",
             "domain_ssid"
         ]
     }
