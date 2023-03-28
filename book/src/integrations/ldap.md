@@ -168,7 +168,7 @@ kanidm system domain set-ldap-basedn o=kanidm -D admin
 ```
 
 Basedns are validated to ensure they are either `dc=`, `ou=` or `o=`. They must have one or more of
-these components and must only contain alphanumberic characters.
+these components and must only contain alphanumeric characters.
 
 After the basedn is changed, the new value will take effect after a server restart. If you have a
 replicated topology, you must restart all servers.
