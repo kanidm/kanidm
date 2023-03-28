@@ -1962,6 +1962,7 @@
 <a href="#1962" id="1962">1962</a>
 <a href="#1963" id="1963">1963</a>
 <a href="#1964" id="1964">1964</a>
+<a href="#1965" id="1965">1965</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of
 //! the [`Value`] module allow storage and transformation of various types of input into strongly
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
@@ -2005,7 +2006,7 @@
         </span>Regex::new(<span class="string">&quot;(?P&lt;name&gt;[^@]+)@(?P&lt;realm&gt;[^@]+)&quot;</span>).expect(<span class="string">&quot;Invalid SPN regex found&quot;</span>)
     };
     <span class="kw">pub static </span><span class="kw-2">ref </span>DISALLOWED_NAMES: HashSet&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt; = {
-        <span class="kw">let </span><span class="kw-2">mut </span>m = HashSet::with_capacity(<span class="number">10</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>m = HashSet::with_capacity(<span class="number">16</span>);
         m.insert(<span class="string">&quot;root&quot;</span>);
         m.insert(<span class="string">&quot;nobody&quot;</span>);
         m.insert(<span class="string">&quot;nogroup&quot;</span>);
@@ -2016,6 +2017,7 @@
         m.insert(<span class="string">&quot;mail&quot;</span>);
         m.insert(<span class="string">&quot;man&quot;</span>);
         m.insert(<span class="string">&quot;administrator&quot;</span>);
+        m.insert(<span class="string">&quot;dn=token&quot;</span>);
         m
     };
 

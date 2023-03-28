@@ -1162,6 +1162,96 @@
 <a href="#1162" id="1162">1162</a>
 <a href="#1163" id="1163">1163</a>
 <a href="#1164" id="1164">1164</a>
+<a href="#1165" id="1165">1165</a>
+<a href="#1166" id="1166">1166</a>
+<a href="#1167" id="1167">1167</a>
+<a href="#1168" id="1168">1168</a>
+<a href="#1169" id="1169">1169</a>
+<a href="#1170" id="1170">1170</a>
+<a href="#1171" id="1171">1171</a>
+<a href="#1172" id="1172">1172</a>
+<a href="#1173" id="1173">1173</a>
+<a href="#1174" id="1174">1174</a>
+<a href="#1175" id="1175">1175</a>
+<a href="#1176" id="1176">1176</a>
+<a href="#1177" id="1177">1177</a>
+<a href="#1178" id="1178">1178</a>
+<a href="#1179" id="1179">1179</a>
+<a href="#1180" id="1180">1180</a>
+<a href="#1181" id="1181">1181</a>
+<a href="#1182" id="1182">1182</a>
+<a href="#1183" id="1183">1183</a>
+<a href="#1184" id="1184">1184</a>
+<a href="#1185" id="1185">1185</a>
+<a href="#1186" id="1186">1186</a>
+<a href="#1187" id="1187">1187</a>
+<a href="#1188" id="1188">1188</a>
+<a href="#1189" id="1189">1189</a>
+<a href="#1190" id="1190">1190</a>
+<a href="#1191" id="1191">1191</a>
+<a href="#1192" id="1192">1192</a>
+<a href="#1193" id="1193">1193</a>
+<a href="#1194" id="1194">1194</a>
+<a href="#1195" id="1195">1195</a>
+<a href="#1196" id="1196">1196</a>
+<a href="#1197" id="1197">1197</a>
+<a href="#1198" id="1198">1198</a>
+<a href="#1199" id="1199">1199</a>
+<a href="#1200" id="1200">1200</a>
+<a href="#1201" id="1201">1201</a>
+<a href="#1202" id="1202">1202</a>
+<a href="#1203" id="1203">1203</a>
+<a href="#1204" id="1204">1204</a>
+<a href="#1205" id="1205">1205</a>
+<a href="#1206" id="1206">1206</a>
+<a href="#1207" id="1207">1207</a>
+<a href="#1208" id="1208">1208</a>
+<a href="#1209" id="1209">1209</a>
+<a href="#1210" id="1210">1210</a>
+<a href="#1211" id="1211">1211</a>
+<a href="#1212" id="1212">1212</a>
+<a href="#1213" id="1213">1213</a>
+<a href="#1214" id="1214">1214</a>
+<a href="#1215" id="1215">1215</a>
+<a href="#1216" id="1216">1216</a>
+<a href="#1217" id="1217">1217</a>
+<a href="#1218" id="1218">1218</a>
+<a href="#1219" id="1219">1219</a>
+<a href="#1220" id="1220">1220</a>
+<a href="#1221" id="1221">1221</a>
+<a href="#1222" id="1222">1222</a>
+<a href="#1223" id="1223">1223</a>
+<a href="#1224" id="1224">1224</a>
+<a href="#1225" id="1225">1225</a>
+<a href="#1226" id="1226">1226</a>
+<a href="#1227" id="1227">1227</a>
+<a href="#1228" id="1228">1228</a>
+<a href="#1229" id="1229">1229</a>
+<a href="#1230" id="1230">1230</a>
+<a href="#1231" id="1231">1231</a>
+<a href="#1232" id="1232">1232</a>
+<a href="#1233" id="1233">1233</a>
+<a href="#1234" id="1234">1234</a>
+<a href="#1235" id="1235">1235</a>
+<a href="#1236" id="1236">1236</a>
+<a href="#1237" id="1237">1237</a>
+<a href="#1238" id="1238">1238</a>
+<a href="#1239" id="1239">1239</a>
+<a href="#1240" id="1240">1240</a>
+<a href="#1241" id="1241">1241</a>
+<a href="#1242" id="1242">1242</a>
+<a href="#1243" id="1243">1243</a>
+<a href="#1244" id="1244">1244</a>
+<a href="#1245" id="1245">1245</a>
+<a href="#1246" id="1246">1246</a>
+<a href="#1247" id="1247">1247</a>
+<a href="#1248" id="1248">1248</a>
+<a href="#1249" id="1249">1249</a>
+<a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
+<a href="#1253" id="1253">1253</a>
+<a href="#1254" id="1254">1254</a>
 </pre><pre class="rust"><code><span class="doccomment">//! LDAP specific operations handling components. This is where LDAP operations
 //! are sent to for processing.
 
@@ -1231,12 +1321,15 @@
             .qs_read
             .internal_search_uuid(UUID_DOMAIN_INFO)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>domain_name = domain_entry
-            .get_ava_single_iname(<span class="string">&quot;domain_name&quot;</span>)
+        <span class="kw">let </span>basedn = domain_entry
+            .get_ava_single_iutf8(<span class="string">&quot;domain_ldap_basedn&quot;</span>)
             .map(|s| s.to_string())
+            .or_else(|| {
+                domain_entry
+                    .get_ava_single_iname(<span class="string">&quot;domain_name&quot;</span>)
+                    .map(|domain_name| ldap_domain_to_dc(domain_name))
+            })
             .ok_or(OperationError::InvalidEntryState)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>basedn = ldap_domain_to_dc(domain_name.as_str());
 
         <span class="kw">let </span>dnre = Regex::new(<span class="macro">format!</span>(<span class="string">&quot;^((?P&lt;attr&gt;[^=]+)=(?P&lt;val&gt;[^=]+),)?{basedn}$&quot;</span>).as_str())
             .map_err(|<span class="kw">_</span>| OperationError::InvalidEntryState)<span class="question-mark">?</span>;
@@ -1248,27 +1341,27 @@
             dn: <span class="string">&quot;&quot;</span>.to_string(),
             attributes: <span class="macro">vec!</span>[
                 LdapPartialAttribute {
-                    atype: <span class="string">&quot;objectClass&quot;</span>.to_string(),
+                    atype: <span class="string">&quot;objectclass&quot;</span>.to_string(),
                     vals: <span class="macro">vec!</span>[<span class="string">&quot;top&quot;</span>.as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
-                    atype: <span class="string">&quot;vendorName&quot;</span>.to_string(),
+                    atype: <span class="string">&quot;vendorname&quot;</span>.to_string(),
                     vals: <span class="macro">vec!</span>[<span class="string">&quot;Kanidm Project&quot;</span>.as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
-                    atype: <span class="string">&quot;vendorVersion&quot;</span>.to_string(),
-                    vals: <span class="macro">vec!</span>[<span class="string">&quot;kanidm_ldap_1.0.0&quot;</span>.as_bytes().to_vec()],
+                    atype: <span class="string">&quot;vendorversion&quot;</span>.to_string(),
+                    vals: <span class="macro">vec!</span>[<span class="macro">env!</span>(<span class="string">&quot;CARGO_PKG_VERSION&quot;</span>).as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
-                    atype: <span class="string">&quot;supportedLDAPVersion&quot;</span>.to_string(),
+                    atype: <span class="string">&quot;supportedldapversion&quot;</span>.to_string(),
                     vals: <span class="macro">vec!</span>[<span class="string">&quot;3&quot;</span>.as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
-                    atype: <span class="string">&quot;supportedExtension&quot;</span>.to_string(),
+                    atype: <span class="string">&quot;supportedextension&quot;</span>.to_string(),
                     vals: <span class="macro">vec!</span>[<span class="string">&quot;1.3.6.1.4.1.4203.1.11.3&quot;</span>.as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
-                    atype: <span class="string">&quot;supportedFeatures&quot;</span>.to_string(),
+                    atype: <span class="string">&quot;supportedfeatures&quot;</span>.to_string(),
                     vals: <span class="macro">vec!</span>[<span class="string">&quot;1.3.6.1.4.1.4203.1.5.1&quot;</span>.as_bytes().to_vec()],
                 },
                 LdapPartialAttribute {
@@ -2320,6 +2413,93 @@
                     (<span class="string">&quot;displayname&quot;</span>, <span class="string">&quot;testperson1&quot;</span>),
                     (<span class="string">&quot;uuid&quot;</span>, <span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>),
                     (<span class="string">&quot;entryuuid&quot;</span>, <span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>)
+                );
+            }
+            <span class="kw">_ </span>=&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+        };
+    }
+
+    <span class="attr">#[idm_test]
+    </span><span class="kw">async fn </span>test_ldap_rootdse_basedn_change(idms: <span class="kw-2">&amp;</span>IdmServer, _idms_delayed: <span class="kw-2">&amp;</span>IdmServerDelayed) {
+        <span class="kw">let </span>ldaps = LdapServer::new(idms).<span class="kw">await</span>.expect(<span class="string">&quot;failed to start ldap&quot;</span>);
+
+        <span class="kw">let </span>anon_t = ldaps.do_bind(idms, <span class="string">&quot;&quot;</span>, <span class="string">&quot;&quot;</span>).<span class="kw">await</span>.unwrap().unwrap();
+        <span class="macro">assert!</span>(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+
+        <span class="kw">let </span>sr = SearchRequest {
+            msgid: <span class="number">1</span>,
+            base: <span class="string">&quot;&quot;</span>.to_string(),
+            scope: LdapSearchScope::Base,
+            filter: LdapFilter::Present(<span class="string">&quot;objectclass&quot;</span>.to_string()),
+            attrs: <span class="macro">vec!</span>[<span class="string">&quot;*&quot;</span>.to_string()],
+        };
+        <span class="kw">let </span>r1 = ldaps.do_search(idms, <span class="kw-2">&amp;</span>sr, <span class="kw-2">&amp;</span>anon_t).<span class="kw">await</span>.unwrap();
+
+        <span class="macro">trace!</span>(<span class="question-mark">?</span>r1);
+
+        <span class="comment">// The result, and the ldap proto success msg.
+        </span><span class="macro">assert!</span>(r1.len() == <span class="number">2</span>);
+        <span class="kw">match </span><span class="kw-2">&amp;</span>r1[<span class="number">0</span>].op {
+            LdapOp::SearchResultEntry(lsre) =&gt; {
+                <span class="macro">assert_entry_contains!</span>(
+                    lsre,
+                    <span class="string">&quot;&quot;</span>,
+                    (<span class="string">&quot;objectclass&quot;</span>, <span class="string">&quot;top&quot;</span>),
+                    (<span class="string">&quot;vendorname&quot;</span>, <span class="string">&quot;Kanidm Project&quot;</span>),
+                    (<span class="string">&quot;supportedldapversion&quot;</span>, <span class="string">&quot;3&quot;</span>),
+                    (<span class="string">&quot;defaultnamingcontext&quot;</span>, <span class="string">&quot;dc=example,dc=com&quot;</span>)
+                );
+            }
+            <span class="kw">_ </span>=&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+        };
+
+        drop(ldaps);
+
+        <span class="comment">// Change the domain basedn
+
+        </span><span class="kw">let </span><span class="kw-2">mut </span>idms_prox_write = idms.proxy_write(duration_from_epoch_now()).<span class="kw">await</span>;
+        <span class="comment">// make the admin a valid posix account
+        </span><span class="kw">let </span>me_posix = <span class="kw">unsafe </span>{
+            ModifyEvent::new_internal_invalid(
+                <span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(UUID_DOMAIN_INFO))),
+                ModifyList::new_purge_and_set(
+                    <span class="string">&quot;domain_ldap_basedn&quot;</span>,
+                    Value::new_iutf8(<span class="string">&quot;o=kanidmproject&quot;</span>),
+                ),
+            )
+        };
+        <span class="macro">assert!</span>(idms_prox_write.qs_write.modify(<span class="kw-2">&amp;</span>me_posix).is_ok());
+
+        <span class="macro">assert!</span>(idms_prox_write.commit().is_ok());
+
+        <span class="comment">// Now re-test
+        </span><span class="kw">let </span>ldaps = LdapServer::new(idms).<span class="kw">await</span>.expect(<span class="string">&quot;failed to start ldap&quot;</span>);
+
+        <span class="kw">let </span>anon_t = ldaps.do_bind(idms, <span class="string">&quot;&quot;</span>, <span class="string">&quot;&quot;</span>).<span class="kw">await</span>.unwrap().unwrap();
+        <span class="macro">assert!</span>(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+
+        <span class="kw">let </span>sr = SearchRequest {
+            msgid: <span class="number">1</span>,
+            base: <span class="string">&quot;&quot;</span>.to_string(),
+            scope: LdapSearchScope::Base,
+            filter: LdapFilter::Present(<span class="string">&quot;objectclass&quot;</span>.to_string()),
+            attrs: <span class="macro">vec!</span>[<span class="string">&quot;*&quot;</span>.to_string()],
+        };
+        <span class="kw">let </span>r1 = ldaps.do_search(idms, <span class="kw-2">&amp;</span>sr, <span class="kw-2">&amp;</span>anon_t).<span class="kw">await</span>.unwrap();
+
+        <span class="macro">trace!</span>(<span class="question-mark">?</span>r1);
+
+        <span class="comment">// The result, and the ldap proto success msg.
+        </span><span class="macro">assert!</span>(r1.len() == <span class="number">2</span>);
+        <span class="kw">match </span><span class="kw-2">&amp;</span>r1[<span class="number">0</span>].op {
+            LdapOp::SearchResultEntry(lsre) =&gt; {
+                <span class="macro">assert_entry_contains!</span>(
+                    lsre,
+                    <span class="string">&quot;&quot;</span>,
+                    (<span class="string">&quot;objectclass&quot;</span>, <span class="string">&quot;top&quot;</span>),
+                    (<span class="string">&quot;vendorname&quot;</span>, <span class="string">&quot;Kanidm Project&quot;</span>),
+                    (<span class="string">&quot;supportedldapversion&quot;</span>, <span class="string">&quot;3&quot;</span>),
+                    (<span class="string">&quot;defaultnamingcontext&quot;</span>, <span class="string">&quot;o=kanidmproject&quot;</span>)
                 );
             }
             <span class="kw">_ </span>=&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),

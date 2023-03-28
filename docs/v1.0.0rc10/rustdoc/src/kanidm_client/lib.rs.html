@@ -1987,6 +1987,14 @@
 <a href="#1987" id="1987">1987</a>
 <a href="#1988" id="1988">1988</a>
 <a href="#1989" id="1989">1989</a>
+<a href="#1990" id="1990">1990</a>
+<a href="#1991" id="1991">1991</a>
+<a href="#1992" id="1992">1992</a>
+<a href="#1993" id="1993">1993</a>
+<a href="#1994" id="1994">1994</a>
+<a href="#1995" id="1995">1995</a>
+<a href="#1996" id="1996">1996</a>
+<a href="#1997" id="1997">1997</a>
 </pre><pre class="rust"><code><span class="attr">#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
@@ -3689,6 +3697,14 @@
         <span class="self">self</span>.perform_put_request(
             <span class="string">&quot;/v1/domain/_attr/domain_display_name&quot;</span>,
             <span class="macro">vec!</span>[new_display_name.to_string()],
+        )
+        .<span class="kw">await
+    </span>}
+
+    <span class="kw">pub async fn </span>idm_domain_set_ldap_basedn(<span class="kw-2">&amp;</span><span class="self">self</span>, new_basedn: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(), ClientError&gt; {
+        <span class="self">self</span>.perform_put_request(
+            <span class="string">&quot;/v1/domain/_attr/domain_ldap_basedn&quot;</span>,
+            <span class="macro">vec!</span>[new_basedn.to_string()],
         )
         .<span class="kw">await
     </span>}

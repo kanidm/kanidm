@@ -2288,21 +2288,21 @@ number, where LDAP's schemas define both a UID number and a GID number.</p>
 tree. Kanidm is a flat model, so we have to emulate some tree-like elements, and ignore others.</p>
 <p>For this reason, when you search the LDAP interface, Kanidm will make some mapping decisions.</p>
 <ul>
-<li>The Kanidm domain name is used to generate the DN of the suffix.</li>
+<li>The Kanidm domain name is used to generate the DN of the suffix by default.</li>
 <li>The domain_info object becomes the suffix root.</li>
 <li>All other entries are direct subordinates of the domain_info for DN purposes.</li>
 <li>Distinguished Names (DNs) are generated from the spn, name, or uuid attribute.</li>
 <li>Bind DNs can be remapped and rewritten, and may not even be a DN during bind.</li>
-<li>The '*' and '+' operators can not be used in conjunction with attribute lists in searches.</li>
 </ul>
 <p>These decisions were made to make the path as simple and effective as possible, relying more on the
-Kanidm query and filter system than attempting to generate a tree-like representation of data. As
-almost all clients can use filters for entry selection we don't believe this is a limitation for the
-consuming applications.</p>
+Kanidm query and filter system rather than attempting to generate a tree-like representation of
+data. As almost all clients can use filters for entry selection we don't believe this is a
+limitation for the consuming applications.</p>
 <h2 id="security"><a class="header" href="#security">Security</a></h2>
 <h3 id="tls-1"><a class="header" href="#tls-1">TLS</a></h3>
-<p>StartTLS is not supported due to security risks. LDAPS is the only secure method of communicating to
-any LDAP server. Kanidm will use it's certificates for both HTTPS and LDAPS.</p>
+<p>StartTLS is not supported due to security risks such as credential leakage and MITM attacks that are
+fundamental in how StartTLS works and can not be repaired. LDAPS is the only secure method of
+communicating to any LDAP server. Kanidm will use it's certificates for both HTTPS and LDAPS.</p>
 <h3 id="writes"><a class="header" href="#writes">Writes</a></h3>
 <p>LDAP's structure is too simplistic for writing to the complex entries that Kanidm internally
 contains. As a result, writes are rejected for all users via the LDAP interface.</p>
@@ -2311,9 +2311,12 @@ contains. As a result, writes are rejected for all users via the LDAP interface.
 bind for any DN will use its configured posix password.</p>
 <p>As the POSIX password is not equivalent in strength to the primary credentials of Kanidm (which in
 most cases is multi-factor authentication), the LDAP bind does not grant rights to elevated read
-permissions. All binds have the permissions of &quot;Anonymous&quot; even if the anonymous account is locked.</p>
+permissions. All binds have the permissions of &quot;anonymous&quot; even if the anonymous account is locked.</p>
 <p>The exception is service accounts which can use api-tokens during an LDAP bind for elevated read
 permissions.</p>
+<h3 id="filtering-objects"><a class="header" href="#filtering-objects">Filtering Objects</a></h3>
+<p>It is recommended that client applications filter accounts that can authenticate with
+<code>(class=account)</code> and groups with <code>(class=group)</code>.</p>
 <h2 id="server-configuration-1"><a class="header" href="#server-configuration-1">Server Configuration</a></h2>
 <p>To configure Kanidm to provide LDAP, add the argument to the <code>server.toml</code> configuration:</p>
 <pre><code class="language-toml">ldapbindaddress = &quot;127.0.0.1:3636&quot;
@@ -2331,6 +2334,7 @@ an issue with your requirements for attribute maps.</p>
 <p>To show what attribute maps exists for an entry you can use the attribute search term '+'.</p>
 <pre><code class="language-bash"># To show Kanidm attributes
 ldapsearch ... -x '(name=admin)' '*'
+
 # To show all attribute maps
 ldapsearch ... -x '(name=admin)' '+'
 </code></pre>
@@ -2338,6 +2342,9 @@ ldapsearch ... -x '(name=admin)' '+'
 Kanidm native attributes.</p>
 <pre><code class="language-bash">ldapsearch ... -x '(name=admin)' cn objectClass displayname memberof
 </code></pre>
+<h2 id="group-memberships"><a class="header" href="#group-memberships">Group Memberships</a></h2>
+<p>Group membership is defined in rfc2307bis or Active Directory style. This means groups are
+determined from the &quot;memberof&quot; attribute which contains a DN to a group.</p>
 <h2 id="service-accounts"><a class="header" href="#service-accounts">Service Accounts</a></h2>
 <p>If you have
 <a href="integrations/../accounts_and_groups.html#using-api-tokens-with-service-accounts">issued api tokens for a service account</a>
@@ -2352,7 +2359,31 @@ was chosen as the keyword to initiate api token binds.</p>
 ldapwhoami -H ldaps://idm.example.com -x -D &quot;dn=token&quot; -w &quot;...&quot;
 # u: demo_service@idm.example.com
 </code></pre>
-<h2 id="example"><a class="header" href="#example">Example</a></h2>
+<h2 id="changing-the-basedn"><a class="header" href="#changing-the-basedn">Changing the Basedn</a></h2>
+<p>By default the basedn of the LDAP server is derived from the domain name. For example a domain name
+of <code>idm.example.com</code> will become <code>dc=idm,dc=example,dc=com</code>.</p>
+<p>However, you may wish to change this to something shorter or at a higher level within your domain
+name.</p>
+<!-- deno-fmt-ignore-start -->
+<table>
+<tr>
+    <td rowspan=2><img src="integrations/../images/kani-warning.png" alt="Kani Warning" /></td>
+    <td><strong>Warning!</strong></td>
+    </tr>
+<tr>
+    <td>Changing the LDAP Basedn will require you to reconfigure your client applications so they search the correct basedn. Be careful when changing this value!</td>
+</tr>
+</table>
+<!-- deno-fmt-ignore-end -->
+<p>As an admin you can change the domain ldap basedn with:</p>
+<pre><code class="language-bash">kanidm system domain set-ldap-basedn &lt;new basedn&gt;
+kanidm system domain set-ldap-basedn o=kanidm -D admin
+</code></pre>
+<p>Basedns are validated to ensure they are either <code>dc=</code>, <code>ou=</code> or <code>o=</code>. They must have one or more of
+these components and must only contain alphanumeric characters.</p>
+<p>After the basedn is changed, the new value will take effect after a server restart. If you have a
+replicated topology, you must restart all servers.</p>
+<h2 id="examples-1"><a class="header" href="#examples-1">Examples</a></h2>
 <p>Given a default install with domain &quot;idm.example.com&quot; the configured LDAP DN will be
 &quot;dc=idm,dc=example,dc=com&quot;.</p>
 <pre><code class="language-toml"># from server.toml
@@ -2376,10 +2407,6 @@ name: test1
 spn: test1@idm.example.com
 entryuuid: 22a65b6c-80c8-4e1a-9b76-3f3afdff8400
 </code></pre>
-<p>It is recommended that client applications filter accounts that can login with <code>(class=account)</code> and
-groups with <code>(class=group)</code>. If possible, group membership is defined in RFC2307bis or Active
-Directory style. This means groups are determined from the &quot;memberof&quot; attribute which contains a DN
-to a group.</p>
 <p>LDAP binds can use any unique identifier of the account. The following are all valid bind DNs for
 the object listed above (if it was a POSIX account, that is).</p>
 <pre><code class="language-bash">ldapwhoami ... -x -D 'name=test1'
@@ -2390,6 +2417,8 @@ ldapwhoami ... -x -D '22a65b6c-80c8-4e1a-9b76-3f3afdff8400'
 ldapwhoami ... -x -D 'spn=test1@idm.example.com,dc=idm,dc=example,dc=com'
 ldapwhoami ... -x -D 'name=test1,dc=idm,dc=example,dc=com'
 </code></pre>
+<h2 id="troubleshooting-1"><a class="header" href="#troubleshooting-1">Troubleshooting</a></h2>
+<h3 id="cant-contact-ldap-server--1"><a class="header" href="#cant-contact-ldap-server--1">Can't contact LDAP Server (-1)</a></h3>
 <p>Most LDAP clients are very picky about TLS, and can be very hard to debug or display errors. For
 example these commands:</p>
 <pre><code class="language-bash">ldapsearch -H ldaps://127.0.0.1:3636 -b 'dc=idm,dc=example,dc=com' -x '(name=test1)'
@@ -3116,7 +3145,7 @@ volumes:
   kanidm_data: {}
 </code></pre>
 <p>Finally you may run <code>docker-compose up</code> to start up both Kanidm and Traefik.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="troubleshooting-1"><a class="header" href="#troubleshooting-1">Troubleshooting</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="troubleshooting-2"><a class="header" href="#troubleshooting-2">Troubleshooting</a></h1>
 <p>Some things to try.</p>
 <h2 id="is-the-server-started"><a class="header" href="#is-the-server-started">Is the server started?</a></h2>
 <p>If you don't see &quot;ready to rock! 🪨&quot; in your logs, it's not started. Scroll back and look for

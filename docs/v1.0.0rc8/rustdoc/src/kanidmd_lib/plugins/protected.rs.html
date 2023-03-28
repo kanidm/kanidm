@@ -598,6 +598,7 @@
 <a href="#598" id="598">598</a>
 <a href="#599" id="599">599</a>
 <a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
 </pre><pre class="rust"><code><span class="comment">// System protected objects. Items matching specific requirements
 // may only have certain modifications performed.
 
@@ -616,7 +617,7 @@
 
 </span><span class="macro">lazy_static! </span>{
     <span class="kw">static </span><span class="kw-2">ref </span>ALLOWED_ATTRS: HashSet&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt; = {
-        <span class="kw">let </span><span class="kw-2">mut </span>m = HashSet::with_capacity(<span class="number">8</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>m = HashSet::with_capacity(<span class="number">16</span>);
         <span class="comment">// Allow modification of some schema class types to allow local extension
         // of schema types.
         //
@@ -624,6 +625,7 @@
         m.insert(<span class="string">&quot;may&quot;</span>);
         <span class="comment">// Allow modification of some domain info types for local configuration.
         </span>m.insert(<span class="string">&quot;domain_ssid&quot;</span>);
+        m.insert(<span class="string">&quot;domain_ldap_basedn&quot;</span>);
         m.insert(<span class="string">&quot;fernet_private_key_str&quot;</span>);
         m.insert(<span class="string">&quot;es256_private_key_der&quot;</span>);
         m.insert(<span class="string">&quot;badlist_password&quot;</span>);

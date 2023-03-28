@@ -306,6 +306,8 @@
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
 </pre><pre class="rust"><code><span class="attr">#![allow(clippy::unwrap_used)]
 
 </span><span class="kw">use </span>uuid::{uuid, Uuid};
@@ -532,6 +534,8 @@
 <span class="kw">pub const </span>UUID_SCHEMA_ATTR_TOTP_IMPORT: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000128&quot;</span>);
 <span class="kw">pub const </span>UUID_SCHEMA_ATTR_REPLICATED: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000129&quot;</span>);
 <span class="kw">pub const </span>UUID_SCHEMA_ATTR_PRIVATE_COOKIE_KEY: Uuid = <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000130&quot;</span>);
+<span class="kw">pub const </span>_UUID_SCHEMA_ATTR_DOMAIN_LDAP_BASEDN: Uuid =
+    <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffff00000131&quot;</span>);
 
 <span class="comment">// System and domain infos
 // I&#39;d like to strongly criticise william of the past for making poor choices about these allocations.

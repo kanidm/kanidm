@@ -918,6 +918,17 @@
 <a href="#918" id="918">918</a>
 <a href="#919" id="919">919</a>
 <a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
 </pre><pre class="rust"><code><span class="kw">use </span>clap::{Args, Subcommand};
 
 <span class="attr">#[derive(Debug, Args)]
@@ -1663,9 +1674,20 @@
 
 <span class="attr">#[derive(Debug, Subcommand)]
 </span><span class="kw">pub enum </span>DomainOpt {
-    <span class="attr">#[clap[name = <span class="string">&quot;set-domain-display-name&quot;</span>]</span>]
+    <span class="attr">#[clap[name = <span class="string">&quot;set-display-name&quot;</span>]</span>]
     <span class="doccomment">/// Set the domain display name
-    </span>SetDomainDisplayName(OptSetDomainDisplayName),
+    </span>SetDisplayName(OptSetDomainDisplayName),
+    <span class="attr">#[clap[name = <span class="string">&quot;set-ldap-basedn&quot;</span>]</span>]
+    <span class="doccomment">/// Change the basedn of this server. Takes effect after a server restart.
+    /// Examples are `o=organisation` or `dc=domain,dc=name`. Must be a valid ldap
+    /// dn containing only alphanumerics, and dn components must be org (o), domain (dc) or
+    /// orgunit (ou).
+    </span>SetLdapBasedn {
+        <span class="attr">#[clap(flatten)]
+        </span>copt: CommonOpt,
+        <span class="attr">#[clap(name = <span class="string">&quot;new-basedn&quot;</span>)]
+        </span>new_basedn: String,
+    },
     <span class="attr">#[clap(name = <span class="string">&quot;show&quot;</span>)]
     </span><span class="doccomment">/// Show information about this system&#39;s domain
     </span>Show(CommonOpt),

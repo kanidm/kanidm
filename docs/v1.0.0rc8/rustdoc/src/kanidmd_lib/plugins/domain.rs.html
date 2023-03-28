@@ -140,6 +140,25 @@
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
 </pre><pre class="rust"><code><span class="comment">// Manage and generate domain uuid&#39;s and/or trust related domain
 // management.
 
@@ -151,11 +170,20 @@
 <span class="kw">use </span>compact_jwt::JwsSigner;
 <span class="kw">use </span>kanidm_proto::v1::OperationError;
 <span class="kw">use </span>rand::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>regex::Regex;
 <span class="kw">use </span>tracing::trace;
 
 <span class="kw">use </span><span class="kw">crate</span>::event::{CreateEvent, ModifyEvent};
 <span class="kw">use </span><span class="kw">crate</span>::plugins::Plugin;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+
+<span class="macro">lazy_static! </span>{
+    <span class="kw">pub static </span><span class="kw-2">ref </span>DOMAIN_LDAP_BASEDN_RE: Regex = {
+        <span class="attr">#[allow(clippy::expect_used)]
+        </span>Regex::new(<span class="string">r&quot;^(dc|o|ou)=[a-z][a-z0-9]*(,(dc|o|ou)=[a-z][a-z0-9]*)*$&quot;</span>)
+            .expect(<span class="string">&quot;Invalid domain ldap basedn regex&quot;</span>)
+    };
+}
 
 <span class="kw">pub struct </span>Domain {}
 
@@ -201,6 +229,16 @@
             <span class="kw">if </span>e.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DOMAIN_INFO)
                 &amp;&amp; e.attribute_equality(<span class="string">&quot;uuid&quot;</span>, <span class="kw-2">&amp;</span>PVUUID_DOMAIN_INFO)
             {
+                <span class="comment">// Validate the domain ldap basedn syntax.
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(basedn) = e
+                    .get_ava_single_iutf8(<span class="string">&quot;domain_ldap_basedn&quot;</span>) {
+
+                    <span class="kw">if </span>!DOMAIN_LDAP_BASEDN_RE.is_match(basedn) {
+                        <span class="macro">error!</span>(<span class="string">&quot;Invalid domain_ldap_basedn. Must pass regex \&quot;{}\&quot;&quot;</span>, <span class="kw-2">*</span>DOMAIN_LDAP_BASEDN_RE);
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidState);
+                    }
+                }
+
                 <span class="comment">// We always set this, because the DB uuid is authoritative.
                 </span><span class="kw">let </span>u = Value::Uuid(qs.get_domain_uuid());
                 e.set_ava(<span class="string">&quot;domain_uuid&quot;</span>, once(u));
