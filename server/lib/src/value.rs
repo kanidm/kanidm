@@ -73,7 +73,7 @@ lazy_static! {
 
     pub static ref SINGLELINE_RE: Regex = {
         #[allow(clippy::expect_used)]
-        Regex::new("[\n\t]").expect("Invalid singleline regex found")
+        Regex::new("[\n\r\t]").expect("Invalid singleline regex found")
     };
 
     pub static ref ESCAPES_RE: Regex = {
@@ -1950,6 +1950,7 @@ mod tests {
         assert!(Value::validate_singleline("no new lines"));
 
         assert!(!Value::validate_singleline("contains a \n new line"));
+        assert!(!Value::validate_singleline("contains a \r return feed"));
         assert!(!Value::validate_singleline("contains a \t tab char"));
     }
 
