@@ -119,7 +119,9 @@ impl ValueSetT for ValueSetCredential {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        true
+        self.map
+            .iter()
+            .all(|(s, _)| Value::validate_str_escapes(s) && Value::validate_singleline(s))
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
@@ -333,7 +335,9 @@ impl ValueSetT for ValueSetIntentToken {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        true
+        self.map
+            .iter()
+            .all(|(s, _)| Value::validate_str_escapes(s) && Value::validate_singleline(s))
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
@@ -540,7 +544,9 @@ impl ValueSetT for ValueSetPasskey {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        true
+        self.map
+            .iter()
+            .all(|(_, (s, _))| Value::validate_str_escapes(s) && Value::validate_singleline(s))
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
@@ -724,7 +730,9 @@ impl ValueSetT for ValueSetDeviceKey {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        true
+        self.map
+            .iter()
+            .all(|(_, (s, _))| Value::validate_str_escapes(s) && Value::validate_singleline(s))
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {

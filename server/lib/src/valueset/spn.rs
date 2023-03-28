@@ -96,7 +96,12 @@ impl ValueSetT for ValueSetSpn {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        true
+        self.set.iter().all(|(a, b)| {
+            Value::validate_str_escapes(a)
+                && Value::validate_str_escapes(b)
+                && Value::validate_singleline(a)
+                && Value::validate_singleline(b)
+        })
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
