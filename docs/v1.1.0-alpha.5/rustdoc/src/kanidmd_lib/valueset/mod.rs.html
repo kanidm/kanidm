@@ -742,7 +742,6 @@
 <a href="#742" id="742">742</a>
 <a href="#743" id="743">743</a>
 <a href="#744" id="744">744</a>
-<a href="#745" id="745">745</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 
 <span class="kw">use </span>compact_jwt::JwsSigner;
@@ -1328,7 +1327,6 @@
         | Value::Passkey(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)
         | Value::DeviceKey(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>)
         | Value::TotpSecret(<span class="kw">_</span>, <span class="kw">_</span>)
-        | Value::TrustedDeviceEnrollment(<span class="kw">_</span>)
         | Value::Session(<span class="kw">_</span>, <span class="kw">_</span>)
         | Value::ApiToken(<span class="kw">_</span>, <span class="kw">_</span>)
         | Value::Oauth2Session(<span class="kw">_</span>, <span class="kw">_</span>)
@@ -1391,7 +1389,7 @@
         Value::Oauth2Session(u, m) =&gt; ValueSetOauth2Session::new(u, m),
         Value::UiHint(u) =&gt; ValueSetUiHint::new(u),
         Value::TotpSecret(l, t) =&gt; ValueSetTotpSecret::new(l, t),
-        Value::PhoneNumber(<span class="kw">_</span>, <span class="kw">_</span>) | Value::TrustedDeviceEnrollment(<span class="kw">_</span>) =&gt; {
+        Value::PhoneNumber(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
             <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
             <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::InvalidValueState);
         }

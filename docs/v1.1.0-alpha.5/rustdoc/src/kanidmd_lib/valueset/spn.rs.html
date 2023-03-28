@@ -167,6 +167,11 @@
 <a href="#167" id="167">167</a>
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
 </pre><pre class="rust"><code><span class="kw">use </span>smolset::SmolSet;
 
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
@@ -265,8 +270,13 @@
     }
 
     <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, _schema_attr: <span class="kw-2">&amp;</span>SchemaAttribute) -&gt; bool {
-        <span class="bool-val">true
-    </span>}
+        <span class="self">self</span>.set.iter().all(|(a, b)| {
+            Value::validate_str_escapes(a)
+                &amp;&amp; Value::validate_str_escapes(b)
+                &amp;&amp; Value::validate_singleline(a)
+                &amp;&amp; Value::validate_singleline(b)
+        })
+    }
 
     <span class="kw">fn </span>to_proto_string_clone_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = String&gt; + <span class="lifetime">&#39;_</span>&gt; {
         Box::new(<span class="self">self</span>.set.iter().map(|(n, d)| <span class="macro">format!</span>(<span class="string">&quot;{n}@{d}&quot;</span>)))

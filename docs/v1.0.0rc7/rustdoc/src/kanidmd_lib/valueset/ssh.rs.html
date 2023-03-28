@@ -173,6 +173,12 @@
 <a href="#173" id="173">173</a>
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::btree_map::Entry <span class="kw">as </span>BTreeEntry;
 <span class="kw">use </span>std::collections::BTreeMap;
 
@@ -181,6 +187,8 @@
 <span class="kw">use </span><span class="kw">crate</span>::repl::proto::ReplAttrV1;
 <span class="kw">use </span><span class="kw">crate</span>::schema::SchemaAttribute;
 <span class="kw">use </span><span class="kw">crate</span>::valueset::{DbValueSetV2, ValueSet};
+
+<span class="kw">use </span>sshkeys::PublicKey <span class="kw">as </span>SshPublicKey;
 
 <span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>ValueSetSshKey {
@@ -277,8 +285,12 @@
     }
 
     <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, _schema_attr: <span class="kw-2">&amp;</span>SchemaAttribute) -&gt; bool {
-        <span class="bool-val">true
-    </span>}
+        <span class="self">self</span>.map.iter().all(|(s, key)| {
+            SshPublicKey::from_string(key).is_ok()
+                &amp;&amp; Value::validate_str_escapes(s)
+                &amp;&amp; Value::validate_singleline(s)
+        })
+    }
 
     <span class="kw">fn </span>to_proto_string_clone_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = String&gt; + <span class="lifetime">&#39;_</span>&gt; {
         Box::new(<span class="self">self</span>.map.keys().cloned())

@@ -1195,6 +1195,8 @@
 <a href="#1195" id="1195">1195</a>
 <a href="#1196" id="1196">1196</a>
 <a href="#1197" id="1197">1197</a>
+<a href="#1198" id="1198">1198</a>
+<a href="#1199" id="1199">1199</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::btree_map::Entry <span class="kw">as </span>BTreeEntry;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 
@@ -2285,8 +2287,10 @@
     }
 
     <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, _schema_attr: <span class="kw-2">&amp;</span>SchemaAttribute) -&gt; bool {
-        <span class="bool-val">true
-    </span>}
+        <span class="self">self</span>.map.iter().all(|(<span class="kw">_</span>, at)| {
+            Value::validate_str_escapes(<span class="kw-2">&amp;</span>at.label) &amp;&amp; Value::validate_singleline(<span class="kw-2">&amp;</span>at.label)
+        })
+    }
 
     <span class="kw">fn </span>to_proto_string_clone_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = String&gt; + <span class="lifetime">&#39;_</span>&gt; {
         Box::new(

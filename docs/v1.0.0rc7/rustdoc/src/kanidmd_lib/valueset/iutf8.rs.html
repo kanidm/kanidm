@@ -168,6 +168,8 @@
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
 <a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
 
 <span class="kw">use </span><span class="kw">super</span>::iname::ValueSetIname;
@@ -273,8 +275,10 @@
     }
 
     <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, _schema_attr: <span class="kw-2">&amp;</span>SchemaAttribute) -&gt; bool {
-        <span class="bool-val">true
-    </span>}
+        <span class="self">self</span>.set
+            .iter()
+            .all(|s| Value::validate_str_escapes(s) &amp;&amp; Value::validate_singleline(s))
+    }
 
     <span class="kw">fn </span>to_proto_string_clone_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = String&gt; + <span class="lifetime">&#39;_</span>&gt; {
         Box::new(<span class="self">self</span>.set.iter().cloned())

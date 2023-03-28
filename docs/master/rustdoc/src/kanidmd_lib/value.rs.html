@@ -1868,6 +1868,100 @@
 <a href="#1868" id="1868">1868</a>
 <a href="#1869" id="1869">1869</a>
 <a href="#1870" id="1870">1870</a>
+<a href="#1871" id="1871">1871</a>
+<a href="#1872" id="1872">1872</a>
+<a href="#1873" id="1873">1873</a>
+<a href="#1874" id="1874">1874</a>
+<a href="#1875" id="1875">1875</a>
+<a href="#1876" id="1876">1876</a>
+<a href="#1877" id="1877">1877</a>
+<a href="#1878" id="1878">1878</a>
+<a href="#1879" id="1879">1879</a>
+<a href="#1880" id="1880">1880</a>
+<a href="#1881" id="1881">1881</a>
+<a href="#1882" id="1882">1882</a>
+<a href="#1883" id="1883">1883</a>
+<a href="#1884" id="1884">1884</a>
+<a href="#1885" id="1885">1885</a>
+<a href="#1886" id="1886">1886</a>
+<a href="#1887" id="1887">1887</a>
+<a href="#1888" id="1888">1888</a>
+<a href="#1889" id="1889">1889</a>
+<a href="#1890" id="1890">1890</a>
+<a href="#1891" id="1891">1891</a>
+<a href="#1892" id="1892">1892</a>
+<a href="#1893" id="1893">1893</a>
+<a href="#1894" id="1894">1894</a>
+<a href="#1895" id="1895">1895</a>
+<a href="#1896" id="1896">1896</a>
+<a href="#1897" id="1897">1897</a>
+<a href="#1898" id="1898">1898</a>
+<a href="#1899" id="1899">1899</a>
+<a href="#1900" id="1900">1900</a>
+<a href="#1901" id="1901">1901</a>
+<a href="#1902" id="1902">1902</a>
+<a href="#1903" id="1903">1903</a>
+<a href="#1904" id="1904">1904</a>
+<a href="#1905" id="1905">1905</a>
+<a href="#1906" id="1906">1906</a>
+<a href="#1907" id="1907">1907</a>
+<a href="#1908" id="1908">1908</a>
+<a href="#1909" id="1909">1909</a>
+<a href="#1910" id="1910">1910</a>
+<a href="#1911" id="1911">1911</a>
+<a href="#1912" id="1912">1912</a>
+<a href="#1913" id="1913">1913</a>
+<a href="#1914" id="1914">1914</a>
+<a href="#1915" id="1915">1915</a>
+<a href="#1916" id="1916">1916</a>
+<a href="#1917" id="1917">1917</a>
+<a href="#1918" id="1918">1918</a>
+<a href="#1919" id="1919">1919</a>
+<a href="#1920" id="1920">1920</a>
+<a href="#1921" id="1921">1921</a>
+<a href="#1922" id="1922">1922</a>
+<a href="#1923" id="1923">1923</a>
+<a href="#1924" id="1924">1924</a>
+<a href="#1925" id="1925">1925</a>
+<a href="#1926" id="1926">1926</a>
+<a href="#1927" id="1927">1927</a>
+<a href="#1928" id="1928">1928</a>
+<a href="#1929" id="1929">1929</a>
+<a href="#1930" id="1930">1930</a>
+<a href="#1931" id="1931">1931</a>
+<a href="#1932" id="1932">1932</a>
+<a href="#1933" id="1933">1933</a>
+<a href="#1934" id="1934">1934</a>
+<a href="#1935" id="1935">1935</a>
+<a href="#1936" id="1936">1936</a>
+<a href="#1937" id="1937">1937</a>
+<a href="#1938" id="1938">1938</a>
+<a href="#1939" id="1939">1939</a>
+<a href="#1940" id="1940">1940</a>
+<a href="#1941" id="1941">1941</a>
+<a href="#1942" id="1942">1942</a>
+<a href="#1943" id="1943">1943</a>
+<a href="#1944" id="1944">1944</a>
+<a href="#1945" id="1945">1945</a>
+<a href="#1946" id="1946">1946</a>
+<a href="#1947" id="1947">1947</a>
+<a href="#1948" id="1948">1948</a>
+<a href="#1949" id="1949">1949</a>
+<a href="#1950" id="1950">1950</a>
+<a href="#1951" id="1951">1951</a>
+<a href="#1952" id="1952">1952</a>
+<a href="#1953" id="1953">1953</a>
+<a href="#1954" id="1954">1954</a>
+<a href="#1955" id="1955">1955</a>
+<a href="#1956" id="1956">1956</a>
+<a href="#1957" id="1957">1957</a>
+<a href="#1958" id="1958">1958</a>
+<a href="#1959" id="1959">1959</a>
+<a href="#1960" id="1960">1960</a>
+<a href="#1961" id="1961">1961</a>
+<a href="#1962" id="1962">1962</a>
+<a href="#1963" id="1963">1963</a>
+<a href="#1964" id="1964">1964</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of
 //! the [`Value`] module allow storage and transformation of various types of input into strongly
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
@@ -1924,20 +2018,33 @@
         m.insert(<span class="string">&quot;administrator&quot;</span>);
         m
     };
-    <span class="kw">pub static </span><span class="kw-2">ref </span>INAME_RE: Regex = {
+
+    <span class="doccomment">/// Only lowercase+numbers, with limited chars.
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>INAME_RE: Regex = {
         <span class="attr">#[allow(clippy::expect_used)]
         </span>Regex::new(<span class="string">&quot;^[a-z][a-z0-9-_\\.]+$&quot;</span>).expect(<span class="string">&quot;Invalid Iname regex found&quot;</span>)
-        <span class="comment">// Only lowercase+numbers, with limited chars.
-    </span>};
+    };
     <span class="kw">pub static </span><span class="kw-2">ref </span>NSUNIQUEID_RE: Regex = {
         <span class="attr">#[allow(clippy::expect_used)]
         </span>Regex::new(<span class="string">&quot;^[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}$&quot;</span>).expect(<span class="string">&quot;Invalid Nsunique regex found&quot;</span>)
     };
-    <span class="kw">pub static </span><span class="kw-2">ref </span>OAUTHSCOPE_RE: Regex = {
+
+    <span class="doccomment">/// Must not contain whitespace.
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>OAUTHSCOPE_RE: Regex = {
         <span class="attr">#[allow(clippy::expect_used)]
         </span>Regex::new(<span class="string">&quot;^[0-9a-zA-Z_]+$&quot;</span>).expect(<span class="string">&quot;Invalid oauthscope regex found&quot;</span>)
-        <span class="comment">// Must not contain whitespace.
-    </span>};
+    };
+
+    <span class="kw">pub static </span><span class="kw-2">ref </span>SINGLELINE_RE: Regex = {
+        <span class="attr">#[allow(clippy::expect_used)]
+        </span>Regex::new(<span class="string">&quot;[\n\r\t]&quot;</span>).expect(<span class="string">&quot;Invalid singleline regex found&quot;</span>)
+    };
+
+    <span class="kw">pub static </span><span class="kw-2">ref </span>ESCAPES_RE: Regex = {
+        <span class="attr">#[allow(clippy::expect_used)]
+        </span>Regex::new(<span class="string">r&quot;\x1b\[([\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e])&quot;</span>)
+            .expect(<span class="string">&quot;Invalid escapes regex found&quot;</span>)
+    };
 }
 
 <span class="attr">#[derive(Debug, Clone, PartialOrd, Ord, Eq, PartialEq, Hash)]
@@ -2207,7 +2314,6 @@
     UiHint(UiHint),
     Passkey(Uuid),
     DeviceKey(Uuid),
-    TrustedDeviceEnrollment(Uuid),
     <span class="comment">// The label, if any.
 </span>}
 
@@ -2577,7 +2683,6 @@
             PartialValue::Address(a) =&gt; a.to_string(),
             PartialValue::PhoneNumber(a) =&gt; a.to_string(),
             PartialValue::IntentToken(u) =&gt; u.clone(),
-            PartialValue::TrustedDeviceEnrollment(u) =&gt; u.as_hyphenated().to_string(),
             PartialValue::UiHint(u) =&gt; (<span class="kw-2">*</span>u <span class="kw">as </span>u16).to_string(),
         }
     }
@@ -2717,7 +2822,6 @@
     Passkey(Uuid, String, PasskeyV4),
     DeviceKey(Uuid, String, DeviceKeyV4),
 
-    TrustedDeviceEnrollment(Uuid),
     Session(Uuid, Session),
     ApiToken(Uuid, ApiToken),
     Oauth2Session(Uuid, Oauth2Session),
@@ -3416,13 +3520,6 @@
         }
     }
 
-    <span class="kw">pub fn </span>to_trusteddeviceenrollment(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(Uuid, ())&gt; {
-        <span class="kw">match </span><span class="self">self </span>{
-            Value::TrustedDeviceEnrollment(u) =&gt; <span class="prelude-val">Some</span>((u, ())),
-            <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
-        }
-    }
-
     <span class="kw">pub fn </span>to_session(<span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;(Uuid, Session)&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             Value::Session(u, s) =&gt; <span class="prelude-val">Some</span>((u, s)),
@@ -3461,34 +3558,83 @@
         }
     }
 
-    <span class="comment">// !!! relocate to value set !!!
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="comment">// Validate that extra-data constraints on the type exist and are
         // valid. IE json filter is really a filter, or cred types have supplemental
         // data.
         </span><span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self </span>{
-            Value::Iname(s) =&gt; Value::validate_iname(s),
-            <span class="comment">/*
-            Value::Cred(_) =&gt; match &amp;self.data {
-                Some(v) =&gt; matches!(v.as_ref(), DataValue::Cred(_)),
-                None =&gt; false,
-            },
-            */
-            </span>Value::SshKey(<span class="kw">_</span>, key) =&gt; SshPublicKey::from_string(key).is_ok(),
-            Value::Nsuniqueid(s) =&gt; NSUNIQUEID_RE.is_match(s),
+            <span class="comment">// String security is required here
+            </span>Value::Utf8(s)
+            | Value::Iutf8(s)
+            | Value::Cred(s, <span class="kw">_</span>)
+            | Value::PublicBinary(s, <span class="kw">_</span>)
+            | Value::IntentToken(s, <span class="kw">_</span>)
+            | Value::Passkey(<span class="kw">_</span>, s, <span class="kw">_</span>)
+            | Value::DeviceKey(<span class="kw">_</span>, s, <span class="kw">_</span>)
+            | Value::TotpSecret(s, <span class="kw">_</span>) =&gt; {
+                Value::validate_str_escapes(s) &amp;&amp; Value::validate_singleline(s)
+            }
+
+            Value::Spn(a, b) =&gt; {
+                Value::validate_str_escapes(a)
+                    &amp;&amp; Value::validate_str_escapes(b)
+                    &amp;&amp; Value::validate_singleline(a)
+                    &amp;&amp; Value::validate_singleline(b)
+            }
+
+            Value::Iname(s) =&gt; {
+                Value::validate_str_escapes(s)
+                    &amp;&amp; Value::validate_iname(s)
+                    &amp;&amp; Value::validate_singleline(s)
+            }
+
+            Value::SshKey(s, key) =&gt; {
+                SshPublicKey::from_string(key).is_ok()
+                    &amp;&amp; Value::validate_str_escapes(s)
+                    &amp;&amp; Value::validate_singleline(s)
+            }
+
+            Value::ApiToken(<span class="kw">_</span>, at) =&gt; {
+                Value::validate_str_escapes(<span class="kw-2">&amp;</span>at.label) &amp;&amp; Value::validate_singleline(<span class="kw-2">&amp;</span>at.label)
+            }
+
+            <span class="comment">// These have stricter validators so not needed.
+            </span>Value::Nsuniqueid(s) =&gt; NSUNIQUEID_RE.is_match(s),
             Value::DateTime(odt) =&gt; odt.offset() == time::UtcOffset::UTC,
             Value::EmailAddress(mail, <span class="kw">_</span>) =&gt; validator::validate_email(mail.as_str()),
-            <span class="comment">// PartialValue::Url validated through parsing.
-            </span>Value::OauthScope(s) =&gt; OAUTHSCOPE_RE.is_match(s),
+            Value::OauthScope(s) =&gt; OAUTHSCOPE_RE.is_match(s),
             Value::OauthScopeMap(<span class="kw">_</span>, m) =&gt; m.iter().all(|s| OAUTHSCOPE_RE.is_match(s)),
-            <span class="kw">_ </span>=&gt; <span class="bool-val">true</span>,
+
+            Value::PhoneNumber(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+            Value::Address(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+
+            Value::Uuid(<span class="kw">_</span>)
+            | Value::Bool(<span class="kw">_</span>)
+            | Value::Syntax(<span class="kw">_</span>)
+            | Value::Index(<span class="kw">_</span>)
+            | Value::Refer(<span class="kw">_</span>)
+            | Value::JsonFilt(<span class="kw">_</span>)
+            | Value::SecretValue(<span class="kw">_</span>)
+            | Value::Uint32(<span class="kw">_</span>)
+            | Value::Url(<span class="kw">_</span>)
+            | Value::Cid(<span class="kw">_</span>)
+            | Value::PrivateBinary(<span class="kw">_</span>)
+            | Value::RestrictedString(<span class="kw">_</span>)
+            | Value::JwsKeyEs256(<span class="kw">_</span>)
+            | Value::Session(<span class="kw">_</span>, <span class="kw">_</span>)
+            | Value::Oauth2Session(<span class="kw">_</span>, <span class="kw">_</span>)
+            | Value::JwsKeyRs256(<span class="kw">_</span>)
+            | Value::UiHint(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
         }
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_iname(s: <span class="kw-2">&amp;</span>str) -&gt; bool {
         <span class="kw">match </span>Uuid::parse_str(s) {
             <span class="comment">// It is a uuid, disallow.
-            </span><span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+            </span><span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                <span class="macro">warn!</span>(<span class="string">&quot;iname values may not contain uuids&quot;</span>);
+                <span class="bool-val">false
+            </span>}
             <span class="comment">// Not a uuid, check it against the re.
             </span><span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="kw">if </span>!INAME_RE.is_match(s) {
@@ -3502,6 +3648,31 @@
                 </span>}
             }
         }
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_singleline(s: <span class="kw-2">&amp;</span>str) -&gt; bool {
+        <span class="kw">if </span>!SINGLELINE_RE.is_match(s) {
+            <span class="bool-val">true
+        </span>} <span class="kw">else </span>{
+            <span class="macro">warn!</span>(
+                <span class="string">&quot;value contains invalid whitespace chars forbidden by \&quot;{}\&quot;&quot;</span>,
+                <span class="kw-2">*</span>SINGLELINE_RE
+            );
+            <span class="bool-val">false
+        </span>}
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_str_escapes(s: <span class="kw-2">&amp;</span>str) -&gt; bool {
+        <span class="comment">// Look for and prevent certain types of string escapes and injections.
+        </span><span class="kw">if </span>!ESCAPES_RE.is_match(s) {
+            <span class="bool-val">true
+        </span>} <span class="kw">else </span>{
+            <span class="macro">warn!</span>(
+                <span class="string">&quot;value contains invalid escape chars forbidden by \&quot;{}\&quot;&quot;</span>,
+                <span class="kw-2">*</span>ESCAPES_RE
+            );
+            <span class="bool-val">false
+        </span>}
     }
 }
 
@@ -3736,6 +3907,23 @@
         <span class="macro">assert!</span>(val1.is_some());
         <span class="macro">assert!</span>(val2.is_some());
         <span class="macro">assert!</span>(val3.is_some());
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_singleline() {
+        <span class="macro">assert!</span>(Value::validate_singleline(<span class="string">&quot;no new lines&quot;</span>));
+
+        <span class="macro">assert!</span>(!Value::validate_singleline(<span class="string">&quot;contains a \n new line&quot;</span>));
+        <span class="macro">assert!</span>(!Value::validate_singleline(<span class="string">&quot;contains a \r return feed&quot;</span>));
+        <span class="macro">assert!</span>(!Value::validate_singleline(<span class="string">&quot;contains a \t tab char&quot;</span>));
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_str_escapes() {
+        <span class="macro">assert!</span>(Value::validate_str_escapes(<span class="string">&quot;safe str&quot;</span>));
+        <span class="macro">assert!</span>(Value::validate_str_escapes(<span class="string">&quot;🙃 emoji are 👍&quot;</span>));
+
+        <span class="macro">assert!</span>(!Value::validate_str_escapes(<span class="string">&quot;naughty \x1b[31mred&quot;</span>));
     }
 }
 </code></pre></div>

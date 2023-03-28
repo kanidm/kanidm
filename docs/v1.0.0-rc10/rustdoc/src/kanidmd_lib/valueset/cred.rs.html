@@ -801,6 +801,14 @@
 <a href="#801" id="801">801</a>
 <a href="#802" id="802">802</a>
 <a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::btree_map::Entry <span class="kw">as </span>BTreeEntry;
 <span class="kw">use </span>std::collections::BTreeMap;
 
@@ -922,8 +930,10 @@
     }
 
     <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, _schema_attr: <span class="kw-2">&amp;</span>SchemaAttribute) -&gt; bool {
-        <span class="bool-val">true
-    </span>}
+        <span class="self">self</span>.map
+            .iter()
+            .all(|(s, <span class="kw">_</span>)| Value::validate_str_escapes(s) &amp;&amp; Value::validate_singleline(s))
+    }
 
     <span class="kw">fn </span>to_proto_string_clone_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = String&gt; + <span class="lifetime">&#39;_</span>&gt; {
         Box::new(<span class="self">self</span>.map.keys().cloned())
@@ -1136,8 +1146,10 @@
     }
 
     <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, _schema_attr: <span class="kw-2">&amp;</span>SchemaAttribute) -&gt; bool {
-        <span class="bool-val">true
-    </span>}
+        <span class="self">self</span>.map
+            .iter()
+            .all(|(s, <span class="kw">_</span>)| Value::validate_str_escapes(s) &amp;&amp; Value::validate_singleline(s))
+    }
 
     <span class="kw">fn </span>to_proto_string_clone_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = String&gt; + <span class="lifetime">&#39;_</span>&gt; {
         Box::new(<span class="self">self</span>.map.keys().cloned())
@@ -1343,8 +1355,10 @@
     }
 
     <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, _schema_attr: <span class="kw-2">&amp;</span>SchemaAttribute) -&gt; bool {
-        <span class="bool-val">true
-    </span>}
+        <span class="self">self</span>.map
+            .iter()
+            .all(|(<span class="kw">_</span>, (s, <span class="kw">_</span>))| Value::validate_str_escapes(s) &amp;&amp; Value::validate_singleline(s))
+    }
 
     <span class="kw">fn </span>to_proto_string_clone_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = String&gt; + <span class="lifetime">&#39;_</span>&gt; {
         Box::new(<span class="self">self</span>.map.values().map(|(t, <span class="kw">_</span>)| t).cloned())
@@ -1527,8 +1541,10 @@
     }
 
     <span class="kw">fn </span>validate(<span class="kw-2">&amp;</span><span class="self">self</span>, _schema_attr: <span class="kw-2">&amp;</span>SchemaAttribute) -&gt; bool {
-        <span class="bool-val">true
-    </span>}
+        <span class="self">self</span>.map
+            .iter()
+            .all(|(<span class="kw">_</span>, (s, <span class="kw">_</span>))| Value::validate_str_escapes(s) &amp;&amp; Value::validate_singleline(s))
+    }
 
     <span class="kw">fn </span>to_proto_string_clone_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = String&gt; + <span class="lifetime">&#39;_</span>&gt; {
         Box::new(<span class="self">self</span>.map.values().map(|(t, <span class="kw">_</span>)| t).cloned())
