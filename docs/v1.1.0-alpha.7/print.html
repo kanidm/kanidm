@@ -2353,27 +2353,27 @@ ldapwhoami -H ldaps://idm.example.com -x -D &quot;dn=token&quot; -w &quot;...&qu
 # u: demo_service@idm.example.com
 </code></pre>
 <h2 id="example"><a class="header" href="#example">Example</a></h2>
-<p>Given a default install with domain &quot;example.com&quot; the configured LDAP DN will be
-&quot;dc=example,dc=com&quot;.</p>
+<p>Given a default install with domain &quot;idm.example.com&quot; the configured LDAP DN will be
+&quot;dc=idm,dc=example,dc=com&quot;.</p>
 <pre><code class="language-toml"># from server.toml
 ldapbindaddress = &quot;[::]:3636&quot;
 </code></pre>
 <p>This can be queried with:</p>
 <pre><code class="language-bash">LDAPTLS_CACERT=ca.pem ldapsearch \
     -H ldaps://127.0.0.1:3636 \
-    -b 'dc=example,dc=com' \
+    -b 'dc=idm,dc=example,dc=com' \
     -x '(name=test1)'
 
-# test1@example.com, example.com
-dn: spn=test1@example.com,dc=example,dc=com
+# test1@example.com, idm.example.com
+dn: spn=test1@idm.example.com,dc=idm,dc=example,dc=com
 objectclass: account
 objectclass: memberof
 objectclass: object
 objectclass: person
 displayname: Test User
-memberof: spn=group240@example.com,dc=example,dc=com
+memberof: spn=group240@idm.example.com,dc=idm,dc=example,dc=com
 name: test1
-spn: test1@example.com
+spn: test1@idm.example.com
 entryuuid: 22a65b6c-80c8-4e1a-9b76-3f3afdff8400
 </code></pre>
 <p>It is recommended that client applications filter accounts that can login with <code>(class=account)</code> and
@@ -2383,18 +2383,18 @@ to a group.</p>
 <p>LDAP binds can use any unique identifier of the account. The following are all valid bind DNs for
 the object listed above (if it was a POSIX account, that is).</p>
 <pre><code class="language-bash">ldapwhoami ... -x -D 'name=test1'
-ldapwhoami ... -x -D 'spn=test1@example.com'
-ldapwhoami ... -x -D 'test1@example.com'
+ldapwhoami ... -x -D 'spn=test1@idm.example.com'
+ldapwhoami ... -x -D 'test1@idm.example.com'
 ldapwhoami ... -x -D 'test1'
 ldapwhoami ... -x -D '22a65b6c-80c8-4e1a-9b76-3f3afdff8400'
-ldapwhoami ... -x -D 'spn=test1@example.com,dc=example,dc=com'
-ldapwhoami ... -x -D 'name=test1,dc=example,dc=com'
+ldapwhoami ... -x -D 'spn=test1@idm.example.com,dc=idm,dc=example,dc=com'
+ldapwhoami ... -x -D 'name=test1,dc=idm,dc=example,dc=com'
 </code></pre>
 <p>Most LDAP clients are very picky about TLS, and can be very hard to debug or display errors. For
 example these commands:</p>
-<pre><code class="language-bash">ldapsearch -H ldaps://127.0.0.1:3636 -b 'dc=example,dc=com' -x '(name=test1)'
-ldapsearch -H ldap://127.0.0.1:3636 -b 'dc=example,dc=com' -x '(name=test1)'
-ldapsearch -H ldap://127.0.0.1:3389 -b 'dc=example,dc=com' -x '(name=test1)'
+<pre><code class="language-bash">ldapsearch -H ldaps://127.0.0.1:3636 -b 'dc=idm,dc=example,dc=com' -x '(name=test1)'
+ldapsearch -H ldap://127.0.0.1:3636 -b 'dc=idm,dc=example,dc=com' -x '(name=test1)'
+ldapsearch -H ldap://127.0.0.1:3389 -b 'dc=idm,dc=example,dc=com' -x '(name=test1)'
 </code></pre>
 <p>All give the same error:</p>
 <pre><code class="language-bash">ldap_sasl_bind(SIMPLE): Can't contact LDAP server (-1)
