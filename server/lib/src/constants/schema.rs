@@ -235,6 +235,34 @@ pub const JSON_SCHEMA_ATTR_DOMAIN_NAME: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_DOMAIN_LDAP_BASEDN: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The domain's optional ldap basedn. If unset defaults to domain components of domain name."
+      ],
+      "unique": [
+        "true"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "domain_ldap_basedn"
+      ],
+      "syntax": [
+        "UTF8STRING_INSENSITIVE"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000131"
+      ]
+    }
+}"#;
+
 pub const JSON_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: &str = r#"{
   "attrs": {
     "class": [
@@ -1650,7 +1678,8 @@ pub const JSON_SCHEMA_CLASS_DOMAIN_INFO: &str = r#"
         "domain_info"
       ],
       "systemmay": [
-        "domain_ssid"
+        "domain_ssid",
+        "domain_ldap_basedn"
       ],
       "systemmust": [
         "name",

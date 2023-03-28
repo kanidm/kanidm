@@ -224,6 +224,8 @@ pub const UUID_SCHEMA_ATTR_EMAILALTERNATIVE: Uuid = uuid!("00000000-0000-0000-00
 pub const UUID_SCHEMA_ATTR_TOTP_IMPORT: Uuid = uuid!("00000000-0000-0000-0000-ffff00000128");
 pub const UUID_SCHEMA_ATTR_REPLICATED: Uuid = uuid!("00000000-0000-0000-0000-ffff00000129");
 pub const UUID_SCHEMA_ATTR_PRIVATE_COOKIE_KEY: Uuid = uuid!("00000000-0000-0000-0000-ffff00000130");
+pub const _UUID_SCHEMA_ATTR_DOMAIN_LDAP_BASEDN: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000131");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

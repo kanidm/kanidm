@@ -1704,6 +1704,14 @@ impl KanidmClient {
         .await
     }
 
+    pub async fn idm_domain_set_ldap_basedn(&self, new_basedn: &str) -> Result<(), ClientError> {
+        self.perform_put_request(
+            "/v1/domain/_attr/domain_ldap_basedn",
+            vec![new_basedn.to_string()],
+        )
+        .await
+    }
+
     pub async fn idm_domain_get_ssid(&self) -> Result<String, ClientError> {
         self.perform_get_request("/v1/domain/_attr/domain_ssid")
             .await

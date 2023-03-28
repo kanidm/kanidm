@@ -39,24 +39,24 @@ tree. Kanidm is a flat model, so we have to emulate some tree-like elements, and
 
 For this reason, when you search the LDAP interface, Kanidm will make some mapping decisions.
 
-- The Kanidm domain name is used to generate the DN of the suffix.
+- The Kanidm domain name is used to generate the DN of the suffix by default.
 - The domain\_info object becomes the suffix root.
 - All other entries are direct subordinates of the domain\_info for DN purposes.
 - Distinguished Names (DNs) are generated from the spn, name, or uuid attribute.
 - Bind DNs can be remapped and rewritten, and may not even be a DN during bind.
-- The '\*' and '+' operators can not be used in conjunction with attribute lists in searches.
 
 These decisions were made to make the path as simple and effective as possible, relying more on the
-Kanidm query and filter system than attempting to generate a tree-like representation of data. As
-almost all clients can use filters for entry selection we don't believe this is a limitation for the
-consuming applications.
+Kanidm query and filter system rather than attempting to generate a tree-like representation of
+data. As almost all clients can use filters for entry selection we don't believe this is a
+limitation for the consuming applications.
 
 ## Security
 
 ### TLS
 
-StartTLS is not supported due to security risks. LDAPS is the only secure method of communicating to
-any LDAP server. Kanidm will use it's certificates for both HTTPS and LDAPS.
+StartTLS is not supported due to security risks such as credential leakage and MITM attacks that are
+fundamental in how StartTLS works and can not be repaired. LDAPS is the only secure method of
+communicating to any LDAP server. Kanidm will use it's certificates for both HTTPS and LDAPS.
 
 ### Writes
 
@@ -70,10 +70,15 @@ bind for any DN will use its configured posix password.
 
 As the POSIX password is not equivalent in strength to the primary credentials of Kanidm (which in
 most cases is multi-factor authentication), the LDAP bind does not grant rights to elevated read
-permissions. All binds have the permissions of "Anonymous" even if the anonymous account is locked.
+permissions. All binds have the permissions of "anonymous" even if the anonymous account is locked.
 
 The exception is service accounts which can use api-tokens during an LDAP bind for elevated read
 permissions.
+
+### Filtering Objects
+
+It is recommended that client applications filter accounts that can authenticate with
+`(class=account)` and groups with `(class=group)`.
 
 ## Server Configuration
 
@@ -102,6 +107,7 @@ To show what attribute maps exists for an entry you can use the attribute search
 ```bash
 # To show Kanidm attributes
 ldapsearch ... -x '(name=admin)' '*'
+
 # To show all attribute maps
 ldapsearch ... -x '(name=admin)' '+'
 ```
@@ -112,6 +118,11 @@ Kanidm native attributes.
 ```bash
 ldapsearch ... -x '(name=admin)' cn objectClass displayname memberof
 ```
+
+## Group Memberships
+
+Group membership is defined in rfc2307bis or Active Directory style. This means groups are
+determined from the "memberof" attribute which contains a DN to a group.
 
 ## Service Accounts
 
@@ -131,7 +142,38 @@ ldapwhoami -H ldaps://idm.example.com -x -D "dn=token" -w "..."
 # u: demo_service@idm.example.com
 ```
 
-## Example
+## Changing the Basedn
+
+By default the basedn of the LDAP server is derived from the domain name. For example a domain name
+of `idm.example.com` will become `dc=idm,dc=example,dc=com`.
+
+However, you may wish to change this to something shorter or at a higher level within your domain
+name.
+
+<!-- deno-fmt-ignore-start -->
+
+{{#template ../templates/kani-warning.md
+imagepath=../images
+title=Warning!
+text=Changing the LDAP Basedn will require you to reconfigure your client applications so they search the correct basedn. Be careful when changing this value!
+}}
+
+<!-- deno-fmt-ignore-end -->
+
+As an admin you can change the domain ldap basedn with:
+
+```bash
+kanidm system domain set-ldap-basedn <new basedn>
+kanidm system domain set-ldap-basedn o=kanidm -D admin
+```
+
+Basedns are validated to ensure they are either `dc=`, `ou=` or `o=`. They must have one or more of
+these components and must only contain alphanumeric characters.
+
+After the basedn is changed, the new value will take effect after a server restart. If you have a
+replicated topology, you must restart all servers.
+
+## Examples
 
 Given a default install with domain "idm.example.com" the configured LDAP DN will be
 "dc=idm,dc=example,dc=com".
@@ -162,11 +204,6 @@ spn: test1@idm.example.com
 entryuuid: 22a65b6c-80c8-4e1a-9b76-3f3afdff8400
 ```
 
-It is recommended that client applications filter accounts that can login with `(class=account)` and
-groups with `(class=group)`. If possible, group membership is defined in RFC2307bis or Active
-Directory style. This means groups are determined from the "memberof" attribute which contains a DN
-to a group.
-
 LDAP binds can use any unique identifier of the account. The following are all valid bind DNs for
 the object listed above (if it was a POSIX account, that is).
 
@@ -179,6 +216,10 @@ ldapwhoami ... -x -D '22a65b6c-80c8-4e1a-9b76-3f3afdff8400'
 ldapwhoami ... -x -D 'spn=test1@idm.example.com,dc=idm,dc=example,dc=com'
 ldapwhoami ... -x -D 'name=test1,dc=idm,dc=example,dc=com'
 ```
+
+## Troubleshooting
+
+### Can't contact LDAP Server (-1)
 
 Most LDAP clients are very picky about TLS, and can be very hard to debug or display errors. For
 example these commands:

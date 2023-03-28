@@ -743,9 +743,20 @@ pub enum PwBadlistOpt {
 
 #[derive(Debug, Subcommand)]
 pub enum DomainOpt {
-    #[clap[name = "set-domain-display-name"]]
+    #[clap[name = "set-display-name"]]
     /// Set the domain display name
-    SetDomainDisplayName(OptSetDomainDisplayName),
+    SetDisplayName(OptSetDomainDisplayName),
+    #[clap[name = "set-ldap-basedn"]]
+    /// Change the basedn of this server. Takes effect after a server restart.
+    /// Examples are `o=organisation` or `dc=domain,dc=name`. Must be a valid ldap
+    /// dn containing only alphanumerics, and dn components must be org (o), domain (dc) or
+    /// orgunit (ou).
+    SetLdapBasedn {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(name = "new-basedn")]
+        new_basedn: String,
+    },
     #[clap(name = "show")]
     /// Show information about this system's domain
     Show(CommonOpt),
