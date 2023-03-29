@@ -59,7 +59,7 @@ tokio = { workspace = true, features = ["net", "sync", "time", "rt"] }
 tokio-util = { workspace = true, features = ["codec"] }
 toml.workspace = true
 touch.workspace = true
-nonempty.workspace = true
+nonempty = { workspace = true, features = ["serialize"] }
 
 tracing = { workspace = true, features = ["attributes"] }
 
