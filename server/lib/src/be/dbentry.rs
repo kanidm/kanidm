@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
+use nonempty::NonEmpty;
 use serde::{Deserialize, Serialize};
 use smartstring::alias::String as AttrString;
 use uuid::Uuid;
-use nonempty::NonEmpty;
 
 use crate::be::dbvalue::{DbValueEmailAddressV1, DbValuePhoneNumberV1, DbValueSetV2, DbValueV1};
 use crate::prelude::OperationError;
@@ -60,101 +60,56 @@ pub enum DbBackup {
 
 fn from_vec_dbval1(attr_val: NonEmpty<DbValueV1>) -> Result<DbValueSetV2, OperationError> {
     match attr_val.head {
-        DbValueV1::Utf8(s) => {
-            Ok(DbValueSetV2::Utf8(vec!(s)))
-        }
-        DbValueV1::Iutf8(s) => {
-            Ok(DbValueSetV2::Iutf8(vec!(s)))
-        }
-        DbValueV1::Iname(s) => {
-            Ok(DbValueSetV2::Iname(vec!(s)))
-        }
-        DbValueV1::Uuid(s) => {
-            Ok(DbValueSetV2::Uuid(vec!(s)))
-        }
-        DbValueV1::Bool(s) => {
-            Ok(DbValueSetV2::Bool(vec!(s)))
-        }
-        DbValueV1::SyntaxType(s) => {
-            Ok(DbValueSetV2::SyntaxType(vec!(s)))
-        }
+        DbValueV1::Utf8(s) => Ok(DbValueSetV2::Utf8(vec![s])),
+        DbValueV1::Iutf8(s) => Ok(DbValueSetV2::Iutf8(vec![s])),
+        DbValueV1::Iname(s) => Ok(DbValueSetV2::Iname(vec![s])),
+        DbValueV1::Uuid(s) => Ok(DbValueSetV2::Uuid(vec![s])),
+        DbValueV1::Bool(s) => Ok(DbValueSetV2::Bool(vec![s])),
+        DbValueV1::SyntaxType(s) => Ok(DbValueSetV2::SyntaxType(vec![s])),
         DbValueV1::IndexType(s) => {
             if let Ok(s_u16) = u16::try_from(s) {
-                Ok(DbValueSetV2::IndexType(vec!(s_u16)))
+                Ok(DbValueSetV2::IndexType(vec![s_u16]))
             } else {
                 Err(OperationError::InvalidValueState)
             }
         }
-        DbValueV1::Reference(s) => {
-            Ok(DbValueSetV2::Reference(vec!(s)))
-        }
-        DbValueV1::JsonFilter(s) => {
-            Ok(DbValueSetV2::JsonFilter(vec!(s)))
-        }
-        DbValueV1::Credential(s) => {
-            Ok(DbValueSetV2::Credential(vec!(s)))
-        }
-        DbValueV1::SecretValue(s) => {
-            Ok(DbValueSetV2::SecretValue(vec!(s)))
-        }
-        DbValueV1::SshKey(s) => {
-            Ok(DbValueSetV2::SshKey(vec!(s)))
-        }
-        DbValueV1::Spn(n, d) => {
-            Ok(DbValueSetV2::Spn(vec!((n, d))))
-        }
-        DbValueV1::Uint32(s) => {
-            Ok(DbValueSetV2::Uint32(vec!(s)))
-        }
-        DbValueV1::Cid(s) => {
-            Ok(DbValueSetV2::Cid(vec!(s)))
-        }
-        DbValueV1::NsUniqueId(s) => {
-            Ok(DbValueSetV2::NsUniqueId(vec!(s)))
-        }
-        DbValueV1::DateTime(s) => {
-            Ok(DbValueSetV2::DateTime(vec!(s)))
-        }
+        DbValueV1::Reference(s) => Ok(DbValueSetV2::Reference(vec![s])),
+        DbValueV1::JsonFilter(s) => Ok(DbValueSetV2::JsonFilter(vec![s])),
+        DbValueV1::Credential(s) => Ok(DbValueSetV2::Credential(vec![s])),
+        DbValueV1::SecretValue(s) => Ok(DbValueSetV2::SecretValue(vec![s])),
+        DbValueV1::SshKey(s) => Ok(DbValueSetV2::SshKey(vec![s])),
+        DbValueV1::Spn(n, d) => Ok(DbValueSetV2::Spn(vec![(n, d)])),
+        DbValueV1::Uint32(s) => Ok(DbValueSetV2::Uint32(vec![s])),
+        DbValueV1::Cid(s) => Ok(DbValueSetV2::Cid(vec![s])),
+        DbValueV1::NsUniqueId(s) => Ok(DbValueSetV2::NsUniqueId(vec![s])),
+        DbValueV1::DateTime(s) => Ok(DbValueSetV2::DateTime(vec![s])),
         DbValueV1::EmailAddress(DbValueEmailAddressV1 { d, p }) => {
             if p {
-                Ok(DbValueSetV2::EmailAddress(d.clone(), vec!(d)))
+                Ok(DbValueSetV2::EmailAddress(d.clone(), vec![d]))
             } else {
                 Err(OperationError::InvalidValueState)
             }
         }
         DbValueV1::PhoneNumber(DbValuePhoneNumberV1 { d, p }) => {
             if p {
-                Ok(DbValueSetV2::PhoneNumber(d.clone(), vec!(d)))
+                Ok(DbValueSetV2::PhoneNumber(d.clone(), vec![d]))
             } else {
                 Err(OperationError::InvalidValueState)
             }
         }
-        DbValueV1::Address(s) => {
-            Ok(DbValueSetV2::Address(vec!(s)))
-        }
-        DbValueV1::Url(s) => {
-            Ok(DbValueSetV2::Url(vec!(s)))
-        }
-        DbValueV1::OauthScope(s) => {
-            Ok(DbValueSetV2::OauthScope(vec!(s)))
-        }
-        DbValueV1::OauthScopeMap(s) => {
-            Ok(DbValueSetV2::OauthScopeMap(vec!(s)))
-        }
-        DbValueV1::PrivateBinary(s) => {
-            Ok(DbValueSetV2::PrivateBinary(vec!(s)))
-        }
-        DbValueV1::PublicBinary(t, s) => {
-            Ok(DbValueSetV2::PublicBinary(vec!((t, s))))
-        }
-        DbValueV1::RestrictedString(s) => {
-            Ok(DbValueSetV2::RestrictedString(vec!(s)))
-        }
-        DbValueV1::IntentToken { u, s} => {
-            Ok(DbValueSetV2::IntentToken(vec!((u.as_hyphenated().to_string(), s))))
-        }
+        DbValueV1::Address(s) => Ok(DbValueSetV2::Address(vec![s])),
+        DbValueV1::Url(s) => Ok(DbValueSetV2::Url(vec![s])),
+        DbValueV1::OauthScope(s) => Ok(DbValueSetV2::OauthScope(vec![s])),
+        DbValueV1::OauthScopeMap(s) => Ok(DbValueSetV2::OauthScopeMap(vec![s])),
+        DbValueV1::PrivateBinary(s) => Ok(DbValueSetV2::PrivateBinary(vec![s])),
+        DbValueV1::PublicBinary(t, s) => Ok(DbValueSetV2::PublicBinary(vec![(t, s)])),
+        DbValueV1::RestrictedString(s) => Ok(DbValueSetV2::RestrictedString(vec![s])),
+        DbValueV1::IntentToken { u, s } => Ok(DbValueSetV2::IntentToken(vec![(
+            u.as_hyphenated().to_string(),
+            s,
+        )])),
         DbValueV1::TrustedDeviceEnrollment { u } => {
-            Ok(DbValueSetV2::TrustedDeviceEnrollment(vec!(u)))
+            Ok(DbValueSetV2::TrustedDeviceEnrollment(vec![u]))
         }
         DbValueV1::Session { u: _ } => {
             debug_assert!(false);
