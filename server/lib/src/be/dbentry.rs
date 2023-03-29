@@ -59,58 +59,329 @@ pub enum DbBackup {
 }
 
 fn from_vec_dbval1(attr_val: NonEmpty<DbValueV1>) -> Result<DbValueSetV2, OperationError> {
-    match attr_val.head {
-        DbValueV1::Utf8(s) => Ok(DbValueSetV2::Utf8(vec![s])),
-        DbValueV1::Iutf8(s) => Ok(DbValueSetV2::Iutf8(vec![s])),
-        DbValueV1::Iname(s) => Ok(DbValueSetV2::Iname(vec![s])),
-        DbValueV1::Uuid(s) => Ok(DbValueSetV2::Uuid(vec![s])),
-        DbValueV1::Bool(s) => Ok(DbValueSetV2::Bool(vec![s])),
-        DbValueV1::SyntaxType(s) => Ok(DbValueSetV2::SyntaxType(vec![s])),
-        DbValueV1::IndexType(s) => {
-            if let Ok(s_u16) = u16::try_from(s) {
-                Ok(DbValueSetV2::IndexType(vec![s_u16]))
-            } else {
-                Err(OperationError::InvalidValueState)
-            }
+    match attr_val.first() {
+        DbValueV1::Utf8(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::Utf8(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::Utf8),
+        DbValueV1::Iutf8(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::Iutf8(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::Iutf8),
+        DbValueV1::Iname(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::Iname(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::Iname),
+        DbValueV1::Uuid(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::Uuid(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::Uuid),
+        DbValueV1::Bool(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::Bool(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::Bool),
+        DbValueV1::SyntaxType(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::SyntaxType(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::SyntaxType),
+        DbValueV1::IndexType(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::IndexType(s) = dbv {
+                    u16::try_from(s).map_err(|_| OperationError::InvalidValueState)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::IndexType),
+        DbValueV1::Reference(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::Reference(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::Reference),
+        DbValueV1::JsonFilter(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::JsonFilter(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::JsonFilter),
+        DbValueV1::Credential(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::Credential(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::Credential),
+        DbValueV1::SecretValue(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::SecretValue(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::SecretValue),
+        DbValueV1::SshKey(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::SshKey(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::SshKey),
+        DbValueV1::Spn(_, _) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::Spn(n, d) = dbv {
+                    Ok((n, d))
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::Spn),
+        DbValueV1::Uint32(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::Uint32(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::Uint32),
+        DbValueV1::Cid(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::Cid(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::Cid),
+        DbValueV1::NsUniqueId(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::NsUniqueId(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::NsUniqueId),
+        DbValueV1::DateTime(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::DateTime(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::DateTime),
+        DbValueV1::EmailAddress(_) => {
+            let mut primary = None;
+            let vs: Result<Vec<_>, _> = attr_val
+                .into_iter()
+                .map(|dbv| {
+                    if let DbValueV1::EmailAddress(DbValueEmailAddressV1 { d, p }) = dbv {
+                        if p {
+                            primary = Some(d.clone());
+                        }
+                        Ok(d)
+                    } else {
+                        Err(OperationError::InvalidValueState)
+                    }
+                })
+                .collect();
+            let primary = primary.ok_or(OperationError::InvalidValueState)?;
+            vs.map(|vs| DbValueSetV2::EmailAddress(primary, vs))
         }
-        DbValueV1::Reference(s) => Ok(DbValueSetV2::Reference(vec![s])),
-        DbValueV1::JsonFilter(s) => Ok(DbValueSetV2::JsonFilter(vec![s])),
-        DbValueV1::Credential(s) => Ok(DbValueSetV2::Credential(vec![s])),
-        DbValueV1::SecretValue(s) => Ok(DbValueSetV2::SecretValue(vec![s])),
-        DbValueV1::SshKey(s) => Ok(DbValueSetV2::SshKey(vec![s])),
-        DbValueV1::Spn(n, d) => Ok(DbValueSetV2::Spn(vec![(n, d)])),
-        DbValueV1::Uint32(s) => Ok(DbValueSetV2::Uint32(vec![s])),
-        DbValueV1::Cid(s) => Ok(DbValueSetV2::Cid(vec![s])),
-        DbValueV1::NsUniqueId(s) => Ok(DbValueSetV2::NsUniqueId(vec![s])),
-        DbValueV1::DateTime(s) => Ok(DbValueSetV2::DateTime(vec![s])),
-        DbValueV1::EmailAddress(DbValueEmailAddressV1 { d, p }) => {
-            if p {
-                Ok(DbValueSetV2::EmailAddress(d.clone(), vec![d]))
-            } else {
-                Err(OperationError::InvalidValueState)
-            }
+        DbValueV1::PhoneNumber(_) => {
+            let mut primary = None;
+            let vs: Result<Vec<_>, _> = attr_val
+                .into_iter()
+                .map(|dbv| {
+                    if let DbValueV1::PhoneNumber(DbValuePhoneNumberV1 { d, p }) = dbv {
+                        if p {
+                            primary = Some(d.clone());
+                        }
+                        Ok(d)
+                    } else {
+                        Err(OperationError::InvalidValueState)
+                    }
+                })
+                .collect();
+            let primary = primary.ok_or(OperationError::InvalidValueState)?;
+            vs.map(|vs| DbValueSetV2::PhoneNumber(primary, vs))
         }
-        DbValueV1::PhoneNumber(DbValuePhoneNumberV1 { d, p }) => {
-            if p {
-                Ok(DbValueSetV2::PhoneNumber(d.clone(), vec![d]))
-            } else {
-                Err(OperationError::InvalidValueState)
-            }
-        }
-        DbValueV1::Address(s) => Ok(DbValueSetV2::Address(vec![s])),
-        DbValueV1::Url(s) => Ok(DbValueSetV2::Url(vec![s])),
-        DbValueV1::OauthScope(s) => Ok(DbValueSetV2::OauthScope(vec![s])),
-        DbValueV1::OauthScopeMap(s) => Ok(DbValueSetV2::OauthScopeMap(vec![s])),
-        DbValueV1::PrivateBinary(s) => Ok(DbValueSetV2::PrivateBinary(vec![s])),
-        DbValueV1::PublicBinary(t, s) => Ok(DbValueSetV2::PublicBinary(vec![(t, s)])),
-        DbValueV1::RestrictedString(s) => Ok(DbValueSetV2::RestrictedString(vec![s])),
-        DbValueV1::IntentToken { u, s } => Ok(DbValueSetV2::IntentToken(vec![(
-            u.as_hyphenated().to_string(),
-            s,
-        )])),
-        DbValueV1::TrustedDeviceEnrollment { u } => {
-            Ok(DbValueSetV2::TrustedDeviceEnrollment(vec![u]))
-        }
+        DbValueV1::Address(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::Address(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::Address),
+        DbValueV1::Url(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::Url(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::Url),
+        DbValueV1::OauthScope(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::OauthScope(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::OauthScope),
+        DbValueV1::OauthScopeMap(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::OauthScopeMap(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::OauthScopeMap),
+        DbValueV1::PrivateBinary(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::PrivateBinary(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::PrivateBinary),
+        DbValueV1::PublicBinary(_, _) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::PublicBinary(t, s) = dbv {
+                    Ok((t, s))
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::PublicBinary),
+        DbValueV1::RestrictedString(_) => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::RestrictedString(s) = dbv {
+                    Ok(s)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::RestrictedString),
+        DbValueV1::IntentToken { u: _, s: _ } => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::IntentToken { u, s } = dbv {
+                    Ok((u.as_hyphenated().to_string(), s))
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::IntentToken),
+        DbValueV1::TrustedDeviceEnrollment { u: _ } => attr_val
+            .into_iter()
+            .map(|dbv| {
+                if let DbValueV1::TrustedDeviceEnrollment { u } = dbv {
+                    Ok(u)
+                } else {
+                    Err(OperationError::InvalidValueState)
+                }
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(DbValueSetV2::TrustedDeviceEnrollment),
         DbValueV1::Session { u: _ } => {
             debug_assert!(false);
             Err(OperationError::InvalidState)
