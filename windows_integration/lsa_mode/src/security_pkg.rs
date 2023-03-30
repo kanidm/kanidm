@@ -259,3 +259,12 @@ pub extern "system" fn sp_get_tbal_supplemental_creds(
 ) -> NTSTATUS {
     STATUS_SUCCESS
 }
+
+pub extern "system" fn sp_set_cred_attributes(
+    cred_handle: usize,
+    cred_attr: u32,
+    buffer: *const c_void,
+    buffer_size: u32,
+) -> NTSTATUS {
+    STATUS_SUCCESS
+}
