@@ -67,7 +67,7 @@ impl AuthPkg {
     }
 
     pub fn logon_user(
-        self: &mut Self,
+        self: &Self,
         client_req: *const *const c_void,
         logon_type: SECURITY_LOGON_TYPE,
         auth_info: *const c_void,
