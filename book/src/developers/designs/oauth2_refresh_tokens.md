@@ -6,27 +6,39 @@ implemented session lengths have been extended to 8 hours with possible increase
 
 However, this leaves us with an issue with oauth2 - oauth2 access tokens are considered valid until
 their expiry and we should not issue tokens with a validity of 8 hours or longer since that would
-allow rogue users to have a long window of usage of the token before they were forced to re-auth.
+allow rogue users to have a long window of usage of the token before they were forced to re-auth. It
+also means that in the case that an account must be forcefully terminated then the user would retain
+access to applications for up to 8 hours or more.
 
 To prevent this, we need oauth2 tokens to "check in" periodically to re-afirm their session
 validity.
 
-This is performed with access tokens and refresh tokens. The access token has a short lifespan (15
-minutes) and must be refreshed with Kanidm which can check the true session validity and if the
-session has been revoked. This creates a short window for revocation to propagate to oauth2
-applications.
+This is performed with access tokens and refresh tokens. The access token has a short lifespan
+(proposed 15 minutes) and must be refreshed with Kanidm which can check the true session validity
+and if the session has been revoked. This creates a short window for revocation to propagate to
+oauth2 applications since each oauth2 application must periodically check in to keep their access
+token alive.
 
 ## Risks
 
-Refresh tokens are presented to the oauth2 server where they receive an access token and an optional
-new refresh token. Because of this, it could be possible to present a refresh token multiple times
-to proliferate extra refresh and access tokens away from the system. Preventing this is important to
-limit where the tokens are used.
+Refresh tokens are presented to the relying server where they receive an access token and an
+optional new refresh token. Because of this, it could be possible to present a refresh token
+multiple times to proliferate extra refresh and access tokens away from the system. Preventing this
+is important to limit where the tokens are used and monitor and revoke them effectively.
 
 In addition, old refresh tokens should not be able to be used once exchanged, they should be "at
 most once". If this is not enforced then old refresh tokens can be used to gain access to sessions
 even if the associated access token was expired by many hours and it's refresh token was already
 used.
+
+This is supported by
+[draft oauth security topics section 2.2.2](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-2.2.2)
+and
+[draft oauth security topics refresh token protection](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#refresh_token_protection)
+
+Refresh tokens must only be used by the client application associated. Kanidm strictly enforces this
+already with our client authorisation checks. This is discussed in
+[rfc6749 section 10.4](https://www.rfc-editor.org/rfc/rfc6749#section-10.4).
 
 ## Design
 
@@ -116,3 +128,34 @@ former NIB 2 session.
 While this allows a short window where a former access token could be used on the second replica,
 this infrastructure being behind load balancers and outside of an attackers influence significantly
 hinders the ability to attack this for very little gain.
+
+## Attack Detection
+
+[draft oauth security topics section 4.14.2](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.14.2)
+specifically calls out that when refresh token re-use is detected then all tokens of the session
+should be canceled to cause a new authorisation code flow to be initiated.
+
+## Inactive Refresh Tokens
+
+Similar
+[draft oauth security topics section 4.14.2](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.14.2)
+also discusses that inactive tokens should be invalidated after a period of time. From the view of
+the refresh token this is performed by an internal exp field in the encrypted refresh token.
+
+From the servers side we will require a "not after" parameter that is updated on token activity.
+This will also require inactive session cleanup in the server which can be extended into the session
+consistency plugin that already exists.
+
+Since the act of refreshing a token is implied activity then we do not require other signaling
+mechanisms.
+
+# Questions
+
+Currently with authorisation code grants and sessions we issue these where the sessions are recorded
+in an async manner. For consistency I believe the same should be true here but is there a concern
+with the refresh being issued but a slight delay before it's recorded? I think given the nature of
+our future replication we already have to consider the async/eventual nature of things, so this
+doesn't impact that further, and may just cause client latency in the update process.
+
+However, we also don't want a situation where our async/delayed action queues become too full or
+overworked. Maybe queue monitoring/backlog issues are a separate problem though.

@@ -964,6 +964,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         Ok(consent_req.redirect_uri)
     }
 
+    // ALERT WILLIAM THIS IS WHAT CHANGES WITH THE TOKEN REFRESH.
     pub fn check_oauth2_token_exchange(
         &mut self,
         client_authz: Option<&str>,

@@ -539,6 +539,12 @@ pub async fn oauth2_token_post(mut req: tide::Request<AppState>) -> tide::Result
         )
     })?;
 
+
+    // Do we change the method/path we take here based on the type of requested
+    // grant? Should we cease the delayed/async session update here and just opt
+    // for a wr txn?
+
+
     let res = req
         .state()
         .qe_r_ref
