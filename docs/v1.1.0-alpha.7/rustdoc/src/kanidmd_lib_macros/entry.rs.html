@@ -288,7 +288,7 @@
         <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span>token_stream_with_error(item, e),
     };
 
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(attr) = input.attrs.iter().find(|attr| attr.path.is_ident(<span class="string">&quot;test&quot;</span>)) {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(attr) = input.attrs.iter().find(|attr| attr.path().is_ident(<span class="string">&quot;test&quot;</span>)) {
         <span class="kw">let </span>msg = <span class="string">&quot;second test attribute is supplied&quot;</span>;
         <span class="kw">return </span>token_stream_with_error(item, syn::Error::new_spanned(attr, msg));
     };
@@ -378,7 +378,7 @@
         <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span>token_stream_with_error(item, e),
     };
 
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(attr) = input.attrs.iter().find(|attr| attr.path.is_ident(<span class="string">&quot;test&quot;</span>)) {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(attr) = input.attrs.iter().find(|attr| attr.path().is_ident(<span class="string">&quot;test&quot;</span>)) {
         <span class="kw">let </span>msg = <span class="string">&quot;second test attribute is supplied&quot;</span>;
         <span class="kw">return </span>token_stream_with_error(item, syn::Error::new_spanned(attr, msg));
     };
@@ -472,7 +472,7 @@
         <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span>token_stream_with_error(item, e),
     };
 
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(attr) = input.attrs.iter().find(|attr| attr.path.is_ident(<span class="string">&quot;test&quot;</span>)) {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(attr) = input.attrs.iter().find(|attr| attr.path().is_ident(<span class="string">&quot;test&quot;</span>)) {
         <span class="kw">let </span>msg = <span class="string">&quot;second test attribute is supplied&quot;</span>;
         <span class="kw">return </span>token_stream_with_error(item, syn::Error::new_spanned(attr, msg));
     };
