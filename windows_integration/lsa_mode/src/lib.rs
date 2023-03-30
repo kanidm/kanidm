@@ -66,7 +66,7 @@ pub extern "system" fn SpLsaModeInitialize(
 
     unsafe {
         *pkg_ver = 1u32;
-        *pctables = 39u32;
+        *pctables = 1u32;
         *(*pptables) = pptable;
     }
 
