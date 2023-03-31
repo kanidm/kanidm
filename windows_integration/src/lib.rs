@@ -7,9 +7,12 @@ use windows::Win32::{
 mod auth_pkg;
 mod wrapper_funcs;
 
+/// # Safety
+/// This should only ever be called by the windows api, and FFI with C++ is always unsafe
+/// So beware of demons I guess :shrug:
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern "system" fn SpLsaModeInitialize(
+pub unsafe extern "system" fn SpLsaModeInitialize(
     lsa_version: u32,
     pkg_ver: *mut u32,
     pptables: *mut *mut SECPKG_FUNCTION_TABLE,
