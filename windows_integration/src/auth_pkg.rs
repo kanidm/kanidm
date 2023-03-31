@@ -26,7 +26,7 @@ impl AuthenticationPackage {
         &mut self,
         package_id: u32,
         dispatch_table: *const LSA_DISPATCH_TABLE,
-        pkg_name_return: *mut *mut STRING,
+        out_pkg_name: *mut *mut STRING,
     ) -> NTSTATUS {
         let init_pkg_span =
             span!(Level::INFO, "Initialising kanidm Authentication Package").entered();
@@ -57,7 +57,7 @@ impl AuthenticationPackage {
         };
 
         unsafe {
-            **pkg_name_return = ap_name;
+            **out_pkg_name = ap_name;
         }
 
         init_pkg_span.exit();

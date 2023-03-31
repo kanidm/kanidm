@@ -7,13 +7,13 @@ pub extern "system" fn ap_initialise_pkg(
     dispatch_table: *const LSA_DISPATCH_TABLE,
     _: *const STRING,
     _: *const STRING,
-    ap_pkg_name_return: *mut *mut STRING,
+    out_pkg_name: *mut *mut STRING,
 ) -> NTSTATUS {
     unsafe {
         GLOBAL_AUTHENTICATION_PACKAGE.initialise_package(
             package_id,
             dispatch_table,
-            ap_pkg_name_return,
+            out_pkg_name,
         )
     }
 }
