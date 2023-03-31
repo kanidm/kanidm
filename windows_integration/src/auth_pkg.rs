@@ -18,7 +18,7 @@ pub struct AuthenticationPackage {
     /// The identifier the LSA has assigned the client
     package_id: Option<u32>,
     /// The dispatch table which provides functions to be called by the client
-    dispatch_table: Option<Arc<Mutex<*const LSA_DISPATCH_TABLE>>>,
+    dispatch_table: Option<&'static LSA_DISPATCH_TABLE>,
 }
 
 impl AuthenticationPackage {
@@ -37,7 +37,18 @@ impl AuthenticationPackage {
             return STATUS_UNSUCCESSFUL;
         }
 
-        self.dispatch_table = Some(Arc::new(Mutex::new(dispatch_table)));
+        let dispatch_table_ref = unsafe {
+            match dispatch_table.as_ref() {
+                Some(tbl) => tbl,
+                None => {
+                    event!(Level::ERROR, "Failed to get reference to dispatch table");
+
+                    return STATUS_UNSUCCESSFUL;
+                },
+            }
+        };
+
+        self.dispatch_table = Some(dispatch_table_ref);
         self.package_id = Some(package_id);
 
         let mut package_name = env!("CARGO_PKG_NAME").to_owned();
