@@ -23,7 +23,7 @@ pub struct AuthenticationPackage {
 
 impl AuthenticationPackage {
     pub fn initialise_package(
-        self: &mut Self,
+        &mut self,
         package_id: u32,
         dispatch_table: *const LSA_DISPATCH_TABLE,
         pkg_name_return: *mut *mut STRING,
