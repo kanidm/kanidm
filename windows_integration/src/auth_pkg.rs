@@ -1,10 +1,10 @@
-use std::sync::{Arc, Mutex};
+use std::{ffi::c_void, ptr::null_mut};
 use tracing::{event, span, Level};
 use windows::{
     core::PSTR,
     Win32::{
-        Foundation::{NTSTATUS, STATUS_SUCCESS, STATUS_UNSUCCESSFUL},
-        Security::Authentication::Identity::LSA_DISPATCH_TABLE,
+        Foundation::{NTSTATUS, STATUS_SUCCESS, STATUS_UNSUCCESSFUL, LUID, UNICODE_STRING},
+        Security::Authentication::Identity::{LSA_DISPATCH_TABLE, SECURITY_LOGON_TYPE, LSA_TOKEN_INFORMATION_TYPE},
         System::Kernel::STRING,
     },
 };
@@ -72,6 +72,57 @@ impl AuthenticationPackage {
         }
 
         init_pkg_span.exit();
+        STATUS_SUCCESS
+    }
+
+    pub fn logon_user(
+        &self,
+        client_request: *const *const c_void,
+        logon_type: SECURITY_LOGON_TYPE,
+        authentication_info: *const c_void,
+        client_authentication_base: *const c_void,
+        authentication_info_base: u32,
+        out_profile_buffer: *mut *mut c_void,
+        out_profile_buffer_length: *mut u32,
+        out_logon_id: *mut LUID,
+        out_substatus: *mut i32,
+        out_token_info_type: *mut LSA_TOKEN_INFORMATION_TYPE,
+        out_token_info: *mut *mut c_void,
+        out_account_name: *mut *mut UNICODE_STRING,
+        out_authenticating_authority: *mut *mut UNICODE_STRING,
+    ) -> NTSTATUS {
+        let logon_user_span = span!(Level::INFO, "Logging on user").entered();
+
+        let dispatch_table = match self.dispatch_table {
+            Some(tbl) => tbl,
+            None => {
+                event!(Level::ERROR, "Missing Dispatch Table");
+
+                return STATUS_UNSUCCESSFUL;
+            }
+        };
+        let client_request_buffer: *mut *mut c_void = null_mut();
+        let alloc_client_buffer = match dispatch_table.AllocateClientBuffer {
+            Some(acb) => acb,
+            None => {
+                event!(Level::ERROR, "Failed to get AllocateClientBuffer function");
+
+                return STATUS_UNSUCCESSFUL;
+            }
+        };
+
+        unsafe {
+            match alloc_client_buffer(client_request, 10, client_request_buffer) {
+                STATUS_SUCCESS => (),
+                _ => {
+                    event!(Level::ERROR, "Failed to allocate client request buffer");
+
+                    return STATUS_UNSUCCESSFUL;
+                }
+            }
+        }
+
+        logon_user_span.exit();
         STATUS_SUCCESS
     }
 }
