@@ -23,9 +23,7 @@ members = [
     "libs/file_permissions",
     "libs/profiles",
     "libs/sketching",
-    "windows_integration/common",
-    "windows_integration/lsa_mode",
-    "windows_integration/user_mode"
+    "windows_integration",
 ]
 
 [workspace.package]

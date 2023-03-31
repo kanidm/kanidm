@@ -1,6 +1,6 @@
 [package]
-name = "kanidm_win_common"
-description = "Kanidm Windows Integration Common Library"
+name = "kanidm_win_int"
+description = "Kanidm Windows Client"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
 
 version.workspace = true
@@ -11,9 +11,18 @@ license.workspace = true
 homepage.workspace = true
 repository.workspace = true
 
+[lib]
+crate-type = ["cdylib"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 kanidm_client.workspace = true
-kanidm_proto.workspace = true
-serde = { workspace = true, features = ["derive"] }
+windows = { version = "0.44.0", features = [
+	"Win32_Security_Authentication_Identity",
+	"Win32_Foundation",
+	"Win32_Security_Credentials",
+	"Win32_System_Kernel",
+	"Win32_System_Threading",
+] }
+tracing.workspace = true
