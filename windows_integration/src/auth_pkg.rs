@@ -38,6 +38,7 @@ impl AuthenticationPackage {
         }
 
         self.dispatch_table = Some(Arc::new(Mutex::new(dispatch_table)));
+        self.package_id = Some(package_id);
 
         let mut package_name = env!("CARGO_PKG_NAME").to_owned();
         let package_name_length = match u16::try_from(package_name.len()) {
