@@ -2385,6 +2385,7 @@ dependencies = [
 name = "kanidm_win_lsa_mode"
 version = "1.1.0-alpha.12-dev"
 dependencies = [
+ "kanidm_client",
  "kanidm_win_common",
  "tracing",
  "windows 0.44.0",
