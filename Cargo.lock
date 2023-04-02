@@ -2547,13 +2547,12 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "lber"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a99b520993b21a6faab32643cf4726573dc18ca4cf2d48cbeb24d248c86c930"
+checksum = "b5d85f5e00e12cb50c70c3b1c1f0daff6546eb4c608b44d0a990e38a539e0446"
 dependencies = [
- "byteorder",
  "bytes",
- "nom 2.2.1",
+ "nom 7.1.3",
 ]
 
 [[package]]
@@ -2578,12 +2577,13 @@ dependencies = [
 
 [[package]]
 name = "ldap3_proto"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4162706b6f3b3d58f577990e22e9a0e03e2f9bedc2b8181d8abab2498da32003"
+checksum = "57ea4b099d9f84c8424a56e9b361f5f9aeae9d87ca9bd683c54a6a27c8676597"
 dependencies = [
  "bytes",
  "lber",
+ "nom 7.1.3",
  "peg",
  "tokio-util",
  "tracing",
@@ -2852,12 +2852,6 @@ dependencies = [
  "security-framework-sys",
  "tempfile",
 ]
-
-[[package]]
-name = "nom"
-version = "2.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf51a729ecf40266a2368ad335a5fdde43471f545a967109cd62146ecf8b66ff"
 
 [[package]]
 name = "nom"
