@@ -21,7 +21,7 @@ jobs:
          - debian:11
          - debian:10
     runs-on: ubuntu-latest
-    container: 
+    container:
       image: ${{ matrix.image }}
       env:
         DEBIAN_FRONTEND: noninteractive
@@ -61,6 +61,7 @@ jobs:
     name: Upload to releases
     needs: build-deb-package
     runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/master' }}
     steps:
       - name: Download previously built debs
         uses: actions/download-artifact@v3
@@ -76,4 +77,3 @@ jobs:
           prerelease: true
           title: "Ubuntu Packages"
           files: "*.deb"
-        if: ${{ github.ref == 'refs/heads/master' }}
