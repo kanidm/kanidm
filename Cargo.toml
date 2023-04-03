@@ -99,7 +99,7 @@ mathru = "^0.13.0"
 num_enum = "^0.5.11"
 oauth2_ext = { version = "^4.1.0", package = "oauth2", default-features = false }
 openssl-sys = "^0.9"
-openssl = "^0.10.48"
+openssl = "^0.10.49"
 paste = "^1.0.12"
 pkg-config = "^0.3.26"
 proc-macro2 = "1.0.56"
