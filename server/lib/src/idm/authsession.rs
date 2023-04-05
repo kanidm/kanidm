@@ -18,12 +18,12 @@ use kanidm_proto::v1::{
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
 // use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
+use nonempty::{nonempty, NonEmpty};
 use webauthn_rs::prelude::Passkey as PasskeyV4;
 use webauthn_rs::prelude::{
     CredentialID, PasskeyAuthentication, RequestChallengeResponse, SecurityKeyAuthentication,
     Webauthn,
 };
-use nonempty::{NonEmpty, nonempty};
 
 use crate::credential::totp::Totp;
 use crate::credential::{BackupCodes, Credential, CredentialType, Password};
