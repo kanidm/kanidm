@@ -23,6 +23,7 @@ use webauthn_rs::prelude::{
     CredentialID, PasskeyAuthentication, RequestChallengeResponse, SecurityKeyAuthentication,
     Webauthn,
 };
+use nonempty::{NonEmpty, nonempty};
 
 use crate::credential::totp::Totp;
 use crate::credential::{BackupCodes, Credential, CredentialType, Password};
@@ -84,7 +85,7 @@ enum AuthIntent {
 /// A response type to indicate the progress and potential result of an authentication attempt.
 enum CredState {
     Success { auth_type: AuthType, cred_id: Uuid },
-    Continue(Vec<AuthAllowed>),
+    Continue(NonEmpty<AuthAllowed>),
     Denied(&'static str),
 }
 
@@ -420,7 +421,7 @@ impl CredHandler {
                                         admin_warn!("unable to queue delayed webauthn property update, continuing ... ");
                                     };
                                 };
-                                CredState::Continue(vec![AuthAllowed::Password])
+                                CredState::Continue(nonempty![AuthAllowed::Password])
                             }
                             Err(e) => {
                                 pw_mfa.mfa_state = CredVerifyState::Fail;
@@ -447,7 +448,7 @@ impl CredHandler {
                             security_info!(
                                 "Handler::PasswordMfa -> Result::Continue - TOTP ({}) OK, password -", label
                             );
-                            CredState::Continue(vec![AuthAllowed::Password])
+                            CredState::Continue(nonempty![AuthAllowed::Password])
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
                             security_error!(
@@ -470,7 +471,7 @@ impl CredHandler {
                             };
                             pw_mfa.mfa_state = CredVerifyState::Success;
                             security_info!("Handler::PasswordMfa -> Result::Continue - BackupCode OK, password -");
-                            CredState::Continue(vec![AuthAllowed::Password])
+                            CredState::Continue(nonempty![AuthAllowed::Password])
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
                             security_error!("Handler::PasswordMfa -> Result::Denied - BackupCode Fail, password -");
@@ -1037,7 +1038,7 @@ impl AuthSession {
                     }
                     CredState::Continue(allowed) => {
                         security_info!(?allowed, "Request credential continuation");
-                        (None, Ok(AuthState::Continue(allowed)))
+                        (None, Ok(AuthState::Continue(allowed.into_iter().collect())))
                     }
                     CredState::Denied(reason) => {
                         security_info!(%reason, "Credentials denied");
