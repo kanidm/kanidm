@@ -59,6 +59,7 @@ impl SecurityPackage {
 		self.params = Some(params_ref);
 		self.lsa_support_fns = Some(func_table_ref);
 
+		init_pkg_span.exit();
         STATUS_SUCCESS
     }
 

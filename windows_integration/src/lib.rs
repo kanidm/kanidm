@@ -86,6 +86,7 @@ pub unsafe extern "system" fn SpLsaModeInitialize(
         LogonUserEx3: None,
         PreLogonUserSurrogate: None,
         PostLogonUserSurrogate: None,
+        ExtractTargetInfo: None,
     };
 
     unsafe {
