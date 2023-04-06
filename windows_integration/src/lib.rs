@@ -45,7 +45,7 @@ pub unsafe extern "system" fn SpLsaModeInitialize(
 
     let function_table = SECPKG_FUNCTION_TABLE {
         InitializePackage: Some(wrapper_funcs::ap_initialise_pkg),
-        LogonUserA: None,
+        LogonUserA: Some(wrapper_funcs::ap_logon_user),
         CallPackage: None,
         LogonTerminated: None,
         CallPackageUntrusted: None,
