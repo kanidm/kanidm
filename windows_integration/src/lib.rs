@@ -6,6 +6,7 @@ use windows::Win32::{
 
 mod auth_pkg;
 mod wrapper_funcs;
+mod security_pkg;
 
 /// # Safety
 /// This should only ever be called by the windows api, and FFI with C++ is always unsafe
