@@ -1,7 +1,13 @@
+use crate::{auth_pkg::GLOBAL_AUTHENTICATION_PACKAGE, security_pkg::GLOBAL_SECURITY_PACKAGE};
 use std::ffi::c_void;
-use windows::Win32::{Security::Authentication::Identity::{LSA_DISPATCH_TABLE, SECURITY_LOGON_TYPE, LSA_TOKEN_INFORMATION_TYPE}, Foundation::{NTSTATUS, LUID, UNICODE_STRING}, System::Kernel::STRING};
-
-use crate::auth_pkg::GLOBAL_AUTHENTICATION_PACKAGE;
+use windows::Win32::{
+    Foundation::{LUID, NTSTATUS, UNICODE_STRING},
+    Security::Authentication::Identity::{
+        LSA_DISPATCH_TABLE, LSA_SECPKG_FUNCTION_TABLE, LSA_TOKEN_INFORMATION_TYPE,
+        SECPKG_PARAMETERS, SECURITY_LOGON_TYPE,
+    },
+    System::Kernel::STRING,
+};
 
 pub extern "system" fn ap_initialise_pkg(
     package_id: u32,
@@ -11,11 +17,7 @@ pub extern "system" fn ap_initialise_pkg(
     out_pkg_name: *mut *mut STRING,
 ) -> NTSTATUS {
     unsafe {
-        GLOBAL_AUTHENTICATION_PACKAGE.initialise_package(
-            package_id,
-            dispatch_table,
-            out_pkg_name,
-        )
+        GLOBAL_AUTHENTICATION_PACKAGE.initialise_package(package_id, dispatch_table, out_pkg_name)
     }
 }
 
@@ -51,4 +53,17 @@ pub extern "system" fn ap_logon_user(
             out_authenticating_authority,
         )
     }
+}
+
+// Security Packages
+pub extern "system" fn sp_initialise(
+    package_id: usize,
+    params: *const SECPKG_PARAMETERS,
+    func_table: *const LSA_SECPKG_FUNCTION_TABLE,
+) -> NTSTATUS {
+    unsafe { GLOBAL_SECURITY_PACKAGE.initialise_package(package_id, params, func_table) }
+}
+
+pub extern "system" fn sp_shutdown() -> NTSTATUS {
+    unsafe { GLOBAL_SECURITY_PACKAGE.shutdown_package() }
 }
