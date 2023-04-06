@@ -1,3 +1,4 @@
+// TODO: Finish implementing the auth package
 use std::{ffi::c_void, ptr::null_mut};
 use tracing::{event, span, Level};
 use windows::{
