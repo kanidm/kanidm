@@ -1,13 +1,19 @@
-use tracing::{span, Level, event};
+use kanidm_client::{KanidmClient, KanidmClientBuilder, ClientError};
+use tracing::{event, span, Level};
 use windows::Win32::{
-    Foundation::{NTSTATUS, STATUS_SUCCESS, STATUS_UNSUCCESSFUL},
-    Security::Authentication::Identity::{LSA_SECPKG_FUNCTION_TABLE, SECPKG_PARAMETERS},
+    Foundation::{NTSTATUS, STATUS_SUCCESS, STATUS_UNSUCCESSFUL, UNICODE_STRING},
+    Security::{Authentication::Identity::{
+        LSA_SECPKG_FUNCTION_TABLE, SECPKG_PARAMETERS, SECPKG_PRIMARY_CRED,
+        SECPKG_SUPPLEMENTAL_CRED, SECURITY_LOGON_TYPE,
+    }, Credentials::STATUS_LOGON_FAILURE},
 };
+use tokio::runtime::Builder as RuntimeBuilder;
 
 pub static mut GLOBAL_SECURITY_PACKAGE: SecurityPackage = SecurityPackage {
-	package_id: None,
-	params: None,
-	lsa_support_fns: None,
+    package_id: None,
+    params: None,
+    lsa_support_fns: None,
+    kani_client: None,
 };
 
 pub struct SecurityPackage {
@@ -17,6 +23,8 @@ pub struct SecurityPackage {
     pub params: Option<&'static SECPKG_PARAMETERS>,
     /// The LSA support functions
     pub lsa_support_fns: Option<&'static LSA_SECPKG_FUNCTION_TABLE>,
+    /// The kanidm client
+    pub kani_client: Option<KanidmClient>,
 }
 
 impl SecurityPackage {
@@ -28,46 +36,131 @@ impl SecurityPackage {
     ) -> NTSTATUS {
         let init_pkg_span = span!(Level::INFO, "Initialising kanidm security package").entered();
 
-		if self.package_id.is_some() || self.params.is_some() || self.lsa_support_fns.is_some() {
-			event!(Level::ERROR, "kanidm security package has already been initialised");
-			
-			return STATUS_UNSUCCESSFUL;
-		}
+        if self.package_id.is_some() || self.params.is_some() || self.lsa_support_fns.is_some() {
+            event!(
+                Level::ERROR,
+                "kanidm security package has already been initialised"
+            );
 
-		let func_table_ref = unsafe {
-			match lsa_support_fns.as_ref() {
-				Some(tbl) => tbl,
-				None => {
-					event!(Level::ERROR, "Failed to get reference to the LSA's support functions");
+            return STATUS_UNSUCCESSFUL;
+        }
 
-					return STATUS_UNSUCCESSFUL;
-				}
-			}
-		};
-		let params_ref = unsafe {
-			match params.as_ref() {
-				Some(prms) => prms,
-				None => {
-					event!(Level::ERROR, "Failed to get reference to secpkg parameters");
+        let func_table_ref = unsafe {
+            match lsa_support_fns.as_ref() {
+                Some(tbl) => tbl,
+                None => {
+                    event!(
+                        Level::ERROR,
+                        "Failed to get reference to the LSA's support functions"
+                    );
 
-					return STATUS_UNSUCCESSFUL;
-				}
-			}
-		};
+                    return STATUS_UNSUCCESSFUL;
+                }
+            }
+        };
+        let params_ref = unsafe {
+            match params.as_ref() {
+                Some(prms) => prms,
+                None => {
+                    event!(Level::ERROR, "Failed to get reference to secpkg parameters");
 
-		self.package_id = Some(package_id);
-		self.params = Some(params_ref);
-		self.lsa_support_fns = Some(func_table_ref);
+                    return STATUS_UNSUCCESSFUL;
+                }
+            }
+        };
+        let kanidm_client = match KanidmClientBuilder::new().connect_timeout(60u64).build() {
+            Ok(client) => client,
+            Err(e) => {
+                event!(
+                    Level::ERROR,
+                    "Failed to build client for interacting with kanidm server"
+                );
+                event!(Level::DEBUG, "KanidmClientBuilderError {}", e);
 
-		init_pkg_span.exit();
+                return STATUS_UNSUCCESSFUL;
+            }
+        };
+
+        self.package_id = Some(package_id);
+        self.params = Some(params_ref);
+        self.lsa_support_fns = Some(func_table_ref);
+        self.kani_client = Some(kanidm_client);
+
+        init_pkg_span.exit();
         STATUS_SUCCESS
     }
 
-	pub fn shutdown_package(
-		&mut self,
-	) -> NTSTATUS {
-		// TODO: Implement cleanup logic when there is resources to clean up
+    pub fn shutdown_package(&mut self) -> NTSTATUS {
+        // TODO: Implement cleanup logic when there is resources to clean up
 
-		STATUS_SUCCESS
-	}
+        STATUS_SUCCESS
+    }
+
+    pub fn accept_credentials(
+        &self,
+        logon_type: SECURITY_LOGON_TYPE,
+        account_name: *const UNICODE_STRING,
+        primary_creds: *const SECPKG_PRIMARY_CRED,
+        supplementary_creds: *const SECPKG_SUPPLEMENTAL_CRED,
+    ) -> NTSTATUS {
+        let accept_creds_span =
+            span!(Level::INFO, "Attempting to logon with provided credentials").entered();
+        let client = match &self.kani_client {
+            Some(client) => client,
+            None => {
+                event!(
+                    Level::ERROR,
+                    "Failed to get client to interact with kanidm server"
+                );
+
+                return STATUS_UNSUCCESSFUL;
+            }
+        };
+
+        let ident = unsafe {
+            match (*account_name).Buffer.to_string() {
+                Ok(str) => str,
+                Err(e) => {
+                    event!(Level::ERROR, "Failed to convert account name to string");
+                    event!(Level::DEBUG, "FromUtf16Error {}", e);
+
+                    return STATUS_UNSUCCESSFUL;
+                }
+            }
+        };
+		let password = unsafe {
+			match (*primary_creds).Password.Buffer.to_string() {
+				Ok(pw) => pw,
+				Err(e) => {
+					event!(Level::ERROR, "Failed to convert password to string");
+					event!(Level::DEBUG, "FromUtf16Error {}", e);
+
+					return STATUS_UNSUCCESSFUL;
+				}
+			}
+		};
+
+		let auth_future = client.auth_simple_password(ident.as_str(), password.as_str());
+		let runtime = match RuntimeBuilder::new_current_thread().build() {
+			Ok(rt) => rt,
+			Err(e) => {
+				event!(Level::ERROR, "Failed to build runtime to connect to server");
+				event!(Level::DEBUG, "RuntimeBuilderError {}", e);
+
+				return STATUS_UNSUCCESSFUL;
+			}
+		};
+
+		let auth_result = runtime.block_on(auth_future);
+
+		if let Err(res) = auth_result {
+			return match res {
+				ClientError::AuthenticationFailed => STATUS_LOGON_FAILURE,
+				_ => STATUS_UNSUCCESSFUL,
+			};
+		}
+
+        accept_creds_span.exit();
+        STATUS_SUCCESS
+    }
 }

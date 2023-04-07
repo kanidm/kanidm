@@ -55,7 +55,7 @@ pub unsafe extern "system" fn SpLsaModeInitialize(
         Initialize: Some(wrapper_funcs::sp_initialise),
         Shutdown: Some(wrapper_funcs::sp_shutdown),
         GetInfo: None,
-        AcceptCredentials: None,
+        AcceptCredentials: Some(wrapper_funcs::SpAcceptCredentials),
         AcquireCredentialsHandleA: None,
         QueryCredentialsAttributesA: None,
         FreeCredentialsHandle: None,

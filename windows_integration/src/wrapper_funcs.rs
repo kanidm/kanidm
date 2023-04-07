@@ -4,7 +4,7 @@ use windows::Win32::{
     Foundation::{LUID, NTSTATUS, UNICODE_STRING},
     Security::Authentication::Identity::{
         LSA_DISPATCH_TABLE, LSA_SECPKG_FUNCTION_TABLE, LSA_TOKEN_INFORMATION_TYPE,
-        SECPKG_PARAMETERS, SECURITY_LOGON_TYPE,
+        SECPKG_PARAMETERS, SECPKG_PRIMARY_CRED, SECPKG_SUPPLEMENTAL_CRED, SECURITY_LOGON_TYPE,
     },
     System::Kernel::STRING,
 };
@@ -66,4 +66,23 @@ pub extern "system" fn sp_initialise(
 
 pub extern "system" fn sp_shutdown() -> NTSTATUS {
     unsafe { GLOBAL_SECURITY_PACKAGE.shutdown_package() }
+}
+
+// For some reason, this is one of the few functions which must have a specific name
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern "system" fn SpAcceptCredentials(
+    logon_type: SECURITY_LOGON_TYPE,
+    account_name: *const UNICODE_STRING,
+    primary_creds: *const SECPKG_PRIMARY_CRED,
+    supplementary_creds: *const SECPKG_SUPPLEMENTAL_CRED,
+) -> NTSTATUS {
+    unsafe {
+        GLOBAL_SECURITY_PACKAGE.accept_credentials(
+            logon_type,
+            account_name,
+            primary_creds,
+            supplementary_creds,
+        )
+    }
 }
