@@ -2373,11 +2373,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "kanidm_win_daemon"
-version = "0.1.0"
-
-[[package]]
-name = "kanidm_win_int"
+name = "kanidm_win_authlib"
 version = "1.1.0-alpha.12-dev"
 dependencies = [
  "kanidm_client",
@@ -2385,6 +2381,10 @@ dependencies = [
  "tracing",
  "windows 0.48.0",
 ]
+
+[[package]]
+name = "kanidm_win_daemon"
+version = "0.1.0"
 
 [[package]]
 name = "kanidmd_core"

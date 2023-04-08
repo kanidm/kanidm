@@ -1,5 +1,5 @@
 [package]
-name = "kanidm_win_int"
+name = "kanidm_win_authlib"
 description = "Kanidm Windows Client"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
 
