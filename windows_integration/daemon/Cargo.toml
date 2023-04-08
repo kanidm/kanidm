@@ -1,8 +1,21 @@
 [package]
 name = "kanidm_win_daemon"
-version = "0.1.0"
-edition = "2021"
+description = "Kanidm Windows Daemon"
+documentation = "https://docs.rs/kanidm/latest/kanidm/"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
 
 [dependencies]
+kanidm_client.workspace = true
+tracing.workspace = true
+tokio.workspace = true
+
+[dependencies.windows]
+version = "0.48"
+features = []
