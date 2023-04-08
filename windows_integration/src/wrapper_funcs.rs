@@ -1,7 +1,7 @@
 use crate::{auth_pkg::GLOBAL_AUTHENTICATION_PACKAGE, security_pkg::GLOBAL_SECURITY_PACKAGE};
 use std::ffi::c_void;
 use windows::Win32::{
-    Foundation::{LUID, NTSTATUS, UNICODE_STRING},
+    Foundation::{LUID, NTSTATUS, STATUS_UNSUCCESSFUL, UNICODE_STRING},
     Security::Authentication::Identity::{
         LSA_DISPATCH_TABLE, LSA_SECPKG_FUNCTION_TABLE, LSA_TOKEN_INFORMATION_TYPE,
         SECPKG_PARAMETERS, SECPKG_PRIMARY_CRED, SECPKG_SUPPLEMENTAL_CRED, SECURITY_LOGON_TYPE,
@@ -77,12 +77,17 @@ pub extern "system" fn SpAcceptCredentials(
     primary_creds: *const SECPKG_PRIMARY_CRED,
     supplementary_creds: *const SECPKG_SUPPLEMENTAL_CRED,
 ) -> NTSTATUS {
-    unsafe {
+    let rt = match tokio::runtime::Builder::new_current_thread().build() {
+        Ok(rt) => rt,
+        Err(_) => return STATUS_UNSUCCESSFUL,
+    };
+
+    rt.block_on(unsafe {
         GLOBAL_SECURITY_PACKAGE.accept_credentials(
             logon_type,
             account_name,
             primary_creds,
             supplementary_creds,
         )
-    }
+    })
 }

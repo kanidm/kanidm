@@ -96,7 +96,7 @@ impl SecurityPackage {
         STATUS_SUCCESS
     }
 
-    pub fn accept_credentials(
+    pub async fn accept_credentials(
         &self,
         logon_type: SECURITY_LOGON_TYPE,
         account_name: *const UNICODE_STRING,
@@ -140,20 +140,7 @@ impl SecurityPackage {
 			}
 		};
 
-		let auth_future = client.auth_simple_password(ident.as_str(), password.as_str());
-		let runtime = match RuntimeBuilder::new_current_thread().build() {
-			Ok(rt) => rt,
-			Err(e) => {
-				event!(Level::ERROR, "Failed to build runtime to connect to server");
-				event!(Level::DEBUG, "RuntimeBuilderError {}", e);
-
-				return STATUS_UNSUCCESSFUL;
-			}
-		};
-
-		let auth_result = runtime.block_on(auth_future);
-
-		if let Err(res) = auth_result {
+		if let Err(res) = client.auth_simple_password(ident.as_str(), password.as_str()).await {
 			return match res {
 				ClientError::AuthenticationFailed => STATUS_LOGON_FAILURE,
 				_ => STATUS_UNSUCCESSFUL,
