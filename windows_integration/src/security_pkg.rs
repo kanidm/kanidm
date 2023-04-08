@@ -1,13 +1,16 @@
-use kanidm_client::{KanidmClient, KanidmClientBuilder, ClientError};
+use kanidm_client::{ClientError, KanidmClient, KanidmClientBuilder};
 use tracing::{event, span, Level};
 use windows::Win32::{
     Foundation::{NTSTATUS, STATUS_SUCCESS, STATUS_UNSUCCESSFUL, UNICODE_STRING},
-    Security::{Authentication::Identity::{
-        LSA_SECPKG_FUNCTION_TABLE, SECPKG_PARAMETERS, SECPKG_PRIMARY_CRED,
-        SECPKG_SUPPLEMENTAL_CRED, SECURITY_LOGON_TYPE,
-    }, Credentials::STATUS_LOGON_FAILURE},
+    Security::{
+        Authentication::Identity::{
+            LSA_SECPKG_FUNCTION_TABLE, SECPKG_PARAMETERS, SECPKG_PRIMARY_CRED,
+            SECPKG_SUPPLEMENTAL_CRED, SECURITY_LOGON_TYPE,
+        },
+        Credentials::STATUS_LOGON_FAILURE,
+    },
 };
-use tokio::runtime::Builder as RuntimeBuilder;
+use tokio::sync::RwLock;
 
 pub static mut GLOBAL_SECURITY_PACKAGE: SecurityPackage = SecurityPackage {
     package_id: None,
@@ -24,7 +27,7 @@ pub struct SecurityPackage {
     /// The LSA support functions
     pub lsa_support_fns: Option<&'static LSA_SECPKG_FUNCTION_TABLE>,
     /// The kanidm client
-    pub kani_client: Option<KanidmClient>,
+    pub kani_client: Option<RwLock<KanidmClient>>,
 }
 
 impl SecurityPackage {
@@ -84,7 +87,7 @@ impl SecurityPackage {
         self.package_id = Some(package_id);
         self.params = Some(params_ref);
         self.lsa_support_fns = Some(func_table_ref);
-        self.kani_client = Some(kanidm_client);
+        self.kani_client = Some(RwLock::new(kanidm_client));
 
         init_pkg_span.exit();
         STATUS_SUCCESS
@@ -106,7 +109,7 @@ impl SecurityPackage {
         let accept_creds_span =
             span!(Level::INFO, "Attempting to logon with provided credentials").entered();
         let client = match &self.kani_client {
-            Some(client) => client,
+            Some(client) => client.read().await,
             None => {
                 event!(
                     Level::ERROR,
@@ -128,24 +131,32 @@ impl SecurityPackage {
                 }
             }
         };
-		let password = unsafe {
-			match (*primary_creds).Password.Buffer.to_string() {
-				Ok(pw) => pw,
-				Err(e) => {
-					event!(Level::ERROR, "Failed to convert password to string");
-					event!(Level::DEBUG, "FromUtf16Error {}", e);
+        let password = unsafe {
+            match (*primary_creds).Password.Buffer.to_string() {
+                Ok(pw) => pw,
+                Err(e) => {
+                    event!(Level::ERROR, "Failed to convert password to string");
+                    event!(Level::DEBUG, "FromUtf16Error {}", e);
 
-					return STATUS_UNSUCCESSFUL;
-				}
-			}
-		};
+                    return STATUS_UNSUCCESSFUL;
+                }
+            }
+        };
 
-		if let Err(res) = client.auth_simple_password(ident.as_str(), password.as_str()).await {
-			return match res {
-				ClientError::AuthenticationFailed => STATUS_LOGON_FAILURE,
-				_ => STATUS_UNSUCCESSFUL,
-			};
-		}
+        let ident_str = ident.as_str();
+        let password_str = password.as_str();
+
+        match client.idm_account_unix_cred_verify(ident_str, password_str).await {
+            Ok(t) => t,
+            Err(e) => {
+                event!(Level::ERROR, "Failed to authenticate client");
+
+                return match e {
+                    ClientError::AuthenticationFailed => STATUS_LOGON_FAILURE,
+                    _ => STATUS_UNSUCCESSFUL,
+                }
+            }
+        };
 
         accept_creds_span.exit();
         STATUS_SUCCESS
