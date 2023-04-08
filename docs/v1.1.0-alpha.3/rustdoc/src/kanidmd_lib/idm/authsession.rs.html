@@ -2645,6 +2645,7 @@
 <a href="#2645" id="2645">2645</a>
 <a href="#2646" id="2646">2646</a>
 <a href="#2647" id="2647">2647</a>
+<a href="#2648" id="2648">2648</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the logic to conduct an authentication of an account.
 //! Generally this has to process an authentication attempt, and validate each
 //! factor to assert that the user is legitimate. This also contains some
@@ -2665,7 +2666,8 @@
 </span><span class="kw">use </span>tokio::sync::mpsc::UnboundedSender <span class="kw">as </span>Sender;
 <span class="kw">use </span>uuid::Uuid;
 <span class="comment">// use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
-</span><span class="kw">use </span>webauthn_rs::prelude::Passkey <span class="kw">as </span>PasskeyV4;
+</span><span class="kw">use </span>nonempty::{nonempty, NonEmpty};
+<span class="kw">use </span>webauthn_rs::prelude::Passkey <span class="kw">as </span>PasskeyV4;
 <span class="kw">use </span>webauthn_rs::prelude::{
     CredentialID, PasskeyAuthentication, RequestChallengeResponse, SecurityKeyAuthentication,
     Webauthn,
@@ -2731,7 +2733,7 @@
 <span class="doccomment">/// A response type to indicate the progress and potential result of an authentication attempt.
 </span><span class="kw">enum </span>CredState {
     Success { auth_type: AuthType, cred_id: Uuid },
-    Continue(Vec&lt;AuthAllowed&gt;),
+    Continue(NonEmpty&lt;AuthAllowed&gt;),
     Denied(<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str),
 }
 
@@ -3067,7 +3069,7 @@
                                         <span class="macro">admin_warn!</span>(<span class="string">&quot;unable to queue delayed webauthn property update, continuing ... &quot;</span>);
                                     };
                                 };
-                                CredState::Continue(<span class="macro">vec!</span>[AuthAllowed::Password])
+                                CredState::Continue(<span class="macro">nonempty!</span>[AuthAllowed::Password])
                             }
                             <span class="prelude-val">Err</span>(e) =&gt; {
                                 pw_mfa.mfa_state = CredVerifyState::Fail;
@@ -3094,7 +3096,7 @@
                             <span class="macro">security_info!</span>(
                                 <span class="string">&quot;Handler::PasswordMfa -&gt; Result::Continue - TOTP ({}) OK, password -&quot;</span>, label
                             );
-                            CredState::Continue(<span class="macro">vec!</span>[AuthAllowed::Password])
+                            CredState::Continue(<span class="macro">nonempty!</span>[AuthAllowed::Password])
                         } <span class="kw">else </span>{
                             pw_mfa.mfa_state = CredVerifyState::Fail;
                             <span class="macro">security_error!</span>(
@@ -3117,7 +3119,7 @@
                             };
                             pw_mfa.mfa_state = CredVerifyState::Success;
                             <span class="macro">security_info!</span>(<span class="string">&quot;Handler::PasswordMfa -&gt; Result::Continue - BackupCode OK, password -&quot;</span>);
-                            CredState::Continue(<span class="macro">vec!</span>[AuthAllowed::Password])
+                            CredState::Continue(<span class="macro">nonempty!</span>[AuthAllowed::Password])
                         } <span class="kw">else </span>{
                             pw_mfa.mfa_state = CredVerifyState::Fail;
                             <span class="macro">security_error!</span>(<span class="string">&quot;Handler::PasswordMfa -&gt; Result::Denied - BackupCode Fail, password -&quot;</span>);
@@ -3684,7 +3686,7 @@
                     }
                     CredState::Continue(allowed) =&gt; {
                         <span class="macro">security_info!</span>(<span class="question-mark">?</span>allowed, <span class="string">&quot;Request credential continuation&quot;</span>);
-                        (<span class="prelude-val">None</span>, <span class="prelude-val">Ok</span>(AuthState::Continue(allowed)))
+                        (<span class="prelude-val">None</span>, <span class="prelude-val">Ok</span>(AuthState::Continue(allowed.into_iter().collect())))
                     }
                     CredState::Denied(reason) =&gt; {
                         <span class="macro">security_info!</span>(%reason, <span class="string">&quot;Credentials denied&quot;</span>);
