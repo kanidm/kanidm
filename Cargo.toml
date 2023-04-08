@@ -23,7 +23,8 @@ members = [
     "libs/file_permissions",
     "libs/profiles",
     "libs/sketching",
-    "windows_integration",
+    "windows_integration/authlib",
+    "windows_integration/daemon",
 ]
 
 [workspace.package]
