@@ -1,5 +1,5 @@
 // TODO: Finish implementing the auth package
-use std::{ffi::c_void, ptr::null_mut};
+use std::{ffi::c_void, ptr, mem};
 use tracing::{event, span, Level};
 use windows::{
     core::PSTR,
@@ -21,6 +21,13 @@ pub struct AuthenticationPackage {
     /// The dispatch table which provides functions to be called by the client
     dispatch_table: Option<&'static LSA_DISPATCH_TABLE>,
 }
+
+pub struct AuthInfo {
+    username: UNICODE_STRING,
+    password: UNICODE_STRING,
+}
+
+pub struct ProfileBuffer {}
 
 impl AuthenticationPackage {
     pub async fn initialise_package(
@@ -80,10 +87,10 @@ impl AuthenticationPackage {
         &self,
         client_request: *const *const c_void,
         logon_type: SECURITY_LOGON_TYPE,
-        authentication_info: *const c_void,
-        client_authentication_base: *const c_void,
-        authentication_info_base: u32,
-        out_profile_buffer: *mut *mut c_void,
+        authentication_info: *const AuthInfo,
+        client_authentication_base: *const *const AuthInfo,
+        authentication_info_length: u32,
+        out_profile_buffer: *mut *mut ProfileBuffer,
         out_profile_buffer_length: *mut u32,
         out_logon_id: *mut LUID,
         out_substatus: *mut i32,
@@ -102,26 +109,6 @@ impl AuthenticationPackage {
                 return STATUS_UNSUCCESSFUL;
             }
         };
-        let client_request_buffer: *mut *mut c_void = null_mut();
-        let alloc_client_buffer = match dispatch_table.AllocateClientBuffer {
-            Some(acb) => acb,
-            None => {
-                event!(Level::ERROR, "Failed to get AllocateClientBuffer function");
-
-                return STATUS_UNSUCCESSFUL;
-            }
-        };
-
-        unsafe {
-            match alloc_client_buffer(client_request, 10, client_request_buffer) {
-                STATUS_SUCCESS => (),
-                _ => {
-                    event!(Level::ERROR, "Failed to allocate client request buffer");
-
-                    return STATUS_UNSUCCESSFUL;
-                }
-            }
-        }
 
         logon_user_span.exit();
         STATUS_SUCCESS

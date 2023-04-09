@@ -42,10 +42,10 @@ pub async extern "system" fn ap_logon_user(
         GLOBAL_AUTHENTICATION_PACKAGE.logon_user(
             client_request,
             logon_type,
-            authentication_info,
-            client_authentication_base,
+            authentication_info.cast(),
+            client_authentication_base.cast(),
             authentication_info_base,
-            out_profile_buffer,
+            out_profile_buffer.cast(),
             out_profile_buffer_length,
             out_logon_id,
             out_substatus,
