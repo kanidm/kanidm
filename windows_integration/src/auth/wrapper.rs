@@ -1,10 +1,15 @@
 use std::ffi::c_void;
-
-use windows::Win32::{Foundation::*, Security::Authentication::Identity::*, System::Kernel::*};
+use windows::{
+    core::PSTR,
+    Win32::{Foundation::*, Security::Authentication::Identity::*, System::Kernel::*},
+};
 
 use super::package::AuthPackage;
 
-static mut AUTH_PACKAGE: AuthPackage = AuthPackage {};
+static mut AUTH_PACKAGE: AuthPackage = AuthPackage {
+    package_id: None,
+    dispatch_table: None,
+};
 
 #[tokio::main]
 #[no_mangle]
@@ -16,6 +21,25 @@ pub async extern "system" fn ApInitializePackage(
     _: *const STRING,
     out_package_name: *mut *mut STRING,
 ) -> NTSTATUS {
+    let tbl_ref = unsafe {
+        match dispatch_table.as_ref() {
+            Some(dt) => dt,
+            None => return STATUS_UNSUCCESSFUL,
+        }
+    };
+    let tbl = tbl_ref.to_owned();
+
+    let mut package_name = unsafe { AUTH_PACKAGE.init(package_id, tbl).await };
+    let package_name_win = STRING {
+        Buffer: PSTR(package_name.as_mut_ptr()),
+        Length: package_name.len() as u16,
+        MaximumLength: package_name.len() as u16,
+    };
+
+    unsafe {
+        *(*out_package_name) = package_name_win;
+    }
+
     STATUS_SUCCESS
 }
 
@@ -79,7 +103,7 @@ pub async extern "system" fn ApCallPackageUntrusted(
 #[no_mangle]
 #[allow(non_snake_case)]
 pub async extern "system" fn ApCallPackagePassthrough(
-	client_req: *const *const c_void,
+    client_req: *const *const c_void,
     submit_buf: *const c_void,     // Cast to own Protocol Submit Buffer
     submit_buf_loc: *const c_void, // Pointer to submit_buf
     submit_buf_len: u32,
@@ -87,7 +111,5 @@ pub async extern "system" fn ApCallPackagePassthrough(
     out_return_buf_len: *mut u32,
     out_status: *mut i32, // NTSTATUS
 ) -> NTSTATUS {
-	STATUS_SUCCESS
+    STATUS_SUCCESS
 }
-
-
