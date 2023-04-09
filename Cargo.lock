@@ -2383,16 +2383,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "kanidm_win_daemon"
-version = "1.1.0-alpha.12-dev"
-dependencies = [
- "kanidm_client",
- "tokio",
- "tracing",
- "windows 0.48.0",
-]
-
-[[package]]
 name = "kanidmd_core"
 version = "1.1.0-alpha.12-dev"
 dependencies = [
