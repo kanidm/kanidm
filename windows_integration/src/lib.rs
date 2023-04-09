@@ -4,9 +4,8 @@ use windows::Win32::{
     Security::Authentication::Identity::SECPKG_FUNCTION_TABLE,
 };
 
-mod auth_pkg;
-mod wrapper_funcs;
-mod security_pkg;
+mod auth;
+mod security;
 
 /// # Safety
 /// This should only ever be called by the windows api, and FFI with C++ is always unsafe
@@ -44,18 +43,18 @@ pub unsafe extern "system" fn SpLsaModeInitialize(
     };
 
     let function_table = SECPKG_FUNCTION_TABLE {
-        InitializePackage: Some(wrapper_funcs::ap_initialise_pkg),
-        LogonUserA: Some(wrapper_funcs::ap_logon_user),
-        CallPackage: None,
-        LogonTerminated: None,
-        CallPackageUntrusted: None,
-        CallPackagePassthrough: None,
+        InitializePackage: Some(auth::wrapper::ApInitializePackage),
+        LogonUserA: Some(auth::wrapper::ApLogonUser),
+        CallPackage: Some(auth::wrapper::ApCallPackage),
+        LogonTerminated: Some(auth::wrapper::ApLogonTerminated),
+        CallPackageUntrusted: Some(auth::wrapper::ApCallPackageUntrusted),
+        CallPackagePassthrough: Some(auth::wrapper::ApCallPackagePassthrough),
         LogonUserExA: None,
         LogonUserEx2: None,
-        Initialize: Some(wrapper_funcs::sp_initialise),
-        Shutdown: Some(wrapper_funcs::sp_shutdown),
+        Initialize: None,
+        Shutdown: None,
         GetInfo: None,
-        AcceptCredentials: Some(wrapper_funcs::SpAcceptCredentials),
+        AcceptCredentials: None,
         AcquireCredentialsHandleA: None,
         QueryCredentialsAttributesA: None,
         FreeCredentialsHandle: None,

@@ -14,16 +14,19 @@ repository.workspace = true
 [lib]
 crate-type = ["cdylib"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 kanidm_client.workspace = true
-windows = { version = "0.48.0", features = [
+r2d2.workspace = true
+r2d2_sqlite.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dependencies.windows]
+version = "0.48"
+features = [
 	"Win32_Security_Authentication_Identity",
 	"Win32_Foundation",
 	"Win32_Security_Credentials",
 	"Win32_System_Kernel",
 	"Win32_System_Threading",
-] }
-tracing.workspace = true
-tokio.workspace = true	
+]
