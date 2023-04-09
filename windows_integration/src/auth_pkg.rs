@@ -23,7 +23,7 @@ pub struct AuthenticationPackage {
 }
 
 impl AuthenticationPackage {
-    pub fn initialise_package(
+    pub async fn initialise_package(
         &mut self,
         package_id: u32,
         dispatch_table: *const LSA_DISPATCH_TABLE,
@@ -76,7 +76,7 @@ impl AuthenticationPackage {
         STATUS_SUCCESS
     }
 
-    pub fn logon_user(
+    pub async fn logon_user(
         &self,
         client_request: *const *const c_void,
         logon_type: SECURITY_LOGON_TYPE,

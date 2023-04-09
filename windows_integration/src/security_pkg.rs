@@ -31,7 +31,7 @@ pub struct SecurityPackage {
 }
 
 impl SecurityPackage {
-    pub fn initialise_package(
+    pub async fn initialise_package(
         &mut self,
         package_id: usize,
         params: *const SECPKG_PARAMETERS,
@@ -93,7 +93,7 @@ impl SecurityPackage {
         STATUS_SUCCESS
     }
 
-    pub fn shutdown_package(&mut self) -> NTSTATUS {
+    pub async fn shutdown_package(&mut self) -> NTSTATUS {
         // TODO: Implement cleanup logic when there is resources to clean up
 
         STATUS_SUCCESS

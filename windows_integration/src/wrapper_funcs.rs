@@ -9,7 +9,8 @@ use windows::Win32::{
     System::Kernel::STRING,
 };
 
-pub extern "system" fn ap_initialise_pkg(
+#[tokio::main]
+pub async extern "system" fn ap_initialise_pkg(
     package_id: u32,
     dispatch_table: *const LSA_DISPATCH_TABLE,
     _: *const STRING,
@@ -17,11 +18,12 @@ pub extern "system" fn ap_initialise_pkg(
     out_pkg_name: *mut *mut STRING,
 ) -> NTSTATUS {
     unsafe {
-        GLOBAL_AUTHENTICATION_PACKAGE.initialise_package(package_id, dispatch_table, out_pkg_name)
+        GLOBAL_AUTHENTICATION_PACKAGE.initialise_package(package_id, dispatch_table, out_pkg_name).await
     }
 }
 
-pub extern "system" fn ap_logon_user(
+#[tokio::main]
+pub async extern "system" fn ap_logon_user(
     client_request: *const *const c_void,
     logon_type: SECURITY_LOGON_TYPE,
     authentication_info: *const c_void,
@@ -51,43 +53,41 @@ pub extern "system" fn ap_logon_user(
             out_token_info,
             out_account_name,
             out_authenticating_authority,
-        )
+        ).await
     }
 }
 
 // Security Packages
-pub extern "system" fn sp_initialise(
+#[tokio::main]
+pub async extern "system" fn sp_initialise(
     package_id: usize,
     params: *const SECPKG_PARAMETERS,
     func_table: *const LSA_SECPKG_FUNCTION_TABLE,
 ) -> NTSTATUS {
-    unsafe { GLOBAL_SECURITY_PACKAGE.initialise_package(package_id, params, func_table) }
+    unsafe { GLOBAL_SECURITY_PACKAGE.initialise_package(package_id, params, func_table).await }
 }
 
-pub extern "system" fn sp_shutdown() -> NTSTATUS {
-    unsafe { GLOBAL_SECURITY_PACKAGE.shutdown_package() }
+#[tokio::main]
+pub async extern "system" fn sp_shutdown() -> NTSTATUS {
+    unsafe { GLOBAL_SECURITY_PACKAGE.shutdown_package().await }
 }
 
 // For some reason, this is one of the few functions which must have a specific name
 #[no_mangle]
 #[allow(non_snake_case)]
-pub extern "system" fn SpAcceptCredentials(
+#[tokio::main]
+pub async extern "system" fn SpAcceptCredentials(
     logon_type: SECURITY_LOGON_TYPE,
     account_name: *const UNICODE_STRING,
     primary_creds: *const SECPKG_PRIMARY_CRED,
     supplementary_creds: *const SECPKG_SUPPLEMENTAL_CRED,
 ) -> NTSTATUS {
-    let rt = match tokio::runtime::Builder::new_current_thread().build() {
-        Ok(rt) => rt,
-        Err(_) => return STATUS_UNSUCCESSFUL,
-    };
-
-    rt.block_on(unsafe {
+    unsafe {
         GLOBAL_SECURITY_PACKAGE.accept_credentials(
             logon_type,
             account_name,
             primary_creds,
             supplementary_creds,
-        )
-    })
+        ).await
+    }
 }
