@@ -1003,19 +1003,19 @@ python-legacy = ["mkdocstrings-python-legacy (>=0.2.1)"]
 
 [[package]]
 name = "mkdocstrings-python"
-version = "0.8.3"
+version = "0.9.0"
 description = "A Python handler for mkdocstrings."
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "mkdocstrings-python-0.8.3.tar.gz", hash = "sha256:9ae473f6dc599339b09eee17e4d2b05d6ac0ec29860f3fc9b7512d940fc61adf"},
-    {file = "mkdocstrings_python-0.8.3-py3-none-any.whl", hash = "sha256:4e6e1cd6f37a785de0946ced6eb846eb2f5d891ac1cc2c7b832943d3529087a7"},
+    {file = "mkdocstrings-python-0.9.0.tar.gz", hash = "sha256:da0a54d7d46523a25a5227f0ecc74b491291bd9d36fc71445bfb0ea64283e287"},
+    {file = "mkdocstrings_python-0.9.0-py3-none-any.whl", hash = "sha256:00e02b5d3d444f9abdec2398f9ba0c73e15deab78685f793f5801fd4d62a5b6f"},
 ]
 
 [package.dependencies]
 griffe = ">=0.24"
-mkdocstrings = ">=0.19"
+mkdocstrings = ">=0.20"
 
 [[package]]
 name = "multidict"
@@ -2086,4 +2086,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "377a5b73ac280adc169289b08753ed6e9ada96af60993a155dc5027ef7a09105"
+content-hash = "806ba968ae5fb36649515c317c85bececceb228ab25bab9906081651f8521111"
