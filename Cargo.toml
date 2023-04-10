@@ -58,7 +58,7 @@ csv = "1.2.1"
 dialoguer = "0.10.4"
 dyn-clone = "^1.0.11"
 fernet = "^0.2.1"
-filetime = "^0.2.20"
+filetime = "^0.2.21"
 futures = "^0.3.28"
 futures-concurrency = "^3.1.0"
 futures-util = { version = "^0.3.21", features = ["sink"] }
