@@ -1,0 +1,1 @@
+pub const CONFIG_PATH: &'static str = "C:\\Program Files\\kanidm\\config.toml";
