@@ -49,7 +49,7 @@ pytest-aiohttp = "^1.0.4"
 black = "^23.3.0"
 mkdocs = "^1.4.2"
 mkdocs-material = "^9.1.6"
-mkdocstrings = "^0.20.0"
+mkdocstrings = "^0.21.2"
 mkdocstrings-python = "^0.8.3"
 pook = "^1.1.1"
 
