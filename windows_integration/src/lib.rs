@@ -1,15 +1,16 @@
 use tracing::{event, Level};
-use tracing_forest::{util::EnvFilter, Processor, traits::*};
+use tracing_forest::{traits::*, util::EnvFilter, Processor};
 use windows::Win32::{
     Foundation::{NTSTATUS, STATUS_SUCCESS},
     Security::Authentication::Identity::SECPKG_FUNCTION_TABLE,
 };
 
 mod auth;
-mod security;
 mod client;
 mod package;
+mod security;
 
+pub(crate) const PROGRAM_DIR: &'static str = "C:\\Program Files\\kanidm";
 pub(crate) const CONFIG_PATH: &'static str = "C:\\Program Files\\kanidm\\config.toml";
 
 // Naming Scheme for Tracing spans
@@ -28,92 +29,88 @@ pub async unsafe extern "system" fn SpLsaModeInitialize(
     pptables: *mut *mut SECPKG_FUNCTION_TABLE,
     pctables: *mut u32,
 ) -> NTSTATUS {
-    tracing_forest::worker_task()
-        .set_global(true)
-        .map_sender(|sender| sender.or_stderr())
-        .build_on(|subscriber| subscriber
-            .with(EnvFilter::try_from_default_env()
-                .or_else(|_| EnvFilter::try_new("info"))
-                .expect("Failed to init envfilter")
-            )
-        )
-        .on(async {
-            event!(Level::INFO, "Initialising Kanidm Windows client");
-            event!(
-                Level::INFO,
-                "Local Security Authority Version {}",
-                lsa_version
-            );
-            event!(Level::INFO, "Client Version v{}", env!("CARGO_PKG_VERSION"));
-        
-            let package_version_str = format!(
-                "{}{}{}",
-                env!("CARGO_PKG_VERSION_MAJOR"),
-                format!("{:0>3}", env!("CARGO_PKG_VERSION_MINOR")),
-                format!("{:0>3}", env!("CARGO_PKG_VERSION_PATCH"))
-            );
-        
-            let package_version = match package_version_str.parse::<u32>() {
-                Ok(ver) => ver,
-                Err(e) => {
-                    event!(Level::ERROR, "Failed to parse version string as int");
-                    event!(Level::DEBUG, "ParseIntError {}", e);
-                    1 // Just return 1 as the version number as we can't determine the correct version
-                }
-            };
-        
-            let function_table = SECPKG_FUNCTION_TABLE {
-                InitializePackage: Some(auth::wrapper::ApInitializePackage),
-                LogonUserA: Some(auth::wrapper::ApLogonUser),
-                CallPackage: Some(auth::wrapper::ApCallPackage),
-                LogonTerminated: Some(auth::wrapper::ApLogonTerminated),
-                CallPackageUntrusted: Some(auth::wrapper::ApCallPackageUntrusted),
-                CallPackagePassthrough: Some(auth::wrapper::ApCallPackagePassthrough),
-                LogonUserExA: None,
-                LogonUserEx2: None,
-                Initialize: None,
-                Shutdown: None,
-                GetInfo: None,
-                AcceptCredentials: None,
-                AcquireCredentialsHandleA: None,
-                QueryCredentialsAttributesA: None,
-                FreeCredentialsHandle: None,
-                SaveCredentials: None,
-                GetCredentials: None,
-                DeleteCredentials: None,
-                InitLsaModeContext: None,
-                AcceptLsaModeContext: None,
-                DeleteContext: None,
-                ApplyControlToken: None,
-                GetUserInfo: None,
-                GetExtendedInformation: None,
-                QueryContextAttributesA: None,
-                AddCredentialsA: None,
-                SetExtendedInformation: None,
-                SetContextAttributesA: None,
-                SetCredentialsAttributesA: None,
-                ChangeAccountPasswordA: None,
-                QueryMetaData: None,
-                ExchangeMetaData: None,
-                GetCredUIContext: None,
-                UpdateCredentials: None,
-                ValidateTargetInfo: None,
-                PostLogonUser: None,
-                GetRemoteCredGuardLogonBuffer: None,
-                GetRemoteCredGuardSupplementalCreds: None,
-                GetTbalSupplementalCreds: None,
-                LogonUserEx3: None,
-                PreLogonUserSurrogate: None,
-                PostLogonUserSurrogate: None,
-                ExtractTargetInfo: None,
-            };
-        
-            unsafe {
-                *pkg_ver = package_version;
-                *pctables = 1u32;
-                **pptables = function_table;
-            }
-        
-            STATUS_SUCCESS        
-        }).await
+    let file_appender = tracing_appender::rolling::hourly(PROGRAM_DIR, "authlib.log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
+    tracing_subscriber::fmt()
+        .with_writer(non_blocking)
+        .init();
+
+    event!(Level::INFO, "Initialising Kanidm Windows client");
+    event!(
+        Level::INFO,
+        "Local Security Authority Version {}",
+        lsa_version
+    );
+    event!(Level::INFO, "Client Version v{}", env!("CARGO_PKG_VERSION"));
+
+    let package_version_str = format!(
+        "{}{}{}",
+        env!("CARGO_PKG_VERSION_MAJOR"),
+        format!("{:0>3}", env!("CARGO_PKG_VERSION_MINOR")),
+        format!("{:0>3}", env!("CARGO_PKG_VERSION_PATCH"))
+    );
+
+    let package_version = match package_version_str.parse::<u32>() {
+        Ok(ver) => ver,
+        Err(e) => {
+            event!(Level::ERROR, "Failed to parse version string as int");
+            event!(Level::DEBUG, "ParseIntError {}", e);
+            1 // Just return 1 as the version number as we can't determine the correct version
+        }
+    };
+
+    let function_table = SECPKG_FUNCTION_TABLE {
+        InitializePackage: Some(auth::wrapper::ApInitializePackage),
+        LogonUserA: Some(auth::wrapper::ApLogonUser),
+        CallPackage: Some(auth::wrapper::ApCallPackage),
+        LogonTerminated: Some(auth::wrapper::ApLogonTerminated),
+        CallPackageUntrusted: Some(auth::wrapper::ApCallPackageUntrusted),
+        CallPackagePassthrough: Some(auth::wrapper::ApCallPackagePassthrough),
+        LogonUserExA: None,
+        LogonUserEx2: None,
+        Initialize: None,
+        Shutdown: None,
+        GetInfo: None,
+        AcceptCredentials: None,
+        AcquireCredentialsHandleA: None,
+        QueryCredentialsAttributesA: None,
+        FreeCredentialsHandle: None,
+        SaveCredentials: None,
+        GetCredentials: None,
+        DeleteCredentials: None,
+        InitLsaModeContext: None,
+        AcceptLsaModeContext: None,
+        DeleteContext: None,
+        ApplyControlToken: None,
+        GetUserInfo: None,
+        GetExtendedInformation: None,
+        QueryContextAttributesA: None,
+        AddCredentialsA: None,
+        SetExtendedInformation: None,
+        SetContextAttributesA: None,
+        SetCredentialsAttributesA: None,
+        ChangeAccountPasswordA: None,
+        QueryMetaData: None,
+        ExchangeMetaData: None,
+        GetCredUIContext: None,
+        UpdateCredentials: None,
+        ValidateTargetInfo: None,
+        PostLogonUser: None,
+        GetRemoteCredGuardLogonBuffer: None,
+        GetRemoteCredGuardSupplementalCreds: None,
+        GetTbalSupplementalCreds: None,
+        LogonUserEx3: None,
+        PreLogonUserSurrogate: None,
+        PostLogonUserSurrogate: None,
+        ExtractTargetInfo: None,
+    };
+
+    unsafe {
+        *pkg_ver = package_version;
+        *pctables = 1u32;
+        **pptables = function_table;
+    }
+
+    STATUS_SUCCESS
 }

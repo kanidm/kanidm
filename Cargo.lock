@@ -2383,7 +2383,8 @@ dependencies = [
  "r2d2_sqlite",
  "tokio",
  "tracing",
- "tracing-forest",
+ "tracing-appender",
+ "tracing-subscriber",
  "windows 0.48.0",
 ]
 
@@ -4714,6 +4715,17 @@ dependencies = [
  "pin-project-lite 0.2.9",
  "tracing-attributes",
  "tracing-core",
+]
+
+[[package]]
+name = "tracing-appender"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09d48f71a791638519505cefafe162606f706c25592e4bde4d97600c0195312e"
+dependencies = [
+ "crossbeam-channel",
+ "time 0.3.17",
+ "tracing-subscriber",
 ]
 
 [[package]]
