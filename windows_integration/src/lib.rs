@@ -29,8 +29,8 @@ pub unsafe extern "system" fn SpLsaModeInitialize(
     let package_version_str = format!(
         "{}{}{}",
         env!("CARGO_PKG_VERSION_MAJOR"),
-        env!("CARGO_PKG_VERSION_MINOR"),
-        env!("CARGO_PKG_VERSION_PATCH")
+        format!("{:0>3}", env!("CARGO_PKG_VERSION_MINOR")),
+        format!("{:0>3}", env!("CARGO_PKG_VERSION_PATCH"))
     );
 
     let package_version = match package_version_str.parse::<u32>() {
