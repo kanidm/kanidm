@@ -6,6 +6,10 @@ use windows::Win32::{
 
 mod auth;
 mod security;
+mod client;
+mod package;
+
+pub(crate) const CONFIG_PATH: &'static str = "C:\\Program Files\\kanidm\\config.toml";
 
 /// # Safety
 /// This should only ever be called by the windows api, and FFI with C++ is always unsafe
