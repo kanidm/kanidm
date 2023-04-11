@@ -22,6 +22,7 @@ r2d2.workspace = true
 r2d2_sqlite.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+tracing-forest.workspace = true
 
 [dependencies.windows]
 version = "0.48"

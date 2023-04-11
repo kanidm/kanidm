@@ -2383,6 +2383,7 @@ dependencies = [
  "r2d2_sqlite",
  "tokio",
  "tracing",
+ "tracing-forest",
  "windows 0.48.0",
 ]
 
