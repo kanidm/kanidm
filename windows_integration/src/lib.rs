@@ -29,7 +29,7 @@ pub async unsafe extern "system" fn SpLsaModeInitialize(
     pptables: *mut *mut SECPKG_FUNCTION_TABLE,
     pctables: *mut u32,
 ) -> NTSTATUS {
-    let file_appender = tracing_appender::rolling::hourly(PROGRAM_DIR, "authlib.log");
+    let file_appender = tracing_appender::rolling::daily(PROGRAM_DIR, "authlib.log");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
     tracing_subscriber::fmt()
