@@ -1,17 +1,13 @@
 use tracing::{event, Level};
-use tracing_forest::{traits::*, util::EnvFilter, Processor};
 use windows::Win32::{
     Foundation::{NTSTATUS, STATUS_SUCCESS},
     Security::Authentication::Identity::SECPKG_FUNCTION_TABLE,
 };
 
-mod auth;
 mod client;
 mod package;
-mod security;
 
 pub(crate) const PROGRAM_DIR: &'static str = "C:\\Program Files\\kanidm";
-pub(crate) const CONFIG_PATH: &'static str = "C:\\Program Files\\kanidm\\config.toml";
 
 // Naming Scheme for Tracing spans
 // The current naming scheme for these consist of the initials of function names followed by an s
@@ -61,12 +57,12 @@ pub async unsafe extern "system" fn SpLsaModeInitialize(
     };
 
     let function_table = SECPKG_FUNCTION_TABLE {
-        InitializePackage: Some(auth::wrapper::ApInitializePackage),
-        LogonUserA: Some(auth::wrapper::ApLogonUser),
-        CallPackage: Some(auth::wrapper::ApCallPackage),
-        LogonTerminated: Some(auth::wrapper::ApLogonTerminated),
-        CallPackageUntrusted: Some(auth::wrapper::ApCallPackageUntrusted),
-        CallPackagePassthrough: Some(auth::wrapper::ApCallPackagePassthrough),
+        InitializePackage: Some(package::ApInitializePackage),
+        LogonUserA: Some(package::ApLogonUser),
+        CallPackage: Some(package::ApCallPackage),
+        LogonTerminated: Some(package::ApLogonTerminated),
+        CallPackageUntrusted: Some(package::ApCallPackageUntrusted),
+        CallPackagePassthrough: Some(package::ApCallPackagePassthrough),
         LogonUserExA: None,
         LogonUserEx2: None,
         Initialize: None,
