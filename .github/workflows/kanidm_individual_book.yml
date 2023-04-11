@@ -1,0 +1,79 @@
+---
+"on":
+  workflow_call:
+    inputs:
+      # the target tag for generating things
+      tags:
+        required: true
+        type: string
+      # the parent workflow for caching
+      parent_id:
+        required: true
+        type: string
+
+jobs:
+  generate_mdbook:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang build-essential \
+            librust-openssl-dev libssl-dev \
+            libsqlite3-dev libudev-dev \
+            libpam0g-dev
+
+      - name: Setup deno
+        # Documentation: https://github.com/denoland/setup-deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Test document formatting
+        run: |
+          make doc/format
+
+      - name: Setup mdBook
+        uses: peaceiris/actions-mdbook@v1
+        with:
+          mdbook-version: "latest"
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: mdbook-template
+
+
+      - name: Install python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Build the docs
+        run: |
+          BOOK_VERSION=${{ inputs.tag }} make book
+
+      - name: pykanidm docs
+        run: |
+          python -m pip install poetry
+          make docs/pykanidm/build
+          mv pykanidm/site ./docs/pykanidm
+
+      - name: archive things
+        run: |
+          tar czvf ${{inputs.tag}}.tar.gz ./docs/
+
+      - name: Upload artifact
+        # https://github.com/actions/upload-artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: docs/${{ github.ref }}
+          path: ${{inputs.tag}}.tar.gz
