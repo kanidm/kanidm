@@ -18,7 +18,7 @@ pub unsafe extern "system" fn SpLsaModeInitialize(
     pptables: *mut *mut SECPKG_FUNCTION_TABLE,
     pctables: *mut u32,
 ) -> NTSTATUS {
-    event!(Level::INFO, "Initialising kanidm Windows client");
+    event!(Level::INFO, "Initialising Kanidm Windows client");
     event!(
         Level::INFO,
         "Local Security Authority Version {}",
