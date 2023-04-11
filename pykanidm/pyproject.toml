@@ -87,3 +87,6 @@ markers = [
 [tool.coverage.run]
 source = ["kanidm"]
 omit = ["tests"]
+
+[tool.mypy]
+plugins = "pydantic.mypy"
