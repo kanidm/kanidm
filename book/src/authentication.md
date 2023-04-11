@@ -44,7 +44,7 @@ These processes are very similar. You can send a credential reset link to a user
 directly enroll their own credentials. To generate this link or qrcode:
 
 ```bash
-kanidm person credential create-reset-token demo_user --name idm_admin
+kanidm person credential create_reset_token demo_user --name idm_admin
 # The person can use one of the following to allow the credential reset
 # 
 # Scan this QR Code:

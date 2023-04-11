@@ -86,8 +86,8 @@ kanidm person create demo_user "Demonstration User" --name idm_admin
 kanidm person get demo_user --name idm_admin
 
 kanidm group create demo_group --name idm_admin
-kanidm group add-members demo_group demo_user --name idm_admin
-kanidm group list-members demo_group --name idm_admin
+kanidm group add_members demo_group demo_user --name idm_admin
+kanidm group list_members demo_group --name idm_admin
 ```
 
 You can also use anonymous to view accounts and groups - note that you won't see certain fields due
@@ -156,17 +156,18 @@ add the "--rw" flag during the generate command. It is recommended you only add 
 api-token is performing writes to Kanidm.
 
 ```bash
-kanidm service-account api-token generate --name admin ACCOUNT_ID LABEL [EXPIRY] --rw
-kanidm service-account api-token generate --name admin demo_service "Test Token" --rw
-kanidm service-account api-token generate --name admin demo_service "Test Token" 2020-09-25T11:22:02+10:00 --rw
+kanidm service-account api-token generate --name idm_admin ACCOUNT_ID LABEL [EXPIRY] --rw
+kanidm service-account api-token generate --name idm_admin demo_service "Test Token" --rw
+kanidm service-account api-token generate --name idm_admin demo_service "Test Token" 2020-09-25T11:22:02+10:00 --rw
 ```
 
 To destroy (revoke) an api token you will need it's token id. This can be shown with the "status"
 command.
 
 ```bash
-kanidm service-account api-token destroy --name admin ACCOUNT_ID TOKEN_ID
-kanidm service-account api-token destroy --name admin demo_service 4de2a4e9-e06a-4c5e-8a1b-33f4e7dd5dc7
+kanidm service-account api-token status demo_service --name idm_admin
+kanidm service-account api-token destroy --name idm_admin ACCOUNT_ID TOKEN_ID
+kanidm service-account api-token destroy --name idm_admin demo_service 4de2a4e9-e06a-4c5e-8a1b-33f4e7dd5dc7
 ```
 
 Api tokens can also be used to gain extended search permissions with LDAP. To do this you can bind
@@ -211,8 +212,8 @@ An example can be easily shown with:
 kanidm group create group_1 --name idm_admin
 kanidm group create group_2 --name idm_admin
 kanidm person create nest_example "Nesting Account Example" --name idm_admin
-kanidm group add-members group_1 group_2 --name idm_admin
-kanidm group add-members group_2 nest_example --name idm_admin
+kanidm group add_members group_1 group_2 --name idm_admin
+kanidm group add_members group_2 nest_example --name idm_admin
 kanidm person get nest_example --name anonymous
 ```
 
@@ -281,7 +282,7 @@ Adding the user to the `idm_people_self_write_mail` group, as shown below, allow
 their own mail.
 
 ```bash
-kanidm group add-members idm_people_self_write_mail_priv demo_user --name idm_admin
+kanidm group add_members idm_people_self_write_mail_priv demo_user --name idm_admin
 ```
 
 ## Why Can't I Change admin With idm\_admin?

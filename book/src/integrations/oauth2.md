@@ -125,8 +125,8 @@ kanidm system oauth2 create nextcloud "Nextcloud Production" https://nextcloud.e
 You can create a scope map with:
 
 ```bash
-kanidm system oauth2 update-scope-map <name> <kanidm_group_name> [scopes]...
-kanidm system oauth2 update-scope-map nextcloud nextcloud_admins admin
+kanidm system oauth2 update_scope_map <name> <kanidm_group_name> [scopes]...
+kanidm system oauth2 update_scope_map nextcloud nextcloud_admins admin
 ```
 
 <!-- deno-fmt-ignore-start -->
@@ -153,8 +153,8 @@ text=If you are creating an OpenID Connect (OIDC) resource server you <b>MUST</b
 You can create a supplemental scope map with:
 
 ```bash
-kanidm system oauth2 update-sup-scope-map <name> <kanidm_group_name> [scopes]...
-kanidm system oauth2 update-sup-scope-map nextcloud nextcloud_admins admin
+kanidm system oauth2 update_sup_scope_map <name> <kanidm_group_name> [scopes]...
+kanidm system oauth2 update_sup_scope_map nextcloud nextcloud_admins admin
 ```
 
 Once created you can view the details of the resource server.
@@ -175,7 +175,7 @@ oauth2_rs_token_key: hidden
 You can see "oauth2\_rs\_basic\_secret" with:
 
 ```bash
-kanidm system oauth2 show-basic-secret nextcloud
+kanidm system oauth2 show_basic_secret nextcloud
 ---
 <secret>
 ```
@@ -195,7 +195,7 @@ invalidate a resource servers active sessions/tokens, you can reset the secret m
 server with:
 
 ```bash
-kanidm system oauth2 reset-secrets
+kanidm system oauth2 reset_secrets
 ```
 
 Each resource server has unique signing keys and access secrets, so this is limited to each resource
@@ -219,13 +219,13 @@ title=WARNING text=Changing these settings MAY have serious consequences on the 
 To disable PKCE for a resource server:
 
 ```bash
-kanidm system oauth2 warning-insecure-client-disable-pkce <resource server name>
+kanidm system oauth2 warning_insecure_client_disable_pkce <resource server name>
 ```
 
 To enable legacy cryptograhy (RSA PKCS1-5 SHA256):
 
 ```bash
-kanidm system oauth2 warning-enable-legacy-crypto <resource server name>
+kanidm system oauth2 warning_enable_legacy_crypto <resource server name>
 ```
 
 ## Example Integrations

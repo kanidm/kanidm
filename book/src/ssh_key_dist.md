@@ -10,9 +10,9 @@ To view the current SSH public keys on accounts, you can use:
 
 ```bash
 kanidm person|service-account \
-    ssh list-publickeys --name <login user> <account to view>
+    ssh list_publickeys --name <login user> <account to view>
 kanidm person|service-account \
-    ssh list-publickeys --name idm_admin william
+    ssh list_publickeys --name idm_admin william
 ```
 
 All users by default can self-manage their SSH public keys. To upload a key, a command like this is
@@ -20,13 +20,13 @@ the best way to do so:
 
 ```bash
 kanidm person|service-account \
-    ssh add-publickey --name william william 'test-key' "`cat ~/.ssh/id_ecdsa.pub`"
+    ssh add_publickey --name william william 'test-key' "`cat ~/.ssh/id_ecdsa.pub`"
 ```
 
 To remove (revoke) an SSH public key, delete them by the tag name:
 
 ```bash
-kanidm person|service-account ssh delete-publickey --name william william 'test-key'
+kanidm person|service-account ssh delete_publickey --name william william 'test-key'
 ```
 
 ## Security Notes
@@ -35,7 +35,7 @@ As a security feature, Kanidm validates _all_ public keys to ensure they are val
 Uploading a private key or other data will be rejected. For example:
 
 ```bash
-kanidm person|service-account ssh add-publickey --name william william 'test-key' "invalid"
+kanidm person|service-account ssh add_publickey --name william william 'test-key' "invalid"
 Enter password:
   ... Some(SchemaViolation(InvalidAttributeSyntax)))' ...
 ```
