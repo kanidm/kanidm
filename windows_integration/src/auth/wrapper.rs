@@ -13,7 +13,7 @@ use super::package::{AuthError, AuthPackage, AuthInfo};
 
 static mut AUTH_PACKAGE: Lazy<AuthPackage> = Lazy::new(|| AuthPackage::new());
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
 pub async extern "system" fn ApInitializePackage(
@@ -50,7 +50,7 @@ pub async extern "system" fn ApInitializePackage(
     STATUS_SUCCESS
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
 pub async extern "system" fn ApLogonUser(
@@ -103,7 +103,7 @@ pub async extern "system" fn ApLogonUser(
     STATUS_SUCCESS
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
 pub async extern "system" fn ApCallPackage(
@@ -118,12 +118,12 @@ pub async extern "system" fn ApCallPackage(
     STATUS_SUCCESS
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
 pub async extern "system" fn ApLogonTerminated(logon_id: *const LUID) {}
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
 pub async extern "system" fn ApCallPackageUntrusted(
@@ -138,7 +138,7 @@ pub async extern "system" fn ApCallPackageUntrusted(
     STATUS_SUCCESS
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
 pub async extern "system" fn ApCallPackagePassthrough(
