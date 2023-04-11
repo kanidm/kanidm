@@ -11,6 +11,10 @@ mod package;
 
 pub(crate) const CONFIG_PATH: &'static str = "C:\\Program Files\\kanidm\\config.toml";
 
+// Naming Scheme for Tracing spans
+// The current naming scheme for these consist of the initials of function names followed by an s
+// For example: logon_user -> lus
+
 /// # Safety
 /// This should only ever be called by the windows api, and FFI with C++ is always unsafe
 /// So beware of demons I guess :shrug:

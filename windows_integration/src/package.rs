@@ -1,6 +1,6 @@
 use crate::{client::KanidmWindowsClient, CONFIG_PATH};
 use once_cell::sync::Lazy;
-use tracing::{event, Level};
+use tracing::{event, Level, span};
 use windows::{
     core::PSTR,
     Win32::{
@@ -36,6 +36,7 @@ pub async extern "system" fn ApInitializePackage(
     _: *const STRING,
     out_package_name: *mut *mut STRING,
 ) -> NTSTATUS {
+	let apips = span!(Level::INFO, "Initialising Kanidm Authentication Package").entered();
     let mut package_name = env!("CARGO_PKG_NAME").to_owned();
     let package_name_win = STRING {
         Buffer: PSTR(package_name.as_mut_ptr()),
@@ -60,5 +61,6 @@ pub async extern "system" fn ApInitializePackage(
 		return STATUS_UNSUCCESSFUL;
 	}
 
+	apips.exit();
     STATUS_SUCCESS
 }

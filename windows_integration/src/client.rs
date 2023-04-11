@@ -16,6 +16,7 @@ pub struct KanidmWindowsClient {
 
 impl KanidmWindowsClient {
 	pub fn new(config_path: &str) -> Result<Self, KanidmWindowsClientError> {
+		let ns = span!(Level::INFO, "Creating new KanidmWindowsClient").entered();
 		let mut cb = KanidmClientBuilder::new();
 		cb = match cb.read_options_from_optional_config(config_path) {
 			Ok(cb) => cb,
@@ -33,6 +34,7 @@ impl KanidmWindowsClient {
 			}
 		};
 
+		ns.exit();
 		Ok(KanidmWindowsClient {
 			client: client,
 		})
@@ -43,7 +45,10 @@ impl KanidmWindowsClient {
 		let lus = span!(Level::INFO, "Starting logon process for {}", username).entered();
 		let token = match self.client.idm_account_unix_cred_verify(username.as_str(), password.as_str()).await {
 			Ok(Some(token)) => token,
-			Ok(None) | Err(_) => return Err(KanidmWindowsClientError::AuthenticationFail),
+			Ok(None) | Err(_) => {
+				event!(Level::ERROR, "Failed to authenticate user credentials for {}", username);
+				return Err(KanidmWindowsClientError::AuthenticationFail)
+			},
 		};
 
 		lus.exit();
@@ -54,7 +59,10 @@ impl KanidmWindowsClient {
 		let gts = span!(Level::INFO, "Retrieving user token for {}", username).entered();
 		let token = match self.client.idm_account_unix_token_get(username.as_str()).await {
 			Ok(token) => token,
-			Err(_) => return Err(KanidmWindowsClientError::GetTokenFail),
+			Err(_) => {
+				event!(Level::ERROR, "Failed to get token from kanidm client");
+				return Err(KanidmWindowsClientError::GetTokenFail)
+			},
 		};
 
 		gts.exit();
