@@ -1,8 +1,7 @@
 ---
 name: "Build Debian Packages"
 
-# yamllint disable-line rule:truthy
-on:
+"on":
   push:
   pull_request:
 
@@ -15,11 +14,11 @@ jobs:
     strategy:
       matrix:
         image:
-         - ubuntu:22.04
-         - ubuntu:20.04
-         - ubuntu:18.04
-         - debian:11
-         - debian:10
+          - ubuntu:22.04
+          - ubuntu:20.04
+          - ubuntu:18.04
+          - debian:11
+          - debian:10
     runs-on: ubuntu-latest
     container:
       image: ${{ matrix.image }}

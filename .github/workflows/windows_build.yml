@@ -48,4 +48,5 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+          # yamllint disable-line rule:line-length
           args: -p kanidm_client -p kanidm_tools -p orca -p daemon -p kanidmd_core
