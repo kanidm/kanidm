@@ -59,12 +59,12 @@ jobs:
 
       - name: Build the docs
         run: |
-          	cargo doc --no-deps
-            mdbook build book
-            rm -rf ./docs/
-            mv ./book/book/ ./docs/
-            mkdir -p ./docs/rustdoc/${BOOK_VERSION}
-            mv ./target/doc/* ./docs/rustdoc/${BOOK_VERSION}/
+          cargo doc --no-deps
+          mdbook build book
+          rm -rf ./docs/
+          mv ./book/book/ ./docs/
+          mkdir -p ./docs/rustdoc/${BOOK_VERSION}
+          mv ./target/doc/* ./docs/rustdoc/${BOOK_VERSION}/
 
       - name: pykanidm docs
         run: |
