@@ -13,7 +13,7 @@ use windows::{
 };
 
 pub(crate) static mut KANIDM_WINDOWS_CLIENT: Lazy<Option<KanidmWindowsClient>> = Lazy::new(|| {
-    let client = match KanidmWindowsClient::new(&format!("{}/config.toml", PROGRAM_DIR)) {
+    let client = match KanidmWindowsClient::new(&format!("{}/authlib_client.toml", PROGRAM_DIR)) {
         Ok(client) => client,
         Err(e) => {
             event!(Level::ERROR, "Failed to create new KanidmWindowsClient");
