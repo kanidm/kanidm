@@ -25,7 +25,7 @@ jobs:
     needs: generate_tags
     strategy:
       matrix:
-        tag: ${{jobs.generate_tags.outputs.tags}}
+        tag: ${{ jobs.generate_tags.outputs.tags }}
     with:
       tag: ${{ matrix.tag }}
       parent_id: ${{ github.ref }}
