@@ -16,3 +16,12 @@ To install the SSP/AP follow the below steps:
 * The Kanidm SSP/AP is now registered and will load on the next boot
 
 For more info, refer to this [Microsoft Learn Article](https://learn.microsoft.com/en-us/windows/win32/secauthn/registering-ssp-ap-dlls)
+
+## Configuration
+In order to get the client to work, all parts must be configured.
+
+## SSP/AP
+To configure the SSP/AP follow the steps below:
+* Create & open a file at `C:\Program Files\kanidm\config.toml`
+* Copy the skeleton template at `examples/config.toml`
+* Change the uri to point towards your kanidm server
