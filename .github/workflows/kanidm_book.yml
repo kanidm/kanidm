@@ -28,6 +28,7 @@ jobs:
         tag: ${{ needs.generate_tags.outputs.tags }}
     with:
       tag: ${{ matrix.tag }}
+      parent_id: ${{ github.ref }}
   docs_master:
     uses: './.github/workflows/kanidm_individual_book.yml'
     needs: generate_tags
