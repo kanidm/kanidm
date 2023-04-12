@@ -64,8 +64,8 @@ jobs:
           mdbook build book
           rm -rf ./docs/
           mv ./book/book/ ./docs/
-          mkdir -p ./docs/rustdoc/${BOOK_VERSION}
-          mv ./target/doc/* ./docs/rustdoc/${BOOK_VERSION}/
+          mkdir -p ./docs/rustdoc/${{ inputs.tag }}
+          mv ./target/doc/* ./docs/rustdoc/${{ inputs.tag }}/
 
       - name: pykanidm docs
         run: |
@@ -85,5 +85,5 @@ jobs:
         # https://github.com/actions/upload-artifact
         uses: actions/upload-artifact@v1
         with:
-          name: docs/${{ github.ref }}
+          name: docs/${{ inputs.tag }}
           path: ${{inputs.tag}}.tar.gz
