@@ -15,7 +15,7 @@ jobs:
     steps:
       - id: tags
         name: pull tags
-        uses: oraad/get-tags-action@v1
+        uses: oraad/get-tags-action@v1.0.0
         with:
           repo: ${{ github.repository }}
           limit: 100
