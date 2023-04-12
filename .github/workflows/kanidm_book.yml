@@ -21,7 +21,7 @@ jobs:
           limit: 100
 
   fanout:
-    uses: '.github/workflows/kanidm_individual_book.yml'
+    uses: './.github/workflows/kanidm_individual_book.yml'
     needs: generate_tags
     strategy:
       matrix:
@@ -30,7 +30,7 @@ jobs:
       tag: ${{ matrix.tag }}
       parent_id: ${{ github.ref }}
   docs_master:
-    uses: '.github/workflows/kanidm_individual_book.yml'
+    uses: './.github/workflows/kanidm_individual_book.yml'
     needs: generate_tags
     with:
       tag: "master"
