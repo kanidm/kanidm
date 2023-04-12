@@ -63,6 +63,7 @@ nonempty = { workspace = true, features = ["serialize"] }
 
 tracing = { workspace = true, features = ["attributes"] }
 
+unicode-general-category.workspace = true
 url = { workspace = true, features = ["serde"] }
 urlencoding.workspace = true
 uuid = { workspace = true, features = ["serde", "v4" ] }

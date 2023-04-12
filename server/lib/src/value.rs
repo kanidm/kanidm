@@ -76,12 +76,6 @@ lazy_static! {
         #[allow(clippy::expect_used)]
         Regex::new("[\n\r\t]").expect("Invalid singleline regex found")
     };
-
-    pub static ref ESCAPES_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new(r"\x1b\[([\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e])")
-            .expect("Invalid escapes regex found")
-    };
 }
 
 #[derive(Debug, Clone, PartialOrd, Ord, Eq, PartialEq, Hash)]
@@ -1701,15 +1695,23 @@ impl Value {
 
     pub(crate) fn validate_str_escapes(s: &str) -> bool {
         // Look for and prevent certain types of string escapes and injections.
-        if !ESCAPES_RE.is_match(s) {
-            true
-        } else {
-            warn!(
-                "value contains invalid escape chars forbidden by \"{}\"",
-                *ESCAPES_RE
-            );
-            false
-        }
+        // Formerly checked with
+        /*
+        pub static ref ESCAPES_RE: Regex = {
+            #[allow(clippy::expect_used)]
+            Regex::new(r"\x1b\[([\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e])")
+                .expect("Invalid escapes regex found")
+        };
+        */
+        use unicode_general_category::{get_general_category, GeneralCategory};
+
+        s.chars().all(|c| match get_general_category(c) {
+            GeneralCategory::Control => {
+                warn!("value contains invalid unicode control character",);
+                false
+            }
+            _ => true,
+        })
     }
 }
 
