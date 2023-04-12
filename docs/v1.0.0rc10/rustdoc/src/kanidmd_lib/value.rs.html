@@ -1963,6 +1963,8 @@
 <a href="#1963" id="1963">1963</a>
 <a href="#1964" id="1964">1964</a>
 <a href="#1965" id="1965">1965</a>
+<a href="#1966" id="1966">1966</a>
+<a href="#1967" id="1967">1967</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of
 //! the [`Value`] module allow storage and transformation of various types of input into strongly
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
@@ -2040,12 +2042,6 @@
     <span class="kw">pub static </span><span class="kw-2">ref </span>SINGLELINE_RE: Regex = {
         <span class="attr">#[allow(clippy::expect_used)]
         </span>Regex::new(<span class="string">&quot;[\n\r\t]&quot;</span>).expect(<span class="string">&quot;Invalid singleline regex found&quot;</span>)
-    };
-
-    <span class="kw">pub static </span><span class="kw-2">ref </span>ESCAPES_RE: Regex = {
-        <span class="attr">#[allow(clippy::expect_used)]
-        </span>Regex::new(<span class="string">r&quot;\x1b\[([\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e])&quot;</span>)
-            .expect(<span class="string">&quot;Invalid escapes regex found&quot;</span>)
     };
 }
 
@@ -3666,15 +3662,23 @@
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>validate_str_escapes(s: <span class="kw-2">&amp;</span>str) -&gt; bool {
         <span class="comment">// Look for and prevent certain types of string escapes and injections.
-        </span><span class="kw">if </span>!ESCAPES_RE.is_match(s) {
-            <span class="bool-val">true
-        </span>} <span class="kw">else </span>{
-            <span class="macro">warn!</span>(
-                <span class="string">&quot;value contains invalid escape chars forbidden by \&quot;{}\&quot;&quot;</span>,
-                <span class="kw-2">*</span>ESCAPES_RE
-            );
-            <span class="bool-val">false
-        </span>}
+        // Formerly checked with
+        /*
+        pub static ref ESCAPES_RE: Regex = {
+            #[allow(clippy::expect_used)]
+            Regex::new(r&quot;\x1b\[([\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e])&quot;)
+                .expect(&quot;Invalid escapes regex found&quot;)
+        };
+        */
+        </span><span class="kw">use </span>unicode_general_category::{get_general_category, GeneralCategory};
+
+        s.chars().all(|c| <span class="kw">match </span>get_general_category(c) {
+            GeneralCategory::Control =&gt; {
+                <span class="macro">warn!</span>(<span class="string">&quot;value contains invalid unicode control character&quot;</span>,);
+                <span class="bool-val">false
+            </span>}
+            <span class="kw">_ </span>=&gt; <span class="bool-val">true</span>,
+        })
     }
 }
 
