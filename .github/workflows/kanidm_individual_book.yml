@@ -3,7 +3,7 @@
   workflow_call:
     inputs:
       # the target tag for generating things
-      tags:
+      tag:
         required: true
         type: string
       # the parent workflow for caching
