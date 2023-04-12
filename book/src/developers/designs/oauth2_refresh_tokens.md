@@ -114,7 +114,7 @@ missed.
      │Access │              │    │Access │                         │               │Access │           
      │   +   │              │    │   +   │                         │               │   +   │           
      │Refresh│──3. Refresh──┘    │Refresh│                         │               │Refresh│           
-     │ IAT 1 │                   │ IAT 2 │─────6. Refresh──────────┘               │ IAT 1 │           
+     │ IAT 1 │                   │ IAT 2 │─────6. Refresh──────────┘               │ IAT 3 │           
      │       │                   │       │                                         │       │           
      └───────┘                   └───────┘                                         └───────┘
 

@@ -21,7 +21,7 @@ use hashbrown::HashMap;
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ErrorResponse,
-    OidcDiscoveryResponse, TokenRevokeRequest,
+    OidcDiscoveryResponse, TokenRevokeRequest, GrantTypeReq
 };
 use kanidm_proto::oauth2::{
     ClaimType, DisplayValue, GrantType, IdTokenSignAlg, ResponseMode, ResponseType, SubjectType,
@@ -827,6 +827,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         }
     }
 
+    // WILLIAM - EVAL if this needs async or can move to RW.
     pub fn check_oauth2_authorise_permit(
         &self,
         ident: &Identity,
@@ -1009,18 +1010,29 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         // TODO: add refresh token grant type.
         //  If it's a refresh token grant, are the consent permissions the same?
-        if token_req.grant_type == "authorization_code" {
-            self.check_oauth2_token_exchange_authorization_code(o2rs, token_req, ct)
-        } else {
-            admin_warn!("Invalid oauth2 grant_type (should be 'authorization_code')");
-            Err(Oauth2Error::InvalidRequest)
+
+        match &token_req.grant_type {
+            GrantTypeReq::AuthorizationCode {
+                code, redirect_uri, code_verifier
+            } => {
+                self.check_oauth2_token_exchange_authorization_code(o2rs, &code, &redirect_uri, code_verifier.as_deref(), ct)
+            }
+            GrantTypeReq::RefreshToken {
+                refresh_token,
+                scope
+            } => {
+                trace!(?refresh_token, ?scope);
+                todo!();
+            }
         }
     }
 
     fn check_oauth2_token_exchange_authorization_code(
         &mut self,
         o2rs: &Oauth2RS,
-        token_req: &AccessTokenRequest,
+        token_req_code: &str,
+        token_req_redirect_uri: &Url,
+        token_req_code_verifier: Option<&str>,
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         // Check the token_req is within the valid time, and correctly signed for
@@ -1028,7 +1040,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         let code_xchg: TokenExchangeCode = o2rs
             .token_fernet
-            .decrypt_at_time(&token_req.code, Some(60), ct.as_secs())
+            .decrypt_at_time(token_req_code, Some(60), ct.as_secs())
             .map_err(|_| {
                 admin_error!("Failed to decrypt token exchange request");
                 Oauth2Error::InvalidRequest
@@ -1045,7 +1057,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         // a short validity period. The client controlled value is in token_req.code_verifier
         if let Some(code_challenge) = code_xchg.code_challenge {
             // Validate the code_verifier
-            let code_verifier = token_req.code_verifier
+            let code_verifier = token_req_code_verifier
                     .as_deref()
                     .ok_or_else(|| {
                         security_info!("PKCE code verification failed - code challenge is present, but not verifier was provided");
@@ -1066,7 +1078,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 "PKCE code verification failed - no code challenge present in PKCE enforced mode"
             );
             return Err(Oauth2Error::InvalidRequest);
-        } else if token_req.code_verifier.is_some() {
+        } else if token_req_code_verifier.is_some() {
             security_info!(
                 "PKCE code verification failed - a code verifier is present, but no code challenge in exchange"
             );
@@ -1074,7 +1086,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         }
 
         // Validate the redirect_uri is the same as the original.
-        if token_req.redirect_uri != code_xchg.redirect_uri {
+        if token_req_redirect_uri != &code_xchg.redirect_uri {
             security_info!("Invalid oauth2 redirect_uri (differs from original request uri)");
             return Err(Oauth2Error::InvalidOrigin);
         }
@@ -1178,6 +1190,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     })?,
             )
         } else {
+            // id_token is not required in non-openid flows.
             None
         };
 
@@ -1828,13 +1841,14 @@ mod tests {
         // == Submit the token exchange code.
 
         let token_req = AccessTokenRequest {
-            grant_type: "authorization_code".to_string(),
-            code: permit_success.code,
-            redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+            grant_type: GrantTypeReq::AuthorizationCode {
+                code: permit_success.code,
+                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                // From the first step.
+                code_verifier,
+            },
             client_id: Some("test_resource_server".to_string()),
             client_secret: Some(secret),
-            // From the first step.
-            code_verifier,
         };
 
         let token_response = idms_prox_read
@@ -2152,15 +2166,11 @@ mod tests {
 
         // Invalid token exchange
         //  * invalid client_authz (not base64)
-        let token_req = AccessTokenRequest {
-            grant_type: "authorization_code".to_string(),
+        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            client_id: None,
-            client_secret: None,
-            // From the first step.
             code_verifier: code_verifier.clone(),
-        };
+        }.into();
 
         assert!(
             idms_prox_read
@@ -2226,8 +2236,10 @@ mod tests {
                 == Oauth2Error::AccessDenied
         );
 
+        /*
         //  * incorrect grant_type
-        let token_req = AccessTokenRequest {
+        // No longer possible due to changes in json api
+        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             grant_type: "INCORRECT GRANT TYPE".to_string(),
             code: permit_success.code.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
@@ -2241,16 +2253,14 @@ mod tests {
                 .unwrap_err()
                 == Oauth2Error::InvalidRequest
         );
+        */
 
         //  * Incorrect redirect uri
-        let token_req = AccessTokenRequest {
-            grant_type: "authorization_code".to_string(),
+        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code.clone(),
             redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
-            client_id: None,
-            client_secret: None,
             code_verifier,
-        };
+        }.into();
         assert!(
             idms_prox_read
                 .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
@@ -2259,14 +2269,11 @@ mod tests {
         );
 
         //  * code verifier incorrect
-        let token_req = AccessTokenRequest {
-            grant_type: "authorization_code".to_string(),
+        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            client_id: None,
-            client_secret: None,
             code_verifier: Some("12345".to_string()),
-        };
+        }.into();
         assert!(
             idms_prox_read
                 .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
@@ -2317,14 +2324,11 @@ mod tests {
             _ => assert!(false),
         }
 
-        let token_req = AccessTokenRequest {
-            grant_type: "authorization_code".to_string(),
+        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            client_id: None,
-            client_secret: None,
             code_verifier,
-        };
+        }.into();
         let oauth2_token = idms_prox_read
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
             .expect("Unable to exchange for oauth2 token");
@@ -2422,14 +2426,11 @@ mod tests {
             _ => assert!(false),
         }
 
-        let token_req = AccessTokenRequest {
-            grant_type: "authorization_code".to_string(),
+        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            client_id: None,
-            client_secret: None,
             code_verifier,
-        };
+        }.into();
         let oauth2_token = idms_prox_read
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
             .expect("Unable to exchange for oauth2 token");
@@ -2585,14 +2586,11 @@ mod tests {
             _ => assert!(false),
         }
 
-        let token_req = AccessTokenRequest {
-            grant_type: "authorization_code".to_string(),
+        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            client_id: None,
-            client_secret: None,
             code_verifier,
-        };
+        }.into();
         let _oauth2_token = idms_prox_read
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
             .expect("Unable to exchange for oauth2 token");
@@ -2917,15 +2915,12 @@ mod tests {
         }
 
         // == Submit the token exchange code.
-        let token_req = AccessTokenRequest {
-            grant_type: "authorization_code".to_string(),
+        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            client_id: None,
-            client_secret: None,
             // From the first step.
             code_verifier,
-        };
+        }.into();
 
         let token_response = idms_prox_read
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
@@ -3050,15 +3045,12 @@ mod tests {
         }
 
         // == Submit the token exchange code.
-        let token_req = AccessTokenRequest {
-            grant_type: "authorization_code".to_string(),
+        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            client_id: None,
-            client_secret: None,
             // From the first step.
             code_verifier,
-        };
+        }.into();
 
         let token_response = idms_prox_read
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
@@ -3144,15 +3136,12 @@ mod tests {
         }
 
         // == Submit the token exchange code.
-        let token_req = AccessTokenRequest {
-            grant_type: "authorization_code".to_string(),
+        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
             code: permit_success.code,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            client_id: None,
-            client_secret: None,
             // From the first step.
             code_verifier,
-        };
+        }.into();
 
         let token_response = idms_prox_read
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
@@ -3314,13 +3303,14 @@ mod tests {
 
         // == Submit the token exchange code.
         let token_req = AccessTokenRequest {
-            grant_type: "authorization_code".to_string(),
-            code: permit_success.code,
-            redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+            grant_type: GrantTypeReq::AuthorizationCode {
+                code: permit_success.code,
+                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                // From the first step.
+                code_verifier,
+            },
             client_id: Some("test_resource_server".to_string()),
             client_secret: Some(secret),
-            // From the first step.
-            code_verifier,
         };
 
         let token_response = idms_prox_read
@@ -3713,13 +3703,14 @@ mod tests {
         // This exchange failed because we submitted a verifier when the code exchange
         // has NO code challenge present.
         let token_req = AccessTokenRequest {
-            grant_type: "authorization_code".to_string(),
-            code: permit_success.code,
-            redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+            grant_type: GrantTypeReq::AuthorizationCode {
+                code: permit_success.code,
+                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                // Note the code verifier is set to "something else"
+                code_verifier,
+            },
             client_id: Some("test_resource_server".to_string()),
             client_secret: Some(secret),
-            // Note the code verifier is set to "something else"
-            code_verifier,
         };
 
         // Assert the exchange fails.
@@ -3805,13 +3796,14 @@ mod tests {
         // == Submit the token exchange code.
         // NOTE the url is http again
         let token_req = AccessTokenRequest {
-            grant_type: "authorization_code".to_string(),
-            code: permit_success.code,
-            redirect_uri: Url::parse("http://demo.example.com/oauth2/result").unwrap(),
+            grant_type: GrantTypeReq::AuthorizationCode {
+                code: permit_success.code,
+                redirect_uri: Url::parse("http://demo.example.com/oauth2/result").unwrap(),
+                // Note the code verifier is set to "something else"
+                code_verifier,
+            },
             client_id: Some("test_resource_server".to_string()),
             client_secret: Some(secret),
-            // Note the code verifier is set to "something else"
-            code_verifier,
         };
 
         // Assert the exchange fails.
@@ -3820,4 +3812,140 @@ mod tests {
             Err(Oauth2Error::InvalidOrigin)
         ))
     }
+
+    #[idm_test]
+    async fn test_idm_oauth2_refresh_token_basic(
+        idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
+    ) {
+        // First, setup to get a token.
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (secret, uat, ident, _) =
+            setup_oauth2_resource_server(idms, ct, true, false, false).await;
+        let client_authz =
+            Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
+
+        let mut idms_prox_read = idms.proxy_read().await;
+
+        // == Setup the authorisation request
+        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+        let consent_request = good_authorisation_request!(
+            idms_prox_read,
+            &ident,
+            &uat,
+            ct,
+            code_challenge,
+            "openid".to_string()
+        );
+
+        let consent_token =
+            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
+                consent_token
+            } else {
+                unreachable!();
+            };
+
+        // == Manually submit the consent token to the permit for the permit_success
+        let permit_success = idms_prox_read
+            .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
+            .expect("Failed to perform oauth2 permit");
+
+        // Assert that the consent was submitted
+        match idms_delayed.async_rx.recv().await {
+            Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
+            _ => assert!(false),
+        }
+
+        let token_req: AccessTokenRequest  = GrantTypeReq::AuthorizationCode {
+            code: permit_success.code,
+            redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+            code_verifier,
+        }.into();
+        let access_token_response_1 = idms_prox_read
+            .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+            .expect("Unable to exchange for oauth2 token");
+
+        // Assert that the session creation was submitted
+        match idms_delayed.async_rx.recv().await {
+            Some(DelayedAction::Oauth2SessionRecord(_)) => {}
+            _ => assert!(false),
+        }
+
+        drop(idms_prox_read);
+
+        trace!(?access_token_response_1);
+
+        // ============================================
+        // test basic refresh while access still valid.
+
+        let ct = Duration::from_secs(TEST_CURRENT_TIME + 10);
+        let mut idms_prox_read = idms.proxy_read().await;
+
+        let refresh_token = access_token_response_1.refresh_token
+            .expect("no refresh token was issued")
+            .clone();
+
+        let token_req: AccessTokenRequest = GrantTypeReq::RefreshToken {
+            refresh_token,
+            scope: None,
+        }.into();
+        let access_token_response_2 = idms_prox_read
+            .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+            .expect("Unable to exchange for oauth2 token");
+
+        drop(idms_prox_read);
+
+        trace!(?access_token_response_2);
+
+        assert!(access_token_response_1.access_token != access_token_response_2.access_token);
+        assert!(access_token_response_1.refresh_token != access_token_response_2.refresh_token);
+        assert!(access_token_response_1.id_token != access_token_response_2.id_token);
+
+        // ============================================
+        // test basic refresh after access exp
+        let ct = Duration::from_secs(TEST_CURRENT_TIME + 20 + access_token_response_2.expires_in);
+
+        let mut idms_prox_read = idms.proxy_read().await;
+
+        let refresh_token = access_token_response_2.refresh_token
+            .expect("no refresh token was issued")
+            .clone();
+
+        let token_req: AccessTokenRequest = GrantTypeReq::RefreshToken {
+            refresh_token,
+            scope: None,
+        }.into();
+        let access_token_response_3 = idms_prox_read
+            .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+            .expect("Unable to exchange for oauth2 token");
+
+        drop(idms_prox_read);
+
+        trace!(?access_token_response_3);
+
+        assert!(access_token_response_3.access_token != access_token_response_2.access_token);
+        assert!(access_token_response_3.refresh_token != access_token_response_2.refresh_token);
+        assert!(access_token_response_3.id_token != access_token_response_2.id_token);
+
+        // refresh after refresh has expired.
+        // How to know when the refresh expires?
+
+
+    }
+
+    // refresh when oauth2 parent session exp / missing.
+
+    // refresh with wrong client id/authz
+
+    // Incorrect scopes re-requested
+
+
+    // Test that re-use of a refresh token is denied + terminates the session.
+
+    // Test session divergence. This means that we have to:
+    // access + refresh 1
+    // use refresh 1 -> access + refresh 2 // don't commit this txn.
+    // use refresh 2 -> access + refresh 3
+    //    check the session state.
+
 }
