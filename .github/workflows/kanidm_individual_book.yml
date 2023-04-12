@@ -59,12 +59,20 @@ jobs:
 
       - name: Build the docs
         run: |
-          BOOK_VERSION=${{ inputs.tag }} make book
+          	cargo doc --no-deps
+            mdbook build book
+            rm -rf ./docs/
+            mv ./book/book/ ./docs/
+            mkdir -p ./docs/rustdoc/${BOOK_VERSION}
+            mv ./target/doc/* ./docs/rustdoc/${BOOK_VERSION}/
 
       - name: pykanidm docs
         run: |
           python -m pip install poetry
-          make docs/pykanidm/build
+          cd pykanidm
+          poetry install
+          poetry run mkdocs build
+          cd ..
           mv pykanidm/site ./docs/pykanidm
         continue-on-error: true
 
