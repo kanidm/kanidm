@@ -23,7 +23,9 @@ jobs:
   fanout:
     uses: './.github/workflows/kanidm_individual_book.yml'
     needs: generate_tags
+
     strategy:
+      fail-fast: false
       matrix:
         tag: ${{ fromJson(needs.generate_tags.outputs.tags) }}
     with:
@@ -34,7 +36,6 @@ jobs:
     with:
       tag: "master"
       parent_id: ${{ github.ref }}
-
 
   deploy:
     needs:
