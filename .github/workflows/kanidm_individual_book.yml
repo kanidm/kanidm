@@ -1,4 +1,5 @@
 ---
+name: "Github Pages - Branch"
 "on":
   workflow_call:
     inputs:
