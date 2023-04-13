@@ -137,3 +137,15 @@ pub async extern "system" fn ApCallPackagePassthrough(
 ) -> NTSTATUS {
     STATUS_SUCCESS
 }
+
+#[tokio::main(flavor = "current_thread")]
+#[no_mangle]
+#[allow(non_snake_case)]
+pub async extern "system" fn SpInitialize(
+    package_id: usize,
+    params: *const SECPKG_PARAMETERS,
+    func_table: *const LSA_SECPKG_FUNCTION_TABLE,
+) -> NTSTATUS {
+    STATUS_UNSUCCESSFUL
+}
+
