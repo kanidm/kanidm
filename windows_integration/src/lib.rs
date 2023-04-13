@@ -65,7 +65,7 @@ pub async unsafe extern "system" fn SpLsaModeInitialize(
         CallPackagePassthrough: Some(package::ApCallPackagePassthrough),
         LogonUserExA: None,
         LogonUserEx2: None,
-        Initialize: None,
+        Initialize: Some(package::SpInitialize),
         Shutdown: None,
         GetInfo: None,
         AcceptCredentials: None,
