@@ -54,7 +54,7 @@ jobs:
       - name: Download previously built docs
         uses: actions/download-artifact@v3
         with:
-          name: "docs/*.tgz"
+          name: "docs/*.tar.gz"
 
       # - uses: actions/checkout@v3
       #   with:
