@@ -54,7 +54,10 @@ jobs:
       - name: Download previously built docs
         uses: actions/download-artifact@v3
         with:
-          name: "docs/*.tar.gz"
+          name: docs
+
+      - name: Display structure of downloaded files
+        run: ls -R
 
       # - uses: actions/checkout@v3
       #   with:
