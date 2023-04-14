@@ -1,8 +1,8 @@
-# Kanidm Windows Client
+# kanidm Windows Client
 Currently the client consists of one part, the Security Support Provider & Authentication Package (SSP/AP).
 
 ## Building
-The only supported toolchain to build Kanidm's Windows Client is `x86_64-pc-windows-msvc` which requires the MSVC toolchain to be installed. You can get the toolchain with the Visual Studio Workload `Desktop Development with C++`. The toolchain is also available with the same workload in the [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022).
+The only supported toolchain to build kanidm's Windows Client is `x86_64-pc-windows-msvc` which requires the MSVC toolchain to be installed. You can get the toolchain with the Visual Studio Workload `Desktop Development with C++`. The toolchain is also available with the same workload in the [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022).
 
 ## Installation
 In order for the client to function, all parts must be installed in the correct place and registry values set. In the future there will be a powershell script and maybe MSI package to automate this.
@@ -11,11 +11,15 @@ In order for the client to function, all parts must be installed in the correct 
 To install the SSP/AP follow the below steps:
 * Create the directory `C:\Program Files\kanidm`
 * Copy the file `kanidm_win_authlib.dll` to the newly created directory
-* Open the Registry Editor and navigate to `HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa`
-* Add the path `C:\Program Files\kandim\kandim_win_authlib\0\0` (The \0 is a null character)
+* Set a value of `C:\Program Files\kanidm\kanidm_win_authlib\0` to the registry value of `HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\Security Packages`. See the powershell example below for a quick copy and paste operation.
 * The Kanidm SSP/AP is now registered and will load on the next boot
 
 For more info, refer to this [Microsoft Learn Article](https://learn.microsoft.com/en-us/windows/win32/secauthn/registering-ssp-ap-dlls)
+
+### Powershell to Add Authlib
+```ps
+Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Lsa" -Name "Security Packages" -Value "C:\Program Files\kanidm\kanidm_win_authlib\0"
+```
 
 ## Configuration
 In order to get the client to work, all parts must be configured.
