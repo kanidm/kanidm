@@ -12,7 +12,7 @@ To install the SSP/AP follow the below steps:
 * Create the directory `C:\Program Files\kanidm`
 * Copy the file `kanidm_win_authlib.dll` to the newly created directory
 * Set a value of `C:\Program Files\kanidm\kanidm_win_authlib\0` to the registry value of `HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\Security Packages`. See the powershell example below for a quick copy and paste operation.
-* The Kanidm SSP/AP is now registered and will load on the next boot
+* The Kanidm SSP/AP is now registered and will load on the next boot, to configure the client, refer to the configuration section of this document.
 
 For more info, refer to this [Microsoft Learn Article](https://learn.microsoft.com/en-us/windows/win32/secauthn/registering-ssp-ap-dlls)
 
