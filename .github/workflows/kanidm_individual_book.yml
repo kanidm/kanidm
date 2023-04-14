@@ -38,16 +38,6 @@ jobs:
             libsqlite3-dev libudev-dev \
             libpam0g-dev
 
-      # - name: Setup deno
-      #   # Documentation: https://github.com/denoland/setup-deno
-      #   uses: denoland/setup-deno@v1
-      #   with:
-      #     deno-version: v1.x
-
-      # - name: Test document formatting
-      #   run: |
-      #     make doc/format
-
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
         with:
@@ -84,7 +74,7 @@ jobs:
           poetry install
           poetry run mkdocs build
           cd ..
-          mv pykanidm/site ./docs/pykanidm
+          mv pykanidm/site ./docs/${{ inputs.tag }}/pykanidm
         continue-on-error: true
 
       - name: archive things
