@@ -2,6 +2,7 @@ use std::{ffi::c_void, mem::size_of, ptr::null_mut};
 
 use crate::{
     client::{KanidmWindowsClient, KanidmWindowsClientError},
+    mem::{allocate_mem, MemoryAllocationError},
     structs::{AuthInfo, ProfileBuffer},
     PROGRAM_DIR,
 };
@@ -11,7 +12,10 @@ use windows::{
     core::PSTR,
     Win32::{
         Foundation::*,
-        Security::{Authentication::Identity::*, Credentials::STATUS_LOGON_FAILURE, AllocateLocallyUniqueId, TOKEN_GROUPS, SID_AND_ATTRIBUTES},
+        Security::{
+            AllocateLocallyUniqueId, Authentication::Identity::*,
+            Credentials::STATUS_LOGON_FAILURE, SID_AND_ATTRIBUTES, TOKEN_GROUPS,
+        },
         System::Kernel::*,
     },
 };
@@ -62,8 +66,23 @@ pub async extern "system" fn ApInitializePackage(
             return STATUS_UNSUCCESSFUL;
         }
     };
+
+    let alloc_package_name = match allocate_mem(package_name_win, &dt_ref.AllocateLsaHeap) {
+        Ok(ptr) => ptr,
+        Err(e) => match e {
+            MemoryAllocationError::NoAllocFunc => {
+                event!(Level::ERROR, "Missing lsa allocation function");
+                return STATUS_UNSUCCESSFUL;
+            }
+            MemoryAllocationError::AllocFuncFailed => {
+                event!(Level::ERROR, "Failed to allocate package name");
+                return STATUS_UNSUCCESSFUL;
+            }
+        },
+    };
+
     unsafe {
-        *(*out_package_name) = package_name_win;
+        *out_package_name = alloc_package_name;
         AP_DISPATCH_TABLE = Some(dt_ref.to_owned());
         AP_PACKAGE_ID = package_id;
     }
@@ -128,13 +147,11 @@ pub async extern "system" fn ApLogonUser(
         }
     };
 
-    let profile_buff = ProfileBuffer {
-        token: token,
-    };
+    let profile_buff = ProfileBuffer { token: token };
     let out_prof_buf_conv: *mut *mut ProfileBuffer = out_prof_buf.cast();
     let logon_id: *mut LUID = null_mut();
 
-    unsafe { 
+    unsafe {
         match AllocateLocallyUniqueId(logon_id) {
             BOOL(0) => (), // Success
             _ => {
@@ -153,13 +170,41 @@ pub async extern "system" fn ApLogonUser(
         Groups: &mut token_groups as *mut TOKEN_GROUPS,
     };
 
+    let dispatch_table = unsafe { AP_DISPATCH_TABLE.as_ref().unwrap() };
+    let alloc_profile_buf = match allocate_mem(profile_buff, &dispatch_table.AllocateLsaHeap) {
+        Ok(pb) => pb,
+        Err(e) => match e {
+            MemoryAllocationError::NoAllocFunc => {
+                event!(Level::ERROR, "Missing lsa allocation function");
+                return STATUS_UNSUCCESSFUL;
+            }
+            MemoryAllocationError::AllocFuncFailed => {
+                event!(Level::ERROR, "Failed to allocate profile buffer");
+                return STATUS_UNSUCCESSFUL;
+            }
+        },
+    };
+    let alloc_token_info = match allocate_mem(token_info, &dispatch_table.AllocateLsaHeap) {
+        Ok(ti) => ti,
+        Err(e) => match e {
+            MemoryAllocationError::NoAllocFunc => {
+                event!(Level::ERROR, "Missing lsa allocation function");
+                return STATUS_UNSUCCESSFUL;
+            }
+            MemoryAllocationError::AllocFuncFailed => {
+                event!(Level::ERROR, "Failed to allocate token info");
+                return STATUS_UNSUCCESSFUL;
+            }
+        },
+    };
+
     unsafe {
-        *(*out_prof_buf_conv) = profile_buff;
+        *out_prof_buf_conv = alloc_profile_buf;
         *out_prof_buf_len = size_of::<ProfileBuffer>() as u32;
         *out_logon_id = logon_id.read();
         *out_substatus = 0;
         *out_token_type = LsaTokenInformationNull;
-        *(*out_token_conv) = token_info;
+        *out_token_conv = alloc_token_info;
     }
 
     STATUS_SUCCESS
