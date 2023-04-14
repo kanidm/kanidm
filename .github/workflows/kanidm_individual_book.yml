@@ -47,10 +47,11 @@ jobs:
         with:
           toolchain: stable
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: mdbook-template
+      # - uses: actions-rs/cargo@v1
+      #   with:
+      #     command: install
+      #     args: mdbook-template
+
 
 
       - name: Install python 3.10
