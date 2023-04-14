@@ -2,7 +2,7 @@ use std::{ffi::c_void, mem::size_of, ptr::null_mut};
 
 use crate::{
     client::{KanidmWindowsClient, KanidmWindowsClientError},
-    mem::{allocate_mem, MemoryAllocationError},
+    mem::{allocate_mem_lsa, MemoryAllocationError, allocate_mem_client},
     structs::{AuthInfo, ProfileBuffer},
     PROGRAM_DIR,
 };
@@ -67,7 +67,7 @@ pub async extern "system" fn ApInitializePackage(
         }
     };
 
-    let alloc_package_name = match allocate_mem(package_name_win, &dt_ref.AllocateLsaHeap) {
+    let alloc_package_name = match allocate_mem_lsa(package_name_win, &dt_ref.AllocateLsaHeap) {
         Ok(ptr) => ptr,
         Err(e) => match e {
             MemoryAllocationError::NoAllocFunc => {
@@ -103,7 +103,7 @@ pub async extern "system" fn ApInitializePackage(
 #[no_mangle]
 #[allow(non_snake_case)]
 pub async extern "system" fn ApLogonUser(
-    _: *const *const c_void,
+    client_req: *const *const c_void,
     _: SECURITY_LOGON_TYPE,
     auth_info_ptr: *const c_void, // Cast to own Auth Info type
     _: *const c_void,             // Pointer to auth_info
@@ -171,7 +171,7 @@ pub async extern "system" fn ApLogonUser(
     };
 
     let dispatch_table = unsafe { AP_DISPATCH_TABLE.as_ref().unwrap() };
-    let alloc_profile_buf = match allocate_mem(profile_buff, &dispatch_table.AllocateLsaHeap) {
+    let alloc_profile_buf = match allocate_mem_client(profile_buff, &dispatch_table.AllocateClientBuffer, client_req) {
         Ok(pb) => pb,
         Err(e) => match e {
             MemoryAllocationError::NoAllocFunc => {
@@ -184,7 +184,7 @@ pub async extern "system" fn ApLogonUser(
             }
         },
     };
-    let alloc_token_info = match allocate_mem(token_info, &dispatch_table.AllocateLsaHeap) {
+    let alloc_token_info = match allocate_mem_lsa(token_info, &dispatch_table.AllocateLsaHeap) {
         Ok(ti) => ti,
         Err(e) => match e {
             MemoryAllocationError::NoAllocFunc => {
