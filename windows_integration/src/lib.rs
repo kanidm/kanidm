@@ -7,6 +7,7 @@ use windows::Win32::{
 mod client;
 mod package;
 mod structs;
+mod mem;
 
 pub(crate) const PROGRAM_DIR: &'static str = "C:\\Program Files\\kanidm";
 
