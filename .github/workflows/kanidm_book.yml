@@ -56,8 +56,13 @@ jobs:
         with:
           name: docs
 
-      - name: Display structure of downloaded files
-        run: ls -R
+      - name: Extract the files
+        run:  |
+          find . -name '*.tar.gz' -exec tar zxvf "{}" \;
+          ls -1
+          du -d1 -h
+
+
 
       # - uses: actions/checkout@v3
       #   with:
