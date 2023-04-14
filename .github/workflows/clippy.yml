@@ -16,6 +16,7 @@ jobs:
   clippy:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Restore our cache
         uses: actions/cache@v3
         with:
@@ -26,7 +27,6 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - uses: actions/checkout@v3
       - name: Update package manager
         run: sudo apt-get update
       - name: Install dependencies
