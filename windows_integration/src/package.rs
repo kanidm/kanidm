@@ -27,6 +27,9 @@ pub(crate) static mut KANIDM_WINDOWS_CLIENT: Lazy<Option<KanidmWindowsClient>> =
 });
 static mut AP_DISPATCH_TABLE: Option<LSA_DISPATCH_TABLE> = None;
 static mut AP_PACKAGE_ID: u32 = 0;
+static mut SP_PACKAGE_ID: usize = 0;
+static mut SP_SECPKG_PARAMS: Option<SECPKG_PARAMETERS> = None;
+static mut SP_FUNC_TABLE: Option<LSA_SECPKG_FUNCTION_TABLE> = None;
 
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
@@ -143,9 +146,35 @@ pub async extern "system" fn ApCallPackagePassthrough(
 #[allow(non_snake_case)]
 pub async extern "system" fn SpInitialize(
     package_id: usize,
-    params: *const SECPKG_PARAMETERS,
-    func_table: *const LSA_SECPKG_FUNCTION_TABLE,
+    params_ptr: *const SECPKG_PARAMETERS,
+    func_table_ptr: *const LSA_SECPKG_FUNCTION_TABLE,
 ) -> NTSTATUS {
+    let params = match unsafe { params_ptr.as_ref() } {
+        Some(params) => params.to_owned(),
+        None => {
+            event!(Level::ERROR, "Failed to convert params to reference");
+            return STATUS_UNSUCCESSFUL;
+        }
+    };
+    let func_table = match unsafe { func_table_ptr.as_ref() } {
+        Some(func_table) => func_table.to_owned(),
+        None => {
+            event!(Level::ERROR, "Failed to convert function table to reference");
+            return STATUS_UNSUCCESSFUL;
+        }
+    };
+
+    unsafe {
+        SP_PACKAGE_ID = package_id;
+        SP_SECPKG_PARAMS = Some(params);
+        SP_FUNC_TABLE = Some(func_table);
+    }
+
+    /* 
+    ! Until the client has most of the functions implemented, 
+    ! we return unsuccessful so the LSA unloads the client and doesn't call it
+    */
+    // STATUS_SUCCESSFUL
     STATUS_UNSUCCESSFUL
 }
 
