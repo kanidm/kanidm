@@ -698,7 +698,7 @@ impl CredHandler {
 /// "InProgress", "Success" or "Denied". From there the CredHandler
 /// is interacted with until we move to either "Success" or "Denied".
 enum AuthSessionState {
-    Init(Vec<CredHandler>),
+    Init(NonEmpty<CredHandler>),
     // Stop! Don't make this a vec - make the credhandler able to hold multiple
     // internal copies of it's type and check against them all.
     //
@@ -757,34 +757,41 @@ impl AuthSession {
             // based on the anonymous ... in theory this could be cleaner
             // and interact with the account more?
             if account.is_anonymous() {
-                AuthSessionState::Init(vec![CredHandler::Anonymous {
+                AuthSessionState::Init(nonempty![CredHandler::Anonymous {
                     cred_id: account.uuid,
                 }])
             } else {
                 // What's valid to use in this context?
-                let mut handlers = Vec::new();
-
-                if let Some(cred) = &account.primary {
-                    // TODO: Make it possible to have multiple creds.
-                    // Probably means new authsession has to be failable
-                    if let Ok(ch) = CredHandler::try_from((cred, webauthn)) {
-                        handlers.push(ch);
-                    } else {
-                        security_critical!(
-                            "corrupt credentials, unable to start primary credhandler"
-                        );
+                // The crab god forsake this place
+                match (
+                    &account.primary,
+                    CredHandler::try_from((&account.passkeys, webauthn)),
+                ) {
+                    (Some(cred), Ok(ch)) => {
+                        if let Ok(ch_cred) = CredHandler::try_from((cred, webauthn)) {
+                            AuthSessionState::Init(nonempty![ch_cred, ch])
+                        } else {
+                            security_critical!(
+                                "corrupt credentials, unable to start primary credhandler"
+                            );
+                            AuthSessionState::Init(nonempty![ch])
+                        }
                     }
-                }
-
-                if let Ok(ch) = CredHandler::try_from((&account.passkeys, webauthn)) {
-                    handlers.push(ch);
-                };
-
-                if handlers.is_empty() {
-                    security_info!("account has no available credentials");
-                    AuthSessionState::Denied("invalid credential state")
-                } else {
-                    AuthSessionState::Init(handlers)
+                    (None, Ok(ch)) => AuthSessionState::Init(nonempty!(ch)),
+                    (Some(cred), Err(_)) => {
+                        if let Ok(ch_cred) = CredHandler::try_from((cred, webauthn)) {
+                            AuthSessionState::Init(nonempty![ch_cred])
+                        } else {
+                            security_critical!(
+                                "corrupt credentials, unable to start primary credhandler"
+                            );
+                            AuthSessionState::Denied("invalid credential state")
+                        }
+                    }
+                    _ => {
+                        security_info!("account has no available credentials");
+                        AuthSessionState::Denied("invalid credential state")
+                    }
                 }
             }
         } else {
