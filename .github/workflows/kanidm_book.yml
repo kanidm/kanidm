@@ -26,6 +26,8 @@ jobs:
       - name: 'Get Previous tag'
         id: previoustag
         uses: "WyriHaximus/github-action-get-previous-tag@v1"
+        with:
+          prefix: v1
   fanout:
     uses: './.github/workflows/kanidm_individual_book.yml'
     needs: generate_tags
