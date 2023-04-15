@@ -57,8 +57,8 @@ jobs:
           cargo doc --no-deps
           mdbook build book
           rm -rf ./docs/
+          mkdir -p ./docs/${{ inputs.tag }}/rustdoc/
           mv ./book/book/ ./docs/${{ inputs.tag }}
-          mkdir -p ./docs/rustdoc/${{ inputs.tag }}
           mv ./target/doc/* ./docs/rustdoc/${{ inputs.tag }}/
 
       - name: pykanidm docs
