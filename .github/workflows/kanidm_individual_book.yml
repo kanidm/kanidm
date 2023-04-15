@@ -55,10 +55,10 @@ jobs:
       - name: Build the docs
         run: |
           cargo doc --no-deps
-          mdbook build book
+          mdbook build *book
           rm -rf ./docs/
           mkdir -p ./docs/${{ inputs.tag }}/rustdoc/
-          mv ./book/book/ ./docs/${{ inputs.tag }}
+          mv ./*book/book/ ./docs/${{ inputs.tag }}
           mv ./target/doc/* ./docs/${{ inputs.tag }}/rustdoc/
 
       - name: pykanidm docs
