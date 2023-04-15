@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
@@ -91,7 +91,7 @@ pub enum GrantTypeReq {
     RefreshToken {
         refresh_token: String,
         #[serde(skip_serializing_if = "Option::is_none")]
-        scope: Option<Vec<String>>,
+        scope: Option<BTreeSet<String>>,
     }
 }
 

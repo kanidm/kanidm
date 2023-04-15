@@ -1014,18 +1014,30 @@ impl QueryServer {
     pub async fn write(&self, curtime: Duration) -> QueryServerWriteTransaction<'_> {
         // Guarantee we are the only writer on the thread pool
         #[allow(clippy::expect_used)]
-        let write_ticket = self
-            .write_ticket
-            .acquire()
-            .await
-            .expect("unable to acquire writer_ticket for qsw");
+        let write_ticket = if cfg!(debug_assertions) {
+            self.write_ticket
+                .try_acquire()
+                .expect("unable to acquire writer_ticket for qsw")
+        } else {
+            self.write_ticket
+                .acquire()
+                .await
+                .expect("unable to acquire writer_ticket for qsw")
+        };
+
         // We need to ensure a db conn will be available
-        #[allow(clippy::expect_used)]
-        let db_ticket = self
-            .db_tickets
-            .acquire()
-            .await
-            .expect("unable to acquire db_ticket for qsw");
+        let db_ticket = if cfg!(debug_assertions) {
+            #[allow(clippy::expect_used)]
+            self.db_tickets
+                .try_acquire()
+                .expect("unable to acquire db_ticket for qsw")
+        } else {
+            #[allow(clippy::expect_used)]
+            self.db_tickets
+                .acquire()
+                .await
+                .expect("unable to acquire db_ticket for qsw")
+        };
 
         let schema_write = self.schema.write();
         let mut be_txn = self.be.write();
