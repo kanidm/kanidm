@@ -63,7 +63,7 @@ jobs:
         run:  |
           find . -name '*.tar.gz' -exec tar zxf "{}" \;
           ls -la docs/
-          ln -s docs/stable/ docs/${{ needs.generate_tags.outputs.latest}}/
+          ln -s docs/${{ needs.generate_tags.outputs.latest}}/ docs/stable/
           ls -la docs/
 
 
