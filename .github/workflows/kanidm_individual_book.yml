@@ -57,7 +57,7 @@ jobs:
           cargo doc --no-deps
           mdbook build book
           rm -rf ./docs/
-          mv ./book/book/ ./docs/${{ inputs.tag }}/
+          mv ./book/book/ ./docs/${{ inputs.tag }}
           mkdir -p ./docs/rustdoc/${{ inputs.tag }}
           mv ./target/doc/* ./docs/rustdoc/${{ inputs.tag }}/
 
