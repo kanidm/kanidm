@@ -868,8 +868,17 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // this indicates session desync / replay. We must nuke the session at this point.
                 //
                 // Need to think about how to handle this nicely give transactions.
+                trace!(
+                    "markertext {} {}",
+                    iat,
+                    oauth2_session.issued_at.unix_timestamp()
+                );
                 if iat < oauth2_session.issued_at.unix_timestamp() {
-                    todo!();
+                    security_info!(
+                        ?session_id,
+                        "Attempt to reuse a refresh token detected, destroying session"
+                    );
+                    return Err(Oauth2Error::InvalidToken);
                 }
 
                 // Check the scopes are identical, or None.
@@ -1065,7 +1074,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         trace!("====================================================================");
 
-        let modlist = ModifyList::new_append("oauth2_session", session);
+        // We need to update (replace) this session id if present.
+        let modlist = ModifyList::new_list(vec![
+            Modify::Removed("oauth2_session".into(), PartialValue::Refer(session_id)),
+            Modify::Present("oauth2_session".into(), session),
+        ]);
 
         self.qs_write
             .internal_modify(
@@ -4234,13 +4247,14 @@ mod tests {
             scope: None,
         }
         .into();
-        let _access_token_response_2 = idms_prox_write
+        let access_token_response_2 = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-            .expect("Unable to exchange for oauth2 token");
+            // Should be unable to exchange.
+            .unwrap_err();
+
+        assert!(access_token_response_2 == Oauth2Error::InvalidToken);
 
         assert!(idms_prox_write.commit().is_ok());
-
-        todo!();
     }
 
     // refresh with wrong client id/authz
@@ -4273,13 +4287,13 @@ mod tests {
             scope: None,
         }
         .into();
-        let _access_token_response_2 = idms_prox_write
+        let access_token_response_2 = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-            .expect("Unable to exchange for oauth2 token");
+            .unwrap_err();
+
+        assert!(access_token_response_2 == Oauth2Error::AuthenticationRequired);
 
         assert!(idms_prox_write.commit().is_ok());
-
-        todo!();
     }
 
     // Incorrect scopes re-requested
@@ -4310,13 +4324,13 @@ mod tests {
             scope: Some(btreeset!["invalid_scope".to_string()]),
         }
         .into();
-        let _access_token_response_2 = idms_prox_write
+        let access_token_response_2 = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-            .expect("Unable to exchange for oauth2 token");
+            .unwrap_err();
+
+        assert!(access_token_response_2 == Oauth2Error::InvalidScope);
 
         assert!(idms_prox_write.commit().is_ok());
-
-        todo!();
     }
 
     // Test that re-use of a refresh token is denied + terminates the session.
@@ -4333,6 +4347,7 @@ mod tests {
 
         // ============================================
         // Use the refresh token once
+        let ct = Duration::from_secs(TEST_CURRENT_TIME + 1);
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
         let refresh_token = access_token_response_1
@@ -4346,16 +4361,38 @@ mod tests {
             scope: None,
         }
         .into();
+
         let _access_token_response_2 = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
             .expect("Unable to exchange for oauth2 token");
 
         assert!(idms_prox_write.commit().is_ok());
 
-        // Now use it again.
+        // Now use it again. - this will cause an error and the session to be terminated.
+        // ALERT - WILLIAM - how to handle this with txns?
+        let ct = Duration::from_secs(TEST_CURRENT_TIME + 2);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
 
-        //
-        unimplemented!();
+        let refresh_token = access_token_response_1
+            .refresh_token
+            .as_ref()
+            .expect("no refresh token was issued")
+            .clone();
+
+        let token_req: AccessTokenRequest = GrantTypeReq::RefreshToken {
+            refresh_token,
+            scope: None,
+        }
+        .into();
+
+        let access_token_response_3 = idms_prox_write
+            .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+            .unwrap_err();
+
+        // Wrong err for now.
+        assert!(access_token_response_3 == Oauth2Error::AuthenticationRequired);
+
+        assert!(idms_prox_write.commit().is_ok());
     }
 
     // Test session divergence. This means that we have to:
@@ -4363,4 +4400,65 @@ mod tests {
     // use refresh 1 -> access + refresh 2 // don't commit this txn.
     // use refresh 2 -> access + refresh 3
     //    check the session state.
+
+    #[idm_test]
+    async fn test_idm_oauth2_refresh_token_divergence(
+        idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
+    ) {
+        // First, setup to get a token.
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        let (access_token_response_1, client_authz) =
+            setup_refresh_token(idms, idms_delayed, ct).await;
+
+        // ============================================
+        // Use the refresh token once
+        let ct = Duration::from_secs(TEST_CURRENT_TIME + 1);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let refresh_token = access_token_response_1
+            .refresh_token
+            .as_ref()
+            .expect("no refresh token was issued")
+            .clone();
+
+        let token_req: AccessTokenRequest = GrantTypeReq::RefreshToken {
+            refresh_token,
+            scope: None,
+        }
+        .into();
+
+        let access_token_response_2 = idms_prox_write
+            .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+            .expect("Unable to exchange for oauth2 token");
+
+        // DO NOT COMMIT HERE - this is what forces the session issued_at
+        // time to stay at the original time!
+        drop(idms_prox_write);
+
+        // ============================================
+        let ct = Duration::from_secs(TEST_CURRENT_TIME + 2);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let refresh_token = access_token_response_2
+            .refresh_token
+            .as_ref()
+            .expect("no refresh token was issued")
+            .clone();
+
+        let token_req: AccessTokenRequest = GrantTypeReq::RefreshToken {
+            refresh_token,
+            scope: None,
+        }
+        .into();
+
+        let _access_token_response_3 = idms_prox_write
+            .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+            .expect("Unable to exchange for oauth2 token");
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Success!
+    }
 }
