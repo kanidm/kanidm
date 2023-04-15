@@ -62,6 +62,7 @@ jobs:
       - name: Extract the files
         run:  |
           find . -name '*.tar.gz' -exec tar zxf "{}" \;
+          ls -la
           ln -s stable/ ${{ needs.generate_tags.outputs.latest}}/
           ls -la
 
