@@ -59,7 +59,7 @@ jobs:
           rm -rf ./docs/
           mkdir -p ./docs/${{ inputs.tag }}/rustdoc/
           mv ./book/book/ ./docs/${{ inputs.tag }}
-          mv ./target/doc/* ./docs/rustdoc/${{ inputs.tag }}/
+          mv ./target/doc/* ./docs/${{ inputs.tag }}/rustdoc/
 
       - name: pykanidm docs
         run: |
