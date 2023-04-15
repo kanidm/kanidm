@@ -51,6 +51,7 @@ jobs:
     needs:
       - fanout
       - docs_master
+      - generate_tags
     runs-on: ubuntu-latest
     steps:
       - name: Download previously built docs
@@ -60,9 +61,9 @@ jobs:
 
       - name: Extract the files
         run:  |
-          find . -name '*.tar.gz' -exec tar zxvf "{}" \;
-          ls -1
-          du -d1 -h
+          find . -name '*.tar.gz' -exec tar zxf "{}" \;
+          ln -s ${{ needs.generate_tags.outputs.latest}}/ stable/
+          ls -la
 
 
 
