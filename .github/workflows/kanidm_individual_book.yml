@@ -47,13 +47,6 @@ jobs:
         with:
           toolchain: stable
 
-      # - uses: actions-rs/cargo@v1
-      #   with:
-      #     command: install
-      #     args: mdbook-template
-
-
-
       - name: Install python 3.10
         uses: actions/setup-python@v4
         with:
@@ -64,7 +57,7 @@ jobs:
           cargo doc --no-deps
           mdbook build book
           rm -rf ./docs/
-          mv ./book/book/ ./docs/
+          mv ./book/book/ ./docs/${{ inputs.tag }}/
           mkdir -p ./docs/rustdoc/${{ inputs.tag }}
           mv ./target/doc/* ./docs/rustdoc/${{ inputs.tag }}/
 
