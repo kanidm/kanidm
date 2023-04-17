@@ -783,6 +783,7 @@ impl AuthSession {
                 if let Some(non_empty_handlers) = NonEmpty::collect(handlers.into_iter()) {
                     AuthSessionState::Init(non_empty_handlers)
                 } else {
+                    security_info!("account has no available credentials");
                     AuthSessionState::Denied("invalid credential state")
                 }
             }
