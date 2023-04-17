@@ -50,6 +50,7 @@ pub enum Oauth2Error {
     InvalidOrigin,
     // Standard
     InvalidRequest,
+    InvalidGrant,
     UnauthorizedClient,
     AccessDenied,
     UnsupportedResponseType,
@@ -69,6 +70,7 @@ impl std::fmt::Display for Oauth2Error {
             Oauth2Error::AuthenticationRequired => "authentication_required",
             Oauth2Error::InvalidClientId => "invalid_client_id",
             Oauth2Error::InvalidOrigin => "invalid_origin",
+            Oauth2Error::InvalidGrant => "invalid_grant",
             Oauth2Error::InvalidRequest => "invalid_request",
             Oauth2Error::UnauthorizedClient => "unauthorized_client",
             Oauth2Error::AccessDenied => "access_denied",
@@ -868,17 +870,26 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // this indicates session desync / replay. We must nuke the session at this point.
                 //
                 // Need to think about how to handle this nicely give transactions.
-                trace!(
-                    "markertext {} {}",
-                    iat,
-                    oauth2_session.issued_at.unix_timestamp()
-                );
                 if iat < oauth2_session.issued_at.unix_timestamp() {
                     security_info!(
                         ?session_id,
                         "Attempt to reuse a refresh token detected, destroying session"
                     );
-                    return Err(Oauth2Error::InvalidToken);
+
+                    // Revoke it
+                    let modlist = ModifyList::new_list(vec![Modify::Removed(
+                        AttrString::from("oauth2_session"),
+                        PartialValue::Refer(session_id),
+                    )]);
+
+                    self.qs_write
+                        .internal_modify(&filter!(f_eq("uuid", PartialValue::Uuid(uuid))), &modlist)
+                        .map_err(|e| {
+                            admin_error!("Failed to modify - revoke oauth2 session {:?}", e);
+                            Oauth2Error::ServerError(e)
+                        })?;
+
+                    return Err(Oauth2Error::InvalidGrant);
                 }
 
                 // Check the scopes are identical, or None.
@@ -4334,6 +4345,8 @@ mod tests {
     }
 
     // Test that re-use of a refresh token is denied + terminates the session.
+    //
+    // https://www.ietf.org/archive/id/draft-ietf-oauth-security-topics-18.html#refresh_token_protection
     #[idm_test]
     async fn test_idm_oauth2_refresh_token_reuse_invalidates_session(
         idms: &IdmServer,
@@ -4369,7 +4382,6 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Now use it again. - this will cause an error and the session to be terminated.
-        // ALERT - WILLIAM - how to handle this with txns?
         let ct = Duration::from_secs(TEST_CURRENT_TIME + 2);
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
@@ -4389,8 +4401,21 @@ mod tests {
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
             .unwrap_err();
 
-        // Wrong err for now.
-        assert!(access_token_response_3 == Oauth2Error::AuthenticationRequired);
+        assert!(access_token_response_3 == Oauth2Error::InvalidGrant);
+
+        let entry = idms_prox_write
+            .qs_write
+            .internal_search_uuid(UUID_ADMIN)
+            .expect("failed");
+        let valid = entry
+            .get_ava_as_oauth2session_map("oauth2_session")
+            .map(|map| {
+                trace!(?map);
+                map.is_empty()
+            })
+            // If there is no map, it must be empty
+            .unwrap_or(true);
+        assert!(valid);
 
         assert!(idms_prox_write.commit().is_ok());
     }
