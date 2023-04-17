@@ -24,7 +24,10 @@ use kanidmd_lib::{
     },
     idm::delayed::DelayedAction,
     idm::event::{GeneratePasswordEvent, RegenerateRadiusSecretEvent, UnixPasswordChangeEvent},
-    idm::oauth2::{Oauth2Error, TokenRevokeRequest},
+    idm::oauth2::{
+        AccessTokenRequest, AccessTokenResponse, AuthorisePermitSuccess, Oauth2Error,
+        TokenRevokeRequest,
+    },
     idm::server::{IdmServer, IdmServerTransaction},
     idm::serviceaccount::{DestroyApiTokenEvent, GenerateApiTokenEvent},
     modify::{Modify, ModifyInvalid, ModifyList},
@@ -1396,6 +1399,51 @@ impl QueryServerWriteV1 {
             .qs_write
             .modify(&mdf)
             .and_then(|_| idms_prox_write.commit().map(|_| ()))
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_oauth2_authorise_permit(
+        &self,
+        uat: Option<String>,
+        consent_req: String,
+        eventid: Uuid,
+    ) -> Result<AuthorisePermitSuccess, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
+        let (ident, uat) = idms_prox_write
+            .validate_and_parse_uat(uat.as_deref(), ct)
+            .and_then(|uat| {
+                idms_prox_write
+                    .process_uat_to_identity(&uat, ct)
+                    .map(|ident| (ident, uat))
+            })
+            .map_err(|e| {
+                admin_error!("Invalid identity: {:?}", e);
+                e
+            })?;
+
+        idms_prox_write.check_oauth2_authorise_permit(&ident, &uat, &consent_req, ct)
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_oauth2_token_exchange(
+        &self,
+        client_authz: Option<String>,
+        token_req: AccessTokenRequest,
+        eventid: Uuid,
+    ) -> Result<AccessTokenResponse, Oauth2Error> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
+        // Now we can send to the idm server for authorisation checking.
+        idms_prox_write.check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
     }
 
     #[instrument(

@@ -27,9 +27,8 @@ use kanidmd_lib::{
     },
     idm::ldap::{LdapBoundToken, LdapResponseState, LdapServer},
     idm::oauth2::{
-        AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-        AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse,
-        JwkKeySet, Oauth2Error, OidcDiscoveryResponse, OidcToken,
+        AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AuthorisationRequest,
+        AuthoriseResponse, JwkKeySet, Oauth2Error, OidcDiscoveryResponse, OidcToken,
     },
     idm::server::{IdmServer, IdmServerTransaction},
     idm::serviceaccount::ListApiTokenEvent,
@@ -1254,34 +1253,6 @@ impl QueryServerReadV1 {
         skip_all,
         fields(uuid = ?eventid)
     )]
-    pub async fn handle_oauth2_authorise_permit(
-        &self,
-        uat: Option<String>,
-        consent_req: String,
-        eventid: Uuid,
-    ) -> Result<AuthorisePermitSuccess, OperationError> {
-        let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
-        let (ident, uat) = idms_prox_read
-            .validate_and_parse_uat(uat.as_deref(), ct)
-            .and_then(|uat| {
-                idms_prox_read
-                    .process_uat_to_identity(&uat, ct)
-                    .map(|ident| (ident, uat))
-            })
-            .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
-                e
-            })?;
-
-        idms_prox_read.check_oauth2_authorise_permit(&ident, &uat, &consent_req, ct)
-    }
-
-    #[instrument(
-        level = "info",
-        skip_all,
-        fields(uuid = ?eventid)
-    )]
     pub async fn handle_oauth2_authorise_reject(
         &self,
         uat: Option<String>,
@@ -1303,23 +1274,6 @@ impl QueryServerReadV1 {
             })?;
 
         idms_prox_read.check_oauth2_authorise_reject(&ident, &uat, &consent_req, ct)
-    }
-
-    #[instrument(
-        level = "info",
-        skip_all,
-        fields(uuid = ?eventid)
-    )]
-    pub async fn handle_oauth2_token_exchange(
-        &self,
-        client_authz: Option<String>,
-        token_req: AccessTokenRequest,
-        eventid: Uuid,
-    ) -> Result<AccessTokenResponse, Oauth2Error> {
-        let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
-        // Now we can send to the idm server for authorisation checking.
-        idms_prox_read.check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
     }
 
     #[instrument(

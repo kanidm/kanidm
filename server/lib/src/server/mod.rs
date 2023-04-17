@@ -994,12 +994,18 @@ impl QueryServer {
 
     pub async fn read(&self) -> QueryServerReadTransaction<'_> {
         // We need to ensure a db conn will be available
-        #[allow(clippy::expect_used)]
-        let db_ticket = self
-            .db_tickets
-            .acquire()
-            .await
-            .expect("unable to acquire db_ticket for qsr");
+        let db_ticket = if cfg!(test) {
+            #[allow(clippy::expect_used)]
+            self.db_tickets
+                .try_acquire()
+                .expect("unable to acquire db_ticket for qsr")
+        } else {
+            #[allow(clippy::expect_used)]
+            self.db_tickets
+                .acquire()
+                .await
+                .expect("unable to acquire db_ticket for qsr")
+        };
 
         QueryServerReadTransaction {
             be_txn: self.be.read(),
@@ -1026,7 +1032,7 @@ impl QueryServer {
         };
 
         // We need to ensure a db conn will be available
-        let db_ticket = if cfg!(debug_assertions) {
+        let db_ticket = if cfg!(test) {
             #[allow(clippy::expect_used)]
             self.db_tickets
                 .try_acquire()

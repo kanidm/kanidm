@@ -1133,7 +1133,8 @@ impl AuthSession {
                             issued_by: IdentityId::User(self.account.uuid),
                             scope,
                         }))
-                        .map_err(|_| {
+                        .map_err(|e| {
+                            debug!(?e, "queue failure");
                             admin_error!("unable to queue failing authentication as the session will not validate ... ");
                             OperationError::InvalidState
                         })?;

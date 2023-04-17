@@ -6,7 +6,7 @@ use std::str::FromStr;
 use compact_jwt::{JwkKeySet, JwsValidator, OidcToken, OidcUnverified};
 use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-    AccessTokenResponse, AuthorisationResponse, OidcDiscoveryResponse, GrantTypeReq
+    AccessTokenResponse, AuthorisationResponse, GrantTypeReq, OidcDiscoveryResponse,
 };
 use oauth2_ext::PkceCodeChallenge;
 use url::Url;
@@ -279,7 +279,8 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         code: code.to_string(),
         redirect_uri: Url::parse("https://demo.example.com/oauth2/flow").expect("Invalid URL"),
         code_verifier: Some(pkce_code_verifier.secret().clone()),
-    }.into();
+    }
+    .into();
 
     let response = client
         .post(format!("{}/oauth2/token", url))

@@ -66,9 +66,9 @@ pub enum AuthorisationResponse {
         // A pretty-name of the client
         client_name: String,
         // A list of scopes requested / to be issued.
-        scopes: Vec<String>,
+        scopes: BTreeSet<String>,
         // Extra PII that may be requested
-        pii_scopes: Vec<String>,
+        pii_scopes: BTreeSet<String>,
         // The users displayname (?)
         // pub display_name: String,
         // The token we need to be given back to allow this to proceed
@@ -92,7 +92,7 @@ pub enum GrantTypeReq {
         refresh_token: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         scope: Option<BTreeSet<String>>,
-    }
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -395,7 +395,8 @@ mod tests {
             code: "demo code".to_string(),
             redirect_uri: Url::parse("http://[::1]").unwrap(),
             code_verifier: None,
-        }.into();
+        }
+        .into();
 
         println!("{:?}", serde_json::to_string(&atr).expect("JSON failure"));
     }
