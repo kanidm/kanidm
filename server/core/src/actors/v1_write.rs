@@ -1426,7 +1426,9 @@ impl QueryServerWriteV1 {
                 e
             })?;
 
-        idms_prox_write.check_oauth2_authorise_permit(&ident, &uat, &consent_req, ct)
+        idms_prox_write
+            .check_oauth2_authorise_permit(&ident, &uat, &consent_req, ct)
+            .and_then(|r| idms_prox_write.commit().map(|()| r))
     }
 
     #[instrument(
@@ -1443,7 +1445,17 @@ impl QueryServerWriteV1 {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         // Now we can send to the idm server for authorisation checking.
-        idms_prox_write.check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+        let resp =
+            idms_prox_write.check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct);
+
+        match &resp {
+            Err(Oauth2Error::InvalidGrant) | Ok(_) => {
+                idms_prox_write.commit().map_err(Oauth2Error::ServerError)?;
+            }
+            _ => {}
+        };
+
+        resp
     }
 
     #[instrument(

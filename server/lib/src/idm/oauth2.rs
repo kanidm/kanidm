@@ -1083,8 +1083,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             },
         );
 
-        trace!("====================================================================");
-
         // We need to update (replace) this session id if present.
         let modlist = ModifyList::new_list(vec![
             Modify::Removed("oauth2_session".into(), PartialValue::Refer(session_id)),
@@ -4168,6 +4166,16 @@ mod tests {
             .expect("no refresh token was issued")
             .clone();
 
+        // get the refresh token expiry now before we use it.
+        let reflected_token = idms_prox_write
+            .reflect_oauth2_token(client_authz.as_ref().unwrap(), &refresh_token)
+            .expect("Failed to access internals of the refresh token");
+
+        let refresh_exp = match reflected_token {
+            Oauth2TokenType::Refresh { expiry, .. } => expiry.unix_timestamp(),
+            Oauth2TokenType::Access { .. } => unreachable!(),
+        };
+
         let token_req: AccessTokenRequest = GrantTypeReq::RefreshToken {
             refresh_token,
             scope: None,
@@ -4191,9 +4199,7 @@ mod tests {
         // we can guarantee this in this test.
 
         let ct = Duration::from_secs(
-            TEST_CURRENT_TIME
-                + OAUTH_REFRESH_TOKEN_EXPIRY
-                + access_token_response_3.expires_in as u64,
+            TEST_CURRENT_TIME + refresh_exp as u64 + access_token_response_3.expires_in as u64,
         );
 
         let mut idms_prox_write = idms.proxy_write(ct).await;
