@@ -18,4 +18,4 @@ Copy-Item .\kanidm_win_authlib.dll -Destination $kani_dir
 Copy-Item .\authlib_client.toml -Destination $kani_dir
 
 # Register DLL
-Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Lsa" -Name "Security Packages" -Value "C:\Program Files\kanidm\kanidm_win_authlib\0"
+Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Lsa" -Name "Security Packages" -Value "C:\Program Files\kanidm\kanidm_win_authlib"
