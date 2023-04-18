@@ -223,7 +223,7 @@ when first created. Defaults to false.</p>
 <pre><code>[2020-02-14T05:58:37Z INFO  kanidm_unixd_status] working!
 </code></pre>
 <p>If it is not working, you will see an error message:</p>
-<pre><code>[2020-02-14T05:58:10Z ERROR kanidm_unixd_status] Error -&gt; 
+<pre><code>[2020-02-14T05:58:10Z ERROR kanidm_unixd_status] Error -&gt;
    Os { code: 111, kind: ConnectionRefused, message: &quot;Connection refused&quot; }
 </code></pre>
 <p>For more information, see the <a href="./pam_and_nsswitch.html#troubleshooting">Troubleshooting</a> section.</p>
@@ -439,7 +439,7 @@ rpc:        files
 similar to the following example:</p>
 <pre><code class="language-bash">&gt; kanidm group posix show example_group
 Using cached token for name idm_admin
-Error -&gt; Http(500, Some(InvalidAccountState(&quot;Missing class: account &amp;&amp; posixaccount OR group &amp;&amp; posixgroup&quot;)), 
+Error -&gt; Http(500, Some(InvalidAccountState(&quot;Missing class: account &amp;&amp; posixaccount OR group &amp;&amp; posixgroup&quot;)),
     &quot;b71f137e-39f3-4368-9e58-21d26671ae24&quot;)
 </code></pre>
 <p>POSIX-enable the group with <code>kanidm group posix set example_group</code>. You should get a result similar
@@ -509,6 +509,9 @@ may have your laptop in a park without wifi.</p>
 <p>Clearing the cache, however, completely wipes all local data about all accounts and groups. If you
 are relying on this cached (but invalid) data, you may lose access to your accounts until other
 communication issues have been resolved.</p>
+<h3 id="home-directories-are-not-created-via-ssh"><a class="header" href="#home-directories-are-not-created-via-ssh">Home directories are not created via SSH</a></h3>
+<p>Ensure that <code>UsePAM yes</code> is set in <code>sshd_config</code>. Without this the pam session module won't be
+triggered which prevents the background task being completed.</p>
 
                     </main>
 
