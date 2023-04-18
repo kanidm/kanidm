@@ -494,5 +494,3 @@ communication issues have been resolved.
 
 Ensure that `UsePAM yes` is set in `sshd_config`. Without this the pam session module won't be
 triggered which prevents the background task being completed.
-
-
