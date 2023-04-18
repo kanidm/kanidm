@@ -698,7 +698,7 @@ impl CredHandler {
 /// "InProgress", "Success" or "Denied". From there the CredHandler
 /// is interacted with until we move to either "Success" or "Denied".
 enum AuthSessionState {
-    Init(Vec<CredHandler>),
+    Init(NonEmpty<CredHandler>),
     // Stop! Don't make this a vec - make the credhandler able to hold multiple
     // internal copies of it's type and check against them all.
     //
@@ -757,7 +757,7 @@ impl AuthSession {
             // based on the anonymous ... in theory this could be cleaner
             // and interact with the account more?
             if account.is_anonymous() {
-                AuthSessionState::Init(vec![CredHandler::Anonymous {
+                AuthSessionState::Init(nonempty![CredHandler::Anonymous {
                     cred_id: account.uuid,
                 }])
             } else {
@@ -780,11 +780,11 @@ impl AuthSession {
                     handlers.push(ch);
                 };
 
-                if handlers.is_empty() {
+                if let Some(non_empty_handlers) = NonEmpty::collect(handlers.into_iter()) {
+                    AuthSessionState::Init(non_empty_handlers)
+                } else {
                     security_info!("account has no available credentials");
                     AuthSessionState::Denied("invalid credential state")
-                } else {
-                    AuthSessionState::Init(handlers)
                 }
             }
         } else {
