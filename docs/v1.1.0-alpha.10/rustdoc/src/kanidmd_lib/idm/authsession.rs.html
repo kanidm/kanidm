@@ -3346,7 +3346,7 @@
 /// &quot;InProgress&quot;, &quot;Success&quot; or &quot;Denied&quot;. From there the CredHandler
 /// is interacted with until we move to either &quot;Success&quot; or &quot;Denied&quot;.
 </span><span class="kw">enum </span>AuthSessionState {
-    Init(Vec&lt;CredHandler&gt;),
+    Init(NonEmpty&lt;CredHandler&gt;),
     <span class="comment">// Stop! Don&#39;t make this a vec - make the credhandler able to hold multiple
     // internal copies of it&#39;s type and check against them all.
     //
@@ -3405,7 +3405,7 @@
             // based on the anonymous ... in theory this could be cleaner
             // and interact with the account more?
             </span><span class="kw">if </span>account.is_anonymous() {
-                AuthSessionState::Init(<span class="macro">vec!</span>[CredHandler::Anonymous {
+                AuthSessionState::Init(<span class="macro">nonempty!</span>[CredHandler::Anonymous {
                     cred_id: account.uuid,
                 }])
             } <span class="kw">else </span>{
@@ -3428,11 +3428,11 @@
                     handlers.push(ch);
                 };
 
-                <span class="kw">if </span>handlers.is_empty() {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(non_empty_handlers) = NonEmpty::collect(handlers.into_iter()) {
+                    AuthSessionState::Init(non_empty_handlers)
+                } <span class="kw">else </span>{
                     <span class="macro">security_info!</span>(<span class="string">&quot;account has no available credentials&quot;</span>);
                     AuthSessionState::Denied(<span class="string">&quot;invalid credential state&quot;</span>)
-                } <span class="kw">else </span>{
-                    AuthSessionState::Init(handlers)
                 }
             }
         } <span class="kw">else </span>{
