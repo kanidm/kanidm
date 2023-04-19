@@ -63,7 +63,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.pylint.MASTER]
 max-line-length=150
 disable="W0511,raise-missing-from"
-extension-pkg-whitelist="pydantic"
+extension-pkg-allow-list="pydantic"
 # https://github.com/samuelcolvin/pydantic/issues/1961#issuecomment-759522422
 load-plugins="pylint_pydantic,pylint_pytest"
 
@@ -87,3 +87,6 @@ markers = [
 [tool.coverage.run]
 source = ["kanidm"]
 omit = ["tests"]
+
+[tool.mypy]
+plugins = "pydantic.mypy"
