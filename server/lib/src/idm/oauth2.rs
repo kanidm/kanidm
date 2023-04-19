@@ -732,7 +732,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             let code_verifier = token_req_code_verifier
                     .as_deref()
                     .ok_or_else(|| {
-                        security_info!("PKCE code verification failed - code challenge is present, but not verifier was provided");
+                        security_info!("PKCE code verification failed - code challenge is present, but no verifier was provided");
                         Oauth2Error::InvalidRequest
                     })?;
             let mut hasher = sha::Sha256::new();
