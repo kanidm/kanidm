@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
@@ -66,9 +66,9 @@ pub enum AuthorisationResponse {
         // A pretty-name of the client
         client_name: String,
         // A list of scopes requested / to be issued.
-        scopes: Vec<String>,
+        scopes: BTreeSet<String>,
         // Extra PII that may be requested
-        pii_scopes: Vec<String>,
+        pii_scopes: BTreeSet<String>,
         // The users displayname (?)
         // pub display_name: String,
         // The token we need to be given back to allow this to proceed
@@ -77,21 +77,44 @@ pub enum AuthorisationResponse {
     Permitted,
 }
 
-// The resource server then contacts the token endpoint with
-//
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "grant_type", rename_all = "snake_case")]
+pub enum GrantTypeReq {
+    AuthorizationCode {
+        // As sent by the authorisationCode
+        code: String,
+        // Must be the same as the original redirect uri.
+        redirect_uri: Url,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        code_verifier: Option<String>,
+    },
+    RefreshToken {
+        refresh_token: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        scope: Option<BTreeSet<String>>,
+    },
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccessTokenRequest {
-    // must be authorization_code
-    pub grant_type: String,
-    // As sent by the authorisationCode
-    pub code: String,
-    // Must be the same as the original redirect uri.
-    pub redirect_uri: Url,
+    #[serde(flatten)]
+    pub grant_type: GrantTypeReq,
     // REQUIRED, if the client is not authenticating with the
     //  authorization server as described in Section 3.2.1.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_secret: Option<String>,
-    pub code_verifier: Option<String>,
+}
+
+impl From<GrantTypeReq> for AccessTokenRequest {
+    fn from(req: GrantTypeReq) -> AccessTokenRequest {
+        AccessTokenRequest {
+            grant_type: req,
+            client_id: None,
+            client_secret: None,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -359,4 +382,22 @@ pub struct ErrorResponse {
     pub error_description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error_uri: Option<Url>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{AccessTokenRequest, GrantTypeReq};
+    use url::Url;
+
+    #[test]
+    fn test_oauth2_access_token_req() {
+        let atr: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
+            code: "demo code".to_string(),
+            redirect_uri: Url::parse("http://[::1]").unwrap(),
+            code_verifier: None,
+        }
+        .into();
+
+        println!("{:?}", serde_json::to_string(&atr).expect("JSON failure"));
+    }
 }

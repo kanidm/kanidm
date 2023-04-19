@@ -403,7 +403,7 @@ async fn oauth2_authorise_permit(
 
     let res = req
         .state()
-        .qe_r_ref
+        .qe_w_ref
         .handle_oauth2_authorise_permit(uat, consent_req, eventid)
         .await;
 
@@ -520,15 +520,6 @@ pub async fn oauth2_token_post(mut req: tide::Request<AppState>) -> tide::Result
         .and_then(|hv| hv.get(0))
         .and_then(|h| h.as_str().strip_prefix("Basic "))
         .map(str::to_string);
-    /*
-    .ok_or_else(|| {
-        error!("Basic Authentication Not Provided");
-        tide::Error::from_str(
-            tide::StatusCode::Unauthorized,
-            "Invalid Basic Authorisation",
-        )
-    })?;
-    */
 
     // Get the accessToken Request
     let tok_req: AccessTokenRequest = req.body_form().await.map_err(|e| {
@@ -539,9 +530,13 @@ pub async fn oauth2_token_post(mut req: tide::Request<AppState>) -> tide::Result
         )
     })?;
 
+    // Do we change the method/path we take here based on the type of requested
+    // grant? Should we cease the delayed/async session update here and just opt
+    // for a wr txn?
+
     let res = req
         .state()
-        .qe_r_ref
+        .qe_w_ref
         .handle_oauth2_token_exchange(client_authz, tok_req, eventid)
         .await;
 

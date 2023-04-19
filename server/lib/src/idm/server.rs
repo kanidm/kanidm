@@ -32,8 +32,8 @@ use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
 use crate::idm::delayed::{
-    AuthSessionRecord, BackupCodeRemoval, DelayedAction, Oauth2ConsentGrant, Oauth2SessionRecord,
-    PasswordUpgrade, UnixPasswordUpgrade, WebauthnCounterIncrement,
+    AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, UnixPasswordUpgrade,
+    WebauthnCounterIncrement,
 };
 #[cfg(test)]
 use crate::idm::event::PasswordChangeEvent;
@@ -54,7 +54,7 @@ use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
 use crate::prelude::*;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
-use crate::value::{Oauth2Session, Session};
+use crate::value::Session;
 
 pub(crate) type AuthSessionMutex = Arc<Mutex<AuthSession>>;
 pub(crate) type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
@@ -120,7 +120,7 @@ pub struct IdmServerProxyReadTransaction<'a> {
     pub qs_read: QueryServerReadTransaction<'a>,
     pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
     pub(crate) oauth2rs: Oauth2ResourceServersReadTransaction,
-    pub(crate) async_tx: Sender<DelayedAction>,
+    // pub(crate) async_tx: Sender<DelayedAction>,
 }
 
 pub struct IdmServerProxyWriteTransaction<'a> {
@@ -290,7 +290,7 @@ impl IdmServer {
             qs_read: self.qs.read().await,
             domain_keys: self.domain_keys.read(),
             oauth2rs: self.oauth2rs.read(),
-            async_tx: self.async_tx.clone(),
+            // async_tx: self.async_tx.clone(),
         }
     }
 
@@ -2043,58 +2043,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Done!
     }
 
-    pub(crate) fn process_oauth2consentgrant(
-        &mut self,
-        o2cg: &Oauth2ConsentGrant,
-    ) -> Result<(), OperationError> {
-        let modlist = ModifyList::new_list(vec![
-            Modify::Removed(
-                AttrString::from("oauth2_consent_scope_map"),
-                PartialValue::Refer(o2cg.oauth2_rs_uuid),
-            ),
-            Modify::Present(
-                AttrString::from("oauth2_consent_scope_map"),
-                Value::OauthScopeMap(o2cg.oauth2_rs_uuid, o2cg.scopes.iter().cloned().collect()),
-            ),
-        ]);
-
-        self.qs_write.internal_modify(
-            &filter_all!(f_eq("uuid", PartialValue::Uuid(o2cg.target_uuid))),
-            &modlist,
-        )
-    }
-
-    pub(crate) fn process_oauth2sessionrecord(
-        &mut self,
-        osr: &Oauth2SessionRecord,
-    ) -> Result<(), OperationError> {
-        let session = Value::Oauth2Session(
-            osr.session_id,
-            Oauth2Session {
-                parent: osr.parent_session_id,
-                expiry: osr.expiry,
-                issued_at: osr.issued_at,
-                rs_uuid: osr.rs_uuid,
-            },
-        );
-
-        info!(session_id = %osr.session_id, "Persisting auth session");
-
-        // modify the account to put the session onto it.
-        let modlist = ModifyList::new_append("oauth2_session", session);
-
-        self.qs_write
-            .internal_modify(
-                &filter!(f_eq("uuid", PartialValue::Uuid(osr.target_uuid))),
-                &modlist,
-            )
-            .map_err(|e| {
-                admin_error!("Failed to persist user auth token {:?}", e);
-                e
-            })
-        // Done!
-    }
-
     pub fn process_delayedaction(
         &mut self,
         da: DelayedAction,
@@ -2105,9 +2053,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             DelayedAction::UnixPwUpgrade(upwu) => self.process_unixpwupgrade(&upwu),
             DelayedAction::WebauthnCounterIncrement(wci) => self.process_webauthncounterinc(&wci),
             DelayedAction::BackupCodeRemoval(bcr) => self.process_backupcoderemoval(&bcr),
-            DelayedAction::Oauth2ConsentGrant(o2cg) => self.process_oauth2consentgrant(&o2cg),
             DelayedAction::AuthSessionRecord(asr) => self.process_authsessionrecord(&asr),
-            DelayedAction::Oauth2SessionRecord(osr) => self.process_oauth2sessionrecord(&osr),
         }
     }
 
