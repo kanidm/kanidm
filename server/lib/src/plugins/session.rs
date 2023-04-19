@@ -67,7 +67,7 @@ impl SessionConsistency {
                 .map(|sessions| {
                     sessions.iter().filter_map(|(session_id, session)| {
                         if !cred_ids.contains(&session.cred_id) {
-                            warn!(%session_id, "Removing auth session whose issuing credential no longer exists");
+                            info!(%session_id, "Removing auth session whose issuing credential no longer exists");
                             Some(PartialValue::Refer(*session_id))
                         } else {
                             None
@@ -86,7 +86,7 @@ impl SessionConsistency {
                     sessions.iter().filter_map(|(session_id, session)| {
                         match &session.expiry {
                             Some(exp) if exp <= &curtime_odt => {
-                                warn!(%session_id, "Removing expired auth session");
+                                info!(%session_id, "Removing expired auth session");
                                 Some(PartialValue::Refer(*session_id))
                             }
                             _ => None,
@@ -108,7 +108,7 @@ impl SessionConsistency {
                 oauth2_sessions.iter().filter_map(|(o2_session_id, session)| {
                     match &session.expiry {
                         Some(exp) if exp <= &curtime_odt => {
-                            warn!(%o2_session_id, "Removing expired oauth2 session");
+                            info!(%o2_session_id, "Removing expired oauth2 session");
                             Some(PartialValue::Refer(*o2_session_id))
                         }
                         _ => {
@@ -118,7 +118,7 @@ impl SessionConsistency {
                                     // The parent exists, go ahead
                                     None
                                 } else {
-                                    warn!(%o2_session_id, parent_id = %session.parent, "Removing unbound oauth2 session");
+                                    info!(%o2_session_id, parent_id = %session.parent, "Removing unbound oauth2 session");
                                     Some(PartialValue::Refer(*o2_session_id))
                                 }
                             } else {
