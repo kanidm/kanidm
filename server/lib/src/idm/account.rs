@@ -161,7 +161,9 @@ impl Account {
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_ro(value, qs)?;
+        let groups: Vec<Group> = Group::try_from_account_entry_ro(value, qs)?
+            .into_iter()
+            .collect();
         try_from_entry!(value, groups)
     }
 
@@ -170,7 +172,9 @@ impl Account {
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_rw(value, qs)?;
+        let groups: Vec<Group> = Group::try_from_account_entry_rw(value, qs)?
+            .into_iter()
+            .collect();
         try_from_entry!(value, groups)
     }
 
@@ -179,7 +183,9 @@ impl Account {
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_red_ro(value, qs)?;
+        let groups: Vec<Group> = Group::try_from_account_entry_red_ro(value, qs)?
+            .into_iter()
+            .collect();
         try_from_entry!(value, groups)
     }
 

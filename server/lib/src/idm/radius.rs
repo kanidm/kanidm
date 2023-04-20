@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use kanidm_proto::v1::{OperationError, RadiusAuthToken};
+use nonempty::NonEmpty;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -13,7 +14,7 @@ pub(crate) struct RadiusAccount {
     pub name: String,
     pub displayname: String,
     pub uuid: Uuid,
-    pub groups: Vec<Group>,
+    pub groups: NonEmpty<Group>,
     pub radius_secret: String,
     pub valid_from: Option<OffsetDateTime>,
     pub expire: Option<OffsetDateTime>,

@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 use kanidm_proto::v1::UiHint;
 use kanidm_proto::v1::{Group as ProtoGroup, OperationError};
+use nonempty::{nonempty, NonEmpty};
 use uuid::Uuid;
 
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
@@ -43,7 +44,7 @@ macro_rules! try_from_account_e {
             ui_hints,
         };
 
-        let mut groups: Vec<Group> = match $value.get_ava_as_refuuid("memberof") {
+        let groups: Vec<Group> = match $value.get_ava_as_refuuid("memberof") {
             Some(riter) => {
                 // given a list of uuid, make a filter: even if this is empty, the be will
                 // just give and empty result set.
@@ -70,8 +71,14 @@ macro_rules! try_from_account_e {
                 vec![]
             }
         };
-        groups.push(upg);
-        Ok(groups)
+        if let Some(mut non_empty_groups) = NonEmpty::collect(groups.into_iter()) {
+            non_empty_groups.push(upg);
+            Ok(non_empty_groups)
+        } else {
+            Ok(nonempty!(upg))
+        }
+        //groups.push(upg);
+        //Ok(groups)
     }};
 }
 
@@ -79,21 +86,21 @@ impl Group {
     pub fn try_from_account_entry_red_ro(
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
-    ) -> Result<Vec<Self>, OperationError> {
+    ) -> Result<NonEmpty<Self>, OperationError> {
         try_from_account_e!(value, qs)
     }
 
     pub fn try_from_account_entry_ro(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
-    ) -> Result<Vec<Self>, OperationError> {
+    ) -> Result<NonEmpty<Self>, OperationError> {
         try_from_account_e!(value, qs)
     }
 
     pub fn try_from_account_entry_rw(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
-    ) -> Result<Vec<Self>, OperationError> {
+    ) -> Result<NonEmpty<Self>, OperationError> {
         try_from_account_e!(value, qs)
     }
 
