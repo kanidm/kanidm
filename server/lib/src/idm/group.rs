@@ -77,8 +77,6 @@ macro_rules! try_from_account_e {
         } else {
             Ok(nonempty!(upg))
         }
-        //groups.push(upg);
-        //Ok(groups)
     }};
 }
 
