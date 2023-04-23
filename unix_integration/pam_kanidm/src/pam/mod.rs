@@ -30,7 +30,6 @@ pub mod items;
 #[doc(hidden)]
 pub mod macros;
 pub mod module;
-pub mod tty;
 
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
@@ -43,7 +42,6 @@ use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
 use crate::pam::constants::*;
 use crate::pam::conv::PamConv;
-use crate::pam::tty::{PamTty, PamRhost};
 use crate::pam::module::{PamHandle, PamHooks};
 use crate::pam_hooks;
 use constants::PamResultCode;
@@ -167,10 +165,8 @@ impl PamHooks for PamKanidm {
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
 
-        let tty = pamh.get_item::<PamTty>()
-            .map(|x| x.as_str());
-        let rhost = pamh.get_item::<PamRhost>()
-            .map(|x| x.as_str());
+        let tty = pamh.get_tty();
+        let rhost = pamh.get_rhost();
 
         if opts.debug {
             println!("sm_authenticate");
