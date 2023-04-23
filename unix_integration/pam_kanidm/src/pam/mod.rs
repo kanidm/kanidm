@@ -94,14 +94,6 @@ impl PamHooks for PamKanidm {
         let tty = pamh.get_tty();
         let rhost = pamh.get_rhost();
 
-        match &tty {
-            Ok(Some(v)) => 
-                if v == "ssh" {
-            std::thread::sleep(std::time::Duration::from_secs(5))
-            },
-            _ => {}
-        };
-
         if opts.debug {
             println!("acct_mgmt");
             println!("args -> {:?}", args);
@@ -179,6 +171,14 @@ impl PamHooks for PamKanidm {
 
         let tty = pamh.get_tty();
         let rhost = pamh.get_rhost();
+
+        match &tty {
+            Ok(Some(v)) => 
+                if v == "ssh" {
+            std::thread::sleep(std::time::Duration::from_secs(5))
+            },
+            _ => {}
+        };
 
         if opts.debug {
             println!("sm_authenticate");
