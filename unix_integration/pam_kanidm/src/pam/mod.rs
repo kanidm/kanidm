@@ -307,10 +307,14 @@ impl PamHooks for PamKanidm {
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
 
+        let tty = pamh.get_tty();
+        let rhost = pamh.get_rhost();
+
         if opts.debug {
             println!("sm_open_session");
             println!("args -> {:?}", args);
             println!("opts -> {:?}", opts);
+            println!("tty -> {:?} rhost -> {:?}", tty, rhost);
         }
 
         let account_id = match pamh.get_user(None) {
