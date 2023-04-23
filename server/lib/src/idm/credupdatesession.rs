@@ -617,17 +617,23 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         %account.uuid,
                         "Initiating Credential Update Session - Previous session {} has expired", session_id
                     );
-                    *max_ttl
                 } else {
+                    // The former session has been orphaned while in use. This can be from someone
+                    // ctrl-c during their use of the session or refreshing the page without committing.
+                    //
+                    // we don't try to exclusive lock the token here with the current time as we previously
+                    // did. This is because with async replication, there isn't a guarantee this will actually
+                    // be sent to another server "soon enough" to prevent abuse on the seperate server. So
+                    // all this "lock" actually does is annoy legitimate users and not stop abuse. We
+                    // STILL keep the InProgress state though since we check it on commit, so this
+                    // forces the previous orhpan session to be immediately invalidated!
                     security_info!(
                         %entry,
                         %account.uuid,
-                        "Rejecting Update Session - Intent Token is in use {}. Try again later", session_id
+                        "Initiating Update Session - Intent Token was in use {} - this will be invalidated.", session_id
                     );
-                    return Err(OperationError::Wait(
-                        OffsetDateTime::unix_epoch() + *session_ttl,
-                    ));
-                }
+                };
+                *max_ttl
             }
             Some(IntentTokenState::Valid { max_ttl }) => {
                 // Check the TTL
@@ -1658,15 +1664,26 @@ mod tests {
         assert!(matches!(cur, Err(OperationError::SessionExpired)));
 
         // exchange intent token - success
-        let cur = idms_prox_write.exchange_intent_credential_update(intent_tok.clone(), ct);
+        let (cust_a, _c_status) = idms_prox_write
+            .exchange_intent_credential_update(intent_tok.clone(), ct)
+            .unwrap();
 
-        assert!(cur.is_ok());
+        // Session in progress - This will succeed and then block the former success from
+        // committing.
+        let (cust_b, _c_status) = idms_prox_write
+            .exchange_intent_credential_update(intent_tok, ct + Duration::from_secs(1))
+            .unwrap();
 
-        // Already used.
-        let cur = idms_prox_write.exchange_intent_credential_update(intent_tok, ct);
+        let cur = idms_prox_write.commit_credential_update(&cust_a, ct);
 
+        // Fails as the txn was orphaned.
         trace!(?cur);
         assert!(cur.is_err());
+
+        // Success - this was the second use of the token and is valid.
+        let _ = idms_prox_write.commit_credential_update(&cust_b, ct);
+
+        idms_prox_write.commit().expect("Failed to commit txn");
     }
 
     async fn setup_test_session(
