@@ -93,17 +93,10 @@ impl PamHooks for PamKanidm {
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
 
-        let tty = pamh.get_item::<PamTty>()
-            .map(|x| x.as_str());
-        let rhost = pamh.get_item::<PamRhost>()
-            .map(|x| x.as_str());
-
         if opts.debug {
             println!("acct_mgmt");
             println!("args -> {:?}", args);
             println!("opts -> {:?}", opts);
-            println!("tty -> {:?} rhost -> {:?}", tty, rhost);
-
         }
 
         let account_id = match pamh.get_user(None) {
@@ -174,10 +167,16 @@ impl PamHooks for PamKanidm {
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
 
+        let tty = pamh.get_item::<PamTty>()
+            .map(|x| x.as_str());
+        let rhost = pamh.get_item::<PamRhost>()
+            .map(|x| x.as_str());
+
         if opts.debug {
             println!("sm_authenticate");
             println!("args -> {:?}", args);
             println!("opts -> {:?}", opts);
+            println!("tty -> {:?} rhost -> {:?}", tty, rhost);
         }
 
         let account_id = match pamh.get_user(None) {
