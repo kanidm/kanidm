@@ -623,10 +623,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     //
                     // we don't try to exclusive lock the token here with the current time as we previously
                     // did. This is because with async replication, there isn't a guarantee this will actually
-                    // be sent to another server "soon enough" to prevent abuse on the seperate server. So
+                    // be sent to another server "soon enough" to prevent abuse on the separate server. So
                     // all this "lock" actually does is annoy legitimate users and not stop abuse. We
                     // STILL keep the InProgress state though since we check it on commit, so this
-                    // forces the previous orhpan session to be immediately invalidated!
+                    // forces the previous orphan session to be immediately invalidated!
                     security_info!(
                         %entry,
                         %account.uuid,
