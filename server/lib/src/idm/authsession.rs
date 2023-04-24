@@ -891,7 +891,7 @@ impl AuthSession {
                     issue,
                     intent: AuthIntent::Reauth {
                         session_id,
-                        session_expiry: session.expiry.clone(),
+                        session_expiry: session.expiry,
                     },
                 };
 

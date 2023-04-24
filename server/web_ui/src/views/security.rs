@@ -130,7 +130,7 @@ impl Component for SecurityApp {
         let isotime: String = jsdate.to_iso_string().into();
         // TODO: Actually check the time of expiry on the uat and have a timer set that
         // re-locks things nicely.
-        let time = time::OffsetDateTime::parse(&isotime, time::Format::Rfc3339)
+        let time = time::OffsetDateTime::parse(isotime, time::Format::Rfc3339)
             .map(|odt| odt + time::Duration::new(60, 0))
             .expect_throw("Unable to process time stamp");
 

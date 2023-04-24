@@ -148,7 +148,7 @@ impl ServiceAccountOpt {
                                     src_user: copt.username.clone().unwrap(),
                                     dest_user: aopts.account_id.clone(),
                                 };
-                                println!("{}", message.to_string());
+                                println!("{}", message);
                             }
                             _ => {
                                 println!("Success: This token will only be displayed ONCE");
