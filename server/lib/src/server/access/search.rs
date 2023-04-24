@@ -124,11 +124,13 @@ fn search_oauth2_filter_entry<'a>(
                     trace!(?set);
                     set.contains("oauth2_resource_server")
                 })
-                .unwrap_or(false) && entry
+                .unwrap_or(false)
+                && entry
                     .get_ava_as_oauthscopemaps("oauth2_rs_scope_map")
                     .and_then(|maps| ident.get_memberof().map(|mo| (maps, mo)))
                     .map(|(maps, mo)| maps.keys().any(|k| mo.contains(k)))
-                    .unwrap_or(false) {
+                    .unwrap_or(false)
+            {
                 security_access!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a memberof a group granted an oauth2 scope by this entry");
 
                 return AccessResult::Allow(btreeset!(

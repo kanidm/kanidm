@@ -4285,7 +4285,9 @@ mod tests {
         let (access_token_response_1, mut client_authz) =
             setup_refresh_token(idms, idms_delayed, ct).await;
 
-        if let Some(s) = client_authz.as_mut() { s.push_str("invalid") }
+        if let Some(s) = client_authz.as_mut() {
+            s.push_str("invalid")
+        }
 
         // ============================================
         // Refresh with invalid client authz
