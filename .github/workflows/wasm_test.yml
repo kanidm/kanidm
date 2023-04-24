@@ -21,21 +21,11 @@ jobs:
             libssl-dev \
             libsqlite3-dev \
             pkg-config
-
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: cargo
-          default: true
-          override: true
-          # target: wasm32-unknown-unknown
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install wasm-pack
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: wasm-pack
+        run: cargo install wasm-pack
 
       # https://github.com/browser-actions/setup-chrome
       - name: Install Chrome Headless
