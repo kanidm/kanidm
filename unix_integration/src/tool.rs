@@ -73,13 +73,13 @@ async fn main() -> ExitCode {
             match call_daemon(cfg.sock_path.as_str(), req).await {
                 Ok(r) => match r {
                     ClientResponse::PamStatus(Some(true)) => {
-                        info!("auth success!");
+                        println!("auth success!");
                     }
                     ClientResponse::PamStatus(Some(false)) => {
-                        info!("auth failed!");
+                        println!("auth failed!");
                     }
                     ClientResponse::PamStatus(None) => {
-                        info!("user unknown");
+                        println!("auth user unknown");
                     }
                     _ => {
                         // unexpected response.
@@ -94,13 +94,13 @@ async fn main() -> ExitCode {
             match call_daemon(cfg.sock_path.as_str(), sereq).await {
                 Ok(r) => match r {
                     ClientResponse::PamStatus(Some(true)) => {
-                        info!("auth success!");
+                        println!("account success!");
                     }
                     ClientResponse::PamStatus(Some(false)) => {
-                        info!("auth failed!");
+                        println!("account failed!");
                     }
                     ClientResponse::PamStatus(None) => {
-                        info!("user unknown");
+                        println!("account user unknown");
                     }
                     _ => {
                         // unexpected response.
