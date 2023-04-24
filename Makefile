@@ -230,7 +230,7 @@ release/kanidm-unixd:
 	cargo build --release \
 		--bin kanidm_unixd \
 		--bin kanidm_unixd_tasks \
-		--bin kanidm-unix
+		--bin kanidm_unixd_status
 
 # cert things
 
