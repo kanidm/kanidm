@@ -52,7 +52,7 @@ fn main() {
         Shell::Bash,
         &mut KanidmUnixParser::command(),
         "kanidm_unix",
-        comp_dir.clone(),
+        comp_dir,
     )
     .ok();
 }
