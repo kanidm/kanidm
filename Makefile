@@ -227,7 +227,7 @@ release/kanidm-unixd: ## Build the Kanidm UNIX tools - ensure you include the en
 release/kanidm-unixd:
 	cargo build -p pam_kanidm --release
 	cargo build -p nss_kanidm --release
-	cargo build --release \
+	cargo build -p kanidm_unix_int --release \
 		--bin kanidm_unixd \
 		--bin kanidm_unixd_tasks \
 		--bin kanidm_unixd_status
