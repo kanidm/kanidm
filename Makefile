@@ -228,11 +228,9 @@ release/kanidm-unixd:
 	cargo build -p pam_kanidm --release
 	cargo build -p nss_kanidm --release
 	cargo build --release \
-		--bin kanidm_unixd  \
-		--bin kanidm_unixd_status \
+		--bin kanidm_unixd \
 		--bin kanidm_unixd_tasks \
-		--bin kanidm_cache_clear \
-		--bin kanidm_cache_invalidate
+		--bin kanidm-unix
 
 # cert things
 
