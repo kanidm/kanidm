@@ -144,6 +144,7 @@ async fn main() -> ExitCode {
                     error!("Error -> {:?}", e);
                 }
             };
+            println!("success");
             ExitCode::SUCCESS
         }
         KanidmUnixOpt::CacheInvalidate { debug: _ } => {
@@ -172,6 +173,7 @@ async fn main() -> ExitCode {
                     error!("Error -> {:?}", e);
                 }
             };
+            println!("success");
             ExitCode::SUCCESS
         }
         KanidmUnixOpt::Status { debug: _ } => {
