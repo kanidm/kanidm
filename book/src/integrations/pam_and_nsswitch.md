@@ -92,19 +92,19 @@ when first created. Defaults to false.
 You can then check the communication status of the daemon:
 
 ```bash
-kanidm_unixd_status
+kanidm-unix status
 ```
 
 If the daemon is working, you should see:
 
 ```
-[2020-02-14T05:58:37Z INFO  kanidm_unixd_status] working!
+working!
 ```
 
 If it is not working, you will see an error message:
 
 ```
-[2020-02-14T05:58:10Z ERROR kanidm_unixd_status] Error ->
+[2020-02-14T05:58:10Z ERROR kanidm-unix] Error ->
    Os { code: 111, kind: ConnectionRefused, message: "Connection refused" }
 ```
 
@@ -473,13 +473,13 @@ cache_timeout = 60
 You can invalidate the kanidm_unixd cache with:
 
 ```bash
-kanidm_cache_invalidate
+kanidm-unix cache-invalidate
 ```
 
 You can clear (wipe) the cache with:
 
 ```bash
-kanidm_cache_clear
+kanidm-unix cache-clear
 ```
 
 There is an important distinction between these two - invalidated cache items may still be yielded

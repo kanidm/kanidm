@@ -6,9 +6,7 @@ use clap::{IntoApp, Parser};
 use clap_complete::{generate_to, Shell};
 
 include!("src/opt/ssh_authorizedkeys.rs");
-include!("src/opt/cache_invalidate.rs");
-include!("src/opt/cache_clear.rs");
-include!("src/opt/unixd_status.rs");
+include!("src/opt/tool.rs");
 
 fn main() {
     profiles::apply_profile();
@@ -45,46 +43,16 @@ fn main() {
 
     generate_to(
         Shell::Zsh,
-        &mut CacheInvalidateOpt::command(),
-        "kanidm_cache_invalidate",
+        &mut KanidmUnixParser::command(),
+        "kanidm_unix",
         comp_dir.clone(),
     )
     .ok();
     generate_to(
         Shell::Bash,
-        &mut CacheInvalidateOpt::command(),
-        "kanidm_cache_invalidate",
+        &mut KanidmUnixParser::command(),
+        "kanidm_unix",
         comp_dir.clone(),
-    )
-    .ok();
-
-    generate_to(
-        Shell::Bash,
-        &mut CacheClearOpt::command(),
-        "kanidm_cache_clear",
-        comp_dir.clone(),
-    )
-    .ok();
-    generate_to(
-        Shell::Zsh,
-        &mut CacheClearOpt::command(),
-        "kanidm_cache_clear",
-        comp_dir.clone(),
-    )
-    .ok();
-
-    generate_to(
-        Shell::Bash,
-        &mut UnixdStatusOpt::command(),
-        "kanidm_unixd_status",
-        comp_dir.clone(),
-    )
-    .ok();
-    generate_to(
-        Shell::Zsh,
-        &mut UnixdStatusOpt::command(),
-        "kanidm_unixd_status",
-        comp_dir,
     )
     .ok();
 }
