@@ -43,9 +43,8 @@ jobs:
         with:
           mdbook-version: "latest"
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install python 3.10
         uses: actions/setup-python@v4

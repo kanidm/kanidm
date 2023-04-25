@@ -74,14 +74,6 @@ override_dh_auto_install:
 		${BINDIR}
 	install \
 		-g root -o root \
-		target/release/kanidm_cache_clear \
-		${BINDIR}
-	install \
-		-g root -o root \
-		target/release/kanidm_cache_invalidate \
-		${BINDIR}
-	install \
-		-g root -o root \
 		target/release/libpam_kanidm.so \
 		${LIBDIR}/security/pam_kanidm.so
 	install \

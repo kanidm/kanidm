@@ -42,11 +42,7 @@ jobs:
             curl \
             sudo
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          default: true
+        uses: dtolnay/rust-toolchain@stable
       - name: "Doing the package build"
         run: |
           make -f platform/debian/Makefile debs/all

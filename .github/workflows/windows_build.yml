@@ -18,18 +18,11 @@ jobs:
         run: |
           vcpkg integrate install
           vcpkg install openssl:x64-windows-static-md
-      - name: Install latest stable
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          default: true
-          override: true
-          components: cargo
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
       - name: build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release -p kanidm_client -p kanidm_tools -p orca -p daemon
+        # yamllint disable-line rule:line-length
+        run: cargo build --release -p kanidm_client -p kanidm_tools -p orca -p daemon
   windows_test_kanidm:
     runs-on: windows-latest
     steps:
@@ -38,15 +31,8 @@ jobs:
         run: |
           vcpkg integrate install
           vcpkg install openssl:x64-windows-static-md
-      - name: Install latest stable
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          default: true
-          components: cargo
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
       - name: Run cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          # yamllint disable-line rule:line-length
-          args: -p kanidm_client -p kanidm_tools -p orca -p daemon -p kanidmd_core
+        # yamllint disable-line rule:line-length
+        run: cargo test -p kanidm_client -p kanidm_tools -p orca -p daemon -p kanidmd_core

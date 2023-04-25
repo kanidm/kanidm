@@ -37,14 +37,5 @@ jobs:
             libssl-dev \
             libsqlite3-dev
 
-      # - name: Install Rust
-      #   uses: actions-rs/toolchain@v1
-      #   with:
-      #     toolchain: stable
-      #     override: true
-      #     default: true
-      - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --verbose
+      - name: Run build
+        run: cargo build --verbose --workspace
