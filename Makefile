@@ -229,9 +229,8 @@ release/kanidm-unixd:
 	cargo build -p nss_kanidm --release
 	cargo build --features unix -p kanidm_unix_int --release \
 		--bin kanidm_unixd \
-		--bin kanidm_unixd_tasks \
-		--bin kanidm_unixd_status
-
+		--bin kanidm-unix \
+		--bin kanidm_unixd_tasks
 # cert things
 
 .PHONY: cert/clean
