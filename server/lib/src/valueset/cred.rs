@@ -46,9 +46,7 @@ impl ValueSetCredential {
     pub fn from_repl_v1(data: &[ReplCredV1]) -> Result<ValueSet, OperationError> {
         let map = data
             .iter()
-            .map(|dc| {
-                Credential::try_from_repl_v1(dc).map_err(|()| OperationError::InvalidValueState)
-            })
+            .map(Credential::try_from_repl_v1)
             .collect::<Result<_, _>>()?;
         Ok(Box::new(ValueSetCredential { map }))
     }
@@ -468,9 +466,7 @@ impl ValueSetPasskey {
         let map = data
             .iter()
             .cloned()
-            .map(|k| match k {
-                ReplPasskeyV4V1 { uuid, tag, key } => Ok((uuid, (tag, key))),
-            })
+            .map(|ReplPasskeyV4V1 { uuid, tag, key }| Ok((uuid, (tag, key))))
             .collect::<Result<_, _>>()?;
         Ok(Box::new(ValueSetPasskey { map }))
     }
@@ -654,9 +650,7 @@ impl ValueSetDeviceKey {
         let map = data
             .iter()
             .cloned()
-            .map(|k| match k {
-                ReplDeviceKeyV4V1 { uuid, tag, key } => Ok((uuid, (tag, key))),
-            })
+            .map(|ReplDeviceKeyV4V1 { uuid, tag, key }| Ok((uuid, (tag, key))))
             .collect::<Result<_, _>>()?;
         Ok(Box::new(ValueSetDeviceKey { map }))
     }

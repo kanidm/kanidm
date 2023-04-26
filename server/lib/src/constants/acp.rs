@@ -353,7 +353,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_modify_removedattr", Value::new_iutf8("name")),
         ("acp_modify_removedattr", Value::new_iutf8("displayname")),

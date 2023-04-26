@@ -118,19 +118,20 @@ fn search_oauth2_filter_entry<'a>(
     match &ident.origin {
         IdentType::Internal | IdentType::Synch(_) => AccessResult::Ignore,
         IdentType::User(iuser) => {
-            if entry
+            let contains_o2_rs = entry
                 .get_ava_as_iutf8("class")
                 .map(|set| {
                     trace!(?set);
                     set.contains("oauth2_resource_server")
                 })
-                .unwrap_or(false)
-                && entry
-                    .get_ava_as_oauthscopemaps("oauth2_rs_scope_map")
-                    .and_then(|maps| ident.get_memberof().map(|mo| (maps, mo)))
-                    .map(|(maps, mo)| maps.keys().any(|k| mo.contains(k)))
-                    .unwrap_or(false)
-            {
+                .unwrap_or(false);
+            let contains_o2_scope_member = entry
+                .get_ava_as_oauthscopemaps("oauth2_rs_scope_map")
+                .and_then(|maps| ident.get_memberof().map(|mo| (maps, mo)))
+                .map(|(maps, mo)| maps.keys().any(|k| mo.contains(k)))
+                .unwrap_or(false);
+
+            if contains_o2_rs && contains_o2_scope_member {
                 security_access!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a memberof a group granted an oauth2 scope by this entry");
 
                 return AccessResult::Allow(btreeset!(

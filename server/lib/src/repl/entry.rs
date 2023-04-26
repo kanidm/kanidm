@@ -68,7 +68,7 @@ impl EntryChangeState {
                 }
             }
             State::Tombstone { .. } => {
-                assert!(false)
+                unreachable!();
             }
         }
     }
