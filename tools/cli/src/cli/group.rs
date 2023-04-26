@@ -27,7 +27,11 @@ impl GroupOpt {
                 match client.idm_group_list().await {
                     Ok(r) => r.iter().for_each(|ent| match copt.output_mode.as_str() {
                         "json" => {
-                            println!("{}", serde_json::to_string(&ent.attrs).unwrap());
+                            println!(
+                                "{}",
+                                serde_json::to_string(&ent.attrs)
+                                    .expect("Failed to serialise json")
+                            );
                         }
                         _ => println!("{}", ent),
                     }),
@@ -40,7 +44,10 @@ impl GroupOpt {
                 match client.idm_group_get(gcopt.name.as_str()).await {
                     Ok(Some(e)) => match gcopt.copt.output_mode.as_str() {
                         "json" => {
-                            println!("{}", serde_json::to_string(&e.attrs).unwrap());
+                            println!(
+                                "{}",
+                                serde_json::to_string(&e.attrs).expect("Failed to serialise json")
+                            );
                         }
                         _ => println!("{}", e),
                     },
