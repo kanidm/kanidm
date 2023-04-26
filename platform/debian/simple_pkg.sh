@@ -55,7 +55,7 @@ install -Dm755 target/release/libpam_kanidm.so "${pkgdir}/usr/lib/x86_64-linux-g
 install -Dm755 target/release/kanidm_ssh_authorizedkeys "${pkgdir}/usr/local/sbin/kanidm_ssh_authorizedkeys"
 install -Dm755 target/release/kanidm_ssh_authorizedkeys_direct "${pkgdir}/usr/local/sbin/kanidm_ssh_authorizedkeys_direct"
 install -Dm755 target/release/kanidm_unixd "${pkgdir}/usr/local/sbin/kanidm_unixd"
-install -Dm755 target/release/kanidm_unixd_status "${pkgdir}/usr/local/sbin/kanidm_unixd_status"
+install -Dm755 target/release/kanidm-unix "${pkgdir}/usr/local/sbin/kanidm-unix"
 install -Dm755 target/release/kanidm_unixd_tasks "${pkgdir}/usr/local/sbin/kanidm_unixd_tasks"
 
 # Install Bash and ZSH  completions
