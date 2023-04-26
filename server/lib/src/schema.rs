@@ -499,7 +499,8 @@ pub trait SchemaTransaction {
         match self.get_attributes().get(attr) {
             Some(a_schema) => {
                 // We'll likely add more conditions here later.
-                !(a_schema.phantom || !a_schema.replicated)
+                // Allow items that are replicated and not phantoms
+                a_schema.replicated && !a_schema.phantom
             }
             None => {
                 warn!(

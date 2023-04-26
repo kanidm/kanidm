@@ -32,7 +32,7 @@ impl DomainOpt {
                     new_basedn
                 );
                 let client = copt.to_client(OpType::Write).await;
-                match client.idm_domain_set_ldap_basedn(&new_basedn).await {
+                match client.idm_domain_set_ldap_basedn(new_basedn).await {
                     Ok(_) => println!("Success"),
                     Err(e) => eprintln!("{:?}", e),
                 }

@@ -596,15 +596,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 code_verifier,
             } => self.check_oauth2_token_exchange_authorization_code(
                 o2rs,
-                &code,
-                &redirect_uri,
+                code,
+                redirect_uri,
                 code_verifier.as_deref(),
                 ct,
             ),
             GrantTypeReq::RefreshToken {
                 refresh_token,
                 scope,
-            } => self.check_oauth2_token_refresh(o2rs, &refresh_token, scope.as_ref(), ct),
+            } => self.check_oauth2_token_refresh(o2rs, refresh_token, scope.as_ref(), ct),
         }
     }
 
@@ -730,7 +730,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         if let Some(code_challenge) = code_xchg.code_challenge {
             // Validate the code_verifier
             let code_verifier = token_req_code_verifier
-                    .as_deref()
                     .ok_or_else(|| {
                         security_info!("PKCE code verification failed - code challenge is present, but no verifier was provided");
                         Oauth2Error::InvalidRequest
@@ -804,7 +803,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Validate the refresh token decrypts and it's expiry is within the valid window.
         let token: Oauth2TokenType = o2rs
             .token_fernet
-            .decrypt(&refresh_token)
+            .decrypt(refresh_token)
             .map_err(|_| {
                 admin_error!("Failed to decrypt refresh token request");
                 Oauth2Error::InvalidRequest
@@ -951,7 +950,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let expiry = odt_ct + Duration::from_secs(OAUTH2_ACCESS_TOKEN_EXPIRY as u64);
         let expires_in = OAUTH2_ACCESS_TOKEN_EXPIRY;
-        let refresh_expiry = odt_ct + Duration::from_secs(OAUTH_REFRESH_TOKEN_EXPIRY as u64);
+        let refresh_expiry = odt_ct + Duration::from_secs(OAUTH_REFRESH_TOKEN_EXPIRY);
 
         let scope = if scopes.is_empty() {
             None
@@ -1053,7 +1052,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .encrypt_at_time(&access_token_data, ct.as_secs());
 
         let refresh_token_raw = Oauth2TokenType::Refresh {
-            scopes: scopes,
+            scopes,
             parent_session_id,
             session_id,
             expiry: refresh_expiry,
@@ -1877,7 +1876,7 @@ fn str_join(set: &BTreeSet<String>) -> String {
     let alloc_len = set.iter().fold(0, |acc, s| acc + s.len() + 1);
     let mut buf = String::with_capacity(alloc_len);
     set.iter().for_each(|s| {
-        buf.push_str(&s);
+        buf.push_str(s);
         buf.push(' ');
     });
 
@@ -3250,7 +3249,7 @@ mod tests {
         assert!(oidc.nonce == Some("abcdef".to_string()));
         assert!(oidc.at_hash.is_none());
         assert!(oidc.acr.is_none());
-        assert!(oidc.amr == None);
+        assert!(oidc.amr.is_none());
         assert!(oidc.azp == Some("test_resource_server".to_string()));
         assert!(oidc.jti.is_none());
         assert!(oidc.s_claims.name == Some("System Administrator".to_string()));
@@ -4286,7 +4285,9 @@ mod tests {
         let (access_token_response_1, mut client_authz) =
             setup_refresh_token(idms, idms_delayed, ct).await;
 
-        client_authz.as_mut().map(|s| s.push_str("invalid"));
+        if let Some(s) = client_authz.as_mut() {
+            s.push_str("invalid")
+        }
 
         // ============================================
         // Refresh with invalid client authz

@@ -143,7 +143,7 @@ fn create_filter_entry<'a>(
     }
 }
 
-fn protected_filter_entry<'a>(ident: &Identity, entry: &'a Entry<EntryInit, EntryNew>) -> IResult {
+fn protected_filter_entry(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) -> IResult {
     match &ident.origin {
         IdentType::Internal => {
             trace!("Internal operation, protected rules do not apply.");

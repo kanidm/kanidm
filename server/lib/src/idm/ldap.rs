@@ -73,7 +73,7 @@ impl LdapServer {
             .or_else(|| {
                 domain_entry
                     .get_ava_single_iname("domain_name")
-                    .map(|domain_name| ldap_domain_to_dc(domain_name))
+                    .map(ldap_domain_to_dc)
             })
             .ok_or(OperationError::InvalidEntryState)?;
 

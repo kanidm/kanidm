@@ -15,7 +15,7 @@ use crate::db::Db;
 use crate::unix_config::{HomeAttr, UidAttr};
 use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser};
 
-const NXCACHE_SIZE: usize = 2048;
+const NXCACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(2048) };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Id {
@@ -100,7 +100,7 @@ impl CacheLayer {
             home_alias,
             uid_attr_map,
             gid_attr_map,
-            nxcache: Mutex::new(LruCache::new(NonZeroUsize::new(NXCACHE_SIZE).unwrap())),
+            nxcache: Mutex::new(LruCache::new(NXCACHE_SIZE)),
         })
     }
 

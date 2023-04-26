@@ -279,13 +279,13 @@ impl Filter<FilterValid> {
         }
     }
 
-    pub fn resolve<'a>(
+    pub fn resolve(
         &self,
         ev: &Identity,
         idxmeta: Option<&IdxMeta>,
         mut rsv_cache: Option<
             &mut ARCacheReadTxn<
-                'a,
+                '_,
                 (IdentityId, Filter<FilterValid>),
                 Filter<FilterValidResolved>,
                 (),
@@ -1493,19 +1493,19 @@ mod tests {
         let f_t1b = filter!(f_pres("userid"));
         let f_t1c = filter!(f_pres("zzzz"));
 
-        assert_eq!(f_t1a == f_t1b, true);
-        assert_eq!(f_t1a == f_t1c, false);
-        assert_eq!(f_t1b == f_t1c, false);
+        assert!(f_t1a == f_t1b);
+        assert!(f_t1a != f_t1c);
+        assert!(f_t1b != f_t1c);
 
         let f_t2a = filter!(f_and!([f_pres("userid")]));
         let f_t2b = filter!(f_and!([f_pres("userid")]));
         let f_t2c = filter!(f_and!([f_pres("zzzz")]));
-        assert_eq!(f_t2a == f_t2b, true);
-        assert_eq!(f_t2a == f_t2c, false);
-        assert_eq!(f_t2b == f_t2c, false);
+        assert!(f_t2a == f_t2b);
+        assert!(f_t2a != f_t2c);
+        assert!(f_t2b != f_t2c);
 
-        assert_eq!(f_t2c == f_t1a, false);
-        assert_eq!(f_t2c == f_t1c, false);
+        assert!(f_t2c != f_t1a);
+        assert!(f_t2c != f_t1c);
     }
 
     #[test]
@@ -1547,15 +1547,15 @@ mod tests {
         let f_t1b = f_t1a.clone();
         let f_t1c = unsafe { filter_resolved!(f_pres("zzzz")) };
 
-        assert_eq!(f_t1a == f_t1b, true);
-        assert_eq!(f_t1a == f_t1c, false);
+        assert!(f_t1a == f_t1b);
+        assert!(f_t1a != f_t1c);
 
         let f_t2a = unsafe { filter_resolved!(f_and!([f_pres("userid")])) };
         let f_t2b = f_t2a.clone();
         let f_t2c = unsafe { filter_resolved!(f_and!([f_pres("zzzz")])) };
 
-        assert_eq!(f_t2a == f_t2b, true);
-        assert_eq!(f_t2a == f_t2c, false);
+        assert!(f_t2a == f_t2b);
+        assert!(f_t2a != f_t2c);
     }
 
     #[test]

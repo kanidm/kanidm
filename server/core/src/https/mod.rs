@@ -294,12 +294,10 @@ async fn index_view(req: tide::Request<AppState>) -> tide::Result {
 pub fn generate_integrity_hash(filename: String) -> Result<String, String> {
     let wasm_filepath = PathBuf::from(filename);
     match wasm_filepath.exists() {
-        false => {
-            return Err(format!(
-                "Can't find {:?} to generate file hash",
-                &wasm_filepath
-            ));
-        }
+        false => Err(format!(
+            "Can't find {:?} to generate file hash",
+            &wasm_filepath
+        )),
         true => {
             let filecontents = match std::fs::read(&wasm_filepath) {
                 Ok(value) => value,
