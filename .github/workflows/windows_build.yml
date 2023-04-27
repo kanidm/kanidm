@@ -6,8 +6,12 @@ name: Windows Build and Test
 # it builds and be able to administer Kanidm from
 # Windows-land
 
+# Trigger the workflow on push to master or pull request
 "on":
   push:
+    branches:
+      - master
+  pull_request:
 
 env:
   SCCACHE_GHA_ENABLED: "true"

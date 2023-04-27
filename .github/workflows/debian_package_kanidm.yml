@@ -61,7 +61,7 @@ jobs:
     name: Upload to releases
     needs: build-deb-package
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/master' }}
+    if: github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm'
     steps:
       - name: Download previously built debs
         uses: actions/download-artifact@v3
