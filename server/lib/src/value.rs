@@ -40,6 +40,7 @@ lazy_static! {
         #[allow(clippy::expect_used)]
         Regex::new("(?P<name>[^@]+)@(?P<realm>[^@]+)").expect("Invalid SPN regex found")
     };
+
     pub static ref DISALLOWED_NAMES: HashSet<&'static str> = {
         let mut m = HashSet::with_capacity(16);
         m.insert("root");
@@ -61,6 +62,13 @@ lazy_static! {
         #[allow(clippy::expect_used)]
         Regex::new("^[a-z][a-z0-9-_\\.]+$").expect("Invalid Iname regex found")
     };
+
+    pub static ref EXTRACT_VAL_DN: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new("^(([^=,]+)=)?(?P<val>[^=,]+)").expect("extract val from dn regex")
+        // Regex::new("^(([^=,]+)=)?(?P<val>[^=,]+)(,.*)?$").expect("Invalid Iname regex found")
+    };
+
     pub static ref NSUNIQUEID_RE: Regex = {
         #[allow(clippy::expect_used)]
         Regex::new("^[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}$").expect("Invalid Nsunique regex found")

@@ -419,14 +419,12 @@ impl LdapServer {
                 });
             };
 
-            let rdn = match self
+            let rdn = self
                 .binddnre
                 .captures(dn)
-                .and_then(|caps| caps.name("val").map(|v| v.as_str().to_string()))
-            {
-                Some(r) => r,
-                None => return Err(OperationError::NoMatchingEntries),
-            };
+                .and_then(|caps| caps.name("val"))
+                .map(|v| v.as_str().to_string())
+                .ok_or(OperationError::NoMatchingEntries)?;
 
             trace!(?rdn, "relative dn");
 
