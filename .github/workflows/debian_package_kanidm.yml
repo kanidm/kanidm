@@ -5,6 +5,10 @@ name: "Build Debian Packages"
   push:
   pull_request:
 
+env:
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -27,10 +31,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Update package manager
-        run: apt-get update
       - name: Install dependencies
         run: |
+          apt-get update && \
           apt-get install -y \
             lsb-release \
             libpam0g-dev \
@@ -43,6 +46,8 @@ jobs:
             sudo
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
       - name: "Doing the package build"
         run: |
           make -f platform/debian/Makefile debs/all
