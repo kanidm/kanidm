@@ -1,8 +1,8 @@
-use std::{ffi::c_void, mem::size_of, ptr::null_mut};
+use std::{ffi::c_void, ptr::null_mut, time::{SystemTime, UNIX_EPOCH}, mem::size_of};
 
 use crate::{
     client::{KanidmWindowsClient, KanidmWindowsClientError},
-    mem::{allocate_mem_lsa, MemoryAllocationError, allocate_mem_client},
+    mem::{allocate_mem_client, allocate_mem_lsa, MemoryAllocationError},
     structs::{AuthInfo, ProfileBuffer},
     PROGRAM_DIR,
 };
@@ -14,7 +14,7 @@ use windows::{
         Foundation::*,
         Security::{
             AllocateLocallyUniqueId, Authentication::Identity::*,
-            Credentials::STATUS_LOGON_FAILURE, SID_AND_ATTRIBUTES, TOKEN_GROUPS,
+            Credentials::STATUS_LOGON_FAILURE, SID_AND_ATTRIBUTES, TOKEN_GROUPS, TOKEN_USER, TOKEN_PRIMARY_GROUP, TOKEN_PRIVILEGES, LUID_AND_ATTRIBUTES , TOKEN_OWNER, TOKEN_DEFAULT_DACL, ACL, TOKEN_USER_CLAIMS, TOKEN_DEVICE_CLAIMS, TOKEN_PRIVILEGES_ATTRIBUTES,
         },
         System::Kernel::*,
     },
@@ -99,6 +99,7 @@ pub async extern "system" fn ApInitializePackage(
     STATUS_SUCCESS
 }
 
+// TODO: Figure out structs which currently use ::default()
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
@@ -117,20 +118,48 @@ pub async extern "system" fn ApLogonUser(
     out_account: *mut *mut UNICODE_STRING,
     _: *mut *mut UNICODE_STRING,
 ) -> NTSTATUS {
-    let auth_info: *const AuthInfo = auth_info_ptr.cast();
+    let auth_info: &AuthInfo = unsafe { (*auth_info_ptr.cast::<*const AuthInfo>()).as_ref().unwrap() };
 
     unsafe {
-        *(*out_account) = (*auth_info).username; // out_account must always be set regardless of return value
+        *(*out_account) = auth_info.username;
     }
 
-    let username = match unsafe { (*auth_info).username.Buffer.to_string() } {
-        Ok(uname) => uname,
+    let dispatch_table = match unsafe { AP_DISPATCH_TABLE.as_ref() } {
+        Some(dt) => dt,
+        None => {
+            span!(Level::ERROR, "Failed to get the LSA's dispatch table as a reference");
+            return STATUS_UNSUCCESSFUL;
+        }
+    };
+
+    // * Set mandatory fields
+    {
+        /* 
+            Since the dispatch table exists, we re-set the return account which is allocated to the LSA's memory space
+         */
+        let username_ptr = match allocate_mem_lsa(auth_info.username, &dispatch_table.AllocateLsaHeap) {
+            Ok(ptr) => ptr,
+            Err(_) => {
+                span!(Level::ERROR, "Failed to allocate username to LSA heap");
+                return STATUS_UNSUCCESSFUL;
+            },
+        };
+
+        unsafe {
+            *out_account = username_ptr;
+        }
+    }
+
+    // * Get username & password as rust strings
+    let username = match unsafe { auth_info.username.Buffer.to_string() } {
+        Ok(un) => un,
         Err(_) => {
             event!(Level::ERROR, "Failed to convert username to string");
             return STATUS_UNSUCCESSFUL;
         }
     };
-    let password = match unsafe { (*auth_info).password.Buffer.to_string() } {
+    
+    let password = match unsafe { auth_info.password.Buffer.to_string() } {
         Ok(pw) => pw,
         Err(_) => {
             event!(Level::ERROR, "Failed to convert password to string");
@@ -138,73 +167,170 @@ pub async extern "system" fn ApLogonUser(
         }
     };
 
+    // * Get token from kanidm server
     let client = unsafe { KANIDM_WINDOWS_CLIENT.as_ref().unwrap() };
     let token = match client.logon_user(&username, &password).await {
         Ok(token) => token,
-        Err(_) => {
-            event!(Level::INFO, "{} failed authentication", username);
-            return STATUS_LOGON_FAILURE;
-        }
+        Err(_) => return STATUS_UNSUCCESSFUL,
     };
 
-    let profile_buff = ProfileBuffer { token: token };
-    let out_prof_buf_conv: *mut *mut ProfileBuffer = out_prof_buf.cast();
-    let logon_id: *mut LUID = null_mut();
+    // * Prepare & return profile buffer
+    let profile_buffer = ProfileBuffer {
+        token: token,
+    };
+    let profile_buffer_ptr = match allocate_mem_client(profile_buffer, &dispatch_table.AllocateClientBuffer, client_req) {
+        Ok(ptr) => ptr,
+        Err(_) => {
+            span!(Level::ERROR, "Failed to allocate the profile buffer to the client's memory space");
+            return STATUS_UNSUCCESSFUL;
+        },
+    };
+    
+    {
+        let return_ptr = out_prof_buf.cast::<*mut ProfileBuffer>();
 
-    unsafe {
-        match AllocateLocallyUniqueId(logon_id) {
-            BOOL(0) => (), // Success
-            _ => {
-                event!(Level::ERROR, "Failed to allocate logon id for {}", username);
-            }
+        unsafe {
+            *out_prof_buf_len = size_of::<ProfileBuffer>() as u32;
+            *return_ptr = profile_buffer_ptr;
         }
     }
 
-    let out_token_conv: *mut *mut LSA_TOKEN_INFORMATION_NULL = out_token.cast();
-    let mut token_groups = TOKEN_GROUPS {
-        GroupCount: 0,
-        Groups: [SID_AND_ATTRIBUTES::default(); 1],
-    };
-    let token_info = LSA_TOKEN_INFORMATION_NULL {
-        ExpirationTime: i64::MAX,
-        Groups: &mut token_groups as *mut TOKEN_GROUPS,
-    };
+    // * Generate LUID
+    let luid_ptr = null_mut::<LUID>();
 
-    let dispatch_table = unsafe { AP_DISPATCH_TABLE.as_ref().unwrap() };
-    let alloc_profile_buf = match allocate_mem_client(profile_buff, &dispatch_table.AllocateClientBuffer, client_req) {
-        Ok(pb) => pb,
-        Err(e) => match e {
-            MemoryAllocationError::NoAllocFunc => {
-                event!(Level::ERROR, "Missing lsa allocation function");
-                return STATUS_UNSUCCESSFUL;
-            }
-            MemoryAllocationError::AllocFuncFailed => {
-                event!(Level::ERROR, "Failed to allocate profile buffer");
-                return STATUS_UNSUCCESSFUL;
-            }
+    match unsafe { AllocateLocallyUniqueId(luid_ptr) } {
+        BOOL(0) => {
+            event!(Level::ERROR, "Failed to allocate unique id");
+            return STATUS_UNSUCCESSFUL;
         },
-    };
-    let alloc_token_info = match allocate_mem_lsa(token_info, &dispatch_table.AllocateLsaHeap) {
-        Ok(ti) => ti,
-        Err(e) => match e {
-            MemoryAllocationError::NoAllocFunc => {
-                event!(Level::ERROR, "Missing lsa allocation function");
-                return STATUS_UNSUCCESSFUL;
-            }
-            MemoryAllocationError::AllocFuncFailed => {
-                event!(Level::ERROR, "Failed to allocate token info");
-                return STATUS_UNSUCCESSFUL;
-            }
-        },
+        _ => (),
     };
 
     unsafe {
-        *out_prof_buf_conv = alloc_profile_buf;
-        *out_prof_buf_len = size_of::<ProfileBuffer>() as u32;
-        *out_logon_id = logon_id.read();
+        *out_logon_id = *luid_ptr;
+    }
+
+    // * Prepare & return token
+    // Set expiry time
+    let current_time = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(time) => time.as_secs() as i64,
+        Err(_) => {
+            event!(Level::ERROR, "Failed to get current unix timestamp");
+            return STATUS_UNSUCCESSFUL;
+        }
+    };
+    let expiry_time = current_time + (18 * 60 * 60);
+
+    // Set user & group token
+    let user_token = TOKEN_USER {
+        User: SID_AND_ATTRIBUTES::default(),
+    };
+    let group_token = TOKEN_GROUPS {
+        GroupCount: 0,
+        Groups: [SID_AND_ATTRIBUTES::default(); 1],
+    };
+    let primary_group_token = TOKEN_PRIMARY_GROUP {
+        PrimaryGroup: PSID::default(),
+    };
+
+    let group_token_ptr = null_mut::<TOKEN_GROUPS>();
+
+    unsafe {
+        *group_token_ptr = group_token;
+    }
+
+    // Set privileges token
+    let luid_attributes = LUID_AND_ATTRIBUTES {
+        Luid: unsafe { *luid_ptr },
+        Attributes: TOKEN_PRIVILEGES_ATTRIBUTES::default(),
+    };
+    let privileges_token = TOKEN_PRIVILEGES {
+        PrivilegeCount: 0,
+        Privileges: [luid_attributes; 1],
+    };
+    let privileges_token_ptr = null_mut::<TOKEN_PRIVILEGES>();
+
+    unsafe {
+        *privileges_token_ptr = privileges_token;
+    }
+
+    // Set owner token
+    let owner_token = TOKEN_OWNER {
+        Owner: PSID::default(),
+    };
+
+    // Set default dacl token
+    let acl = ACL {
+        AclRevision: 1,
+        Sbz1: 0,
+        AclSize: 0,
+        AceCount: 0,
+        Sbz2: 0,
+    };
+    let acl_ptr = null_mut::<ACL>();
+
+    unsafe {
+        *acl_ptr = acl;
+    }
+
+    let dacl_token = TOKEN_DEFAULT_DACL {
+        DefaultDacl: acl_ptr,
+    };
+
+    // Set user & device claims token
+    let user_claims_token = TOKEN_USER_CLAIMS {
+        UserClaims: null_mut(),
+    };
+    let device_claims_token = TOKEN_DEVICE_CLAIMS {
+        DeviceClaims: null_mut(),
+    };
+
+    // Set device groups token
+    let device_groups_token = TOKEN_GROUPS {
+        GroupCount: 0,
+        Groups: [SID_AND_ATTRIBUTES::default(); 1],
+    };
+    let device_groups_token_ptr = null_mut::<TOKEN_GROUPS>();
+
+    unsafe {
+        *device_groups_token_ptr = device_groups_token;
+    }
+
+    // Create logon token
+    let logon_token = LSA_TOKEN_INFORMATION_V3 {
+        ExpirationTime: expiry_time,
+        User: user_token,
+        Groups: group_token_ptr,
+        PrimaryGroup: primary_group_token,
+        Privileges: privileges_token_ptr,
+        Owner: owner_token,
+        DefaultDacl: dacl_token,
+        UserClaims: user_claims_token,
+        DeviceClaims: device_claims_token,
+        DeviceGroups: device_groups_token_ptr,
+    };
+
+    // Set logon token
+    let logon_token_ptr = match allocate_mem_lsa(logon_token, &dispatch_table.AllocateLsaHeap) {
+        Ok(ptr) => ptr,
+        Err(_) => {
+            event!(Level::ERROR, "Failed to allocate logon token");
+            return STATUS_UNSUCCESSFUL;
+        }
+    };
+
+    {
+        let return_ptr = out_token.cast::<*mut LSA_TOKEN_INFORMATION_V3>();
+
+        unsafe {
+            *out_token_type = LsaTokenInformationV3;
+            *return_ptr = logon_token_ptr;
+        }
+    }
+
+    // Set return status
+    unsafe {
         *out_substatus = 0;
-        *out_token_type = LsaTokenInformationNull;
-        *out_token_conv = alloc_token_info;
     }
 
     STATUS_SUCCESS
