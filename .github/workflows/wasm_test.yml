@@ -43,6 +43,5 @@ jobs:
 
       # docs here:
       # https://rustwasm.github.io/docs/wasm-bindgen/wasm-bindgen-test/browsers.html
-      - name: "Run clippy (ignores errors, this is just a check)"
-        run: wasm-pack test --headless --chrome
+      - run: wasm-pack test --headless --chrome
         continue-on-error: true

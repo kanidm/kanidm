@@ -33,8 +33,5 @@ jobs:
             libssl-dev \
             libsqlite3-dev
 
-      - name: Run build
-        run: cargo build --verbose --workspace
-
-      - name: Run tests
-        run: cargo test
+      - run: cargo build --workspace
+      - run: cargo test
