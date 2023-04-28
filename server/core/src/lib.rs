@@ -801,7 +801,8 @@ pub async fn create_server_core(
             server_write_ref,
             server_read_ref,
             broadcast_tx.subscribe(),
-        )?;
+        )
+        .await?;
 
         admin_info!("ready to rock! 🪨 ");
         Some(h)
