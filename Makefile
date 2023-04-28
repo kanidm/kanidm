@@ -232,6 +232,10 @@ release/kanidm-unixd:
 		--bin kanidm_unixd_tasks \
 		--bin kanidm-unix
 
+.PHONY: release
+release: ## Build all release targets
+release: release/kanidm release/kanidm-ssh release/kanidm-unixd release/kanidmd webui
+
 # cert things
 
 .PHONY: cert/clean

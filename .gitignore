@@ -28,3 +28,6 @@ kanidm-client-tools.tar.gz
 .coverage
 pykanidm/dist/
 pykanidm/site/
+
+# packaging
+cache/

@@ -1,7 +1,3 @@
-# Source: https://build.opensuse.org/package/view_file/home:firstyear:kanidm/kanidm/kanidm-unixd.service
-# You should not need to edit this file. Instead, use a drop-in file:
-#   systemctl edit kanidm-unixd.service
-
 [Unit]
 Description=Kanidm Local Client Resolver
 After=chronyd.service ntpd.service network-online.target

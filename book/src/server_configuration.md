@@ -27,8 +27,12 @@ text=You MUST set the `domain` name correctly, aligned with your `origin`, else 
 You should test your configuration is valid before you proceed.
 
 ```bash
+# Docker:
 docker run --rm -i -t -v kanidmd:/data \
     kanidm/server:latest /sbin/kanidmd configtest -c /data/server.toml
+
+# OS package:
+sudo -u kanidm -- kanidmd configtest -c /etc/kanidm/server.toml
 ```
 
 ## Default Admin Account
@@ -47,9 +51,12 @@ text=The server must not be running at this point, as it requires exclusive acce
 <!-- deno-fmt-ignore-end -->
 
 ```bash
+# Docker:
 docker run --rm -i -t -v kanidmd:/data \
     kanidm/server:latest /sbin/kanidmd recover-account -c /data/server.toml admin
-# success - recovery of account password for admin: vv...
+
+# OS Package:
+sudo -u kanidm -- kanidmd recover-account -c /etc/kanidm/server.toml admin
 ```
 
 After the recovery is complete the server can be started again.
@@ -57,16 +64,20 @@ After the recovery is complete the server can be started again.
 ## Run the Server
 
 Now we can run the server so that it can accept connections. This defaults to using
-`-c /data/server.toml`
+`/sbin/kanidm -c /data/server.toml`
 
 ```bash
+# Docker:
 docker run -p 443:8443 -v kanidmd:/data kanidm/server:latest
+
+# OS Package:
+sudo systemctl enable --now kanidm-server
 ```
 
 ## Using the NET\_BIND\_SERVICE capability
 
 If you plan to run without using docker port mapping or some other reverse proxy, and your
-bindaddress or ldapbindaddress port is less than `1024` you will need the `NET_BIND_SERVICE` in
+`bindaddress` or `ldapbindaddress` port is less than `1024` you will need the `NET_BIND_SERVICE` in
 docker to allow these port binds. You can add this with `--cap-add` in your docker run command.
 
 ```bash

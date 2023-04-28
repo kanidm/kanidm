@@ -1,15 +1,9 @@
-# Source: https://build.opensuse.org/package/view_file/home:firstyear:kanidm/kanidm/kanidm-unixd-tasks.service
-# You should not need to edit this file. Instead, use a drop-in file:
-#   systemctl edit kanidm-unixd-tasks.service
-
-
 [Unit]
 Description=Kanidm Local Tasks
 After=chronyd.service ntpd.service network-online.target kanidm-unixd.service
 
 [Service]
 User=root
-Type=simple
 ExecStart=/usr/sbin/kanidm_unixd_tasks
 KillSignal=SIGINT
 

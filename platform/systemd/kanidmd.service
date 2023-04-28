@@ -1,20 +1,15 @@
-# Source: https://build.opensuse.org/package/view_file/home:firstyear:kanidm/kanidm/kanidmd.service
-# You should not need to edit this file. Instead, use a drop-in file as described in:
-#   /usr/lib/systemd/system/kanidmd.service.d/custom.conf
-
 [Unit]
 Description=Kanidm Identity Server
 After=chronyd.service ntpd.service network-online.target
 Before=radiusd.service
 
 [Service]
-Type=simple
-DynamicUser=yes
+User=kanidm
+Group=kanidm
 UMask=0027
-StateDirectory=kanidm
 ExecStart=/usr/sbin/kanidmd server -c /etc/kanidm/server.toml
 KillSignal=SIGINT
-
+AmbientCapabilities=CAP_NET_BIND_SERVICE
 NoNewPrivileges=true
 PrivateTmp=true
 PrivateDevices=true
@@ -25,6 +20,7 @@ ProtectKernelModules=true
 ProtectKernelLogs=true
 ProtectControlGroups=true
 MemoryDenyWriteExecute=true
+
 
 [Install]
 WantedBy=multi-user.target
