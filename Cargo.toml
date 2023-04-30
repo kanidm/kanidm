@@ -142,7 +142,7 @@ tikv-jemallocator = "0.5"
 
 tokio = "^1.28.0"
 tokio-openssl = "^0.6.3"
-tokio-util = "^0.7.7"
+tokio-util = "^0.7.8"
 
 toml = "^0.5.11"
 touch = "^0.0.1"
