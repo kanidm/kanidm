@@ -8,6 +8,7 @@ mod client;
 mod package;
 mod structs;
 mod mem;
+mod protocol;
 
 pub(crate) const PROGRAM_DIR: &'static str = "C:\\Program Files\\kanidm";
 
