@@ -3,7 +3,7 @@ name = "kanidmd_web_ui"
 description = "Kanidm Server Web User Interface"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
 
-version = "1.1.0-alpha.12-dev"
+version = "1.1.0-alpha.12"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
