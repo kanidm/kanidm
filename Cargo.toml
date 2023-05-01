@@ -26,7 +26,7 @@ members = [
 ]
 
 [workspace.package]
-version = "1.1.0-alpha.12"
+version = "1.1.0-beta.13"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
