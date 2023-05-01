@@ -77,7 +77,6 @@ pub fn scaling_user_create_batched(c: &mut Criterion) {
                 println!("iters, size -> {iters:?}, {size:?}");
 
                 let data: Vec<_> = (0..size)
-                    .into_iter()
                     .map(|i| {
                         let name = format!("testperson_{i}");
                         entry_init!(

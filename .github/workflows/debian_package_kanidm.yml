@@ -1,10 +1,13 @@
 ---
 name: "Build Debian Packages"
 
-# yamllint disable-line rule:truthy
-on:
+"on":
   push:
   pull_request:
+
+env:
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,11 +18,11 @@ jobs:
     strategy:
       matrix:
         image:
-         - ubuntu:22.04
-         - ubuntu:20.04
-         - ubuntu:18.04
-         - debian:11
-         - debian:10
+          - ubuntu:22.04
+          - ubuntu:20.04
+          - ubuntu:18.04
+          - debian:11
+          - debian:10
     runs-on: ubuntu-latest
     container:
       image: ${{ matrix.image }}
@@ -28,10 +31,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Update package manager
-        run: apt-get update
       - name: Install dependencies
         run: |
+          apt-get update && \
           apt-get install -y \
             lsb-release \
             libpam0g-dev \
@@ -43,12 +45,10 @@ jobs:
             curl \
             sudo
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          default: true
-      - name: "Doing the package build"
+        uses: dtolnay/rust-toolchain@stable
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+      - name: Build packages
         run: |
           make -f platform/debian/Makefile debs/all
       - name: Upload debs
@@ -61,7 +61,7 @@ jobs:
     name: Upload to releases
     needs: build-deb-package
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/master' }}
+    if: github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm'
     steps:
       - name: Download previously built debs
         uses: actions/download-artifact@v3

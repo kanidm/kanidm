@@ -1,4 +1,5 @@
 ---
+# yamllint disable rule:line-length
 name: Dependabot auto-approval and auto-merge
 "on": pull_request
 
@@ -9,7 +10,8 @@ permissions:
 jobs:
   dependabot:
     runs-on: ubuntu-latest
-    if: ${{ github.actor == 'dependabot[bot]' }} # limit this to PRs opened by dependabot
+    # limit this to PRs opened by dependabot
+    if: ${{ github.actor == 'dependabot[bot]' }}
     steps:
       - name: Dependabot metadata
         id: metadata
@@ -20,6 +22,7 @@ jobs:
           compat-lookup: true
       - uses: actions/checkout@v3
       - name: Approve a PR if not already approved
+
         run: |
           # sets the upstream metadata for `gh pr status`
           gh pr checkout "$PR_URL"

@@ -75,17 +75,12 @@ impl ServerConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Default)]
 pub enum ServerRole {
+    #[default]
     WriteReplica,
     WriteReplicaNoUI,
     ReadOnlyReplica,
-}
-
-impl Default for ServerRole {
-    fn default() -> Self {
-        ServerRole::WriteReplica
-    }
 }
 
 impl ToString for ServerRole {

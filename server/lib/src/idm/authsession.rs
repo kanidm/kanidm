@@ -891,7 +891,7 @@ impl AuthSession {
                     issue,
                     intent: AuthIntent::Reauth {
                         session_id,
-                        session_expiry: session.expiry.clone(),
+                        session_expiry: session.expiry,
                     },
                 };
 
@@ -1016,7 +1016,7 @@ impl AuthSession {
                 ) {
                     CredState::Success { auth_type, cred_id } => {
                         // Issue the uat based on a set of factors.
-                        let uat = self.issue_uat(auth_type, time, async_tx, cred_id)?;
+                        let uat = self.issue_uat(&auth_type, time, async_tx, cred_id)?;
                         let jwt = Jws::new(uat);
 
                         // Now encrypt and prepare the token for return to the client.
@@ -1072,7 +1072,7 @@ impl AuthSession {
 
     fn issue_uat(
         &mut self,
-        auth_type: AuthType,
+        auth_type: &AuthType,
         time: Duration,
         async_tx: &Sender<DelayedAction>,
         cred_id: Uuid,
@@ -1133,7 +1133,8 @@ impl AuthSession {
                             issued_by: IdentityId::User(self.account.uuid),
                             scope,
                         }))
-                        .map_err(|_| {
+                        .map_err(|e| {
+                            debug!(?e, "queue failure");
                             admin_error!("unable to queue failing authentication as the session will not validate ... ");
                             OperationError::InvalidState
                         })?;

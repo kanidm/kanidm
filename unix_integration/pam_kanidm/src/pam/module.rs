@@ -5,7 +5,7 @@ use std::{mem, ptr};
 
 use libc::c_char;
 
-use crate::pam::constants::{PamFlag, PamItemType, PamResultCode, PAM_AUTHTOK};
+use crate::pam::constants::{PamFlag, PamItemType, PamResultCode, PAM_AUTHTOK, PAM_RHOST, PAM_TTY};
 
 /// Opaque type, used as a pointer when making pam API calls.
 ///
@@ -193,6 +193,44 @@ impl PamHandle {
         let mut ptr: *const PamItemT = ptr::null();
         let (res, item) = unsafe {
             let r = pam_get_item(self, PAM_AUTHTOK, &mut ptr);
+            let t = if PamResultCode::PAM_SUCCESS == r && !ptr.is_null() {
+                let typed_ptr: *const c_char = ptr as *const c_char;
+                Some(CStr::from_ptr(typed_ptr).to_string_lossy().into_owned())
+            } else {
+                None
+            };
+            (r, t)
+        };
+        if PamResultCode::PAM_SUCCESS == res {
+            Ok(item)
+        } else {
+            Err(res)
+        }
+    }
+
+    pub fn get_tty(&self) -> PamResult<Option<String>> {
+        let mut ptr: *const PamItemT = ptr::null();
+        let (res, item) = unsafe {
+            let r = pam_get_item(self, PAM_TTY, &mut ptr);
+            let t = if PamResultCode::PAM_SUCCESS == r && !ptr.is_null() {
+                let typed_ptr: *const c_char = ptr as *const c_char;
+                Some(CStr::from_ptr(typed_ptr).to_string_lossy().into_owned())
+            } else {
+                None
+            };
+            (r, t)
+        };
+        if PamResultCode::PAM_SUCCESS == res {
+            Ok(item)
+        } else {
+            Err(res)
+        }
+    }
+
+    pub fn get_rhost(&self) -> PamResult<Option<String>> {
+        let mut ptr: *const PamItemT = ptr::null();
+        let (res, item) = unsafe {
+            let r = pam_get_item(self, PAM_RHOST, &mut ptr);
             let t = if PamResultCode::PAM_SUCCESS == r && !ptr.is_null() {
                 let typed_ptr: *const c_char = ptr as *const c_char;
                 Some(CStr::from_ptr(typed_ptr).to_string_lossy().into_owned())

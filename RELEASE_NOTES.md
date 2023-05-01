@@ -14,6 +14,37 @@ report it to our [issue tracker].
 
 # Release Notes
 
+## 2023-02-01 - Kanidm 1.1.0-alpha12
+
+This is the twelfth alpha series release of the Kanidm Identity Management project. Alpha releases
+are to help get feedback and ideas from the community on how we can continue to make this project
+better for a future supported release.
+
+The project is shaping up very nicely, and a beta will be coming soon! The main reason we haven't
+done so yet is we haven't decided if we want to commit to the current API layout and freeze it yet.
+There are still things we want to change there. Otherwise the server is stable and reliable for
+production usage.
+
+### Release Highlights
+
+- Allow full server content replication in testing (yes we're finally working on replication!)
+- Improve oauth2 to allow scoped members to see RS they can access for UI flows
+- Performance improvement by reducing clones
+- Track credential uuid used for session authentication in the session
+- Remove the legacy webauthn types for newer attributes
+- Improve the logo to recurse
+- Add privilege separation and re-authentication for time limited access
+- Improve builds on windows
+- Cleanup source tree layout to make it easier for new contributors
+- Improve exit codes of unixd tools
+- Restrict valid chars in some string contexts in entries
+- Allow configuration of ldap basedn
+- Extend oauth2 session lifetimes, add refresh token support
+- Improve user experience of credential updates via intent tokens
+- Consolidate unix tools
+- Add exclusive process lock to daemon
+- Allow dns/rdns in ldap search contexts
+
 ## 2023-02-01 - Kanidm 1.1.0-alpha11
 
 This is the eleventh alpha series release of the Kanidm Identity Management project. Alpha releases

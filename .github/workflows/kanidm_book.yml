@@ -8,64 +8,62 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  deploy_book:
+  generate_tags:
     runs-on: ubuntu-latest
+    outputs:
+      tags: ${{ steps.tags.outputs.tags}}
+      latest: ${{ steps.previoustag.outputs.tag }}
     steps:
+      - id: tags
+        name: pull tags
+        uses: oraad/get-tags-action@v1.0.0
+        with:
+          repo: ${{ github.repository }}
+          limit: 100
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          clean: false
+      - name: 'Get Previous tag'
+        id: previoustag
+        uses: "WyriHaximus/github-action-get-previous-tag@v1"
+        with:
+          prefix: v1
+  fanout:
+    uses: './.github/workflows/kanidm_individual_book.yml'
+    needs: generate_tags
 
-      - name: Install deps
+    strategy:
+      fail-fast: false
+      matrix:
+        # tag: ${{ fromJson(needs.generate_tags.outputs.tags) }}
+        tag:
+          - ${{ needs.generate_tags.outputs.latest}}
+    with:
+      tag: ${{ matrix.tag }}
+      parent_id: ${{ github.ref }}
+  docs_master:
+    uses: './.github/workflows/kanidm_individual_book.yml'
+    with:
+      tag: "master"
+      parent_id: ${{ github.ref }}
+
+  deploy:
+    needs:
+      - fanout
+      - docs_master
+      - generate_tags
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download previously built docs
+        uses: actions/download-artifact@v3
+        with:
+          name: docs
+
+      - name: Extract the files
         run: |
-          sudo apt-get update
-          sudo apt-get install -y clang build-essential \
-            librust-openssl-dev libssl-dev \
-            libsqlite3-dev libudev-dev \
-            libpam0g-dev
-
-      - name: Setup deno
-        # Documentation: https://github.com/denoland/setup-deno
-        uses: denoland/setup-deno@v1
-        with:
-          deno-version: v1.x
-
-      - name: Test document formatting
-        run: |
-          make doc/format
-
-      - name: Setup mdBook
-        uses: peaceiris/actions-mdbook@v1
-        with:
-          mdbook-version: "latest"
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: mdbook-template
-
-      - name: Make all the books
-        run: ./scripts/build_all_the_docs.sh
-
-      - name: Install python 3.10
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
-
-      - name: pykanidm docs
-        run: |
-          python -m pip install poetry
-          make docs/pykanidm/build
-          mv pykanidm/site ./docs/pykanidm
-
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        if: ${{ github.ref == 'refs/heads/master' }}
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
-          destination_dir: ./docs
+          find . -name '*.tar.gz' -exec tar zxf "{}" \;
+          ls -la docs/
+          cd docs && \
+          ln -s ${{ needs.generate_tags.outputs.latest}}/ stable && \
+          cd ..
+          ls -la docs/

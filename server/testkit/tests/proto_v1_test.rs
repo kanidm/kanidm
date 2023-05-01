@@ -1371,7 +1371,7 @@ async fn test_server_user_auth_reauthentication(rsclient: KanidmClient) {
         .expect("Unable to open up token.");
 
     let now = time::OffsetDateTime::now_utc();
-    assert!(uat.purpose_readwrite_active(now) == false);
+    assert!(!uat.purpose_readwrite_active(now));
 
     // The auth is done, now we have to setup to re-auth for our session.
     // Should we bother looking at the internals of the token here to assert
@@ -1407,5 +1407,5 @@ async fn test_server_user_auth_reauthentication(rsclient: KanidmClient) {
 
     let now = time::OffsetDateTime::now_utc();
     eprintln!("{:?} {:?}", now, uat.purpose);
-    assert!(uat.purpose_readwrite_active(now) == true);
+    assert!(uat.purpose_readwrite_active(now));
 }

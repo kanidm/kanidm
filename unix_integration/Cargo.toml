@@ -31,23 +31,8 @@ path = "src/ssh_authorizedkeys.rs"
 required-features = ["unix"]
 
 [[bin]]
-name = "kanidm_cache_invalidate"
-path = "src/cache_invalidate.rs"
-required-features = ["unix"]
-
-[[bin]]
-name = "kanidm_cache_clear"
-path = "src/cache_clear.rs"
-required-features = ["unix"]
-
-[[bin]]
-name = "kanidm_unixd_status"
-path =  "src/daemon_status.rs"
-required-features = ["unix"]
-
-[[bin]]
-name = "kanidm_test_auth"
-path =  "src/test_auth.rs"
+name = "kanidm-unix"
+path = "src/tool.rs"
 required-features = ["unix"]
 
 [lib]

@@ -13,6 +13,7 @@ use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::status::StatusActor;
 use serde::Serialize;
+use tide::listener::{Listener, ToListener};
 use tide_compress::CompressMiddleware;
 use tide_openssl::TlsListener;
 use tracing::{error, info};
@@ -294,12 +295,10 @@ async fn index_view(req: tide::Request<AppState>) -> tide::Result {
 pub fn generate_integrity_hash(filename: String) -> Result<String, String> {
     let wasm_filepath = PathBuf::from(filename);
     match wasm_filepath.exists() {
-        false => {
-            return Err(format!(
-                "Can't find {:?} to generate file hash",
-                &wasm_filepath
-            ));
-        }
+        false => Err(format!(
+            "Can't find {:?} to generate file hash",
+            &wasm_filepath
+        )),
         true => {
             let filecontents = match std::fs::read(&wasm_filepath) {
                 Ok(value) => value,
@@ -317,8 +316,7 @@ pub fn generate_integrity_hash(filename: String) -> Result<String, String> {
     }
 }
 
-// TODO: Add request limits.
-pub fn create_https_server(
+pub async fn create_https_server(
     address: String,
     domain: String,
     // opt_tls_params: Option<SslAcceptorBuilder>,
@@ -858,7 +856,6 @@ pub fn create_https_server(
     // routemap_route.at("/").mapped_get(&mut routemap, do_routemap);
     // ===  End routes
 
-    // Create listener?
     let handle = match opt_tls_params {
         Some(tls_param) => {
             let tlsl = TlsListener::build()
@@ -869,11 +866,18 @@ pub fn create_https_server(
                 .map_err(|e| {
                     error!("Failed to build TLS Listener -> {:?}", e);
                 })?;
-            /*
-            let x = Box::new(tls_param.build());
-            let x_ref = Box::leak(x);
-            let tlsl = TlsListener::new(address, x_ref);
-            */
+
+            let mut listener = tlsl.to_listener().map_err(|e| {
+                error!("Failed to convert to Listener -> {:?}", e);
+            })?;
+
+            if let Err(e) = listener.bind(tserver).await {
+                error!(
+                    "Failed to start server listener on address {:?} -> {:?}",
+                    &address, e
+                );
+                return Err(());
+            }
 
             tokio::spawn(async move {
                 tokio::select! {
@@ -882,10 +886,10 @@ pub fn create_https_server(
                             CoreAction::Shutdown => {},
                         }
                     }
-                    server_result = tserver.listen(tlsl) => {
+                    server_result = listener.accept() => {
                         if let Err(e) = server_result {
                             error!(
-                                "Failed to start server listener on address {:?} -> {:?}",
+                                "Failed to accept via listener on address {:?} -> {:?}",
                                 &address, e
                             );
                         }
@@ -896,6 +900,18 @@ pub fn create_https_server(
         }
         None => {
             // Create without https
+            let mut listener = (&address).to_listener().map_err(|e| {
+                error!("Failed to convert to Listener -> {:?}", e);
+            })?;
+
+            if let Err(e) = listener.bind(tserver).await {
+                error!(
+                    "Failed to start server listener on address {:?} -> {:?}",
+                    &address, e
+                );
+                return Err(());
+            }
+
             tokio::spawn(async move {
                 tokio::select! {
                     Ok(action) = rx.recv() => {
@@ -903,10 +919,10 @@ pub fn create_https_server(
                             CoreAction::Shutdown => {},
                         }
                     }
-                    server_result = tserver.listen(&address) => {
+                    server_result = listener.accept() => {
                         if let Err(e) = server_result {
                             error!(
-                                "Failed to start server listener on address {:?} -> {:?}",
+                                "Failed to accept via listener on address {:?} -> {:?}",
                                 &address, e
                             );
                         }

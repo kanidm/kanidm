@@ -37,7 +37,7 @@ futures-concurrency.workspace = true
 libc.workspace = true
 kanidm_client.workspace = true
 kanidm_proto.workspace = true
-qrcode = { workspace = true, default-features = false }
+qrcode = { workspace = true }
 rpassword.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true

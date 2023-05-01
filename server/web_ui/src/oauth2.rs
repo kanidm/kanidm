@@ -14,6 +14,8 @@ use crate::error::*;
 use crate::manager::Route;
 use crate::{models, utils};
 
+use std::collections::BTreeSet;
+
 enum State {
     LoginRequired,
     // We are in the process of check the auth token to be sure we can proceed.
@@ -23,8 +25,8 @@ enum State {
     Consent {
         client_name: String,
         #[allow(dead_code)]
-        scopes: Vec<String>,
-        pii_scopes: Vec<String>,
+        scopes: BTreeSet<String>,
+        pii_scopes: BTreeSet<String>,
         consent_token: String,
     },
     ConsentGranted(String),
@@ -43,8 +45,8 @@ pub enum Oauth2Msg {
     TokenValid,
     Consent {
         client_name: String,
-        scopes: Vec<String>,
-        pii_scopes: Vec<String>,
+        scopes: BTreeSet<String>,
+        pii_scopes: BTreeSet<String>,
         consent_token: String,
     },
     Redirect(String),

@@ -4,38 +4,31 @@ name: WASM Testing
 # Trigger the workflow on push or pull request
 "on": [push, pull_request]
 
+env:
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+
 jobs:
   wasm_test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
-      - name: Update package manager
-        run: sudo apt-get update
-
       - name: Install dependencies
         run: |
+          sudo apt-get update &&
           sudo apt-get install -y \
             libpam0g-dev \
             libudev-dev \
             libssl-dev \
             libsqlite3-dev \
             pkg-config
-
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: cargo
-          default: true
-          override: true
-          # target: wasm32-unknown-unknown
+        uses: dtolnay/rust-toolchain@stable
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Install wasm-pack
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: wasm-pack
+        run: cargo install wasm-pack
 
       # https://github.com/browser-actions/setup-chrome
       - name: Install Chrome Headless
@@ -50,6 +43,5 @@ jobs:
 
       # docs here:
       # https://rustwasm.github.io/docs/wasm-bindgen/wasm-bindgen-test/browsers.html
-      - name: "Run clippy (ignores errors, this is just a check)"
-        run: wasm-pack test --headless --chrome
+      - run: wasm-pack test --headless --chrome
         continue-on-error: true

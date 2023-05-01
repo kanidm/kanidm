@@ -6,7 +6,7 @@ use crate::be::dbvalue::DbValueAddressV1;
 use crate::prelude::*;
 use crate::repl::proto::{ReplAddressV1, ReplAttrV1};
 use crate::schema::SchemaAttribute;
-use crate::value::Address;
+use crate::value::{Address, VALIDATE_EMAIL_RE};
 use crate::valueset::{DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
@@ -373,7 +373,7 @@ impl ValueSetT for ValueSetEmailAddress {
             && self
                 .set
                 .iter()
-                .all(|mail| validator::validate_email(mail.as_str()))
+                .all(|mail| VALIDATE_EMAIL_RE.is_match(mail.as_str()))
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {

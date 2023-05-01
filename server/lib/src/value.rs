@@ -40,6 +40,7 @@ lazy_static! {
         #[allow(clippy::expect_used)]
         Regex::new("(?P<name>[^@]+)@(?P<realm>[^@]+)").expect("Invalid SPN regex found")
     };
+
     pub static ref DISALLOWED_NAMES: HashSet<&'static str> = {
         let mut m = HashSet::with_capacity(16);
         m.insert("root");
@@ -61,6 +62,13 @@ lazy_static! {
         #[allow(clippy::expect_used)]
         Regex::new("^[a-z][a-z0-9-_\\.]+$").expect("Invalid Iname regex found")
     };
+
+    pub static ref EXTRACT_VAL_DN: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new("^(([^=,]+)=)?(?P<val>[^=,]+)").expect("extract val from dn regex")
+        // Regex::new("^(([^=,]+)=)?(?P<val>[^=,]+)(,.*)?$").expect("Invalid Iname regex found")
+    };
+
     pub static ref NSUNIQUEID_RE: Regex = {
         #[allow(clippy::expect_used)]
         Regex::new("^[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}$").expect("Invalid Nsunique regex found")
@@ -75,6 +83,28 @@ lazy_static! {
     pub static ref SINGLELINE_RE: Regex = {
         #[allow(clippy::expect_used)]
         Regex::new("[\n\r\t]").expect("Invalid singleline regex found")
+    };
+
+    /// Per https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address
+    /// this regex validates for valid emails.
+    pub static ref VALIDATE_EMAIL_RE: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new(r"^[a-zA-Z0-9.!#$%&'*+=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").expect("Invalid singleline regex found")
+    };
+
+    // Formerly checked with
+    /*
+    pub static ref ESCAPES_RE: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new(r"\x1b\[([\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e])")
+            .expect("Invalid escapes regex found")
+    };
+    */
+
+    pub static ref UNICODE_CONTROL_RE: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new(r"[[:cntrl:]]")
+            .expect("Invalid unicode control regex found")
     };
 }
 
@@ -1253,7 +1283,7 @@ impl Value {
     }
 
     pub fn new_email_address_s(s: &str) -> Option<Self> {
-        if validator::validate_email(s) {
+        if VALIDATE_EMAIL_RE.is_match(s) {
             Some(Value::EmailAddress(s.to_string(), false))
         } else {
             None
@@ -1261,7 +1291,7 @@ impl Value {
     }
 
     pub fn new_email_address_primary_s(s: &str) -> Option<Self> {
-        if validator::validate_email(s) {
+        if VALIDATE_EMAIL_RE.is_match(s) {
             Some(Value::EmailAddress(s.to_string(), true))
         } else {
             None
@@ -1632,7 +1662,7 @@ impl Value {
             // These have stricter validators so not needed.
             Value::Nsuniqueid(s) => NSUNIQUEID_RE.is_match(s),
             Value::DateTime(odt) => odt.offset() == time::UtcOffset::UTC,
-            Value::EmailAddress(mail, _) => validator::validate_email(mail.as_str()),
+            Value::EmailAddress(mail, _) => VALIDATE_EMAIL_RE.is_match(mail.as_str()),
             Value::OauthScope(s) => OAUTHSCOPE_RE.is_match(s),
             Value::OauthScopeMap(_, m) => m.iter().all(|s| OAUTHSCOPE_RE.is_match(s)),
 
@@ -1695,23 +1725,12 @@ impl Value {
 
     pub(crate) fn validate_str_escapes(s: &str) -> bool {
         // Look for and prevent certain types of string escapes and injections.
-        // Formerly checked with
-        /*
-        pub static ref ESCAPES_RE: Regex = {
-            #[allow(clippy::expect_used)]
-            Regex::new(r"\x1b\[([\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e])")
-                .expect("Invalid escapes regex found")
-        };
-        */
-        use unicode_general_category::{get_general_category, GeneralCategory};
-
-        s.chars().all(|c| match get_general_category(c) {
-            GeneralCategory::Control => {
-                warn!("value contains invalid unicode control character",);
-                false
-            }
-            _ => true,
-        })
+        if UNICODE_CONTROL_RE.is_match(s) {
+            warn!("value contains invalid unicode control character",);
+            false
+        } else {
+            true
+        }
     }
 }
 

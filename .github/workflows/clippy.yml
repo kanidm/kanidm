@@ -8,6 +8,9 @@ name: Clippy
       - master
   pull_request:
 
+env:
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -16,21 +19,13 @@ jobs:
   clippy:
     runs-on: ubuntu-latest
     steps:
-      - name: Restore our cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - uses: actions/checkout@v3
-      - name: Update package manager
-        run: sudo apt-get update
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
       - name: Install dependencies
         run: |
+          sudo apt-get update && \
           sudo apt-get install -y \
             libpam0g-dev \
             libudev-dev \
@@ -38,15 +33,6 @@ jobs:
             libsqlite3-dev \
             pkg-config
 
-      # - name: Install Rust
-      #   uses: actions-rs/toolchain@v1
-      #   with:
-      #     toolchain: stable
-      #     override: true
-      #     default: true
-
       - name: "Run clippy (ignores errors, this is just a check)"
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
+        run: cargo clippy
         continue-on-error: true

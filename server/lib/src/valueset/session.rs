@@ -455,8 +455,7 @@ impl ValueSetT for ValueSetSession {
         let map = self
             .as_session_map()
             .iter()
-            .map(|m| m.iter())
-            .flatten()
+            .flat_map(|m| m.iter())
             .map(
                 |(
                     u,
@@ -473,8 +472,8 @@ impl ValueSetT for ValueSetSession {
                         *u,
                         ApiToken {
                             label: label.clone(),
-                            expiry: expiry.clone(),
-                            issued_at: issued_at.clone(),
+                            expiry: *expiry,
+                            issued_at: *issued_at,
                             issued_by: issued_by.clone(),
                             scope: match scope {
                                 SessionScope::Synchronise => ApiTokenScope::Synchronise,
