@@ -1,3 +1,3 @@
 pub mod enums;
-pub mod functions;
+pub(crate) mod functions;
 pub mod structs;
