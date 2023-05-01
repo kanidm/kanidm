@@ -1,14 +1,13 @@
 use tracing::{event, Level};
-use windows::Win32::{
-    Foundation::{NTSTATUS, STATUS_SUCCESS},
-    Security::Authentication::Identity::SECPKG_FUNCTION_TABLE,
-};
+
+use windows::Win32::Foundation::{NTSTATUS, STATUS_SUCCESS};
+use windows::Win32::Security::Authentication::Identity::SECPKG_FUNCTION_TABLE;
 
 mod client;
-mod package;
-mod structs;
 mod mem;
+mod package;
 mod protocol;
+mod structs;
 
 pub(crate) const PROGRAM_DIR: &'static str = "C:\\Program Files\\kanidm";
 
@@ -31,9 +30,7 @@ pub async unsafe extern "system" fn SpLsaModeInitialize(
     let file_appender = tracing_appender::rolling::daily(PROGRAM_DIR, "authlib.log");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
-    tracing_subscriber::fmt()
-        .with_writer(non_blocking)
-        .init();
+    tracing_subscriber::fmt().with_writer(non_blocking).init();
 
     event!(Level::INFO, "Initialising Kanidm Windows client");
     event!(

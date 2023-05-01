@@ -1,24 +1,30 @@
-use std::{ffi::c_void, ptr::null_mut, time::{SystemTime, UNIX_EPOCH}, mem::size_of};
+use std::ffi::c_void;
+use std::mem::size_of;
+use std::ptr::null_mut;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::{
-    client::{KanidmWindowsClient, KanidmWindowsClientError},
-    mem::{allocate_mem_client, allocate_mem_lsa, MemoryAllocationError},
-    structs::{AuthInfo, ProfileBuffer},
-    PROGRAM_DIR,
-};
 use once_cell::sync::Lazy;
 use tracing::{event, span, Level};
-use windows::{
-    core::PSTR,
-    Win32::{
-        Foundation::*,
-        Security::{
-            AllocateLocallyUniqueId, Authentication::Identity::*,
-            Credentials::STATUS_LOGON_FAILURE, SID_AND_ATTRIBUTES, TOKEN_GROUPS, TOKEN_USER, TOKEN_PRIMARY_GROUP, TOKEN_PRIVILEGES, LUID_AND_ATTRIBUTES , TOKEN_OWNER, TOKEN_DEFAULT_DACL, ACL, TOKEN_USER_CLAIMS, TOKEN_DEVICE_CLAIMS, TOKEN_PRIVILEGES_ATTRIBUTES,
-        },
-        System::Kernel::*,
-    },
+
+use windows::core::PSTR;
+use windows::Win32::Foundation::{
+    BOOL, LUID, NTSTATUS, PSID, STATUS_SUCCESS, STATUS_UNSUCCESSFUL, UNICODE_STRING,
 };
+use windows::Win32::Security::Authentication::Identity::{
+    LsaTokenInformationV3, LSA_DISPATCH_TABLE, LSA_SECPKG_FUNCTION_TABLE,
+    LSA_TOKEN_INFORMATION_TYPE, LSA_TOKEN_INFORMATION_V3, SECPKG_PARAMETERS, SECURITY_LOGON_TYPE,
+};
+use windows::Win32::Security::{
+    AllocateLocallyUniqueId, ACL, LUID_AND_ATTRIBUTES, SID_AND_ATTRIBUTES, TOKEN_DEFAULT_DACL,
+    TOKEN_DEVICE_CLAIMS, TOKEN_GROUPS, TOKEN_OWNER, TOKEN_PRIMARY_GROUP, TOKEN_PRIVILEGES,
+    TOKEN_PRIVILEGES_ATTRIBUTES, TOKEN_USER, TOKEN_USER_CLAIMS,
+};
+use windows::Win32::System::Kernel::STRING;
+
+use crate::client::KanidmWindowsClient;
+use crate::mem::{allocate_mem_client, allocate_mem_lsa, MemoryAllocationError};
+use crate::structs::{AuthInfo, ProfileBuffer};
+use crate::PROGRAM_DIR;
 
 pub(crate) static mut KANIDM_WINDOWS_CLIENT: Lazy<Option<KanidmWindowsClient>> = Lazy::new(|| {
     let client = match KanidmWindowsClient::new(&format!("{}/authlib_client.toml", PROGRAM_DIR)) {
@@ -118,7 +124,8 @@ pub async extern "system" fn ApLogonUser(
     out_account: *mut *mut UNICODE_STRING,
     _: *mut *mut UNICODE_STRING,
 ) -> NTSTATUS {
-    let auth_info: &AuthInfo = unsafe { (*auth_info_ptr.cast::<*const AuthInfo>()).as_ref().unwrap() };
+    let auth_info: &AuthInfo =
+        unsafe { (*auth_info_ptr.cast::<*const AuthInfo>()).as_ref().unwrap() };
 
     unsafe {
         *(*out_account) = auth_info.username;
@@ -127,23 +134,27 @@ pub async extern "system" fn ApLogonUser(
     let dispatch_table = match unsafe { AP_DISPATCH_TABLE.as_ref() } {
         Some(dt) => dt,
         None => {
-            span!(Level::ERROR, "Failed to get the LSA's dispatch table as a reference");
+            span!(
+                Level::ERROR,
+                "Failed to get the LSA's dispatch table as a reference"
+            );
             return STATUS_UNSUCCESSFUL;
         }
     };
 
     // * Set mandatory fields
     {
-        /* 
-            Since the dispatch table exists, we re-set the return account which is allocated to the LSA's memory space
-         */
-        let username_ptr = match allocate_mem_lsa(auth_info.username, &dispatch_table.AllocateLsaHeap) {
-            Ok(ptr) => ptr,
-            Err(_) => {
-                span!(Level::ERROR, "Failed to allocate username to LSA heap");
-                return STATUS_UNSUCCESSFUL;
-            },
-        };
+        /*
+           Since the dispatch table exists, we re-set the return account which is allocated to the LSA's memory space
+        */
+        let username_ptr =
+            match allocate_mem_lsa(auth_info.username, &dispatch_table.AllocateLsaHeap) {
+                Ok(ptr) => ptr,
+                Err(_) => {
+                    span!(Level::ERROR, "Failed to allocate username to LSA heap");
+                    return STATUS_UNSUCCESSFUL;
+                }
+            };
 
         unsafe {
             *out_account = username_ptr;
@@ -158,7 +169,7 @@ pub async extern "system" fn ApLogonUser(
             return STATUS_UNSUCCESSFUL;
         }
     };
-    
+
     let password = match unsafe { auth_info.password.Buffer.to_string() } {
         Ok(pw) => pw,
         Err(_) => {
@@ -175,17 +186,22 @@ pub async extern "system" fn ApLogonUser(
     };
 
     // * Prepare & return profile buffer
-    let profile_buffer = ProfileBuffer {
-        token: token,
-    };
-    let profile_buffer_ptr = match allocate_mem_client(profile_buffer, &dispatch_table.AllocateClientBuffer, client_req) {
+    let profile_buffer = ProfileBuffer { token: token };
+    let profile_buffer_ptr = match allocate_mem_client(
+        profile_buffer,
+        &dispatch_table.AllocateClientBuffer,
+        client_req,
+    ) {
         Ok(ptr) => ptr,
         Err(_) => {
-            span!(Level::ERROR, "Failed to allocate the profile buffer to the client's memory space");
+            span!(
+                Level::ERROR,
+                "Failed to allocate the profile buffer to the client's memory space"
+            );
             return STATUS_UNSUCCESSFUL;
-        },
+        }
     };
-    
+
     {
         let return_ptr = out_prof_buf.cast::<*mut ProfileBuffer>();
 
@@ -202,7 +218,7 @@ pub async extern "system" fn ApLogonUser(
         BOOL(0) => {
             event!(Level::ERROR, "Failed to allocate unique id");
             return STATUS_UNSUCCESSFUL;
-        },
+        }
         _ => (),
     };
 
