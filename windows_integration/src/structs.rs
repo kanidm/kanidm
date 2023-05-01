@@ -13,11 +13,11 @@ pub struct ProfileBuffer {
 }
 
 // * Call Package
-pub enum ProtocolSubmitBuffer {
-	V1(ProtocolSubmitBufferV1),
+pub enum AuthPkgRequest {
+	V1(AuthPkgRequestV1),
 }
 
-pub enum ProtocolSubmitBufferV1 {
+pub enum AuthPkgRequestV1 {
 	// All Accounts Operations
 	/// Get all accounts associated with the kanidm server
 	GetAccounts,
