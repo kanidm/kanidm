@@ -1,4 +1,4 @@
-pub enum AuthPkgRequestV1 {
+pub enum AuthPkgRequest {
 	// All Accounts Operations
 	/// Get all accounts associated with the kanidm server
 	GetAccounts,
@@ -127,8 +127,8 @@ pub enum AuthPkgRequestV1 {
 }
 
 
-pub enum AuthPkgResponseV1 {
-	Error(AuthPkgErrorV1),
+pub enum AuthPkgResponse {
+	Error(AuthPkgError),
     // All Accounts Operations
     /// Get all accounts associated with the kanidm server
     GetAccounts,
@@ -256,4 +256,4 @@ pub enum AuthPkgResponseV1 {
     AuthUserStepPassKey,
 }
 
-pub enum AuthPkgErrorV1 {}
+pub enum AuthPkgError {}

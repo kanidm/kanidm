@@ -2406,6 +2406,7 @@ version = "1.1.0-beta.13"
 dependencies = [
  "kanidm_client",
  "kanidm_proto",
+ "kanidm_windows",
  "once_cell",
  "r2d2",
  "r2d2_sqlite",
@@ -2415,6 +2416,10 @@ dependencies = [
  "tracing-subscriber",
  "windows 0.48.0",
 ]
+
+[[package]]
+name = "kanidm_windows"
+version = "1.1.0-beta.13"
 
 [[package]]
 name = "kanidmd_core"

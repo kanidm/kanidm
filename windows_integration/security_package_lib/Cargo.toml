@@ -1,0 +1,15 @@
+[package]
+name = "kanidm_windows"
+description = "Public kanidm windows library"
+documentation = "https://docs.rs/kanidm/latest/kanidm/"
+
+version.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+
+[dependencies]
