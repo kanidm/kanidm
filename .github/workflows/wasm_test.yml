@@ -27,7 +27,7 @@ jobs:
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3
         with:
-          version: 0.4.2
+          version: "v0.4.2"
 
       - name: Install wasm-pack
         run: cargo install wasm-pack
