@@ -23,6 +23,8 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3
+        with:
+          version: 0.4.2
 
       - name: Install dependencies
         run: |

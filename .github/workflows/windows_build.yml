@@ -30,6 +30,8 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3
+        with:
+          version: 0.4.2
       - run: cargo build -p kanidm_client -p kanidm_tools -p orca -p daemon
       # yamllint disable-line rule:line-length
       - run: cargo test -p kanidm_client -p kanidm_tools -p orca -p daemon -p kanidmd_core
