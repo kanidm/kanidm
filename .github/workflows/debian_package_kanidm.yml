@@ -48,6 +48,8 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3
+        with:
+          version: "v0.4.2"
       - name: Build packages
         run: |
           make -f platform/debian/Makefile debs/all
