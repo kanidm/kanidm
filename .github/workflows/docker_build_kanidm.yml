@@ -31,12 +31,12 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
         # don't log in if we're not going to push!
-        if: ${{ github.ref == 'refs/heads/master' }}
+        if: github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm'
       - name: Build and push kanidmd
         id: docker_build_kanidm
         uses: docker/build-push-action@v4
         with:
-          push: ${{ github.ref == 'refs/heads/master' }}
+          push: github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm'
           platforms: "linux/amd64"
           # https://github.com/docker/build-push-action/issues/254
           tags: ghcr.io/kanidm/kanidm:devel

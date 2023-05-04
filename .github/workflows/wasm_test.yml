@@ -22,16 +22,12 @@ jobs:
             libssl-dev \
             libsqlite3-dev \
             pkg-config
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3
         with:
           version: "v0.4.2"
-
       - name: Install wasm-pack
         run: cargo install wasm-pack
-
       # https://github.com/browser-actions/setup-chrome
       - name: Install Chrome Headless
         uses: browser-actions/setup-chrome@latest

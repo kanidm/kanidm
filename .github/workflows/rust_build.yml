@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   rust_build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Install Rust
