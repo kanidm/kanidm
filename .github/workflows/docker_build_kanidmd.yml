@@ -37,7 +37,7 @@ jobs:
         id: docker_build_kanidmd
         uses: docker/build-push-action@v4
         with:
-          push: ${{ github.ref == 'refs/heads/master' }} && ${{ github.repository == 'kanidm/kanidm' }}
+          push: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
           platforms: linux/amd64
           tags: ghcr.io/kanidm/kanidmd:devel
           # build-args: |
