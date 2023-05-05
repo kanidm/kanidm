@@ -1,5 +1,6 @@
-use kanidm_client::{KanidmClient, KanidmClientBuilder};
-use kanidm_proto::v1::UnixUserToken;
+use kanidm_client::{KanidmClient, KanidmClientBuilder, ClientError};
+use kanidm_proto::v1::{UnixUserToken, Entry};
+use kanidm_windows::secpkg::ap_proto::v1::AccountType;
 use tracing::{event, span, Level};
 
 #[derive(Debug)]
@@ -84,5 +85,15 @@ impl KanidmWindowsClient {
 
         gts.exit();
         Ok(token)
+    }
+
+    pub async fn get_accounts(&self, account_type: &AccountType) -> Result<Vec<Entry>, ClientError> {
+        let gas = span!(Level::INFO, "Retrieving all account");
+        let accounts = match account_type {
+            AccountType::Person => self.client.idm_person_account_list().await,
+            AccountType::Service => self.client.idm_service_account_list().await,
+        };
+
+        return accounts;
     }
 }

@@ -5,6 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use once_cell::sync::Lazy;
 use tracing::{event, span, Level};
+use kanidm_windows::secpkg::ap_proto::{AuthPkgRequest, AuthPkgResponse};
 
 use windows::core::PSTR;
 use windows::Win32::Foundation::{
@@ -25,6 +26,7 @@ use crate::client::KanidmWindowsClient;
 use crate::mem::{allocate_mem_client, allocate_mem_lsa, MemoryAllocationError};
 use crate::structs::{AuthInfo, ProfileBuffer};
 use crate::PROGRAM_DIR;
+use crate::protocol::v1::handle_request;
 
 pub(crate) static mut KANIDM_WINDOWS_CLIENT: Lazy<Option<KanidmWindowsClient>> = Lazy::new(|| {
     let client = match KanidmWindowsClient::new(&format!("{}/authlib_client.toml", PROGRAM_DIR)) {
@@ -358,12 +360,46 @@ pub async extern "system" fn ApLogonUser(
 pub async extern "system" fn ApCallPackage(
     client_req: *const *const c_void,
     submit_buf: *const c_void,     // Cast to own Protocol Submit Buffer
-    submit_buf_loc: *const c_void, // Pointer to submit_buf
-    submit_buf_len: u32,
+    _: *const c_void, // Pointer to submit_buf
+    _: u32,
     out_return_buf: *mut *mut c_void, // Cast to own return buffer
     out_return_buf_len: *mut u32,
     out_status: *mut i32, // NTSTATUS
 ) -> NTSTATUS {
+    let dispatch_table = match unsafe { AP_DISPATCH_TABLE.as_ref() } {
+        Some(dt) => dt,
+        None => {
+            span!(
+                Level::ERROR,
+                "Failed to get the LSA's dispatch table as a reference"
+            );
+            return STATUS_UNSUCCESSFUL;
+        }
+    };
+
+    let request_ptr = submit_buf.cast::<AuthPkgRequest>();
+    let request = match unsafe { request_ptr.as_ref() } {
+        Some(req) => req,
+        None => return STATUS_UNSUCCESSFUL,
+    };
+
+    let response = match request {
+        AuthPkgRequest::V1(req) => AuthPkgResponse::V1(handle_request(req).await),
+    };
+    let allocated_response = match allocate_mem_client(response, &dispatch_table.AllocateClientBuffer, client_req) {
+        Ok(res) => res,
+        Err(_) => return STATUS_UNSUCCESSFUL,
+    };
+
+    let return_ptr = out_return_buf.cast::<*mut AuthPkgResponse>();
+    let return_ptr_len = size_of::<AuthPkgResponse>() as u32;
+
+    unsafe {
+        *return_ptr = allocated_response;
+        *out_return_buf_len = return_ptr_len;
+        *out_status = 0;
+    }
+
     STATUS_SUCCESS
 }
 

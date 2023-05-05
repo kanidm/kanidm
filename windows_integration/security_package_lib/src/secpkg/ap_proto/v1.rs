@@ -1,3 +1,5 @@
+use kanidm_proto::v1::Entry;
+
 pub enum AuthPkgRequest {
 	// All Accounts Operations
 	/// Get all accounts associated with the kanidm server
@@ -256,10 +258,21 @@ pub enum AuthPkgResponse {
 	AuthUserStepPassKey(AuthUserStepPassKeyResponse),
 }
 
-pub enum AuthPkgError {}
+pub enum AuthPkgError {
+	ClientRequestUnsuccessful,
+}
 
-pub struct GetAccountsRequest {}
-pub struct GetAccountsResponse {} 
+pub enum AccountType {
+	Person,
+	Service
+}
+
+pub struct GetAccountsRequest {
+	pub account_type: AccountType, 
+}
+pub struct GetAccountsResponse {
+	pub accounts: Vec<Entry>,
+} 
 
 pub struct CreateAccountRequest {}
 pub struct CreateAccountResponse {} 
