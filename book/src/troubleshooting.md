@@ -67,6 +67,20 @@ related to the failing operation.
 
 Try running commands with `RUST_LOG=debug` to get more information:
 
-```
+```shell
 RUST_LOG=debug kanidm login --name anonymous
+```
+
+## Reverse Proxies not sending HTTP/1.1 requests
+
+NGINX (and probably other proxies) send HTTP/1.0 requests to the upstream server by default. This'll lead to errors like this in your proxy logs:
+
+```text
+*17 upstream prematurely closed connection while reading response header from upstream, client: 172.19.0.1, server: example.com, request: "GET / HTTP/1.1", upstream: "https://172.19.0.3:8443/", host: "example.com:8443"
+```
+
+The fix for NGINX is to set the [proxy_http_version](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_http_version) to `1.1`. This can go in the same block as the `proxy_pass` option.
+
+```text
+proxy_http_version 1.1
 ```

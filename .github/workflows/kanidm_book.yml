@@ -3,6 +3,9 @@ name: GitHub Pages
 
 "on":
   push:
+    branches:
+      - "master"
+  pull_request:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -67,3 +70,11 @@ jobs:
           ln -s ${{ needs.generate_tags.outputs.latest}}/ stable && \
           cd ..
           ls -la docs/
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        if: ${{ github.ref == 'refs/heads/master' }}
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          destination_dir: ./docs
