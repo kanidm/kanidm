@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["LdapSchema",""]],"struct":[["LdapClient",""],["LdapInner",""]]};
+window.SIDEBAR_ITEMS = {"enum":["LdapSchema"],"static":["CALLSITE","META"],"struct":["LdapClient","LdapInner"]};

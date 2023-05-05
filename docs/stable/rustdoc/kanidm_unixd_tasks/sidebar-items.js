@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["chown",""],["create_home_directory",""],["handle_tasks",""],["main",""]],"struct":[["TaskCodec",""]]};
+window.SIDEBAR_ITEMS = {"fn":["chown","create_home_directory","handle_tasks","main"],"static":["CALLSITE","META"],"struct":["TaskCodec"]};

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":[["create_https_server",""],["generate_integrity_hash","Generates the integrity hash for a file based on a filename"],["to_tide_response",""]],"mod":[["middleware",""]],"struct":[["AppState",""],["JavaScriptFile",""]],"trait":[["RequestExtensions",""]]};

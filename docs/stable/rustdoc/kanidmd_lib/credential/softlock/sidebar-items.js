@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["CredSoftLockPolicy",""]]};
+window.SIDEBAR_ITEMS = {"enum":["CredSoftLockPolicy"]};

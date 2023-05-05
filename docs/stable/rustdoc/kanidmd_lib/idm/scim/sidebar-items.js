@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["GenerateScimSyncTokenEvent",""],["ScimSyncFinaliseEvent",""],["ScimSyncTerminateEvent",""],["ScimSyncUpdateEvent",""]]};
+window.SIDEBAR_ITEMS = {"struct":["GenerateScimSyncTokenEvent","ScimSyncFinaliseEvent","ScimSyncTerminateEvent","ScimSyncUpdateEvent"]};

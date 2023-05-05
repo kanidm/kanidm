@@ -1,6 +1,4 @@
 var sourcesIndex = JSON.parse('{\
-"kanidm_cache_clear":["",[["opt",[],["cache_clear.rs"]]],["cache_clear.rs"]],\
-"kanidm_cache_invalidate":["",[["opt",[],["cache_invalidate.rs"]]],["cache_invalidate.rs"]],\
 "kanidm_cli":["",[["opt",[],["kanidm.rs"]],["webauthn",[],["mod.rs","mozilla.rs"]]],["badlist.rs","common.rs","domain.rs","group.rs","lib.rs","oauth2.rs","person.rs","raw.rs","recycle.rs","serviceaccount.rs","session.rs","synch.rs"]],\
 "kanidm_client":["",[],["lib.rs","person.rs","scim.rs","service_account.rs","sync_account.rs","system.rs"]],\
 "kanidm_ipa_sync":["",[],["config.rs","error.rs","main.rs","opt.rs"]],\
@@ -9,10 +7,9 @@ var sourcesIndex = JSON.parse('{\
 "kanidm_proto":["",[],["constants.rs","internal.rs","lib.rs","messages.rs","oauth2.rs","scim_v1.rs","utils.rs","v1.rs"]],\
 "kanidm_ssh_authorizedkeys":["",[["opt",[],["ssh_authorizedkeys.rs"]]],["ssh_authorizedkeys.rs"]],\
 "kanidm_ssh_authorizedkeys_direct":["",[["opt",[],["ssh_authorizedkeys.rs"]]],["ssh_authorizedkeys.rs"]],\
-"kanidm_test_auth":["",[],["test_auth.rs"]],\
+"kanidm_unix":["",[["opt",[],["tool.rs"]]],["tool.rs"]],\
 "kanidm_unix_common":["",[],["cache.rs","client.rs","client_sync.rs","constants.rs","db.rs","lib.rs","unix_config.rs","unix_proto.rs"]],\
 "kanidm_unixd":["",[],["daemon.rs"]],\
-"kanidm_unixd_status":["",[["opt",[],["unixd_status.rs"]]],["daemon_status.rs"]],\
 "kanidm_unixd_tasks":["",[],["tasks_daemon.rs"]],\
 "kanidmd":["",[],["main.rs","opt.rs"]],\
 "kanidmd_core":["",[["actors",[],["mod.rs","v1_read.rs","v1_scim.rs","v1_write.rs"]],["https",[],["manifest.rs","middleware.rs","mod.rs","oauth2.rs","routemaps.rs","v1.rs","v1_scim.rs"]]],["config.rs","crypto.rs","interval.rs","ldaps.rs","lib.rs"]],\

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["QueryServerReadV1",""]]};
+window.SIDEBAR_ITEMS = {"struct":["QueryServerReadV1"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["TestPhase",""]],"fn":[["basic",""],["basic_arbiter",""],["basic_worker",""],["process_raw_results",""]],"struct":[["CsvRow",""]]};
+window.SIDEBAR_ITEMS = {"enum":["TestPhase"],"fn":["basic","basic_arbiter","basic_worker","process_raw_results"],"static":["CALLSITE","META"],"struct":["CsvRow"]};

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":[["call_daemon_blocking",""]]};

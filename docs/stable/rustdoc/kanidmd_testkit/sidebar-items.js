@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"attr":[["test",""]],"constant":[["ADMIN_TEST_PASSWORD",""],["ADMIN_TEST_USER",""]],"fn":[["is_free_port",""],["setup_async_test",""]],"static":[["PORT_ALLOC",""]]};
+window.SIDEBAR_ITEMS = {"attr":["test"],"constant":["ADMIN_TEST_PASSWORD","ADMIN_TEST_USER"],"fn":["is_free_port","setup_async_test"],"static":["PORT_ALLOC"]};

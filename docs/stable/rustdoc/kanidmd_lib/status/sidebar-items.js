@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["StatusActor",""],["StatusRequestEvent",""]]};
+window.SIDEBAR_ITEMS = {"struct":["StatusActor","StatusRequestEvent"]};

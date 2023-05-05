@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["AccessControlCreate",""],["AccessControlDelete",""],["AccessControlModify",""],["AccessControlProfile",""],["AccessControlSearch",""]]};
+window.SIDEBAR_ITEMS = {"struct":["AccessControlCreate","AccessControlDelete","AccessControlModify","AccessControlProfile","AccessControlSearch"]};

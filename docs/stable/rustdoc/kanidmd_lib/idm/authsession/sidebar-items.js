@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["AuthType",""]],"struct":[["Set","An ordered set based on a B-Tree."]]};
+window.SIDEBAR_ITEMS = {"enum":["AuthType"],"struct":["Set"]};

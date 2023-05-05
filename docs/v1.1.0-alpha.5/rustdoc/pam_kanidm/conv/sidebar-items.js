@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":[["AppDataPtr",""]],"struct":[["PamConv","`PamConv` acts as a channel for communicating with user."]]};

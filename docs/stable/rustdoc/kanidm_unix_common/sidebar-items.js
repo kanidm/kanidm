@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":[["cache",""],["client",""],["client_sync",""],["constants",""],["unix_config",""],["unix_proto",""]]};
+window.SIDEBAR_ITEMS = {"mod":["cache","client","client_sync","constants","unix_config","unix_proto"]};

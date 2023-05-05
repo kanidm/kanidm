@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"attr":[["idm_test",""],["qs_pair_test",""],["qs_test",""],["qs_test_no_init",""]]};

@@ -1,5 +1,5 @@
 (function() {var implementors = {
 "kanidm_proto":[["impl TryFromPrimitive for <a class=\"enum\" href=\"kanidm_proto/v1/enum.UiHint.html\" title=\"enum kanidm_proto::v1::UiHint\">UiHint</a>"]],
-"kanidmd_lib":[["impl TryFromPrimitive for <a class=\"enum\" href=\"kanidmd_lib/value/enum.IndexType.html\" title=\"enum kanidmd_lib::value::IndexType\">IndexType</a>"],["impl TryFromPrimitive for <a class=\"enum\" href=\"kanidmd_lib/value/enum.SyntaxType.html\" title=\"enum kanidmd_lib::value::SyntaxType\">SyntaxType</a>"]],
+"kanidmd_lib":[["impl TryFromPrimitive for <a class=\"enum\" href=\"kanidmd_lib/value/enum.SyntaxType.html\" title=\"enum kanidmd_lib::value::SyntaxType\">SyntaxType</a>"],["impl TryFromPrimitive for <a class=\"enum\" href=\"kanidmd_lib/value/enum.IndexType.html\" title=\"enum kanidmd_lib::value::IndexType\">IndexType</a>"]],
 "sketching":[["impl TryFromPrimitive for <a class=\"enum\" href=\"sketching/enum.EventTag.html\" title=\"enum sketching::EventTag\">EventTag</a>"]]
 };if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

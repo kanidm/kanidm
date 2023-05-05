@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["main",""]],"struct":[["SshAuthorizedOpt",""]]};
+window.SIDEBAR_ITEMS = {"fn":["main"],"static":["CALLSITE","META"],"struct":["SshAuthorizedOpt"]};

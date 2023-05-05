@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["DsConfig",""],["IpaConfig",""],["KaniHttpConfig",""],["KaniLdapConfig",""],["Profile",""],["SearchBasicConfig",""]]};
+window.SIDEBAR_ITEMS = {"struct":["DsConfig","IpaConfig","KaniHttpConfig","KaniLdapConfig","Profile","SearchBasicConfig"]};

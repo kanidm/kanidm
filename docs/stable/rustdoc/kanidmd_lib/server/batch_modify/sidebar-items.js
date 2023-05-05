@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["BatchModifyEvent",""]],"type":[["ModSetValid",""]]};
+window.SIDEBAR_ITEMS = {"struct":["BatchModifyEvent"],"type":["ModSetValid"]};

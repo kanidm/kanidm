@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["Account",""],["DestroySessionTokenEvent",""],["ListUserAuthTokenEvent",""]]};
+window.SIDEBAR_ITEMS = {"struct":["Account","DestroySessionTokenEvent","ListUserAuthTokenEvent"]};

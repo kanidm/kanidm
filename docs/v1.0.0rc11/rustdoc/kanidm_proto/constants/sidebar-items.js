@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":[["DEFAULT_CLIENT_CONFIG_PATH","Because consistency is great! The “system” path for Kanidm client config"],["DEFAULT_CLIENT_CONFIG_PATH_HOME","The user-owned path for Kanidm client config"]]};

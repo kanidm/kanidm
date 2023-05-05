@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["doit",""]],"mod":[["search",""]]};
+window.SIDEBAR_ITEMS = {"fn":["doit"],"mod":["search"],"static":["CALLSITE","META"]};

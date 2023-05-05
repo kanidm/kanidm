@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":[["handle_client",""],["handle_task_client",""],["main",""],["rm_if_exist","Pass this a file path and it’ll look for the file and remove it if it’s there."]],"struct":[["ClientCodec",""],["TaskCodec",""]],"type":[["AsyncTaskRequest",""]]};

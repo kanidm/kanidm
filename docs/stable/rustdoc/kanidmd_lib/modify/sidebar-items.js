@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["Modify",""]],"fn":[["m_assert",""],["m_pres",""],["m_purge",""],["m_remove",""]],"struct":[["ModifyInvalid",""],["ModifyList",""],["ModifyValid",""]]};
+window.SIDEBAR_ITEMS = {"enum":["Modify"],"fn":["m_assert","m_pres","m_purge","m_remove"],"struct":["ModifyInvalid","ModifyList","ModifyValid"]};

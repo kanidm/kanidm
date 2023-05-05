@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["TreeMiddleware",""]]};
+window.SIDEBAR_ITEMS = {"struct":["TreeMiddleware"]};

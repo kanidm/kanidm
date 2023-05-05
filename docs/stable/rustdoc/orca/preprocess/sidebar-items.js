@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["RawOpType",""]],"fn":[["doit",""],["parse_rtime",""]],"struct":[["RawRecord",""],["Record",""]]};
+window.SIDEBAR_ITEMS = {"enum":["RawOpType"],"fn":["doit","parse_rtime"],"static":["CALLSITE","META"],"struct":["RawRecord","Record"]};

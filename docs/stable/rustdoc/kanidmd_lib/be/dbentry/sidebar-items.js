@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["DbBackup",""],["DbEntryVers",""],["DbIdentSpn",""]],"struct":[["DbEntry",""],["DbEntryV1",""],["DbEntryV2",""]]};
+window.SIDEBAR_ITEMS = {"enum":["DbBackup","DbEntryVers","DbIdentSpn"],"struct":["DbEntry","DbEntryV1","DbEntryV2"]};

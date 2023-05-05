@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["E_SYSTEM_CONFIG_V1",""]]};
+window.SIDEBAR_ITEMS = {"struct":["E_SYSTEM_CONFIG_V1"]};

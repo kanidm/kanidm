@@ -1,4 +1,0 @@
-(function() {var implementors = {
-"kanidm_unixd":[["impl Decoder for <a class=\"struct\" href=\"kanidm_unixd/struct.ClientCodec.html\" title=\"struct kanidm_unixd::ClientCodec\">ClientCodec</a>"],["impl Decoder for <a class=\"struct\" href=\"kanidm_unixd/struct.TaskCodec.html\" title=\"struct kanidm_unixd::TaskCodec\">TaskCodec</a>"]],
-"kanidm_unixd_tasks":[["impl Decoder for <a class=\"struct\" href=\"kanidm_unixd_tasks/struct.TaskCodec.html\" title=\"struct kanidm_unixd_tasks::TaskCodec\">TaskCodec</a>"]]
-};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

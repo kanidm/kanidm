@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["read_tokens",""],["write_tokens",""]]};
+window.SIDEBAR_ITEMS = {"fn":["read_tokens","write_tokens"]};

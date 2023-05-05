@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":[["v1_read",""],["v1_scim",""],["v1_write",""]]};
+window.SIDEBAR_ITEMS = {"mod":["v1_read","v1_scim","v1_write"]};

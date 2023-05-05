@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":[["APPLICATION_JSON",""],["KOPID",""],["KSESSIONID",""]],"enum":[["ClientError",""]],"struct":[["KanidmClient",""],["KanidmClientBuilder",""],["KanidmClientConfig",""],["StatusCode","An HTTP status code (`status-code` in RFC 7230 et al.)."]]};

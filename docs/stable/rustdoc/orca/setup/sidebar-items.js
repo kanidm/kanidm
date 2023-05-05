@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["config",""],["doit",""]]};
+window.SIDEBAR_ITEMS = {"fn":["config","doit"],"static":["CALLSITE","META"]};

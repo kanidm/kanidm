@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["KanidmUnixOpt"],"fn":["main"],"static":["CALLSITE","META"],"struct":["KanidmUnixParser"]};

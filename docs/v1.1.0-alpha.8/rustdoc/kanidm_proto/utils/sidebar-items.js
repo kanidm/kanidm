@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":[["get_version",""],["show_version","Shows the version string and current git commit status at build"]]};

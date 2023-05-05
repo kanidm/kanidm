@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["SyncError",""]]};
+window.SIDEBAR_ITEMS = {"enum":["SyncError"]};

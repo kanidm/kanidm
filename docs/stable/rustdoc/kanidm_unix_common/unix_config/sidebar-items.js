@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["HomeAttr",""],["UidAttr",""]],"struct":[["KanidmUnixdConfig",""]]};
+window.SIDEBAR_ITEMS = {"enum":["HomeAttr","UidAttr"],"struct":["KanidmUnixdConfig"]};

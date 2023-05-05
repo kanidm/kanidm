@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `server/lib/src/idm/server.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>server.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-93196c7a1c3542a8.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-3367e395607fafc1.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `server/lib/src/idm/server.rs`."><title>server.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" disabled href="../../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-be46fdc453a55015.css"><script src="../../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -3748,60 +3748,6 @@
 <a href="#3748" id="3748">3748</a>
 <a href="#3749" id="3749">3749</a>
 <a href="#3750" id="3750">3750</a>
-<a href="#3751" id="3751">3751</a>
-<a href="#3752" id="3752">3752</a>
-<a href="#3753" id="3753">3753</a>
-<a href="#3754" id="3754">3754</a>
-<a href="#3755" id="3755">3755</a>
-<a href="#3756" id="3756">3756</a>
-<a href="#3757" id="3757">3757</a>
-<a href="#3758" id="3758">3758</a>
-<a href="#3759" id="3759">3759</a>
-<a href="#3760" id="3760">3760</a>
-<a href="#3761" id="3761">3761</a>
-<a href="#3762" id="3762">3762</a>
-<a href="#3763" id="3763">3763</a>
-<a href="#3764" id="3764">3764</a>
-<a href="#3765" id="3765">3765</a>
-<a href="#3766" id="3766">3766</a>
-<a href="#3767" id="3767">3767</a>
-<a href="#3768" id="3768">3768</a>
-<a href="#3769" id="3769">3769</a>
-<a href="#3770" id="3770">3770</a>
-<a href="#3771" id="3771">3771</a>
-<a href="#3772" id="3772">3772</a>
-<a href="#3773" id="3773">3773</a>
-<a href="#3774" id="3774">3774</a>
-<a href="#3775" id="3775">3775</a>
-<a href="#3776" id="3776">3776</a>
-<a href="#3777" id="3777">3777</a>
-<a href="#3778" id="3778">3778</a>
-<a href="#3779" id="3779">3779</a>
-<a href="#3780" id="3780">3780</a>
-<a href="#3781" id="3781">3781</a>
-<a href="#3782" id="3782">3782</a>
-<a href="#3783" id="3783">3783</a>
-<a href="#3784" id="3784">3784</a>
-<a href="#3785" id="3785">3785</a>
-<a href="#3786" id="3786">3786</a>
-<a href="#3787" id="3787">3787</a>
-<a href="#3788" id="3788">3788</a>
-<a href="#3789" id="3789">3789</a>
-<a href="#3790" id="3790">3790</a>
-<a href="#3791" id="3791">3791</a>
-<a href="#3792" id="3792">3792</a>
-<a href="#3793" id="3793">3793</a>
-<a href="#3794" id="3794">3794</a>
-<a href="#3795" id="3795">3795</a>
-<a href="#3796" id="3796">3796</a>
-<a href="#3797" id="3797">3797</a>
-<a href="#3798" id="3798">3798</a>
-<a href="#3799" id="3799">3799</a>
-<a href="#3800" id="3800">3800</a>
-<a href="#3801" id="3801">3801</a>
-<a href="#3802" id="3802">3802</a>
-<a href="#3803" id="3803">3803</a>
-<a href="#3804" id="3804">3804</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::convert::TryFrom;
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::sync::Arc;
@@ -3836,8 +3782,8 @@
 <span class="kw">use </span><span class="kw">crate</span>::idm::authsession::AuthSession;
 <span class="kw">use </span><span class="kw">crate</span>::idm::credupdatesession::CredentialUpdateSessionMutex;
 <span class="kw">use </span><span class="kw">crate</span>::idm::delayed::{
-    AuthSessionRecord, BackupCodeRemoval, DelayedAction, Oauth2ConsentGrant, Oauth2SessionRecord,
-    PasswordUpgrade, UnixPasswordUpgrade, WebauthnCounterIncrement,
+    AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, UnixPasswordUpgrade,
+    WebauthnCounterIncrement,
 };
 <span class="attr">#[cfg(test)]
 </span><span class="kw">use </span><span class="kw">crate</span>::idm::event::PasswordChangeEvent;
@@ -3858,7 +3804,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::idm::AuthState;
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
-<span class="kw">use </span><span class="kw">crate</span>::value::{Oauth2Session, Session};
+<span class="kw">use </span><span class="kw">crate</span>::value::Session;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>AuthSessionMutex = Arc&lt;Mutex&lt;AuthSession&gt;&gt;;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>CredSoftLockMutex = Arc&lt;Mutex&lt;CredSoftLock&gt;&gt;;
@@ -3924,8 +3870,8 @@
     <span class="kw">pub </span>qs_read: QueryServerReadTransaction&lt;<span class="lifetime">&#39;a</span>&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) domain_keys: CowCellReadTxn&lt;DomainKeys&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) oauth2rs: Oauth2ResourceServersReadTransaction,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) async_tx: Sender&lt;DelayedAction&gt;,
-}
+    <span class="comment">// pub(crate) async_tx: Sender&lt;DelayedAction&gt;,
+</span>}
 
 <span class="kw">pub struct </span>IdmServerProxyWriteTransaction&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="comment">// This does NOT take any read to the memory content, allowing safe
@@ -4094,8 +4040,8 @@
             qs_read: <span class="self">self</span>.qs.read().<span class="kw">await</span>,
             domain_keys: <span class="self">self</span>.domain_keys.read(),
             oauth2rs: <span class="self">self</span>.oauth2rs.read(),
-            async_tx: <span class="self">self</span>.async_tx.clone(),
-        }
+            <span class="comment">// async_tx: self.async_tx.clone(),
+        </span>}
     }
 
     <span class="attr">#[instrument(level = <span class="string">&quot;debug&quot;</span>, skip_all)]
@@ -5847,58 +5793,6 @@
         <span class="comment">// Done!
     </span>}
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>process_oauth2consentgrant(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        o2cg: <span class="kw-2">&amp;</span>Oauth2ConsentGrant,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="kw">let </span>modlist = ModifyList::new_list(<span class="macro">vec!</span>[
-            Modify::Removed(
-                AttrString::from(<span class="string">&quot;oauth2_consent_scope_map&quot;</span>),
-                PartialValue::Refer(o2cg.oauth2_rs_uuid),
-            ),
-            Modify::Present(
-                AttrString::from(<span class="string">&quot;oauth2_consent_scope_map&quot;</span>),
-                Value::OauthScopeMap(o2cg.oauth2_rs_uuid, o2cg.scopes.iter().cloned().collect()),
-            ),
-        ]);
-
-        <span class="self">self</span>.qs_write.internal_modify(
-            <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(o2cg.target_uuid))),
-            <span class="kw-2">&amp;</span>modlist,
-        )
-    }
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>process_oauth2sessionrecord(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        osr: <span class="kw-2">&amp;</span>Oauth2SessionRecord,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), OperationError&gt; {
-        <span class="kw">let </span>session = Value::Oauth2Session(
-            osr.session_id,
-            Oauth2Session {
-                parent: osr.parent_session_id,
-                expiry: osr.expiry,
-                issued_at: osr.issued_at,
-                rs_uuid: osr.rs_uuid,
-            },
-        );
-
-        <span class="macro">info!</span>(session_id = %osr.session_id, <span class="string">&quot;Persisting auth session&quot;</span>);
-
-        <span class="comment">// modify the account to put the session onto it.
-        </span><span class="kw">let </span>modlist = ModifyList::new_append(<span class="string">&quot;oauth2_session&quot;</span>, session);
-
-        <span class="self">self</span>.qs_write
-            .internal_modify(
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(f_eq(<span class="string">&quot;uuid&quot;</span>, PartialValue::Uuid(osr.target_uuid))),
-                <span class="kw-2">&amp;</span>modlist,
-            )
-            .map_err(|e| {
-                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to persist user auth token {:?}&quot;</span>, e);
-                e
-            })
-        <span class="comment">// Done!
-    </span>}
-
     <span class="kw">pub fn </span>process_delayedaction(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         da: DelayedAction,
@@ -5909,9 +5803,7 @@
             DelayedAction::UnixPwUpgrade(upwu) =&gt; <span class="self">self</span>.process_unixpwupgrade(<span class="kw-2">&amp;</span>upwu),
             DelayedAction::WebauthnCounterIncrement(wci) =&gt; <span class="self">self</span>.process_webauthncounterinc(<span class="kw-2">&amp;</span>wci),
             DelayedAction::BackupCodeRemoval(bcr) =&gt; <span class="self">self</span>.process_backupcoderemoval(<span class="kw-2">&amp;</span>bcr),
-            DelayedAction::Oauth2ConsentGrant(o2cg) =&gt; <span class="self">self</span>.process_oauth2consentgrant(<span class="kw-2">&amp;</span>o2cg),
             DelayedAction::AuthSessionRecord(asr) =&gt; <span class="self">self</span>.process_authsessionrecord(<span class="kw-2">&amp;</span>asr),
-            DelayedAction::Oauth2SessionRecord(osr) =&gt; <span class="self">self</span>.process_oauth2sessionrecord(<span class="kw-2">&amp;</span>osr),
         }
     }
 
@@ -7607,4 +7499,4 @@
     </span>}
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.2 (9eb3afe9e 2023-03-27)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0 (84c898d65 2023-04-16)" data-search-js="search-8a59a8356673ec1f.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

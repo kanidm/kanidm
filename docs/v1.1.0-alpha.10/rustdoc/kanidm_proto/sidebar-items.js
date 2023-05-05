@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":[["constants",""],["internal",""],["messages",""],["oauth2",""],["scim_v1",""],["utils",""],["v1",""]]};

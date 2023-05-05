@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":[["readonly","Check a given file’s metadata is read-only for the current user (true = read-only)"]]};

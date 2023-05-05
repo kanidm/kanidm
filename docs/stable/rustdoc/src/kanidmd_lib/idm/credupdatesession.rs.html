@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `server/lib/src/idm/credupdatesession.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>credupdatesession.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-93196c7a1c3542a8.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-3367e395607fafc1.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `server/lib/src/idm/credupdatesession.rs`."><title>credupdatesession.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" disabled href="../../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-be46fdc453a55015.css"><script src="../../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../kanidmd_lib/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -2529,6 +2529,23 @@
 <a href="#2529" id="2529">2529</a>
 <a href="#2530" id="2530">2530</a>
 <a href="#2531" id="2531">2531</a>
+<a href="#2532" id="2532">2532</a>
+<a href="#2533" id="2533">2533</a>
+<a href="#2534" id="2534">2534</a>
+<a href="#2535" id="2535">2535</a>
+<a href="#2536" id="2536">2536</a>
+<a href="#2537" id="2537">2537</a>
+<a href="#2538" id="2538">2538</a>
+<a href="#2539" id="2539">2539</a>
+<a href="#2540" id="2540">2540</a>
+<a href="#2541" id="2541">2541</a>
+<a href="#2542" id="2542">2542</a>
+<a href="#2543" id="2543">2543</a>
+<a href="#2544" id="2544">2544</a>
+<a href="#2545" id="2545">2545</a>
+<a href="#2546" id="2546">2546</a>
+<a href="#2547" id="2547">2547</a>
+<a href="#2548" id="2548">2548</a>
 </pre><pre class="rust"><code><span class="kw">use </span>core::ops::Deref;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::fmt;
@@ -3148,17 +3165,23 @@
                         %account.uuid,
                         <span class="string">&quot;Initiating Credential Update Session - Previous session {} has expired&quot;</span>, session_id
                     );
-                    <span class="kw-2">*</span>max_ttl
                 } <span class="kw">else </span>{
-                    <span class="macro">security_info!</span>(
+                    <span class="comment">// The former session has been orphaned while in use. This can be from someone
+                    // ctrl-c during their use of the session or refreshing the page without committing.
+                    //
+                    // we don&#39;t try to exclusive lock the token here with the current time as we previously
+                    // did. This is because with async replication, there isn&#39;t a guarantee this will actually
+                    // be sent to another server &quot;soon enough&quot; to prevent abuse on the separate server. So
+                    // all this &quot;lock&quot; actually does is annoy legitimate users and not stop abuse. We
+                    // STILL keep the InProgress state though since we check it on commit, so this
+                    // forces the previous orphan session to be immediately invalidated!
+                    </span><span class="macro">security_info!</span>(
                         %entry,
                         %account.uuid,
-                        <span class="string">&quot;Rejecting Update Session - Intent Token is in use {}. Try again later&quot;</span>, session_id
+                        <span class="string">&quot;Initiating Update Session - Intent Token was in use {} - this will be invalidated.&quot;</span>, session_id
                     );
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(OperationError::Wait(
-                        OffsetDateTime::unix_epoch() + <span class="kw-2">*</span>session_ttl,
-                    ));
-                }
+                };
+                <span class="kw-2">*</span>max_ttl
             }
             <span class="prelude-val">Some</span>(IntentTokenState::Valid { max_ttl }) =&gt; {
                 <span class="comment">// Check the TTL
@@ -4189,15 +4212,26 @@
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(cur, <span class="prelude-val">Err</span>(OperationError::SessionExpired)));
 
         <span class="comment">// exchange intent token - success
-        </span><span class="kw">let </span>cur = idms_prox_write.exchange_intent_credential_update(intent_tok.clone(), ct);
+        </span><span class="kw">let </span>(cust_a, _c_status) = idms_prox_write
+            .exchange_intent_credential_update(intent_tok.clone(), ct)
+            .unwrap();
 
-        <span class="macro">assert!</span>(cur.is_ok());
+        <span class="comment">// Session in progress - This will succeed and then block the former success from
+        // committing.
+        </span><span class="kw">let </span>(cust_b, _c_status) = idms_prox_write
+            .exchange_intent_credential_update(intent_tok, ct + Duration::from_secs(<span class="number">1</span>))
+            .unwrap();
 
-        <span class="comment">// Already used.
-        </span><span class="kw">let </span>cur = idms_prox_write.exchange_intent_credential_update(intent_tok, ct);
+        <span class="kw">let </span>cur = idms_prox_write.commit_credential_update(<span class="kw-2">&amp;</span>cust_a, ct);
 
-        <span class="macro">trace!</span>(<span class="question-mark">?</span>cur);
+        <span class="comment">// Fails as the txn was orphaned.
+        </span><span class="macro">trace!</span>(<span class="question-mark">?</span>cur);
         <span class="macro">assert!</span>(cur.is_err());
+
+        <span class="comment">// Success - this was the second use of the token and is valid.
+        </span><span class="kw">let _ </span>= idms_prox_write.commit_credential_update(<span class="kw-2">&amp;</span>cust_b, ct);
+
+        idms_prox_write.commit().expect(<span class="string">&quot;Failed to commit txn&quot;</span>);
     }
 
     <span class="kw">async fn </span>setup_test_session(
@@ -5061,4 +5095,4 @@
     // Others in the future
 </span>}
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.2 (9eb3afe9e 2023-03-27)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kanidmd_lib" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0 (84c898d65 2023-04-16)" data-search-js="search-8a59a8356673ec1f.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

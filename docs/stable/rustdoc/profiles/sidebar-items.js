@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["apply_profile",""]]};
+window.SIDEBAR_ITEMS = {"fn":["apply_profile"]};

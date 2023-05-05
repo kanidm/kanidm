@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":[["Access",""],["AccessResult",""]],"mod":[["profiles",""]],"struct":[["AccessControls",""],["AccessControlsReadTransaction",""],["AccessControlsWriteTransaction",""],["AccessEffectivePermission",""]],"trait":[["AccessControlsTransaction",""]]};

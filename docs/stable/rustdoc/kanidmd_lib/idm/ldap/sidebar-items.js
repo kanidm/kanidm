@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["LdapResponseState",""],["LdapSession",""]],"struct":[["LdapBoundToken",""],["LdapServer",""]]};
+window.SIDEBAR_ITEMS = {"enum":["LdapResponseState","LdapSession"],"struct":["LdapBoundToken","LdapServer"]};
