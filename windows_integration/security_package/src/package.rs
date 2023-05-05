@@ -1,8 +1,10 @@
+use std::collections::{HashMap, BTreeMap};
 use std::ffi::c_void;
 use std::mem::size_of;
 use std::ptr::null_mut;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use kanidm_proto::v1::UnixUserToken;
 use once_cell::sync::Lazy;
 use tracing::{event, span, Level};
 use kanidm_windows::secpkg::ap_proto::{AuthPkgRequest, AuthPkgResponse};
@@ -24,7 +26,7 @@ use windows::Win32::System::Kernel::STRING;
 
 use crate::client::KanidmWindowsClient;
 use crate::mem::{allocate_mem_client, allocate_mem_lsa, MemoryAllocationError};
-use crate::structs::{AuthInfo, ProfileBuffer};
+use crate::structs::{AuthInfo, ProfileBuffer, LogonId};
 use crate::PROGRAM_DIR;
 use crate::protocol::v1::handle_request;
 
@@ -43,6 +45,7 @@ pub(crate) static mut KANIDM_WINDOWS_CLIENT: Lazy<Option<KanidmWindowsClient>> =
 });
 static mut AP_DISPATCH_TABLE: Option<LSA_DISPATCH_TABLE> = None;
 static mut AP_PACKAGE_ID: u32 = 0;
+static mut AP_LOGON_IDS: Lazy<HashMap<LogonId, UnixUserToken>> = Lazy::new(|| HashMap::new());
 static mut SP_PACKAGE_ID: usize = 0;
 static mut SP_SECPKG_PARAMS: Option<SECPKG_PARAMETERS> = None;
 static mut SP_FUNC_TABLE: Option<LSA_SECPKG_FUNCTION_TABLE> = None;
@@ -188,7 +191,7 @@ pub async extern "system" fn ApLogonUser(
     };
 
     // * Prepare & return profile buffer
-    let profile_buffer = ProfileBuffer { token: token };
+    let profile_buffer = ProfileBuffer { token: token.clone() };
     let profile_buffer_ptr = match allocate_mem_client(
         profile_buffer,
         &dispatch_table.AllocateClientBuffer,
@@ -349,6 +352,10 @@ pub async extern "system" fn ApLogonUser(
     // Set return status
     unsafe {
         *out_substatus = 0;
+
+        // Save the Logon ID
+        let logon_id = LogonId::from((*luid_ptr).clone());
+        AP_LOGON_IDS.insert(logon_id, token.clone());
     }
 
     STATUS_SUCCESS
@@ -406,7 +413,12 @@ pub async extern "system" fn ApCallPackage(
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
-pub async extern "system" fn ApLogonTerminated(logon_id: *const LUID) {}
+pub async extern "system" fn ApLogonTerminated(luid: *const LUID) {
+    unsafe {
+        let logon_id = LogonId::from(*luid);
+        AP_LOGON_IDS.remove(&logon_id);
+    }
+}
 
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
