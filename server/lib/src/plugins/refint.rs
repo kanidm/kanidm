@@ -221,12 +221,19 @@ impl ReferentialIntegrity {
 
         // Fast Path
         let mut vsiter = cand.iter().flat_map(|c| {
-            // If it's dyngroup, skip member.
-            // Skip memberOf.
+            // If it's dyngroup, skip member since this will be reset in the next step.
+            let dyn_group = c.attribute_equality("class", &PVCLASS_DYNGROUP);
 
-            ref_types
-                .values()
-                .filter_map(move |rtype| c.get_ava_set(&rtype.name))
+            ref_types.values().filter_map(move |rtype| {
+                let skip_mb = dyn_group && rtype.name == "member";
+                // Skip memberOf.
+                let skip_mo = rtype.name == "memberof";
+                if skip_mb || skip_mo {
+                    None
+                } else {
+                    c.get_ava_set(&rtype.name)
+                }
+            })
         });
 
         // Could check len first?
