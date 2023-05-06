@@ -1195,4 +1195,9 @@ impl ValueSetT for ValueSetApiToken {
         // This is what ties us as a type that can be refint checked.
         Some(Box::new(self.map.keys().copied()))
     }
+
+    fn migrate_session_to_apitoken(&self) -> Result<ValueSet, OperationError> {
+        // We are already in the api token format, don't do anything.
+        Ok(Box::new(self.clone()))
+    }
 }
