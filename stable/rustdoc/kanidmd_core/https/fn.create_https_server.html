@@ -6,7 +6,7 @@
     trust_x_forward_for: <a class="primitive" href="https://doc.rust-lang.org/1.69.0/std/primitive.bool.html">bool</a>,
     cookie_key: &amp;[<a class="primitive" href="https://doc.rust-lang.org/1.69.0/std/primitive.u8.html">u8</a>; <a class="primitive" href="https://doc.rust-lang.org/1.69.0/std/primitive.array.html">32</a>],
     jws_signer: JwsSigner,
-    status_ref: &amp;'static <a class="struct" href="../../kanidmd_lib/status/struct.StatusActor.html" title="struct kanidmd_lib::status::StatusActor">StatusActor</a>,
+    status_ref: &amp;'static StatusActor,
     qe_w_ref: &amp;'static <a class="struct" href="../actors/v1_write/struct.QueryServerWriteV1.html" title="struct kanidmd_core::actors::v1_write::QueryServerWriteV1">QueryServerWriteV1</a>,
     qe_r_ref: &amp;'static <a class="struct" href="../actors/v1_read/struct.QueryServerReadV1.html" title="struct kanidmd_core::actors::v1_read::QueryServerReadV1">QueryServerReadV1</a>,
     rx: Receiver&lt;<a class="enum" href="../enum.CoreAction.html" title="enum kanidmd_core::CoreAction">CoreAction</a>&gt;

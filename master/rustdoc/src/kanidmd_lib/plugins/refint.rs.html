@@ -893,6 +893,77 @@
 <a href="#893" id="893">893</a>
 <a href="#894" id="894">894</a>
 <a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
+<a href="#960" id="960">960</a>
+<a href="#961" id="961">961</a>
+<a href="#962" id="962">962</a>
+<a href="#963" id="963">963</a>
+<a href="#964" id="964">964</a>
+<a href="#965" id="965">965</a>
+<a href="#966" id="966">966</a>
 </pre><pre class="rust"><code><span class="comment">// Referential Integrity
 //
 // Given an entry, modification or change, ensure that all referential links
@@ -916,9 +987,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::schema::SchemaTransaction;
 
-<span class="comment">// NOTE: This *must* be after base.rs!!!
-
-</span><span class="kw">pub struct </span>ReferentialIntegrity;
+<span class="kw">pub struct </span>ReferentialIntegrity;
 
 <span class="kw">impl </span>ReferentialIntegrity {
     <span class="kw">fn </span>check_uuids_exist(
@@ -1118,9 +1187,19 @@
 
         <span class="comment">// Fast Path
         </span><span class="kw">let </span><span class="kw-2">mut </span>vsiter = cand.iter().flat_map(|c| {
-            ref_types
-                .values()
-                .filter_map(<span class="kw">move </span>|rtype| c.get_ava_set(<span class="kw-2">&amp;</span>rtype.name))
+            <span class="comment">// If it&#39;s dyngroup, skip member since this will be reset in the next step.
+            </span><span class="kw">let </span>dyn_group = c.attribute_equality(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span>PVCLASS_DYNGROUP);
+
+            ref_types.values().filter_map(<span class="kw">move </span>|rtype| {
+                <span class="kw">let </span>skip_mb = dyn_group &amp;&amp; rtype.name == <span class="string">&quot;member&quot;</span>;
+                <span class="comment">// Skip memberOf.
+                </span><span class="kw">let </span>skip_mo = rtype.name == <span class="string">&quot;memberof&quot;</span>;
+                <span class="kw">if </span>skip_mb || skip_mo {
+                    <span class="prelude-val">None
+                </span>} <span class="kw">else </span>{
+                    c.get_ava_set(<span class="kw-2">&amp;</span>rtype.name)
+                }
+            })
         });
 
         <span class="comment">// Could check len first?
@@ -1147,6 +1226,7 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
+    <span class="kw">use </span>kanidm_proto::v1::Filter <span class="kw">as </span>ProtoFilter;
     <span class="kw">use </span>kanidm_proto::v1::PluginError;
 
     <span class="kw">use </span><span class="kw">crate</span>::event::CreateEvent;
@@ -1784,6 +1864,68 @@
         </span><span class="macro">assert!</span>(entry.attribute_equality(<span class="string">&quot;user_auth_token_session&quot;</span>, <span class="kw-2">&amp;</span>pv_parent_id));
         <span class="comment">// The oauth2 session is removed.
         </span><span class="macro">assert!</span>(!entry.attribute_equality(<span class="string">&quot;oauth2_session&quot;</span>, <span class="kw-2">&amp;</span>pv_session_id));
+
+        <span class="macro">assert!</span>(server_txn.commit().is_ok());
+    }
+
+    <span class="attr">#[qs_test]
+    </span><span class="kw">async fn </span>test_ignore_references_for_regen(server: <span class="kw-2">&amp;</span>QueryServer) {
+        <span class="comment">// Test that we ignore certain reference types that are specifically
+        // regenerated in the code paths that *follow* refint. We have to have
+        // refint before memberof just due to the nature of how it works. But
+        // we still want to ignore invalid memberOf values and certain invalid
+        // member sets from dyngroups to allow them to self-heal at run time.
+        </span><span class="kw">let </span>curtime = duration_from_epoch_now();
+        <span class="kw">let </span><span class="kw-2">mut </span>server_txn = server.write(curtime).<span class="kw">await</span>;
+
+        <span class="kw">let </span>tgroup_uuid = Uuid::new_v4();
+        <span class="kw">let </span>dyn_uuid = Uuid::new_v4();
+        <span class="kw">let </span>inv_mo_uuid = Uuid::new_v4();
+        <span class="kw">let </span>inv_mb_uuid = Uuid::new_v4();
+
+        <span class="kw">let </span>e_dyn = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;object&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;dyngroup&quot;</span>)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(dyn_uuid)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;test_dyngroup&quot;</span>)),
+            (<span class="string">&quot;member&quot;</span>, Value::Refer(inv_mb_uuid)),
+            (
+                <span class="string">&quot;dyngroup_filter&quot;</span>,
+                Value::JsonFilt(ProtoFilter::Eq(<span class="string">&quot;name&quot;</span>.to_string(), <span class="string">&quot;testgroup&quot;</span>.to_string()))
+            )
+        );
+
+        <span class="kw">let </span>e_group: Entry&lt;EntryInit, EntryNew&gt; = <span class="macro">entry_init!</span>(
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;group&quot;</span>)),
+            (<span class="string">&quot;class&quot;</span>, Value::new_class(<span class="string">&quot;memberof&quot;</span>)),
+            (<span class="string">&quot;name&quot;</span>, Value::new_iname(<span class="string">&quot;testgroup&quot;</span>)),
+            (<span class="string">&quot;uuid&quot;</span>, Value::Uuid(tgroup_uuid)),
+            (<span class="string">&quot;memberof&quot;</span>, Value::Refer(inv_mo_uuid))
+        );
+
+        <span class="kw">let </span>ce = CreateEvent::new_internal(<span class="macro">vec!</span>[e_dyn, e_group]);
+        <span class="macro">assert!</span>(server_txn.create(<span class="kw-2">&amp;</span>ce).is_ok());
+
+        <span class="kw">let </span>dyna = server_txn
+            .internal_search_uuid(dyn_uuid)
+            .expect(<span class="string">&quot;Failed to access dyn group&quot;</span>);
+
+        <span class="kw">let </span>dyn_member = dyna
+            .get_ava_refer(<span class="string">&quot;member&quot;</span>)
+            .expect(<span class="string">&quot;Failed to get member attribute&quot;</span>);
+        <span class="macro">assert!</span>(dyn_member.len() == <span class="number">1</span>);
+        <span class="macro">assert!</span>(dyn_member.contains(<span class="kw-2">&amp;</span>tgroup_uuid));
+
+        <span class="kw">let </span>group = server_txn
+            .internal_search_uuid(tgroup_uuid)
+            .expect(<span class="string">&quot;Failed to access mo group&quot;</span>);
+
+        <span class="kw">let </span>grp_member = group
+            .get_ava_refer(<span class="string">&quot;memberof&quot;</span>)
+            .expect(<span class="string">&quot;Failed to get memberof attribute&quot;</span>);
+        <span class="macro">assert!</span>(grp_member.len() == <span class="number">1</span>);
+        <span class="macro">assert!</span>(grp_member.contains(<span class="kw-2">&amp;</span>dyn_uuid));
 
         <span class="macro">assert!</span>(server_txn.commit().is_ok());
     }
