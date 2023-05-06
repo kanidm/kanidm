@@ -1,14 +1,16 @@
 ---
-name: pykanidm - mypy
+name: PyKanidm tests
 
 "on":
   push:
+    branches:
+      - "master"
   pull_request:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  pykanidm_mypy:
+  tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -25,6 +27,15 @@ jobs:
         run: |
           cd pykanidm
           python --version
-          python -m pip install --quiet --no-cache-dir --upgrade poetry
           poetry install
           poetry run mypy --strict kanidm tests
+      - name: Running Linting
+        run: |
+          cd pykanidm
+          poetry install
+          poetry run ruff --strict kanidm tests
+      - name: Running pytest
+        run: |
+          cd pykanidm
+          poetry install
+          poetry run pytest -v
