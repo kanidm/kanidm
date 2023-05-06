@@ -59,6 +59,7 @@ jobs:
       - docs_master
       - generate_tags
     runs-on: ubuntu-latest
+
     steps:
       - name: Download previously built docs
         uses: actions/download-artifact@v3
@@ -75,11 +76,14 @@ jobs:
           ln -s ${{ needs.generate_tags.outputs.latest}}/ stable && \
           cd ..
           ls -la docs/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
           # Upload entire repository
           path: 'docs/'
+        if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2
+        if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
