@@ -21,8 +21,6 @@ use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 
-// NOTE: This *must* be after base.rs!!!
-
 pub struct ReferentialIntegrity;
 
 impl ReferentialIntegrity {
@@ -223,9 +221,19 @@ impl ReferentialIntegrity {
 
         // Fast Path
         let mut vsiter = cand.iter().flat_map(|c| {
-            ref_types
-                .values()
-                .filter_map(move |rtype| c.get_ava_set(&rtype.name))
+            // If it's dyngroup, skip member since this will be reset in the next step.
+            let dyn_group = c.attribute_equality("class", &PVCLASS_DYNGROUP);
+
+            ref_types.values().filter_map(move |rtype| {
+                let skip_mb = dyn_group && rtype.name == "member";
+                // Skip memberOf.
+                let skip_mo = rtype.name == "memberof";
+                if skip_mb || skip_mo {
+                    None
+                } else {
+                    c.get_ava_set(&rtype.name)
+                }
+            })
         });
 
         // Could check len first?
@@ -252,6 +260,7 @@ impl ReferentialIntegrity {
 
 #[cfg(test)]
 mod tests {
+    use kanidm_proto::v1::Filter as ProtoFilter;
     use kanidm_proto::v1::PluginError;
 
     use crate::event::CreateEvent;
@@ -889,6 +898,68 @@ mod tests {
         assert!(entry.attribute_equality("user_auth_token_session", &pv_parent_id));
         // The oauth2 session is removed.
         assert!(!entry.attribute_equality("oauth2_session", &pv_session_id));
+
+        assert!(server_txn.commit().is_ok());
+    }
+
+    #[qs_test]
+    async fn test_ignore_references_for_regen(server: &QueryServer) {
+        // Test that we ignore certain reference types that are specifically
+        // regenerated in the code paths that *follow* refint. We have to have
+        // refint before memberof just due to the nature of how it works. But
+        // we still want to ignore invalid memberOf values and certain invalid
+        // member sets from dyngroups to allow them to self-heal at run time.
+        let curtime = duration_from_epoch_now();
+        let mut server_txn = server.write(curtime).await;
+
+        let tgroup_uuid = Uuid::new_v4();
+        let dyn_uuid = Uuid::new_v4();
+        let inv_mo_uuid = Uuid::new_v4();
+        let inv_mb_uuid = Uuid::new_v4();
+
+        let e_dyn = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("group")),
+            ("class", Value::new_class("dyngroup")),
+            ("uuid", Value::Uuid(dyn_uuid)),
+            ("name", Value::new_iname("test_dyngroup")),
+            ("member", Value::Refer(inv_mb_uuid)),
+            (
+                "dyngroup_filter",
+                Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
+            )
+        );
+
+        let e_group: Entry<EntryInit, EntryNew> = entry_init!(
+            ("class", Value::new_class("group")),
+            ("class", Value::new_class("memberof")),
+            ("name", Value::new_iname("testgroup")),
+            ("uuid", Value::Uuid(tgroup_uuid)),
+            ("memberof", Value::Refer(inv_mo_uuid))
+        );
+
+        let ce = CreateEvent::new_internal(vec![e_dyn, e_group]);
+        assert!(server_txn.create(&ce).is_ok());
+
+        let dyna = server_txn
+            .internal_search_uuid(dyn_uuid)
+            .expect("Failed to access dyn group");
+
+        let dyn_member = dyna
+            .get_ava_refer("member")
+            .expect("Failed to get member attribute");
+        assert!(dyn_member.len() == 1);
+        assert!(dyn_member.contains(&tgroup_uuid));
+
+        let group = server_txn
+            .internal_search_uuid(tgroup_uuid)
+            .expect("Failed to access mo group");
+
+        let grp_member = group
+            .get_ava_refer("memberof")
+            .expect("Failed to get memberof attribute");
+        assert!(grp_member.len() == 1);
+        assert!(grp_member.contains(&dyn_uuid));
 
         assert!(server_txn.commit().is_ok());
     }
