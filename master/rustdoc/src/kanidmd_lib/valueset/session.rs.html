@@ -1196,6 +1196,11 @@
 <a href="#1196" id="1196">1196</a>
 <a href="#1197" id="1197">1197</a>
 <a href="#1198" id="1198">1198</a>
+<a href="#1199" id="1199">1199</a>
+<a href="#1200" id="1200">1200</a>
+<a href="#1201" id="1201">1201</a>
+<a href="#1202" id="1202">1202</a>
+<a href="#1203" id="1203">1203</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::collections::btree_map::Entry <span class="kw">as </span>BTreeEntry;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 
@@ -2392,6 +2397,11 @@
     <span class="kw">fn </span>as_ref_uuid_iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = Uuid&gt; + <span class="lifetime">&#39;_</span>&gt;&gt; {
         <span class="comment">// This is what ties us as a type that can be refint checked.
         </span><span class="prelude-val">Some</span>(Box::new(<span class="self">self</span>.map.keys().copied()))
+    }
+
+    <span class="kw">fn </span>migrate_session_to_apitoken(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;ValueSet, OperationError&gt; {
+        <span class="comment">// We are already in the api token format, don&#39;t do anything.
+        </span><span class="prelude-val">Ok</span>(Box::new(<span class="self">self</span>.clone()))
     }
 }
 </code></pre></div>
