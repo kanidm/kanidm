@@ -1,6 +1,29 @@
 use crate::prelude::*;
 use std::collections::BTreeMap;
 
+
+fn repl_initialise(
+    from: &mut QueryServerReadTransaction<'_>,
+    to: &mut QueryServerWriteTransaction<'_>
+) -> Result<(), OperationError> {
+    // First, build the refresh context.
+    let refresh_context = from.supplier_provide_refresh()?;
+
+    // Verify content of the refresh
+    // eprintln!("{:#?}", refresh_context);
+
+    // Apply it to the server
+    to.consumer_apply_refresh(&refresh_context)?;
+
+    // Need same d_uuid
+    assert_eq!(
+        from.get_domain_uuid(),
+        to.get_domain_uuid()
+    );
+
+    Ok(())
+}
+
 #[qs_pair_test]
 async fn test_repl_refresh_basic(server_a: &QueryServer, server_b: &QueryServer) {
     // Rebuild / refresh the content of server a with the content from b.
@@ -12,28 +35,12 @@ async fn test_repl_refresh_basic(server_a: &QueryServer, server_b: &QueryServer)
 
     let mut server_b_txn = server_b.read().await;
 
-    // First, build the refresh context.
-    let refresh_context = server_b_txn
-        .supplier_provide_refresh()
-        .expect("Failed to build refresh");
-
-    // Verify content of the refresh
-    // eprintln!("{:#?}", refresh_context);
-
-    // Apply it to the server
-    assert!(server_a_txn
-        .consumer_apply_refresh(&refresh_context)
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
         .is_ok());
 
     // Verify the content of server_a and server_b are identical.
     let mut server_a_txn = server_a.read().await;
-
-    // Need same d_uuid
-    assert_eq!(
-        server_a_txn.get_domain_uuid(),
-        server_b_txn.get_domain_uuid()
-    );
 
     let domain_entry_a = server_a_txn
         .internal_search_uuid(UUID_DOMAIN_INFO)
@@ -96,4 +103,28 @@ async fn test_repl_refresh_basic(server_a: &QueryServer, server_b: &QueryServer)
     // to go!
 
     // Both servers will be post-test validated.
+}
+
+#[qs_pair_test]
+async fn test_repl_increment_basic(server_a: &QueryServer, server_b: &QueryServer) {
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+
+    // Check ruv
+    //  - should be same
+    //  - incremental
+    //      - no change.
+
+    // Add an entry.
+
+    // Do a ruv check.
+
+    // Incremental.
+    // Should now be on the other partner.
+
 }

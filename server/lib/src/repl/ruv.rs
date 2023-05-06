@@ -8,20 +8,30 @@ use idlset::v2::IDLBitRange;
 use kanidm_proto::v1::ConsistencyError;
 
 use crate::prelude::*;
-use crate::repl::cid::Cid;
+use crate::repl::cid::{Cid, InvCid};
 use std::fmt;
 
 pub struct ReplicationUpdateVector {
-    // This sorts by time. Should we look up by IDL or by UUID?
-    // I think IDL, because when we need to actually do the look ups we'll need
-    // to send this list to the BE to get the affected entries.
+    // This sorts by time. We store the set of entry id's that are affected in an operation.
+    // Due to how replication state works, it is possibly that id's in these sets *may* not
+    // exist anymore, so these bit ranges likely need intersection with allids before use.
     data: BptreeMap<Cid, IDLBitRange>,
+    // This sorts by Server ID. It's used for the RUV to build ranges for you ... guessed it
+    // range queries. These are used to build the set of differences that need to be sent in
+    // a replication operation.
+    //
+    // we need a way to invert the cid, but without duplication? Maybe an invert cid type?
+    // This way it still orders things in the right order by time stamp just searches by cid
+    // first.
+    ranged: BptreeMap<InvCid, ()>,
 }
 
 impl Default for ReplicationUpdateVector {
     fn default() -> Self {
-        let data: BptreeMap<Cid, IDLBitRange> = BptreeMap::new();
-        ReplicationUpdateVector { data }
+        ReplicationUpdateVector {
+            data: BptreeMap::default(),
+            ranged: BptreeMap::default(),
+        }
     }
 }
 
@@ -29,18 +39,21 @@ impl ReplicationUpdateVector {
     pub fn write(&self) -> ReplicationUpdateVectorWriteTransaction<'_> {
         ReplicationUpdateVectorWriteTransaction {
             data: self.data.write(),
+            ranged: self.data.write(),
         }
     }
 
     pub fn read(&self) -> ReplicationUpdateVectorReadTransaction<'_> {
         ReplicationUpdateVectorReadTransaction {
             data: self.data.read(),
+            ranged: self.data.read(),
         }
     }
 }
 
 pub struct ReplicationUpdateVectorWriteTransaction<'a> {
     data: BptreeMapWriteTxn<'a, Cid, IDLBitRange>,
+    ranged: BptreeMapWriteTxn<'a, Cid, ()>,
 }
 
 impl<'a> fmt::Debug for ReplicationUpdateVectorWriteTransaction<'a> {
@@ -65,6 +78,7 @@ pub trait ReplicationUpdateVectorTransaction {
         results: &mut Vec<Result<(), ConsistencyError>>,
     ) {
         // Okay rebuild the RUV in parallel.
+
         let mut check_ruv: BTreeMap<Cid, IDLBitRange> = BTreeMap::new();
         for entry in entries {
             // The DB id we need.
@@ -149,6 +163,10 @@ pub trait ReplicationUpdateVectorTransaction {
             // results.push(Err(ConsistencyError::RuvInconsistent(sk.to_string())));
             snap_next = snap_iter.next();
         }
+
+        // Assert that the content of the ranged set matches the data set and has the
+        // correct set of values.
+        todo!();
 
         // Done!
     }
@@ -246,10 +264,19 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
     pub fn trim_up_to(&mut self, cid: &Cid) -> Result<IDLBitRange, OperationError> {
         let mut idl = IDLBitRange::new();
 
+        // Here we can use the for_each here to be trimming the
+        // range set since that is not ordered by time, we need
+        // to do fragmented searches over this no matter what we
+        // try to do.
+
         self.data
             .range((Unbounded, Excluded(cid)))
-            .for_each(|(_, ex_idl)| {
+            .for_each(|(cid, ex_idl)| {
                 idl = ex_idl as &_ | &idl;
+
+                // Remove the reverse version of the cid from the ranged index.
+                let revcid: RevCid = cid.into();
+                self.ranged.remove(&revcid);
             });
 
         // Trim all cid's up to this value, and return the range of IDs

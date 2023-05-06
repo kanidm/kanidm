@@ -654,6 +654,11 @@ pub trait BackendTransaction {
         Ok(entries_filtered)
     }
 
+    /// Retrieve a current snapshot of the RUV as it exists in the database.
+    fn get_ruv_snapshot(&mut self) -> Result<(), OperationError> {
+        todo!();
+    }
+
     /// Given a filter, assert some condition exists.
     /// Basically, this is a specialised case of search, where we don't need to
     /// load any candidates if they match. This is heavily used in uuid

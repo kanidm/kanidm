@@ -12,7 +12,24 @@ pub struct Cid {
     pub s_uuid: Uuid,
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq, PartialOrd, Ord, Hash)]
+/// This is the same as CID, but has the fields inverted for the purposes of PartialOrd.
+/// The reason to have this change is so that in some structures we can search ranges
+/// where the server uuid is used as the beginning and end of the value - we can abuse this
+/// with Duration::MAX for the ranges.
+pub struct InvCid {
+    // Mental note: Derive ord always checks in order of struct fields.
+    pub s_uuid: Uuid,
+    pub ts: Duration,
+}
+
 impl fmt::Display for Cid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:032}-{}", self.ts.as_nanos(), self.s_uuid)
+    }
+}
+
+impl fmt::Display for InvCid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:032}-{}", self.ts.as_nanos(), self.s_uuid)
     }
@@ -63,6 +80,18 @@ impl Cid {
                 ts: r,
             })
             .ok_or(OperationError::InvalidReplChangeId)
+    }
+}
+
+impl From<&Cid> for InvCid {
+    fn from(cid: &Cid) -> InvCid {
+        InvCid { s_uuid: cid.s_uuid, ts: cid.ts }
+    }
+}
+
+impl From<Cid> for InvCid {
+    fn from(cid: Cid) -> InvCid {
+        InvCid { s_uuid: cid.s_uuid, ts: cid.ts }
     }
 }
 
