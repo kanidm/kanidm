@@ -33,7 +33,7 @@ jobs:
         run: |
           cd pykanidm
           poetry install
-          poetry run ruff --strict kanidm tests
+          poetry run ruff kanidm tests
       - name: Running pytest
         run: |
           cd pykanidm
