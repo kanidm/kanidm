@@ -55,7 +55,6 @@ jobs:
           mkdir -p ./docs/
           mv ./*book/book ./docs/${{ inputs.tag }}
           mkdir -p ./docs/${{ inputs.tag }}/rustdoc/
-          mv ./*book/book/ ./docs/${{ inputs.tag }}
           find ./target/doc/ -name .lock -exec rm "{}" \;
           mv ./target/doc/* ./docs/${{ inputs.tag }}/rustdoc/
       - name: pykanidm docs
