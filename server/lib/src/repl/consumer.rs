@@ -15,7 +15,6 @@ impl<'a> QueryServerReadTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     pub fn consumer_get_state(&mut self) -> Result<(), OperationError> {
-
         // We need the RUV as a state of
         //
         // [ s_uuid, cid_min, cid_max ]

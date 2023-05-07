@@ -1489,6 +1489,7 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     pub(crate) fn danger_delete_all_db_content(&mut self) -> Result<(), OperationError> {
+        self.get_ruv().clear();
         unsafe {
             self.get_idlayer()
                 .purge_id2entry()

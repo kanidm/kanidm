@@ -1,10 +1,9 @@
 use crate::prelude::*;
 use std::collections::BTreeMap;
 
-
 fn repl_initialise(
     from: &mut QueryServerReadTransaction<'_>,
-    to: &mut QueryServerWriteTransaction<'_>
+    to: &mut QueryServerWriteTransaction<'_>,
 ) -> Result<(), OperationError> {
     // First, build the refresh context.
     let refresh_context = from.supplier_provide_refresh()?;
@@ -16,10 +15,7 @@ fn repl_initialise(
     to.consumer_apply_refresh(&refresh_context)?;
 
     // Need same d_uuid
-    assert_eq!(
-        from.get_domain_uuid(),
-        to.get_domain_uuid()
-    );
+    assert_eq!(from.get_domain_uuid(), to.get_domain_uuid());
 
     Ok(())
 }
@@ -126,5 +122,4 @@ async fn test_repl_increment_basic(server_a: &QueryServer, server_b: &QueryServe
 
     // Incremental.
     // Should now be on the other partner.
-
 }
