@@ -7,6 +7,16 @@ name: GitHub Pages
       - "master"
   pull_request:
 
+permissions:
+  id-token: write
+  actions: read
+  checks: read
+  contents: write
+  deployments: write
+  issues: read
+  pull-requests: read
+  statuses: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
