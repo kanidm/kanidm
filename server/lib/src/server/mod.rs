@@ -775,11 +775,6 @@ pub trait QueryServerTransaction<'a> {
     fn get_oauth2rs_set(&mut self) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         self.internal_search(filter!(f_eq("class", PVCLASS_OAUTH2_RS.clone(),)))
     }
-
-    #[inline]
-    fn get_ruv_snapshot(&mut self) -> Result<(), OperationError> {
-        self.get_be_txn().get_ruv_snapshot()
-    }
 }
 
 // Actually conduct a search request

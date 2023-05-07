@@ -1265,6 +1265,21 @@ impl<'a> SchemaWriteTransaction<'a> {
                 syntax: SyntaxType::ReferenceUuid,
             },
         );
+        self.attributes.insert(
+            AttrString::from("dynmember"),
+            SchemaAttribute {
+                name: AttrString::from("dynmember"),
+                uuid: UUID_SCHEMA_ATTR_DYNMEMBER,
+                description: String::from("List of dynamic members of the group"),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                sync_allowed: true,
+                replicated: false,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::ReferenceUuid,
+            },
+        );
         // Migration related
         self.attributes.insert(
             AttrString::from("version"),

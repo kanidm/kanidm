@@ -1535,6 +1535,9 @@ pub const JSON_SCHEMA_CLASS_DYNGROUP: &str = r#"
       "systemmust": [
         "dyngroup_filter"
       ],
+      "systemmay": [
+        "dynmember"
+      ],
       "systemsupplements": [
         "group"
       ],

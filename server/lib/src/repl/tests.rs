@@ -1,4 +1,6 @@
+use crate::be::BackendTransaction;
 use crate::prelude::*;
+use crate::repl::ruv::ReplicationUpdateVectorTransaction;
 use std::collections::BTreeMap;
 
 fn repl_initialise(
@@ -49,8 +51,14 @@ async fn test_repl_refresh_basic(server_a: &QueryServer, server_b: &QueryServer)
     // Same d_vers / domain info.
     assert_eq!(domain_entry_a, domain_entry_b);
 
-    trace!("a {:#?}", domain_entry_a.get_changestate());
-    trace!("b {:#?}", domain_entry_b.get_changestate());
+    trace!(
+        "domain_changestate a {:#?}",
+        domain_entry_a.get_changestate()
+    );
+    trace!(
+        "domain_changestate b {:#?}",
+        domain_entry_b.get_changestate()
+    );
 
     // Compare that their change states are identical too.
     assert_eq!(
@@ -97,6 +105,13 @@ async fn test_repl_refresh_basic(server_a: &QueryServer, server_b: &QueryServer)
 
     // Done! The entry content are identical as are their replication metadata. We are good
     // to go!
+    let a_ruv_range = server_a_txn.get_be_txn().get_ruv().current_ruv_range();
+
+    let b_ruv_range = server_b_txn.get_be_txn().get_ruv().current_ruv_range();
+
+    trace!(?a_ruv_range);
+    trace!(?b_ruv_range);
+    assert!(a_ruv_range == b_ruv_range);
 
     // Both servers will be post-test validated.
 }
@@ -110,6 +125,16 @@ async fn test_repl_increment_basic(server_a: &QueryServer, server_b: &QueryServe
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
         .is_ok());
+
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+
+    let a_ruv_range = server_a_txn.get_be_txn().get_ruv().current_ruv_range();
+
+    let b_ruv_range = server_b_txn.get_be_txn().get_ruv().current_ruv_range();
+
+    trace!(?a_ruv_range);
+    trace!(?b_ruv_range);
+    assert!(a_ruv_range == b_ruv_range);
 
     // Check ruv
     //  - should be same

@@ -52,6 +52,37 @@ impl From<&ReplCidV1> for Cid {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct ReplCidRange {
+    #[serde(rename = "m")]
+    pub ts_min: Duration,
+    #[serde(rename = "x")]
+    pub ts_max: Duration,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub enum ReplRuvRange {
+    V1 {
+        ranges: BTreeMap<Uuid, ReplCidRange>,
+    },
+}
+
+impl Default for ReplRuvRange {
+    fn default() -> Self {
+        ReplRuvRange::V1 {
+            ranges: BTreeMap::default(),
+        }
+    }
+}
+
+impl ReplRuvRange {
+    pub fn is_empty(&self) -> bool {
+        match self {
+            ReplRuvRange::V1 { ranges } => ranges.is_empty(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct ReplAddressV1 {
     #[serde(rename = "f")]

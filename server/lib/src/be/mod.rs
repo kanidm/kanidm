@@ -654,11 +654,6 @@ pub trait BackendTransaction {
         Ok(entries_filtered)
     }
 
-    /// Retrieve a current snapshot of the RUV as it exists in the database.
-    fn get_ruv_snapshot(&mut self) -> Result<(), OperationError> {
-        todo!();
-    }
-
     /// Given a filter, assert some condition exists.
     /// Basically, this is a specialised case of search, where we don't need to
     /// load any candidates if they match. This is heavily used in uuid
@@ -995,6 +990,7 @@ impl<'a> BackendWriteTransaction<'a> {
         // This auto compresses.
         let ruv_idl = IDLBitRange::from_iter(c_entries.iter().map(|e| e.get_id()));
 
+        // We don't need to skip this like in mod since creates always go to the ruv
         self.get_ruv().insert_change(cid, ruv_idl)?;
 
         self.idlayer.write_identries(c_entries.iter())?;
@@ -1010,10 +1006,10 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     #[instrument(level = "debug", name = "be::create", skip_all)]
-    /// This is similar to create, but used in the replication path as it skips the
-    /// modification of the RUV and the checking of CIDs since these actions are not
-    /// required during a replication refresh (else we'd create an infinite replication
-    /// loop.)
+    /// This is similar to create, but used in the replication path as it records all
+    /// the CID's in the entry to the RUV, but without applying the current CID as
+    /// a new value in the RUV. We *do not* want to apply the current CID in the RUV
+    /// related to this entry as that could cause an infinite replication loop!
     pub fn refresh(
         &mut self,
         entries: Vec<Entry<EntrySealed, EntryNew>>,
@@ -1037,6 +1033,11 @@ impl<'a> BackendWriteTransaction<'a> {
 
         self.idlayer.set_id2entry_max_id(id_max);
 
+        // Update the RUV with all the changestates of the affected entries.
+        for e in c_entries.iter() {
+            self.get_ruv().update_entry_changestate(e)?;
+        }
+
         // Now update the indexes as required.
         for e in c_entries.iter() {
             self.entry_index(None, Some(e))?
@@ -1059,21 +1060,27 @@ impl<'a> BackendWriteTransaction<'a> {
 
         assert!(post_entries.len() == pre_entries.len());
 
-        post_entries.iter().try_for_each(|e| {
+        let post_entries_iter = post_entries.iter().filter(|e| {
+            trace!(?cid);
+            trace!(changestate = ?e.get_changestate());
             if e.get_changestate().contains_tail_cid(cid) {
-                Ok(())
+                // This means that at least one attribute that *is* replicated was changed
+                // on this entry, so we need to update and add this to the RUV!
+                true
             } else {
-                admin_error!(
-                    "Entry changelog does not contain a change related to this transaction"
-                );
-                Err(OperationError::ReplEntryNotChanged)
+                // This means that the entry in question was updated but the changes are all
+                // non-replicated so we DO NOT update the RUV here!
+                false
             }
-        })?;
+        });
 
         // All good, lets update the RUV.
         // This auto compresses.
-        let ruv_idl = IDLBitRange::from_iter(post_entries.iter().map(|e| e.get_id()));
-        self.get_ruv().insert_change(cid, ruv_idl)?;
+        let ruv_idl = IDLBitRange::from_iter(post_entries_iter.map(|e| e.get_id()));
+
+        if !ruv_idl.is_empty() {
+            self.get_ruv().insert_change(cid, ruv_idl)?;
+        }
 
         // Now, given the list of id's, update them
         self.get_idlayer().write_identries(post_entries.iter())?;

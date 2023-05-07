@@ -4,12 +4,13 @@ use std::ops::Bound::*;
 use std::sync::Arc;
 use std::time::Duration;
 
-use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
+use concread::bptree::{BptreeMap, BptreeMapReadSnapshot, BptreeMapReadTxn, BptreeMapWriteTxn};
 use idlset::v2::IDLBitRange;
 use kanidm_proto::v1::ConsistencyError;
 
 use crate::prelude::*;
 use crate::repl::cid::Cid;
+use crate::repl::proto::{ReplCidRange, ReplRuvRange};
 use std::fmt;
 
 pub struct ReplicationUpdateVector {
@@ -72,9 +73,34 @@ pub struct ReplicationUpdateVectorReadTransaction<'a> {
 }
 
 pub trait ReplicationUpdateVectorTransaction {
-    fn ruv_snapshot(&self) -> BTreeMap<Cid, IDLBitRange>;
+    fn ruv_snapshot(&self) -> BptreeMapReadSnapshot<'_, Cid, IDLBitRange>;
 
-    fn range_snapshot(&self) -> BTreeMap<Uuid, &BTreeSet<Duration>>;
+    fn range_snapshot(&self) -> BptreeMapReadSnapshot<'_, Uuid, BTreeSet<Duration>>;
+
+    fn current_ruv_range(&self) -> Result<ReplRuvRange, OperationError> {
+        let ranges = self
+            .range_snapshot()
+            .iter()
+            .map(|(s_uuid, range)| match (range.first(), range.last()) {
+                (Some(first), Some(last)) => Ok((
+                    *s_uuid,
+                    ReplCidRange {
+                        ts_min: *first,
+                        ts_max: *last,
+                    },
+                )),
+                _ => {
+                    error!(
+                        "invalid state for server uuid {:?}, no ranges present",
+                        s_uuid
+                    );
+                    Err(OperationError::InvalidState)
+                }
+            })
+            .collect::<Result<BTreeMap<_, _>, _>>()?;
+
+        Ok(ReplRuvRange::V1 { ranges })
+    }
 
     fn verify(
         &self,
@@ -105,7 +131,6 @@ pub trait ReplicationUpdateVectorTransaction {
         trace!(?check_ruv);
         // Get the current state
         let snapshot_ruv = self.ruv_snapshot();
-        trace!(?snapshot_ruv);
 
         // Now compare. We want to do this checking for each CID in each, and then asserting
         // the content is the same.
@@ -201,28 +226,22 @@ pub trait ReplicationUpdateVectorTransaction {
 }
 
 impl<'a> ReplicationUpdateVectorTransaction for ReplicationUpdateVectorWriteTransaction<'a> {
-    fn ruv_snapshot(&self) -> BTreeMap<Cid, IDLBitRange> {
-        self.data
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect()
+    fn ruv_snapshot(&self) -> BptreeMapReadSnapshot<'_, Cid, IDLBitRange> {
+        self.data.to_snapshot()
     }
 
-    fn range_snapshot(&self) -> BTreeMap<Uuid, &BTreeSet<Duration>> {
-        self.ranged.iter().map(|(k, v)| (*k, v)).collect()
+    fn range_snapshot(&self) -> BptreeMapReadSnapshot<'_, Uuid, BTreeSet<Duration>> {
+        self.ranged.to_snapshot()
     }
 }
 
 impl<'a> ReplicationUpdateVectorTransaction for ReplicationUpdateVectorReadTransaction<'a> {
-    fn ruv_snapshot(&self) -> BTreeMap<Cid, IDLBitRange> {
-        self.data
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect()
+    fn ruv_snapshot(&self) -> BptreeMapReadSnapshot<'_, Cid, IDLBitRange> {
+        self.data.to_snapshot()
     }
 
-    fn range_snapshot(&self) -> BTreeMap<Uuid, &BTreeSet<Duration>> {
-        self.ranged.iter().map(|(k, v)| (*k, v)).collect()
+    fn range_snapshot(&self) -> BptreeMapReadSnapshot<'_, Uuid, BTreeSet<Duration>> {
+        self.ranged.to_snapshot()
     }
 }
 
@@ -294,6 +313,35 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
             let mut range = BTreeSet::default();
             range.insert(cid.ts);
             self.ranged.insert(cid.s_uuid, range);
+        }
+
+        Ok(())
+    }
+
+    pub fn update_entry_changestate(
+        &mut self,
+        entry: &EntrySealedCommitted,
+    ) -> Result<(), OperationError> {
+        let eid = entry.get_id();
+        let ecstate = entry.get_changestate();
+
+        for cid in ecstate.cid_iter() {
+            if let Some(idl) = self.data.get_mut(cid) {
+                // We can't guarantee id order, so we have to do this properly.
+                idl.insert_id(eid);
+            } else {
+                let mut idl = IDLBitRange::new();
+                idl.insert_id(eid);
+                self.data.insert(cid.clone(), idl);
+            }
+
+            if let Some(server_range) = self.ranged.get_mut(&cid.s_uuid) {
+                server_range.insert(cid.ts);
+            } else {
+                let mut ts_range = BTreeSet::default();
+                ts_range.insert(cid.ts);
+                self.ranged.insert(cid.s_uuid, ts_range);
+            }
         }
 
         Ok(())
