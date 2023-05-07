@@ -55,8 +55,8 @@ jobs:
           mkdir -p ./docs/
           mv ./*book/book ./docs/${{ inputs.tag }}
           mkdir -p ./docs/${{ inputs.tag }}/rustdoc/
-          mv ./target/doc ./docs/${{ inputs.tag }}/rustdoc
-
+          find ./target/doc/ -name .lock -exec rm "{}" \;
+          mv ./target/doc/* ./docs/${{ inputs.tag }}/rustdoc/
       - name: pykanidm docs
         run: |
           python -m pip install poetry

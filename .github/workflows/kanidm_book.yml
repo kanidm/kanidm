@@ -7,6 +7,7 @@ name: GitHub Pages
       - "master"
   pull_request:
 
+# permissions list: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
 permissions:
   id-token: write
   actions: read
@@ -16,6 +17,7 @@ permissions:
   issues: read
   pull-requests: read
   statuses: read
+  pages: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
