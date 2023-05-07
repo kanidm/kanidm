@@ -1063,15 +1063,12 @@ impl<'a> BackendWriteTransaction<'a> {
         let post_entries_iter = post_entries.iter().filter(|e| {
             trace!(?cid);
             trace!(changestate = ?e.get_changestate());
-            if e.get_changestate().contains_tail_cid(cid) {
-                // This means that at least one attribute that *is* replicated was changed
-                // on this entry, so we need to update and add this to the RUV!
-                true
-            } else {
-                // This means that the entry in question was updated but the changes are all
-                // non-replicated so we DO NOT update the RUV here!
-                false
-            }
+            // If True - This means that at least one attribute that *is* replicated was changed
+            // on this entry, so we need to update and add this to the RUV!
+            //
+            // If False - This means that the entry in question was updated but the changes are all
+            // non-replicated so we DO NOT update the RUV here!
+            e.get_changestate().contains_tail_cid(cid)
         });
 
         // All good, lets update the RUV.

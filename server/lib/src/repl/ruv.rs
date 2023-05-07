@@ -13,6 +13,7 @@ use crate::repl::cid::Cid;
 use crate::repl::proto::{ReplCidRange, ReplRuvRange};
 use std::fmt;
 
+#[derive(Default)]
 pub struct ReplicationUpdateVector {
     // This sorts by time. We store the set of entry id's that are affected in an operation.
     // Due to how replication state works, it is possibly that id's in these sets *may* not
@@ -26,15 +27,6 @@ pub struct ReplicationUpdateVector {
     // This way it still orders things in the right order by time stamp just searches by cid
     // first.
     ranged: BptreeMap<Uuid, BTreeSet<Duration>>,
-}
-
-impl Default for ReplicationUpdateVector {
-    fn default() -> Self {
-        ReplicationUpdateVector {
-            data: BptreeMap::default(),
-            ranged: BptreeMap::default(),
-        }
-    }
 }
 
 impl ReplicationUpdateVector {
