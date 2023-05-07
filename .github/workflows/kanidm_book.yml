@@ -51,6 +51,11 @@ jobs:
       parent_id: ${{ github.ref }}
 
   deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
+
     needs:
       - fanout
       - docs_master
@@ -61,7 +66,8 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: docs
-
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
       - name: Extract the files
         run: |
           find . -name '*.tar.gz' -exec tar zxf "{}" \;
@@ -71,9 +77,11 @@ jobs:
           cd ..
           ls -la docs/
 
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        if: ${{ github.ref == 'refs/heads/master' }}
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
+          # Upload entire repository
+          path: 'docs/'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
