@@ -7,7 +7,7 @@ name: GitHub Pages
       - "master"
   pull_request:
 
-# permissions lisst: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
+# permissions list: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
 permissions:
   id-token: write
   actions: read
