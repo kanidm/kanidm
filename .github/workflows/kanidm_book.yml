@@ -54,12 +54,13 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
+
     needs:
       - fanout
       - docs_master
       - generate_tags
     runs-on: ubuntu-latest
-
     steps:
       - name: Download previously built docs
         uses: actions/download-artifact@v3
@@ -67,7 +68,6 @@ jobs:
           name: docs
       - name: Setup Pages
         uses: actions/configure-pages@v3
-        if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
       - name: Extract the files
         run: |
           find . -name '*.tar.gz' -exec tar zxf "{}" \;
@@ -82,8 +82,6 @@ jobs:
         with:
           # Upload entire repository
           path: 'docs/'
-        if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2
-        if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
