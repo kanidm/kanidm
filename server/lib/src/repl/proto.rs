@@ -529,6 +529,7 @@ pub enum ReplRefreshContext {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ReplIncrementalContext {
+    RefreshRequired,
     V1 {
         domain_version: DomainVersion,
         domain_uuid: Uuid,

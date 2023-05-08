@@ -1,6 +1,9 @@
 use super::proto::{ReplEntryV1, ReplIncrementalContext, ReplRefreshContext, ReplRuvRange};
-use super::ruv::ReplicationUpdateVector;
-use super::ruv::ReplicationUpdateVectorTransaction;
+use super::ruv::{
+    ReplicationUpdateVector,
+    ReplicationUpdateVectorTransaction,
+
+};
 use crate::be::BackendTransaction;
 use crate::prelude::*;
 
@@ -34,9 +37,17 @@ impl<'a> QueryServerReadTransaction<'a> {
         // Compare this to our internal ranges - work out the list of entry
         // id's that are now different.
 
-        let _supply_ranges = ReplicationUpdateVector::range_diff(&ctx_ranges, &our_ranges);
+        let supply_ranges = ReplicationUpdateVector::range_diff(&ctx_ranges, &our_ranges);
 
         // If empty, return an empty set of changes!
+
+        match supply_ranges {
+            Ok(ranges) => {
+            }
+            Err(ranges) => {
+                
+            }
+        }
 
         // From the set of change id's, fetch those entries.
 

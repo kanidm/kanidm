@@ -29,6 +29,33 @@ pub struct ReplicationUpdateVector {
     ranged: BptreeMap<Uuid, BTreeSet<Duration>>,
 }
 
+/// The status of replication after investigating the RUV states.
+pub(crate) enum RangeDiffStatus {
+    /// Ok - can proceed with replication, supplying the following
+    /// ranges of changes to the consumer.
+    Ok(BTreeMap<Uuid, ReplCidRange>),
+    /// Refresh - The consumer is lagging and is missing a set of changes
+    /// that are required to proceed. The consumer *MUST* be refreshed
+    /// immediately.
+    Refresh {
+        lag_range: BTreeMap<Uuid, ReplCidRange>
+    },
+    /// Unwilling - The consumer is advanced beyond our state, and supplying
+    /// changes to them may introduce inconsistency in replication. This
+    /// server should be investigated immediately.
+    Unwilling {
+        adv_range: BTreeMap<Uuid, ReplCidRange>
+    },
+    /// Critical - The consumer is lagging and missing changes, but also is
+    /// in possesion of changes advancing it beyond our current state. This
+    /// is a critical fault in replication and the topology must be
+    /// investigated immediately.
+    Critical {
+        lag_range: BTreeMap<Uuid, ReplCidRange>,
+        adv_range: BTreeMap<Uuid, ReplCidRange>
+    },
+}
+
 impl ReplicationUpdateVector {
     pub fn write(&self) -> ReplicationUpdateVectorWriteTransaction<'_> {
         ReplicationUpdateVectorWriteTransaction {
@@ -47,13 +74,16 @@ impl ReplicationUpdateVector {
     pub fn range_diff(
         consumer_range: &BTreeMap<Uuid, ReplCidRange>,
         supplier_range: &BTreeMap<Uuid, ReplCidRange>,
-    ) -> Result<BTreeMap<Uuid, ReplCidRange>, BTreeMap<Uuid, ReplCidRange>> {
+    ) -> RangeDiffStatus
+    {
         // We need to build a new set of ranges that express the difference between
         // these two states.
         let mut diff_range = BTreeMap::default();
         let mut lag_range = BTreeMap::default();
+        let mut adv_range = BTreeMap::default();
 
-        let mut valid = true;
+        let mut consumer_lagging = false;
+        let mut supplier_lagging = false;
 
         // We need to look at each uuid in the *supplier* and assert if they are present
         // on the *consumer*.
@@ -83,7 +113,7 @@ impl ReplicationUpdateVector {
                     // of zero -> supplier max, but I think thought is needed to
                     // ensure no corruption in this case.
                     if consumer_cid_range.ts_max < supplier_cid_range.ts_min {
-                        valid = false;
+                        consumer_lagging = true;
                         lag_range.insert(
                             *supplier_s_uuid,
                             ReplCidRange {
@@ -94,8 +124,8 @@ impl ReplicationUpdateVector {
                     } else if supplier_cid_range.ts_max < consumer_cid_range.ts_min {
                         // It could be valid in this case to ignore this instead
                         // of erroring as changelog trim has occured? Thought needed.
-                        valid = false;
-                        lag_range.insert(
+                        supplier_lagging = true;
+                        adv_range.insert(
                             *supplier_s_uuid,
                             ReplCidRange {
                                 ts_min: supplier_cid_range.ts_max,
@@ -130,11 +160,25 @@ impl ReplicationUpdateVector {
             }
         }
 
-        if valid {
-            Ok(diff_range)
-        } else {
-            Err(lag_range)
+        match (consumer_lagging, supplier_lagging) {
+            (false, false) => RangeDiffStatus::Ok(
+                diff_range
+            ),
+            (true, false) => 
+                RangeDiffStatus::Refresh {
+                    lag_range
+                },
+            (false, true) => 
+                RangeDiffStatus::Unwilling {
+                    adv_range
+                },
+            (true, true) => 
+                RangeDiffStatus::Critical {
+                    lag_range, adv_range
+                },
         }
+
+
     }
 }
 
@@ -505,6 +549,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
 mod tests {
     use super::ReplCidRange;
     use super::ReplicationUpdateVector;
+    use super::RangeDiffStatus;
     use std::collections::BTreeMap;
     use std::time::Duration;
 
@@ -518,12 +563,12 @@ mod tests {
         let ctx_b = BTreeMap::default();
 
         let result = ReplicationUpdateVector::range_diff(&ctx_a, &ctx_b);
-        let expect = Ok(BTreeMap::default());
+        let expect = RangeDiffStatus::Ok(BTreeMap::default());
         assert_eq!(result, expect);
 
         // Test the inverse.
         let result = ReplicationUpdateVector::range_diff(&ctx_b, &ctx_a);
-        let expect = Ok(BTreeMap::default());
+        let expect = RangeDiffStatus::Ok(BTreeMap::default());
         assert_eq!(result, expect);
     }
 
@@ -539,11 +584,11 @@ mod tests {
         let ctx_b = BTreeMap::default();
 
         let result = ReplicationUpdateVector::range_diff(&ctx_a, &ctx_b);
-        let expect = Ok(BTreeMap::default());
+        let expect = RangeDiffStatus::Ok(BTreeMap::default());
         assert_eq!(result, expect);
 
         let result = ReplicationUpdateVector::range_diff(&ctx_b, &ctx_a);
-        let expect = Ok(btreemap!((
+        let expect = RangeDiffStatus::Ok(btreemap!((
             UUID_A,
             ReplCidRange {
                 ts_min: Duration::ZERO,
@@ -571,11 +616,11 @@ mod tests {
         ));
 
         let result = ReplicationUpdateVector::range_diff(&ctx_a, &ctx_b);
-        let expect = Ok(BTreeMap::default());
+        let expect = RangeDiffStatus::Ok(BTreeMap::default());
         assert_eq!(result, expect);
 
         let result = ReplicationUpdateVector::range_diff(&ctx_b, &ctx_a);
-        let expect = Ok(BTreeMap::default());
+        let expect = RangeDiffStatus::Ok(BTreeMap::default());
         assert_eq!(result, expect);
     }
 
@@ -597,7 +642,7 @@ mod tests {
         ));
 
         let result = ReplicationUpdateVector::range_diff(&ctx_a, &ctx_b);
-        let expect = Ok(btreemap!((
+        let expect = RangeDiffStatus::Ok(btreemap!((
             UUID_A,
             ReplCidRange {
                 ts_min: Duration::from_secs(3),
@@ -607,7 +652,7 @@ mod tests {
         assert_eq!(result, expect);
 
         let result = ReplicationUpdateVector::range_diff(&ctx_b, &ctx_a);
-        let expect = Ok(BTreeMap::default());
+        let expect = RangeDiffStatus::Ok(BTreeMap::default());
         assert_eq!(result, expect);
     }
 
@@ -629,7 +674,7 @@ mod tests {
         ));
 
         let result = ReplicationUpdateVector::range_diff(&ctx_a, &ctx_b);
-        let expect = Err(btreemap!((
+        let expect = RangeDiffStatus::Unwilling(btreemap!((
             UUID_A,
             ReplCidRange {
                 ts_min: Duration::from_secs(4),
@@ -639,7 +684,7 @@ mod tests {
         assert_eq!(result, expect);
 
         let result = ReplicationUpdateVector::range_diff(&ctx_b, &ctx_a);
-        let expect = Err(btreemap!((
+        let expect = RangeDiffStatus::Refresh(btreemap!((
             UUID_A,
             ReplCidRange {
                 ts_min: Duration::from_secs(5),
@@ -676,7 +721,7 @@ mod tests {
         );
 
         let result = ReplicationUpdateVector::range_diff(&ctx_a, &ctx_b);
-        let expect = Ok(btreemap!((
+        let expect = RangeDiffStatus::Ok(btreemap!((
             UUID_B,
             ReplCidRange {
                 ts_min: Duration::ZERO,
@@ -686,7 +731,7 @@ mod tests {
         assert_eq!(result, expect);
 
         let result = ReplicationUpdateVector::range_diff(&ctx_b, &ctx_a);
-        let expect = Ok(btreemap!((
+        let expect = RangeDiffStatus::Ok(btreemap!((
             UUID_A,
             ReplCidRange {
                 ts_min: Duration::from_secs(3),
@@ -739,7 +784,7 @@ mod tests {
         );
 
         let result = ReplicationUpdateVector::range_diff(&ctx_a, &ctx_b);
-        let expect = Ok(btreemap!((
+        let expect = RangeDiffStatus::Ok(btreemap!((
             UUID_B,
             ReplCidRange {
                 ts_min: Duration::ZERO,
@@ -749,7 +794,7 @@ mod tests {
         assert_eq!(result, expect);
 
         let result = ReplicationUpdateVector::range_diff(&ctx_b, &ctx_a);
-        let expect = Ok(btreemap!(
+        let expect = RangeDiffStatus::Ok(btreemap!(
             (
                 UUID_A,
                 ReplCidRange {
@@ -765,6 +810,72 @@ mod tests {
                 }
             )
         ));
+        assert_eq!(result, expect);
+    }
+
+    #[test]
+    fn test_ruv_range_diff_8() {
+        let ctx_a = btreemap!((
+            UUID_A,
+            ReplCidRange {
+                ts_min: Duration::from_secs(4),
+                ts_max: Duration::from_secs(6),
+            }
+        ), (
+            UUID_B,
+            ReplCidRange {
+                ts_min: Duration::from_secs(1),
+                ts_max: Duration::from_secs(2),
+            }
+        ));
+        let ctx_b = btreemap!((
+            UUID_A,
+            ReplCidRange {
+                ts_min: Duration::from_secs(1),
+                ts_max: Duration::from_secs(2),
+            }
+        ), (
+            UUID_B,
+            ReplCidRange {
+                ts_min: Duration::from_secs(4),
+                ts_max: Duration::from_secs(6),
+            }
+        ));
+
+        let result = ReplicationUpdateVector::range_diff(&ctx_a, &ctx_b);
+        let expect = RangeDiffStatus::Critical
+        { 
+            adv_range: btreemap!((
+            UUID_A,
+            ReplCidRange {
+                ts_min: Duration::from_secs(3),
+                ts_max: Duration::from_secs(4),
+            }
+            )),
+            lag_range: btreemap!((
+            UUID_A,
+            ReplCidRange {
+                ts_min: Duration::from_secs(3),
+                ts_max: Duration::from_secs(4),
+            }
+            )
+        )};
+        assert_eq!(result, expect);
+
+        let result = ReplicationUpdateVector::range_diff(&ctx_b, &ctx_a);
+        let expect = RangeDiffStatus::Critical(btreemap!((
+            UUID_A,
+            ReplCidRange {
+                ts_min: Duration::from_secs(3),
+                ts_max: Duration::from_secs(4),
+            }
+            ), (
+            UUID_A,
+            ReplCidRange {
+                ts_min: Duration::from_secs(3),
+                ts_max: Duration::from_secs(4),
+            }
+        )));
         assert_eq!(result, expect);
     }
 }
