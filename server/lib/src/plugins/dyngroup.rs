@@ -71,12 +71,17 @@ impl DynGroup {
                 affected_uuids.extend(uuid_iter);
             }
 
+            // Mark the former members as being affected also.
+            if let Some(uuid_iter) = pre.get_ava_as_refuuid("dynmember") {
+                affected_uuids.extend(uuid_iter);
+            }
+
             if let Some(members) = members {
                 // Only set something if there is actually something to do!
-                nd_group.set_ava_set("member", members);
+                nd_group.set_ava_set("dynmember", members);
                 // push the entries to pre/cand
             } else {
-                nd_group.purge_ava("member");
+                nd_group.purge_ava("dynmember");
             }
 
             candidate_tuples.push((pre, nd_group));
@@ -191,7 +196,7 @@ impl DynGroup {
                     matches
                         .iter()
                         .copied()
-                        .for_each(|u| d_group.add_ava("member", Value::Refer(u)));
+                        .for_each(|u| d_group.add_ava("dynmember", Value::Refer(u)));
 
                     affected_uuids.extend(matches.into_iter());
                     affected_uuids.push(*dg_uuid);
@@ -315,8 +320,8 @@ impl DynGroup {
 
                 if let Some((pre, mut d_group)) = work_set.pop() {
                     matches.iter().copied().for_each(|choice| match choice {
-                        Ok(u) => d_group.add_ava("member", Value::Refer(u)),
-                        Err(u) => d_group.remove_ava("member", &PartialValue::Refer(u)),
+                        Ok(u) => d_group.add_ava("dynmember", Value::Refer(u)),
+                        Err(u) => d_group.remove_ava("dynmember", &PartialValue::Refer(u)),
                     });
 
                     affected_uuids.extend(matches.into_iter().map(|choice| match choice {
@@ -395,7 +400,7 @@ mod tests {
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("member")
+                    .get_ava_set("dynmember")
                     .expect("No members on dyn group");
 
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
@@ -441,7 +446,7 @@ mod tests {
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("member")
+                    .get_ava_set("dynmember")
                     .expect("No members on dyn group");
 
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
@@ -489,7 +494,7 @@ mod tests {
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
-                assert!(d_group.get_ava_set("member").is_none());
+                assert!(d_group.get_ava_set("dynmember").is_none());
             }
         );
     }
@@ -532,7 +537,7 @@ mod tests {
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("member")
+                    .get_ava_set("dynmember")
                     .expect("No members on dyn group");
 
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
@@ -587,7 +592,7 @@ mod tests {
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("member")
+                    .get_ava_set("dynmember")
                     .expect("No members on dyn group");
 
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
@@ -641,7 +646,7 @@ mod tests {
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
-                assert!(d_group.get_ava_set("member").is_none());
+                assert!(d_group.get_ava_set("dynmember").is_none());
             }
         );
     }
@@ -672,7 +677,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("test_dyngroup"))),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from("member"),
+                AttrString::from("dynmember"),
                 Value::Refer(UUID_ADMIN)
             )]),
             None,
@@ -687,7 +692,7 @@ mod tests {
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("member")
+                    .get_ava_set("dynmember")
                     .expect("No members on dyn group");
                 // We assert to refer single here because we should have "removed" uuid_admin being added
                 // at all.
@@ -721,7 +726,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq("name", PartialValue::new_iname("test_dyngroup"))),
-            ModifyList::new_list(vec![Modify::Purged(AttrString::from("member"),)]),
+            ModifyList::new_list(vec![Modify::Purged(AttrString::from("dynmember"),)]),
             None,
             |_| {},
             |qs: &mut QueryServerWriteTransaction| {
@@ -734,7 +739,7 @@ mod tests {
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("member")
+                    .get_ava_set("dynmember")
                     .expect("No members on dyn group");
                 // We assert to refer single here because we should have re-added the members
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
@@ -783,7 +788,7 @@ mod tests {
 
                 let d_group = cands.get(0).expect("Unable to access group.");
                 let members = d_group
-                    .get_ava_set("member")
+                    .get_ava_set("dynmember")
                     .expect("No members on dyn group");
 
                 assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
@@ -831,7 +836,7 @@ mod tests {
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
-                assert!(d_group.get_ava_set("member").is_none());
+                assert!(d_group.get_ava_set("dynmember").is_none());
             }
         );
     }
@@ -871,7 +876,7 @@ mod tests {
                     .expect("Internal search failure");
 
                 let d_group = cands.get(0).expect("Unable to access group.");
-                assert!(d_group.get_ava_set("member").is_none());
+                assert!(d_group.get_ava_set("dynmember").is_none());
             }
         );
     }

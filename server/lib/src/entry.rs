@@ -576,7 +576,7 @@ impl Entry<EntryInit, EntryNew> {
     // event for the attribute.
     /// Add an attribute-value-assertion to this Entry.
     pub fn add_ava(&mut self, attr: &str, value: Value) {
-        self.add_ava_int(attr, value)
+        self.add_ava_int(attr, value);
     }
 
     /// Replace the existing content of an attribute set of this Entry, with a new set of Values.
@@ -1850,18 +1850,23 @@ impl Entry<EntryReduced, EntryCommitted> {
 
 // impl<STATE> Entry<EntryValid, STATE> {
 impl<VALID, STATE> Entry<VALID, STATE> {
-    /// This internally adds an AVA to the entry.
-    fn add_ava_int(&mut self, attr: &str, value: Value) {
-        // How do we make this turn into an ok / err?
-
+    /// This internally adds an AVA to the entry. If the entry was newely added, then true is returned.
+    /// If the value already existed, or was unable to be added, false is returned. Alternately,
+    /// you can think of this boolean as "if a write occured to the structure", true indicating that
+    /// a change occured.
+    fn add_ava_int(&mut self, attr: &str, value: Value) -> bool {
         if let Some(vs) = self.attrs.get_mut(attr) {
             let r = vs.insert_checked(value);
             debug_assert!(r.is_ok());
+            // Default to the value not being present if wrong typed.
+            r.unwrap_or(false)
         } else {
             #[allow(clippy::expect_used)]
             let vs = valueset::from_value_iter(std::iter::once(value))
                 .expect("Unable to fail - non-zero iter, and single value type!");
             self.attrs.insert(AttrString::from(attr), vs);
+            // The attribute did not exist before.
+            false
         }
         // Doesn't matter if it already exists, equality will replace.
     }
@@ -2401,7 +2406,15 @@ where
             .eclog
             .add_ava_iter(&self.valid.cid, attr, std::iter::once(value.clone()));
         */
-        self.add_ava_int(attr, value)
+        self.add_ava_int(attr, value);
+    }
+
+    pub fn add_ava_if_not_exist(&mut self, attr: &str, value: Value) {
+        // This returns true if the value WAS changed! See add_ava_int.
+        if self.add_ava_int(attr, value) {
+            // In this case, we ONLY update the changestate if the value was already present!
+            self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        }
     }
 
     fn assert_ava(&mut self, attr: &str, value: &PartialValue) -> Result<(), OperationError> {

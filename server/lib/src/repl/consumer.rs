@@ -1,6 +1,9 @@
 use super::proto::*;
+use crate::be::BackendTransaction;
 use crate::plugins::Plugins;
 use crate::prelude::*;
+use crate::repl::proto::ReplRuvRange;
+use crate::repl::ruv::ReplicationUpdateVectorTransaction;
 
 impl<'a> QueryServerReadTransaction<'a> {
     // Get the current state of "where we are up to"
@@ -14,8 +17,27 @@ impl<'a> QueryServerReadTransaction<'a> {
     // where the RUV approach doesn't since the supplier calcs the diff.
 
     #[instrument(level = "debug", skip_all)]
-    pub fn consumer_get_state(&mut self) -> Result<(), OperationError> {
-        Ok(())
+    pub fn consumer_get_state(&mut self) -> Result<ReplRuvRange, OperationError> {
+        // We need the RUV as a state of
+        //
+        // [ s_uuid, cid_min, cid_max ]
+        // [ s_uuid, cid_min, cid_max ]
+        // [ s_uuid, cid_min, cid_max ]
+        // ...
+        //
+        // This way the remote can diff against it's knowledge and work out:
+        //
+        // [ s_uuid, from_cid, to_cid ]
+        // [ s_uuid, from_cid, to_cid ]
+        //
+        // ...
+
+        // Which then the supplier will use to actually retrieve the set of entries.
+        // and the needed attributes we need.
+        let ruv_snapshot = self.get_be_txn().get_ruv();
+
+        // What's the current set of ranges?
+        ruv_snapshot.current_ruv_range()
     }
 }
 
