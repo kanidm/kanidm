@@ -34,7 +34,7 @@ impl<'a> QueryServerReadTransaction<'a> {
         // Compare this to our internal ranges - work out the list of entry
         // id's that are now different.
 
-        let supply_ranges = ReplicationUpdateVector::range_diff(&ctx_ranges, &our_ranges);
+        let _supply_ranges = ReplicationUpdateVector::range_diff(&ctx_ranges, &our_ranges);
 
         // If empty, return an empty set of changes!
 

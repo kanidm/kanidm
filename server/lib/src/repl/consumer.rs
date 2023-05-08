@@ -61,8 +61,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     fn consumer_apply_changes_v1(
         &mut self,
-        ctx_domain_version: DomainVersion,
-        ctx_domain_uuid: Uuid,
+        _ctx_domain_version: DomainVersion,
+        _ctx_domain_uuid: Uuid,
     ) -> Result<(), OperationError> {
         todo!();
     }
