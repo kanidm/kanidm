@@ -524,3 +524,12 @@ pub enum ReplRefreshContext {
         entries: Vec<ReplEntryV1>,
     },
 }
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ReplIncrementalContext {
+    V1 {
+        domain_version: DomainVersion,
+        domain_uuid: Uuid,
+    },
+}

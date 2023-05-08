@@ -10,7 +10,7 @@ use kanidm_proto::v1::ConsistencyError;
 
 use crate::prelude::*;
 use crate::repl::cid::Cid;
-use crate::repl::proto::{ReplCidRange, ReplRuvRange};
+use crate::repl::proto::ReplCidRange;
 use std::fmt;
 
 #[derive(Default)]
@@ -43,6 +43,16 @@ impl ReplicationUpdateVector {
             ranged: self.ranged.read(),
         }
     }
+
+    pub fn range_diff(
+        consumer_range: &BTreeMap<Uuid, ReplCidRange>,
+        supplier_range: &BTreeMap<Uuid, ReplCidRange>,
+    ) -> BTreeMap<Uuid, ReplCidRange> {
+        // We need to build a new set of ranges that express the difference between
+        // these two states.
+
+        // We
+    }
 }
 
 pub struct ReplicationUpdateVectorWriteTransaction<'a> {
@@ -69,9 +79,8 @@ pub trait ReplicationUpdateVectorTransaction {
 
     fn range_snapshot(&self) -> BptreeMapReadSnapshot<'_, Uuid, BTreeSet<Duration>>;
 
-    fn current_ruv_range(&self) -> Result<ReplRuvRange, OperationError> {
-        let ranges = self
-            .range_snapshot()
+    fn current_ruv_range(&self) -> Result<BTreeMap<Uuid, ReplCidRange>, OperationError> {
+        self.range_snapshot()
             .iter()
             .map(|(s_uuid, range)| match (range.first(), range.last()) {
                 (Some(first), Some(last)) => Ok((
@@ -89,9 +98,7 @@ pub trait ReplicationUpdateVectorTransaction {
                     Err(OperationError::InvalidState)
                 }
             })
-            .collect::<Result<BTreeMap<_, _>, _>>()?;
-
-        Ok(ReplRuvRange::V1 { ranges })
+            .collect::<Result<BTreeMap<_, _>, _>>()
     }
 
     fn verify(
@@ -408,5 +415,15 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
     pub fn commit(self) {
         self.data.commit();
         self.ranged.commit();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ReplicationUpdateVector;
+
+    #[test]
+    fn test_ruv_range_diff() {
+        todo!();
     }
 }

@@ -1,4 +1,7 @@
-use super::proto::{ReplEntryV1, ReplRefreshContext};
+use super::proto::{ReplEntryV1, ReplIncrementalContext, ReplRefreshContext, ReplRuvRange};
+use super::ruv::ReplicationUpdateVector;
+use super::ruv::ReplicationUpdateVectorTransaction;
+use crate::be::BackendTransaction;
 use crate::prelude::*;
 
 impl<'a> QueryServerReadTransaction<'a> {
@@ -10,8 +13,41 @@ impl<'a> QueryServerReadTransaction<'a> {
     // * Which entry attr-states need to be sent, if any
 
     #[instrument(level = "debug", skip_all)]
-    pub fn supplier_provide_changes(&mut self) -> Result<(), OperationError> {
-        Ok(())
+    pub fn supplier_provide_changes(
+        &mut self,
+        ctx_ruv: ReplRuvRange,
+    ) -> Result<ReplIncrementalContext, OperationError> {
+        // Convert types if needed. This way we can compare ruv's correctly.
+        let ctx_ranges = match ctx_ruv {
+            ReplRuvRange::V1 { ranges } => ranges,
+        };
+
+        let our_ranges = self
+            .get_be_txn()
+            .get_ruv()
+            .current_ruv_range()
+            .map_err(|e| {
+                error!(err = ?e, "Unable to access supplier RUV range");
+                e
+            })?;
+
+        // Compare this to our internal ranges - work out the list of entry
+        // id's that are now different.
+
+        let supply_ranges = ReplicationUpdateVector::range_diff(&ctx_ranges, &our_ranges);
+
+        // If empty, return an empty set of changes!
+
+        // From the set of change id's, fetch those entries.
+
+        // Seperate the entries into schema, meta and remaining.
+
+        // For each entry, determine the changes that exist on the entry that fall
+        // into the ruv range - reduce to a incremental set of changes.
+
+        // Build the incremental context.
+
+        todo!();
     }
 
     #[instrument(level = "debug", skip_all)]

@@ -37,16 +37,34 @@ impl<'a> QueryServerReadTransaction<'a> {
         let ruv_snapshot = self.get_be_txn().get_ruv();
 
         // What's the current set of ranges?
-        ruv_snapshot.current_ruv_range()
+        ruv_snapshot
+            .current_ruv_range()
+            .map(|ranges| ReplRuvRange::V1 { ranges })
     }
 }
 
 impl<'a> QueryServerWriteTransaction<'a> {
     // Apply the state changes if they are valid.
 
+    pub fn consumer_apply_changes(
+        &mut self,
+        ctx: &ReplIncrementalContext,
+    ) -> Result<(), OperationError> {
+        match ctx {
+            ReplIncrementalContext::V1 {
+                domain_version,
+                domain_uuid,
+            } => self.consumer_apply_changes_v1(*domain_version, *domain_uuid),
+        }
+    }
+
     #[instrument(level = "debug", skip_all)]
-    pub fn consumer_apply_changes(&mut self) -> Result<(), OperationError> {
-        Ok(())
+    fn consumer_apply_changes_v1(
+        &mut self,
+        ctx_domain_version: DomainVersion,
+        ctx_domain_uuid: Uuid,
+    ) -> Result<(), OperationError> {
+        todo!();
     }
 
     pub fn consumer_apply_refresh(

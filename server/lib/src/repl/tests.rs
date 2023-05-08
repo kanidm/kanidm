@@ -19,6 +19,22 @@ fn repl_initialise(
     // Need same d_uuid
     assert_eq!(from.get_domain_uuid(), to.get_domain_uuid());
 
+    // Ruvs are the same now
+    let a_ruv_range = from
+        .get_be_txn()
+        .get_ruv()
+        .current_ruv_range()
+        .expect("Failed to get RUV range A");
+    let b_ruv_range = to
+        .get_be_txn()
+        .get_ruv()
+        .current_ruv_range()
+        .expect("Failed to get RUV range B");
+
+    trace!(?a_ruv_range);
+    trace!(?b_ruv_range);
+    assert!(a_ruv_range == b_ruv_range);
+
     Ok(())
 }
 
@@ -105,13 +121,6 @@ async fn test_repl_refresh_basic(server_a: &QueryServer, server_b: &QueryServer)
 
     // Done! The entry content are identical as are their replication metadata. We are good
     // to go!
-    let a_ruv_range = server_a_txn.get_be_txn().get_ruv().current_ruv_range();
-
-    let b_ruv_range = server_b_txn.get_be_txn().get_ruv().current_ruv_range();
-
-    trace!(?a_ruv_range);
-    trace!(?b_ruv_range);
-    assert!(a_ruv_range == b_ruv_range);
 
     // Both servers will be post-test validated.
 }
@@ -126,25 +135,48 @@ async fn test_repl_increment_basic(server_a: &QueryServer, server_b: &QueryServe
         .and_then(|_| server_a_txn.commit())
         .is_ok());
 
+    //  - incremental - no changes should be present
+    let mut server_a_txn = server_a.read().await;
+    let a_ruv_range = server_a_txn
+        .consumer_get_state()
+        .expect("Unable to access RUV range");
+    // End the read.
+    drop(server_a_txn);
+
+    // Get the changes.
+    let changes = server_b_txn
+        .supplier_provide_changes(a_ruv_range)
+        .expect("Unable to generate supplier changes");
+
+    // Check the changes = should be empty.
     let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
 
-    let a_ruv_range = server_a_txn.get_be_txn().get_ruv().current_ruv_range();
+    server_a_txn
+        .consumer_apply_changes(&changes)
+        .expect("Unable to apply changes to consumer.");
 
-    let b_ruv_range = server_b_txn.get_be_txn().get_ruv().current_ruv_range();
+    // Do a ruv check - should still be the same.
+    let a_ruv_range = server_a_txn
+        .get_be_txn()
+        .get_ruv()
+        .current_ruv_range()
+        .expect("Failed to get RUV range A");
+    let b_ruv_range = server_b_txn
+        .get_be_txn()
+        .get_ruv()
+        .current_ruv_range()
+        .expect("Failed to get RUV range B");
 
     trace!(?a_ruv_range);
     trace!(?b_ruv_range);
     assert!(a_ruv_range == b_ruv_range);
 
-    // Check ruv
-    //  - should be same
-    //  - incremental
-    //      - no change.
-
     // Add an entry.
 
-    // Do a ruv check.
+    todo!();
 
     // Incremental.
     // Should now be on the other partner.
+
+    // RUV should be consistent again.
 }
