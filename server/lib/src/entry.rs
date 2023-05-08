@@ -1850,7 +1850,10 @@ impl Entry<EntryReduced, EntryCommitted> {
 
 // impl<STATE> Entry<EntryValid, STATE> {
 impl<VALID, STATE> Entry<VALID, STATE> {
-    /// This internally adds an AVA to the entry.
+    /// This internally adds an AVA to the entry. If the entry was newely added, then true is returned.
+    /// If the value already existed, or was unable to be added, false is returned. Alternately,
+    /// you can think of this boolean as "if a write occured to the structure", true indicating that
+    /// a change occured.
     fn add_ava_int(&mut self, attr: &str, value: Value) -> bool {
         if let Some(vs) = self.attrs.get_mut(attr) {
             let r = vs.insert_checked(value);
@@ -2407,7 +2410,7 @@ where
     }
 
     pub fn add_ava_if_not_exist(&mut self, attr: &str, value: Value) {
-        // This returns true if the value WAS changed!
+        // This returns true if the value WAS changed! See add_ava_int.
         if self.add_ava_int(attr, value) {
             // In this case, we ONLY update the changestate if the value was already present!
             self.valid.ecstate.change_ava(&self.valid.cid, attr);
