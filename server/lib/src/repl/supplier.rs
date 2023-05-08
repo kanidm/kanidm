@@ -1,9 +1,5 @@
 use super::proto::{ReplEntryV1, ReplIncrementalContext, ReplRefreshContext, ReplRuvRange};
-use super::ruv::{
-    ReplicationUpdateVector,
-    ReplicationUpdateVectorTransaction,
-
-};
+use super::ruv::{RangeDiffStatus, ReplicationUpdateVector, ReplicationUpdateVectorTransaction};
 use crate::be::BackendTransaction;
 use crate::prelude::*;
 
@@ -41,13 +37,30 @@ impl<'a> QueryServerReadTransaction<'a> {
 
         // If empty, return an empty set of changes!
 
-        match supply_ranges {
-            Ok(ranges) => {
+        let ranges = match supply_ranges {
+            RangeDiffStatus::Ok(ranges) => ranges,
+            RangeDiffStatus::Refresh { lag_range } => {
+                error!("Replication - Consumer is lagging and must be refreshed.");
+                debug!(?lag_range);
+                return Ok(ReplIncrementalContext::RefreshRequired);
             }
-            Err(ranges) => {
-                
+            RangeDiffStatus::Unwilling { adv_range } => {
+                error!("Replication - Supplier is lagging and must be investigated.");
+                debug!(?adv_range);
+                return Ok(ReplIncrementalContext::Unwilling);
             }
-        }
+            RangeDiffStatus::Critical {
+                lag_range,
+                adv_range,
+            } => {
+                error!("Replication Critical - Servers are advanced of us, and also lagging! This must be immediately investigated!");
+                debug!(?lag_range);
+                debug!(?adv_range);
+                return Ok(ReplIncrementalContext::Unwilling);
+            }
+        };
+
+        debug!(?ranges, "these ranges will be supplied");
 
         // From the set of change id's, fetch those entries.
 

@@ -51,6 +51,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         ctx: &ReplIncrementalContext,
     ) -> Result<(), OperationError> {
         match ctx {
+            ReplIncrementalContext::RefreshRequired => {
+                todo!();
+            }
+            ReplIncrementalContext::Unwilling => {
+                todo!();
+            }
             ReplIncrementalContext::V1 {
                 domain_version,
                 domain_uuid,
