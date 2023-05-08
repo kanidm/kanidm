@@ -225,7 +225,8 @@ impl ReferentialIntegrity {
             let dyn_group = c.attribute_equality("class", &PVCLASS_DYNGROUP);
 
             ref_types.values().filter_map(move |rtype| {
-                let skip_mb = dyn_group && rtype.name == "member";
+                // Skip dynamic members
+                let skip_mb = dyn_group && rtype.name == "dynmember";
                 // Skip memberOf.
                 let skip_mo = rtype.name == "memberof";
                 if skip_mb || skip_mo {
@@ -923,7 +924,7 @@ mod tests {
             ("class", Value::new_class("dyngroup")),
             ("uuid", Value::Uuid(dyn_uuid)),
             ("name", Value::new_iname("test_dyngroup")),
-            ("member", Value::Refer(inv_mb_uuid)),
+            ("dynmember", Value::Refer(inv_mb_uuid)),
             (
                 "dyngroup_filter",
                 Value::JsonFilt(ProtoFilter::Eq("name".to_string(), "testgroup".to_string()))
@@ -946,7 +947,7 @@ mod tests {
             .expect("Failed to access dyn group");
 
         let dyn_member = dyna
-            .get_ava_refer("member")
+            .get_ava_refer("dynmember")
             .expect("Failed to get member attribute");
         assert!(dyn_member.len() == 1);
         assert!(dyn_member.contains(&tgroup_uuid));
