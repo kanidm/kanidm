@@ -421,9 +421,22 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
 #[cfg(test)]
 mod tests {
     use super::ReplicationUpdateVector;
+    use super::ReplCidRange;
 
     #[test]
     fn test_ruv_range_diff() {
         todo!();
+
+        let ctx_a = btreemap!(
+        );
+
+        let ctx_b = btreemap!();
+
+        let result = ReplicationUpdateVector::range_diff(&ctx_a, &ctx_b);
+
+        let expect = btreemap!();
+
+        assert_eq!(result, expect);
+
     }
 }

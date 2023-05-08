@@ -386,6 +386,7 @@ pub struct ReplAttrStateV1 {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum ReplStateV1 {
     Live {
+        // Also add AT here for breaking entry origin on conflict.
         attrs: BTreeMap<String, ReplAttrStateV1>,
     },
     Tombstone {
