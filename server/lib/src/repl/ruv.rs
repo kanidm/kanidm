@@ -486,9 +486,62 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
     }
     */
 
+    /*
+        How to handle changelog trimming? If we trim a server out from the RUV as a whole, we
+        need to be sure we don't oversupply changes the consumer already has. How can we do
+        this cleanly? Or do we just deal with it because our own local trim will occur soon after?
+
+        The situation would be
+
+        A:   1    ->    3
+        B:   1    ->    3
+
+        Assuming A trims first:
+
+        A:
+        B:   1    ->    3
+
+        Then on A <- B, B would try to supply 1->3 to A assuming it is not present. However,
+        the trim would occur soon after on B causing:
+
+        A:
+        B:
+
+        And then the supply would stop. So either A needs to retain the max/min in it's range
+        to allow the comparison here to continue even if it's ruv is cleaned. Or, we need to
+        have a delayed trim on the range that is 2x the normal trim range to give a buffer?
+
+        Mostly longer ruv/cid ranges aren't an issue for us, so could we just maek these ranges
+        really large?
+    */
+
+    // Problem Cases
+
+    /*
+       What about generations? There is a "live" generation which can be replicated and a
+       former generation of ranges that previously existed. To replicate:
+           // The consumer must have content within the current live range.
+           consumer.live_max < supplier.live_max
+           consumer.live_max >= supplier.live_min
+           // The consumer must have all content that was formerly known.
+           consumer.live_min >= supplier.former_max
+           // I don't think we care what
+    */
+
+    /*
+
+      B and C must be sequential to an s_uuid.
+
+      Former (trimmed) | Live (current)
+      A <-> B          | C <-> D
+
+      0 <-> A          | B <-> B
+
+    */
+
     pub fn trim_up_to(&mut self, cid: &Cid) -> Result<IDLBitRange, OperationError> {
         let mut idl = IDLBitRange::new();
-        let mut remove_suuid = Vec::default();
+        // let mut remove_suuid = Vec::default();
 
         // Here we can use the for_each here to be trimming the
         // range set since that is not ordered by time, we need
@@ -502,12 +555,26 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
             match self.ranged.get_mut(&cid.s_uuid) {
                 Some(server_range) => {
                     // Remove returns a bool if the element WAS present.
-                    if !server_range.remove(&cid.ts) {
-                        error!("Impossible State - The RUV is corrupted due to missing sid:ts pair in ranged index");
-                        return Err(OperationError::InvalidState);
+                    let last = match server_range.last() {
+                        Some(l) => *l,
+                        None => {
+                            error!("Impossible State - The RUV should not be empty");
+                            return Err(OperationError::InvalidState);
+                        }
+                    };
+
+                    if cid.ts != last {
+                        if !server_range.remove(&cid.ts) {
+                            error!("Impossible State - The RUV is corrupted due to missing sid:ts pair in ranged index");
+                            return Err(OperationError::InvalidState);
+                        }
+                    } else {
+                        trace!("skipping maximum cid for s_uuid");
                     }
                     if server_range.is_empty() {
-                        remove_suuid.push(cid.s_uuid);
+                        // remove_suuid.push(cid.s_uuid);
+                        error!("Impossible State - The RUV should not be cleared for a s_uuid!");
+                        return Err(OperationError::InvalidState);
                     }
                 }
                 None => {
@@ -517,10 +584,12 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
             }
         }
 
+        /*
         for s_uuid in remove_suuid {
             let x = self.ranged.remove(&s_uuid);
             assert!(x.map(|y| y.is_empty()).unwrap_or(false))
         }
+        */
 
         // Trim all cid's up to this value, and return the range of IDs
         // that are affected.
