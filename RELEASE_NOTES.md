@@ -14,7 +14,7 @@ report it to our [issue tracker].
 
 # Release Notes
 
-## 2023-02-01 - Kanidm 1.1.0-alpha12
+## 2023-05-01 - Kanidm 1.1.0-alpha12
 
 This is the twelfth alpha series release of the Kanidm Identity Management project. Alpha releases
 are to help get feedback and ideas from the community on how we can continue to make this project
