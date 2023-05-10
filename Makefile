@@ -106,6 +106,7 @@ install-tools:
 	cargo install --path tools/cli --force
 
 .PHONY: codespell
+codespell: ## spell-check things.
 codespell:
 	codespell -c \
 	-L 'crate,unexpect,Pres,pres,ACI,aci,te,ue,aNULL' \
