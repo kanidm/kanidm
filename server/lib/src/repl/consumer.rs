@@ -1,4 +1,5 @@
 use super::proto::*;
+use std::collections::BTreeMap;
 use crate::be::BackendTransaction;
 use crate::plugins::Plugins;
 use crate::prelude::*;
@@ -60,7 +61,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             ReplIncrementalContext::V1 {
                 domain_version,
                 domain_uuid,
-            } => self.consumer_apply_changes_v1(*domain_version, *domain_uuid),
+                ranges,
+            } => self.consumer_apply_changes_v1(*domain_version, *domain_uuid, ranges),
         }
     }
 
@@ -69,6 +71,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &mut self,
         _ctx_domain_version: DomainVersion,
         _ctx_domain_uuid: Uuid,
+        _ctx_ranges: &BTreeMap<Uuid, ReplCidRange>,
     ) -> Result<(), OperationError> {
         todo!();
     }
@@ -81,12 +84,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
             ReplRefreshContext::V1 {
                 domain_version,
                 domain_uuid,
+                ranges,
                 schema_entries,
                 meta_entries,
                 entries,
             } => self.consumer_apply_refresh_v1(
                 *domain_version,
                 *domain_uuid,
+                ranges,
                 schema_entries,
                 meta_entries,
                 entries,
@@ -157,6 +162,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &mut self,
         ctx_domain_version: DomainVersion,
         ctx_domain_uuid: Uuid,
+        ctx_ranges: &BTreeMap<Uuid, ReplCidRange>,
         ctx_schema_entries: &[ReplEntryV1],
         ctx_meta_entries: &[ReplEntryV1],
         ctx_entries: &[ReplEntryV1],
@@ -253,7 +259,23 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 e
             })?;
 
-        // Run post repl plugins
+
+        // Finally, confirm that the ranges that we have recreated match the ranges from our
+        // context. Note that we get this in a writeable form!
+        let ruv = self
+            .be_txn.get_ruv_write();
+
+        ruv.refresh_validate_ruv(ctx_ranges)
+            .map_err(|e| {
+                error!("RUV ranges were not rebuilt correctly.");
+                e
+            })?;
+
+        ruv.refresh_update_ruv(ctx_ranges)
+            .map_err(|e| {
+                error!("Unable to update RUV with supplier ranges.");
+                e
+            })?;
 
         Ok(())
     }

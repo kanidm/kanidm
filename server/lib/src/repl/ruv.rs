@@ -218,6 +218,18 @@ pub trait ReplicationUpdateVectorTransaction {
             .collect::<Result<BTreeMap<_, _>, _>>()
     }
 
+    fn refresh_validate_ruv(&self,
+        ctx_ranges: &BTreeMap<Uuid, ReplCidRange>,
+    ) -> Result<(), OperationError> {
+        todo!();
+    }
+
+    fn refresh_update_ruv(&mut self,
+        ctx_ranges: &BTreeMap<Uuid, ReplCidRange>,
+    ) -> Result<(), OperationError> {
+        todo!();
+    }
+
     fn verify(
         &self,
         entries: &[Arc<EntrySealedCommitted>],

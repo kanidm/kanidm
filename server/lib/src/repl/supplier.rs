@@ -85,6 +85,16 @@ impl<'a> QueryServerReadTransaction<'a> {
         let domain_version = self.d_info.d_vers;
         let domain_uuid = self.d_info.d_uuid;
 
+        // What is the set of data we are providing?
+        let ranges = self
+            .get_be_txn()
+            .get_ruv()
+            .current_ruv_range()
+            .map_err(|e| {
+                error!(err = ?e, "Unable to access supplier RUV range");
+                e
+            })?;
+
         // * the domain uuid
         // * the set of schema entries
         // * the set of non-schema entries
@@ -153,6 +163,7 @@ impl<'a> QueryServerReadTransaction<'a> {
         Ok(ReplRefreshContext::V1 {
             domain_version,
             domain_uuid,
+            ranges,
             schema_entries,
             meta_entries,
             entries,

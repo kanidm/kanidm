@@ -520,6 +520,9 @@ pub enum ReplRefreshContext {
     V1 {
         domain_version: DomainVersion,
         domain_uuid: Uuid,
+        // We need to send the current state of the ranges to populate into
+        // the ranges so that lookups and ranges work properly.
+        ranges: BTreeMap<Uuid, ReplCidRange>,
         schema_entries: Vec<ReplEntryV1>,
         meta_entries: Vec<ReplEntryV1>,
         entries: Vec<ReplEntryV1>,
@@ -534,5 +537,10 @@ pub enum ReplIncrementalContext {
     V1 {
         domain_version: DomainVersion,
         domain_uuid: Uuid,
+        // We need to send the current state of the ranges to populate into
+        // the ranges so that lookups and ranges work properly, and the
+        // consumer ends with the same state as we have (or at least merges)
+        // it with this.
+        ranges: BTreeMap<Uuid, ReplCidRange>,
     },
 }
