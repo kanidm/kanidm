@@ -218,18 +218,6 @@ pub trait ReplicationUpdateVectorTransaction {
             .collect::<Result<BTreeMap<_, _>, _>>()
     }
 
-    fn refresh_validate_ruv(&self,
-        ctx_ranges: &BTreeMap<Uuid, ReplCidRange>,
-    ) -> Result<(), OperationError> {
-        todo!();
-    }
-
-    fn refresh_update_ruv(&mut self,
-        ctx_ranges: &BTreeMap<Uuid, ReplCidRange>,
-    ) -> Result<(), OperationError> {
-        todo!();
-    }
-
     fn verify(
         &self,
         entries: &[Arc<EntrySealedCommitted>],
@@ -377,6 +365,67 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
     pub fn clear(&mut self) {
         self.data.clear();
         self.ranged.clear();
+    }
+
+    pub(crate) fn refresh_validate_ruv(
+        &self,
+        ctx_ranges: &BTreeMap<Uuid, ReplCidRange>,
+    ) -> Result<(), OperationError> {
+        // Assert that the ruv that currently exists, is a valid data set of
+        // the supplied consumer range - especially check that when a uuid exists in
+        // our ruv, that it's maximum matches the ctx ruv.
+        //
+        // Since the ctx range comes from the supplier, when we rebuild due to the
+        // state machine then some values may not exist since they were replaced. But
+        // the server uuid maximums must exist.
+        let mut valid = true;
+        for (server_uuid, server_range) in self.ranged.iter() {
+            match ctx_ranges.get(server_uuid) {
+                Some(ctx_range) => {
+                    let ctx_ts = &ctx_range.ts_max;
+                    match server_range.last() {
+                        Some(s_ts) if ctx_ts == s_ts => {
+                            // Ok
+                            trace!(?server_uuid, ?ctx_ts, ?s_ts, "valid");
+                        }
+                        Some(s_ts) => {
+                            valid = false;
+                            warn!(?server_uuid, ?ctx_ts, ?s_ts, "inconsistent s_uuid in ruv");
+                        }
+                        None => {
+                            valid = false;
+                            warn!(?server_uuid, ?ctx_ts, "inconsistent server range in ruv");
+                        }
+                    }
+                }
+                None => {
+                    valid = false;
+                    error!(?server_uuid, "s_uuid absent from in ruv");
+                }
+            }
+        }
+
+        if valid {
+            Ok(())
+        } else {
+            Err(OperationError::ReplInvalidRUVState)
+        }
+    }
+
+    pub(crate) fn refresh_update_ruv(
+        &mut self,
+        ctx_ranges: &BTreeMap<Uuid, ReplCidRange>,
+    ) -> Result<(), OperationError> {
+        for (ctx_s_uuid, ctx_range) in ctx_ranges.iter() {
+            if let Some(s_range) = self.ranged.get_mut(ctx_s_uuid) {
+                // Just assert the max is what we have.
+                s_range.insert(ctx_range.ts_max);
+            } else {
+                let s_range = btreeset!(ctx_range.ts_max);
+                self.ranged.insert(*ctx_s_uuid, s_range);
+            }
+        }
+        Ok(())
     }
 
     pub fn rebuild(&mut self, entries: &[Arc<EntrySealedCommitted>]) -> Result<(), OperationError> {

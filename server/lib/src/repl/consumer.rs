@@ -1,10 +1,10 @@
 use super::proto::*;
-use std::collections::BTreeMap;
 use crate::be::BackendTransaction;
 use crate::plugins::Plugins;
 use crate::prelude::*;
 use crate::repl::proto::ReplRuvRange;
 use crate::repl::ruv::ReplicationUpdateVectorTransaction;
+use std::collections::BTreeMap;
 
 impl<'a> QueryServerReadTransaction<'a> {
     // Get the current state of "where we are up to"
@@ -259,23 +259,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 e
             })?;
 
-
         // Finally, confirm that the ranges that we have recreated match the ranges from our
         // context. Note that we get this in a writeable form!
-        let ruv = self
-            .be_txn.get_ruv_write();
+        let ruv = self.be_txn.get_ruv_write();
 
-        ruv.refresh_validate_ruv(ctx_ranges)
-            .map_err(|e| {
-                error!("RUV ranges were not rebuilt correctly.");
-                e
-            })?;
+        ruv.refresh_validate_ruv(ctx_ranges).map_err(|e| {
+            error!("RUV ranges were not rebuilt correctly.");
+            e
+        })?;
 
-        ruv.refresh_update_ruv(ctx_ranges)
-            .map_err(|e| {
-                error!("Unable to update RUV with supplier ranges.");
-                e
-            })?;
+        ruv.refresh_update_ruv(ctx_ranges).map_err(|e| {
+            error!("Unable to update RUV with supplier ranges.");
+            e
+        })?;
 
         Ok(())
     }

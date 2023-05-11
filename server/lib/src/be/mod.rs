@@ -941,9 +941,7 @@ impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
         &mut self.idlayer
     }
 
-    fn get_ruv(&mut self) -> 
-        &mut ReplicationUpdateVectorWriteTransaction<'a> 
-    {
+    fn get_ruv(&mut self) -> &mut ReplicationUpdateVectorWriteTransaction<'a> {
         &mut self.ruv
     }
 
@@ -953,10 +951,9 @@ impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
 }
 
 impl<'a> BackendWriteTransaction<'a> {
-    pub(crate) fn get_ruv_write(&mut self) ->
-        &mut ReplicationUpdateVectorWriteTransaction<'a>  {
-            &mut self.ruv
-        }
+    pub(crate) fn get_ruv_write(&mut self) -> &mut ReplicationUpdateVectorWriteTransaction<'a> {
+        &mut self.ruv
+    }
 
     #[instrument(level = "debug", name = "be::create", skip_all)]
     pub fn create(
