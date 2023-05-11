@@ -180,3 +180,6 @@ async fn test_repl_increment_basic(server_a: &QueryServer, server_b: &QueryServe
 
     // RUV should be consistent again.
 }
+
+// Test RUV content when a server's changes have been trimmed out and are not present
+// in a refresh.

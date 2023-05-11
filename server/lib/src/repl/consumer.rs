@@ -52,10 +52,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
         ctx: &ReplIncrementalContext,
     ) -> Result<(), OperationError> {
         match ctx {
+            ReplIncrementalContext::NoChangesAvailable => {
+                info!("no changes are available");
+                Ok(())
+            }
             ReplIncrementalContext::RefreshRequired => {
                 todo!();
             }
-            ReplIncrementalContext::Unwilling => {
+            ReplIncrementalContext::UnwillingToSupply => {
                 todo!();
             }
             ReplIncrementalContext::V1 {

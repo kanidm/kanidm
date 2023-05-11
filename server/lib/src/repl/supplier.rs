@@ -47,7 +47,7 @@ impl<'a> QueryServerReadTransaction<'a> {
             RangeDiffStatus::Unwilling { adv_range } => {
                 error!("Replication - Supplier is lagging and must be investigated.");
                 debug!(?adv_range);
-                return Ok(ReplIncrementalContext::Unwilling);
+                return Ok(ReplIncrementalContext::UnwillingToSupply);
             }
             RangeDiffStatus::Critical {
                 lag_range,
@@ -56,11 +56,15 @@ impl<'a> QueryServerReadTransaction<'a> {
                 error!("Replication Critical - Servers are advanced of us, and also lagging! This must be immediately investigated!");
                 debug!(?lag_range);
                 debug!(?adv_range);
-                return Ok(ReplIncrementalContext::Unwilling);
+                return Ok(ReplIncrementalContext::UnwillingToSupply);
             }
         };
 
         debug!(?ranges, "these ranges will be supplied");
+
+        if ranges.is_empty() {
+            return Ok(ReplIncrementalContext::NoChangesAvailable);
+        }
 
         // From the set of change id's, fetch those entries.
 
