@@ -729,12 +729,16 @@ pub trait BackendTransaction {
         // entry id's.
 
         let idl = self.get_ruv().range_to_idl(ranges);
+        // Because of how this works, I think that it's not possible for the idl
+        // to have any missing ids.
+        //
+        // If it was possible, we could just & with allids to remove the extraneous
+        // values.
 
-        trace!(?idl);
-
-        // If it's empty, return empty!
-
-        todo!();
+        self.get_idlayer().get_identry(&idl).map_err(|e| {
+            admin_error!(?e, "get_identry failed");
+            e
+        })
     }
 
     fn verify(&mut self) -> Vec<Result<(), ConsistencyError>> {
