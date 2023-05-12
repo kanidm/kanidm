@@ -6,7 +6,7 @@ Kanidm tokens should have a unique pattern, making them easy to recognize. This 
 
 > **RFC Discussion here**
 >
-> Another option could be to use the pattern `kanidm_<CREDENTIAL>`. This way, users can figure out what kind of token they have.
+> Another option could be to use the pattern `kanidm_<CREDENTIAL>`. This way, users can figure out what kind of token they have on their own.
 
 ```text
 kanidm_<TYPE>_<CREDENTIAL>
@@ -15,7 +15,7 @@ Where:
 
 - `<TYPE>` is the type of the credential, such as OAuth secret, UAT, and so on. Examples include:
   - uat
-  - ors
+  - oat
   - unx
 - `<CREDENTIAL>` is the actual credential.
 
