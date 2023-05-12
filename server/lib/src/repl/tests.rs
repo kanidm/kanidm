@@ -171,14 +171,91 @@ async fn test_repl_increment_basic(server_a: &QueryServer, server_b: &QueryServe
     trace!(?b_ruv_range);
     assert!(a_ruv_range == b_ruv_range);
 
-    // Add an entry.
+    server_a_txn.commit().expect("Failed to commit");
 
-    todo!();
+    drop(server_b_txn);
+
+    // Add an entry.
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_b_txn
+        .internal_create(vec![entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::Uuid(t_uuid)),
+            ("description", Value::new_utf8s("testperson1")),
+            ("displayname", Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.read().await;
+
+    // Assert the entry is not on A.
+    assert_eq!(
+        server_a_txn.internal_search_uuid(t_uuid),
+        Err(OperationError::NoMatchingEntries)
+    );
+
+    let a_ruv_range = server_a_txn
+        .get_be_txn()
+        .get_ruv()
+        .current_ruv_range()
+        .expect("Failed to get RUV range A");
+    let b_ruv_range = server_b_txn
+        .get_be_txn()
+        .get_ruv()
+        .current_ruv_range()
+        .expect("Failed to get RUV range B");
+
+    trace!(?a_ruv_range);
+    trace!(?b_ruv_range);
+    assert!(a_ruv_range != b_ruv_range);
+
+    // Now setup the consumer state for the next incremental replication.
+    let a_ruv_range = server_a_txn
+        .consumer_get_state()
+        .expect("Unable to access RUV range");
+    // End the read.
+    drop(server_a_txn);
 
     // Incremental.
     // Should now be on the other partner.
 
+    // Get the changes.
+    let changes = server_b_txn
+        .supplier_provide_changes(a_ruv_range)
+        .expect("Unable to generate supplier changes");
+
+    // Check the changes = should be empty.
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+
+    server_a_txn
+        .consumer_apply_changes(&changes)
+        .expect("Unable to apply changes to consumer.");
+
     // RUV should be consistent again.
+    let a_ruv_range = server_a_txn
+        .get_be_txn()
+        .get_ruv()
+        .current_ruv_range()
+        .expect("Failed to get RUV range A");
+    let b_ruv_range = server_b_txn
+        .get_be_txn()
+        .get_ruv()
+        .current_ruv_range()
+        .expect("Failed to get RUV range B");
+
+    trace!(?a_ruv_range);
+    trace!(?b_ruv_range);
+    assert!(a_ruv_range == b_ruv_range);
+
+    server_a_txn.commit().expect("Failed to commit");
+
+    drop(server_b_txn);
 }
 
 // Test RUV content when a server's changes have been trimmed out and are not present

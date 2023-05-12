@@ -4,6 +4,7 @@
 //! is to persist content safely to disk, load that content, and execute queries
 //! utilising indexes in the most effective way possible.
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::ops::DerefMut;
 use std::sync::Arc;
@@ -23,6 +24,7 @@ use crate::entry::{Entry, EntryCommitted, EntryNew, EntrySealed};
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
+use crate::repl::proto::ReplCidRange;
 use crate::repl::ruv::{
     ReplicationUpdateVector, ReplicationUpdateVectorReadTransaction,
     ReplicationUpdateVectorTransaction, ReplicationUpdateVectorWriteTransaction,
@@ -203,7 +205,7 @@ pub trait BackendTransaction {
     /// Recursively apply a filter, transforming into IdList's on the way. This builds a query
     /// execution log, so that it can be examined how an operation proceeded.
     #[allow(clippy::cognitive_complexity)]
-    #[instrument(level = "debug", name = "be::filter2idl", skip_all)]
+    // #[instrument(level = "debug", name = "be::filter2idl", skip_all)]
     fn filter2idl(
         &mut self,
         filt: &FilterResolved,
@@ -569,7 +571,6 @@ pub trait BackendTransaction {
         erl: &Limits,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
-        let _entered = trace_span!("be::search").entered();
         // Unlike DS, even if we don't get the index back, we can just pass
         // to the in-memory filter test and be done.
 
@@ -668,7 +669,8 @@ pub trait BackendTransaction {
 
         // Using the indexes, resolve the IdList here, or AllIds.
         // Also get if the filter was 100% resolved or not.
-        let (idl, fplan) = self.filter2idl(filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD)?;
+        let (idl, fplan) = trace_span!("be::exists -> filter2idl")
+            .in_scope(|| self.filter2idl(filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD))?;
 
         debug!(filter_executed_plan = ?fplan);
 
@@ -717,6 +719,22 @@ pub trait BackendTransaction {
                 Ok(!entries_filtered.is_empty())
             }
         } // end match idl
+    }
+
+    fn retrieve_range(
+        &mut self,
+        ranges: &BTreeMap<Uuid, ReplCidRange>,
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+        // First pass the ranges to the ruv to resolve to an absolute set of
+        // entry id's.
+
+        let idl = self.get_ruv().range_to_idl(ranges);
+
+        trace!(?idl);
+
+        // If it's empty, return empty!
+
+        todo!();
     }
 
     fn verify(&mut self) -> Vec<Result<(), ConsistencyError>> {

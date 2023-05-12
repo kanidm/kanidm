@@ -218,6 +218,54 @@ pub trait ReplicationUpdateVectorTransaction {
             .collect::<Result<BTreeMap<_, _>, _>>()
     }
 
+    fn range_to_idl(&self, ctx_ranges: &BTreeMap<Uuid, ReplCidRange>) -> IDLBitRange {
+        let mut idl = IDLBitRange::new();
+        // Force the set to be compressed, saves on seeks during
+        // inserts.
+        idl.compress();
+        let range = self.range_snapshot();
+        let ruv = self.ruv_snapshot();
+
+        // The range we have has a collection of s_uuid containing low -> high ranges.
+        // We need to convert this to absolute ranges of all the idlbitranges that
+        // relate to the entries we have.
+
+        for (s_uuid, ctx_range) in ctx_ranges {
+            // For each server and range low to high, iterate over
+            // the list of CID's in the main RUV.
+
+            let ruv_range = match range.get(s_uuid) {
+                Some(r) => r,
+                None => {
+                    // This is valid because if we clean up a server range on
+                    // this node, but the other server isn't aware yet, so we
+                    // just no-op this. The changes we have will still be
+                    // correctly found and sent.
+                    debug!(?s_uuid, "range not found in ruv.");
+                    continue;
+                }
+            };
+
+            // Get from the min to the max. Unbounded and
+            // Included(ctx_range.ts_max) are the same in
+            // this context.
+
+            for ts in ruv_range.range((Excluded(ctx_range.ts_min), Unbounded)) {
+                let cid = Cid {
+                    ts: *ts,
+                    s_uuid: *s_uuid,
+                };
+
+                if let Some(ruv_idl) = ruv.get(&cid) {
+                    ruv_idl.into_iter().for_each(|id| idl.insert_id(id))
+                }
+                // If the cid isn't found, it may have been trimmed, but thats okay.
+            }
+        }
+
+        idl
+    }
+
     fn verify(
         &self,
         entries: &[Arc<EntrySealedCommitted>],

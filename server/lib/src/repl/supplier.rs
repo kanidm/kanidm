@@ -67,6 +67,12 @@ impl<'a> QueryServerReadTransaction<'a> {
         }
 
         // From the set of change id's, fetch those entries.
+        // This is done by supplying the ranges to the be which extracts
+        // the entries affected by the idls in question.
+        let _res = self.get_be_txn().retrieve_range(&ranges).map_err(|e| {
+            admin_error!(?e, "backend failure");
+            OperationError::Backend
+        })?;
 
         // Seperate the entries into schema, meta and remaining.
 
