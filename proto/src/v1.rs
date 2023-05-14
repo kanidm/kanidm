@@ -251,6 +251,7 @@ pub enum OperationError {
     ReplEntryNotChanged,
     ReplInvalidRUVState,
     ReplDomainLevelUnsatisfiable,
+    ReplDomainUuidMismatch,
 }
 
 impl PartialEq for OperationError {

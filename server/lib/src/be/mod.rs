@@ -735,7 +735,10 @@ pub trait BackendTransaction {
         // If it was possible, we could just & with allids to remove the extraneous
         // values.
 
-        self.get_idlayer().get_identry(&idl).map_err(|e| {
+        // Make it an id list fr the backend.
+        let id_list = IdList::Indexed(idl);
+
+        self.get_idlayer().get_identry(&id_list).map_err(|e| {
             admin_error!(?e, "get_identry failed");
             e
         })

@@ -47,6 +47,14 @@ impl<'a> QueryServerReadTransaction<'a> {
 impl<'a> QueryServerWriteTransaction<'a> {
     // Apply the state changes if they are valid.
 
+    fn consumer_incremental_apply_entries(
+        &mut self,
+        ctx_entries: &[ReplIncrementalEntryV1],
+    ) -> Result<(), OperationError> {
+        trace!(?ctx_entries);
+        todo!();
+    }
+
     pub fn consumer_apply_changes(
         &mut self,
         ctx: &ReplIncrementalContext,
@@ -66,18 +74,106 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 domain_version,
                 domain_uuid,
                 ranges,
-            } => self.consumer_apply_changes_v1(*domain_version, *domain_uuid, ranges),
+                schema_entries,
+                meta_entries,
+                entries,
+            } => self.consumer_apply_changes_v1(
+                *domain_version,
+                *domain_uuid,
+                ranges,
+                schema_entries,
+                meta_entries,
+                entries,
+            ),
         }
     }
 
     #[instrument(level = "debug", skip_all)]
     fn consumer_apply_changes_v1(
         &mut self,
-        _ctx_domain_version: DomainVersion,
-        _ctx_domain_uuid: Uuid,
-        _ctx_ranges: &BTreeMap<Uuid, ReplCidRange>,
+        ctx_domain_version: DomainVersion,
+        ctx_domain_uuid: Uuid,
+        ctx_ranges: &BTreeMap<Uuid, ReplCidRange>,
+        ctx_schema_entries: &[ReplIncrementalEntryV1],
+        ctx_meta_entries: &[ReplIncrementalEntryV1],
+        ctx_entries: &[ReplIncrementalEntryV1],
     ) -> Result<(), OperationError> {
-        todo!();
+        if ctx_domain_version < DOMAIN_MIN_LEVEL {
+            error!("Unable to proceed with consumer incremental - incoming domain level is lower than our minimum supported level. {} < {}", ctx_domain_version, DOMAIN_MIN_LEVEL);
+            return Err(OperationError::ReplDomainLevelUnsatisfiable);
+        } else if ctx_domain_version > DOMAIN_MAX_LEVEL {
+            error!("Unable to proceed with consumer incremental - incoming domain level is greater than our maximum supported level. {} > {}", ctx_domain_version, DOMAIN_MAX_LEVEL);
+            return Err(OperationError::ReplDomainLevelUnsatisfiable);
+        };
+
+        // Assert that the d_uuid matches the repl domain uuid.
+        let db_uuid = self.be_txn.get_db_d_uuid();
+        if db_uuid != ctx_domain_uuid {
+            error!("Unable to proceed with consumer incremental - incoming domain uuid does not match our database uuid. You must investigate this situation. {:?} != {:?}", db_uuid, ctx_domain_uuid);
+            return Err(OperationError::ReplDomainUuidMismatch);
+        }
+
+        debug!(
+            "Proceeding to apply incremental from domain {:?} at level {}",
+            ctx_domain_uuid, ctx_domain_version
+        );
+
+        // == ⚠️  Below this point we begin to make changes! ==
+
+        // Apply the schema entries first.
+        self.consumer_incremental_apply_entries(ctx_schema_entries)
+            .map_err(|e| {
+                error!("Failed to apply incremental schema entries");
+                e
+            })?;
+
+        // We need to reload schema now!
+        self.reload_schema().map_err(|e| {
+            error!("Failed to reload schema");
+            e
+        })?;
+
+        // Apply meta entries now.
+        self.consumer_incremental_apply_entries(ctx_meta_entries)
+            .map_err(|e| {
+                error!("Failed to apply incremental schema entries");
+                e
+            })?;
+
+        // This is re-loaded in case the domain name changed on the remote. Also needed for changing
+        // the domain version.
+        self.reload_domain_info().map_err(|e| {
+            error!("Failed to reload domain info");
+            e
+        })?;
+
+        // Trigger for post commit hooks. Should we detect better in the entry
+        // apply phases?
+        self.changed_schema = true;
+        self.changed_domain = true;
+
+        // Update all other entries now.
+        self.consumer_incremental_apply_entries(ctx_entries)
+            .map_err(|e| {
+                error!("Failed to apply incremental schema entries");
+                e
+            })?;
+
+        // Finally, confirm that the ranges that we have added match the ranges from our
+        // context. Note that we get this in a writeable form!
+        let ruv = self.be_txn.get_ruv_write();
+
+        ruv.refresh_validate_ruv(ctx_ranges).map_err(|e| {
+            error!("RUV ranges were not rebuilt correctly.");
+            e
+        })?;
+
+        ruv.refresh_update_ruv(ctx_ranges).map_err(|e| {
+            error!("Unable to update RUV with supplier ranges.");
+            e
+        })?;
+
+        Ok(())
     }
 
     pub fn consumer_apply_refresh(
@@ -236,7 +332,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Apply the domain info entry / system info / system config entry?
         self.consumer_refresh_create_entries(ctx_meta_entries)
             .map_err(|e| {
-                error!("Failed to refresh schema entries");
+                error!("Failed to refresh meta entries");
                 e
             })?;
 

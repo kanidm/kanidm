@@ -260,3 +260,9 @@ async fn test_repl_increment_basic(server_a: &QueryServer, server_b: &QueryServe
 
 // Test RUV content when a server's changes have been trimmed out and are not present
 // in a refresh.
+
+// Test change of a domain name over incremental.
+
+// Test schema addition / change over incremental.
+
+// Test change of domain version over incremental.

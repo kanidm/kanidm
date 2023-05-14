@@ -1,4 +1,6 @@
-use super::proto::{ReplEntryV1, ReplIncrementalContext, ReplRefreshContext, ReplRuvRange};
+use super::proto::{
+    ReplEntryV1, ReplIncrementalContext, ReplIncrementalEntryV1, ReplRefreshContext, ReplRuvRange,
+};
 use super::ruv::{RangeDiffStatus, ReplicationUpdateVector, ReplicationUpdateVectorTransaction};
 use crate::be::BackendTransaction;
 use crate::prelude::*;
@@ -69,19 +71,67 @@ impl<'a> QueryServerReadTransaction<'a> {
         // From the set of change id's, fetch those entries.
         // This is done by supplying the ranges to the be which extracts
         // the entries affected by the idls in question.
-        let _res = self.get_be_txn().retrieve_range(&ranges).map_err(|e| {
+        let entries = self.get_be_txn().retrieve_range(&ranges).map_err(|e| {
             admin_error!(?e, "backend failure");
             OperationError::Backend
         })?;
 
         // Seperate the entries into schema, meta and remaining.
+        let (schema_entries, rem_entries): (Vec<_>, Vec<_>) = entries.into_iter().partition(|e| {
+            e.get_ava_set("class")
+                .map(|cls| {
+                    cls.contains(&PVCLASS_ATTRIBUTETYPE as &PartialValue)
+                        || cls.contains(&PVCLASS_CLASSTYPE as &PartialValue)
+                })
+                .unwrap_or(false)
+        });
+
+        let (meta_entries, entries): (Vec<_>, Vec<_>) = rem_entries.into_iter().partition(|e| {
+            e.get_ava_set("uuid")
+                .map(|uset| {
+                    uset.contains(&PVUUID_DOMAIN_INFO as &PartialValue)
+                        || uset.contains(&PVUUID_SYSTEM_INFO as &PartialValue)
+                        || uset.contains(&PVUUID_SYSTEM_CONFIG as &PartialValue)
+                })
+                .unwrap_or(false)
+        });
+
+        trace!(?schema_entries);
+        trace!(?meta_entries);
+        trace!(?entries);
 
         // For each entry, determine the changes that exist on the entry that fall
         // into the ruv range - reduce to a incremental set of changes.
 
+        let schema = self.get_schema();
+        let domain_version = self.d_info.d_vers;
+        let domain_uuid = self.d_info.d_uuid;
+
+        let schema_entries: Vec<_> = schema_entries
+            .into_iter()
+            .map(|e| ReplIncrementalEntryV1::new(e.as_ref(), schema, &ranges))
+            .collect();
+
+        let meta_entries: Vec<_> = meta_entries
+            .into_iter()
+            .map(|e| ReplIncrementalEntryV1::new(e.as_ref(), schema, &ranges))
+            .collect();
+
+        let entries: Vec<_> = entries
+            .into_iter()
+            .map(|e| ReplIncrementalEntryV1::new(e.as_ref(), schema, &ranges))
+            .collect();
+
         // Build the incremental context.
 
-        todo!();
+        Ok(ReplIncrementalContext::V1 {
+            domain_version,
+            domain_uuid,
+            ranges,
+            schema_entries,
+            meta_entries,
+            entries,
+        })
     }
 
     #[instrument(level = "debug", skip_all)]

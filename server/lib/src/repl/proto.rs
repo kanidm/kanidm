@@ -512,6 +512,75 @@ impl ReplEntryV1 {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+// I think partial entries should be separate? This clearly implies a refresh.
+pub struct ReplIncrementalEntryV1 {
+    uuid: Uuid,
+    // Change State
+    st: ReplStateV1,
+}
+
+impl ReplIncrementalEntryV1 {
+    pub fn new(
+        entry: &EntrySealedCommitted,
+        schema: &SchemaReadTransaction,
+        ctx_range: &BTreeMap<Uuid, ReplCidRange>,
+    ) -> ReplIncrementalEntryV1 {
+        let cs = entry.get_changestate();
+        let uuid = entry.get_uuid();
+
+        let st = match cs.current() {
+            State::Live { changes } => {
+                // Only put attributes into the change state that were changed within the range that was
+                // requested.
+                let live_attrs = entry.get_ava();
+
+                let attrs = changes
+                    .iter()
+                    .filter_map(|(attr_name, cid)| {
+                        // If the cid is within the ctx range
+                        let within = schema.is_replicated(attr_name)
+                            && ctx_range
+                                .get(&cid.s_uuid)
+                                .map(|repl_range| {
+                                    // Supply anything up to and including.
+                                    cid.ts <= repl_range.ts_max &&
+                                    // ts_min is always what the consumer already has.
+                                    cid.ts > repl_range.ts_min
+                                })
+                                // If not present in the range, assume it's not needed.
+                                .unwrap_or(false);
+
+                        // Then setup to supply it.
+                        if within {
+                            let live_attr = live_attrs.get(attr_name.as_str());
+                            let cid = cid.into();
+                            let attr = live_attr.and_then(|maybe| {
+                                if maybe.len() > 0 {
+                                    Some(maybe.to_repl_v1())
+                                } else {
+                                    None
+                                }
+                            });
+
+                            Some((attr_name.to_string(), ReplAttrStateV1 { cid, attr }))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                ReplStateV1::Live { attrs }
+            }
+            // Don't care what the at is - send the tombstone.
+            State::Tombstone { at } => ReplStateV1::Tombstone { at: at.into() },
+        };
+
+        ReplIncrementalEntryV1 { uuid, st }
+    }
+}
+
 // From / Into Entry
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -543,5 +612,8 @@ pub enum ReplIncrementalContext {
         // consumer ends with the same state as we have (or at least merges)
         // it with this.
         ranges: BTreeMap<Uuid, ReplCidRange>,
+        schema_entries: Vec<ReplIncrementalEntryV1>,
+        meta_entries: Vec<ReplIncrementalEntryV1>,
+        entries: Vec<ReplIncrementalEntryV1>,
     },
 }
