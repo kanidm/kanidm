@@ -160,7 +160,7 @@ uuid = "^1.3.2"
 
 wasm-bindgen = "^0.2.81"
 wasm-bindgen-futures = "^0.4.30"
-wasm-bindgen-test = "0.3.34"
+wasm-bindgen-test = "0.3.35"
 
 webauthn-authenticator-rs = "0.4.8"
 webauthn-rs = "0.4.8"
