@@ -74,7 +74,7 @@ kanidm person credential create-reset-token demo_user --name idm_admin
 # ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
 # 
 # This link: https://localhost:8443/ui/reset?token=8qDRG-AE1qC-zjjAT-0Fkd6
-# Or run this command: kanidm person credential use_reset_token 8qDRG-AE1qC-zjjAT-0Fkd6
+# Or run this command: kanidm person credential use-reset-token 8qDRG-AE1qC-zjjAT-0Fkd6
 ```
 
 If the user wishes you can direct them to `https://idm.mydomain.name/ui/reset` where they can
