@@ -160,7 +160,7 @@ pub struct AccountNamedTagPkOpt {
 }
 
 #[derive(Debug, Args)]
-/// Command-line options for account credental use_reset_token
+/// Command-line options for account credental use-reset-token
 pub struct UseResetTokenOpt {
     #[clap(flatten)]
     copt: CommonOpt,
