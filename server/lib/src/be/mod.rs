@@ -20,11 +20,12 @@ use tracing::{trace, trace_span};
 use uuid::Uuid;
 
 use crate::be::dbentry::{DbBackup, DbEntry};
-use crate::entry::{Entry, EntryCommitted, EntryNew, EntrySealed};
+use crate::entry::Entry;
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::repl::proto::ReplCidRange;
+use crate::repl::proto::ReplIncrementalEntryV1;
 use crate::repl::ruv::{
     ReplicationUpdateVector, ReplicationUpdateVectorReadTransaction,
     ReplicationUpdateVectorTransaction, ReplicationUpdateVectorWriteTransaction,
@@ -181,7 +182,7 @@ impl IdRawEntry {
             .map(|dbe| (self.id, dbe))
     }
 
-    fn into_entry(self) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
+    fn into_entry(self) -> Result<EntrySealedCommitted, OperationError> {
         let db_e = serde_json::from_slice(self.data.as_slice()).map_err(|e| {
             admin_error!(?e, id = %self.id, "Serde JSON Error");
             let raw_str = String::from_utf8_lossy(self.data.as_slice());
@@ -748,10 +749,7 @@ pub trait BackendTransaction {
         self.get_idlayer().verify()
     }
 
-    fn verify_entry_index(
-        &mut self,
-        e: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<(), ConsistencyError> {
+    fn verify_entry_index(&mut self, e: &EntrySealedCommitted) -> Result<(), ConsistencyError> {
         // First, check our references in name2uuid, uuid2spn and uuid2rdn
         if e.mask_recycled_ts().is_some() {
             let e_uuid = e.get_uuid();
@@ -984,8 +982,8 @@ impl<'a> BackendWriteTransaction<'a> {
     pub fn create(
         &mut self,
         cid: &Cid,
-        entries: Vec<Entry<EntrySealed, EntryNew>>,
-    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+        entries: Vec<EntrySealedNew>,
+    ) -> Result<Vec<EntrySealedCommitted>, OperationError> {
         if entries.is_empty() {
             admin_error!("No entries provided to BE to create, invalid server call!");
             return Err(OperationError::EmptyRequest);
@@ -1041,8 +1039,8 @@ impl<'a> BackendWriteTransaction<'a> {
     /// related to this entry as that could cause an infinite replication loop!
     pub fn refresh(
         &mut self,
-        entries: Vec<Entry<EntrySealed, EntryNew>>,
-    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+        entries: Vec<EntrySealedNew>,
+    ) -> Result<Vec<EntrySealedCommitted>, OperationError> {
         if entries.is_empty() {
             admin_error!("No entries provided to BE to create, invalid server call!");
             return Err(OperationError::EmptyRequest);
@@ -1117,6 +1115,67 @@ impl<'a> BackendWriteTransaction<'a> {
             .iter()
             .zip(post_entries.iter())
             .try_for_each(|(pre, post)| self.entry_index(Some(pre.as_ref()), Some(post)))
+    }
+
+    #[instrument(level = "debug", name = "be::incremental_prepare", skip_all)]
+    pub fn incremental_prepare<'x>(
+        &mut self,
+        entry_meta: &[ReplIncrementalEntryV1],
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+        let mut ret_entries = Vec::with_capacity(entry_meta.len());
+        let mut id_max = self.idlayer.get_id2entry_max_id()?;
+
+        for ctx_ent in entry_meta.iter() {
+            let idx_key = ctx_ent.uuid.as_hyphenated().to_string();
+
+            let idl = self
+                .get_idlayer()
+                .get_idl("uuid", IndexType::Equality, &idx_key)?;
+
+            let entry = match idl {
+                Some(idl) => {
+                    // BUG - corrupt index.
+                    if idl.is_empty() {
+                        error!("Invalid IDL state, must not be empty");
+                        return Err(OperationError::InvalidDbState);
+                    }
+
+                    // Get the entry from this idl.
+                    let mut entries = self
+                        .get_idlayer()
+                        .get_identry(&IdList::Indexed(idl))
+                        .map_err(|e| {
+                            admin_error!(?e, "get_identry failed");
+                            e
+                        })?;
+
+                    if let Some(entry) = entries.pop() {
+                        // Return it.
+                        entry
+                    } else {
+                        error!("Invalid entry state, index was unable to locate entry");
+                        return Err(OperationError::InvalidDbState);
+                    }
+                    // Done, entry is ready to go
+                }
+                None => {
+                    // Create the stub entry, we just need it to have an id number
+                    // allocated.
+                    id_max += 1;
+
+                    Arc::new(EntrySealedCommitted::stub_sealed_committed_id(
+                        id_max, ctx_ent,
+                    ))
+                    // Okay, entry ready to go.
+                }
+            };
+
+            ret_entries.push(entry);
+        }
+
+        self.idlayer.set_id2entry_max_id(id_max);
+
+        Ok(ret_entries)
     }
 
     #[instrument(level = "debug", name = "be::reap_tombstones", skip_all)]
@@ -1233,8 +1292,8 @@ impl<'a> BackendWriteTransaction<'a> {
     #[allow(clippy::cognitive_complexity)]
     fn entry_index(
         &mut self,
-        pre: Option<&Entry<EntrySealed, EntryCommitted>>,
-        post: Option<&Entry<EntrySealed, EntryCommitted>>,
+        pre: Option<&EntrySealedCommitted>,
+        post: Option<&EntrySealedCommitted>,
     ) -> Result<(), OperationError> {
         let (e_uuid, e_id, uuid_same) = match (pre, post) {
             (None, None) => {

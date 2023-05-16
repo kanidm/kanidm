@@ -386,6 +386,7 @@ pub struct ReplAttrStateV1 {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum ReplStateV1 {
     Live {
+        at: ReplCidV1,
         // Also add AT here for breaking entry origin on conflict.
         attrs: BTreeMap<String, ReplAttrStateV1>,
     },
@@ -409,7 +410,7 @@ impl ReplEntryV1 {
         let uuid = entry.get_uuid();
 
         let st = match cs.current() {
-            State::Live { changes } => {
+            State::Live { at, changes } => {
                 let live_attrs = entry.get_ava();
 
                 let attrs = changes
@@ -441,7 +442,10 @@ impl ReplEntryV1 {
                     })
                     .collect();
 
-                ReplStateV1::Live { attrs }
+                ReplStateV1::Live {
+                    at: at.into(),
+                    attrs,
+                }
             }
             State::Tombstone { at } => ReplStateV1::Tombstone { at: at.into() },
         };
@@ -451,8 +455,8 @@ impl ReplEntryV1 {
 
     pub fn rehydrate(&self) -> Result<(EntryChangeState, Eattrs), OperationError> {
         match &self.st {
-            ReplStateV1::Live { attrs } => {
-                trace!("{:#?}", attrs);
+            ReplStateV1::Live { at, attrs } => {
+                trace!("{:?} {:#?}", at, attrs);
                 // We need to build two sets, one for the Entry Change States, and one for the
                 // Eattrs.
                 let mut changes = BTreeMap::default();
@@ -485,8 +489,10 @@ impl ReplEntryV1 {
                     }
                 }
 
+                let at: Cid = at.into();
+
                 let ecstate = EntryChangeState {
-                    st: State::Live { changes },
+                    st: State::Live { at, changes },
                 };
                 Ok((ecstate, eattrs))
             }
@@ -516,9 +522,9 @@ impl ReplEntryV1 {
 #[serde(rename_all = "lowercase")]
 // I think partial entries should be separate? This clearly implies a refresh.
 pub struct ReplIncrementalEntryV1 {
-    uuid: Uuid,
+    pub(crate) uuid: Uuid,
     // Change State
-    st: ReplStateV1,
+    pub(crate) st: ReplStateV1,
 }
 
 impl ReplIncrementalEntryV1 {
@@ -531,7 +537,7 @@ impl ReplIncrementalEntryV1 {
         let uuid = entry.get_uuid();
 
         let st = match cs.current() {
-            State::Live { changes } => {
+            State::Live { at, changes } => {
                 // Only put attributes into the change state that were changed within the range that was
                 // requested.
                 let live_attrs = entry.get_ava();
@@ -571,7 +577,10 @@ impl ReplIncrementalEntryV1 {
                     })
                     .collect();
 
-                ReplStateV1::Live { attrs }
+                ReplStateV1::Live {
+                    at: at.into(),
+                    attrs,
+                }
             }
             // Don't care what the at is - send the tombstone.
             State::Tombstone { at } => ReplStateV1::Tombstone { at: at.into() },

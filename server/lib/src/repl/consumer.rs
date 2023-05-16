@@ -52,6 +52,82 @@ impl<'a> QueryServerWriteTransaction<'a> {
         ctx_entries: &[ReplIncrementalEntryV1],
     ) -> Result<(), OperationError> {
         trace!(?ctx_entries);
+
+        /*
+         *  Incremental is very similar to modify in how we have to treat the entries
+         *  with a pre and post state. However we need an incremental prepare so that
+         *  when new entries are provided to us we can merge to a stub and then commit
+         *  it correctly. This takes an extra backend interface that prepares the
+         *  entry stubs for us.
+         */
+
+        let db_entries = self.be_txn.incremental_prepare(&ctx_entries).map_err(|e| {
+            error!("Failed to access entries from db");
+            e
+        })?;
+
+        // Need to probably handle conflicts here in this phase. I think they
+        // need to be pushed to a seperate list where they are then "created"
+        // as a conflict.
+
+        let _pre_candidates = ctx_entries
+            .iter()
+            .zip(db_entries.iter().map(|a| a.as_ref()))
+            .map(EntryIncrementalCommitted::from_repl_entry_v1)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| {
+                error!("Failed to convert entries from supplier");
+                e
+            })?;
+
+        // Then similar to modify, we need the pre and post candidates.
+
+        /*
+        Plugins::run_pre_repl_incremental(self, &pre_candidates).map_err(|e| {
+            admin_error!(
+                "Refresh operation failed (pre_repl_incremental plugin), {:?}",
+                e
+            );
+            e
+        })?;
+
+        // No need to assign CID's since this is a repl import.
+        let norm_cand = pre_candidates
+            .into_iter()
+            .map(|e| {
+                e.validate(&self.schema)
+                    .map_err(|e| {
+                        admin_error!("Schema Violation in incremental validate {:?}", e);
+                        OperationError::SchemaViolation(e)
+                    })
+                    .map(|e| {
+                        // Then seal the changes?
+                        e.seal(&self.schema)
+                    })
+            })
+            .collect::<Result<Vec<EntrySealedCommitted>, _>>()?;
+
+        self.be_txn.incremental(&pre_candidates, &norm_cand).map_err(|e| {
+            admin_error!("betxn create failure {:?}", e);
+            e
+        })?;
+
+        Plugins::run_post_repl_incremental(self, &pre_candidates, &norm_cand).map_err(|e| {
+            admin_error!(
+                "Refresh operation failed (post_repl_incremental plugin), {:?}",
+                e
+            );
+            e
+        })?;
+
+        self.changed_uuid
+            .extend(commit_cand.iter().map(|e| e.get_uuid()));
+
+        todo!(); // change on acp, oauth2
+
+        Ok(())
+        */
+
         todo!();
     }
 
@@ -226,7 +302,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .map(|e| {
                 e.validate(&self.schema)
                     .map_err(|e| {
-                        admin_error!("Schema Violation in create validate {:?}", e);
+                        admin_error!("Schema Violation in refresh validate {:?}", e);
                         OperationError::SchemaViolation(e)
                     })
                     .map(|e| {
@@ -235,8 +311,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     })
             })
             .collect::<Result<Vec<EntrySealedNew>, _>>()?;
-
-        // Do not run plugs!
 
         let commit_cand = self.be_txn.refresh(norm_cand).map_err(|e| {
             admin_error!("betxn create failure {:?}", e);

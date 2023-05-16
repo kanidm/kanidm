@@ -51,10 +51,8 @@ use crate::idm::ldap::ldap_vattr_map;
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
-use crate::repl::proto::ReplEntryV1;
-
-// use crate::repl::entry::EntryChangelog;
 use crate::repl::entry::EntryChangeState;
+use crate::repl::proto::{ReplEntryV1, ReplIncrementalEntryV1};
 
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::value::{
@@ -70,6 +68,8 @@ pub type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
 pub type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
 pub type EntryReducedCommitted = Entry<EntryReduced, EntryCommitted>;
 pub type EntryTuple = (Arc<EntrySealedCommitted>, EntryInvalidCommitted);
+
+pub type EntryIncrementalCommitted = Entry<EntryIncremental, EntryCommitted>;
 
 // Entry should have a lifecycle of types. This is Raw (modifiable) and Entry (verified).
 // This way, we can move between them, but only certain actions are possible on either
@@ -112,6 +112,12 @@ pub struct EntryInvalid {
 #[derive(Clone, Debug)]
 pub struct EntryRefresh {
     ecstate: EntryChangeState,
+}
+
+// Alternate path - this entry came from an incremental replication.
+#[derive(Clone, Debug)]
+pub struct EntryIncremental {
+    // ecstate: EntryChangeState,
 }
 
 /*  |
@@ -633,6 +639,16 @@ impl<STATE> Entry<EntryRefresh, STATE> {
     }
 }
 
+impl Entry<EntryIncremental, EntryCommitted> {
+    pub fn from_repl_entry_v1(
+        (_ctx_ent, _db_ent): (&ReplIncrementalEntryV1, &EntrySealedCommitted),
+    ) -> Result<Self, OperationError> {
+        // How do we return that a conflict has occured?
+
+        todo!();
+    }
+}
+
 impl<STATE> Entry<EntryInvalid, STATE> {
     // This is only used in tests today, but I don't want to cfg test it.
     pub(crate) fn get_uuid(&self) -> Option<Uuid> {
@@ -864,6 +880,20 @@ impl Entry<EntrySealed, EntryCommitted> {
         &mut self.valid.eclog
     }
     */
+
+    pub(crate) fn stub_sealed_committed_id(
+        id: u64,
+        ctx_ent: &ReplIncrementalEntryV1,
+    ) -> EntrySealedCommitted {
+        let uuid = ctx_ent.uuid;
+        let ecstate = EntryChangeState::new_inc_stub(ctx_ent);
+
+        Entry {
+            valid: EntrySealed { uuid, ecstate },
+            state: EntryCommitted { id },
+            attrs: Default::default(),
+        }
+    }
 
     /// Insert a claim to this entry. This claim can NOT be persisted to disk, this is only
     /// used during a single Event session.
