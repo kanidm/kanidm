@@ -181,22 +181,22 @@ impl EntryChangeState {
                          * cases here, which is why we pretty much don't allow schema to be deleted
                          * but we have to handle it here due to a test case that simulates this.
                          */
-                         let change_cid_present = if let Some(change_cid) = changes.get(*attr) {
-                            if change_cid < at {
-                                warn!("changestate has a change that occurs before entry was created! {attr:?} {change_cid:?} {at:?}");
-                                results.push(Err(ConsistencyError::ChangeStateDesynchronised(entry_id)));
-                            }
-                            true
-                         } else {
-                            false
-                         };
+                        let change_cid_present = if let Some(change_cid) = changes.get(*attr) {
+                        if change_cid < at {
+                            warn!("changestate has a change that occurs before entry was created! {attr:?} {change_cid:?} {at:?}");
+                            results.push(Err(ConsistencyError::ChangeStateDesynchronised(entry_id)));
+                        }
+                           true
+                        } else {
+                           false
+                        };
 
                         // Only assert this when we actually have replication requirements.
                         let desync = schema.is_replicated(attr) && !change_cid_present;
-                         if desync {
-                             debug!(%entry_id, %attr, %desync);
-                         }
-                         desync
+                        if desync {
+                            debug!(%entry_id, %attr, %desync);
+                        }
+                        desync
                     })
                     .collect();
 
