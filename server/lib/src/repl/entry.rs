@@ -192,8 +192,7 @@ impl EntryChangeState {
                          };
 
                         // Only assert this when we actually have replication requirements.
-                        let desync =
-                         schema.is_replicated(attr) && change_cid_present ;
+                        let desync = schema.is_replicated(attr) && !change_cid_present;
                          if desync {
                              debug!(%entry_id, %attr, %desync);
                          }
