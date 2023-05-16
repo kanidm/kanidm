@@ -53,6 +53,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         trace!(?ctx_entries);
 
+        // No action needed for this if the entries are empty.
+        if ctx_entries.is_empty() {
+            debug!("No entries to act upon");
+            return Ok(());
+        }
+
         /*
          *  Incremental is very similar to modify in how we have to treat the entries
          *  with a pre and post state. However we need an incremental prepare so that

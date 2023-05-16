@@ -1122,12 +1122,6 @@ impl<'a> BackendWriteTransaction<'a> {
         &mut self,
         entry_meta: &[ReplIncrementalEntryV1],
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
-        // Shortcut! This prevents some iteration, an also asserts we access at least
-        // one entry.
-        if entry_meta.is_empty() {
-            return Ok(Vec::with_capacity(0));
-        }
-
         let mut ret_entries = Vec::with_capacity(entry_meta.len());
         let id_max_pre = self.idlayer.get_id2entry_max_id()?;
         let mut id_max = id_max_pre;
