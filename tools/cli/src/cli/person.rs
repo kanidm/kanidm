@@ -588,7 +588,7 @@ impl AccountCredential {
                         println!();
                         println!("This link: {}", url.as_str());
                         println!(
-                            "Or run this command: kanidm person credential use_reset_token {}",
+                            "Or run this command: kanidm person credential use-reset-token {}",
                             cuintent_token.token
                         );
                         println!();
