@@ -73,3 +73,23 @@ async fn get_accounts(request: &GetAccountsRequest) -> AuthPkgResponse {
 
     return AuthPkgResponse::GetAccounts(GetAccountsResponse { accounts: accounts });
 }
+
+async fn read_account(request: &ReadAccountRequest) -> AuthPkgResponse {
+    let client = match unsafe { KANIDM_WINDOWS_CLIENT.as_ref() } {
+        Some(client) => client,
+        None => {
+            event!(Level::ERROR, "Failed to get client as reference");
+            return AuthPkgResponse::Error(AuthPkgError::GetClientReferenceFail);
+        }
+    };
+
+    let account = match client.get_account(&request.account_type, &request.id).await {
+        Ok(account) => account,
+        Err(e) => {
+            event!(Level::ERROR, "Failed to get account {}, ClientError {:?}", &request.id, e);
+            return AuthPkgResponse::Error(AuthPkgError::ClientRequestUnsuccessful);
+        }
+    };
+
+    AuthPkgResponse::ReadAccount(ReadAccountResponse { account: account })
+}

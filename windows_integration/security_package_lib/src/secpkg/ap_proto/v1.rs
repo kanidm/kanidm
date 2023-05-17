@@ -260,6 +260,7 @@ pub enum AuthPkgResponse {
 
 pub enum AuthPkgError {
 	ClientRequestUnsuccessful,
+	GetClientReferenceFail,
 }
 
 pub enum AccountType {
@@ -277,8 +278,13 @@ pub struct GetAccountsResponse {
 pub struct CreateAccountRequest {}
 pub struct CreateAccountResponse {} 
 
-pub struct ReadAccountRequest {}
-pub struct ReadAccountResponse {} 
+pub struct ReadAccountRequest {
+	pub account_type: AccountType,
+	pub id: String,
+}
+pub struct ReadAccountResponse {
+	pub account: Entry,
+}
 
 pub struct UpdateAccountRequest {}
 pub struct UpdateAccountResponse {} 

@@ -96,4 +96,14 @@ impl KanidmWindowsClient {
 
         return accounts;
     }
+
+    pub async fn get_account(&self, account_type: &AccountType, account_id: &String) -> Result<Option<Entry>, ClientError> {
+        let gas = span!(Level::INFO, "Retrieving account {}", account_id).entered();
+        let account = match account_type {
+            AccountType::Person => self.client.idm_person_account_get(account_id.as_str()).await,
+            AccountType::Service => self.client.idm_service_account_get(account_id.as_str()).await,
+        };
+
+        account
+    }
 }
