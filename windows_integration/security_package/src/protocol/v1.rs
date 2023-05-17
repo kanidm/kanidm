@@ -84,9 +84,9 @@ async fn read_account(request: &ReadAccountRequest) -> AuthPkgResponse {
     };
 
     let account = match client.get_account(&request.account_type, &request.id).await {
-        Ok(account) => account,
-        Err(e) => {
-            event!(Level::ERROR, "Failed to get account {}, ClientError {:?}", &request.id, e);
+        Ok(Some(account)) => account,
+        Err(_) | Ok(None) => {
+            event!(Level::ERROR, "Failed to get account {}", &request.id);
             return AuthPkgResponse::Error(AuthPkgError::ClientRequestUnsuccessful);
         }
     };
