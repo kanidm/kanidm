@@ -67,6 +67,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
          *  entry stubs for us.
          */
 
+        // I think we need to rehydrate all the repl content to a partial
+        // entry. This way all the types are consistent and ready.
+        let ctx_entries: Vec<_> = ctx_entries.iter().map(
+            EntryIncrementalNew::rehydrate
+        )
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            error!(err = ?e, "Unable to process replication incremental entries to valid entry states for replication");
+            e
+        })?;
+
         let db_entries = self.be_txn.incremental_prepare(&ctx_entries).map_err(|e| {
             error!("Failed to access entries from db");
             e
@@ -76,17 +87,69 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // need to be pushed to a seperate list where they are then "created"
         // as a conflict.
 
-        let _pre_candidates = ctx_entries
+        // First find if entries are in a conflict state.
+
+        let (conflicts, proceed): (Vec<_>, Vec<_>) = ctx_entries
             .iter()
             .zip(db_entries.iter().map(|a| a.as_ref()))
-            .map(EntryIncrementalCommitted::from_repl_entry_v1)
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| {
-                error!("Failed to convert entries from supplier");
-                e
-            })?;
+            .partition(|(ctx_ent, db_ent)| ctx_ent.is_add_conflict(db_ent));
+
+        // Now we have a set of conflicts and a set of entries to proceed.
+
+        let (_conflict_create, conflict_update): (
+            Vec<EntrySealedNew>,
+            Vec<(EntryIncrementalCommitted, &EntrySealedCommitted)>,
+        ) = conflicts
+            .into_iter()
+            .map(|(_ctx_ent, _db_ent)| {
+                // Determine which of the entries must become the conflict
+                // and which will now persist. There are two possible cases.
+                //
+                // 1. The ReplIncremental is after the DBEntry, and becomes the conflict.
+                //    This means we just update the db entry with itself.
+                //
+                // 2. The ReplIncremental is before the DBEntry, and becomes live.
+                //    This means we have to take the DBEntry as it exists, convert
+                //    it to a new entry. Then we have to take the repl incremental
+                //    entry and place it into the update queue.
+                todo!();
+            })
+            .unzip();
+
+        let proceed_update: Vec<(EntryIncrementalCommitted, &EntrySealedCommitted)> = proceed
+            .into_iter()
+            .map(|(_ctx_ent, _db_ent)| {
+                // This now is the set of entries that are able to be updated. Merge
+                // their attribute sets/states per the change state rules.
+
+                todo!();
+            })
+            .collect();
+
+        // Now we have to schema check our data and seperate to schema_valid and
+        // invalid.
+        let (_schema_valid, _schema_invalid): (Vec<_>, Vec<_>) = conflict_update
+            .into_iter()
+            .chain(proceed_update.into_iter())
+            .partition(|(_ctx_ent, _db_ent)| {
+                // Check the schema
+                todo!();
+            });
+
+        // We now have three sets!
+        //
+        // * conflict_create - entries to be created that are conflicted via add statements (duplicate uuid)
+        // * schema_invalid - entries that were merged and their attribute state has now become invalid to schema.
+        // * schema_valid - entries that were merged and are schema valid.
+        //
+        // From these sets, we will move conflict_create and schema_invalid into the replication masked
+        // state. However schema_valid needs to be processed to check for plugin rules as well. If
+        // anything hits one of these states we need to have a way to handle this too in a consistent
+        // manner.
+        //
 
         // Then similar to modify, we need the pre and post candidates.
+        //
 
         /*
         Plugins::run_pre_repl_incremental(self, &pre_candidates).map_err(|e| {

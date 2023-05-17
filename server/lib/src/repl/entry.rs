@@ -1,9 +1,7 @@
 use super::cid::Cid;
 use crate::entry::Eattrs;
 use crate::prelude::*;
-use crate::repl::proto::ReplIncrementalEntryV1;
 use crate::schema::SchemaTransaction;
-// use crate::valueset;
 
 use std::collections::BTreeMap;
 
@@ -39,10 +37,6 @@ impl EntryChangeState {
         EntryChangeState { st }
     }
 
-    pub fn new_inc_stub(_ctx_ent: &ReplIncrementalEntryV1) -> Self {
-        todo!();
-    }
-
     pub fn new_without_schema(cid: &Cid, attrs: &Eattrs) -> Self {
         let class = attrs.get("class");
         let st = if class
@@ -69,6 +63,17 @@ impl EntryChangeState {
 
     pub fn current(&self) -> &State {
         &self.st
+    }
+
+    pub(crate) fn stub(&self) -> Self {
+        let st = match &self.st {
+            State::Live { at, changes: _ } => State::Live {
+                at: at.clone(),
+                changes: Default::default(),
+            },
+            State::Tombstone { at } => State::Tombstone { at: at.clone() },
+        };
+        EntryChangeState { st }
     }
 
     pub fn change_ava(&mut self, cid: &Cid, attr: &str) {

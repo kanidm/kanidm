@@ -69,6 +69,7 @@ pub type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
 pub type EntryReducedCommitted = Entry<EntryReduced, EntryCommitted>;
 pub type EntryTuple = (Arc<EntrySealedCommitted>, EntryInvalidCommitted);
 
+pub type EntryIncrementalNew = Entry<EntryIncremental, EntryNew>;
 pub type EntryIncrementalCommitted = Entry<EntryIncremental, EntryCommitted>;
 
 // Entry should have a lifecycle of types. This is Raw (modifiable) and Entry (verified).
@@ -82,15 +83,15 @@ pub type EntryIncrementalCommitted = Entry<EntryIncremental, EntryCommitted>;
 // This is specifically important for the commit to the backend, as we only want to
 // commit validated types.
 
+// Has never been in the DB, so doesn't have an ID.
 #[derive(Clone, Debug)]
 pub struct EntryNew; // new
+
+// It's been in the DB, so it has an id
 #[derive(Clone, Debug)]
 pub struct EntryCommitted {
     id: u64,
 }
-
-// It's been in the DB, so it has an id
-// pub struct EntryPurged;
 
 #[derive(Clone, Debug)]
 pub struct EntryInit;
@@ -117,7 +118,9 @@ pub struct EntryRefresh {
 // Alternate path - this entry came from an incremental replication.
 #[derive(Clone, Debug)]
 pub struct EntryIncremental {
-    // ecstate: EntryChangeState,
+    // Must have a uuid, else we can't proceed at all.
+    uuid: Uuid,
+    ecstate: EntryChangeState,
 }
 
 /*  |
@@ -639,15 +642,99 @@ impl<STATE> Entry<EntryRefresh, STATE> {
     }
 }
 
-impl Entry<EntryIncremental, EntryCommitted> {
-    pub fn from_repl_entry_v1(
-        (_ctx_ent, _db_ent): (&ReplIncrementalEntryV1, &EntrySealedCommitted),
-    ) -> Result<Self, OperationError> {
-        // How do we return that a conflict has occured?
+impl<STATE> Entry<EntryIncremental, STATE> {
+    pub fn get_uuid(&self) -> Uuid {
+        self.valid.uuid
+    }
+}
 
+impl Entry<EntryIncremental, EntryNew> {
+    fn stub_ecstate(&self) -> EntryChangeState {
+        self.valid.ecstate.stub()
+    }
+
+    pub fn rehydrate(repl_inc_entry: &ReplIncrementalEntryV1) -> Result<Self, OperationError> {
+        let (uuid, ecstate, attrs) = repl_inc_entry.rehydrate()?;
+
+        Ok(Entry {
+            valid: EntryIncremental { uuid, ecstate },
+            state: EntryNew,
+            attrs,
+        })
+    }
+
+    pub(crate) fn is_add_conflict(&self, db_entry: &EntrySealedCommitted) -> bool {
         todo!();
     }
 }
+
+/*
+impl Entry<EntryIncremental, EntryCommitted> {
+    pub fn from_repl_entry_v1(
+        ctx_ent: &ReplIncrementalEntryV1,
+        db_ent: &EntrySealedCommitted,
+        schema: &SchemaReadTransaction,
+    ) -> Result<(Self, Option<EntrySealedNew>), OperationError> {
+        // How do we return that a conflict has occured?
+        // We return an option sealed new of entries that are in a conflict state.
+        // these are added seperately to the db.
+
+        match ctx_ent.rehydrate(db_ent) {
+            IncrementalResult::Ok {
+                ecstate, attrs
+            } =>
+                Ok((Entry {
+                    valid: EntryIncremental { ecstate },
+                    state: EntryCommitted {
+                        // We are going to replace this entry's content with the updated
+                        // attrs and ecstate.
+                        db_ent.state.id
+                    },
+                    attrs,
+                }), None),
+
+            IncrementalResult::EntryConflict {
+                ecstate,
+                attrs,
+                conflict_ecstate,
+                conflict_attrs,
+            } =>
+                Ok((Entry {
+                    valid: EntryIncremental { ecstate },
+                    state: EntryCommitted {
+                        // We are going to replace this entry's content with the updated
+                        // attrs and ecstate.
+                        db_ent.state.id
+                    },
+                    attrs,
+                }), Some(Entry {
+                    valid: EntrySealed {
+                        uuid: Uuid::new_v4(),
+                        ecstate: conflict_ecstate,
+                    },
+                    state: EntryNew,
+                    attrs: conflict_attrs
+                })),
+
+
+
+
+
+
+                Ok((Entry {
+                    valid: EntryRefresh { ecstate },
+                    state: EntryNew,
+                    attrs,
+                }), None),
+
+
+
+
+            IncrementalResult::Err(e) => Err(e),
+        }
+    }
+}
+*/
 
 impl<STATE> Entry<EntryInvalid, STATE> {
     // This is only used in tests today, but I don't want to cfg test it.
@@ -875,18 +962,12 @@ impl Entry<EntrySealed, EntryCommitted> {
         self
     }
 
-    /*
-    pub fn get_changelog_mut(&mut self) -> &mut EntryChangelog {
-        &mut self.valid.eclog
-    }
-    */
-
     pub(crate) fn stub_sealed_committed_id(
         id: u64,
-        ctx_ent: &ReplIncrementalEntryV1,
+        ctx_ent: &EntryIncrementalNew,
     ) -> EntrySealedCommitted {
-        let uuid = ctx_ent.uuid;
-        let ecstate = EntryChangeState::new_inc_stub(ctx_ent);
+        let uuid = ctx_ent.get_uuid();
+        let ecstate = ctx_ent.stub_ecstate();
 
         Entry {
             valid: EntrySealed { uuid, ecstate },

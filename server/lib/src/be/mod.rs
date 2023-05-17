@@ -25,7 +25,6 @@ use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::repl::proto::ReplCidRange;
-use crate::repl::proto::ReplIncrementalEntryV1;
 use crate::repl::ruv::{
     ReplicationUpdateVector, ReplicationUpdateVectorReadTransaction,
     ReplicationUpdateVectorTransaction, ReplicationUpdateVectorWriteTransaction,
@@ -1120,27 +1119,32 @@ impl<'a> BackendWriteTransaction<'a> {
     #[instrument(level = "debug", name = "be::incremental_prepare", skip_all)]
     pub fn incremental_prepare<'x>(
         &mut self,
-        entry_meta: &[ReplIncrementalEntryV1],
+        entry_meta: &[EntryIncrementalNew],
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         let mut ret_entries = Vec::with_capacity(entry_meta.len());
         let id_max_pre = self.idlayer.get_id2entry_max_id()?;
         let mut id_max = id_max_pre;
 
         for ctx_ent in entry_meta.iter() {
-            let idx_key = ctx_ent.uuid.as_hyphenated().to_string();
+            let ctx_ent_uuid = ctx_ent.get_uuid();
+            let idx_key = ctx_ent_uuid.as_hyphenated().to_string();
 
             let idl = self
                 .get_idlayer()
                 .get_idl("uuid", IndexType::Equality, &idx_key)?;
 
             let entry = match idl {
-                Some(idl) => {
-                    // BUG - corrupt index.
-                    if idl.is_empty() {
-                        error!("Invalid IDL state, must not be empty");
-                        return Err(OperationError::InvalidDbState);
-                    }
+                Some(idl) if idl.is_empty() => {
+                    // Create the stub entry, we just need it to have an id number
+                    // allocated.
+                    id_max += 1;
 
+                    Arc::new(EntrySealedCommitted::stub_sealed_committed_id(
+                        id_max, ctx_ent,
+                    ))
+                    // Okay, entry ready to go.
+                }
+                Some(idl) if idl.len() == 1 => {
                     // Get the entry from this idl.
                     let mut entries = self
                         .get_idlayer()
@@ -1159,15 +1163,15 @@ impl<'a> BackendWriteTransaction<'a> {
                     }
                     // Done, entry is ready to go
                 }
+                Some(idl) => {
+                    // BUG - duplicate uuid!
+                    error!(uuid = ?ctx_ent_uuid, "Invalid IDL state, uuid index must have only a single or no values. Contains {}", idl.len());
+                    return Err(OperationError::InvalidDbState);
+                }
                 None => {
-                    // Create the stub entry, we just need it to have an id number
-                    // allocated.
-                    id_max += 1;
-
-                    Arc::new(EntrySealedCommitted::stub_sealed_committed_id(
-                        id_max, ctx_ent,
-                    ))
-                    // Okay, entry ready to go.
+                    // BUG - corrupt index.
+                    error!(uuid = ?ctx_ent_uuid, "Invalid IDL state, uuid index must be present");
+                    return Err(OperationError::InvalidDbState);
                 }
             };
 

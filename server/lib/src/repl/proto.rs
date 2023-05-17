@@ -588,6 +588,10 @@ impl ReplIncrementalEntryV1 {
 
         ReplIncrementalEntryV1 { uuid, st }
     }
+
+    pub fn rehydrate(&self) -> Result<(Uuid, EntryChangeState, Eattrs), OperationError> {
+        todo!();
+    }
 }
 
 // From / Into Entry
