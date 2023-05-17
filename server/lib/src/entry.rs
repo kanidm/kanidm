@@ -663,7 +663,7 @@ impl Entry<EntryIncremental, EntryNew> {
         })
     }
 
-    pub(crate) fn is_add_conflict(&self, db_entry: &EntrySealedCommitted) -> bool {
+    pub(crate) fn is_add_conflict(&self, _db_entry: &EntrySealedCommitted) -> bool {
         todo!();
     }
 }
