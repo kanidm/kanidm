@@ -94,7 +94,7 @@ impl KanidmWindowsClient {
             AccountType::Service => self.client.idm_service_account_list().await,
         };
 
-        return accounts;
+        accounts
     }
 
     pub async fn get_account(&self, account_type: &AccountType, account_id: &String) -> Result<Option<Entry>, ClientError> {
