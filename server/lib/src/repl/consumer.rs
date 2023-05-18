@@ -187,7 +187,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // We need to unzip the schema_valid and invalid entries.
 
         self.be_txn
-            .incremental_apply(&all_updates_valid, &conflict_create)
+            .incremental_apply(&all_updates_valid, conflict_create)
             .map_err(|e| {
                 admin_error!("betxn create failure {:?}", e);
                 e
@@ -211,9 +211,27 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         self.changed_uuid.extend(cand.iter().map(|e| e.get_uuid()));
 
-        todo!(); // change on acp, oauth2
+        if !self.changed_acp {
+            self.changed_acp = cand
+                .iter()
+                .chain(pre_cand.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality("class", &PVCLASS_ACP))
+        }
+        if !self.changed_oauth2 {
+            self.changed_oauth2 = cand
+                .iter()
+                .chain(pre_cand.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS));
+        }
 
-        // Ok(())
+        trace!(
+            schema_reload = ?self.changed_schema,
+            acp_reload = ?self.changed_acp,
+            oauth2_reload = ?self.changed_oauth2,
+            domain_reload = ?self.changed_domain,
+        );
+
+        Ok(())
     }
 
     pub fn consumer_apply_changes(

@@ -274,3 +274,8 @@ async fn test_repl_increment_basic(server_a: &QueryServer, server_b: &QueryServe
 
 // Ref int deletes refrences when tombstone is replicated over. May need consumer
 // to have some extra groups that need cleanup
+
+// Test add then delete on an attribute, and that it replicates the empty state to
+// the other side.
+
+// Test memberof over replication boundaries.

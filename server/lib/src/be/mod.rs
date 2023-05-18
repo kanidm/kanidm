@@ -1188,10 +1188,52 @@ impl<'a> BackendWriteTransaction<'a> {
     #[instrument(level = "debug", name = "be::incremental_apply", skip_all)]
     pub fn incremental_apply(
         &mut self,
-        _update_cands: &[(EntrySealedCommitted, Arc<EntrySealedCommitted>)],
-        _create_cands: &[EntrySealedNew],
+        update_entries: &[(EntrySealedCommitted, Arc<EntrySealedCommitted>)],
+        create_entries: Vec<EntrySealedNew>,
     ) -> Result<(), OperationError> {
-        todo!();
+        // For the values in create_cands, create these with similar code to the refresh
+        // path.
+        if !create_entries.is_empty() {
+            // Assign id's to all the new entries.
+            let mut id_max = self.idlayer.get_id2entry_max_id()?;
+            let c_entries: Vec<_> = create_entries
+                .into_iter()
+                .map(|e| {
+                    id_max += 1;
+                    e.into_sealed_committed_id(id_max)
+                })
+                .collect();
+
+            self.idlayer.write_identries(c_entries.iter())?;
+
+            self.idlayer.set_id2entry_max_id(id_max);
+
+            // Update the RUV with all the changestates of the affected entries.
+            for e in c_entries.iter() {
+                self.get_ruv().update_entry_changestate(e)?;
+            }
+
+            // Now update the indexes as required.
+            for e in c_entries.iter() {
+                self.entry_index(None, Some(e))?
+            }
+        }
+
+        // Otherwise this is a cid-less copy of modify.
+        if !update_entries.is_empty() {
+            self.get_idlayer()
+                .write_identries(update_entries.iter().map(|(up, _)| up))?;
+
+            for (e, _) in update_entries.iter() {
+                self.get_ruv().update_entry_changestate(e)?;
+            }
+
+            for (post, pre) in update_entries.iter() {
+                self.entry_index(Some(pre.as_ref()), Some(post))?
+            }
+        }
+
+        Ok(())
     }
 
     #[instrument(level = "debug", name = "be::reap_tombstones", skip_all)]
