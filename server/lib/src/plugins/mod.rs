@@ -154,7 +154,8 @@ trait Plugin {
             "plugin {} has an unimplemented pre_repl_incremental!",
             Self::id()
         );
-        Err(OperationError::InvalidState)
+        // Err(OperationError::InvalidState)
+        Ok(())
     }
 
     fn post_repl_incremental(
@@ -166,7 +167,8 @@ trait Plugin {
             "plugin {} has an unimplemented post_repl_incremental!",
             Self::id()
         );
-        Err(OperationError::InvalidState)
+        // Err(OperationError::InvalidState)
+        Ok(())
     }
 
     fn verify(_qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {

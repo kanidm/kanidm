@@ -639,7 +639,7 @@ impl<STATE> Entry<EntryRefresh, STATE> {
             attrs: self.attrs,
         };
 
-        ne.validate(schema)
+        ne.validate(schema).map(|()| ne)
     }
 }
 
@@ -801,11 +801,26 @@ impl Entry<EntryIncremental, EntryNew> {
 }
 
 impl Entry<EntryIncremental, EntryCommitted> {
-    pub(crate) fn validate_repl(
-        self,
-        _schema: &dyn SchemaTransaction,
-    ) -> Result<EntryValidCommitted, SchemaError> {
-        todo!();
+    pub(crate) fn validate_repl(self, schema: &dyn SchemaTransaction) -> EntryValidCommitted {
+        // Unlike the other method of schema validation, we can't return an error
+        // here when schema fails - we need to in-place move the entry to a
+        // conflict state so that the replication can proceed.
+
+        let mut ne = Entry {
+            valid: EntryValid {
+                uuid: self.valid.uuid,
+                ecstate: self.valid.ecstate,
+            },
+            state: self.state,
+            attrs: self.attrs,
+        };
+
+        if let Err(e) = ne.validate(schema) {
+            warn!(uuid = ?self.valid.uuid, err = ?e, "Entry failed schema check, moving to a conflict state");
+            ne.add_ava_int("class", Value::new_class("conflict"));
+            todo!();
+        }
+        ne
     }
 }
 
@@ -840,7 +855,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             attrs: self.attrs,
         };
 
-        ne.validate(schema)
+        ne.validate(schema).map(|()| ne)
     }
 }
 
@@ -1625,10 +1640,7 @@ impl Entry<EntrySealed, EntryCommitted> {
 }
 
 impl<STATE> Entry<EntryValid, STATE> {
-    fn validate(
-        self,
-        schema: &dyn SchemaTransaction,
-    ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
+    fn validate(&self, schema: &dyn SchemaTransaction) -> Result<(), SchemaError> {
         let schema_classes = schema.get_classes();
         let schema_attributes = schema.get_attributes();
 
@@ -1850,7 +1862,7 @@ impl<STATE> Entry<EntryValid, STATE> {
         }
 
         // Well, we got here, so okay!
-        Ok(self)
+        Ok(())
     }
 
     pub fn invalidate(self, cid: Cid, ecstate: EntryChangeState) -> Entry<EntryInvalid, STATE> {

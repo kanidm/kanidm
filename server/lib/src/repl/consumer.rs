@@ -158,16 +158,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 // a conflict state and then retain it in the update process.
                 //
                 // The marking is done INSIDE this function!
-                ctx_ent
-                    .validate_repl(&self.schema)
-                    .map(|valid_ent| valid_ent.seal(&self.schema))
-                    .map(|sealed_ent| (sealed_ent, db_ent))
+                let sealed_ent = ctx_ent.validate_repl(&self.schema).seal(&self.schema);
+                (sealed_ent, db_ent)
             })
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| {
-                error!(err = ?e, "Failed to validate schema of incremental entries");
-                OperationError::SchemaViolation(e)
-            })?;
+            .collect::<Vec<_>>();
+        /*
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            error!(err = ?e, "Failed to validate schema of incremental entries");
+            OperationError::SchemaViolation(e)
+        })?;
+        */
 
         // We now have three sets!
         //
