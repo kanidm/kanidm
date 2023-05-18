@@ -76,7 +76,7 @@ impl<'a> QueryServerReadTransaction<'a> {
             OperationError::Backend
         })?;
 
-        // Seperate the entries into schema, meta and remaining.
+        // Separate the entries into schema, meta and remaining.
         let (schema_entries, rem_entries): (Vec<_>, Vec<_>) = entries.into_iter().partition(|e| {
             e.get_ava_set("class")
                 .map(|cls| {

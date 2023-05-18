@@ -48,7 +48,7 @@ pub(crate) enum RangeDiffStatus {
         adv_range: BTreeMap<Uuid, ReplCidRange>,
     },
     /// Critical - The consumer is lagging and missing changes, but also is
-    /// in possesion of changes advancing it beyond our current state. This
+    /// in possession of changes advancing it beyond our current state. This
     /// is a critical fault in replication and the topology must be
     /// investigated immediately.
     Critical {
@@ -123,7 +123,7 @@ impl ReplicationUpdateVector {
                         );
                     } else if supplier_cid_range.ts_max < consumer_cid_range.ts_min {
                         // It could be valid in this case to ignore this instead
-                        // of erroring as changelog trim has occured? Thought needed.
+                        // of erroring as changelog trim has occurred? Thought needed.
                         supplier_lagging = true;
                         adv_range.insert(
                             *supplier_s_uuid,
@@ -259,7 +259,7 @@ pub trait ReplicationUpdateVectorTransaction {
                 if let Some(ruv_idl) = ruv.get(&cid) {
                     ruv_idl.into_iter().for_each(|id| idl.insert_id(id))
                 }
-                // If the cid isn't found, it may have been trimmed, but thats okay.
+                // If the cid isn't found, it may have been trimmed, but that's okay.
             }
         }
 

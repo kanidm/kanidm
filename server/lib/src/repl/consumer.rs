@@ -85,7 +85,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })?;
 
         // Need to probably handle conflicts here in this phase. I think they
-        // need to be pushed to a seperate list where they are then "created"
+        // need to be pushed to a separate list where they are then "created"
         // as a conflict.
 
         // First find if entries are in a conflict state.
@@ -147,7 +147,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e
         })?;
 
-        // Now we have to schema check our data and seperate to schema_valid and
+        // Now we have to schema check our data and separate to schema_valid and
         // invalid.
         let all_updates_valid = all_updates
             .into_iter()

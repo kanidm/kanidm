@@ -272,7 +272,7 @@ async fn test_repl_increment_basic(server_a: &QueryServer, server_b: &QueryServe
 
 // Multiple tombstone states / directions.
 
-// Ref int deletes refrences when tombstone is replicated over. May need consumer
+// Ref int deletes references when tombstone is replicated over. May need consumer
 // to have some extra groups that need cleanup
 
 // Test add then delete on an attribute, and that it replicates the empty state to
