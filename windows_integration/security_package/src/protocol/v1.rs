@@ -7,7 +7,7 @@ pub async fn handle_request(request: &AuthPkgRequest) -> AuthPkgResponse {
     return match request {
         AuthPkgRequest::GetAccounts(req) => get_accounts(req).await,
         AuthPkgRequest::CreateAccount(_) => todo!(),
-        AuthPkgRequest::ReadAccount(_) => todo!(),
+        AuthPkgRequest::ReadAccount(req) => read_account(req).await,
         AuthPkgRequest::UpdateAccount(_) => todo!(),
         AuthPkgRequest::DeleteAccount(_) => todo!(),
         AuthPkgRequest::CreateAccountAttribute(_) => todo!(),
