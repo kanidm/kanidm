@@ -64,6 +64,7 @@ pub type EntryInitNew = Entry<EntryInit, EntryNew>;
 pub type EntryInvalidNew = Entry<EntryInvalid, EntryNew>;
 pub type EntryRefreshNew = Entry<EntryRefresh, EntryNew>;
 pub type EntrySealedNew = Entry<EntrySealed, EntryNew>;
+pub type EntryValidCommitted = Entry<EntryValid, EntryCommitted>;
 pub type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
 pub type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
 pub type EntryReducedCommitted = Entry<EntryReduced, EntryCommitted>;
@@ -663,13 +664,15 @@ impl Entry<EntryIncremental, EntryNew> {
         })
     }
 
-    pub(crate) fn is_add_conflict(&self, _db_entry: &EntrySealedCommitted) -> bool {
-        todo!();
+    pub(crate) fn is_add_conflict(&self, db_entry: &EntrySealedCommitted) -> bool {
+        debug_assert!(self.valid.uuid == db_entry.valid.uuid);
+        // This is a conflict if the state 'at' is not identical
+        self.valid.ecstate.at() != db_entry.valid.ecstate.at()
     }
 }
 
-/*
 impl Entry<EntryIncremental, EntryCommitted> {
+    /*
     pub fn from_repl_entry_v1(
         ctx_ent: &ReplIncrementalEntryV1,
         db_ent: &EntrySealedCommitted,
@@ -733,8 +736,8 @@ impl Entry<EntryIncremental, EntryCommitted> {
             IncrementalResult::Err(e) => Err(e),
         }
     }
+    */
 }
-*/
 
 impl<STATE> Entry<EntryInvalid, STATE> {
     // This is only used in tests today, but I don't want to cfg test it.
@@ -768,6 +771,13 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         };
 
         ne.validate(schema)
+    }
+
+    pub(crate) fn validate_repl(
+        mut self,
+        schema: &dyn SchemaTransaction,
+    ) -> Result<EntryValidCommitted, SchemaError> {
+        todo!();
     }
 }
 

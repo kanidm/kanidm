@@ -95,10 +95,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .partition(|(ctx_ent, db_ent)| ctx_ent.is_add_conflict(db_ent));
 
         // Now we have a set of conflicts and a set of entries to proceed.
-
-        let (_conflict_create, conflict_update): (
+        //
+        //    /- entries that need to be created as conflicts.
+        //    |                /- entries that survive and need update to the db in place.
+        //    v                v
+        let (conflict_create, conflict_update): (
             Vec<EntrySealedNew>,
-            Vec<(EntryIncrementalCommitted, &EntrySealedCommitted)>,
+            Vec<(EntryInvalidCommitted, &EntrySealedCommitted)>,
         ) = conflicts
             .into_iter()
             .map(|(_ctx_ent, _db_ent)| {
@@ -116,25 +119,54 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })
             .unzip();
 
-        let proceed_update: Vec<(EntryIncrementalCommitted, &EntrySealedCommitted)> = proceed
+        let proceed_update: Vec<(EntryInvalidCommitted, &EntrySealedCommitted)> = proceed
             .into_iter()
-            .map(|(_ctx_ent, _db_ent)| {
+            .map(|(ctx_ent, db_ent)| {
                 // This now is the set of entries that are able to be updated. Merge
                 // their attribute sets/states per the change state rules.
+
+                // This must create an EntryInvalidCommitted
 
                 todo!();
             })
             .collect();
 
-        // Now we have to schema check our data and seperate to schema_valid and
-        // invalid.
-        let (_schema_valid, _schema_invalid): (Vec<_>, Vec<_>) = conflict_update
+        // To be consistent to Modify, we need to run pre-modify here.
+        let mut all_updates = conflict_update
             .into_iter()
             .chain(proceed_update.into_iter())
-            .partition(|(_ctx_ent, _db_ent)| {
+            .collect::<Vec<_>>();
+
+        // Plugins can mark entries into a conflict status.
+        Plugins::run_pre_repl_incremental(self, all_updates.as_mut_slice()).map_err(|e| {
+            admin_error!(
+                "Refresh operation failed (pre_repl_incremental plugin), {:?}",
+                e
+            );
+            e
+        })?;
+
+        // Now we have to schema check our data and seperate to schema_valid and
+        // invalid.
+        let all_updates_valid = all_updates
+            .into_iter()
+            .map(|(ctx_ent, db_ent)| {
                 // Check the schema
-                todo!();
-            });
+                //
+                // In these cases when an entry fails schema, we mark it to
+                // a conflict state and then retain it in the update process.
+                //
+                // The marking is done INSIDE this function!
+                ctx_ent
+                    .validate_repl(&self.schema)
+                    .map(|valid_ent| valid_ent.seal(&self.schema))
+                    .map(|sealed_ent| (sealed_ent, db_ent))
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| {
+                error!(err = ?e, "Failed to validate schema of incremental entries");
+                OperationError::SchemaViolation(e)
+            })?;
 
         // We now have three sets!
         //
@@ -149,39 +181,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //
 
         // Then similar to modify, we need the pre and post candidates.
-        //
 
-        /*
-        Plugins::run_pre_repl_incremental(self, &pre_candidates).map_err(|e| {
-            admin_error!(
-                "Refresh operation failed (pre_repl_incremental plugin), {:?}",
+        // We need to unzip the schema_valid and invalid entries.
+
+        self.be_txn
+            .incremental_apply(&all_updates_valid, &conflict_create)
+            .map_err(|e| {
+                admin_error!("betxn create failure {:?}", e);
                 e
-            );
-            e
-        })?;
+            })?;
 
-        // No need to assign CID's since this is a repl import.
-        let norm_cand = pre_candidates
-            .into_iter()
-            .map(|e| {
-                e.validate(&self.schema)
-                    .map_err(|e| {
-                        admin_error!("Schema Violation in incremental validate {:?}", e);
-                        OperationError::SchemaViolation(e)
-                    })
-                    .map(|e| {
-                        // Then seal the changes?
-                        e.seal(&self.schema)
-                    })
-            })
-            .collect::<Result<Vec<EntrySealedCommitted>, _>>()?;
-
-        self.be_txn.incremental(&pre_candidates, &norm_cand).map_err(|e| {
-            admin_error!("betxn create failure {:?}", e);
-            e
-        })?;
-
-        Plugins::run_post_repl_incremental(self, &pre_candidates, &norm_cand).map_err(|e| {
+        // We don't need to process conflict_creates here, since they are all conflicting
+        // uuids which means that the uuids are all *here* so they will trigger anything
+        // that requires processing anyway.
+        Plugins::run_post_repl_incremental(self, all_updates_valid.as_slice()).map_err(|e| {
             admin_error!(
                 "Refresh operation failed (post_repl_incremental plugin), {:?}",
                 e
@@ -190,14 +203,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })?;
 
         self.changed_uuid
-            .extend(commit_cand.iter().map(|e| e.get_uuid()));
+            .extend(all_updates_valid.iter().map(|e| e.0.get_uuid()));
 
         todo!(); // change on acp, oauth2
 
-        Ok(())
-        */
-
-        todo!();
+        // Ok(())
     }
 
     pub fn consumer_apply_changes(

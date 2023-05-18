@@ -1185,6 +1185,15 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(ret_entries)
     }
 
+    #[instrument(level = "debug", name = "be::incremental_apply", skip_all)]
+    pub fn incremental_apply(
+        &mut self,
+        update_cands: &[(EntrySealedCommitted, &EntrySealedCommitted)],
+        create_cands: &[EntrySealedNew],
+    ) -> Result<(), OperationError> {
+        todo!();
+    }
+
     #[instrument(level = "debug", name = "be::reap_tombstones", skip_all)]
     pub fn reap_tombstones(&mut self, cid: &Cid) -> Result<usize, OperationError> {
         // We plan to clear the RUV up to this cid. So we need to build an IDL

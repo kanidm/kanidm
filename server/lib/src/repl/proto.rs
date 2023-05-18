@@ -590,7 +590,55 @@ impl ReplIncrementalEntryV1 {
     }
 
     pub fn rehydrate(&self) -> Result<(Uuid, EntryChangeState, Eattrs), OperationError> {
-        todo!();
+        match &self.st {
+            ReplStateV1::Live { at, attrs } => {
+                trace!("{:?} {:#?}", at, attrs);
+                let mut changes = BTreeMap::default();
+                let mut eattrs = Eattrs::default();
+
+                for (attr_name, ReplAttrStateV1 { cid, attr }) in attrs.iter() {
+                    let astring: AttrString = attr_name.as_str().into();
+                    let cid: Cid = cid.into();
+
+                    if let Some(attr_value) = attr {
+                        let v = valueset::from_repl_v1(attr_value).map_err(|e| {
+                            error!("Unable to restore valueset for {}", attr_name);
+                            e
+                        })?;
+                        if eattrs.insert(astring.clone(), v).is_some() {
+                            error!(
+                                "Impossible eattrs state, attribute {} appears to be duplicated!",
+                                attr_name
+                            );
+                            return Err(OperationError::InvalidEntryState);
+                        }
+                    }
+
+                    if changes.insert(astring, cid).is_some() {
+                        error!(
+                            "Impossible changes state, attribute {} appears to be duplicated!",
+                            attr_name
+                        );
+                        return Err(OperationError::InvalidEntryState);
+                    }
+                }
+
+                let at: Cid = at.into();
+
+                let ecstate = EntryChangeState {
+                    st: State::Live { at, changes },
+                };
+                Ok((self.uuid, ecstate, eattrs))
+            }
+            ReplStateV1::Tombstone { at } => {
+                let at: Cid = at.into();
+                let eattrs = Eattrs::default();
+                let ecstate = EntryChangeState {
+                    st: State::Tombstone { at },
+                };
+                Ok((self.uuid, ecstate, eattrs))
+            }
+        }
     }
 }
 

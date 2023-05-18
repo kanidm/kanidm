@@ -297,6 +297,22 @@ impl Plugins {
             .and_then(|_| memberof::MemberOf::post_repl_refresh(qs, cand))
     }
 
+    #[instrument(level = "debug", name = "plugins::run_pre_repl_incremental", skip_all)]
+    pub fn run_pre_repl_incremental(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &mut [(EntryInvalidCommitted, &EntrySealedCommitted)],
+    ) -> Result<(), OperationError> {
+        todo!()
+    }
+
+    #[instrument(level = "debug", name = "plugins::run_post_repl_incremental", skip_all)]
+    pub fn run_post_repl_incremental(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &[(EntrySealedCommitted, &EntrySealedCommitted)],
+    ) -> Result<(), OperationError> {
+        todo!();
+    }
+
     #[instrument(level = "debug", name = "plugins::run_verify", skip_all)]
     pub fn run_verify(
         qs: &mut QueryServerReadTransaction,

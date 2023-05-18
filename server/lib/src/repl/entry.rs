@@ -65,6 +65,13 @@ impl EntryChangeState {
         &self.st
     }
 
+    pub fn at(&self) -> &Cid {
+        match &self.st {
+            State::Live { at, .. } => at,
+            State::Tombstone { at } => at,
+        }
+    }
+
     pub(crate) fn stub(&self) -> Self {
         let st = match &self.st {
             State::Live { at, changes: _ } => State::Live {

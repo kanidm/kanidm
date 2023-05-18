@@ -266,3 +266,6 @@ async fn test_repl_increment_basic(server_a: &QueryServer, server_b: &QueryServe
 // Test schema addition / change over incremental.
 
 // Test change of domain version over incremental.
+
+// Test when a group has a member A, and then the group is conflicted, that when
+// group is moved to conflict the memberShip of A is removed.
