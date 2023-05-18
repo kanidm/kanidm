@@ -61,6 +61,10 @@ impl EntryChangeState {
         EntryChangeState { st }
     }
 
+    pub(crate) fn build(st: State) -> Self {
+        EntryChangeState { st }
+    }
+
     pub fn current(&self) -> &State {
         &self.st
     }

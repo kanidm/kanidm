@@ -5,6 +5,7 @@ use crate::prelude::*;
 use crate::repl::proto::ReplRuvRange;
 use crate::repl::ruv::ReplicationUpdateVectorTransaction;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 impl<'a> QueryServerReadTransaction<'a> {
     // Get the current state of "where we are up to"
@@ -91,8 +92,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         let (conflicts, proceed): (Vec<_>, Vec<_>) = ctx_entries
             .iter()
-            .zip(db_entries.iter().map(|a| a.as_ref()))
-            .partition(|(ctx_ent, db_ent)| ctx_ent.is_add_conflict(db_ent));
+            .zip(db_entries.into_iter())
+            .partition(|(ctx_ent, db_ent)| ctx_ent.is_add_conflict(db_ent.as_ref()));
 
         // Now we have a set of conflicts and a set of entries to proceed.
         //
@@ -101,7 +102,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //    v                v
         let (conflict_create, conflict_update): (
             Vec<EntrySealedNew>,
-            Vec<(EntryInvalidCommitted, &EntrySealedCommitted)>,
+            Vec<(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)>,
         ) = conflicts
             .into_iter()
             .map(|(_ctx_ent, _db_ent)| {
@@ -119,15 +120,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })
             .unzip();
 
-        let proceed_update: Vec<(EntryInvalidCommitted, &EntrySealedCommitted)> = proceed
+        let proceed_update: Vec<(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)> = proceed
             .into_iter()
             .map(|(ctx_ent, db_ent)| {
                 // This now is the set of entries that are able to be updated. Merge
                 // their attribute sets/states per the change state rules.
 
                 // This must create an EntryInvalidCommitted
-
-                todo!();
+                let merge_ent = ctx_ent.merge_state(db_ent.as_ref(), &self.schema);
+                (merge_ent, db_ent)
             })
             .collect();
 
@@ -191,19 +192,23 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 e
             })?;
 
+        // Plugins need these unzipped
+        let (cand, pre_cand): (Vec<_>, Vec<_>) = all_updates_valid.into_iter().unzip();
+
         // We don't need to process conflict_creates here, since they are all conflicting
         // uuids which means that the uuids are all *here* so they will trigger anything
         // that requires processing anyway.
-        Plugins::run_post_repl_incremental(self, all_updates_valid.as_slice()).map_err(|e| {
-            admin_error!(
-                "Refresh operation failed (post_repl_incremental plugin), {:?}",
+        Plugins::run_post_repl_incremental(self, pre_cand.as_slice(), cand.as_slice()).map_err(
+            |e| {
+                admin_error!(
+                    "Refresh operation failed (post_repl_incremental plugin), {:?}",
+                    e
+                );
                 e
-            );
-            e
-        })?;
+            },
+        )?;
 
-        self.changed_uuid
-            .extend(all_updates_valid.iter().map(|e| e.0.get_uuid()));
+        self.changed_uuid.extend(cand.iter().map(|e| e.get_uuid()));
 
         todo!(); // change on acp, oauth2
 

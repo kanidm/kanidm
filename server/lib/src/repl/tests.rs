@@ -269,3 +269,8 @@ async fn test_repl_increment_basic(server_a: &QueryServer, server_b: &QueryServe
 
 // Test when a group has a member A, and then the group is conflicted, that when
 // group is moved to conflict the memberShip of A is removed.
+
+// Multiple tombstone states / directions.
+
+// Ref int deletes refrences when tombstone is replicated over. May need consumer
+// to have some extra groups that need cleanup

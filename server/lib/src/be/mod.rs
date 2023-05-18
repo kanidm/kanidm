@@ -1188,8 +1188,8 @@ impl<'a> BackendWriteTransaction<'a> {
     #[instrument(level = "debug", name = "be::incremental_apply", skip_all)]
     pub fn incremental_apply(
         &mut self,
-        update_cands: &[(EntrySealedCommitted, &EntrySealedCommitted)],
-        create_cands: &[EntrySealedNew],
+        _update_cands: &[(EntrySealedCommitted, Arc<EntrySealedCommitted>)],
+        _create_cands: &[EntrySealedNew],
     ) -> Result<(), OperationError> {
         todo!();
     }

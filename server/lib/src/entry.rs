@@ -669,74 +669,144 @@ impl Entry<EntryIncremental, EntryNew> {
         // This is a conflict if the state 'at' is not identical
         self.valid.ecstate.at() != db_entry.valid.ecstate.at()
     }
+
+    pub(crate) fn merge_state(
+        &self,
+        db_ent: &EntrySealedCommitted,
+        _schema: &dyn SchemaTransaction,
+    ) -> EntryIncrementalCommitted {
+        use crate::repl::entry::State;
+
+        // Paranoid check.
+        debug_assert!(self.valid.uuid == db_ent.valid.uuid);
+
+        // First, determine if either side is a tombstone. This is needed so that only
+        // when both sides are live
+        let self_cs = &self.valid.ecstate;
+        let db_cs = db_ent.get_changestate();
+
+        match (self_cs.current(), db_cs.current()) {
+            (
+                State::Live {
+                    at: at_left,
+                    changes: changes_left,
+                },
+                State::Live {
+                    at: at_right,
+                    changes: changes_right,
+                },
+            ) => {
+                debug_assert!(at_left == at_right);
+                // Given the current db entry, compare and merge our attributes to
+                // form a resultant entry attr and ecstate
+                //
+                // To shortcut this we dedup the attr set and then iterate.
+                let mut attr_set: Vec<_> =
+                    changes_left.keys().chain(changes_right.keys()).collect();
+                attr_set.sort_unstable();
+                attr_set.dedup();
+
+                // Make a new ecstate and attrs set.
+                let mut changes = BTreeMap::default();
+                let mut eattrs = Eattrs::default();
+
+                // Now we have the set of attrs from both sides. Lets see what state they are in!
+                for attr_name in attr_set.into_iter() {
+                    match (changes_left.get(attr_name), changes_right.get(attr_name)) {
+                        (Some(_cid_left), Some(_cid_right)) => {
+                            // This is the normal / usual and most "fun" case. Here we need to determine
+                            // which side is latest and then do a valueset merge. This is also
+                            // needing schema awareness depending on the attribute!
+                            todo!();
+                        }
+                        (Some(cid_left), None) => {
+                            // Keep the value on the left.
+                            changes.insert(attr_name.clone(), cid_left.clone());
+                            if let Some(valueset) = self.attrs.get(attr_name) {
+                                eattrs.insert(attr_name.clone(), valueset.clone());
+                            }
+                        }
+                        (None, Some(_cid_right)) => {
+                            // Keep the value on the right.
+
+                            todo!();
+                        }
+                        (None, None) => {
+                            // Should be impossible! At least one side or the other must have a change.
+                            debug_assert!(false);
+                        }
+                    }
+                }
+
+                let ecstate = EntryChangeState::build(State::Live {
+                    at: at_left.clone(),
+                    changes,
+                });
+
+                Entry {
+                    valid: EntryIncremental {
+                        uuid: self.valid.uuid,
+                        ecstate,
+                    },
+                    state: EntryCommitted {
+                        id: db_ent.state.id,
+                    },
+                    attrs: eattrs,
+                }
+            }
+            (State::Tombstone { at: left_at }, State::Tombstone { at: right_at }) => {
+                // Due to previous checks, this must be equal!
+                debug_assert!(left_at == right_at);
+                debug_assert!(self.attrs == db_ent.attrs);
+                // Doesn't matter which side we take.
+                Entry {
+                    valid: EntryIncremental {
+                        uuid: self.valid.uuid,
+                        ecstate: self.valid.ecstate.clone(),
+                    },
+                    state: EntryCommitted {
+                        id: db_ent.state.id,
+                    },
+                    attrs: self.attrs.clone(),
+                }
+            }
+            (State::Tombstone { .. }, State::Live { .. }) => {
+                // Keep the left side.
+                Entry {
+                    valid: EntryIncremental {
+                        uuid: self.valid.uuid,
+                        ecstate: self.valid.ecstate.clone(),
+                    },
+                    state: EntryCommitted {
+                        id: db_ent.state.id,
+                    },
+                    attrs: self.attrs.clone(),
+                }
+            }
+            (State::Live { .. }, State::Tombstone { .. }) => {
+                // Keep the right side
+                Entry {
+                    valid: EntryIncremental {
+                        uuid: db_ent.valid.uuid,
+                        ecstate: db_ent.valid.ecstate.clone(),
+                    },
+                    state: EntryCommitted {
+                        id: db_ent.state.id,
+                    },
+                    attrs: db_ent.attrs.clone(),
+                }
+            }
+        }
+    }
 }
 
 impl Entry<EntryIncremental, EntryCommitted> {
-    /*
-    pub fn from_repl_entry_v1(
-        ctx_ent: &ReplIncrementalEntryV1,
-        db_ent: &EntrySealedCommitted,
-        schema: &SchemaReadTransaction,
-    ) -> Result<(Self, Option<EntrySealedNew>), OperationError> {
-        // How do we return that a conflict has occured?
-        // We return an option sealed new of entries that are in a conflict state.
-        // these are added seperately to the db.
-
-        match ctx_ent.rehydrate(db_ent) {
-            IncrementalResult::Ok {
-                ecstate, attrs
-            } =>
-                Ok((Entry {
-                    valid: EntryIncremental { ecstate },
-                    state: EntryCommitted {
-                        // We are going to replace this entry's content with the updated
-                        // attrs and ecstate.
-                        db_ent.state.id
-                    },
-                    attrs,
-                }), None),
-
-            IncrementalResult::EntryConflict {
-                ecstate,
-                attrs,
-                conflict_ecstate,
-                conflict_attrs,
-            } =>
-                Ok((Entry {
-                    valid: EntryIncremental { ecstate },
-                    state: EntryCommitted {
-                        // We are going to replace this entry's content with the updated
-                        // attrs and ecstate.
-                        db_ent.state.id
-                    },
-                    attrs,
-                }), Some(Entry {
-                    valid: EntrySealed {
-                        uuid: Uuid::new_v4(),
-                        ecstate: conflict_ecstate,
-                    },
-                    state: EntryNew,
-                    attrs: conflict_attrs
-                })),
-
-
-
-
-
-
-                Ok((Entry {
-                    valid: EntryRefresh { ecstate },
-                    state: EntryNew,
-                    attrs,
-                }), None),
-
-
-
-
-            IncrementalResult::Err(e) => Err(e),
-        }
+    pub(crate) fn validate_repl(
+        self,
+        _schema: &dyn SchemaTransaction,
+    ) -> Result<EntryValidCommitted, SchemaError> {
+        todo!();
     }
-    */
 }
 
 impl<STATE> Entry<EntryInvalid, STATE> {
@@ -771,13 +841,6 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         };
 
         ne.validate(schema)
-    }
-
-    pub(crate) fn validate_repl(
-        mut self,
-        schema: &dyn SchemaTransaction,
-    ) -> Result<EntryValidCommitted, SchemaError> {
-        todo!();
     }
 }
 
