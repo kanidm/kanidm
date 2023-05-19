@@ -24,7 +24,7 @@ members = [
     "libs/profiles",
     "libs/sketching",
     "windows_integration/security_package",
-    "windows_integration/security_package_lib"
+    "windows_integration/public"
 ]
 
 [workspace.package]
