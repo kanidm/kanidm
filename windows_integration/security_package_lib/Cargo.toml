@@ -14,3 +14,4 @@ repository.workspace = true
 
 [dependencies]
 kanidm_proto.workspace = true
+kanidm_client.workspace = true
