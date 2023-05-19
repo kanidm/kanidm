@@ -14,6 +14,8 @@ pub(crate) const PROGRAM_DIR: &'static str = "C:\\Program Files\\kanidm";
 // The current naming scheme for these consist of the initials of function names followed by an s
 // For example: logon_user -> lus
 
+/// If you're looking for the library which contains the protocol definitions then you've found the wrong library.
+/// The library you're looking for is `kanidm_windows` not `kanidm_windows_client`
 /// # Safety
 /// This function should only ever be called by the windows api. This library heavily depends on the win32 api and uses a special allocator provided
 /// by the windows local security authority. Depending on this library for anything is unsupported and undefined behaviour. So if you do attempt to use
