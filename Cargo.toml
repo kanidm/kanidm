@@ -23,7 +23,7 @@ members = [
     "libs/file_permissions",
     "libs/profiles",
     "libs/sketching",
-    "windows_integration/security_package",
+    "windows_integration/client",
     "windows_integration/public"
 ]
 
