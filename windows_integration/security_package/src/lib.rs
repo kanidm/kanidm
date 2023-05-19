@@ -6,7 +6,6 @@ use windows::Win32::Security::Authentication::Identity::SECPKG_FUNCTION_TABLE;
 mod client;
 mod mem;
 mod package;
-mod protocol;
 mod structs;
 
 pub(crate) const PROGRAM_DIR: &'static str = "C:\\Program Files\\kanidm";

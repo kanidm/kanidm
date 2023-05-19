@@ -28,7 +28,6 @@ use crate::client::KanidmWindowsClient;
 use crate::mem::{allocate_mem_client, allocate_mem_lsa, MemoryAllocationError};
 use crate::structs::{AuthInfo, ProfileBuffer, LogonId};
 use crate::PROGRAM_DIR;
-use crate::protocol::v1::handle_request;
 
 pub(crate) static mut KANIDM_WINDOWS_CLIENT: Lazy<Option<KanidmWindowsClient>> = Lazy::new(|| {
     let client = match KanidmWindowsClient::new(&format!("{}/authlib_client.toml", PROGRAM_DIR)) {
@@ -389,23 +388,6 @@ pub async extern "system" fn ApCallPackage(
         Some(req) => req,
         None => return STATUS_UNSUCCESSFUL,
     };
-
-    let response = match request {
-        AuthPkgRequest::V1(req) => AuthPkgResponse::V1(handle_request(req).await),
-    };
-    let allocated_response = match allocate_mem_client(response, &dispatch_table.AllocateClientBuffer, client_req) {
-        Ok(res) => res,
-        Err(_) => return STATUS_UNSUCCESSFUL,
-    };
-
-    let return_ptr = out_return_buf.cast::<*mut AuthPkgResponse>();
-    let return_ptr_len = size_of::<AuthPkgResponse>() as u32;
-
-    unsafe {
-        *return_ptr = allocated_response;
-        *out_return_buf_len = return_ptr_len;
-        *out_status = 0;
-    }
 
     STATUS_SUCCESS
 }
