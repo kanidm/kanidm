@@ -40,7 +40,7 @@ impl KanidmWindowsClient {
     }
 
     // TODO: Implement token caching
-    pub async fn logon_user(
+    pub async fn logon_user_unix(
         &self,
         username: &String,
         password: &String,

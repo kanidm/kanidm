@@ -184,7 +184,7 @@ pub async extern "system" fn ApLogonUser(
 
     // * Get token from kanidm server
     let client = unsafe { KANIDM_WINDOWS_CLIENT.as_ref().unwrap() };
-    let token = match client.logon_user(&username, &password).await {
+    let token = match client.logon_user_unix(&username, &password).await {
         Ok(token) => token,
         Err(_) => return STATUS_UNSUCCESSFUL,
     };
