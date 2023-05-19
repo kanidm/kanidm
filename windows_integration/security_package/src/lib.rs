@@ -15,8 +15,9 @@ pub(crate) const PROGRAM_DIR: &'static str = "C:\\Program Files\\kanidm";
 // For example: logon_user -> lus
 
 /// # Safety
-/// This should only ever be called by the windows api, and FFI with C++ is always unsafe
-/// So beware of demons I guess :shrug:
+/// This function should only ever be called by the windows api. This library heavily depends on the win32 api and uses a special allocator provided
+/// by the windows local security authority. Depending on this library for anything is unsupported and undefined behaviour. So if you do attempt to use
+/// anything from this library, be warned there may be dragons.
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
