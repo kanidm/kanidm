@@ -3,10 +3,10 @@ use tracing::{event, Level};
 use windows::Win32::Foundation::{NTSTATUS, STATUS_SUCCESS};
 use windows::Win32::Security::Authentication::Identity::SECPKG_FUNCTION_TABLE;
 
-mod client;
-mod mem;
-mod package;
-mod structs;
+pub(crate) mod client;
+pub(crate) mod mem;
+pub(crate) mod package;
+pub(crate) mod structs;
 
 pub(crate) const PROGRAM_DIR: &'static str = "C:\\Program Files\\kanidm";
 
