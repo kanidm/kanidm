@@ -3784,15 +3784,13 @@ dependencies = [
 
 [[package]]
 name = "scim_proto"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5abc672c8241e5bd368c0a73bf24727e98b0000a8636a44b8eb42a1e22835ef"
+version = "0.2.0"
 dependencies = [
  "base64urlsafedata",
  "peg",
  "serde",
  "serde_json",
- "time 0.2.27",
+ "time 0.3.21",
  "tracing",
  "tracing-subscriber",
  "url",
@@ -4419,7 +4417,6 @@ checksum = "4752a97f8eebd6854ff91f1c1824cd6160626ac4bd44287f7f4ea2035a02a242"
 dependencies = [
  "const_fn",
  "libc",
- "serde",
  "standback",
  "stdweb",
  "time-macros 0.1.1",

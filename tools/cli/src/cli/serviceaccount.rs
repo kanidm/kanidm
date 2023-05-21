@@ -108,7 +108,11 @@ impl ServiceAccountOpt {
                 } => {
                     let expiry_odt = if let Some(t) = expiry {
                         // Convert the time to local timezone.
-                        match OffsetDateTime::parse(t, &time::format_description::well_known::Rfc3339).map(|odt| {
+                        match OffsetDateTime::parse(
+                            t,
+                            &time::format_description::well_known::Rfc3339,
+                        )
+                        .map(|odt| {
                             odt.to_offset(
                                 time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
                                     .unwrap_or(time::UtcOffset::UTC),
@@ -395,15 +399,19 @@ impl ServiceAccountOpt {
 
                     if let Some(t) = vf {
                         // Convert the time to local timezone.
-                        let t = OffsetDateTime::parse(&t[0], &time::format_description::well_known::Rfc3339)
-                            .map(|odt| {
-                                odt.to_offset(
-                                    time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
-                                        .unwrap_or(time::UtcOffset::UTC),
-                                )
-                                .format(&time::format_description::well_known::Rfc3339).unwrap()
-                            })
-                            .unwrap_or_else(|_| "invalid timestamp".to_string());
+                        let t = OffsetDateTime::parse(
+                            &t[0],
+                            &time::format_description::well_known::Rfc3339,
+                        )
+                        .map(|odt| {
+                            odt.to_offset(
+                                time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
+                                    .unwrap_or(time::UtcOffset::UTC),
+                            )
+                            .format(&time::format_description::well_known::Rfc3339)
+                            .unwrap()
+                        })
+                        .unwrap_or_else(|_| "invalid timestamp".to_string());
 
                         println!("valid after: {}", t);
                     } else {
@@ -411,15 +419,19 @@ impl ServiceAccountOpt {
                     }
 
                     if let Some(t) = ex {
-                        let t = OffsetDateTime::parse(&t[0], &time::format_description::well_known::Rfc3339)
-                            .map(|odt| {
-                                odt.to_offset(
-                                    time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
-                                        .unwrap_or(time::UtcOffset::UTC),
-                                )
-                                .format(&time::format_description::well_known::Rfc3339).unwrap()
-                            })
-                            .unwrap_or_else(|_| "invalid timestamp".to_string());
+                        let t = OffsetDateTime::parse(
+                            &t[0],
+                            &time::format_description::well_known::Rfc3339,
+                        )
+                        .map(|odt| {
+                            odt.to_offset(
+                                time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
+                                    .unwrap_or(time::UtcOffset::UTC),
+                            )
+                            .format(&time::format_description::well_known::Rfc3339)
+                            .unwrap()
+                        })
+                        .unwrap_or_else(|_| "invalid timestamp".to_string());
                         println!("expire: {:?}", t);
                     } else {
                         println!("expire: never");
@@ -440,9 +452,10 @@ impl ServiceAccountOpt {
                             _ => println!("Success"),
                         }
                     } else {
-                        if let Err(e) =
-                            OffsetDateTime::parse(ano.datetime.as_str(), &time::format_description::well_known::Rfc3339)
-                        {
+                        if let Err(e) = OffsetDateTime::parse(
+                            ano.datetime.as_str(),
+                            &time::format_description::well_known::Rfc3339,
+                        ) {
                             error!("Error -> {:?}", e);
                             return;
                         }
@@ -476,9 +489,10 @@ impl ServiceAccountOpt {
                         }
                     } else {
                         // Attempt to parse and set
-                        if let Err(e) =
-                            OffsetDateTime::parse(ano.datetime.as_str(), &time::format_description::well_known::Rfc3339)
-                        {
+                        if let Err(e) = OffsetDateTime::parse(
+                            ano.datetime.as_str(),
+                            &time::format_description::well_known::Rfc3339,
+                        ) {
                             error!("Error -> {:?}", e);
                             return;
                         }

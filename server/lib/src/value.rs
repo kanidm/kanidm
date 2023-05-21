@@ -737,7 +737,8 @@ impl PartialValue {
             PartialValue::Cid(_) => "_".to_string(),
             PartialValue::DateTime(odt) => {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                odt.format(&time::format_description::well_known::Rfc3339).unwrap()
+                odt.format(&time::format_description::well_known::Rfc3339)
+                    .unwrap()
             }
             PartialValue::Url(u) => u.to_string(),
             PartialValue::OauthScope(u) => u.to_string(),
@@ -1927,8 +1928,10 @@ mod tests {
         assert!(Value::new_datetime_s("2020-09-25 01:22:02+00:00").is_none());
 
         // Manually craft
-        let inv1 =
-            Value::DateTime(OffsetDateTime::now_utc().to_offset(time::UtcOffset::from_whole_seconds(36000).unwrap()));
+        let inv1 = Value::DateTime(
+            OffsetDateTime::now_utc()
+                .to_offset(time::UtcOffset::from_whole_seconds(36000).unwrap()),
+        );
         assert!(!inv1.validate());
 
         let val3 = Value::DateTime(OffsetDateTime::now_utc());
