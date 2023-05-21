@@ -70,7 +70,7 @@ hex = "^0.4.3"
 http-types = "^2.12.0"
 idlset = "^0.2.4"
 # idlset = { path = "../idlset" }
-js-sys = "^0.3.62"
+js-sys = "^0.3.63"
 kanidmd_core = { path = "./server/core" }
 kanidmd_idm = { path = "./server/idm" }
 kanidmd_lib = { path = "./server/lib" }
