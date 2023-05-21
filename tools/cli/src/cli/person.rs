@@ -370,13 +370,13 @@ impl PersonOpt {
 
                     if let Some(t) = vf {
                         // Convert the time to local timezone.
-                        let t = OffsetDateTime::parse(&t[0], time::Format::Rfc3339)
+                        let t = OffsetDateTime::parse(&t[0], &time::format_description::well_known::Rfc3339)
                             .map(|odt| {
                                 odt.to_offset(
-                                    time::UtcOffset::try_current_local_offset()
+                                    time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
                                         .unwrap_or(time::UtcOffset::UTC),
                                 )
-                                .format(time::Format::Rfc3339)
+                                .format(&time::format_description::well_known::Rfc3339).unwrap()
                             })
                             .unwrap_or_else(|_| "invalid timestamp".to_string());
 
@@ -386,13 +386,13 @@ impl PersonOpt {
                     }
 
                     if let Some(t) = ex {
-                        let t = OffsetDateTime::parse(&t[0], time::Format::Rfc3339)
+                        let t = OffsetDateTime::parse(&t[0], &time::format_description::well_known::Rfc3339)
                             .map(|odt| {
                                 odt.to_offset(
-                                    time::UtcOffset::try_current_local_offset()
+                                    time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
                                         .unwrap_or(time::UtcOffset::UTC),
                                 )
-                                .format(time::Format::Rfc3339)
+                                .format(&time::format_description::well_known::Rfc3339).unwrap()
                             })
                             .unwrap_or_else(|_| "invalid timestamp".to_string());
                         println!("expire: {}", t);
@@ -416,7 +416,7 @@ impl PersonOpt {
                         }
                     } else {
                         if let Err(e) =
-                            OffsetDateTime::parse(ano.datetime.as_str(), time::Format::Rfc3339)
+                            OffsetDateTime::parse(ano.datetime.as_str(), &time::format_description::well_known::Rfc3339)
                         {
                             error!("Error -> {:?}", e);
                             return;
@@ -452,7 +452,7 @@ impl PersonOpt {
                     } else {
                         // Attempt to parse and set
                         if let Err(e) =
-                            OffsetDateTime::parse(ano.datetime.as_str(), time::Format::Rfc3339)
+                            OffsetDateTime::parse(ano.datetime.as_str(), &time::format_description::well_known::Rfc3339)
                         {
                             error!("Error -> {:?}", e);
                             return;

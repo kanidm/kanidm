@@ -5,6 +5,7 @@ use std::str::FromStr;
 
 use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use uuid::Uuid;
 use webauthn_rs_proto::{
     CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
@@ -497,9 +498,9 @@ impl fmt::Display for ApiToken {
                 "token expiry: {}",
                 expiry
                     .to_offset(
-                        time::UtcOffset::try_current_local_offset().unwrap_or(time::UtcOffset::UTC),
+                        time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH).unwrap_or(time::UtcOffset::UTC),
                     )
-                    .format(time::Format::Rfc3339)
+                    .format(&time::format_description::well_known::Rfc3339).unwrap()
             )
         } else {
             writeln!(f, "token expiry: never")

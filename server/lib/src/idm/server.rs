@@ -471,7 +471,7 @@ pub trait IdmServerTransaction<'a> {
                 .map(|t: Jws<UserAuthToken>| t.into_inner())?;
 
             if let Some(exp) = uat.expiry {
-                if time::OffsetDateTime::unix_epoch() + ct >= exp {
+                if time::OffsetDateTime::UNIX_EPOCH + ct >= exp {
                     security_info!("Session expired");
                     Err(OperationError::SessionExpired)
                 } else {
@@ -525,7 +525,7 @@ pub trait IdmServerTransaction<'a> {
                 .map(|t: Jws<ApiToken>| t.into_inner())?;
 
             if let Some(expiry) = apit.expiry {
-                if time::OffsetDateTime::unix_epoch() + ct >= expiry {
+                if time::OffsetDateTime::UNIX_EPOCH + ct >= expiry {
                     security_info!("Session expired");
                     return Err(OperationError::SessionExpired);
                 }
@@ -562,7 +562,7 @@ pub trait IdmServerTransaction<'a> {
             })?;
 
         if let Some(exp) = uat.expiry {
-            if time::OffsetDateTime::unix_epoch() + ct >= exp {
+            if time::OffsetDateTime::UNIX_EPOCH + ct >= exp {
                 security_info!("Session expired");
                 Err(OperationError::SessionExpired)
             } else {
@@ -665,7 +665,7 @@ pub trait IdmServerTransaction<'a> {
             UatPurpose::ReadWrite {
                 expiry: Some(expiry),
             } => {
-                let cot = time::OffsetDateTime::unix_epoch() + ct;
+                let cot = time::OffsetDateTime::UNIX_EPOCH + ct;
                 if cot < expiry {
                     AccessScope::ReadWrite
                 } else {
@@ -3417,8 +3417,8 @@ mod tests {
             session_id: session_a,
             cred_id,
             label: "Test Session A".to_string(),
-            expiry: Some(OffsetDateTime::unix_epoch() + expiry_a),
-            issued_at: OffsetDateTime::unix_epoch() + ct,
+            expiry: Some(OffsetDateTime::UNIX_EPOCH + expiry_a),
+            issued_at: OffsetDateTime::UNIX_EPOCH + ct,
             issued_by: IdentityId::User(UUID_ADMIN),
             scope: SessionScope::ReadOnly,
         });
@@ -3452,8 +3452,8 @@ mod tests {
             session_id: session_b,
             cred_id,
             label: "Test Session B".to_string(),
-            expiry: Some(OffsetDateTime::unix_epoch() + expiry_b),
-            issued_at: OffsetDateTime::unix_epoch() + ct,
+            expiry: Some(OffsetDateTime::UNIX_EPOCH + expiry_b),
+            issued_at: OffsetDateTime::UNIX_EPOCH + ct,
             issued_by: IdentityId::User(UUID_ADMIN),
             scope: SessionScope::ReadOnly,
         });

@@ -144,7 +144,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })?;
 
         let session_id = Uuid::new_v4();
-        let issued_at = time::OffsetDateTime::unix_epoch() + ct;
+        let issued_at = time::OffsetDateTime::UNIX_EPOCH + ct;
 
         let scope = ApiTokenScope::Synchronise;
         let purpose = scope.try_into()?;

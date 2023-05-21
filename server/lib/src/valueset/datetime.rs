@@ -26,7 +26,7 @@ impl ValueSetDateTime {
         let set = data
             .into_iter()
             .map(|s| {
-                OffsetDateTime::parse(s, time::Format::Rfc3339)
+                OffsetDateTime::parse(&s, &time::format_description::well_known::Rfc3339)
                     .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                     .map_err(|_| OperationError::InvalidValueState)
             })
@@ -38,7 +38,7 @@ impl ValueSetDateTime {
         let set = data
             .iter()
             .map(|s| {
-                OffsetDateTime::parse(s, time::Format::Rfc3339)
+                OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)
                     .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                     .map_err(|_| OperationError::InvalidValueState)
             })
@@ -104,7 +104,7 @@ impl ValueSetT for ValueSetDateTime {
             .iter()
             .map(|odt| {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                odt.format(time::Format::Rfc3339)
+                odt.format(&time::format_description::well_known::Rfc3339).unwrap()
             })
             .collect()
     }
@@ -120,7 +120,7 @@ impl ValueSetT for ValueSetDateTime {
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.set.iter().map(|odt| {
             debug_assert!(odt.offset() == time::UtcOffset::UTC);
-            odt.format(time::Format::Rfc3339)
+            odt.format(&time::format_description::well_known::Rfc3339).unwrap()
         }))
     }
 
@@ -130,7 +130,7 @@ impl ValueSetT for ValueSetDateTime {
                 .iter()
                 .map(|odt| {
                     debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                    odt.format(time::Format::Rfc3339)
+                    odt.format(&time::format_description::well_known::Rfc3339).unwrap()
                 })
                 .collect(),
         )
@@ -143,7 +143,7 @@ impl ValueSetT for ValueSetDateTime {
                 .iter()
                 .map(|odt| {
                     debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                    odt.format(time::Format::Rfc3339)
+                    odt.format(&time::format_description::well_known::Rfc3339).unwrap()
                 })
                 .collect(),
         }
