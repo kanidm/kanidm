@@ -494,20 +494,15 @@ impl fmt::Display for ApiToken {
         writeln!(f, "issued at: {}", self.issued_at)?;
         if let Some(expiry) = self.expiry {
             // if this fails we're in trouble!
-           #[allow(clippy::expect_used)]
+            #[allow(clippy::expect_used)]
             let expiry_str = expiry
-            .to_offset(
-                time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
-                    .unwrap_or(time::UtcOffset::UTC),
-            )
-            .format(&time::format_description::well_known::Rfc3339)
-            .expect("Failed to format timestamp to RFC3339");
-            writeln!(
-                f,
-                "token expiry: {}",
-                expiry_str
-
-            )
+                .to_offset(
+                    time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
+                        .unwrap_or(time::UtcOffset::UTC),
+                )
+                .format(&time::format_description::well_known::Rfc3339)
+                .expect("Failed to format timestamp to RFC3339");
+            writeln!(f, "token expiry: {}", expiry_str)
         } else {
             writeln!(f, "token expiry: never")
         }

@@ -834,16 +834,14 @@ impl ValueSetT for ValueSetOauth2Session {
                         debug_assert!(odt.offset() == time::UtcOffset::UTC);
                         #[allow(clippy::expect_used)]
                         odt.format(&time::format_description::well_known::Rfc3339)
-                            .expect("Failed to format timestamp into RFC3339"
-                            )
+                            .expect("Failed to format timestamp into RFC3339")
                     }),
                     issued_at: {
                         debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
                         #[allow(clippy::expect_used)]
                         m.issued_at
                             .format(&time::format_description::well_known::Rfc3339)
-                            .expect("Failed to format timestamp into RFC3339"
-                            )
+                            .expect("Failed to format timestamp into RFC3339")
                     },
                     rs_uuid: m.rs_uuid,
                 })

@@ -149,7 +149,10 @@ impl ServiceAccountOpt {
                                     action: "api-token generate".to_string(),
                                     result: new_token,
                                     status: kanidm_proto::messages::MessageStatus::Success,
-                                    src_user: copt.username.clone().unwrap_or("<unknown username>".to_string()),
+                                    src_user: copt
+                                        .username
+                                        .clone()
+                                        .unwrap_or("<unknown username>".to_string()),
                                     dest_user: aopts.account_id.clone(),
                                 };
                                 println!("{}", message);

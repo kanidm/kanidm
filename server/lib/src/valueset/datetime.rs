@@ -124,7 +124,7 @@ impl ValueSetT for ValueSetDateTime {
             debug_assert!(odt.offset() == time::UtcOffset::UTC);
             #[allow(clippy::expect_used)]
             odt.format(&time::format_description::well_known::Rfc3339)
-            .expect("Failed to format timestamp into RFC3339")
+                .expect("Failed to format timestamp into RFC3339")
         }))
     }
 
