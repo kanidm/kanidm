@@ -380,7 +380,7 @@ impl PersonOpt {
                                     .unwrap_or(time::UtcOffset::UTC),
                             )
                             .format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
+                            .unwrap_or(odt.to_string())
                         })
                         .unwrap_or_else(|_| "invalid timestamp".to_string());
 
@@ -400,7 +400,7 @@ impl PersonOpt {
                                     .unwrap_or(time::UtcOffset::UTC),
                             )
                             .format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
+                            .unwrap_or(odt.to_string())
                         })
                         .unwrap_or_else(|_| "invalid timestamp".to_string());
                         println!("expire: {}", t);

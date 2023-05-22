@@ -378,14 +378,16 @@ impl ValueSetT for ValueSetSession {
                     label: m.label.clone(),
                     expiry: m.expiry.map(|odt| {
                         debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                        #[allow(clippy::expect_used)]
                         odt.format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
+                            .expect("Failed to format timestamp into RFC3339!")
                     }),
                     issued_at: {
                         debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
+                        #[allow(clippy::expect_used)]
                         m.issued_at
                             .format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
+                            .expect("Failed to format timestamp into RFC3339!")
                     },
                     issued_by: match m.issued_by {
                         IdentityId::Internal => DbValueIdentityId::V1Internal,
@@ -414,14 +416,16 @@ impl ValueSetT for ValueSetSession {
                     label: m.label.clone(),
                     expiry: m.expiry.map(|odt| {
                         debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                        #[allow(clippy::expect_used)]
                         odt.format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
+                            .expect("Failed to format timestamp to RFC3339")
                     }),
                     issued_at: {
                         debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
+                        #[allow(clippy::expect_used)]
                         m.issued_at
                             .format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
+                            .expect("Failed to format timestamp to RFC3339")
                     },
                     issued_by: match m.issued_by {
                         IdentityId::Internal => ReplIdentityIdV1::Internal,
@@ -801,14 +805,16 @@ impl ValueSetT for ValueSetOauth2Session {
                     parent: m.parent,
                     expiry: m.expiry.map(|odt| {
                         debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                        #[allow(clippy::expect_used)]
                         odt.format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
+                            .expect("Failed to format timestamp as RFC3339")
                     }),
                     issued_at: {
                         debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
+                        #[allow(clippy::expect_used)]
                         m.issued_at
                             .format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
+                            .expect("Failed to format timestamp as RFC3339")
                     },
                     rs_uuid: m.rs_uuid,
                 })
@@ -826,14 +832,18 @@ impl ValueSetT for ValueSetOauth2Session {
                     parent: m.parent,
                     expiry: m.expiry.map(|odt| {
                         debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                        #[allow(clippy::expect_used)]
                         odt.format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
+                            .expect("Failed to format timestamp into RFC3339"
+                            )
                     }),
                     issued_at: {
                         debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
+                        #[allow(clippy::expect_used)]
                         m.issued_at
                             .format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
+                            .expect("Failed to format timestamp into RFC3339"
+                            )
                     },
                     rs_uuid: m.rs_uuid,
                 })
@@ -1163,14 +1173,16 @@ impl ValueSetT for ValueSetApiToken {
                     label: m.label.clone(),
                     expiry: m.expiry.map(|odt| {
                         debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                        #[allow(clippy::expect_used)]
                         odt.format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
+                            .expect("Failed to format timestamp into RFC3339")
                     }),
                     issued_at: {
                         debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
+                        #[allow(clippy::expect_used)]
                         m.issued_at
                             .format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
+                            .expect("Failed to format timestamp into RFC3339")
                     },
                     issued_by: match m.issued_by {
                         IdentityId::Internal => DbValueIdentityId::V1Internal,
@@ -1197,14 +1209,17 @@ impl ValueSetT for ValueSetApiToken {
                     label: m.label.clone(),
                     expiry: m.expiry.map(|odt| {
                         debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                        #[allow(clippy::expect_used)]
                         odt.format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
+                            .expect("Failed to format timestamp into RFC3339")
                     }),
                     issued_at: {
                         debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
+
+                        #[allow(clippy::expect_used)]
                         m.issued_at
                             .format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
+                            .expect("Failed to format timestamp into RFC3339")
                     },
                     issued_by: match m.issued_by {
                         IdentityId::Internal => ReplIdentityIdV1::Internal,

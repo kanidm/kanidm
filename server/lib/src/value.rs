@@ -737,8 +737,9 @@ impl PartialValue {
             PartialValue::Cid(_) => "_".to_string(),
             PartialValue::DateTime(odt) => {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                #[allow(clippy::expect_used)]
                 odt.format(&time::format_description::well_known::Rfc3339)
-                    .unwrap()
+                    .expect("Failed to format timestamp into RFC3339")
             }
             PartialValue::Url(u) => u.to_string(),
             PartialValue::OauthScope(u) => u.to_string(),

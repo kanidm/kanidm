@@ -149,7 +149,7 @@ impl ServiceAccountOpt {
                                     action: "api-token generate".to_string(),
                                     result: new_token,
                                     status: kanidm_proto::messages::MessageStatus::Success,
-                                    src_user: copt.username.clone().unwrap(),
+                                    src_user: copt.username.clone().unwrap_or("<unknown username>".to_string()),
                                     dest_user: aopts.account_id.clone(),
                                 };
                                 println!("{}", message);
@@ -409,7 +409,7 @@ impl ServiceAccountOpt {
                                     .unwrap_or(time::UtcOffset::UTC),
                             )
                             .format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
+                            .unwrap_or(odt.to_string())
                         })
                         .unwrap_or_else(|_| "invalid timestamp".to_string());
 
@@ -429,7 +429,7 @@ impl ServiceAccountOpt {
                                     .unwrap_or(time::UtcOffset::UTC),
                             )
                             .format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
+                            .unwrap_or(odt.to_string())
                         })
                         .unwrap_or_else(|_| "invalid timestamp".to_string());
                         println!("expire: {:?}", t);
