@@ -205,9 +205,7 @@ impl QueryServerReadV1 {
                 time::OffsetDateTime::now_utc()
             }
         };
-        let timestamp = now
-            .format(&Rfc3339)
-            .unwrap();
+        let timestamp = now.format(&Rfc3339).unwrap();
         let dest_file = format!("{}/backup-{}.json", outpath, timestamp);
 
         if Path::new(&dest_file).exists() {

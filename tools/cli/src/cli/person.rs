@@ -12,8 +12,8 @@ use kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus, Totp
 use kanidm_proto::v1::{CredentialDetail, CredentialDetailType};
 use qrcode::render::unicode;
 use qrcode::QrCode;
-use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
@@ -371,19 +371,16 @@ impl PersonOpt {
 
                     if let Some(t) = vf {
                         // Convert the time to local timezone.
-                        let t = OffsetDateTime::parse(
-                            &t[0],
-                            &Rfc3339,
-                        )
-                        .map(|odt| {
-                            odt.to_offset(
-                                time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
-                                    .unwrap_or(time::UtcOffset::UTC),
-                            )
-                            .format(&Rfc3339)
-                            .unwrap_or(odt.to_string())
-                        })
-                        .unwrap_or_else(|_| "invalid timestamp".to_string());
+                        let t = OffsetDateTime::parse(&t[0], &Rfc3339)
+                            .map(|odt| {
+                                odt.to_offset(
+                                    time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
+                                        .unwrap_or(time::UtcOffset::UTC),
+                                )
+                                .format(&Rfc3339)
+                                .unwrap_or(odt.to_string())
+                            })
+                            .unwrap_or_else(|_| "invalid timestamp".to_string());
 
                         println!("valid after: {}", t);
                     } else {
@@ -391,19 +388,16 @@ impl PersonOpt {
                     }
 
                     if let Some(t) = ex {
-                        let t = OffsetDateTime::parse(
-                            &t[0],
-                            &Rfc3339,
-                        )
-                        .map(|odt| {
-                            odt.to_offset(
-                                time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
-                                    .unwrap_or(time::UtcOffset::UTC),
-                            )
-                            .format(&Rfc3339)
-                            .unwrap_or(odt.to_string())
-                        })
-                        .unwrap_or_else(|_| "invalid timestamp".to_string());
+                        let t = OffsetDateTime::parse(&t[0], &Rfc3339)
+                            .map(|odt| {
+                                odt.to_offset(
+                                    time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
+                                        .unwrap_or(time::UtcOffset::UTC),
+                                )
+                                .format(&Rfc3339)
+                                .unwrap_or(odt.to_string())
+                            })
+                            .unwrap_or_else(|_| "invalid timestamp".to_string());
                         println!("expire: {}", t);
                     } else {
                         println!("expire: never");
@@ -424,10 +418,7 @@ impl PersonOpt {
                             _ => println!("Success"),
                         }
                     } else {
-                        if let Err(e) = OffsetDateTime::parse(
-                            ano.datetime.as_str(),
-                            &Rfc3339,
-                        ) {
+                        if let Err(e) = OffsetDateTime::parse(ano.datetime.as_str(), &Rfc3339) {
                             error!("Error -> {:?}", e);
                             return;
                         }
@@ -461,10 +452,7 @@ impl PersonOpt {
                         }
                     } else {
                         // Attempt to parse and set
-                        if let Err(e) = OffsetDateTime::parse(
-                            ano.datetime.as_str(),
-                            &Rfc3339,
-                        ) {
+                        if let Err(e) = OffsetDateTime::parse(ano.datetime.as_str(), &Rfc3339) {
                             error!("Error -> {:?}", e);
                             return;
                         }

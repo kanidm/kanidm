@@ -52,19 +52,16 @@ impl ValueSetSession {
                             let cred_id = Uuid::new_v4();
 
                             // Convert things.
-                            let issued_at = OffsetDateTime::parse(
-                                &issued_at,
-                                &Rfc3339,
-                            )
-                            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                            .map_err(|e| {
-                                admin_error!(
+                            let issued_at = OffsetDateTime::parse(&issued_at, &Rfc3339)
+                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                .map_err(|e| {
+                                    admin_error!(
                                     ?e,
                                     "Invalidating session {} due to invalid issued_at timestamp",
                                     refer
                                 )
-                            })
-                            .ok()?;
+                                })
+                                .ok()?;
 
                             // This is a bit annoying. In the case we can't parse the optional
                             // expiry, we need to NOT return the session so that it's immediately
@@ -72,11 +69,8 @@ impl ValueSetSession {
                             // here.
                             let expiry = expiry
                                 .map(|e_inner| {
-                                    OffsetDateTime::parse(
-                                        &e_inner,
-                                        &Rfc3339,
-                                    )
-                                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                    OffsetDateTime::parse(&e_inner, &Rfc3339)
+                                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                                     // We now have an
                                     // Option<Result<ODT, _>>
                                 })
@@ -130,19 +124,16 @@ impl ValueSetSession {
                             scope,
                         } => {
                             // Convert things.
-                            let issued_at = OffsetDateTime::parse(
-                                &issued_at,
-                                &Rfc3339,
-                            )
-                            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                            .map_err(|e| {
-                                admin_error!(
+                            let issued_at = OffsetDateTime::parse(&issued_at, &Rfc3339)
+                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                .map_err(|e| {
+                                    admin_error!(
                                     ?e,
                                     "Invalidating session {} due to invalid issued_at timestamp",
                                     refer
                                 )
-                            })
-                            .ok()?;
+                                })
+                                .ok()?;
 
                             // This is a bit annoying. In the case we can't parse the optional
                             // expiry, we need to NOT return the session so that it's immediately
@@ -150,11 +141,8 @@ impl ValueSetSession {
                             // here.
                             let expiry = expiry
                                 .map(|e_inner| {
-                                    OffsetDateTime::parse(
-                                        &e_inner,
-                                        &Rfc3339,
-                                    )
-                                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                    OffsetDateTime::parse(&e_inner, &Rfc3339)
+                                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                                     // We now have an
                                     // Option<Result<ODT, _>>
                                 })
@@ -218,19 +206,16 @@ impl ValueSetSession {
                      scope,
                  }| {
                     // Convert things.
-                    let issued_at = OffsetDateTime::parse(
-                        issued_at,
-                        &Rfc3339,
-                    )
-                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                    .map_err(|e| {
-                        admin_error!(
-                            ?e,
-                            "Invalidating session {} due to invalid issued_at timestamp",
-                            refer
-                        )
-                    })
-                    .ok()?;
+                    let issued_at = OffsetDateTime::parse(issued_at, &Rfc3339)
+                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                        .map_err(|e| {
+                            admin_error!(
+                                ?e,
+                                "Invalidating session {} due to invalid issued_at timestamp",
+                                refer
+                            )
+                        })
+                        .ok()?;
 
                     // This is a bit annoying. In the case we can't parse the optional
                     // expiry, we need to NOT return the session so that it's immediately
@@ -239,11 +224,8 @@ impl ValueSetSession {
                     let expiry = expiry
                         .as_ref()
                         .map(|e_inner| {
-                            OffsetDateTime::parse(
-                                e_inner,
-                                &Rfc3339,
-                            )
-                            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                            OffsetDateTime::parse(e_inner, &Rfc3339)
+                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                             // We now have an
                             // Option<Result<ODT, _>>
                         })
@@ -558,19 +540,16 @@ impl ValueSetOauth2Session {
                         rs_uuid,
                     } => {
                         // Convert things.
-                        let issued_at = OffsetDateTime::parse(
-                            &issued_at,
-                            &Rfc3339,
-                        )
-                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                        .map_err(|e| {
-                            admin_error!(
-                                ?e,
-                                "Invalidating session {} due to invalid issued_at timestamp",
-                                refer
-                            )
-                        })
-                        .ok()?;
+                        let issued_at = OffsetDateTime::parse(&issued_at, &Rfc3339)
+                            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                            .map_err(|e| {
+                                admin_error!(
+                                    ?e,
+                                    "Invalidating session {} due to invalid issued_at timestamp",
+                                    refer
+                                )
+                            })
+                            .ok()?;
 
                         // This is a bit annoying. In the case we can't parse the optional
                         // expiry, we need to NOT return the session so that it's immediately
@@ -578,11 +557,8 @@ impl ValueSetOauth2Session {
                         // here.
                         let expiry = expiry
                             .map(|e_inner| {
-                                OffsetDateTime::parse(
-                                    &e_inner,
-                                    &Rfc3339,
-                                )
-                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                OffsetDateTime::parse(&e_inner, &Rfc3339)
+                                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                                 // We now have an
                                 // Option<Result<ODT, _>>
                             })
@@ -629,19 +605,16 @@ impl ValueSetOauth2Session {
                      rs_uuid,
                  }| {
                     // Convert things.
-                    let issued_at = OffsetDateTime::parse(
-                        issued_at,
-                        &Rfc3339,
-                    )
-                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                    .map_err(|e| {
-                        admin_error!(
-                            ?e,
-                            "Invalidating session {} due to invalid issued_at timestamp",
-                            refer
-                        )
-                    })
-                    .ok()?;
+                    let issued_at = OffsetDateTime::parse(issued_at, &Rfc3339)
+                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                        .map_err(|e| {
+                            admin_error!(
+                                ?e,
+                                "Invalidating session {} due to invalid issued_at timestamp",
+                                refer
+                            )
+                        })
+                        .ok()?;
 
                     // This is a bit annoying. In the case we can't parse the optional
                     // expiry, we need to NOT return the session so that it's immediately
@@ -650,11 +623,8 @@ impl ValueSetOauth2Session {
                     let expiry = expiry
                         .as_ref()
                         .map(|e_inner| {
-                            OffsetDateTime::parse(
-                                e_inner,
-                                &Rfc3339,
-                            )
-                            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                            OffsetDateTime::parse(e_inner, &Rfc3339)
+                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                             // We now have an
                             // Option<Result<ODT, _>>
                         })
@@ -929,19 +899,16 @@ impl ValueSetApiToken {
                         scope,
                     } => {
                         // Convert things.
-                        let issued_at = OffsetDateTime::parse(
-                            &issued_at,
-                            &Rfc3339,
-                        )
-                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                        .map_err(|e| {
-                            admin_error!(
-                                ?e,
-                                "Invalidating api token {} due to invalid issued_at timestamp",
-                                refer
-                            )
-                        })
-                        .ok()?;
+                        let issued_at = OffsetDateTime::parse(&issued_at, &Rfc3339)
+                            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                            .map_err(|e| {
+                                admin_error!(
+                                    ?e,
+                                    "Invalidating api token {} due to invalid issued_at timestamp",
+                                    refer
+                                )
+                            })
+                            .ok()?;
 
                         // This is a bit annoying. In the case we can't parse the optional
                         // expiry, we need to NOT return the session so that it's immediately
@@ -949,11 +916,8 @@ impl ValueSetApiToken {
                         // here.
                         let expiry = expiry
                             .map(|e_inner| {
-                                OffsetDateTime::parse(
-                                    &e_inner,
-                                    &Rfc3339,
-                                )
-                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                OffsetDateTime::parse(&e_inner, &Rfc3339)
+                                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                                 // We now have an
                                 // Option<Result<ODT, _>>
                             })
@@ -1011,19 +975,16 @@ impl ValueSetApiToken {
                      scope,
                  }| {
                     // Convert things.
-                    let issued_at = OffsetDateTime::parse(
-                        issued_at,
-                        &Rfc3339,
-                    )
-                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                    .map_err(|e| {
-                        admin_error!(
-                            ?e,
-                            "Invalidating session {} due to invalid issued_at timestamp",
-                            refer
-                        )
-                    })
-                    .ok()?;
+                    let issued_at = OffsetDateTime::parse(issued_at, &Rfc3339)
+                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                        .map_err(|e| {
+                            admin_error!(
+                                ?e,
+                                "Invalidating session {} due to invalid issued_at timestamp",
+                                refer
+                            )
+                        })
+                        .ok()?;
 
                     // This is a bit annoying. In the case we can't parse the optional
                     // expiry, we need to NOT return the session so that it's immediately
@@ -1032,11 +993,8 @@ impl ValueSetApiToken {
                     let expiry = expiry
                         .as_ref()
                         .map(|e_inner| {
-                            OffsetDateTime::parse(
-                                e_inner,
-                                &Rfc3339,
-                            )
-                            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                            OffsetDateTime::parse(e_inner, &Rfc3339)
+                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                             // We now have an
                             // Option<Result<ODT, _>>
                         })
