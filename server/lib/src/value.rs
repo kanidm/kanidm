@@ -607,7 +607,7 @@ impl PartialValue {
     }
 
     pub fn new_datetime_s(s: &str) -> Option<Self> {
-        OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)
+        OffsetDateTime::parse(s, &Rfc3339)
             .ok()
             .map(|odt| odt.to_offset(time::UtcOffset::UTC))
             .map(PartialValue::DateTime)
@@ -738,7 +738,7 @@ impl PartialValue {
             PartialValue::DateTime(odt) => {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
                 #[allow(clippy::expect_used)]
-                odt.format(&time::format_description::well_known::Rfc3339)
+                odt.format(&Rfc3339)
                     .expect("Failed to format timestamp into RFC3339")
             }
             PartialValue::Url(u) => u.to_string(),
@@ -1260,7 +1260,7 @@ impl Value {
     }
 
     pub fn new_datetime_s(s: &str) -> Option<Self> {
-        OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)
+        OffsetDateTime::parse(s, &Rfc3339)
             .ok()
             .map(|odt| odt.to_offset(time::UtcOffset::UTC))
             .map(Value::DateTime)

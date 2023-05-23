@@ -100,4 +100,6 @@ pub mod prelude {
 
     #[cfg(test)]
     pub use kanidmd_lib_macros::*;
+
+    pub use time::format_description::well_known::Rfc3339;
 }

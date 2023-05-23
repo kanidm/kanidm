@@ -26,7 +26,7 @@ impl ValueSetDateTime {
         let set = data
             .into_iter()
             .map(|s| {
-                OffsetDateTime::parse(&s, &time::format_description::well_known::Rfc3339)
+                OffsetDateTime::parse(&s, &Rfc3339)
                     .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                     .map_err(|_| OperationError::InvalidValueState)
             })
@@ -38,7 +38,7 @@ impl ValueSetDateTime {
         let set = data
             .iter()
             .map(|s| {
-                OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)
+                OffsetDateTime::parse(s, &Rfc3339)
                     .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                     .map_err(|_| OperationError::InvalidValueState)
             })
@@ -105,7 +105,7 @@ impl ValueSetT for ValueSetDateTime {
             .map(|odt| {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
                 #[allow(clippy::expect_used)]
-                odt.format(&time::format_description::well_known::Rfc3339)
+                odt.format(&Rfc3339)
                     .expect("Failed to format timestamp into RFC3339")
             })
             .collect()
@@ -123,7 +123,7 @@ impl ValueSetT for ValueSetDateTime {
         Box::new(self.set.iter().map(|odt| {
             debug_assert!(odt.offset() == time::UtcOffset::UTC);
             #[allow(clippy::expect_used)]
-            odt.format(&time::format_description::well_known::Rfc3339)
+            odt.format(&Rfc3339)
                 .expect("Failed to format timestamp into RFC3339")
         }))
     }
@@ -135,7 +135,7 @@ impl ValueSetT for ValueSetDateTime {
                 .map(|odt| {
                     debug_assert!(odt.offset() == time::UtcOffset::UTC);
                     #[allow(clippy::expect_used)]
-                    odt.format(&time::format_description::well_known::Rfc3339)
+                    odt.format(&Rfc3339)
                         .expect("Failed to format timestamp into RFC3339")
                 })
                 .collect(),
@@ -150,7 +150,7 @@ impl ValueSetT for ValueSetDateTime {
                 .map(|odt| {
                     debug_assert!(odt.offset() == time::UtcOffset::UTC);
                     #[allow(clippy::expect_used)]
-                    odt.format(&time::format_description::well_known::Rfc3339)
+                    odt.format(&Rfc3339)
                         .expect("Failed to format timestamp into RFC3339")
                 })
                 .collect(),

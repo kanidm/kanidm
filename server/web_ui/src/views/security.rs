@@ -1,6 +1,7 @@
 #[cfg(debug_assertions)]
 use gloo::console;
 use kanidm_proto::v1::{CUSessionToken, CUStatus, UiHint};
+use time::format_description::well_known::Rfc3339;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
@@ -131,7 +132,7 @@ impl Component for SecurityApp {
         // TODO: Actually check the time of expiry on the uat and have a timer set that
         // re-locks things nicely.
         let time =
-            time::OffsetDateTime::parse(&isotime, &time::format_description::well_known::Rfc3339)
+            time::OffsetDateTime::parse(&isotime, &Rfc3339)
                 .map(|odt| odt + time::Duration::new(60, 0))
                 .expect_throw("Unable to process time stamp");
 

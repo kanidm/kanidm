@@ -206,7 +206,7 @@ impl QueryServerReadV1 {
             }
         };
         let timestamp = now
-            .format(&time::format_description::well_known::Rfc3339)
+            .format(&Rfc3339)
             .unwrap();
         let dest_file = format!("{}/backup-{}.json", outpath, timestamp);
 

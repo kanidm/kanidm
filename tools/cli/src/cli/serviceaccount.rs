@@ -6,6 +6,7 @@ use crate::{
     AccountSsh, AccountUserAuthToken, AccountValidity, ServiceAccountApiToken,
     ServiceAccountCredential, ServiceAccountOpt, ServiceAccountPosix,
 };
+use time::format_description::well_known::Rfc3339;
 
 impl ServiceAccountOpt {
     pub fn debug(&self) -> bool {
@@ -110,7 +111,7 @@ impl ServiceAccountOpt {
                         // Convert the time to local timezone.
                         match OffsetDateTime::parse(
                             t,
-                            &time::format_description::well_known::Rfc3339,
+                            &Rfc3339,
                         )
                         .map(|odt| {
                             odt.to_offset(
@@ -404,14 +405,14 @@ impl ServiceAccountOpt {
                         // Convert the time to local timezone.
                         let t = OffsetDateTime::parse(
                             &t[0],
-                            &time::format_description::well_known::Rfc3339,
+                            &Rfc3339,
                         )
                         .map(|odt| {
                             odt.to_offset(
                                 time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
                                     .unwrap_or(time::UtcOffset::UTC),
                             )
-                            .format(&time::format_description::well_known::Rfc3339)
+                            .format(&Rfc3339)
                             .unwrap_or(odt.to_string())
                         })
                         .unwrap_or_else(|_| "invalid timestamp".to_string());
@@ -424,14 +425,14 @@ impl ServiceAccountOpt {
                     if let Some(t) = ex {
                         let t = OffsetDateTime::parse(
                             &t[0],
-                            &time::format_description::well_known::Rfc3339,
+                            &Rfc3339,
                         )
                         .map(|odt| {
                             odt.to_offset(
                                 time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
                                     .unwrap_or(time::UtcOffset::UTC),
                             )
-                            .format(&time::format_description::well_known::Rfc3339)
+                            .format(&Rfc3339)
                             .unwrap_or(odt.to_string())
                         })
                         .unwrap_or_else(|_| "invalid timestamp".to_string());
@@ -457,7 +458,7 @@ impl ServiceAccountOpt {
                     } else {
                         if let Err(e) = OffsetDateTime::parse(
                             ano.datetime.as_str(),
-                            &time::format_description::well_known::Rfc3339,
+                            &Rfc3339,
                         ) {
                             error!("Error -> {:?}", e);
                             return;
@@ -494,7 +495,7 @@ impl ServiceAccountOpt {
                         // Attempt to parse and set
                         if let Err(e) = OffsetDateTime::parse(
                             ano.datetime.as_str(),
-                            &time::format_description::well_known::Rfc3339,
+                            &Rfc3339,
                         ) {
                             error!("Error -> {:?}", e);
                             return;
