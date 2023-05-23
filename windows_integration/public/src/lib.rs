@@ -1,3 +1,5 @@
+use kanidm_client::ClientError;
+
 pub enum AccountType {
 	Person,
 	Service,
@@ -15,6 +17,12 @@ pub enum AuthPkgResponse {
 
 pub enum AuthPkgError {}
 
-pub struct AuthenticateAccountRequest {}
+pub struct AuthenticateAccountRequest {
+	account_type: AccountType,
+	id: String,
+	password: String,
+}
 
-pub struct AuthenticateAccountResponse {}
+pub struct AuthenticateAccountResponse {
+	result: Option<ClientError>,
+}
