@@ -25,6 +25,6 @@ pub struct AuthenticateAccountRequest {
 }
 
 pub struct AuthenticateAccountResponse {
-	result: Option<ClientError>,
+	status: Result<(), AuthPkgError>,
 	token: Option<UnixUserToken>,
 }
