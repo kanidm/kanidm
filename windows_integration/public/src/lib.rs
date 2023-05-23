@@ -19,12 +19,12 @@ pub enum AuthPkgResponse {
 pub enum AuthPkgError {}
 
 pub struct AuthenticateAccountRequest {
-	account_type: AccountType,
-	id: String,
-	password: String,
+	pub account_type: AccountType,
+	pub id: String,
+	pub password: String,
 }
 
 pub struct AuthenticateAccountResponse {
-	status: Result<(), AuthPkgError>,
-	token: Option<UnixUserToken>,
+	pub status: Result<(), AuthPkgError>,
+	pub token: Option<UnixUserToken>,
 }
