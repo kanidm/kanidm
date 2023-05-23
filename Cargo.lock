@@ -3785,6 +3785,8 @@ dependencies = [
 [[package]]
 name = "scim_proto"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3fbb159b673baace5ca93f155fdf80a957631802a04950df298c6e2445e3f4e"
 dependencies = [
  "base64urlsafedata",
  "peg",
