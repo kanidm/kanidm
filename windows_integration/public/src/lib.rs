@@ -1,4 +1,5 @@
 use kanidm_client::ClientError;
+use kanidm_proto::v1::UnixUserToken;
 
 pub enum AccountType {
 	Person,
@@ -25,4 +26,5 @@ pub struct AuthenticateAccountRequest {
 
 pub struct AuthenticateAccountResponse {
 	result: Option<ClientError>,
+	token: Option<UnixUserToken>,
 }
