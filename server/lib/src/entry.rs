@@ -51,10 +51,8 @@ use crate::idm::ldap::ldap_vattr_map;
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
-use crate::repl::proto::ReplEntryV1;
-
-// use crate::repl::entry::EntryChangelog;
 use crate::repl::entry::EntryChangeState;
+use crate::repl::proto::{ReplEntryV1, ReplIncrementalEntryV1};
 
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::value::{
@@ -66,10 +64,14 @@ pub type EntryInitNew = Entry<EntryInit, EntryNew>;
 pub type EntryInvalidNew = Entry<EntryInvalid, EntryNew>;
 pub type EntryRefreshNew = Entry<EntryRefresh, EntryNew>;
 pub type EntrySealedNew = Entry<EntrySealed, EntryNew>;
+pub type EntryValidCommitted = Entry<EntryValid, EntryCommitted>;
 pub type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
 pub type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
 pub type EntryReducedCommitted = Entry<EntryReduced, EntryCommitted>;
 pub type EntryTuple = (Arc<EntrySealedCommitted>, EntryInvalidCommitted);
+
+pub type EntryIncrementalNew = Entry<EntryIncremental, EntryNew>;
+pub type EntryIncrementalCommitted = Entry<EntryIncremental, EntryCommitted>;
 
 // Entry should have a lifecycle of types. This is Raw (modifiable) and Entry (verified).
 // This way, we can move between them, but only certain actions are possible on either
@@ -82,15 +84,15 @@ pub type EntryTuple = (Arc<EntrySealedCommitted>, EntryInvalidCommitted);
 // This is specifically important for the commit to the backend, as we only want to
 // commit validated types.
 
+// Has never been in the DB, so doesn't have an ID.
 #[derive(Clone, Debug)]
 pub struct EntryNew; // new
+
+// It's been in the DB, so it has an id
 #[derive(Clone, Debug)]
 pub struct EntryCommitted {
     id: u64,
 }
-
-// It's been in the DB, so it has an id
-// pub struct EntryPurged;
 
 #[derive(Clone, Debug)]
 pub struct EntryInit;
@@ -111,6 +113,14 @@ pub struct EntryInvalid {
 // Alternate path - this entry came from a full refresh, and already has an entry change state.
 #[derive(Clone, Debug)]
 pub struct EntryRefresh {
+    ecstate: EntryChangeState,
+}
+
+// Alternate path - this entry came from an incremental replication.
+#[derive(Clone, Debug)]
+pub struct EntryIncremental {
+    // Must have a uuid, else we can't proceed at all.
+    uuid: Uuid,
     ecstate: EntryChangeState,
 }
 
@@ -629,7 +639,188 @@ impl<STATE> Entry<EntryRefresh, STATE> {
             attrs: self.attrs,
         };
 
-        ne.validate(schema)
+        ne.validate(schema).map(|()| ne)
+    }
+}
+
+impl<STATE> Entry<EntryIncremental, STATE> {
+    pub fn get_uuid(&self) -> Uuid {
+        self.valid.uuid
+    }
+}
+
+impl Entry<EntryIncremental, EntryNew> {
+    fn stub_ecstate(&self) -> EntryChangeState {
+        self.valid.ecstate.stub()
+    }
+
+    pub fn rehydrate(repl_inc_entry: &ReplIncrementalEntryV1) -> Result<Self, OperationError> {
+        let (uuid, ecstate, attrs) = repl_inc_entry.rehydrate()?;
+
+        Ok(Entry {
+            valid: EntryIncremental { uuid, ecstate },
+            state: EntryNew,
+            attrs,
+        })
+    }
+
+    pub(crate) fn is_add_conflict(&self, db_entry: &EntrySealedCommitted) -> bool {
+        debug_assert!(self.valid.uuid == db_entry.valid.uuid);
+        // This is a conflict if the state 'at' is not identical
+        self.valid.ecstate.at() != db_entry.valid.ecstate.at()
+    }
+
+    pub(crate) fn merge_state(
+        &self,
+        db_ent: &EntrySealedCommitted,
+        _schema: &dyn SchemaTransaction,
+    ) -> EntryIncrementalCommitted {
+        use crate::repl::entry::State;
+
+        // Paranoid check.
+        debug_assert!(self.valid.uuid == db_ent.valid.uuid);
+
+        // First, determine if either side is a tombstone. This is needed so that only
+        // when both sides are live
+        let self_cs = &self.valid.ecstate;
+        let db_cs = db_ent.get_changestate();
+
+        match (self_cs.current(), db_cs.current()) {
+            (
+                State::Live {
+                    at: at_left,
+                    changes: changes_left,
+                },
+                State::Live {
+                    at: at_right,
+                    changes: changes_right,
+                },
+            ) => {
+                debug_assert!(at_left == at_right);
+                // Given the current db entry, compare and merge our attributes to
+                // form a resultant entry attr and ecstate
+                //
+                // To shortcut this we dedup the attr set and then iterate.
+                let mut attr_set: Vec<_> =
+                    changes_left.keys().chain(changes_right.keys()).collect();
+                attr_set.sort_unstable();
+                attr_set.dedup();
+
+                // Make a new ecstate and attrs set.
+                let mut changes = BTreeMap::default();
+                let mut eattrs = Eattrs::default();
+
+                // Now we have the set of attrs from both sides. Lets see what state they are in!
+                for attr_name in attr_set.into_iter() {
+                    match (changes_left.get(attr_name), changes_right.get(attr_name)) {
+                        (Some(_cid_left), Some(_cid_right)) => {
+                            // This is the normal / usual and most "fun" case. Here we need to determine
+                            // which side is latest and then do a valueset merge. This is also
+                            // needing schema awareness depending on the attribute!
+                            todo!();
+                        }
+                        (Some(cid_left), None) => {
+                            // Keep the value on the left.
+                            changes.insert(attr_name.clone(), cid_left.clone());
+                            if let Some(valueset) = self.attrs.get(attr_name) {
+                                eattrs.insert(attr_name.clone(), valueset.clone());
+                            }
+                        }
+                        (None, Some(_cid_right)) => {
+                            // Keep the value on the right.
+
+                            todo!();
+                        }
+                        (None, None) => {
+                            // Should be impossible! At least one side or the other must have a change.
+                            debug_assert!(false);
+                        }
+                    }
+                }
+
+                let ecstate = EntryChangeState::build(State::Live {
+                    at: at_left.clone(),
+                    changes,
+                });
+
+                Entry {
+                    valid: EntryIncremental {
+                        uuid: self.valid.uuid,
+                        ecstate,
+                    },
+                    state: EntryCommitted {
+                        id: db_ent.state.id,
+                    },
+                    attrs: eattrs,
+                }
+            }
+            (State::Tombstone { at: left_at }, State::Tombstone { at: right_at }) => {
+                // Due to previous checks, this must be equal!
+                debug_assert!(left_at == right_at);
+                debug_assert!(self.attrs == db_ent.attrs);
+                // Doesn't matter which side we take.
+                Entry {
+                    valid: EntryIncremental {
+                        uuid: self.valid.uuid,
+                        ecstate: self.valid.ecstate.clone(),
+                    },
+                    state: EntryCommitted {
+                        id: db_ent.state.id,
+                    },
+                    attrs: self.attrs.clone(),
+                }
+            }
+            (State::Tombstone { .. }, State::Live { .. }) => {
+                // Keep the left side.
+                Entry {
+                    valid: EntryIncremental {
+                        uuid: self.valid.uuid,
+                        ecstate: self.valid.ecstate.clone(),
+                    },
+                    state: EntryCommitted {
+                        id: db_ent.state.id,
+                    },
+                    attrs: self.attrs.clone(),
+                }
+            }
+            (State::Live { .. }, State::Tombstone { .. }) => {
+                // Keep the right side
+                Entry {
+                    valid: EntryIncremental {
+                        uuid: db_ent.valid.uuid,
+                        ecstate: db_ent.valid.ecstate.clone(),
+                    },
+                    state: EntryCommitted {
+                        id: db_ent.state.id,
+                    },
+                    attrs: db_ent.attrs.clone(),
+                }
+            }
+        }
+    }
+}
+
+impl Entry<EntryIncremental, EntryCommitted> {
+    pub(crate) fn validate_repl(self, schema: &dyn SchemaTransaction) -> EntryValidCommitted {
+        // Unlike the other method of schema validation, we can't return an error
+        // here when schema fails - we need to in-place move the entry to a
+        // conflict state so that the replication can proceed.
+
+        let mut ne = Entry {
+            valid: EntryValid {
+                uuid: self.valid.uuid,
+                ecstate: self.valid.ecstate,
+            },
+            state: self.state,
+            attrs: self.attrs,
+        };
+
+        if let Err(e) = ne.validate(schema) {
+            warn!(uuid = ?self.valid.uuid, err = ?e, "Entry failed schema check, moving to a conflict state");
+            ne.add_ava_int("class", Value::new_class("conflict"));
+            todo!();
+        }
+        ne
     }
 }
 
@@ -664,7 +855,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             attrs: self.attrs,
         };
 
-        ne.validate(schema)
+        ne.validate(schema).map(|()| ne)
     }
 }
 
@@ -859,11 +1050,19 @@ impl Entry<EntrySealed, EntryCommitted> {
         self
     }
 
-    /*
-    pub fn get_changelog_mut(&mut self) -> &mut EntryChangelog {
-        &mut self.valid.eclog
+    pub(crate) fn stub_sealed_committed_id(
+        id: u64,
+        ctx_ent: &EntryIncrementalNew,
+    ) -> EntrySealedCommitted {
+        let uuid = ctx_ent.get_uuid();
+        let ecstate = ctx_ent.stub_ecstate();
+
+        Entry {
+            valid: EntrySealed { uuid, ecstate },
+            state: EntryCommitted { id },
+            attrs: Default::default(),
+        }
     }
-    */
 
     /// Insert a claim to this entry. This claim can NOT be persisted to disk, this is only
     /// used during a single Event session.
@@ -1441,10 +1640,7 @@ impl Entry<EntrySealed, EntryCommitted> {
 }
 
 impl<STATE> Entry<EntryValid, STATE> {
-    fn validate(
-        self,
-        schema: &dyn SchemaTransaction,
-    ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
+    fn validate(&self, schema: &dyn SchemaTransaction) -> Result<(), SchemaError> {
         let schema_classes = schema.get_classes();
         let schema_attributes = schema.get_attributes();
 
@@ -1666,7 +1862,7 @@ impl<STATE> Entry<EntryValid, STATE> {
         }
 
         // Well, we got here, so okay!
-        Ok(self)
+        Ok(())
     }
 
     pub fn invalidate(self, cid: Cid, ecstate: EntryChangeState) -> Entry<EntryInvalid, STATE> {

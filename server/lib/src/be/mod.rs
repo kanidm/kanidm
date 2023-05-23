@@ -4,6 +4,7 @@
 //! is to persist content safely to disk, load that content, and execute queries
 //! utilising indexes in the most effective way possible.
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::ops::DerefMut;
 use std::sync::Arc;
@@ -19,10 +20,11 @@ use tracing::{trace, trace_span};
 use uuid::Uuid;
 
 use crate::be::dbentry::{DbBackup, DbEntry};
-use crate::entry::{Entry, EntryCommitted, EntryNew, EntrySealed};
+use crate::entry::Entry;
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
+use crate::repl::proto::ReplCidRange;
 use crate::repl::ruv::{
     ReplicationUpdateVector, ReplicationUpdateVectorReadTransaction,
     ReplicationUpdateVectorTransaction, ReplicationUpdateVectorWriteTransaction,
@@ -179,7 +181,7 @@ impl IdRawEntry {
             .map(|dbe| (self.id, dbe))
     }
 
-    fn into_entry(self) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
+    fn into_entry(self) -> Result<EntrySealedCommitted, OperationError> {
         let db_e = serde_json::from_slice(self.data.as_slice()).map_err(|e| {
             admin_error!(?e, id = %self.id, "Serde JSON Error");
             let raw_str = String::from_utf8_lossy(self.data.as_slice());
@@ -203,7 +205,7 @@ pub trait BackendTransaction {
     /// Recursively apply a filter, transforming into IdList's on the way. This builds a query
     /// execution log, so that it can be examined how an operation proceeded.
     #[allow(clippy::cognitive_complexity)]
-    #[instrument(level = "debug", name = "be::filter2idl", skip_all)]
+    // #[instrument(level = "debug", name = "be::filter2idl", skip_all)]
     fn filter2idl(
         &mut self,
         filt: &FilterResolved,
@@ -569,7 +571,6 @@ pub trait BackendTransaction {
         erl: &Limits,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
-        let _entered = trace_span!("be::search").entered();
         // Unlike DS, even if we don't get the index back, we can just pass
         // to the in-memory filter test and be done.
 
@@ -668,7 +669,8 @@ pub trait BackendTransaction {
 
         // Using the indexes, resolve the IdList here, or AllIds.
         // Also get if the filter was 100% resolved or not.
-        let (idl, fplan) = self.filter2idl(filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD)?;
+        let (idl, fplan) = trace_span!("be::exists -> filter2idl")
+            .in_scope(|| self.filter2idl(filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD))?;
 
         debug!(filter_executed_plan = ?fplan);
 
@@ -719,14 +721,34 @@ pub trait BackendTransaction {
         } // end match idl
     }
 
+    fn retrieve_range(
+        &mut self,
+        ranges: &BTreeMap<Uuid, ReplCidRange>,
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+        // First pass the ranges to the ruv to resolve to an absolute set of
+        // entry id's.
+
+        let idl = self.get_ruv().range_to_idl(ranges);
+        // Because of how this works, I think that it's not possible for the idl
+        // to have any missing ids.
+        //
+        // If it was possible, we could just & with allids to remove the extraneous
+        // values.
+
+        // Make it an id list fr the backend.
+        let id_list = IdList::Indexed(idl);
+
+        self.get_idlayer().get_identry(&id_list).map_err(|e| {
+            admin_error!(?e, "get_identry failed");
+            e
+        })
+    }
+
     fn verify(&mut self) -> Vec<Result<(), ConsistencyError>> {
         self.get_idlayer().verify()
     }
 
-    fn verify_entry_index(
-        &mut self,
-        e: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<(), ConsistencyError> {
+    fn verify_entry_index(&mut self, e: &EntrySealedCommitted) -> Result<(), ConsistencyError> {
         // First, check our references in name2uuid, uuid2spn and uuid2rdn
         if e.mask_recycled_ts().is_some() {
             let e_uuid = e.get_uuid();
@@ -951,12 +973,16 @@ impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
 }
 
 impl<'a> BackendWriteTransaction<'a> {
+    pub(crate) fn get_ruv_write(&mut self) -> &mut ReplicationUpdateVectorWriteTransaction<'a> {
+        &mut self.ruv
+    }
+
     #[instrument(level = "debug", name = "be::create", skip_all)]
     pub fn create(
         &mut self,
         cid: &Cid,
-        entries: Vec<Entry<EntrySealed, EntryNew>>,
-    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+        entries: Vec<EntrySealedNew>,
+    ) -> Result<Vec<EntrySealedCommitted>, OperationError> {
         if entries.is_empty() {
             admin_error!("No entries provided to BE to create, invalid server call!");
             return Err(OperationError::EmptyRequest);
@@ -1012,8 +1038,8 @@ impl<'a> BackendWriteTransaction<'a> {
     /// related to this entry as that could cause an infinite replication loop!
     pub fn refresh(
         &mut self,
-        entries: Vec<Entry<EntrySealed, EntryNew>>,
-    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+        entries: Vec<EntrySealedNew>,
+    ) -> Result<Vec<EntrySealedCommitted>, OperationError> {
         if entries.is_empty() {
             admin_error!("No entries provided to BE to create, invalid server call!");
             return Err(OperationError::EmptyRequest);
@@ -1088,6 +1114,126 @@ impl<'a> BackendWriteTransaction<'a> {
             .iter()
             .zip(post_entries.iter())
             .try_for_each(|(pre, post)| self.entry_index(Some(pre.as_ref()), Some(post)))
+    }
+
+    #[instrument(level = "debug", name = "be::incremental_prepare", skip_all)]
+    pub fn incremental_prepare<'x>(
+        &mut self,
+        entry_meta: &[EntryIncrementalNew],
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+        let mut ret_entries = Vec::with_capacity(entry_meta.len());
+        let id_max_pre = self.idlayer.get_id2entry_max_id()?;
+        let mut id_max = id_max_pre;
+
+        for ctx_ent in entry_meta.iter() {
+            let ctx_ent_uuid = ctx_ent.get_uuid();
+            let idx_key = ctx_ent_uuid.as_hyphenated().to_string();
+
+            let idl = self
+                .get_idlayer()
+                .get_idl("uuid", IndexType::Equality, &idx_key)?;
+
+            let entry = match idl {
+                Some(idl) if idl.is_empty() => {
+                    // Create the stub entry, we just need it to have an id number
+                    // allocated.
+                    id_max += 1;
+
+                    Arc::new(EntrySealedCommitted::stub_sealed_committed_id(
+                        id_max, ctx_ent,
+                    ))
+                    // Okay, entry ready to go.
+                }
+                Some(idl) if idl.len() == 1 => {
+                    // Get the entry from this idl.
+                    let mut entries = self
+                        .get_idlayer()
+                        .get_identry(&IdList::Indexed(idl))
+                        .map_err(|e| {
+                            admin_error!(?e, "get_identry failed");
+                            e
+                        })?;
+
+                    if let Some(entry) = entries.pop() {
+                        // Return it.
+                        entry
+                    } else {
+                        error!("Invalid entry state, index was unable to locate entry");
+                        return Err(OperationError::InvalidDbState);
+                    }
+                    // Done, entry is ready to go
+                }
+                Some(idl) => {
+                    // BUG - duplicate uuid!
+                    error!(uuid = ?ctx_ent_uuid, "Invalid IDL state, uuid index must have only a single or no values. Contains {}", idl.len());
+                    return Err(OperationError::InvalidDbState);
+                }
+                None => {
+                    // BUG - corrupt index.
+                    error!(uuid = ?ctx_ent_uuid, "Invalid IDL state, uuid index must be present");
+                    return Err(OperationError::InvalidDbState);
+                }
+            };
+
+            ret_entries.push(entry);
+        }
+
+        if id_max != id_max_pre {
+            self.idlayer.set_id2entry_max_id(id_max);
+        }
+
+        Ok(ret_entries)
+    }
+
+    #[instrument(level = "debug", name = "be::incremental_apply", skip_all)]
+    pub fn incremental_apply(
+        &mut self,
+        update_entries: &[(EntrySealedCommitted, Arc<EntrySealedCommitted>)],
+        create_entries: Vec<EntrySealedNew>,
+    ) -> Result<(), OperationError> {
+        // For the values in create_cands, create these with similar code to the refresh
+        // path.
+        if !create_entries.is_empty() {
+            // Assign id's to all the new entries.
+            let mut id_max = self.idlayer.get_id2entry_max_id()?;
+            let c_entries: Vec<_> = create_entries
+                .into_iter()
+                .map(|e| {
+                    id_max += 1;
+                    e.into_sealed_committed_id(id_max)
+                })
+                .collect();
+
+            self.idlayer.write_identries(c_entries.iter())?;
+
+            self.idlayer.set_id2entry_max_id(id_max);
+
+            // Update the RUV with all the changestates of the affected entries.
+            for e in c_entries.iter() {
+                self.get_ruv().update_entry_changestate(e)?;
+            }
+
+            // Now update the indexes as required.
+            for e in c_entries.iter() {
+                self.entry_index(None, Some(e))?
+            }
+        }
+
+        // Otherwise this is a cid-less copy of modify.
+        if !update_entries.is_empty() {
+            self.get_idlayer()
+                .write_identries(update_entries.iter().map(|(up, _)| up))?;
+
+            for (e, _) in update_entries.iter() {
+                self.get_ruv().update_entry_changestate(e)?;
+            }
+
+            for (post, pre) in update_entries.iter() {
+                self.entry_index(Some(pre.as_ref()), Some(post))?
+            }
+        }
+
+        Ok(())
     }
 
     #[instrument(level = "debug", name = "be::reap_tombstones", skip_all)]
@@ -1204,8 +1350,8 @@ impl<'a> BackendWriteTransaction<'a> {
     #[allow(clippy::cognitive_complexity)]
     fn entry_index(
         &mut self,
-        pre: Option<&Entry<EntrySealed, EntryCommitted>>,
-        post: Option<&Entry<EntrySealed, EntryCommitted>>,
+        pre: Option<&EntrySealedCommitted>,
+        post: Option<&EntrySealedCommitted>,
     ) -> Result<(), OperationError> {
         let (e_uuid, e_id, uuid_same) = match (pre, post) {
             (None, None) => {
