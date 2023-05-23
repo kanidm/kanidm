@@ -198,7 +198,6 @@ impl QueryServerReadV1 {
     ) -> Result<(), OperationError> {
         trace!(eventid = ?msg.eventid, "Begin online backup event");
 
-        #[allow(deprecated)]
         let now = match time::OffsetDateTime::now_local() {
             Ok(val) => val,
             Err(_err) => {
