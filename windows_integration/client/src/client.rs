@@ -1,5 +1,5 @@
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
-use kanidm_proto::v1::{UnixUserToken};
+use kanidm_proto::v1::UnixUserToken;
 use tracing::{event, span, Level};
 
 #[derive(Debug)]

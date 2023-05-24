@@ -5,9 +5,9 @@ use std::ptr::null_mut;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use kanidm_proto::v1::UnixUserToken;
+use kanidm_windows::{AuthPkgError, AuthPkgRequest, AuthPkgResponse, AuthenticateAccountResponse};
 use once_cell::sync::Lazy;
 use tracing::{event, span, Level};
-use kanidm_windows::{AuthPkgRequest, AuthPkgResponse, AuthPkgError, AuthenticateAccountResponse};
 
 use windows::core::PSTR;
 use windows::Win32::Foundation::{
@@ -26,7 +26,7 @@ use windows::Win32::System::Kernel::STRING;
 
 use crate::client::KanidmWindowsClient;
 use crate::mem::{allocate_mem_client, allocate_mem_lsa, MemoryAllocationError};
-use crate::structs::{AuthInfo, ProfileBuffer, LogonId};
+use crate::structs::{AuthInfo, LogonId, ProfileBuffer};
 use crate::PROGRAM_DIR;
 
 pub(crate) static mut KANIDM_WINDOWS_CLIENT: Lazy<Option<KanidmWindowsClient>> = Lazy::new(|| {
@@ -190,7 +190,9 @@ pub async extern "system" fn ApLogonUser(
     };
 
     // * Prepare & return profile buffer
-    let profile_buffer = ProfileBuffer { token: token.clone() };
+    let profile_buffer = ProfileBuffer {
+        token: token.clone(),
+    };
     let profile_buffer_ptr = match allocate_mem_client(
         profile_buffer,
         &dispatch_table.AllocateClientBuffer,
@@ -362,8 +364,8 @@ pub async extern "system" fn ApLogonUser(
 #[allow(non_snake_case)]
 pub async extern "system" fn ApCallPackage(
     client_req: *const *const c_void,
-    submit_buf: *const c_void,     // Cast to own Protocol Submit Buffer
-    _: *const c_void, // Pointer to submit_buf
+    submit_buf: *const c_void, // Cast to own Protocol Submit Buffer
+    _: *const c_void,          // Pointer to submit_buf
     _: u32,
     out_return_buf: *mut *mut c_void, // Cast to own return buffer
     out_return_buf_len: *mut u32,
@@ -399,21 +401,30 @@ pub async extern "system" fn ApCallPackage(
 
     let response = match request {
         AuthPkgRequest::AuthenticateAccount(auth_request) => {
-            let logon_result = client.logon_user_unix(&auth_request.id, &auth_request.password).await;
+            let logon_result = client
+                .logon_user_unix(&auth_request.id, &auth_request.password)
+                .await;
 
             AuthPkgResponse::AuthenticateAccount(match logon_result {
-                Ok(token) => AuthenticateAccountResponse { status: Ok(()), token: Some(token) },
-                Err(_) => AuthenticateAccountResponse { status: Err(AuthPkgError::AuthenticationFailed), token: None },
+                Ok(token) => AuthenticateAccountResponse {
+                    status: Ok(()),
+                    token: Some(token),
+                },
+                Err(_) => AuthenticateAccountResponse {
+                    status: Err(AuthPkgError::AuthenticationFailed),
+                    token: None,
+                },
             })
         }
     };
-    let response_ptr = match allocate_mem_client(response, &dispatch_table.AllocateClientBuffer, client_req) {
-        Ok(ptr) => ptr,
-        Err(_) => {
-            span!(Level::ERROR, "Failed to allocate response");
-            return STATUS_UNSUCCESSFUL;
-        }
-    };
+    let response_ptr =
+        match allocate_mem_client(response, &dispatch_table.AllocateClientBuffer, client_req) {
+            Ok(ptr) => ptr,
+            Err(_) => {
+                span!(Level::ERROR, "Failed to allocate response");
+                return STATUS_UNSUCCESSFUL;
+            }
+        };
 
     let out_return_buf_ptr = out_return_buf.cast::<*mut AuthPkgResponse>();
 

@@ -1,5 +1,5 @@
 use kanidm_proto::v1::UnixUserToken;
-use windows::Win32::Foundation::{UNICODE_STRING, LUID};
+use windows::Win32::Foundation::{LUID, UNICODE_STRING};
 
 // * Logon User
 pub struct AuthInfo {
@@ -19,6 +19,9 @@ pub struct LogonId {
 
 impl From<LUID> for LogonId {
     fn from(luid: LUID) -> Self {
-        LogonId { low_part: luid.LowPart, high_part: luid.HighPart }
+        LogonId {
+            low_part: luid.LowPart,
+            high_part: luid.HighPart,
+        }
     }
 }
