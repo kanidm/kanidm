@@ -1,3 +1,5 @@
+#![allow(clippy::expect_used)]
+
 use crate::constants::uuids::*;
 ///! Constant Entries for the IDM
 use crate::constants::values::*;
@@ -18,7 +20,8 @@ lazy_static! {
         ("acp_receiver_group", Value::Refer(UUID_SYSTEM_ADMINS)),
         (
             "acp_targetscope",
-            Value::new_json_filter_s("{\"eq\": [\"class\", \"recycled\"]}").unwrap()
+            Value::new_json_filter_s("{\"eq\": [\"class\", \"recycled\"]}")
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("class")),
@@ -41,7 +44,8 @@ lazy_static! {
         ("acp_receiver_group", Value::Refer(UUID_SYSTEM_ADMINS)),
         (
             "acp_targetscope",
-            Value::new_json_filter_s("{\"eq\":[\"class\",\"recycled\"]}").unwrap()
+            Value::new_json_filter_s("{\"eq\":[\"class\",\"recycled\"]}")
+                .expect("Invalid JSON filter")
         ),
         ("acp_modify_removedattr", Value::new_iutf8("class")),
         ("acp_modify_class", Value::new_iutf8("recycled"))
@@ -64,7 +68,7 @@ lazy_static! {
         ("acp_receiver_group", Value::Refer(UUID_IDM_ALL_ACCOUNTS)),
         (
             "acp_targetscope",
-            Value::new_json_filter_s("\"self\"").unwrap()
+            Value::new_json_filter_s("\"self\"").expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("spn")),
@@ -108,7 +112,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_modify_removedattr", Value::new_iutf8("name")),
         ("acp_modify_removedattr", Value::new_iutf8("displayname")),
@@ -152,7 +157,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_modify_removedattr", Value::new_iutf8("mail")),
         ("acp_modify_presentattr", Value::new_iutf8("mail"))
@@ -178,7 +184,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"pres\": \"class\"}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("spn")),
@@ -212,7 +219,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("displayname")),
@@ -240,7 +248,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_modify_removedattr", Value::new_iutf8("name")),
         ("acp_modify_removedattr", Value::new_iutf8("displayname")),
@@ -274,7 +283,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"class\",\"person\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_create_attr", Value::new_iutf8("class")),
         ("acp_create_attr", Value::new_iutf8("name")),
@@ -316,7 +326,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_modify_removedattr", Value::new_iutf8("password_import")),
         ("acp_modify_presentattr", Value::new_iutf8("password_import"))
@@ -342,7 +353,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_modify_removedattr", Value::new_iutf8("name")),
         ("acp_modify_removedattr", Value::new_iutf8("displayname")),
@@ -376,7 +388,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("displayname")),
@@ -410,8 +423,8 @@ lazy_static! {
         ),
         (
             "acp_targetscope",
-            #[allow(clippy::expect_used)]
-            Value::new_json_filter_s("{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}").expect("filter")
+            Value::new_json_filter_s("{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}")
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("mail"))
     );
@@ -436,7 +449,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_modify_removedattr", Value::new_iutf8("name")),
         ("acp_modify_removedattr", Value::new_iutf8("displayname")),
@@ -468,7 +482,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_modify_removedattr", Value::new_iutf8("name")),
         ("acp_modify_removedattr", Value::new_iutf8("displayname")),
@@ -505,7 +520,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("uuid")),
@@ -541,7 +557,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),
@@ -581,7 +598,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_modify_removedattr", Value::new_iutf8("name")),
         ("acp_modify_removedattr", Value::new_iutf8("displayname")),
@@ -628,7 +646,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_create_attr", Value::new_iutf8("class")),
         ("acp_create_attr", Value::new_iutf8("name")),
@@ -670,7 +689,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("radius_secret"))
     );
@@ -695,7 +715,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_modify_removedattr", Value::new_iutf8("radius_secret")),
         ("acp_modify_presentattr", Value::new_iutf8("radius_secret"))
@@ -722,7 +743,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
             "{\"and\": [{\"pres\": \"class\"}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("spn")),
@@ -750,7 +772,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),
@@ -788,7 +811,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_modify_removedattr", Value::new_iutf8("name")),
         ("acp_modify_removedattr", Value::new_iutf8("displayname")),
@@ -833,7 +857,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("uuid")),
@@ -871,7 +896,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"attributetype\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("description")),
@@ -930,7 +956,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"access_control_profile\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),
@@ -1020,7 +1047,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"classtype\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("classname")),
@@ -1071,7 +1099,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_create_attr", Value::new_iutf8("class")),
         ("acp_create_attr", Value::new_iutf8("name")),
@@ -1102,7 +1131,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
             "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_create_attr", Value::new_iutf8("class")),
         ("acp_create_attr", Value::new_iutf8("name")),
@@ -1140,7 +1170,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_create_attr", Value::new_iutf8("class")),
         ("acp_create_attr", Value::new_iutf8("name")),
@@ -1150,48 +1181,6 @@ lazy_static! {
         ("acp_create_class", Value::new_iutf8("group"))
     );
 }
-
-// 28 - domain admins acp
-pub const JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search",
-            "access_control_modify"
-        ],
-        "name": ["idm_acp_domain_admin_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000026"],
-        "description": ["Builtin IDM Control for granting domain info administration locally"],
-        "acp_receiver": [],
-        "acp_receiver_group": ["00000000-0000-0000-0000-000000000020"],
-        "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000025\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "domain_display_name",
-            "domain_name",
-            "domain_ssid",
-            "domain_uuid",
-            "es256_private_key_der",
-            "fernet_private_key_str",
-            "cookie_private_key",
-            "name",
-            "uuid"
-        ],
-        "acp_modify_removedattr": [
-            "domain_display_name",
-            "domain_ssid",
-            "es256_private_key_der",
-            "cookie_private_key",
-            "fernet_private_key_str"
-        ],
-        "acp_modify_presentattr": [
-            "domain_display_name",
-            "domain_ssid"
-        ]
-    }
-}"#;
 
 lazy_static! {
     pub static ref E_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: EntryInitNew = entry_init!(
@@ -1213,12 +1202,14 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000025\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("uuid")),
         ("acp_search_attr", Value::new_iutf8("domain_display_name")),
         ("acp_search_attr", Value::new_iutf8("domain_name")),
+        ("acp_search_attr", Value::new_iutf8("domain_ldap_basedn")),
         ("acp_search_attr", Value::new_iutf8("domain_ssid")),
         ("acp_search_attr", Value::new_iutf8("domain_uuid")),
         ("acp_search_attr", Value::new_iutf8("es256_private_key_der")),
@@ -1226,10 +1217,12 @@ lazy_static! {
         ("acp_search_attr", Value::new_iutf8("cookie_private_key")),
         ("acp_modify_removedattr", Value::new_iutf8("domain_display_name")),
         ("acp_modify_removedattr", Value::new_iutf8("domain_ssid")),
+        ("acp_modify_removedattr", Value::new_iutf8("domain_ldap_basedn")),
         ("acp_modify_removedattr", Value::new_iutf8("es256_private_key_der")),
         ("acp_modify_removedattr", Value::new_iutf8("cookie_private_key")),
         ("acp_modify_removedattr", Value::new_iutf8("fernet_private_key_str")),
         ("acp_modify_presentattr", Value::new_iutf8("domain_display_name")),
+        ("acp_modify_presentattr", Value::new_iutf8("domain_ldap_basedn")),
         ("acp_modify_presentattr", Value::new_iutf8("domain_ssid"))
     );
 }
@@ -1254,7 +1247,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000027\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("uuid")),
@@ -1285,7 +1279,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),
@@ -1326,7 +1321,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),
@@ -1362,7 +1358,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),
@@ -1403,7 +1400,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),
@@ -1441,7 +1439,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"oauth2_resource_server\"]},{\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("description")),
@@ -1525,7 +1524,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),
@@ -1559,7 +1559,8 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s(
                 "{\"and\": [{\"eq\": [\"class\",\"sync_account\"]},{\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
-            ).unwrap()
+            )
+                .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),

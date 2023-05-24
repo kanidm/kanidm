@@ -245,7 +245,9 @@ impl ValueSetT for ValueSetPublicBinary {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        true
+        self.map
+            .iter()
+            .all(|(s, _)| Value::validate_str_escapes(s) && Value::validate_singleline(s))
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {

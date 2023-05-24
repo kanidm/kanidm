@@ -499,7 +499,8 @@ pub trait SchemaTransaction {
         match self.get_attributes().get(attr) {
             Some(a_schema) => {
                 // We'll likely add more conditions here later.
-                !(a_schema.phantom || !a_schema.replicated)
+                // Allow items that are replicated and not phantoms
+                a_schema.replicated && !a_schema.phantom
             }
             None => {
                 warn!(
@@ -1260,6 +1261,21 @@ impl<'a> SchemaWriteTransaction<'a> {
                 phantom: false,
                 sync_allowed: true,
                 replicated: true,
+                index: vec![IndexType::Equality],
+                syntax: SyntaxType::ReferenceUuid,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("dynmember"),
+            SchemaAttribute {
+                name: AttrString::from("dynmember"),
+                uuid: UUID_SCHEMA_ATTR_DYNMEMBER,
+                description: String::from("List of dynamic members of the group"),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                sync_allowed: true,
+                replicated: false,
                 index: vec![IndexType::Equality],
                 syntax: SyntaxType::ReferenceUuid,
             },

@@ -160,7 +160,7 @@ pub struct AccountNamedTagPkOpt {
 }
 
 #[derive(Debug, Args)]
-/// Command-line options for account credental use_reset_token
+/// Command-line options for account credental use-reset-token
 pub struct UseResetTokenOpt {
     #[clap(flatten)]
     copt: CommonOpt,
@@ -509,6 +509,12 @@ pub struct LoginOpt {
 }
 
 #[derive(Debug, Args)]
+pub struct ReauthOpt {
+    #[clap(flatten)]
+    copt: CommonOpt,
+}
+
+#[derive(Debug, Args)]
 pub struct LogoutOpt {
     #[clap(flatten)]
     copt: CommonOpt,
@@ -737,9 +743,20 @@ pub enum PwBadlistOpt {
 
 #[derive(Debug, Subcommand)]
 pub enum DomainOpt {
-    #[clap[name = "set-domain-display-name"]]
+    #[clap[name = "set-display-name"]]
     /// Set the domain display name
-    SetDomainDisplayName(OptSetDomainDisplayName),
+    SetDisplayName(OptSetDomainDisplayName),
+    #[clap[name = "set-ldap-basedn"]]
+    /// Change the basedn of this server. Takes effect after a server restart.
+    /// Examples are `o=organisation` or `dc=domain,dc=name`. Must be a valid ldap
+    /// dn containing only alphanumerics, and dn components must be org (o), domain (dc) or
+    /// orgunit (ou).
+    SetLdapBasedn {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(name = "new-basedn")]
+        new_basedn: String,
+    },
     #[clap(name = "show")]
     /// Show information about this system's domain
     Show(CommonOpt),
@@ -854,6 +871,8 @@ pub enum SystemOpt {
 pub enum KanidmClientOpt {
     /// Login to an account to use with future cli operations
     Login(LoginOpt),
+    /// Reauthenticate to access privileged functions of this account for a short period.
+    Reauth(ReauthOpt),
     /// Logout of an active cli session
     Logout(LogoutOpt),
     /// Manage active cli sessions

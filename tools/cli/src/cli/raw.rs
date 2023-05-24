@@ -1,3 +1,4 @@
+use crate::common::OpType;
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs::File;
@@ -29,7 +30,7 @@ impl RawOpt {
     pub async fn exec(&self) {
         match self {
             RawOpt::Search(sopt) => {
-                let client = sopt.commonopts.to_client().await;
+                let client = sopt.commonopts.to_client(OpType::Read).await;
 
                 let filter: Filter = match serde_json::from_str(sopt.filter.as_str()) {
                     Ok(f) => f,
@@ -45,7 +46,7 @@ impl RawOpt {
                 }
             }
             RawOpt::Create(copt) => {
-                let client = copt.commonopts.to_client().await;
+                let client = copt.commonopts.to_client(OpType::Write).await;
                 // Read the file?
                 let r_entries: Vec<BTreeMap<String, Vec<String>>> = match read_file(&copt.file) {
                     Ok(r) => r,
@@ -62,7 +63,7 @@ impl RawOpt {
                 }
             }
             RawOpt::Modify(mopt) => {
-                let client = mopt.commonopts.to_client().await;
+                let client = mopt.commonopts.to_client(OpType::Write).await;
                 // Read the file?
                 let filter: Filter = match serde_json::from_str(mopt.filter.as_str()) {
                     Ok(f) => f,
@@ -86,7 +87,7 @@ impl RawOpt {
                 }
             }
             RawOpt::Delete(dopt) => {
-                let client = dopt.commonopts.to_client().await;
+                let client = dopt.commonopts.to_client(OpType::Write).await;
                 let filter: Filter = match serde_json::from_str(dopt.filter.as_str()) {
                     Ok(f) => f,
                     Err(e) => {

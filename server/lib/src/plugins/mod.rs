@@ -146,6 +146,31 @@ trait Plugin {
         Err(OperationError::InvalidState)
     }
 
+    fn pre_repl_incremental(
+        _qs: &mut QueryServerWriteTransaction,
+        _cand: &mut [(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)],
+    ) -> Result<(), OperationError> {
+        admin_error!(
+            "plugin {} has an unimplemented pre_repl_incremental!",
+            Self::id()
+        );
+        // Err(OperationError::InvalidState)
+        Ok(())
+    }
+
+    fn post_repl_incremental(
+        _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
+        _cand: &[EntrySealedCommitted],
+    ) -> Result<(), OperationError> {
+        admin_error!(
+            "plugin {} has an unimplemented post_repl_incremental!",
+            Self::id()
+        );
+        // Err(OperationError::InvalidState)
+        Ok(())
+    }
+
     fn verify(_qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         admin_error!("plugin {} has an unimplemented verify!", Self::id());
         vec![Err(ConsistencyError::Unknown)]
@@ -295,6 +320,32 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         refint::ReferentialIntegrity::post_repl_refresh(qs, cand)
             .and_then(|_| memberof::MemberOf::post_repl_refresh(qs, cand))
+    }
+
+    #[instrument(level = "debug", name = "plugins::run_pre_repl_incremental", skip_all)]
+    pub fn run_pre_repl_incremental(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &mut [(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)],
+    ) -> Result<(), OperationError> {
+        base::Base::pre_repl_incremental(qs, cand)
+            // .and_then(|_| jwskeygen::JwsKeygen::pre_repl_incremental(qs, cand, me))
+            // .and_then(|_| gidnumber::GidNumber::pre_repl_incremental(qs, cand, me))
+            .and_then(|_| domain::Domain::pre_repl_incremental(qs, cand))
+            .and_then(|_| spn::Spn::pre_repl_incremental(qs, cand))
+            .and_then(|_| session::SessionConsistency::pre_repl_incremental(qs, cand))
+            // attr unique should always be last
+            .and_then(|_| attrunique::AttrUnique::pre_repl_incremental(qs, cand))
+    }
+
+    #[instrument(level = "debug", name = "plugins::run_post_repl_incremental", skip_all)]
+    pub fn run_post_repl_incremental(
+        qs: &mut QueryServerWriteTransaction,
+        pre_cand: &[Arc<EntrySealedCommitted>],
+        cand: &[EntrySealedCommitted],
+    ) -> Result<(), OperationError> {
+        refint::ReferentialIntegrity::post_repl_incremental(qs, pre_cand, cand)
+            .and_then(|_| spn::Spn::post_repl_incremental(qs, pre_cand, cand))
+            .and_then(|_| memberof::MemberOf::post_repl_incremental(qs, pre_cand, cand))
     }
 
     #[instrument(level = "debug", name = "plugins::run_verify", skip_all)]

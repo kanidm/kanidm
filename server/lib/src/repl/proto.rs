@@ -52,6 +52,37 @@ impl From<&ReplCidV1> for Cid {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct ReplCidRange {
+    #[serde(rename = "m")]
+    pub ts_min: Duration,
+    #[serde(rename = "x")]
+    pub ts_max: Duration,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub enum ReplRuvRange {
+    V1 {
+        ranges: BTreeMap<Uuid, ReplCidRange>,
+    },
+}
+
+impl Default for ReplRuvRange {
+    fn default() -> Self {
+        ReplRuvRange::V1 {
+            ranges: BTreeMap::default(),
+        }
+    }
+}
+
+impl ReplRuvRange {
+    pub fn is_empty(&self) -> bool {
+        match self {
+            ReplRuvRange::V1 { ranges } => ranges.is_empty(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct ReplAddressV1 {
     #[serde(rename = "f")]
@@ -355,6 +386,8 @@ pub struct ReplAttrStateV1 {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum ReplStateV1 {
     Live {
+        at: ReplCidV1,
+        // Also add AT here for breaking entry origin on conflict.
         attrs: BTreeMap<String, ReplAttrStateV1>,
     },
     Tombstone {
@@ -377,7 +410,7 @@ impl ReplEntryV1 {
         let uuid = entry.get_uuid();
 
         let st = match cs.current() {
-            State::Live { changes } => {
+            State::Live { at, changes } => {
                 let live_attrs = entry.get_ava();
 
                 let attrs = changes
@@ -409,7 +442,10 @@ impl ReplEntryV1 {
                     })
                     .collect();
 
-                ReplStateV1::Live { attrs }
+                ReplStateV1::Live {
+                    at: at.into(),
+                    attrs,
+                }
             }
             State::Tombstone { at } => ReplStateV1::Tombstone { at: at.into() },
         };
@@ -419,8 +455,8 @@ impl ReplEntryV1 {
 
     pub fn rehydrate(&self) -> Result<(EntryChangeState, Eattrs), OperationError> {
         match &self.st {
-            ReplStateV1::Live { attrs } => {
-                trace!("{:#?}", attrs);
+            ReplStateV1::Live { at, attrs } => {
+                trace!("{:?} {:#?}", at, attrs);
                 // We need to build two sets, one for the Entry Change States, and one for the
                 // Eattrs.
                 let mut changes = BTreeMap::default();
@@ -453,8 +489,10 @@ impl ReplEntryV1 {
                     }
                 }
 
+                let at: Cid = at.into();
+
                 let ecstate = EntryChangeState {
-                    st: State::Live { changes },
+                    st: State::Live { at, changes },
                 };
                 Ok((ecstate, eattrs))
             }
@@ -480,6 +518,130 @@ impl ReplEntryV1 {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+// I think partial entries should be separate? This clearly implies a refresh.
+pub struct ReplIncrementalEntryV1 {
+    pub(crate) uuid: Uuid,
+    // Change State
+    pub(crate) st: ReplStateV1,
+}
+
+impl ReplIncrementalEntryV1 {
+    pub fn new(
+        entry: &EntrySealedCommitted,
+        schema: &SchemaReadTransaction,
+        ctx_range: &BTreeMap<Uuid, ReplCidRange>,
+    ) -> ReplIncrementalEntryV1 {
+        let cs = entry.get_changestate();
+        let uuid = entry.get_uuid();
+
+        let st = match cs.current() {
+            State::Live { at, changes } => {
+                // Only put attributes into the change state that were changed within the range that was
+                // requested.
+                let live_attrs = entry.get_ava();
+
+                let attrs = changes
+                    .iter()
+                    .filter_map(|(attr_name, cid)| {
+                        // If the cid is within the ctx range
+                        let within = schema.is_replicated(attr_name)
+                            && ctx_range
+                                .get(&cid.s_uuid)
+                                .map(|repl_range| {
+                                    // Supply anything up to and including.
+                                    cid.ts <= repl_range.ts_max &&
+                                    // ts_min is always what the consumer already has.
+                                    cid.ts > repl_range.ts_min
+                                })
+                                // If not present in the range, assume it's not needed.
+                                .unwrap_or(false);
+
+                        // Then setup to supply it.
+                        if within {
+                            let live_attr = live_attrs.get(attr_name.as_str());
+                            let cid = cid.into();
+                            let attr = live_attr.and_then(|maybe| {
+                                if maybe.len() > 0 {
+                                    Some(maybe.to_repl_v1())
+                                } else {
+                                    None
+                                }
+                            });
+
+                            Some((attr_name.to_string(), ReplAttrStateV1 { cid, attr }))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                ReplStateV1::Live {
+                    at: at.into(),
+                    attrs,
+                }
+            }
+            // Don't care what the at is - send the tombstone.
+            State::Tombstone { at } => ReplStateV1::Tombstone { at: at.into() },
+        };
+
+        ReplIncrementalEntryV1 { uuid, st }
+    }
+
+    pub fn rehydrate(&self) -> Result<(Uuid, EntryChangeState, Eattrs), OperationError> {
+        match &self.st {
+            ReplStateV1::Live { at, attrs } => {
+                trace!("{:?} {:#?}", at, attrs);
+                let mut changes = BTreeMap::default();
+                let mut eattrs = Eattrs::default();
+
+                for (attr_name, ReplAttrStateV1 { cid, attr }) in attrs.iter() {
+                    let astring: AttrString = attr_name.as_str().into();
+                    let cid: Cid = cid.into();
+
+                    if let Some(attr_value) = attr {
+                        let v = valueset::from_repl_v1(attr_value).map_err(|e| {
+                            error!("Unable to restore valueset for {}", attr_name);
+                            e
+                        })?;
+                        if eattrs.insert(astring.clone(), v).is_some() {
+                            error!(
+                                "Impossible eattrs state, attribute {} appears to be duplicated!",
+                                attr_name
+                            );
+                            return Err(OperationError::InvalidEntryState);
+                        }
+                    }
+
+                    if changes.insert(astring, cid).is_some() {
+                        error!(
+                            "Impossible changes state, attribute {} appears to be duplicated!",
+                            attr_name
+                        );
+                        return Err(OperationError::InvalidEntryState);
+                    }
+                }
+
+                let at: Cid = at.into();
+
+                let ecstate = EntryChangeState {
+                    st: State::Live { at, changes },
+                };
+                Ok((self.uuid, ecstate, eattrs))
+            }
+            ReplStateV1::Tombstone { at } => {
+                let at: Cid = at.into();
+                let eattrs = Eattrs::default();
+                let ecstate = EntryChangeState {
+                    st: State::Tombstone { at },
+                };
+                Ok((self.uuid, ecstate, eattrs))
+            }
+        }
+    }
+}
+
 // From / Into Entry
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -488,8 +650,31 @@ pub enum ReplRefreshContext {
     V1 {
         domain_version: DomainVersion,
         domain_uuid: Uuid,
+        // We need to send the current state of the ranges to populate into
+        // the ranges so that lookups and ranges work properly.
+        ranges: BTreeMap<Uuid, ReplCidRange>,
         schema_entries: Vec<ReplEntryV1>,
         meta_entries: Vec<ReplEntryV1>,
         entries: Vec<ReplEntryV1>,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ReplIncrementalContext {
+    NoChangesAvailable,
+    RefreshRequired,
+    UnwillingToSupply,
+    V1 {
+        domain_version: DomainVersion,
+        domain_uuid: Uuid,
+        // We need to send the current state of the ranges to populate into
+        // the ranges so that lookups and ranges work properly, and the
+        // consumer ends with the same state as we have (or at least merges)
+        // it with this.
+        ranges: BTreeMap<Uuid, ReplCidRange>,
+        schema_entries: Vec<ReplIncrementalEntryV1>,
+        meta_entries: Vec<ReplIncrementalEntryV1>,
+        entries: Vec<ReplIncrementalEntryV1>,
     },
 }

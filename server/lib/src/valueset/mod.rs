@@ -583,7 +583,6 @@ pub fn from_result_value_iter(
         | Value::Passkey(_, _, _)
         | Value::DeviceKey(_, _, _)
         | Value::TotpSecret(_, _)
-        | Value::TrustedDeviceEnrollment(_)
         | Value::Session(_, _)
         | Value::ApiToken(_, _)
         | Value::Oauth2Session(_, _)
@@ -646,7 +645,7 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::Oauth2Session(u, m) => ValueSetOauth2Session::new(u, m),
         Value::UiHint(u) => ValueSetUiHint::new(u),
         Value::TotpSecret(l, t) => ValueSetTotpSecret::new(l, t),
-        Value::PhoneNumber(_, _) | Value::TrustedDeviceEnrollment(_) => {
+        Value::PhoneNumber(_, _) => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
         }

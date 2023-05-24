@@ -369,7 +369,7 @@ impl TryFrom<DbCred> for Credential {
 }
 
 impl Credential {
-    pub fn try_from_repl_v1(rc: &ReplCredV1) -> Result<(String, Self), ()> {
+    pub fn try_from_repl_v1(rc: &ReplCredV1) -> Result<(String, Self), OperationError> {
         match rc {
             ReplCredV1::TmpWn { tag, set } => {
                 let m_uuid: Option<Uuid> = set.get(0).map(|v| v.uuid);
@@ -382,7 +382,7 @@ impl Credential {
 
                 match (m_uuid, type_.is_valid()) {
                     (Some(uuid), true) => Ok((tag.clone(), Credential { type_, uuid })),
-                    _ => Err(()),
+                    _ => Err(OperationError::InvalidValueState),
                 }
             }
             ReplCredV1::Password {
@@ -390,12 +390,13 @@ impl Credential {
                 password,
                 uuid,
             } => {
-                let v_password = Password::try_from(password)?;
+                let v_password =
+                    Password::try_from(password).map_err(|()| OperationError::InvalidValueState)?;
                 let type_ = CredentialType::Password(v_password);
                 if type_.is_valid() {
                     Ok((tag.clone(), Credential { type_, uuid: *uuid }))
                 } else {
-                    Err(())
+                    Err(OperationError::InvalidValueState)
                 }
             }
             ReplCredV1::GenPassword {
@@ -403,12 +404,13 @@ impl Credential {
                 password,
                 uuid,
             } => {
-                let v_password = Password::try_from(password)?;
+                let v_password =
+                    Password::try_from(password).map_err(|()| OperationError::InvalidValueState)?;
                 let type_ = CredentialType::GeneratedPassword(v_password);
                 if type_.is_valid() {
                     Ok((tag.clone(), Credential { type_, uuid: *uuid }))
                 } else {
-                    Err(())
+                    Err(OperationError::InvalidValueState)
                 }
             }
             ReplCredV1::PasswordMfa {
@@ -419,15 +421,20 @@ impl Credential {
                 webauthn,
                 uuid,
             } => {
-                let v_password = Password::try_from(password)?;
+                let v_password =
+                    Password::try_from(password).map_err(|()| OperationError::InvalidValueState)?;
 
                 let v_totp = totp
                     .iter()
                     .map(|(l, dbt)| Totp::try_from(dbt).map(|t| (l.clone(), t)))
-                    .collect::<Result<Map<_, _>, _>>()?;
+                    .collect::<Result<Map<_, _>, _>>()
+                    .map_err(|()| OperationError::InvalidValueState)?;
 
                 let v_backup_code = match backup_code {
-                    Some(rbc) => Some(BackupCodes::try_from(rbc)?),
+                    Some(rbc) => Some(
+                        BackupCodes::try_from(rbc)
+                            .map_err(|()| OperationError::InvalidValueState)?,
+                    ),
                     None => None,
                 };
 
@@ -442,7 +449,7 @@ impl Credential {
                 if type_.is_valid() {
                     Ok((tag.clone(), Credential { type_, uuid: *uuid }))
                 } else {
-                    Err(())
+                    Err(OperationError::InvalidValueState)
                 }
             }
         }

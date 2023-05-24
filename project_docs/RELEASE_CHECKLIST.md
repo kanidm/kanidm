@@ -25,7 +25,7 @@ cargo install cargo-outdated
 
 ### Administration
 
-- [ ] update version in ./kanidmd\_web\_ui/Cargo.toml
+- [ ] update version in ./server/web\_ui/Cargo.toml
 - [ ] update version in ./Cargo.toml
 - [ ] cargo test
 - [ ] build wasm components with release profile

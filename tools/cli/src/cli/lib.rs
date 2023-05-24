@@ -14,8 +14,8 @@
 #[macro_use]
 extern crate tracing;
 
+use crate::common::OpType;
 use std::path::PathBuf;
-
 use uuid::Uuid;
 
 include!("../opt/kanidm.rs");
@@ -43,7 +43,7 @@ impl SelfOpt {
     pub async fn exec(&self) {
         match self {
             SelfOpt::Whoami(copt) => {
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Read).await;
 
                 match client.whoami().await {
                     Ok(o_ent) => {
@@ -89,6 +89,7 @@ impl KanidmClientOpt {
         match self {
             KanidmClientOpt::Raw { commands } => commands.debug(),
             KanidmClientOpt::Login(lopt) => lopt.debug(),
+            KanidmClientOpt::Reauth(lopt) => lopt.debug(),
             KanidmClientOpt::Logout(lopt) => lopt.debug(),
             KanidmClientOpt::Session { commands } => commands.debug(),
             KanidmClientOpt::CSelf { commands } => commands.debug(),
@@ -108,6 +109,7 @@ impl KanidmClientOpt {
         match self {
             KanidmClientOpt::Raw { commands } => commands.exec().await,
             KanidmClientOpt::Login(lopt) => lopt.exec().await,
+            KanidmClientOpt::Reauth(lopt) => lopt.exec().await,
             KanidmClientOpt::Logout(lopt) => lopt.exec().await,
             KanidmClientOpt::Session { commands } => commands.exec().await,
             KanidmClientOpt::CSelf { commands } => commands.exec().await,

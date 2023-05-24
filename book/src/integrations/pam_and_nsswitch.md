@@ -92,19 +92,19 @@ when first created. Defaults to false.
 You can then check the communication status of the daemon:
 
 ```bash
-kanidm_unixd_status
+kanidm-unix status
 ```
 
 If the daemon is working, you should see:
 
 ```
-[2020-02-14T05:58:37Z INFO  kanidm_unixd_status] working!
+working!
 ```
 
 If it is not working, you will see an error message:
 
 ```
-[2020-02-14T05:58:10Z ERROR kanidm_unixd_status] Error -> 
+[2020-02-14T05:58:10Z ERROR kanidm-unix] Error ->
    Os { code: 111, kind: ConnectionRefused, message: "Connection refused" }
 ```
 
@@ -372,7 +372,7 @@ similar to the following example:
 ```bash
 > kanidm group posix show example_group
 Using cached token for name idm_admin
-Error -> Http(500, Some(InvalidAccountState("Missing class: account && posixaccount OR group && posixgroup")), 
+Error -> Http(500, Some(InvalidAccountState("Missing class: account && posixaccount OR group && posixgroup")),
     "b71f137e-39f3-4368-9e58-21d26671ae24")
 ```
 
@@ -473,13 +473,13 @@ cache_timeout = 60
 You can invalidate the kanidm_unixd cache with:
 
 ```bash
-kanidm_cache_invalidate
+kanidm-unix cache-invalidate
 ```
 
 You can clear (wipe) the cache with:
 
 ```bash
-kanidm_cache_clear
+kanidm-unix cache-clear
 ```
 
 There is an important distinction between these two - invalidated cache items may still be yielded
@@ -489,3 +489,8 @@ may have your laptop in a park without wifi.
 Clearing the cache, however, completely wipes all local data about all accounts and groups. If you
 are relying on this cached (but invalid) data, you may lose access to your accounts until other
 communication issues have been resolved.
+
+### Home directories are not created via SSH
+
+Ensure that `UsePAM yes` is set in `sshd_config`. Without this the pam session module won't be
+triggered which prevents the background task being completed.

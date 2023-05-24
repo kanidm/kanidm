@@ -1440,7 +1440,10 @@ impl IdlSqlite {
         // Enable WAL mode, which is just faster and better for our needs.
         let mut flags = OpenFlags::default();
         // Open with multi thread flags and locking options.
-        flags.insert(OpenFlags::SQLITE_OPEN_NO_MUTEX);
+
+        if cfg!(test) {
+            flags.insert(OpenFlags::SQLITE_OPEN_NO_MUTEX);
+        };
 
         // We need to run vacuum in the setup else we hit sqlite lock conditions.
         if vacuum {

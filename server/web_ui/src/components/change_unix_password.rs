@@ -63,6 +63,7 @@ pub enum State {
 #[derive(PartialEq, Eq, Properties)]
 pub struct ChangeUnixPasswordProps {
     pub uat: UserAuthToken,
+    pub enabled: bool,
 }
 
 impl Component for ChangeUnixPassword {
@@ -139,6 +140,7 @@ impl Component for ChangeUnixPassword {
         };
 
         let submit_enabled = self.pw_check == PwCheck::Valid;
+        let button_enabled = ctx.props().enabled;
 
         let pw_val = self.pw_val.clone();
         let pw_check_val = self.pw_check_val.clone();
@@ -150,8 +152,9 @@ impl Component for ChangeUnixPassword {
         html! {
           <>
             <button type="button" class="btn btn-primary"
-            data-bs-toggle="modal"
-            data-bs-target={format!("#{}", crate::constants::ID_UNIX_PASSWORDCHANGE)}
+              disabled={ !button_enabled }
+              data-bs-toggle="modal"
+              data-bs-target={format!("#{}", crate::constants::ID_UNIX_PASSWORDCHANGE)}
             >
               { "Update your Unix Password" }
             </button>

@@ -33,15 +33,18 @@ fn do_memberof(
     let groups = qs
         .internal_search(filter!(f_and!([
             f_eq("class", PVCLASS_GROUP.clone()),
-            f_eq("member", PartialValue::Refer(uuid))
+            f_or!([
+                f_eq("member", PartialValue::Refer(uuid)),
+                f_eq("dynmember", PartialValue::Refer(uuid))
+            ])
         ])))
         .map_err(|e| {
             admin_error!("internal search failure -> {:?}", e);
             e
         })?;
 
-    // Ensure we are MO capable.
-    tgte.add_ava("class", CLASS_MEMBEROF.clone());
+    // Ensure we are MO capable. We only add this if it's not already present.
+    tgte.add_ava_if_not_exist("class", CLASS_MEMBEROF.clone());
     // Clear the dmo + mos, we will recreate them now.
     // This is how we handle deletes/etc.
     tgte.purge_ava("memberof");
@@ -157,6 +160,9 @@ fn apply_memberof(
                 if let Some(miter) = tgte.get_ava_as_refuuid("member") {
                     group_affect.extend(miter.filter(|m| !other_cache.contains_key(m)));
                 };
+                if let Some(miter) = tgte.get_ava_as_refuuid("dynmember") {
+                    group_affect.extend(miter.filter(|m| !other_cache.contains_key(m)));
+                };
 
                 // push the entries to pre/cand
                 changes.push((pre, tgte));
@@ -261,6 +267,18 @@ impl Plugin for MemberOf {
                 }
             })
             .flatten()
+            .chain(
+                // Or a dyn group?
+                cand.iter()
+                    .filter_map(|post| {
+                        if post.attribute_equality("class", &PVCLASS_DYNGROUP) {
+                            post.get_ava_as_refuuid("dynmember")
+                        } else {
+                            None
+                        }
+                    })
+                    .flatten(),
+            )
             .collect();
 
         apply_memberof(qs, group_affect)
@@ -282,9 +300,13 @@ impl Plugin for MemberOf {
 
         // for each entry in the DB (live).
         for e in all_cand {
+            let uuid = e.get_uuid();
             let filt_in = filter!(f_and!([
                 f_eq("class", PVCLASS_GROUP.clone()),
-                f_eq("member", PartialValue::Refer(e.get_uuid()))
+                f_or!([
+                    f_eq("member", PartialValue::Refer(uuid)),
+                    f_eq("dynmember", PartialValue::Refer(uuid))
+                ])
             ]));
 
             let direct_memberof = match qs

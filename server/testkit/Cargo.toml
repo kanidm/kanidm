@@ -39,3 +39,4 @@ serde_json.workspace = true
 webauthn-authenticator-rs.workspace = true
 oauth2_ext = { workspace = true, default-features = false }
 futures.workspace = true
+time.workspace = true

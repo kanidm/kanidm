@@ -21,8 +21,18 @@ use crate::{models, utils};
 
 pub struct LoginApp {
     inputvalue: String,
-    session_id: String,
     state: LoginState,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum LoginWorkflow {
+    Login,
+    Reauth,
+}
+
+#[derive(PartialEq, Properties)]
+pub struct LoginAppProps {
+    pub workflow: LoginWorkflow,
 }
 
 #[derive(PartialEq)]
@@ -33,7 +43,8 @@ enum TotpState {
 }
 
 enum LoginState {
-    Init { enable: bool, remember_me: bool },
+    InitLogin { enable: bool, remember_me: bool },
+    InitReauth { enable: bool },
     // Select between different cred types, either password (and MFA) or Passkey
     Select(Vec<AuthMech>),
     // The choices of authentication mechanism.
@@ -60,7 +71,7 @@ pub enum LoginAppMsg {
     TotpSubmit,
     PasskeySubmit(PublicKeyCredential),
     SecurityKeySubmit(PublicKeyCredential),
-    Start(String, AuthResponse),
+    Start(AuthResponse),
     Next(AuthResponse),
     Continue(usize),
     Select(usize),
@@ -112,15 +123,10 @@ impl LoginApp {
         let headers = resp.headers();
 
         if status == 200 {
-            let session_id = headers
-                .get("x-kanidm-auth-session-id")
-                .ok()
-                .flatten()
-                .unwrap_or_default();
             let jsval = JsFuture::from(resp.json()?).await?;
             let state: AuthResponse = serde_wasm_bindgen::from_value(jsval)
                 .expect_throw("Invalid response type - auth_init::AuthResponse");
-            Ok(LoginAppMsg::Start(session_id, state))
+            Ok(LoginAppMsg::Start(state))
         } else if status == 404 {
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
             let text = JsFuture::from(resp.text()?).await?;
@@ -137,10 +143,55 @@ impl LoginApp {
         }
     }
 
-    async fn auth_step(
-        authreq: AuthRequest,
-        session_id: String,
-    ) -> Result<LoginAppMsg, FetchError> {
+    async fn reauth_init() -> Result<LoginAppMsg, FetchError> {
+        let issue = AuthIssueSession::Cookie;
+        let authreq_jsvalue = serde_json::to_string(&issue)
+            .map(|s| JsValue::from(&s))
+            .expect_throw("Failed to serialise authreq");
+
+        let mut opts = RequestInit::new();
+        opts.method("POST");
+        opts.mode(RequestMode::SameOrigin);
+        opts.credentials(RequestCredentials::SameOrigin);
+
+        opts.body(Some(&authreq_jsvalue));
+
+        let request = Request::new_with_str_and_init("/v1/reauth", &opts)?;
+        request
+            .headers()
+            .set("content-type", "application/json")
+            .expect_throw("failed to set header");
+
+        let window = utils::window();
+        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
+        let resp: Response = resp_value
+            .dyn_into()
+            .expect_throw("Invalid response type - reauth_init::Response");
+        let status = resp.status();
+        let headers = resp.headers();
+
+        if status == 200 {
+            let jsval = JsFuture::from(resp.json()?).await?;
+            let state: AuthResponse = serde_wasm_bindgen::from_value(jsval)
+                .expect_throw("Invalid response type - auth_init::AuthResponse");
+            Ok(LoginAppMsg::Next(state))
+        } else if status == 404 {
+            let kopid = headers.get("x-kanidm-opid").ok().flatten();
+            let text = JsFuture::from(resp.text()?).await?;
+            console::error!(format!(
+                "User not found: {:?}. Operation ID: {:?}",
+                text, kopid
+            ));
+            Ok(LoginAppMsg::UnknownUser)
+        } else {
+            let kopid = headers.get("x-kanidm-opid").ok().flatten();
+            let text = JsFuture::from(resp.text()?).await?;
+            let emsg = text.as_string().unwrap_or_default();
+            Ok(LoginAppMsg::Error { emsg, kopid })
+        }
+    }
+
+    async fn auth_step(authreq: AuthRequest) -> Result<LoginAppMsg, FetchError> {
         let authreq_jsvalue = serde_json::to_string(&authreq)
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise authreq");
@@ -157,10 +208,6 @@ impl LoginApp {
             .headers()
             .set("content-type", "application/json")
             .expect_throw("failed to set content-type header");
-        request
-            .headers()
-            .set("x-kanidm-auth-session-id", session_id.as_str())
-            .expect_throw("failed to set x-kanidm-auth-session-id header");
 
         let window = utils::window();
         let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
@@ -246,7 +293,7 @@ impl LoginApp {
     fn view_state(&self, ctx: &Context<Self>) -> Html {
         let inputvalue = self.inputvalue.clone();
         match &self.state {
-            LoginState::Init {
+            LoginState::InitLogin {
                 enable,
                 remember_me,
             } => {
@@ -288,6 +335,31 @@ impl LoginApp {
                             <label class="form-check-label" for="remember_me_check">{ "Remember my Username" }</label>
                         </div>
 
+                        <div class={CLASS_DIV_LOGIN_BUTTON}>
+                            <button
+                                type="submit"
+                                class={CLASS_BUTTON_DARK}
+                                disabled={ !enable }
+                            >{" Begin "}</button>
+                        </div>
+                        </form>
+                    </div>
+                    </>
+                }
+            }
+            LoginState::InitReauth { enable } => {
+                html! {
+                    <>
+                    <div class="container">
+                        <p>{ "Reauthenticate to continue" }</p>
+                        <form
+                        onsubmit={ ctx.link().callback(|e: SubmitEvent| {
+                            #[cfg(debug_assertions)]
+                            console::debug!("login::view_state -> Init - prevent_default()".to_string());
+                            e.prevent_default();
+                            LoginAppMsg::Begin
+                        } ) }
+                        >
                         <div class={CLASS_DIV_LOGIN_BUTTON}>
                             <button
                                 type="submit"
@@ -570,47 +642,57 @@ impl LoginApp {
 
 impl Component for LoginApp {
     type Message = LoginAppMsg;
-    type Properties = ();
+    type Properties = LoginAppProps;
 
-    fn create(_ctx: &Context<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
         #[cfg(debug_assertions)]
         console::debug!("create".to_string());
-        // Assume we are here for a good reason.
-        // -- clear the bearer to prevent conflict
-        models::clear_bearer_token();
-        // Do we have a login hint?
-        let (inputvalue, remember_me) = models::pop_login_hint()
-            .map(|user| (user, false))
-            .or_else(|| models::get_login_remember_me().map(|user| (user, true)))
-            .unwrap_or_default();
 
-        #[cfg(debug_assertions)]
-        {
-            let document = utils::document();
-            let html_document = document
-                .dyn_into::<web_sys::HtmlDocument>()
-                .expect_throw("failed to dyn cast to htmldocument");
-            let cookie = html_document
-                .cookie()
-                .expect_throw("failed to access page cookies");
-            console::debug!("cookies".to_string());
-            console::debug!(cookie);
-        }
-        // Clean any cookies.
-        // TODO: actually check that it's cleaning the cookies.
+        let mut inputvalue = "".to_string();
+        let workflow = ctx.props().workflow;
+        let state = match workflow {
+            LoginWorkflow::Login => {
+                // Assume we are here for a good reason.
+                // -- clear the bearer to prevent conflict
+                models::clear_bearer_token();
+                // Do we have a login hint?
+                let (model_iv, remember_me) = models::pop_login_hint()
+                    .map(|user| (user, false))
+                    .or_else(|| models::get_login_remember_me().map(|user| (user, true)))
+                    .unwrap_or_default();
 
-        let state = LoginState::Init {
-            enable: true,
-            remember_me,
+                inputvalue = model_iv;
+
+                #[cfg(debug_assertions)]
+                {
+                    let document = utils::document();
+                    let html_document = document
+                        .dyn_into::<web_sys::HtmlDocument>()
+                        .expect_throw("failed to dyn cast to htmldocument");
+                    let cookie = html_document
+                        .cookie()
+                        .expect_throw("failed to access page cookies");
+                    console::debug!("cookies".to_string());
+                    console::debug!(cookie);
+                }
+                // Clean any cookies.
+                // TODO: actually check that it's cleaning the cookies.
+
+                LoginState::InitLogin {
+                    enable: true,
+                    remember_me,
+                }
+            }
+            LoginWorkflow::Reauth => {
+                // Unlike login, don't clear tokens or cookies - these are needed during the operation
+                // to actually start the reauth as the same user.
+                LoginState::InitReauth { enable: true }
+            }
         };
 
         add_body_form_classes!();
 
-        LoginApp {
-            inputvalue,
-            session_id: "".to_string(),
-            state,
-        }
+        LoginApp { inputvalue, state }
     }
 
     fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
@@ -625,52 +707,73 @@ impl Component for LoginApp {
             }
             LoginAppMsg::Restart => {
                 // Clear any leftover input. Reset to the remembered username if any.
-                let (inputvalue, remember_me) = models::get_login_remember_me()
-                    .map(|user| (user, true))
-                    .unwrap_or_default();
+                match ctx.props().workflow {
+                    LoginWorkflow::Login => {
+                        let (inputvalue, remember_me) = models::get_login_remember_me()
+                            .map(|user| (user, true))
+                            .unwrap_or_default();
 
-                self.inputvalue = inputvalue;
-                self.session_id = "".to_string();
-                self.state = LoginState::Init {
-                    enable: true,
-                    remember_me,
-                };
+                        self.inputvalue = inputvalue;
+                        self.state = LoginState::InitLogin {
+                            enable: true,
+                            remember_me,
+                        };
+                    }
+                    LoginWorkflow::Reauth => {
+                        self.inputvalue = "".to_string();
+                        self.state = LoginState::InitReauth { enable: true };
+                    }
+                }
                 true
             }
             LoginAppMsg::Begin => {
-                #[cfg(debug_assertions)]
-                console::debug!(format!("begin -> {:?}", self.inputvalue));
-                // Disable the button?
-                let username = self.inputvalue.clone();
-                // If the remember-me was checked, stash it here.
-                // If it was false, clear existing data.
+                match ctx.props().workflow {
+                    LoginWorkflow::Login => {
+                        #[cfg(debug_assertions)]
+                        console::debug!(format!("begin -> {:?}", self.inputvalue));
+                        // Disable the button?
+                        let username = self.inputvalue.clone();
+                        // If the remember-me was checked, stash it here.
+                        // If it was false, clear existing data.
 
-                let remember_me = if utils::get_inputelement_by_id("remember_me_check")
-                    .map(|element| element.checked())
-                    .unwrap_or(false)
-                {
-                    models::push_login_remember_me(username.clone());
-                    true
-                } else {
-                    models::pop_login_remember_me();
-                    false
-                };
+                        let remember_me = if utils::get_inputelement_by_id("remember_me_check")
+                            .map(|element| element.checked())
+                            .unwrap_or(false)
+                        {
+                            models::push_login_remember_me(username.clone());
+                            true
+                        } else {
+                            models::pop_login_remember_me();
+                            false
+                        };
 
-                #[cfg(debug_assertions)]
-                console::debug!(format!("begin remember_me -> {:?}", remember_me));
+                        #[cfg(debug_assertions)]
+                        console::debug!(format!("begin remember_me -> {:?}", remember_me));
 
-                ctx.link().send_future(async {
-                    match Self::auth_init(username).await {
-                        Ok(v) => v,
-                        Err(v) => v.into(),
+                        ctx.link().send_future(async {
+                            match Self::auth_init(username).await {
+                                Ok(v) => v,
+                                Err(v) => v.into(),
+                            }
+                        });
+
+                        self.state = LoginState::InitLogin {
+                            enable: false,
+                            remember_me,
+                        };
                     }
-                });
+                    LoginWorkflow::Reauth => {
+                        ctx.link().send_future(async {
+                            match Self::reauth_init().await {
+                                Ok(v) => v,
+                                Err(v) => v.into(),
+                            }
+                        });
 
-                self.state = LoginState::Init {
-                    enable: false,
-                    remember_me,
-                };
-
+                        self.inputvalue = "".to_string();
+                        self.state = LoginState::InitReauth { enable: false };
+                    }
+                }
                 true
             }
             LoginAppMsg::PasswordSubmit => {
@@ -681,9 +784,8 @@ impl Component for LoginApp {
                 let authreq = AuthRequest {
                     step: AuthStep::Cred(AuthCredential::Password(self.inputvalue.clone())),
                 };
-                let session_id = self.session_id.clone();
                 ctx.link().send_future(async {
-                    match Self::auth_step(authreq, session_id).await {
+                    match Self::auth_step(authreq).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
@@ -700,9 +802,8 @@ impl Component for LoginApp {
                 let authreq = AuthRequest {
                     step: AuthStep::Cred(AuthCredential::BackupCode(self.inputvalue.clone())),
                 };
-                let session_id = self.session_id.clone();
                 ctx.link().send_future(async {
-                    match Self::auth_step(authreq, session_id).await {
+                    match Self::auth_step(authreq).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
@@ -721,9 +822,8 @@ impl Component for LoginApp {
                         let authreq = AuthRequest {
                             step: AuthStep::Cred(AuthCredential::Totp(totp)),
                         };
-                        let session_id = self.session_id.clone();
                         ctx.link().send_future(async {
-                            match Self::auth_step(authreq, session_id).await {
+                            match Self::auth_step(authreq).await {
                                 Ok(v) => v,
                                 Err(v) => v.into(),
                             }
@@ -745,9 +845,8 @@ impl Component for LoginApp {
                 let authreq = AuthRequest {
                     step: AuthStep::Cred(AuthCredential::SecurityKey(Box::new(resp))),
                 };
-                let session_id = self.session_id.clone();
                 ctx.link().send_future(async {
-                    match Self::auth_step(authreq, session_id).await {
+                    match Self::auth_step(authreq).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
@@ -761,9 +860,8 @@ impl Component for LoginApp {
                 let authreq = AuthRequest {
                     step: AuthStep::Cred(AuthCredential::Passkey(Box::new(resp))),
                 };
-                let session_id = self.session_id.clone();
                 ctx.link().send_future(async {
-                    match Self::auth_step(authreq, session_id).await {
+                    match Self::auth_step(authreq).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
@@ -771,23 +869,21 @@ impl Component for LoginApp {
                 // Do not submit here, we need to wait for the next ui transition.
                 false
             }
-            LoginAppMsg::Start(session_id, resp) => {
+            LoginAppMsg::Start(resp) => {
                 // Clear any leftover input
                 self.inputvalue = "".to_string();
                 #[cfg(debug_assertions)]
-                console::debug!(format!("start -> {:?} : {:?}", resp, session_id));
+                console::debug!(format!("start -> {:?}", resp));
                 match resp.state {
                     AuthState::Choose(mut mechs) => {
-                        self.session_id = session_id;
                         if mechs.len() == 1 {
                             // If it's only one mech, just submit that.
                             let mech = mechs.pop().expect_throw("Memory corruption occurred");
                             let authreq = AuthRequest {
                                 step: AuthStep::Begin(mech),
                             };
-                            let session_id = self.session_id.clone();
                             ctx.link().send_future(async {
-                                match Self::auth_step(authreq, session_id).await {
+                                match Self::auth_step(authreq).await {
                                     Ok(v) => v,
                                     Err(v) => v.into(),
                                 }
@@ -826,9 +922,8 @@ impl Component for LoginApp {
                             let authreq = AuthRequest {
                                 step: AuthStep::Begin(mech.clone()),
                             };
-                            let session_id = self.session_id.clone();
                             ctx.link().send_future(async {
-                                match Self::auth_step(authreq, session_id).await {
+                                match Self::auth_step(authreq).await {
                                     Ok(v) => v,
                                     Err(v) => v.into(),
                                 }
@@ -1016,6 +1111,7 @@ impl Component for LoginApp {
             <center>
                 <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
                 // TODO: replace this with a call to domain info
+                // More likely we should have this passed in from the props when we start.
                 <h3>{ "Kanidm" }</h3>
             </center>
             { self.view_state(ctx) }

@@ -455,8 +455,7 @@ impl ValueSetT for ValueSetSession {
         let map = self
             .as_session_map()
             .iter()
-            .map(|m| m.iter())
-            .flatten()
+            .flat_map(|m| m.iter())
             .map(
                 |(
                     u,
@@ -473,8 +472,8 @@ impl ValueSetT for ValueSetSession {
                         *u,
                         ApiToken {
                             label: label.clone(),
-                            expiry: expiry.clone(),
-                            issued_at: issued_at.clone(),
+                            expiry: *expiry,
+                            issued_at: *issued_at,
                             issued_by: issued_by.clone(),
                             scope: match scope {
                                 SessionScope::Synchronise => ApiTokenScope::Synchronise,
@@ -1088,7 +1087,9 @@ impl ValueSetT for ValueSetApiToken {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        true
+        self.map.iter().all(|(_, at)| {
+            Value::validate_str_escapes(&at.label) && Value::validate_singleline(&at.label)
+        })
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
@@ -1193,5 +1194,10 @@ impl ValueSetT for ValueSetApiToken {
     fn as_ref_uuid_iter(&self) -> Option<Box<dyn Iterator<Item = Uuid> + '_>> {
         // This is what ties us as a type that can be refint checked.
         Some(Box::new(self.map.keys().copied()))
+    }
+
+    fn migrate_session_to_apitoken(&self) -> Result<ValueSet, OperationError> {
+        // We are already in the api token format, don't do anything.
+        Ok(Box::new(self.clone()))
     }
 }

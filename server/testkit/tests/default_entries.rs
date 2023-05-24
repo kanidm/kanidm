@@ -203,7 +203,15 @@ async fn login_account(rsclient: &KanidmClient, id: &str) {
     let res = rsclient
         .auth_simple_password(id, "eicieY7ahchaoCh0eeTa")
         .await;
+
+    // Setup privs
     println!("{} logged in", id);
+    assert!(res.is_ok());
+
+    let res = rsclient
+        .reauth_simple_password("eicieY7ahchaoCh0eeTa")
+        .await;
+    println!("{} priv granted for", id);
     assert!(res.is_ok());
 }
 

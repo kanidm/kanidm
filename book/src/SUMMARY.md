@@ -14,6 +14,7 @@
 
 - [Administration](administrivia.md)
   - [Accounts and Groups](accounts_and_groups.md)
+  - [Authentication and Credentials](authentication.md)
   - [POSIX Accounts and Groups](posix_accounts.md)
   - [Backup and Restore](backup_restore.md)
   - [Database Maintenance](database_maint.md)
@@ -55,6 +56,7 @@
   - [Access Profiles Original](developers/designs/access_profiles_and_security.md)
   - [REST Interface](developers/designs/rest_interface.md)
   - [Elevated Priv Mode](developers/designs/elevated_priv_mode.md)
+  - [Oauth2 Refresh Tokens](developers/designs/oauth2_refresh_tokens.md)
 - [Python Module](developers/python.md)
 - [RADIUS Integration](developers/radius.md)
 

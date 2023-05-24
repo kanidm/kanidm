@@ -118,7 +118,7 @@ impl SessionConsistency {
                                     // The parent exists, go ahead
                                     None
                                 } else {
-                                    info!(%o2_session_id, "Removing unbound oauth2 session");
+                                    info!(%o2_session_id, parent_id = %session.parent, "Removing unbound oauth2 session");
                                     Some(PartialValue::Refer(*o2_session_id))
                                 }
                             } else {

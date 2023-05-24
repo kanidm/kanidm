@@ -45,7 +45,7 @@ openssl.workspace = true
 r2d2.workspace = true
 r2d2_sqlite.workspace = true
 rand.workspace = true
-regex.workspace = true
+regex = { workspace = true, features = ["std", "perf", "perf-inline", "unicode", "unicode-gencat"] }
 serde = { workspace = true, features = ["derive"] }
 serde_cbor.workspace = true
 serde_json.workspace = true
@@ -55,17 +55,17 @@ smolset.workspace = true
 sshkeys.workspace = true
 tide.workspace = true
 time = { workspace = true, features = ["serde", "std"] }
-tokio = { workspace = true, features = ["net", "sync", "time"] }
+tokio = { workspace = true, features = ["net", "sync", "time", "rt"] }
 tokio-util = { workspace = true, features = ["codec"] }
 toml.workspace = true
 touch.workspace = true
+nonempty = { workspace = true, features = ["serialize"] }
 
 tracing = { workspace = true, features = ["attributes"] }
 
 url = { workspace = true, features = ["serde"] }
 urlencoding.workspace = true
 uuid = { workspace = true, features = ["serde", "v4" ] }
-validator = { workspace = true, features = ["phone"] }
 webauthn-rs = { workspace = true, features = ["resident-key-support", "preview-features", "danger-credential-internals"] }
 webauthn-rs-core.workspace = true
 zxcvbn.workspace = true

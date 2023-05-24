@@ -7,17 +7,12 @@ use serde::{Deserialize, Serialize};
 
 /// This is used in user-facing CLIs to set the formatting for output,
 /// and defaults to text.
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum ConsoleOutputMode {
+    #[default]
     Text,
     JSON,
-}
-
-impl Default for ConsoleOutputMode {
-    fn default() -> Self {
-        ConsoleOutputMode::Text
-    }
 }
 
 impl FromStr for ConsoleOutputMode {

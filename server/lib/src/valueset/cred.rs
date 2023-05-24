@@ -46,9 +46,7 @@ impl ValueSetCredential {
     pub fn from_repl_v1(data: &[ReplCredV1]) -> Result<ValueSet, OperationError> {
         let map = data
             .iter()
-            .map(|dc| {
-                Credential::try_from_repl_v1(dc).map_err(|()| OperationError::InvalidValueState)
-            })
+            .map(Credential::try_from_repl_v1)
             .collect::<Result<_, _>>()?;
         Ok(Box::new(ValueSetCredential { map }))
     }
@@ -119,7 +117,9 @@ impl ValueSetT for ValueSetCredential {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        true
+        self.map
+            .iter()
+            .all(|(s, _)| Value::validate_str_escapes(s) && Value::validate_singleline(s))
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
@@ -333,7 +333,9 @@ impl ValueSetT for ValueSetIntentToken {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        true
+        self.map
+            .iter()
+            .all(|(s, _)| Value::validate_str_escapes(s) && Value::validate_singleline(s))
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
@@ -464,9 +466,7 @@ impl ValueSetPasskey {
         let map = data
             .iter()
             .cloned()
-            .map(|k| match k {
-                ReplPasskeyV4V1 { uuid, tag, key } => Ok((uuid, (tag, key))),
-            })
+            .map(|ReplPasskeyV4V1 { uuid, tag, key }| Ok((uuid, (tag, key))))
             .collect::<Result<_, _>>()?;
         Ok(Box::new(ValueSetPasskey { map }))
     }
@@ -540,7 +540,9 @@ impl ValueSetT for ValueSetPasskey {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        true
+        self.map
+            .iter()
+            .all(|(_, (s, _))| Value::validate_str_escapes(s) && Value::validate_singleline(s))
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
@@ -648,9 +650,7 @@ impl ValueSetDeviceKey {
         let map = data
             .iter()
             .cloned()
-            .map(|k| match k {
-                ReplDeviceKeyV4V1 { uuid, tag, key } => Ok((uuid, (tag, key))),
-            })
+            .map(|ReplDeviceKeyV4V1 { uuid, tag, key }| Ok((uuid, (tag, key))))
             .collect::<Result<_, _>>()?;
         Ok(Box::new(ValueSetDeviceKey { map }))
     }
@@ -724,7 +724,9 @@ impl ValueSetT for ValueSetDeviceKey {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        true
+        self.map
+            .iter()
+            .all(|(_, (s, _))| Value::validate_str_escapes(s) && Value::validate_singleline(s))
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {

@@ -101,7 +101,7 @@ fn delete_filter_entry<'a>(
     }
 }
 
-fn protected_filter_entry<'a>(ident: &Identity, entry: &'a Arc<EntrySealedCommitted>) -> IResult {
+fn protected_filter_entry(ident: &Identity, entry: &Arc<EntrySealedCommitted>) -> IResult {
     match &ident.origin {
         IdentType::Internal => {
             trace!("Internal operation, protected rules do not apply.");

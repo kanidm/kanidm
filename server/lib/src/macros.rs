@@ -13,7 +13,9 @@ macro_rules! setup_test {
             .expect("Failed to init BE");
 
         let qs = QueryServer::new(be, schema_outer, "example.com".to_string());
-        tokio::runtime::Runtime::new()
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
             .unwrap()
             .block_on(qs.initialise_helper(duration_from_epoch_now()))
             .expect("init failed!");
@@ -36,13 +38,17 @@ macro_rules! setup_test {
             .expect("Failed to init BE");
 
         let qs = QueryServer::new(be, schema_outer, "example.com".to_string());
-        tokio::runtime::Runtime::new()
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
             .unwrap()
             .block_on(qs.initialise_helper(duration_from_epoch_now()))
             .expect("init failed!");
 
         if !$preload_entries.is_empty() {
-            let mut qs_write = tokio::runtime::Runtime::new()
+            let mut qs_write = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
                 .unwrap()
                 .block_on(qs.write(duration_from_epoch_now()));
             qs_write
@@ -105,7 +111,9 @@ macro_rules! run_create_test {
         };
 
         {
-            let mut qs_write = tokio::runtime::Runtime::new()
+            let mut qs_write = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
                 .unwrap()
                 .block_on(qs.write(duration_from_epoch_now()));
             let r = qs_write.create(&ce);
@@ -123,7 +131,9 @@ macro_rules! run_create_test {
         }
         // Make sure there are no errors.
         trace!("starting verification");
-        let ver = tokio::runtime::Runtime::new()
+        let ver = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
             .unwrap()
             .block_on(qs.verify());
         trace!("verification -> {:?}", ver);
@@ -151,7 +161,9 @@ macro_rules! run_modify_test {
         let qs = setup_test!($preload_entries);
 
         {
-            let mut qs_write = tokio::runtime::Runtime::new()
+            let mut qs_write = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
                 .unwrap()
                 .block_on(qs.write(duration_from_epoch_now()));
             $pre_hook(&mut qs_write);
@@ -166,7 +178,9 @@ macro_rules! run_modify_test {
         };
 
         {
-            let mut qs_write = tokio::runtime::Runtime::new()
+            let mut qs_write = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
                 .unwrap()
                 .block_on(qs.write(duration_from_epoch_now()));
             let r = qs_write.modify(&me);
@@ -184,7 +198,9 @@ macro_rules! run_modify_test {
         }
         // Make sure there are no errors.
         trace!("starting verification");
-        let ver = tokio::runtime::Runtime::new()
+        let ver = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
             .unwrap()
             .block_on(qs.verify());
         trace!("verification -> {:?}", ver);
@@ -216,7 +232,9 @@ macro_rules! run_delete_test {
         };
 
         {
-            let mut qs_write = tokio::runtime::Runtime::new()
+            let mut qs_write = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
                 .unwrap()
                 .block_on(qs.write(duration_from_epoch_now()));
             let r = qs_write.delete(&de);
@@ -234,7 +252,9 @@ macro_rules! run_delete_test {
         }
         // Make sure there are no errors.
         trace!("starting verification");
-        let ver = tokio::runtime::Runtime::new()
+        let ver = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
             .unwrap()
             .block_on(qs.verify());
         trace!("verification -> {:?}", ver);

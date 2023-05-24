@@ -14,7 +14,9 @@
 #[global_allocator]
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-use std::fs::metadata;
+use std::fs::{metadata, File};
+// This works on both unix and windows.
+use fs2::FileExt;
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
@@ -234,6 +236,25 @@ async fn main() -> ExitCode {
             config.update_role(sconfig.role);
             config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());
             config.update_trust_x_forward_for(sconfig.trust_x_forward_for);
+
+            // Okay - Lets now create our lock and go.
+            let klock_path = format!("{}.klock" ,sconfig.db_path.as_str());
+            let flock = match File::create(&klock_path) {
+                Ok(flock) => flock,
+                Err(e) => {
+                    error!("ERROR: Refusing to start - unable to create kanidm exclusive lock at {} - {:?}", klock_path, e);
+                    return ExitCode::FAILURE
+                }
+            };
+
+            match flock.try_lock_exclusive() {
+                Ok(()) => debug!("Acquired kanidm exclusive lock"),
+                Err(e) => {
+                    error!("ERROR: Refusing to start - unable to lock kanidm exclusive lock at {} - {:?}", klock_path, e);
+                    error!("Is another kanidm process running?");
+                    return ExitCode::FAILURE
+                }
+            };
 
             /*
             // Apply any cli overrides, normally debug level.

@@ -10,6 +10,11 @@ use kanidm_proto::v1::UserAuthToken;
 use crate::session::read_tokens;
 use crate::CommonOpt;
 
+pub enum OpType {
+    Read,
+    Write,
+}
+
 impl CommonOpt {
     pub fn to_unauth_client(&self) -> KanidmClient {
         let config_path: String = shellexpand::tilde(DEFAULT_CLIENT_CONFIG_PATH_HOME).into_owned();
@@ -68,7 +73,7 @@ impl CommonOpt {
         })
     }
 
-    pub async fn to_client(&self) -> KanidmClient {
+    pub async fn to_client(&self, optype: OpType) -> KanidmClient {
         let client = self.to_unauth_client();
         // Read the token file.
         let tokens = match read_tokens() {
@@ -133,13 +138,28 @@ impl CommonOpt {
             .map(|jws: Jws<UserAuthToken>| jws.into_inner())
         {
             Ok(uat) => {
+                let now_utc = time::OffsetDateTime::now_utc();
                 if let Some(exp) = uat.expiry {
-                    if time::OffsetDateTime::now_utc() >= exp {
+                    if now_utc >= exp {
                         error!(
                             "Session has expired for {} - you may need to login again.",
                             uat.spn
                         );
                         std::process::exit(1);
+                    }
+                }
+
+                // Check what we are doing based on op.
+                match optype {
+                    OpType::Read => {}
+                    OpType::Write => {
+                        if !uat.purpose_readwrite_active(now_utc + time::Duration::new(20, 0)) {
+                            error!(
+                                "Privileges have expired for {} - you need to re-authenticate again.",
+                                uat.spn
+                            );
+                            std::process::exit(1);
+                        }
                     }
                 }
             }

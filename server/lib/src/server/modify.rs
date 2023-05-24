@@ -134,7 +134,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // do the CORRECT thing and recommit as we may find later we always
         // want to add CSN's or other.
 
-        let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> = candidates
+        let res: Result<Vec<EntrySealedCommitted>, OperationError> = candidates
             .into_iter()
             .map(|entry| {
                 entry

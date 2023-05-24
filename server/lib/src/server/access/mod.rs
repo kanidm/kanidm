@@ -210,6 +210,7 @@ pub trait AccessControlsTransaction<'a> {
         let related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(&se.ident);
 
         // For each entry.
+        let entries_is_empty = entries.is_empty();
         let allowed_entries: Vec<_> = entries
             .into_iter()
             .filter(|e| {
@@ -233,7 +234,9 @@ pub trait AccessControlsTransaction<'a> {
             .collect();
 
         if allowed_entries.is_empty() {
-            security_access!("denied ❌ - no entries were released");
+            if !entries_is_empty {
+                security_access!("denied ❌ - no entries were released");
+            }
         } else {
             security_access!("allowed {} entries ✅", allowed_entries.len());
         }
@@ -272,6 +275,7 @@ pub trait AccessControlsTransaction<'a> {
         };
 
         // For each entry.
+        let entries_is_empty = entries.is_empty();
         let allowed_entries: Vec<_> = entries
             .into_iter()
             .filter_map(|e| {
@@ -321,7 +325,9 @@ pub trait AccessControlsTransaction<'a> {
             .collect();
 
         if allowed_entries.is_empty() {
-            security_access!("reduced to empty set on all entries ❌");
+            if !entries_is_empty {
+                security_access!("reduced to empty set on all entries ❌");
+            }
         } else {
             security_access!(
                 "attribute set reduced on {} entries ✅",

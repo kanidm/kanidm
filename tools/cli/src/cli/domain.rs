@@ -1,21 +1,23 @@
+use crate::common::OpType;
 use crate::DomainOpt;
 
 impl DomainOpt {
     pub fn debug(&self) -> bool {
         match self {
-            DomainOpt::SetDomainDisplayName(copt) => copt.copt.debug,
+            DomainOpt::SetDisplayName(copt) => copt.copt.debug,
+            DomainOpt::SetLdapBasedn { copt, .. } => copt.debug,
             DomainOpt::Show(copt) | DomainOpt::ResetTokenKey(copt) => copt.debug,
         }
     }
 
     pub async fn exec(&self) {
         match self {
-            DomainOpt::SetDomainDisplayName(opt) => {
+            DomainOpt::SetDisplayName(opt) => {
                 eprintln!(
                     "Attempting to set the domain's display name to: {:?}",
                     opt.new_display_name
                 );
-                let client = opt.copt.to_client().await;
+                let client = opt.copt.to_client(OpType::Write).await;
                 match client
                     .idm_domain_set_display_name(&opt.new_display_name)
                     .await
@@ -24,15 +26,26 @@ impl DomainOpt {
                     Err(e) => eprintln!("{:?}", e),
                 }
             }
+            DomainOpt::SetLdapBasedn { copt, new_basedn } => {
+                eprintln!(
+                    "Attempting to set the domain's ldap basedn to: {:?}",
+                    new_basedn
+                );
+                let client = copt.to_client(OpType::Write).await;
+                match client.idm_domain_set_ldap_basedn(new_basedn).await {
+                    Ok(_) => println!("Success"),
+                    Err(e) => eprintln!("{:?}", e),
+                }
+            }
             DomainOpt::Show(copt) => {
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Read).await;
                 match client.idm_domain_get().await {
                     Ok(e) => println!("{}", e),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             DomainOpt::ResetTokenKey(copt) => {
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Write).await;
                 match client.idm_domain_reset_token_key().await {
                     Ok(_) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),

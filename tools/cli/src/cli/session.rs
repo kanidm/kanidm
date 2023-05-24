@@ -1,10 +1,11 @@
+use crate::common::OpType;
 use std::collections::BTreeMap;
 use std::fs::{create_dir, File};
 use std::io::{self, BufReader, BufWriter, ErrorKind, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use compact_jwt::JwsUnverified;
+use compact_jwt::{Jws, JwsUnverified};
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Select;
 use kanidm_client::{ClientError, KanidmClient};
@@ -15,7 +16,7 @@ use webauthn_authenticator_rs::prelude::RequestChallengeResponse;
 
 use crate::common::prompt_for_username_get_username;
 use crate::webauthn::get_authenticator;
-use crate::{LoginOpt, LogoutOpt, SessionOpt};
+use crate::{LoginOpt, LogoutOpt, ReauthOpt, SessionOpt};
 
 static TOKEN_DIR: &str = "~/.cache";
 static TOKEN_PATH: &str = "~/.cache/kanidm_tokens";
@@ -137,107 +138,214 @@ fn get_index_choice_dialoguer(msg: &str, options: &[String]) -> usize {
     selection
 }
 
+async fn do_password(
+    client: &mut KanidmClient,
+    password: &Option<String>,
+) -> Result<AuthResponse, ClientError> {
+    let password = match password {
+        Some(password) => {
+            trace!("User provided password directly, don't need to prompt.");
+            password.to_owned()
+        }
+        None => rpassword::prompt_password("Enter password: ").unwrap_or_else(|e| {
+            error!("Failed to create password prompt -- {:?}", e);
+            std::process::exit(1);
+        }),
+    };
+    client.auth_step_password(password.as_str()).await
+}
+
+async fn do_backup_code(client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
+    print!("Enter Backup Code: ");
+    // We flush stdout so it'll write the buffer to screen, continuing operation. Without it, the application halts.
+    #[allow(clippy::unwrap_used)]
+    io::stdout().flush().unwrap();
+    let mut backup_code = String::new();
+    loop {
+        if let Err(e) = io::stdin().read_line(&mut backup_code) {
+            error!("Failed to read from stdin -> {:?}", e);
+            return Err(ClientError::SystemError);
+        };
+        if !backup_code.trim().is_empty() {
+            break;
+        };
+    }
+    client.auth_step_backup_code(backup_code.trim()).await
+}
+
+async fn do_totp(client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
+    let totp = loop {
+        print!("Enter TOTP: ");
+        // We flush stdout so it'll write the buffer to screen, continuing operation. Without it, the application halts.
+        if let Err(e) = io::stdout().flush() {
+            error!("Somehow we failed to flush stdout: {:?}", e);
+        };
+        let mut buffer = String::new();
+        if let Err(e) = io::stdin().read_line(&mut buffer) {
+            error!("Failed to read from stdin -> {:?}", e);
+            return Err(ClientError::SystemError);
+        };
+
+        let response = buffer.trim();
+        match response.parse::<u32>() {
+            Ok(i) => break i,
+            Err(_) => eprintln!("Invalid Number"),
+        };
+    };
+    client.auth_step_totp(totp).await
+}
+
+async fn do_passkey(
+    client: &mut KanidmClient,
+    pkr: RequestChallengeResponse,
+) -> Result<AuthResponse, ClientError> {
+    let mut wa = get_authenticator();
+    println!("Your authenticator will now flash for you to interact with it.");
+    let auth = wa
+        .do_authentication(client.get_origin().clone(), pkr)
+        .map(Box::new)
+        .unwrap_or_else(|e| {
+            error!("Failed to interact with webauthn device. -- {:?}", e);
+            std::process::exit(1);
+        });
+
+    client.auth_step_passkey_complete(auth).await
+}
+
+async fn do_securitykey(
+    client: &mut KanidmClient,
+    pkr: RequestChallengeResponse,
+) -> Result<AuthResponse, ClientError> {
+    let mut wa = get_authenticator();
+    println!("Your authenticator will now flash for you to interact with it.");
+    let auth = wa
+        .do_authentication(client.get_origin().clone(), pkr)
+        .map(Box::new)
+        .unwrap_or_else(|e| {
+            error!("Failed to interact with webauthn device. -- {:?}", e);
+            std::process::exit(1);
+        });
+
+    client.auth_step_securitykey_complete(auth).await
+}
+
+async fn process_auth_state(
+    mut allowed: Vec<AuthAllowed>,
+    mut client: KanidmClient,
+    maybe_password: &Option<String>,
+) {
+    loop {
+        debug!("Allowed mechanisms -> {:?}", allowed);
+        // What auth can proceed?
+        let choice = match allowed.len() {
+            0 => {
+                error!("Error during authentication phase: Server offered no method to proceed");
+                std::process::exit(1);
+            }
+            1 =>
+            {
+                #[allow(clippy::expect_used)]
+                allowed
+                    .get(0)
+                    .expect("can not fail - bounds already checked.")
+            }
+            _ => {
+                let mut options = Vec::new();
+                for val in allowed.iter() {
+                    options.push(val.to_string());
+                }
+                let msg = "Please choose what credential to provide:";
+                let selection = get_index_choice_dialoguer(msg, &options);
+
+                #[allow(clippy::expect_used)]
+                allowed
+                    .get(selection)
+                    .expect("can not fail - bounds already checked.")
+            }
+        };
+
+        let res = match choice {
+            AuthAllowed::Anonymous => client.auth_step_anonymous().await,
+            AuthAllowed::Password => do_password(&mut client, maybe_password).await,
+            AuthAllowed::BackupCode => do_backup_code(&mut client).await,
+            AuthAllowed::Totp => do_totp(&mut client).await,
+            AuthAllowed::Passkey(chal) => do_passkey(&mut client, chal.clone()).await,
+            AuthAllowed::SecurityKey(chal) => do_securitykey(&mut client, chal.clone()).await,
+        };
+
+        // Now update state.
+        let state = res
+            .unwrap_or_else(|e| {
+                error!("Error in authentication phase: {:?}", e);
+                std::process::exit(1);
+            })
+            .state;
+
+        // What auth state are we in?
+        allowed = match &state {
+            AuthState::Continue(allowed) => allowed.to_vec(),
+            AuthState::Success(_token) => break,
+            AuthState::Denied(reason) => {
+                error!("Authentication Denied: {:?}", reason);
+                std::process::exit(1);
+            }
+            _ => {
+                error!("Error in authentication phase: invalid authstate");
+                std::process::exit(1);
+            }
+        };
+        // Loop again.
+    }
+
+    // Read the current tokens
+    let mut tokens = read_tokens().unwrap_or_else(|_| {
+        error!("Error retrieving authentication token store");
+        std::process::exit(1);
+    });
+
+    // Add our new one
+    let (username, tonk) = match client.get_token().await {
+        Some(t) => {
+            let tonk = match JwsUnverified::from_str(&t).and_then(|jwtu| {
+                jwtu.validate_embeded()
+                    .map(|jws: Jws<UserAuthToken>| jws.into_inner())
+            }) {
+                Ok(uat) => uat,
+                Err(e) => {
+                    error!("Unable to parse token - {:?}", e);
+                    std::process::exit(1);
+                }
+            };
+
+            let username = tonk.name().to_string();
+            // Return the un-parsed token
+            (username, t)
+        }
+        None => {
+            error!("Error retrieving client session");
+            std::process::exit(1);
+        }
+    };
+
+    tokens.insert(username.clone(), tonk);
+
+    // write them out.
+    if write_tokens(&tokens).is_err() {
+        error!("Error persisting authentication token store");
+        std::process::exit(1);
+    };
+
+    // Success!
+    println!("Login Success for {}", username);
+}
+
 impl LoginOpt {
     pub fn debug(&self) -> bool {
         self.copt.debug
     }
 
-    async fn do_password(
-        &self,
-        client: &mut KanidmClient,
-        password: &Option<String>,
-    ) -> Result<AuthResponse, ClientError> {
-        let password = match password {
-            Some(password) => {
-                trace!("User provided password directly, don't need to prompt.");
-                password.to_owned()
-            }
-            None => rpassword::prompt_password("Enter password: ").unwrap_or_else(|e| {
-                error!("Failed to create password prompt -- {:?}", e);
-                std::process::exit(1);
-            }),
-        };
-        client.auth_step_password(password.as_str()).await
-    }
-
-    async fn do_backup_code(&self, client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
-        print!("Enter Backup Code: ");
-        // We flush stdout so it'll write the buffer to screen, continuing operation. Without it, the application halts.
-        #[allow(clippy::unwrap_used)]
-        io::stdout().flush().unwrap();
-        let mut backup_code = String::new();
-        loop {
-            if let Err(e) = io::stdin().read_line(&mut backup_code) {
-                error!("Failed to read from stdin -> {:?}", e);
-                return Err(ClientError::SystemError);
-            };
-            if !backup_code.trim().is_empty() {
-                break;
-            };
-        }
-        client.auth_step_backup_code(backup_code.trim()).await
-    }
-
-    async fn do_totp(&self, client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
-        let totp = loop {
-            print!("Enter TOTP: ");
-            // We flush stdout so it'll write the buffer to screen, continuing operation. Without it, the application halts.
-            if let Err(e) = io::stdout().flush() {
-                error!("Somehow we failed to flush stdout: {:?}", e);
-            };
-            let mut buffer = String::new();
-            if let Err(e) = io::stdin().read_line(&mut buffer) {
-                error!("Failed to read from stdin -> {:?}", e);
-                return Err(ClientError::SystemError);
-            };
-
-            let response = buffer.trim();
-            match response.parse::<u32>() {
-                Ok(i) => break i,
-                Err(_) => eprintln!("Invalid Number"),
-            };
-        };
-        client.auth_step_totp(totp).await
-    }
-
-    async fn do_passkey(
-        &self,
-        client: &mut KanidmClient,
-        pkr: RequestChallengeResponse,
-    ) -> Result<AuthResponse, ClientError> {
-        let mut wa = get_authenticator();
-        println!("Your authenticator will now flash for you to interact with it.");
-        let auth = wa
-            .do_authentication(client.get_origin().clone(), pkr)
-            .map(Box::new)
-            .unwrap_or_else(|e| {
-                error!("Failed to interact with webauthn device. -- {:?}", e);
-                std::process::exit(1);
-            });
-
-        client.auth_step_passkey_complete(auth).await
-    }
-
-    async fn do_securitykey(
-        &self,
-        client: &mut KanidmClient,
-        pkr: RequestChallengeResponse,
-    ) -> Result<AuthResponse, ClientError> {
-        let mut wa = get_authenticator();
-        println!("Your authenticator will now flash for you to interact with it.");
-        let auth = wa
-            .do_authentication(client.get_origin().clone(), pkr)
-            .map(Box::new)
-            .unwrap_or_else(|e| {
-                error!("Failed to interact with webauthn device. -- {:?}", e);
-                std::process::exit(1);
-            });
-
-        client.auth_step_securitykey_complete(auth).await
-    }
-
     pub async fn exec(&self) {
-        let mut client = self.copt.to_unauth_client();
+        let client = self.copt.to_unauth_client();
         let username = match self.copt.username.as_deref() {
             Some(val) => val,
             None => {
@@ -284,7 +392,7 @@ impl LoginOpt {
             }
         };
 
-        let mut allowed = client
+        let allowed = client
             .auth_step_begin((*mech).clone())
             .await
             .unwrap_or_else(|e| {
@@ -293,95 +401,24 @@ impl LoginOpt {
             });
 
         // We now have the first auth state, so we can proceed until complete.
-        loop {
-            debug!("Allowed mechanisms -> {:?}", allowed);
-            // What auth can proceed?
-            let choice = match allowed.len() {
-                0 => {
-                    error!(
-                        "Error during authentication phase: Server offered no method to proceed"
-                    );
-                    std::process::exit(1);
-                }
-                1 =>
-                {
-                    #[allow(clippy::expect_used)]
-                    allowed
-                        .get(0)
-                        .expect("can not fail - bounds already checked.")
-                }
-                _ => {
-                    let mut options = Vec::new();
-                    for val in allowed.iter() {
-                        options.push(val.to_string());
-                    }
-                    let msg = "Please choose what credential to provide:";
-                    let selection = get_index_choice_dialoguer(msg, &options);
+        process_auth_state(allowed, client, &self.password).await;
+    }
+}
 
-                    #[allow(clippy::expect_used)]
-                    allowed
-                        .get(selection)
-                        .expect("can not fail - bounds already checked.")
-                }
-            };
+impl ReauthOpt {
+    pub fn debug(&self) -> bool {
+        self.copt.debug
+    }
 
-            let res = match choice {
-                AuthAllowed::Anonymous => client.auth_step_anonymous().await,
-                AuthAllowed::Password => self.do_password(&mut client, &self.password).await,
-                AuthAllowed::BackupCode => self.do_backup_code(&mut client).await,
-                AuthAllowed::Totp => self.do_totp(&mut client).await,
-                AuthAllowed::Passkey(chal) => self.do_passkey(&mut client, chal.clone()).await,
-                AuthAllowed::SecurityKey(chal) => {
-                    self.do_securitykey(&mut client, chal.clone()).await
-                }
-            };
+    pub async fn exec(&self) {
+        let client = self.copt.to_client(OpType::Read).await;
 
-            // Now update state.
-            let state = res
-                .unwrap_or_else(|e| {
-                    error!("Error in authentication phase: {:?}", e);
-                    std::process::exit(1);
-                })
-                .state;
-
-            // What auth state are we in?
-            allowed = match &state {
-                AuthState::Continue(allowed) => allowed.to_vec(),
-                AuthState::Success(_token) => break,
-                AuthState::Denied(reason) => {
-                    error!("Authentication Denied: {:?}", reason);
-                    std::process::exit(1);
-                }
-                _ => {
-                    error!("Error in authentication phase: invalid authstate");
-                    std::process::exit(1);
-                }
-            };
-            // Loop again.
-        }
-
-        // Read the current tokens
-        let mut tokens = read_tokens().unwrap_or_else(|_| {
-            error!("Error retrieving authentication token store");
+        let allowed = client.reauth_begin().await.unwrap_or_else(|e| {
+            error!("Error during reauthentication begin phase: {:?}", e);
             std::process::exit(1);
         });
-        // Add our new one
-        match client.get_token().await {
-            Some(t) => tokens.insert(username.to_string(), t),
-            None => {
-                error!("Error retrieving client session");
-                std::process::exit(1);
-            }
-        };
 
-        // write them out.
-        if write_tokens(&tokens).is_err() {
-            error!("Error persisting authentication token store");
-            std::process::exit(1);
-        };
-
-        // Success!
-        println!("Login Success for {}", username);
+        process_auth_state(allowed, client, &None).await;
     }
 }
 
@@ -405,7 +442,7 @@ impl LogoutOpt {
                 },
             }
         } else {
-            let client = self.copt.to_client().await;
+            let client = self.copt.to_client(OpType::Read).await;
             let token = match client.get_token().await {
                 Some(t) => t,
                 None => {

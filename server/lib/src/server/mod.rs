@@ -31,6 +31,7 @@ use crate::schema::{
     Schema, SchemaAttribute, SchemaClass, SchemaReadTransaction, SchemaTransaction,
     SchemaWriteTransaction,
 };
+use crate::value::EXTRACT_VAL_DN;
 use crate::valueset::uuid_to_proto_string;
 
 pub mod access;
@@ -265,11 +266,25 @@ pub trait QueryServerTransaction<'a> {
     }
 
     fn name_to_uuid(&mut self, name: &str) -> Result<Uuid, OperationError> {
+        // There are some contexts where we will be passed an rdn or dn. We need
+        // to remove these elements if they exist.
+        //
+        // Why is it okay to ignore the attr and dn here? In Kani spn and name are
+        // always unique and absolutes, so even if the dn/rdn are not expected, there
+        // is only a single correct answer that *can* match these values. This also
+        // hugely simplifies the process of matching when we have app based searches
+        // in future too.
+
+        let work = EXTRACT_VAL_DN
+            .captures(name)
+            .and_then(|caps| caps.name("val"))
+            .map(|v| v.as_str().to_lowercase())
+            .ok_or(OperationError::InvalidValueState)?;
+
         // Is it just a uuid?
-        Uuid::parse_str(name).or_else(|_| {
-            let lname = name.to_lowercase();
+        Uuid::parse_str(&work).or_else(|_| {
             self.get_be_txn()
-                .name2uuid(lname.as_str())?
+                .name2uuid(&work)?
                 .ok_or(OperationError::NoMatchingEntries)
         })
     }
@@ -994,12 +1009,18 @@ impl QueryServer {
 
     pub async fn read(&self) -> QueryServerReadTransaction<'_> {
         // We need to ensure a db conn will be available
-        #[allow(clippy::expect_used)]
-        let db_ticket = self
-            .db_tickets
-            .acquire()
-            .await
-            .expect("unable to acquire db_ticket for qsr");
+        let db_ticket = if cfg!(test) {
+            #[allow(clippy::expect_used)]
+            self.db_tickets
+                .try_acquire()
+                .expect("unable to acquire db_ticket for qsr")
+        } else {
+            #[allow(clippy::expect_used)]
+            self.db_tickets
+                .acquire()
+                .await
+                .expect("unable to acquire db_ticket for qsr")
+        };
 
         QueryServerReadTransaction {
             be_txn: self.be.read(),
@@ -1014,18 +1035,30 @@ impl QueryServer {
     pub async fn write(&self, curtime: Duration) -> QueryServerWriteTransaction<'_> {
         // Guarantee we are the only writer on the thread pool
         #[allow(clippy::expect_used)]
-        let write_ticket = self
-            .write_ticket
-            .acquire()
-            .await
-            .expect("unable to acquire writer_ticket for qsw");
+        let write_ticket = if cfg!(debug_assertions) {
+            self.write_ticket
+                .try_acquire()
+                .expect("unable to acquire writer_ticket for qsw")
+        } else {
+            self.write_ticket
+                .acquire()
+                .await
+                .expect("unable to acquire writer_ticket for qsw")
+        };
+
         // We need to ensure a db conn will be available
-        #[allow(clippy::expect_used)]
-        let db_ticket = self
-            .db_tickets
-            .acquire()
-            .await
-            .expect("unable to acquire db_ticket for qsw");
+        let db_ticket = if cfg!(test) {
+            #[allow(clippy::expect_used)]
+            self.db_tickets
+                .try_acquire()
+                .expect("unable to acquire db_ticket for qsw")
+        } else {
+            #[allow(clippy::expect_used)]
+            self.db_tickets
+                .acquire()
+                .await
+                .expect("unable to acquire db_ticket for qsw")
+        };
 
         let schema_write = self.schema.write();
         let mut be_txn = self.be.write();
@@ -1485,6 +1518,12 @@ mod tests {
         // Name is not syntax normalised (but exists)
         let r4 = server_txn.name_to_uuid("tEsTpErSoN1");
         assert!(r4 == Ok(t_uuid));
+        // Name is an rdn
+        let r5 = server_txn.name_to_uuid("name=testperson1");
+        assert!(r5 == Ok(t_uuid));
+        // Name is a dn
+        let r6 = server_txn.name_to_uuid("name=testperson1,o=example");
+        assert!(r6 == Ok(t_uuid));
     }
 
     #[qs_test]

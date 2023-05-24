@@ -106,6 +106,7 @@ install-tools:
 	cargo install --path tools/cli --force
 
 .PHONY: codespell
+codespell: ## spell-check things.
 codespell:
 	codespell -c \
 	-L 'crate,unexpect,Pres,pres,ACI,aci,te,ue,aNULL' \
@@ -227,12 +228,10 @@ release/kanidm-unixd: ## Build the Kanidm UNIX tools - ensure you include the en
 release/kanidm-unixd:
 	cargo build -p pam_kanidm --release
 	cargo build -p nss_kanidm --release
-	cargo build --release \
-		--bin kanidm_unixd  \
-		--bin kanidm_unixd_status \
+	cargo build --features unix -p kanidm_unix_int --release \
+		--bin kanidm_unixd \
 		--bin kanidm_unixd_tasks \
-		--bin kanidm_cache_clear \
-		--bin kanidm_cache_invalidate
+		--bin kanidm-unix
 
 # cert things
 

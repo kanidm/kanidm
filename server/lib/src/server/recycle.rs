@@ -569,6 +569,7 @@ mod tests {
         let time_p2 = time_p1 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
         let time_p3 = time_p2 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
 
+        trace!("test_tombstone_start");
         let mut server_txn = server.write(time_p1).await;
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 

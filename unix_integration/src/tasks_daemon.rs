@@ -217,7 +217,7 @@ async fn handle_tasks(stream: UnixStream, cfg: &KanidmUnixdConfig) {
     }
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
     // let cuid = get_current_uid();
     // let cgid = get_current_gid();
