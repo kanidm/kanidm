@@ -439,36 +439,6 @@ pub async extern "system" fn ApLogonTerminated(luid: *const LUID) {
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case, unused_variables)]
-pub async extern "system" fn ApCallPackageUntrusted(
-    client_req: *const *const c_void,
-    submit_buf: *const c_void,     // Cast to own Protocol Submit Buffer
-    submit_buf_loc: *const c_void, // Pointer to submit_buf
-    submit_buf_len: u32,
-    out_return_buf: *mut *mut c_void, // Cast to own return buffer
-    out_return_buf_len: *mut u32,
-    out_status: *mut i32, // NTSTATUS
-) -> NTSTATUS {
-    STATUS_SUCCESS
-}
-
-#[tokio::main(flavor = "current_thread")]
-#[no_mangle]
-#[allow(non_snake_case, unused_variables)]
-pub async extern "system" fn ApCallPackagePassthrough(
-    client_req: *const *const c_void,
-    submit_buf: *const c_void,     // Cast to own Protocol Submit Buffer
-    submit_buf_loc: *const c_void, // Pointer to submit_buf
-    submit_buf_len: u32,
-    out_return_buf: *mut *mut c_void, // Cast to own return buffer
-    out_return_buf_len: *mut u32,
-    out_status: *mut i32, // NTSTATUS
-) -> NTSTATUS {
-    STATUS_SUCCESS
-}
-
-#[tokio::main(flavor = "current_thread")]
-#[no_mangle]
-#[allow(non_snake_case, unused_variables)]
 pub async extern "system" fn SpInitialize(
     package_id: usize,
     params_ptr: *const SECPKG_PARAMETERS,
