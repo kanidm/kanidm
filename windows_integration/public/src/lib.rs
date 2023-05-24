@@ -16,7 +16,9 @@ pub enum AuthPkgResponse {
 	Error(AuthPkgError),
 }
 
-pub enum AuthPkgError {}
+pub enum AuthPkgError {
+	AuthenticationFailed,
+}
 
 pub struct AuthenticateAccountRequest {
 	pub account_type: AccountType,

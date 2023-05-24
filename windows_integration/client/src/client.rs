@@ -1,6 +1,5 @@
-use kanidm_client::{KanidmClient, KanidmClientBuilder, ClientError};
-use kanidm_proto::v1::{UnixUserToken, Entry};
-use kanidm_windows::secpkg::ap_proto::v1::AccountType;
+use kanidm_client::{KanidmClient, KanidmClientBuilder};
+use kanidm_proto::v1::{UnixUserToken};
 use tracing::{event, span, Level};
 
 #[derive(Debug)]

@@ -1,13 +1,13 @@
 use std::collections::{HashMap, BTreeMap};
 use std::ffi::c_void;
-use std::mem::size_of;
+use std::mem::{size_of};
 use std::ptr::null_mut;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use kanidm_proto::v1::UnixUserToken;
 use once_cell::sync::Lazy;
 use tracing::{event, span, Level};
-use kanidm_windows::secpkg::ap_proto::{AuthPkgRequest, AuthPkgResponse};
+use kanidm_windows::{AuthPkgRequest, AuthPkgResponse, AuthPkgError, AccountType, AuthenticateAccountResponse};
 
 use windows::core::PSTR;
 use windows::Win32::Foundation::{
@@ -383,11 +383,48 @@ pub async extern "system" fn ApCallPackage(
         }
     };
 
+    let client = match unsafe { KANIDM_WINDOWS_CLIENT.as_ref() } {
+        Some(client) => client,
+        None => {
+            span!(
+                Level::ERROR,
+                "Failed to get the kanidm client as a reference"
+            );
+            return STATUS_UNSUCCESSFUL;
+        }
+    };
+
     let request_ptr = submit_buf.cast::<AuthPkgRequest>();
     let request = match unsafe { request_ptr.as_ref() } {
         Some(req) => req,
         None => return STATUS_UNSUCCESSFUL,
     };
+
+    let response = match request {
+        AuthPkgRequest::AuthenticateAccount(auth_request) => {
+            let logon_result = client.logon_user_unix(&auth_request.id, &auth_request.password).await;
+
+            AuthPkgResponse::AuthenticateAccount(match logon_result {
+                Ok(token) => AuthenticateAccountResponse { status: Ok(()), token: Some(token) },
+                Err(_) => AuthenticateAccountResponse { status: Err(AuthPkgError::AuthenticationFailed), token: None },
+            })
+        }
+    };
+    let response_ptr = match allocate_mem_client(response, &dispatch_table.AllocateClientBuffer, client_req) {
+        Ok(ptr) => ptr,
+        Err(_) => {
+            span!(Level::ERROR, "Failed to allocate response");
+            return STATUS_UNSUCCESSFUL;
+        }
+    };
+
+    let out_return_buf_ptr = out_return_buf.cast::<*mut AuthPkgResponse>();
+
+    unsafe {
+        *out_return_buf_ptr = response_ptr;
+        *out_return_buf_len = size_of::<AuthPkgResponse>() as u32;
+        *out_status = 0i32;
+    }
 
     STATUS_SUCCESS
 }
