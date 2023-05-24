@@ -1,4 +1,3 @@
-use kanidm_client::ClientError;
 use kanidm_proto::v1::UnixUserToken;
 
 pub enum AccountType {

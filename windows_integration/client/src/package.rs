@@ -1,13 +1,13 @@
-use std::collections::{HashMap, BTreeMap};
+use std::collections::HashMap;
 use std::ffi::c_void;
-use std::mem::{size_of};
+use std::mem::size_of;
 use std::ptr::null_mut;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use kanidm_proto::v1::UnixUserToken;
 use once_cell::sync::Lazy;
 use tracing::{event, span, Level};
-use kanidm_windows::{AuthPkgRequest, AuthPkgResponse, AuthPkgError, AccountType, AuthenticateAccountResponse};
+use kanidm_windows::{AuthPkgRequest, AuthPkgResponse, AuthPkgError, AuthenticateAccountResponse};
 
 use windows::core::PSTR;
 use windows::Win32::Foundation::{
@@ -44,7 +44,7 @@ pub(crate) static mut KANIDM_WINDOWS_CLIENT: Lazy<Option<KanidmWindowsClient>> =
 });
 static mut AP_DISPATCH_TABLE: Option<LSA_DISPATCH_TABLE> = None;
 static mut AP_PACKAGE_ID: u32 = 0;
-static mut AP_LOGON_IDS: Lazy<HashMap<LogonId, UnixUserToken>> = Lazy::new(|| HashMap::new());
+static mut AP_LOGON_IDS: Lazy<HashMap<LogonId, UnixUserToken>> = Lazy::new(HashMap::new);
 static mut SP_PACKAGE_ID: usize = 0;
 static mut SP_SECPKG_PARAMS: Option<SECPKG_PARAMETERS> = None;
 static mut SP_FUNC_TABLE: Option<LSA_SECPKG_FUNCTION_TABLE> = None;
@@ -218,13 +218,10 @@ pub async extern "system" fn ApLogonUser(
     // * Generate LUID
     let luid_ptr = null_mut::<LUID>();
 
-    match unsafe { AllocateLocallyUniqueId(luid_ptr) } {
-        BOOL(0) => {
-            event!(Level::ERROR, "Failed to allocate unique id");
-            return STATUS_UNSUCCESSFUL;
-        }
-        _ => (),
-    };
+    if let BOOL(0) = unsafe { AllocateLocallyUniqueId(luid_ptr) } {
+        event!(Level::ERROR, "Failed to allocate unique id");
+        return STATUS_UNSUCCESSFUL;
+    }
 
     unsafe {
         *out_logon_id = *luid_ptr;
@@ -353,8 +350,8 @@ pub async extern "system" fn ApLogonUser(
         *out_substatus = 0;
 
         // Save the Logon ID
-        let logon_id = LogonId::from((*luid_ptr).clone());
-        AP_LOGON_IDS.insert(logon_id, token.clone());
+        let logon_id = LogonId::from(*luid_ptr);
+        AP_LOGON_IDS.insert(logon_id, token);
     }
 
     STATUS_SUCCESS
@@ -441,7 +438,7 @@ pub async extern "system" fn ApLogonTerminated(luid: *const LUID) {
 
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
-#[allow(non_snake_case)]
+#[allow(non_snake_case, unused_variables)]
 pub async extern "system" fn ApCallPackageUntrusted(
     client_req: *const *const c_void,
     submit_buf: *const c_void,     // Cast to own Protocol Submit Buffer
@@ -456,7 +453,7 @@ pub async extern "system" fn ApCallPackageUntrusted(
 
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
-#[allow(non_snake_case)]
+#[allow(non_snake_case, unused_variables)]
 pub async extern "system" fn ApCallPackagePassthrough(
     client_req: *const *const c_void,
     submit_buf: *const c_void,     // Cast to own Protocol Submit Buffer
@@ -471,7 +468,7 @@ pub async extern "system" fn ApCallPackagePassthrough(
 
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
-#[allow(non_snake_case)]
+#[allow(non_snake_case, unused_variables)]
 pub async extern "system" fn SpInitialize(
     package_id: usize,
     params_ptr: *const SECPKG_PARAMETERS,

@@ -8,7 +8,7 @@ pub(crate) mod mem;
 pub(crate) mod package;
 pub(crate) mod structs;
 
-pub(crate) const PROGRAM_DIR: &'static str = "C:\\Program Files\\kanidm";
+pub(crate) const PROGRAM_DIR: &str = "C:\\Program Files\\kanidm";
 
 // Naming Scheme for Tracing spans
 // The current naming scheme for these consist of the initials of function names followed by an s
@@ -43,10 +43,10 @@ pub async unsafe extern "system" fn SpLsaModeInitialize(
     event!(Level::INFO, "Client Version v{}", env!("CARGO_PKG_VERSION"));
 
     let package_version_str = format!(
-        "{}{}{}",
+        "{}{:0>3}{:0>3}",
         env!("CARGO_PKG_VERSION_MAJOR"),
-        format!("{:0>3}", env!("CARGO_PKG_VERSION_MINOR")),
-        format!("{:0>3}", env!("CARGO_PKG_VERSION_PATCH"))
+        env!("CARGO_PKG_VERSION_MINOR"),
+        env!("CARGO_PKG_VERSION_PATCH")
     );
 
     let package_version = match package_version_str.parse::<u32>() {

@@ -4,10 +4,9 @@ use tracing::{event, span, Level};
 
 #[derive(Debug)]
 pub enum KanidmWindowsClientError {
-    ReadOptionsFail,
-    BuildClientFail,
-    AuthenticationFail,
-    GetTokenFail,
+    ReadOptions,
+    BuildClient,
+    Authentication,
 }
 
 pub struct KanidmWindowsClient {
@@ -22,7 +21,7 @@ impl KanidmWindowsClient {
             Ok(cb) => cb,
             Err(_) => {
                 event!(Level::DEBUG, "Failed to read config path");
-                return Err(KanidmWindowsClientError::ReadOptionsFail);
+                return Err(KanidmWindowsClientError::ReadOptions);
             }
         };
 
@@ -30,24 +29,24 @@ impl KanidmWindowsClient {
             Ok(client) => client,
             Err(_) => {
                 event!(Level::DEBUG, "Failed to build kanidm client");
-                return Err(KanidmWindowsClientError::BuildClientFail);
+                return Err(KanidmWindowsClientError::BuildClient);
             }
         };
 
         ns.exit();
-        Ok(KanidmWindowsClient { client: client })
+        Ok(KanidmWindowsClient { client })
     }
 
     // TODO: Implement token caching
     pub async fn logon_user_unix(
         &self,
-        username: &String,
-        password: &String,
+        username: &str,
+        password: &str,
     ) -> Result<UnixUserToken, KanidmWindowsClientError> {
         let lus = span!(Level::INFO, "Starting logon process for {}", username).entered();
         let token = match self
             .client
-            .idm_account_unix_cred_verify(username.as_str(), password.as_str())
+            .idm_account_unix_cred_verify(username, password)
             .await
         {
             Ok(Some(token)) => token,
@@ -57,32 +56,11 @@ impl KanidmWindowsClient {
                     "Failed to authenticate user credentials for {}",
                     username
                 );
-                return Err(KanidmWindowsClientError::AuthenticationFail);
+                return Err(KanidmWindowsClientError::Authentication);
             }
         };
 
         lus.exit();
-        Ok(token)
-    }
-
-    pub async fn get_token(
-        &self,
-        username: &String,
-    ) -> Result<UnixUserToken, KanidmWindowsClientError> {
-        let gts = span!(Level::INFO, "Retrieving user token for {}", username).entered();
-        let token = match self
-            .client
-            .idm_account_unix_token_get(username.as_str())
-            .await
-        {
-            Ok(token) => token,
-            Err(_) => {
-                event!(Level::ERROR, "Failed to get token from kanidm client");
-                return Err(KanidmWindowsClientError::GetTokenFail);
-            }
-        };
-
-        gts.exit();
         Ok(token)
     }
 }
