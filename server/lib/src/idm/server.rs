@@ -27,7 +27,7 @@ use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
 
 use super::event::ReadBackupCodeEvent;
 use super::ldap::{LdapBoundToken, LdapSession};
-use crate::credential::softlock::CredSoftLock;
+use crate::credential::{softlock::CredSoftLock, Credential};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
@@ -39,9 +39,9 @@ use crate::idm::delayed::{
 use crate::idm::event::PasswordChangeEvent;
 use crate::idm::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::event::{
-    CredentialStatusEvent, GeneratePasswordEvent, LdapAuthEvent, LdapTokenAuthEvent,
-    RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, UnixGroupTokenEvent,
-    UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
+    CredentialStatusEvent, LdapAuthEvent, LdapTokenAuthEvent, RadiusAuthTokenEvent,
+    RegenerateRadiusSecretEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
+    UnixUserTokenEvent,
 };
 use crate::idm::oauth2::{
     Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
@@ -1478,6 +1478,10 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
 }
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
+    pub(crate) fn crypto_policy(&self) -> &CryptoPolicy {
+        self.crypto_policy
+    }
+
     pub fn get_origin(&self) -> &Url {
         #[allow(clippy::unwrap_used)]
         self.webauthn.get_allowed_origins().get(0).unwrap()
@@ -1716,18 +1720,23 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             e
         })?;
 
-        let account = self.target_to_account(target)?;
-
         let cleartext = cleartext
             .map(|s| s.to_string())
             .unwrap_or_else(password_from_random);
 
-        let modlist = account
-            .gen_generatedpassword_recover_mod(&cleartext, self.crypto_policy)
+        let ncred = Credential::new_generatedpassword_only(self.crypto_policy, &cleartext)
             .map_err(|e| {
-                admin_error!("Failed to generate password mod {:?}", e);
+                admin_error!("Unable to generate password mod {:?}", e);
                 e
             })?;
+        let vcred = Value::new_credential("primary", ncred);
+        // We need to remove other credentials too.
+        let modlist = ModifyList::new_list(vec![
+            m_purge("passkeys"),
+            m_purge("primary_credential"),
+            Modify::Present("primary_credential".into(), vcred),
+        ]);
+
         trace!(?modlist, "processing change");
 
         self.qs_write
@@ -1743,116 +1752,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         Ok(cleartext)
     }
-
-    pub fn generate_account_password(
-        &mut self,
-        gpe: &GeneratePasswordEvent,
-    ) -> Result<String, OperationError> {
-        let account = self.target_to_account(gpe.target)?;
-        // Ask if tis all good - this step checks pwpolicy and such
-
-        // Generate a new random, long pw.
-        // Because this is generated, we can bypass policy checks!
-        let cleartext = password_from_random();
-
-        // check a password badlist - even if generated, we still don't want to
-        // reuse something that has been disclosed.
-
-        // it returns a modify
-        let modlist = account
-            .gen_generatedpassword_recover_mod(cleartext.as_str(), self.crypto_policy)
-            .map_err(|e| {
-                admin_error!("Unable to generate password mod {:?}", e);
-                e
-            })?;
-
-        trace!(?modlist, "processing change");
-        // given the new credential generate a modify
-        // We use impersonate here to get the event from ae
-        self.qs_write
-            .impersonate_modify(
-                // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(gpe.target))),
-                // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(gpe.target))),
-                &modlist,
-                // Provide the event to impersonate
-                &gpe.ident,
-            )
-            .map(|_| cleartext)
-            .map_err(|e| {
-                admin_error!("Failed to generate account password {:?}", e);
-                e
-            })
-    }
-
-    /*
-    /// Generate a new set of backup code and remove the old ones.
-    pub(crate) fn generate_backup_code(
-        &mut self,
-        gbe: &GenerateBackupCodeEvent,
-    ) -> Result<Vec<String>, OperationError> {
-        let account = self.target_to_account(&gbe.target)?;
-
-        // Generate a new set of backup code.
-        let s = backup_code_from_random();
-
-        // it returns a modify
-        let modlist = account
-            .gen_backup_code_mod(BackupCodes::new(s.clone()))
-            .map_err(|e| {
-                admin_error!("Unable to generate backup code mod {:?}", e);
-                e
-            })?;
-
-        trace!(?modlist, "processing change");
-        // given the new credential generate a modify
-        // We use impersonate here to get the event from ae
-        self.qs_write
-            .impersonate_modify(
-                // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(gbe.target))),
-                // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(gbe.target))),
-                &modlist,
-                // Provide the event to impersonate
-                &gbe.ident,
-            )
-            .map(|_| s.into_iter().collect())
-            .map_err(|e| {
-                admin_error!("Failed to generate backup code {:?}", e);
-                e
-            })
-    }
-
-    pub(crate) fn remove_backup_code(
-        &mut self,
-        rte: &RemoveBackupCodeEvent,
-    ) -> Result<SetCredentialResponse, OperationError> {
-        trace!(target = ?rte.target, "Attempting to remove backup code");
-
-        let account = self.target_to_account(&rte.target)?;
-        let modlist = account.gen_backup_code_remove_mod().map_err(|e| {
-            admin_error!("Failed to gen backup code remove mod {:?}", e);
-            e
-        })?;
-        // Perform the mod
-        self.qs_write
-            .impersonate_modify(
-                // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(account.uuid))),
-                // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(account.uuid))),
-                &modlist,
-                &rte.ident,
-            )
-            .map_err(|e| {
-                admin_error!("remove_backup_code {:?}", e);
-                e
-            })
-            .map(|_| SetCredentialResponse::Success)
-    }
-    */
 
     pub fn regenerate_radius_secret(
         &mut self,
