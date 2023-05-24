@@ -479,10 +479,5 @@ pub async extern "system" fn SpInitialize(
         SP_FUNC_TABLE = Some(func_table);
     }
 
-    /*
-    ! Until the client has most of the functions implemented,
-    ! we return unsuccessful so the LSA unloads the client and doesn't call it
-    */
-    // STATUS_SUCCESSFUL
-    STATUS_UNSUCCESSFUL
+    STATUS_SUCCESS
 }
