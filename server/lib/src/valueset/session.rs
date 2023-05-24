@@ -52,7 +52,7 @@ impl ValueSetSession {
                             let cred_id = Uuid::new_v4();
 
                             // Convert things.
-                            let issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)
+                            let issued_at = OffsetDateTime::parse(&issued_at, &Rfc3339)
                                 .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                                 .map_err(|e| {
                                     admin_error!(
@@ -69,7 +69,7 @@ impl ValueSetSession {
                             // here.
                             let expiry = expiry
                                 .map(|e_inner| {
-                                    OffsetDateTime::parse(e_inner, time::Format::Rfc3339)
+                                    OffsetDateTime::parse(&e_inner, &Rfc3339)
                                         .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                                     // We now have an
                                     // Option<Result<ODT, _>>
@@ -124,7 +124,7 @@ impl ValueSetSession {
                             scope,
                         } => {
                             // Convert things.
-                            let issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)
+                            let issued_at = OffsetDateTime::parse(&issued_at, &Rfc3339)
                                 .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                                 .map_err(|e| {
                                     admin_error!(
@@ -141,7 +141,7 @@ impl ValueSetSession {
                             // here.
                             let expiry = expiry
                                 .map(|e_inner| {
-                                    OffsetDateTime::parse(e_inner, time::Format::Rfc3339)
+                                    OffsetDateTime::parse(&e_inner, &Rfc3339)
                                         .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                                     // We now have an
                                     // Option<Result<ODT, _>>
@@ -206,7 +206,7 @@ impl ValueSetSession {
                      scope,
                  }| {
                     // Convert things.
-                    let issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)
+                    let issued_at = OffsetDateTime::parse(issued_at, &Rfc3339)
                         .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                         .map_err(|e| {
                             admin_error!(
@@ -224,7 +224,7 @@ impl ValueSetSession {
                     let expiry = expiry
                         .as_ref()
                         .map(|e_inner| {
-                            OffsetDateTime::parse(e_inner, time::Format::Rfc3339)
+                            OffsetDateTime::parse(e_inner, &Rfc3339)
                                 .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                             // We now have an
                             // Option<Result<ODT, _>>
@@ -360,11 +360,16 @@ impl ValueSetT for ValueSetSession {
                     label: m.label.clone(),
                     expiry: m.expiry.map(|odt| {
                         debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                        odt.format(time::Format::Rfc3339)
+                        #[allow(clippy::expect_used)]
+                        odt.format(&Rfc3339)
+                            .expect("Failed to format timestamp into RFC3339!")
                     }),
                     issued_at: {
                         debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
-                        m.issued_at.format(time::Format::Rfc3339)
+                        #[allow(clippy::expect_used)]
+                        m.issued_at
+                            .format(&Rfc3339)
+                            .expect("Failed to format timestamp into RFC3339!")
                     },
                     issued_by: match m.issued_by {
                         IdentityId::Internal => DbValueIdentityId::V1Internal,
@@ -393,11 +398,16 @@ impl ValueSetT for ValueSetSession {
                     label: m.label.clone(),
                     expiry: m.expiry.map(|odt| {
                         debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                        odt.format(time::Format::Rfc3339)
+                        #[allow(clippy::expect_used)]
+                        odt.format(&Rfc3339)
+                            .expect("Failed to format timestamp to RFC3339")
                     }),
                     issued_at: {
                         debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
-                        m.issued_at.format(time::Format::Rfc3339)
+                        #[allow(clippy::expect_used)]
+                        m.issued_at
+                            .format(&Rfc3339)
+                            .expect("Failed to format timestamp to RFC3339")
                     },
                     issued_by: match m.issued_by {
                         IdentityId::Internal => ReplIdentityIdV1::Internal,
@@ -530,7 +540,7 @@ impl ValueSetOauth2Session {
                         rs_uuid,
                     } => {
                         // Convert things.
-                        let issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)
+                        let issued_at = OffsetDateTime::parse(&issued_at, &Rfc3339)
                             .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                             .map_err(|e| {
                                 admin_error!(
@@ -547,7 +557,7 @@ impl ValueSetOauth2Session {
                         // here.
                         let expiry = expiry
                             .map(|e_inner| {
-                                OffsetDateTime::parse(e_inner, time::Format::Rfc3339)
+                                OffsetDateTime::parse(&e_inner, &Rfc3339)
                                     .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                                 // We now have an
                                 // Option<Result<ODT, _>>
@@ -595,7 +605,7 @@ impl ValueSetOauth2Session {
                      rs_uuid,
                  }| {
                     // Convert things.
-                    let issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)
+                    let issued_at = OffsetDateTime::parse(issued_at, &Rfc3339)
                         .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                         .map_err(|e| {
                             admin_error!(
@@ -613,7 +623,7 @@ impl ValueSetOauth2Session {
                     let expiry = expiry
                         .as_ref()
                         .map(|e_inner| {
-                            OffsetDateTime::parse(e_inner, time::Format::Rfc3339)
+                            OffsetDateTime::parse(e_inner, &Rfc3339)
                                 .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                             // We now have an
                             // Option<Result<ODT, _>>
@@ -765,11 +775,16 @@ impl ValueSetT for ValueSetOauth2Session {
                     parent: m.parent,
                     expiry: m.expiry.map(|odt| {
                         debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                        odt.format(time::Format::Rfc3339)
+                        #[allow(clippy::expect_used)]
+                        odt.format(&Rfc3339)
+                            .expect("Failed to format timestamp as RFC3339")
                     }),
                     issued_at: {
                         debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
-                        m.issued_at.format(time::Format::Rfc3339)
+                        #[allow(clippy::expect_used)]
+                        m.issued_at
+                            .format(&Rfc3339)
+                            .expect("Failed to format timestamp as RFC3339")
                     },
                     rs_uuid: m.rs_uuid,
                 })
@@ -787,11 +802,16 @@ impl ValueSetT for ValueSetOauth2Session {
                     parent: m.parent,
                     expiry: m.expiry.map(|odt| {
                         debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                        odt.format(time::Format::Rfc3339)
+                        #[allow(clippy::expect_used)]
+                        odt.format(&Rfc3339)
+                            .expect("Failed to format timestamp into RFC3339")
                     }),
                     issued_at: {
                         debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
-                        m.issued_at.format(time::Format::Rfc3339)
+                        #[allow(clippy::expect_used)]
+                        m.issued_at
+                            .format(&Rfc3339)
+                            .expect("Failed to format timestamp into RFC3339")
                     },
                     rs_uuid: m.rs_uuid,
                 })
@@ -879,7 +899,7 @@ impl ValueSetApiToken {
                         scope,
                     } => {
                         // Convert things.
-                        let issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)
+                        let issued_at = OffsetDateTime::parse(&issued_at, &Rfc3339)
                             .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                             .map_err(|e| {
                                 admin_error!(
@@ -896,7 +916,7 @@ impl ValueSetApiToken {
                         // here.
                         let expiry = expiry
                             .map(|e_inner| {
-                                OffsetDateTime::parse(e_inner, time::Format::Rfc3339)
+                                OffsetDateTime::parse(&e_inner, &Rfc3339)
                                     .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                                 // We now have an
                                 // Option<Result<ODT, _>>
@@ -955,7 +975,7 @@ impl ValueSetApiToken {
                      scope,
                  }| {
                     // Convert things.
-                    let issued_at = OffsetDateTime::parse(issued_at, time::Format::Rfc3339)
+                    let issued_at = OffsetDateTime::parse(issued_at, &Rfc3339)
                         .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                         .map_err(|e| {
                             admin_error!(
@@ -973,7 +993,7 @@ impl ValueSetApiToken {
                     let expiry = expiry
                         .as_ref()
                         .map(|e_inner| {
-                            OffsetDateTime::parse(e_inner, time::Format::Rfc3339)
+                            OffsetDateTime::parse(e_inner, &Rfc3339)
                                 .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                             // We now have an
                             // Option<Result<ODT, _>>
@@ -1109,11 +1129,16 @@ impl ValueSetT for ValueSetApiToken {
                     label: m.label.clone(),
                     expiry: m.expiry.map(|odt| {
                         debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                        odt.format(time::Format::Rfc3339)
+                        #[allow(clippy::expect_used)]
+                        odt.format(&Rfc3339)
+                            .expect("Failed to format timestamp into RFC3339")
                     }),
                     issued_at: {
                         debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
-                        m.issued_at.format(time::Format::Rfc3339)
+                        #[allow(clippy::expect_used)]
+                        m.issued_at
+                            .format(&Rfc3339)
+                            .expect("Failed to format timestamp into RFC3339")
                     },
                     issued_by: match m.issued_by {
                         IdentityId::Internal => DbValueIdentityId::V1Internal,
@@ -1140,11 +1165,17 @@ impl ValueSetT for ValueSetApiToken {
                     label: m.label.clone(),
                     expiry: m.expiry.map(|odt| {
                         debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                        odt.format(time::Format::Rfc3339)
+                        #[allow(clippy::expect_used)]
+                        odt.format(&Rfc3339)
+                            .expect("Failed to format timestamp into RFC3339")
                     }),
                     issued_at: {
                         debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
-                        m.issued_at.format(time::Format::Rfc3339)
+
+                        #[allow(clippy::expect_used)]
+                        m.issued_at
+                            .format(&Rfc3339)
+                            .expect("Failed to format timestamp into RFC3339")
                     },
                     issued_by: match m.issued_by {
                         IdentityId::Internal => ReplIdentityIdV1::Internal,

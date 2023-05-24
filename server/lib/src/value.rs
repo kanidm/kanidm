@@ -603,11 +603,11 @@ impl PartialValue {
     }
 
     pub fn new_datetime_epoch(ts: Duration) -> Self {
-        PartialValue::DateTime(OffsetDateTime::unix_epoch() + ts)
+        PartialValue::DateTime(OffsetDateTime::UNIX_EPOCH + ts)
     }
 
     pub fn new_datetime_s(s: &str) -> Option<Self> {
-        OffsetDateTime::parse(s, time::Format::Rfc3339)
+        OffsetDateTime::parse(s, &Rfc3339)
             .ok()
             .map(|odt| odt.to_offset(time::UtcOffset::UTC))
             .map(PartialValue::DateTime)
@@ -737,7 +737,9 @@ impl PartialValue {
             PartialValue::Cid(_) => "_".to_string(),
             PartialValue::DateTime(odt) => {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                odt.format(time::Format::Rfc3339)
+                #[allow(clippy::expect_used)]
+                odt.format(&Rfc3339)
+                    .expect("Failed to format timestamp into RFC3339")
             }
             PartialValue::Url(u) => u.to_string(),
             PartialValue::OauthScope(u) => u.to_string(),
@@ -1254,11 +1256,11 @@ impl Value {
     }
 
     pub fn new_datetime_epoch(ts: Duration) -> Self {
-        Value::DateTime(OffsetDateTime::unix_epoch() + ts)
+        Value::DateTime(OffsetDateTime::UNIX_EPOCH + ts)
     }
 
     pub fn new_datetime_s(s: &str) -> Option<Self> {
-        OffsetDateTime::parse(s, time::Format::Rfc3339)
+        OffsetDateTime::parse(s, &Rfc3339)
             .ok()
             .map(|odt| odt.to_offset(time::UtcOffset::UTC))
             .map(Value::DateTime)
@@ -1927,8 +1929,10 @@ mod tests {
         assert!(Value::new_datetime_s("2020-09-25 01:22:02+00:00").is_none());
 
         // Manually craft
-        let inv1 =
-            Value::DateTime(OffsetDateTime::now_utc().to_offset(time::UtcOffset::east_hours(10)));
+        let inv1 = Value::DateTime(
+            OffsetDateTime::now_utc()
+                .to_offset(time::UtcOffset::from_whole_seconds(36000).unwrap()),
+        );
         assert!(!inv1.validate());
 
         let val3 = Value::DateTime(OffsetDateTime::now_utc());

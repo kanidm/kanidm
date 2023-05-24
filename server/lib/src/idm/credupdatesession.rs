@@ -585,7 +585,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     "Rejecting Update Session - Intent Token does not exist (replication delay?)",
                 );
                 return Err(OperationError::Wait(
-                    OffsetDateTime::unix_epoch() + (current_time + Duration::from_secs(150)),
+                    OffsetDateTime::UNIX_EPOCH + (current_time + Duration::from_secs(150)),
                 ));
             }
         };

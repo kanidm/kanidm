@@ -117,7 +117,7 @@ impl ServiceAccount {
             true
         } else {
             let grace = apit.issued_at + GRACE_WINDOW;
-            let current = time::OffsetDateTime::unix_epoch() + ct;
+            let current = time::OffsetDateTime::UNIX_EPOCH + ct;
             trace!(%grace, %current);
             if current >= grace {
                 security_info!(
@@ -160,7 +160,7 @@ impl GenerateApiTokenEvent {
             ident: Identity::from_internal(),
             target,
             label: label.to_string(),
-            expiry: expiry.map(|ct| time::OffsetDateTime::unix_epoch() + ct),
+            expiry: expiry.map(|ct| time::OffsetDateTime::UNIX_EPOCH + ct),
             read_write: false,
         }
     }
@@ -202,7 +202,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })?;
 
         let session_id = Uuid::new_v4();
-        let issued_at = time::OffsetDateTime::unix_epoch() + ct;
+        let issued_at = time::OffsetDateTime::UNIX_EPOCH + ct;
 
         // Normalise to UTC in case it was provided as something else.
         let expiry = gte.expiry.map(|odt| odt.to_offset(time::UtcOffset::UTC));

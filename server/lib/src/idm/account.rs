@@ -204,10 +204,10 @@ impl Account {
         // the nanoseconds, but if we haven't done a serialise on the server our db cache has the
         // ns value which breaks some checks.
         let ct = ct - Duration::from_nanos(ct.subsec_nanos() as u64);
-        let issued_at = OffsetDateTime::unix_epoch() + ct;
+        let issued_at = OffsetDateTime::UNIX_EPOCH + ct;
 
         let expiry =
-            Some(OffsetDateTime::unix_epoch() + ct + Duration::from_secs(AUTH_SESSION_EXPIRY));
+            Some(OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(AUTH_SESSION_EXPIRY));
 
         let (purpose, expiry) = match scope {
             // Issue an invalid/expired session.
@@ -229,7 +229,7 @@ impl Account {
             {
                 (
                     UatPurpose::ReadWrite { expiry: None },
-                    Some(OffsetDateTime::unix_epoch() + ct + Duration::from_secs(86400)),
+                    Some(OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(86400)),
                 )
             }
         };
@@ -259,7 +259,7 @@ impl Account {
         scope: SessionScope,
         ct: Duration,
     ) -> Option<UserAuthToken> {
-        let issued_at = OffsetDateTime::unix_epoch() + ct;
+        let issued_at = OffsetDateTime::UNIX_EPOCH + ct;
 
         let (purpose, expiry) = match scope {
             SessionScope::Synchronise | SessionScope::ReadOnly | SessionScope::ReadWrite => {
@@ -273,7 +273,7 @@ impl Account {
             // Return a ReadWrite session with an inner expiry for the privileges
             {
                 let expiry = Some(
-                    OffsetDateTime::unix_epoch() + ct + Duration::from_secs(AUTH_PRIVILEGE_EXPIRY),
+                    OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(AUTH_PRIVILEGE_EXPIRY),
                 );
                 (
                     UatPurpose::ReadWrite { expiry },
@@ -305,7 +305,7 @@ impl Account {
         valid_from: Option<&OffsetDateTime>,
         expire: Option<&OffsetDateTime>,
     ) -> bool {
-        let cot = OffsetDateTime::unix_epoch() + ct;
+        let cot = OffsetDateTime::UNIX_EPOCH + ct;
 
         let vmin = if let Some(vft) = valid_from {
             // If current time greater than start time window
@@ -547,7 +547,7 @@ impl Account {
                 }
             } else {
                 let grace = uat.issued_at + GRACE_WINDOW;
-                let current = time::OffsetDateTime::unix_epoch() + ct;
+                let current = time::OffsetDateTime::UNIX_EPOCH + ct;
                 trace!(%grace, %current);
                 if current >= grace {
                     security_info!(

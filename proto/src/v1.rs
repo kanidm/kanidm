@@ -5,6 +5,7 @@ use std::str::FromStr;
 
 use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use uuid::Uuid;
 use webauthn_rs_proto::{
     CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
@@ -493,15 +494,16 @@ impl fmt::Display for ApiToken {
         writeln!(f, "label: {}", self.label)?;
         writeln!(f, "issued at: {}", self.issued_at)?;
         if let Some(expiry) = self.expiry {
-            writeln!(
-                f,
-                "token expiry: {}",
-                expiry
-                    .to_offset(
-                        time::UtcOffset::try_current_local_offset().unwrap_or(time::UtcOffset::UTC),
-                    )
-                    .format(time::Format::Rfc3339)
-            )
+            // if this fails we're in trouble!
+            #[allow(clippy::expect_used)]
+            let expiry_str = expiry
+                .to_offset(
+                    time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
+                        .unwrap_or(time::UtcOffset::UTC),
+                )
+                .format(&time::format_description::well_known::Rfc3339)
+                .expect("Failed to format timestamp to RFC3339");
+            writeln!(f, "token expiry: {}", expiry_str)
         } else {
             writeln!(f, "token expiry: never")
         }

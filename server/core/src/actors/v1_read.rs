@@ -198,9 +198,14 @@ impl QueryServerReadV1 {
     ) -> Result<(), OperationError> {
         trace!(eventid = ?msg.eventid, "Begin online backup event");
 
-        #[allow(deprecated)]
-        let now = time::OffsetDateTime::now_local();
-        let timestamp = now.format(time::Format::Rfc3339);
+        let now = match time::OffsetDateTime::now_local() {
+            Ok(val) => val,
+            Err(_err) => {
+                admin_warn!("Failed to get local offset, using UTC");
+                time::OffsetDateTime::now_utc()
+            }
+        };
+        let timestamp = now.format(&Rfc3339).unwrap();
         let dest_file = format!("{}/backup-{}.json", outpath, timestamp);
 
         if Path::new(&dest_file).exists() {
