@@ -449,7 +449,7 @@ pub async extern "system" fn ApLogonTerminated(luid: *const LUID) {
 
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
-#[allow(non_snake_case, unused_variables)]
+#[allow(non_snake_case)]
 pub async extern "system" fn SpInitialize(
     package_id: usize,
     params_ptr: *const SECPKG_PARAMETERS,
