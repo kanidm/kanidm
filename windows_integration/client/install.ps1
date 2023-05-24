@@ -5,7 +5,7 @@ if (-not ([Security.Principal.WindowsIdentity]::GetCurrent().Groups -contains 'S
 	Return
 }
 
-if (-not (Test-Path -Path .\kanidm_win_authlib.dll) -or -not (Test-Path -Path .\authlib_client.toml)) {
+if (-not (Test-Path -Path .\kanidm_windows_client.dll) -or -not (Test-Path -Path .\authlib_client.toml)) {
 	Write-Output "Cannot find the authlib config or dll in the present directory"
 	Return
 }
@@ -14,8 +14,8 @@ if (-not (Test-Path -Path .\kanidm_win_authlib.dll) -or -not (Test-Path -Path .\
 New-Item -Path $kani_dir -ItemType Directory -Verbose
 
 # Install kanidm authlib & config
-Copy-Item .\kanidm_win_authlib.dll -Destination $kani_dir
+Copy-Item .\kanidm_windows_client.dll -Destination $kani_dir
 Copy-Item .\authlib_client.toml -Destination $kani_dir
 
 # Register DLL
-Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Lsa" -Name "Security Packages" -Value "C:\Program Files\kanidm\kanidm_win_authlib"
+Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Lsa" -Name "Security Packages" -Value "C:\Program Files\kanidm\kanidm_windows_client"
