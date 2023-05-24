@@ -52,7 +52,7 @@ static mut SP_FUNC_TABLE: Option<LSA_SECPKG_FUNCTION_TABLE> = None;
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
-pub async extern "system" fn ApInitializePackage(
+pub async extern "system" fn ApInitialisePackage(
     package_id: u32,
     dispatch_table: *const LSA_DISPATCH_TABLE,
     _: *const STRING,
@@ -450,7 +450,7 @@ pub async extern "system" fn ApLogonTerminated(luid: *const LUID) {
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
-pub async extern "system" fn SpInitialize(
+pub async extern "system" fn SpInitialise(
     package_id: usize,
     params_ptr: *const SECPKG_PARAMETERS,
     func_table_ptr: *const LSA_SECPKG_FUNCTION_TABLE,

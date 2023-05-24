@@ -59,7 +59,7 @@ pub async unsafe extern "system" fn SpLsaModeInitialize(
     };
 
     let function_table = SECPKG_FUNCTION_TABLE {
-        InitializePackage: Some(package::ApInitializePackage),
+        InitializePackage: Some(package::ApInitialisePackage),
         LogonUserA: Some(package::ApLogonUser),
         CallPackage: Some(package::ApCallPackage),
         LogonTerminated: Some(package::ApLogonTerminated),
@@ -67,7 +67,7 @@ pub async unsafe extern "system" fn SpLsaModeInitialize(
         CallPackagePassthrough: Some(package::ApCallPackage),
         LogonUserExA: None,
         LogonUserEx2: None,
-        Initialize: Some(package::SpInitialize),
+        Initialize: Some(package::SpInitialise),
         Shutdown: None,
         GetInfo: None,
         AcceptCredentials: None,
