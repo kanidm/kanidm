@@ -440,11 +440,9 @@ pub async extern "system" fn ApCallPackage(
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
-pub async extern "system" fn ApLogonTerminated(luid: *const LUID) {
-    unsafe {
-        let logon_id = LogonId::from(*luid);
-        AP_LOGON_IDS.remove(&logon_id);
-    }
+pub async unsafe extern "system" fn ApLogonTerminated(luid: *const LUID) {
+    let logon_id = LogonId::from(*luid);
+    AP_LOGON_IDS.remove(&logon_id);
 }
 
 #[tokio::main(flavor = "current_thread")]
