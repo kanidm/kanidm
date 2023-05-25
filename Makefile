@@ -1,5 +1,6 @@
 IMAGE_BASE ?= kanidm
 IMAGE_VERSION ?= devel
+IMAGE_EXT_VERSION ?= 1.1.0-alpha.12
 CONTAINER_TOOL_ARGS ?=
 IMAGE_ARCH ?= "linux/amd64,linux/arm64"
 CONTAINER_BUILD_ARGS ?=
@@ -21,6 +22,7 @@ buildx/kanidmd:
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f server/Dockerfile \
 		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
+		-t $(IMAGE_BASE)/server:$(IMAGE_EXT_VERSION) \
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
@@ -33,6 +35,7 @@ buildx/kanidm_tools:
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f tools/Dockerfile \
 		-t $(IMAGE_BASE)/tools:$(IMAGE_VERSION) \
+		-t $(IMAGE_BASE)/tools:$(IMAGE_EXT_VERSION) \
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
@@ -45,7 +48,8 @@ buildx/radiusd:
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f rlm_python/Dockerfile \
 		--progress $(BUILDKIT_PROGRESS) \
-		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
+		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) \
+		-t $(IMAGE_BASE)/radius:$(IMAGE_EXT_VERSION) .
 
 .PHONY: buildx
 buildx: buildx/kanidmd buildx/kanidm_tools buildx/radiusd
