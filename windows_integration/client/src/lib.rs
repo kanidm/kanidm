@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use tracing::{event, Level};
 
 use windows::Win32::Foundation::{NTSTATUS, STATUS_SUCCESS};

@@ -52,7 +52,7 @@ static mut SP_FUNC_TABLE: Option<LSA_SECPKG_FUNCTION_TABLE> = None;
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
-pub async extern "system" fn ApInitialisePackage(
+pub async unsafe extern "system" fn ApInitialisePackage(
     package_id: u32,
     dispatch_table: *const LSA_DISPATCH_TABLE,
     _: *const STRING,
@@ -113,7 +113,7 @@ pub async extern "system" fn ApInitialisePackage(
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
-pub async extern "system" fn ApLogonUser(
+pub async unsafe extern "system" fn ApLogonUser(
     client_req: *const *const c_void,
     _: SECURITY_LOGON_TYPE,
     auth_info_ptr: *const c_void, // Cast to own Auth Info type
@@ -362,7 +362,7 @@ pub async extern "system" fn ApLogonUser(
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
-pub async extern "system" fn ApCallPackage(
+pub async unsafe extern "system" fn ApCallPackage(
     client_req: *const *const c_void,
     submit_buf: *const c_void, // Cast to own Protocol Submit Buffer
     _: *const c_void,          // Pointer to submit_buf
@@ -441,14 +441,16 @@ pub async extern "system" fn ApCallPackage(
 #[no_mangle]
 #[allow(non_snake_case)]
 pub async unsafe extern "system" fn ApLogonTerminated(luid: *const LUID) {
-    let logon_id = LogonId::from(*luid);
-    AP_LOGON_IDS.remove(&logon_id);
+    unsafe {
+        let logon_id = LogonId::from(*luid);
+        AP_LOGON_IDS.remove(&logon_id);
+    }
 }
 
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
-pub async extern "system" fn SpInitialise(
+pub async unsafe extern "system" fn SpInitialise(
     package_id: usize,
     params_ptr: *const SECPKG_PARAMETERS,
     func_table_ptr: *const LSA_SECPKG_FUNCTION_TABLE,
