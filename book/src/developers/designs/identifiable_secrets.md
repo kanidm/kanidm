@@ -4,24 +4,16 @@ Kanidm tokens should have a unique pattern, making them easy to recognize. This 
 
 ## The Kanidm pattern
 
-> **RFC Discussion here**
->
-> Another option could be to use the pattern `kanidm_<CREDENTIAL>`. This way, users can figure out what kind of token they have on their own.
-
 ```text
-kanidm_<TYPE>_<CREDENTIAL>
+kanidm_<CREDENTIAL>
 ```
 Where:
 
-- `<TYPE>` is the type of the credential, such as OAuth secret, UAT, and so on. Examples include:
-  - uat
-  - oat
-  - unx
 - `<CREDENTIAL>` is the actual credential.
 
-We can make this compatible with current systems by checking if the submitted token starts with `kanidm_\w+_`. If it does, we remove that part and continue with validation.
+We can make this compatible with current validators by checking if the submitted token starts with `kanidm_`. If it does, we remove that part and continue with validation.
 
-Regular expressions should NOT be used. Credentials are valid only in context, so the UAT auth check knows it's looking for `kanidm_uat_<CREDENTIAL>`. A simple string match is more efficient in this case.
+Regular expressions should NOT be used. Credentials are valid only in context, so the auth check knows it's looking for `kanidm_<CREDENTIAL>`. A simple string match and split is more efficient in this case.
 
 ## Other implementations
 
