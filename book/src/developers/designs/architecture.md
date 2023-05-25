@@ -41,13 +41,13 @@ clients can acquire data as quickly as possible. The server follows the below pa
 
 (1) All incoming requests are from a client on the left. These are either REST requests, or a
 structured protocol request via the raw interface. It's interesting to note the raw request is
-almost identical to the queryserver event types - where as REST requests we have to generate request
+almost identical to the queryserver event types - whereas REST requests we have to generate request
 messages that can become events.
 
 The frontend uses a webserver with a thread-pool to process and decode network I/O operations
 concurrently. This then sends asynchronous messages to a worker (actor) pool for handing.
 
-(2) These search messages in the actors are transformed into "events" - a self contained structure
+(2) These search messages in the actors are transformed into "events" - a self-contained structure
 containing all relevant data related to the operation at hand. This may be the event origin (a user
 or internal), the requested filter (query), and perhaps even a list of attributes requested. These
 events are designed to ensure correctness. When a search message is transformed to a search event,
@@ -116,13 +116,13 @@ protected types where another ensures that uuid exists on every entry.
 (5) These transformed entries are now returned to the query server.
 
 (6) The backend is sent the list of entries for writing. Indexes are generated (7) as required based
-on the new or modified entries, and the entries themself are written (8) into the core db tables.
+on the new or modified entries, and the entries themselves are written (8) into the core db tables.
 This operation returns a result (9) to the backend, which is then filtered up to the query server
 (10)
 
 (11) Provided all operations to this point have been successful, we now apply post write plugins
 which may enforce or generate different properties in the transaction. This is similar to the pre
-plugins, but allows different operations. For example, a post plugin ensurs uuid reference types are
+plugins, but allows different operations. For example, a post plugin ensures uuid reference types are
 consistent and valid across the set of changes in the database. The most critical is memberof, which
 generates reverse reference links from entries to their group memberships, enabling fast rbac
 operations. These are done as post plugins because at this point internal searches can now yield and
