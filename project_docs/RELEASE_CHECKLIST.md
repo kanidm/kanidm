@@ -27,6 +27,7 @@ cargo install cargo-outdated
 
 - [ ] update version in ./server/web\_ui/Cargo.toml
 - [ ] update version in ./Cargo.toml
+- [ ] update version in ./Makefile
 - [ ] cargo test
 - [ ] build wasm components with release profile
 - [ ] Update `RELEASE_NOTES.md`
