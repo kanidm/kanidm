@@ -154,6 +154,7 @@ trait Plugin {
             "plugin {} has an unimplemented pre_repl_incremental!",
             Self::id()
         );
+        // debug_assert!(false);
         // Err(OperationError::InvalidState)
         Ok(())
     }
@@ -167,6 +168,7 @@ trait Plugin {
             "plugin {} has an unimplemented post_repl_incremental!",
             Self::id()
         );
+        // debug_assert!(false);
         // Err(OperationError::InvalidState)
         Ok(())
     }
@@ -327,14 +329,11 @@ impl Plugins {
         qs: &mut QueryServerWriteTransaction,
         cand: &mut [(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)],
     ) -> Result<(), OperationError> {
-        base::Base::pre_repl_incremental(qs, cand)
-            // .and_then(|_| jwskeygen::JwsKeygen::pre_repl_incremental(qs, cand, me))
-            // .and_then(|_| gidnumber::GidNumber::pre_repl_incremental(qs, cand, me))
-            .and_then(|_| domain::Domain::pre_repl_incremental(qs, cand))
-            .and_then(|_| spn::Spn::pre_repl_incremental(qs, cand))
-            .and_then(|_| session::SessionConsistency::pre_repl_incremental(qs, cand))
-            // attr unique should always be last
-            .and_then(|_| attrunique::AttrUnique::pre_repl_incremental(qs, cand))
+        // Cleanup sessions on incoming replication? May not actually
+        // be needed ...
+        // session::SessionConsistency::pre_repl_incremental(qs, cand)?;
+        // attr unique should always be last
+        attrunique::AttrUnique::pre_repl_incremental(qs, cand)
     }
 
     #[instrument(level = "debug", name = "plugins::run_post_repl_incremental", skip_all)]
@@ -343,9 +342,11 @@ impl Plugins {
         pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &[EntrySealedCommitted],
     ) -> Result<(), OperationError> {
-        refint::ReferentialIntegrity::post_repl_incremental(qs, pre_cand, cand)
-            .and_then(|_| spn::Spn::post_repl_incremental(qs, pre_cand, cand))
-            .and_then(|_| memberof::MemberOf::post_repl_incremental(qs, pre_cand, cand))
+        domain::Domain::post_repl_incremental(qs, pre_cand, cand)?;
+        spn::Spn::post_repl_incremental(qs, pre_cand, cand)?;
+        refint::ReferentialIntegrity::post_repl_incremental(qs, pre_cand, cand)?;
+        spn::Spn::post_repl_incremental(qs, pre_cand, cand)?;
+        memberof::MemberOf::post_repl_incremental(qs, pre_cand, cand)
     }
 
     #[instrument(level = "debug", name = "plugins::run_verify", skip_all)]
