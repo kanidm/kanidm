@@ -28,6 +28,7 @@ use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
 use sketching::tracing_forest::{self};
 use tokio::net::UnixStream;
+use tokio::sync::broadcast;
 use tokio::time;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 use users::{get_effective_gid, get_effective_uid};
@@ -262,29 +263,82 @@ async fn main() -> ExitCode {
             let task_sock_path = cfg.task_sock_path.clone();
             debug!("Attempting to use {} ...", task_sock_path);
 
-            let server = async move {
+            let (broadcast_tx, mut broadcast_rx) = broadcast::channel(4);
+
+            let server = tokio::spawn(async move {
                 loop {
                     info!("Attempting to connect to kanidm_unixd ...");
-                    // Try to connect to the daemon.
-                    match UnixStream::connect(&task_sock_path).await {
-                        // Did we connect?
-                        Ok(stream) => {
-                            info!("Found kanidm_unixd, waiting for tasks ...");
-                            // Yep! Now let the main handler do it's job.
-                            // If it returns (dc, etc, then we loop and try again).
-                            handle_tasks(stream, &cfg).await;
+
+                    tokio::select! {
+                        _ = broadcast_rx.recv() => {
+                            break;
                         }
-                        Err(e) => {
-                            error!("Unable to find kanidm_unixd, sleeping ...");
-                            debug!("\\---> {:?}", e);
-                            // Back off.
-                            time::sleep(Duration::from_millis(5000)).await;
+                        connect_res = UnixStream::connect(&task_sock_path) => {
+                            match connect_res {
+                                Ok(stream) => {
+                                    info!("Found kanidm_unixd, waiting for tasks ...");
+                                    // Yep! Now let the main handler do it's job.
+                                    // If it returns (dc, etc, then we loop and try again).
+                                    handle_tasks(stream, &cfg).await;
+                                }
+                                Err(e) => {
+                                    debug!("\\---> {:?}", e);
+                                    error!("Unable to find kanidm_unixd, sleeping ...");
+                                    // Back off.
+                                    time::sleep(Duration::from_millis(5000)).await;
+                                }
+                            }
                         }
                     }
                 }
-            };
+            });
 
-            server.await;
+            info!("Server started ...");
+
+            loop {
+                tokio::select! {
+                    Ok(()) = tokio::signal::ctrl_c() => {
+                        break
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::terminate();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        break
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::alarm();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::hangup();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+                }
+            }
+            info!("Signal received, shutting down");
+            // Send a broadcast that we are done.
+            if let Err(e) = broadcast_tx.send(true) {
+                error!("Unable to shutdown workers {:?}", e);
+            }
+
+            let _ = server.await;
             ExitCode::SUCCESS
         })
         .await
