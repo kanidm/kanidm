@@ -420,7 +420,7 @@ impl QueryServerWriteV1 {
             e
         })?;
         idms_prox_write
-            .generate_account_password(&gpe)
+            .generate_service_account_password(&gpe)
             .and_then(|r| idms_prox_write.commit().map(|_| r))
     }
 
