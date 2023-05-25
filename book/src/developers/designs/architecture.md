@@ -92,7 +92,7 @@ protected from an early stage to guarantee consistency of the operations.
 The write path is similar to the search path, but has some subtle differences that are worth paying
 attention to.
 
-.. image:: diagrams/write-flow.png :width: 800
+# ![write flow diagram](diagrams/write-flow.png)
 
 (1), (2) Like search, all client operations come from the REST or raw apis, and are transformed or
 generated into messages. These messages are sent to a single write worker. There is only a single
