@@ -12,7 +12,7 @@ pub enum MemoryAllocationError {
     AllocFuncFailed,
 }
 
-pub fn allocate_mem_lsa<T>(
+pub unsafe fn allocate_mem_lsa<T>(
     to_alloc: T,
     alloc_func_opt: &PLSA_ALLOCATE_LSA_HEAP,
 ) -> Result<*mut T, MemoryAllocationError> {
@@ -37,7 +37,7 @@ pub fn allocate_mem_lsa<T>(
     Ok(mem_ptr_cast)
 }
 
-pub fn allocate_mem_client<T>(
+pub unsafe fn allocate_mem_client<T>(
     to_alloc: T,
     alloc_func_opt: &PLSA_ALLOCATE_CLIENT_BUFFER,
     client_req: *const *const c_void,

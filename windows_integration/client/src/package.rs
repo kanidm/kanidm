@@ -77,19 +77,20 @@ pub async unsafe extern "system" fn ApInitialisePackage(
         }
     };
 
-    let alloc_package_name = match allocate_mem_lsa(package_name_win, &dt_ref.AllocateLsaHeap) {
-        Ok(ptr) => ptr,
-        Err(e) => match e {
-            MemoryAllocationError::NoAllocFunc => {
-                event!(Level::ERROR, "Missing lsa allocation function");
-                return STATUS_UNSUCCESSFUL;
-            }
-            MemoryAllocationError::AllocFuncFailed => {
-                event!(Level::ERROR, "Failed to allocate package name");
-                return STATUS_UNSUCCESSFUL;
-            }
-        },
-    };
+    let alloc_package_name =
+        match unsafe { allocate_mem_lsa(package_name_win, &dt_ref.AllocateLsaHeap) } {
+            Ok(ptr) => ptr,
+            Err(e) => match e {
+                MemoryAllocationError::NoAllocFunc => {
+                    event!(Level::ERROR, "Missing lsa allocation function");
+                    return STATUS_UNSUCCESSFUL;
+                }
+                MemoryAllocationError::AllocFuncFailed => {
+                    event!(Level::ERROR, "Failed to allocate package name");
+                    return STATUS_UNSUCCESSFUL;
+                }
+            },
+        };
 
     unsafe {
         *out_package_name = alloc_package_name;
@@ -151,14 +152,15 @@ pub async unsafe extern "system" fn ApLogonUser(
         /*
            Since the dispatch table exists, we re-set the return account which is allocated to the LSA's memory space
         */
-        let username_ptr =
-            match allocate_mem_lsa(auth_info.username, &dispatch_table.AllocateLsaHeap) {
-                Ok(ptr) => ptr,
-                Err(_) => {
-                    span!(Level::ERROR, "Failed to allocate username to LSA heap");
-                    return STATUS_UNSUCCESSFUL;
-                }
-            };
+        let username_ptr = match unsafe {
+            allocate_mem_lsa(auth_info.username, &dispatch_table.AllocateLsaHeap)
+        } {
+            Ok(ptr) => ptr,
+            Err(_) => {
+                span!(Level::ERROR, "Failed to allocate username to LSA heap");
+                return STATUS_UNSUCCESSFUL;
+            }
+        };
 
         unsafe {
             *out_account = username_ptr;
@@ -193,11 +195,13 @@ pub async unsafe extern "system" fn ApLogonUser(
     let profile_buffer = ProfileBuffer {
         token: token.clone(),
     };
-    let profile_buffer_ptr = match allocate_mem_client(
-        profile_buffer,
-        &dispatch_table.AllocateClientBuffer,
-        client_req,
-    ) {
+    let profile_buffer_ptr = match unsafe {
+        allocate_mem_client(
+            profile_buffer,
+            &dispatch_table.AllocateClientBuffer,
+            client_req,
+        )
+    } {
         Ok(ptr) => ptr,
         Err(_) => {
             span!(
@@ -330,13 +334,14 @@ pub async unsafe extern "system" fn ApLogonUser(
     };
 
     // Set logon token
-    let logon_token_ptr = match allocate_mem_lsa(logon_token, &dispatch_table.AllocateLsaHeap) {
-        Ok(ptr) => ptr,
-        Err(_) => {
-            event!(Level::ERROR, "Failed to allocate logon token");
-            return STATUS_UNSUCCESSFUL;
-        }
-    };
+    let logon_token_ptr =
+        match unsafe { allocate_mem_lsa(logon_token, &dispatch_table.AllocateLsaHeap) } {
+            Ok(ptr) => ptr,
+            Err(_) => {
+                event!(Level::ERROR, "Failed to allocate logon token");
+                return STATUS_UNSUCCESSFUL;
+            }
+        };
 
     {
         let return_ptr = out_token.cast::<*mut LSA_TOKEN_INFORMATION_V3>();
@@ -417,14 +422,15 @@ pub async unsafe extern "system" fn ApCallPackage(
             })
         }
     };
-    let response_ptr =
-        match allocate_mem_client(response, &dispatch_table.AllocateClientBuffer, client_req) {
-            Ok(ptr) => ptr,
-            Err(_) => {
-                span!(Level::ERROR, "Failed to allocate response");
-                return STATUS_UNSUCCESSFUL;
-            }
-        };
+    let response_ptr = match unsafe {
+        allocate_mem_client(response, &dispatch_table.AllocateClientBuffer, client_req)
+    } {
+        Ok(ptr) => ptr,
+        Err(_) => {
+            span!(Level::ERROR, "Failed to allocate response");
+            return STATUS_UNSUCCESSFUL;
+        }
+    };
 
     let out_return_buf_ptr = out_return_buf.cast::<*mut AuthPkgResponse>();
 
