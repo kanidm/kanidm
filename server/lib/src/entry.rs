@@ -723,11 +723,23 @@ impl Entry<EntryIncremental, EntryNew> {
                             let take_left = cid_left > cid_right;
 
                             match (self.attrs.get(attr_name), db_ent.attrs.get(attr_name)) {
-                                (Some(_vs_left), Some(_vs_right)) if take_left => {
-                                    todo!();
+                                (Some(vs_left), Some(vs_right)) if take_left => {
+                                    if let Some(_attr_state) = vs_left.repl_merge_valueset(vs_right)
+                                    {
+                                        todo!();
+                                    } else {
+                                        changes.insert(attr_name.clone(), cid_left.clone());
+                                        eattrs.insert(attr_name.clone(), vs_left.clone());
+                                    }
                                 }
-                                (Some(_vs_left), Some(_vs_right)) => {
-                                    todo!();
+                                (Some(vs_left), Some(vs_right)) => {
+                                    if let Some(_attr_state) = vs_right.repl_merge_valueset(vs_left)
+                                    {
+                                        todo!();
+                                    } else {
+                                        changes.insert(attr_name.clone(), cid_right.clone());
+                                        eattrs.insert(attr_name.clone(), vs_right.clone());
+                                    }
                                 }
                                 (Some(vs_left), None) if take_left => {
                                     changes.insert(attr_name.clone(), cid_left.clone());

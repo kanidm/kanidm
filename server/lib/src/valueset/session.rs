@@ -497,6 +497,10 @@ impl ValueSetT for ValueSetSession {
             .collect();
         Ok(Box::new(ValueSetApiToken { map }))
     }
+
+    fn repl_merge_valueset(&self, _older: &ValueSet) -> Option<ValueSet> {
+        todo!();
+    }
 }
 
 // == oauth2 session ==
@@ -866,6 +870,10 @@ impl ValueSetT for ValueSetOauth2Session {
         // This is what ties us as a type that can be refint checked. We need to
         // bind to our resource servers, not our ids!
         Some(Box::new(self.map.values().map(|m| &m.rs_uuid).copied()))
+    }
+
+    fn repl_merge_valueset(&self, _older: &ValueSet) -> Option<ValueSet> {
+        todo!();
     }
 }
 

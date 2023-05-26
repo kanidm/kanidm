@@ -527,6 +527,29 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         debug_assert!(false);
         None
     }
+
+    fn repl_merge_valueset(
+        &self,
+        _older: &ValueSet,
+        // schema_attr: &SchemaAttribute
+    ) -> Option<ValueSet> {
+        // Self is the "latest" content. Older contains the earlier
+        // state of the attribute.
+        //
+        // In most cases we don't actually need a merge strategy. We just need the
+        // newer state of the attribute.
+        //
+        // However when we have a merge strategy that is required we return
+        // Some(new_state) if and only if merges were applied that need to be added
+        // to the change state.
+        //
+        // If no merge was required, we just return None.
+        //
+        // Examples where we need merging is session states. This has an internal
+        // attribute state machine that works similarly to tombstones to ensure that
+        // after a certain period that attributes are cleaned up.
+        None
+    }
 }
 
 impl PartialEq for ValueSet {
