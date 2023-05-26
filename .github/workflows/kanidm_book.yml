@@ -35,6 +35,7 @@ jobs:
         with:
           repo: ${{ github.repository }}
           limit: 100
+          github-token: ${{ github.token }}
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
