@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::repl::consumer::ConsumerState;
 use crate::repl::proto::ReplIncrementalContext;
 use crate::repl::ruv::ReplicationUpdateVectorTransaction;
+use crate::repl::ruv::{RangeDiffStatus, ReplicationUpdateVector};
 use std::collections::BTreeMap;
 
 fn repl_initialise(
@@ -88,9 +89,14 @@ fn repl_incremental(
 
     trace!(?a_ruv_range);
     trace!(?b_ruv_range);
+
     // May need to be "is subset" for future when we are testing
     // some more complex scenarioes.
-    assert!(a_ruv_range == b_ruv_range);
+    let valid = match ReplicationUpdateVector::range_diff(&a_ruv_range, &b_ruv_range) {
+        RangeDiffStatus::Ok(require) => require.is_empty(),
+        _ => false,
+    };
+    assert!(valid);
 }
 
 #[qs_pair_test]
@@ -545,6 +551,222 @@ async fn test_repl_increment_consumer_lagging_tombstone(
     drop(server_a_txn);
     drop(server_b_txn);
 }
+
+// Write state cases.
+
+// Create Entry an B -> A
+// Write to A
+// A -> B becomes consistent.
+
+#[qs_pair_test]
+async fn test_repl_increment_basic_bidirectional_write(
+    server_a: &QueryServer,
+    server_b: &QueryServer,
+) {
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // Add an entry.
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_b_txn
+        .internal_create(vec![entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::Uuid(t_uuid)),
+            ("description", Value::new_utf8s("testperson1")),
+            ("displayname", Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Assert the entry is not on A.
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert_eq!(
+        server_a_txn.internal_search_uuid(t_uuid),
+        Err(OperationError::NoMatchingEntries)
+    );
+
+    //               from               to
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+
+    // Now perform a write on A
+    assert!(server_a_txn
+        .internal_modify_uuid(t_uuid, &ModifyList::new_purge("description"))
+        .is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Incremental repl in the reverse direction.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    //               from               to
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    // They are consistent again.
+    assert!(e1 == e2);
+    assert!(e1.get_ava_set("description").is_none());
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+}
+
+// Create Entry on A -> B
+// Write to both
+// B -> A and A -> B become consistent.
+
+#[qs_pair_test]
+async fn test_repl_increment_simultaneous_bidirectional_write(
+    server_a: &QueryServer,
+    server_b: &QueryServer,
+) {
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // Add an entry.
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_b_txn
+        .internal_create(vec![entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::Uuid(t_uuid)),
+            ("description", Value::new_utf8s("testperson1")),
+            ("displayname", Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Assert the entry is not on A.
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert_eq!(
+        server_a_txn.internal_search_uuid(t_uuid),
+        Err(OperationError::NoMatchingEntries)
+    );
+
+    //               from               to
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+
+    // Now perform a write on A
+    assert!(server_a_txn
+        .internal_modify_uuid(
+            t_uuid,
+            &ModifyList::new_purge_and_set("description", Value::new_utf8s("repl_test"))
+        )
+        .is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Also write to B.
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    assert!(server_b_txn
+        .internal_modify_uuid(
+            t_uuid,
+            &ModifyList::new_purge_and_set("displayname", Value::new_utf8s("repl_test"))
+        )
+        .is_ok());
+
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Incremental repl in the both directions.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    //               from               to
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.read().await;
+    //               from               to
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Validate they are the same again.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.read().await;
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    // They are consistent again.
+    assert!(e1 == e2);
+    assert!(e1.get_ava_single_utf8("description") == Some("repl_test"));
+    assert!(e1.get_ava_single_utf8("displayname") == Some("repl_test"));
+}
+
+// Create entry on A -> B
+// Recycle
+// Recycle propogates from A -> B
+// TS on B
+// B -> A TS
+
+// Create entry on A -> B
+// Recycle on Both A/B
+// Recycle propogates from A -> B, B -> A, keep earliest.
+// TS on A
+// A -> B TS
+
+// Create + recycle entry on A -> B
+// TS on Both,
+// TS resolves to lowest AT.
+
+// conflict cases.
+
+// both add entry with same uuid - only one can win!
+
+// both add entry with same uuid, but one becomes ts - ts always wins.
+
+// both add entry with same uuid, both become ts - merge, take lowest AT.
 
 // Test RUV content when a server's changes have been trimmed out and are not present
 // in a refresh. This is not about tombstones, this is about attribute state.
