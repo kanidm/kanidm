@@ -27,6 +27,8 @@ use crate::filter::{Filter, FilterInvalid, FilterValid, FilterValidResolved};
 use crate::plugins::dyngroup::{DynGroup, DynGroupCache};
 use crate::plugins::Plugins;
 use crate::repl::cid::Cid;
+use crate::repl::proto::ReplRuvRange;
+use crate::repl::ruv::ReplicationUpdateVectorTransaction;
 use crate::schema::{
     Schema, SchemaAttribute, SchemaClass, SchemaReadTransaction, SchemaTransaction,
     SchemaWriteTransaction,
@@ -420,6 +422,27 @@ pub trait QueryServerTransaction<'a> {
         }
     }
 
+    /// Get a single entry by its UUID, even if the entry in question
+    /// is in a masked state (recycled, tombstoned).
+    #[instrument(level = "debug", skip_all)]
+    fn internal_search_all_uuid(
+        &mut self,
+        uuid: Uuid,
+    ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
+        let filter = filter_all!(f_eq("uuid", PartialValue::Uuid(uuid)));
+        let f_valid = filter.validate(self.get_schema()).map_err(|e| {
+            error!(?e, "Filter Validate - SchemaViolation");
+            OperationError::SchemaViolation(e)
+        })?;
+        let se = SearchEvent::new_internal(f_valid);
+
+        let mut vs = self.search(&se)?;
+        match vs.pop() {
+            Some(entry) if vs.is_empty() => Ok(entry),
+            _ => Err(OperationError::NoMatchingEntries),
+        }
+    }
+
     #[instrument(level = "debug", skip_all)]
     fn impersonate_search_ext_uuid(
         &mut self,
@@ -774,6 +797,42 @@ pub trait QueryServerTransaction<'a> {
 
     fn get_oauth2rs_set(&mut self) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         self.internal_search(filter!(f_eq("class", PVCLASS_OAUTH2_RS.clone(),)))
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    fn consumer_get_state(&mut self) -> Result<ReplRuvRange, OperationError> {
+        // Get the current state of "where we are up to"
+        //
+        // There are two approaches we can use here. We can either store a cookie
+        // related to the supplier we are fetching from, or we can use our RUV state.
+        //
+        // Initially I'm using RUV state, because it lets us select exactly what has
+        // changed, where the cookie approach is more coarse grained. The cookie also
+        // requires some more knowledge about what supplier we are communicating too
+        // where the RUV approach doesn't since the supplier calcs the diff.
+        //
+        // We need the RUV as a state of
+        //
+        // [ s_uuid, cid_min, cid_max ]
+        // [ s_uuid, cid_min, cid_max ]
+        // [ s_uuid, cid_min, cid_max ]
+        // ...
+        //
+        // This way the remote can diff against it's knowledge and work out:
+        //
+        // [ s_uuid, from_cid, to_cid ]
+        // [ s_uuid, from_cid, to_cid ]
+        //
+        // ...
+
+        // Which then the supplier will use to actually retrieve the set of entries.
+        // and the needed attributes we need.
+        let ruv_snapshot = self.get_be_txn().get_ruv();
+
+        // What's the current set of ranges?
+        ruv_snapshot
+            .current_ruv_range()
+            .map(|ranges| ReplRuvRange::V1 { ranges })
     }
 }
 

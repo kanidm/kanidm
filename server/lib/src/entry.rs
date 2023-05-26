@@ -758,7 +758,17 @@ impl Entry<EntryIncremental, EntryNew> {
                 // Due to previous checks, this must be equal!
                 debug_assert!(left_at == right_at);
                 debug_assert!(self.attrs == db_ent.attrs);
-                // Doesn't matter which side we take.
+                // We have to generate the attrs here, since on replication
+                // we just send the tombstone ecstate rather than attrs. Our
+                // db stub also lacks these attributes too.
+                let mut attrs_new: Eattrs = Map::new();
+                let class_ava = vs_iutf8!["object", "tombstone"];
+                let last_mod_ava = vs_cid![left_at.clone()];
+
+                attrs_new.insert(AttrString::from("uuid"), vs_uuid![self.valid.uuid]);
+                attrs_new.insert(AttrString::from("class"), class_ava);
+                attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);
+
                 Entry {
                     valid: EntryIncremental {
                         uuid: self.valid.uuid,
@@ -767,10 +777,11 @@ impl Entry<EntryIncremental, EntryNew> {
                     state: EntryCommitted {
                         id: db_ent.state.id,
                     },
-                    attrs: self.attrs.clone(),
+                    attrs: attrs_new,
                 }
             }
             (State::Tombstone { .. }, State::Live { .. }) => {
+                debug_assert!(false);
                 // Keep the left side.
                 Entry {
                     valid: EntryIncremental {
@@ -784,6 +795,7 @@ impl Entry<EntryIncremental, EntryNew> {
                 }
             }
             (State::Live { .. }, State::Tombstone { .. }) => {
+                debug_assert!(false);
                 // Keep the right side
                 Entry {
                     valid: EntryIncremental {

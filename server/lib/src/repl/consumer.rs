@@ -1,48 +1,12 @@
 use super::proto::*;
-use crate::be::BackendTransaction;
 use crate::plugins::Plugins;
 use crate::prelude::*;
-use crate::repl::proto::ReplRuvRange;
-use crate::repl::ruv::ReplicationUpdateVectorTransaction;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-impl<'a> QueryServerReadTransaction<'a> {
-    // Get the current state of "where we are up to"
-    //
-    // There are two approaches we can use here. We can either store a cookie
-    // related to the supplier we are fetching from, or we can use our RUV state.
-    //
-    // Initially I'm using RUV state, because it lets us select exactly what has
-    // changed, where the cookie approach is more coarse grained. The cookie also
-    // requires some more knowledge about what supplier we are communicating too
-    // where the RUV approach doesn't since the supplier calcs the diff.
-
-    #[instrument(level = "debug", skip_all)]
-    pub fn consumer_get_state(&mut self) -> Result<ReplRuvRange, OperationError> {
-        // We need the RUV as a state of
-        //
-        // [ s_uuid, cid_min, cid_max ]
-        // [ s_uuid, cid_min, cid_max ]
-        // [ s_uuid, cid_min, cid_max ]
-        // ...
-        //
-        // This way the remote can diff against it's knowledge and work out:
-        //
-        // [ s_uuid, from_cid, to_cid ]
-        // [ s_uuid, from_cid, to_cid ]
-        //
-        // ...
-
-        // Which then the supplier will use to actually retrieve the set of entries.
-        // and the needed attributes we need.
-        let ruv_snapshot = self.get_be_txn().get_ruv();
-
-        // What's the current set of ranges?
-        ruv_snapshot
-            .current_ruv_range()
-            .map(|ranges| ReplRuvRange::V1 { ranges })
-    }
+pub enum ConsumerState {
+    Ok,
+    RefreshRequired,
 }
 
 impl<'a> QueryServerWriteTransaction<'a> {
@@ -78,6 +42,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             error!(err = ?e, "Unable to process replication incremental entries to valid entry states for replication");
             e
         })?;
+
+        trace!("===========================================");
+        trace!(?ctx_entries);
 
         let db_entries = self.be_txn.incremental_prepare(&ctx_entries).map_err(|e| {
             error!("Failed to access entries from db");
@@ -237,14 +204,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn consumer_apply_changes(
         &mut self,
         ctx: &ReplIncrementalContext,
-    ) -> Result<(), OperationError> {
+    ) -> Result<ConsumerState, OperationError> {
         match ctx {
             ReplIncrementalContext::NoChangesAvailable => {
                 info!("no changes are available");
-                Ok(())
+                Ok(ConsumerState::Ok)
             }
             ReplIncrementalContext::RefreshRequired => {
-                todo!();
+                error!("Unable to proceed with consumer incremental - the supplier has indicated that our RUV is outdated, and replication would introduce data corruption.");
+                error!("This server's content must be refreshed to proceed. If you have configured automatic refresh, this will occur shortly.");
+                Ok(ConsumerState::RefreshRequired)
             }
             ReplIncrementalContext::UnwillingToSupply => {
                 todo!();
@@ -276,7 +245,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         ctx_schema_entries: &[ReplIncrementalEntryV1],
         ctx_meta_entries: &[ReplIncrementalEntryV1],
         ctx_entries: &[ReplIncrementalEntryV1],
-    ) -> Result<(), OperationError> {
+    ) -> Result<ConsumerState, OperationError> {
         if ctx_domain_version < DOMAIN_MIN_LEVEL {
             error!("Unable to proceed with consumer incremental - incoming domain level is lower than our minimum supported level. {} < {}", ctx_domain_version, DOMAIN_MIN_LEVEL);
             return Err(OperationError::ReplDomainLevelUnsatisfiable);
@@ -352,7 +321,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e
         })?;
 
-        Ok(())
+        Ok(ConsumerState::Ok)
     }
 
     pub fn consumer_apply_refresh(
