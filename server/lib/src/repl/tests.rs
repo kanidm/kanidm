@@ -746,13 +746,13 @@ async fn test_repl_increment_simultaneous_bidirectional_write(
 
 // Create entry on A -> B
 // Recycle
-// Recycle propogates from A -> B
+// Recycle propagates from A -> B
 // TS on B
 // B -> A TS
 
 // Create entry on A -> B
 // Recycle on Both A/B
-// Recycle propogates from A -> B, B -> A, keep earliest.
+// Recycle propagates from A -> B, B -> A, keep earliest.
 // TS on A
 // A -> B TS
 

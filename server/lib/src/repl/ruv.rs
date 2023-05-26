@@ -450,7 +450,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
                             warn!(
                                 ?ctx_server_uuid,
                                 ?ctx_ts,
-                                "inconsistent server range in ruv, no maxmium ts found for s_uuid"
+                                "inconsistent server range in ruv, no maximum ts found for s_uuid"
                             );
                         }
                     }
