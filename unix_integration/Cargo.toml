@@ -55,6 +55,7 @@ r2d2.workspace = true
 r2d2_sqlite.workspace = true
 rpassword.workspace = true
 rusqlite.workspace = true
+selinux.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 sketching.workspace = true
