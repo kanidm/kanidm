@@ -39,7 +39,6 @@ jobs:
         with:
           mdbook-version: "latest"
 
-
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
