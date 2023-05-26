@@ -4,12 +4,13 @@ use std::fs::File;
 use std::io::{ErrorKind, Read};
 use std::path::Path;
 
+use selinux::{kernel_support, KernelSupport};
 use serde::Deserialize;
 
 use crate::constants::{
     DEFAULT_CACHE_TIMEOUT, DEFAULT_CONN_TIMEOUT, DEFAULT_DB_PATH, DEFAULT_GID_ATTR_MAP,
-    DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SHELL, DEFAULT_SOCK_PATH,
-    DEFAULT_TASK_SOCK_PATH, DEFAULT_UID_ATTR_MAP, DEFAULT_USE_ETC_SKEL,
+    DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SELINUX, DEFAULT_SHELL,
+    DEFAULT_SOCK_PATH, DEFAULT_TASK_SOCK_PATH, DEFAULT_UID_ATTR_MAP, DEFAULT_USE_ETC_SKEL,
 };
 
 #[derive(Debug, Deserialize)]
@@ -27,6 +28,7 @@ struct ConfigInt {
     use_etc_skel: Option<bool>,
     uid_attr_map: Option<String>,
     gid_attr_map: Option<String>,
+    selinux: Option<bool>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -85,6 +87,7 @@ pub struct KanidmUnixdConfig {
     pub use_etc_skel: bool,
     pub uid_attr_map: UidAttr,
     pub gid_attr_map: UidAttr,
+    pub selinux: bool,
 }
 
 impl Default for KanidmUnixdConfig {
@@ -115,7 +118,9 @@ impl Display for KanidmUnixdConfig {
         }
 
         writeln!(f, "uid_attr_map: {}", self.uid_attr_map)?;
-        writeln!(f, "gid_attr_map: {}", self.gid_attr_map)
+        writeln!(f, "gid_attr_map: {}", self.gid_attr_map)?;
+
+        writeln!(f, "selinux: {}", self.selinux)
     }
 }
 
@@ -140,6 +145,7 @@ impl KanidmUnixdConfig {
             use_etc_skel: DEFAULT_USE_ETC_SKEL,
             uid_attr_map: DEFAULT_UID_ATTR_MAP,
             gid_attr_map: DEFAULT_GID_ATTR_MAP,
+            selinux: DEFAULT_SELINUX,
         }
     }
 
@@ -246,6 +252,10 @@ impl KanidmUnixdConfig {
                     }
                 })
                 .unwrap_or(self.gid_attr_map),
+            selinux: match config.selinux.unwrap_or(self.selinux) {
+                true => !matches!(kernel_support(), KernelSupport::Unsupported),
+                false => false,
+            },
         })
     }
 }
