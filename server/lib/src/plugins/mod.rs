@@ -345,7 +345,6 @@ impl Plugins {
         domain::Domain::post_repl_incremental(qs, pre_cand, cand)?;
         spn::Spn::post_repl_incremental(qs, pre_cand, cand)?;
         refint::ReferentialIntegrity::post_repl_incremental(qs, pre_cand, cand)?;
-        spn::Spn::post_repl_incremental(qs, pre_cand, cand)?;
         memberof::MemberOf::post_repl_incremental(qs, pre_cand, cand)
     }
 

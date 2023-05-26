@@ -212,7 +212,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             }
             ReplIncrementalContext::RefreshRequired => {
                 error!("Unable to proceed with consumer incremental - the supplier has indicated that our RUV is outdated, and replication would introduce data corruption.");
-                error!("This servers content must be refreshed to proceed. If you have nominated for automatic refresh, this will occur shortly.");
+                error!("This server's content must be refreshed to proceed. If you have configured automatic refresh, this will occur shortly.");
                 Ok(ConsumerState::RefreshRequired)
             }
             ReplIncrementalContext::UnwillingToSupply => {
