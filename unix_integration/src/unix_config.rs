@@ -4,7 +4,9 @@ use std::fs::File;
 use std::io::{ErrorKind, Read};
 use std::path::Path;
 
-use selinux::{kernel_support, KernelSupport};
+#[cfg(all(target_family = "unix", feature = "selinux"))]
+use crate::selinux_util;
+
 use serde::Deserialize;
 
 use crate::constants::{
@@ -253,8 +255,9 @@ impl KanidmUnixdConfig {
                 })
                 .unwrap_or(self.gid_attr_map),
             selinux: match config.selinux.unwrap_or(self.selinux) {
-                true => !matches!(kernel_support(), KernelSupport::Unsupported),
-                false => false,
+                #[cfg(all(target_family = "unix", feature = "selinux"))]
+                true => selinux_util::supported(),
+                _ => false,
             },
         })
     }

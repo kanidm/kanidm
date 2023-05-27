@@ -24,7 +24,6 @@ use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{HomeDirectoryInfo, TaskRequest, TaskResponse};
 use libc::{lchown, umask};
-use selinux::{label::back_end::File, label::Labeler, SecurityContext};
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
 use sketching::tracing_forest::{self};
@@ -32,8 +31,15 @@ use tokio::net::UnixStream;
 use tokio::sync::broadcast;
 use tokio::time;
 use tokio_util::codec::{Decoder, Encoder, Framed};
-use users::{get_effective_gid, get_effective_uid, get_user_by_uid};
+use users::{get_effective_gid, get_effective_uid};
 use walkdir::WalkDir;
+
+#[cfg(all(target_family = "unix", feature = "selinux"))]
+use kanidm_unix_common::selinux_util;
+#[cfg(all(target_family = "unix", feature = "selinux"))]
+use selinux::SecurityContext;
+#[cfg(all(target_family = "unix", feature = "selinux"))]
+use users::get_user_by_uid;
 
 struct TaskCodec;
 
@@ -84,31 +90,10 @@ fn chown(path: &Path, gid: u32) -> Result<(), String> {
     Ok(())
 }
 
-fn do_selinux_fscreatecon_for_path(
-    path_raw: &String,
-    labeler: &Option<Labeler<File>>,
-) -> Result<(), String> {
-    match labeler.as_ref() {
-        Some(it) => match it.look_up(&CString::new(path_raw.to_owned()).unwrap(), 0) {
-            Ok(context) => {
-                if let Err(_) = context.set_for_new_file_system_objects(true) {
-                    return Err("Failed setting creation context home directory path".to_string());
-                }
-                Ok(())
-            }
-            Err(_) => {
-                return Err("Failed looking up default context for home directory path".to_string());
-            }
-        },
-        None => Ok(()),
-    }
-}
-
 fn create_home_directory(
     info: &HomeDirectoryInfo,
     home_prefix: &str,
     use_etc_skel: bool,
-    selinux: bool,
 ) -> Result<(), String> {
     // Final sanity check to prevent certain classes of attacks.
     let name = info.name.trim_start_matches('.').replace(['/', '\\'], "");
@@ -134,15 +119,8 @@ fn create_home_directory(
     }
 
     // Get a handle to the SELinux labeling interface
-    let labeler = match selinux {
-        true => match Labeler::new(&[], true) {
-            Ok(v) => Some(v),
-            Err(_) => {
-                return Err("Failed getting handle for SELinux labeling".to_string());
-            }
-        },
-        false => None,
-    };
+    #[cfg(all(target_family = "unix", feature = "selinux"))]
+    let labeler = selinux_util::get_labeler()?;
 
     // Construct a path for SELinux context lookups.
     // We do this because the policy only associates a home directory to its owning
@@ -151,23 +129,24 @@ fn create_home_directory(
     // (usually user_u or unconfined_u). This lookup path is used to ask the policy
     // what the context SHOULD be, and we will create policy equivalence rules below
     // so that relabels in the future do not break it.
-    let sel_lookup_path_raw = match selinux {
-        // Yes, gid, because we use the GID number for both the user's UID and primary GID
-        true => match get_user_by_uid(info.gid) {
-            Some(v) => format!("{}{}", home_prefix, v.name().to_str().unwrap()),
-            None => {
-                return Err("Failed looking up username by uid for SELinux relabeling".to_string());
-            }
-        },
-        false => String::new(),
+    #[cfg(all(target_family = "unix", feature = "selinux"))]
+    // Yes, gid, because we use the GID number for both the user's UID and primary GID
+    let sel_lookup_path_raw = match get_user_by_uid(info.gid) {
+        Some(v) => format!("{}{}", home_prefix, v.name().to_str().unwrap()),
+        None => {
+            return Err("Failed looking up username by uid for SELinux relabeling".to_string());
+        }
     };
 
     // Does the home directory exist?
     if !hd_path.exists() {
         // Set a umask
         let before = unsafe { umask(0o0027) };
+
         // Set the SELinux security context for file creation
-        do_selinux_fscreatecon_for_path(&sel_lookup_path_raw, &labeler)?;
+        #[cfg(all(target_family = "unix", feature = "selinux"))]
+        selinux_util::do_setfscreatecon_for_path(&sel_lookup_path_raw, &labeler)?;
+
         // Create the dir
         if let Err(e) = fs::create_dir_all(hd_path) {
             let _ = unsafe { umask(before) };
@@ -189,15 +168,16 @@ fn create_home_directory(
                         .map_err(|e| e.to_string())?,
                 );
 
-                // Look up the correct SELinux context of this object
-                if selinux {
+                #[cfg(all(target_family = "unix", feature = "selinux"))]
+                {
+                    // Look up the correct SELinux context of this object
                     let sel_lookup_path = Path::new(&sel_lookup_path_raw).join(
                         entry
                             .path()
                             .strip_prefix(skel_dir)
                             .map_err(|e| e.to_string())?,
                     );
-                    do_selinux_fscreatecon_for_path(
+                    selinux_util::do_setfscreatecon_for_path(
                         &sel_lookup_path.to_str().unwrap().to_string(),
                         &labeler,
                     )?;
@@ -214,10 +194,9 @@ fn create_home_directory(
     }
 
     // Reset object creation SELinux context to default
-    if labeler.is_some() {
-        if SecurityContext::set_default_context_for_new_file_system_objects().is_err() {
-            return Err("Failed resetting SELinux file creation contexts".to_string());
-        }
+    #[cfg(all(target_family = "unix", feature = "selinux"))]
+    if SecurityContext::set_default_context_for_new_file_system_objects().is_err() {
+        return Err("Failed resetting SELinux file creation contexts".to_string());
     }
 
     let name_rel_path = Path::new(&name);
@@ -273,12 +252,7 @@ async fn handle_tasks(stream: UnixStream, cfg: &KanidmUnixdConfig) {
             Some(Ok(TaskRequest::HomeDirectory(info))) => {
                 debug!("Received task -> HomeDirectory({:?})", info);
 
-                let resp = match create_home_directory(
-                    &info,
-                    &cfg.home_prefix,
-                    cfg.use_etc_skel,
-                    cfg.selinux,
-                ) {
+                let resp = match create_home_directory(&info, &cfg.home_prefix, cfg.use_etc_skel) {
                     Ok(()) => TaskResponse::Success,
                     Err(msg) => TaskResponse::Error(msg),
                 };
