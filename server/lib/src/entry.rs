@@ -713,11 +713,60 @@ impl Entry<EntryIncremental, EntryNew> {
                 // Now we have the set of attrs from both sides. Lets see what state they are in!
                 for attr_name in attr_set.into_iter() {
                     match (changes_left.get(attr_name), changes_right.get(attr_name)) {
-                        (Some(_cid_left), Some(_cid_right)) => {
+                        (Some(cid_left), Some(cid_right)) => {
                             // This is the normal / usual and most "fun" case. Here we need to determine
                             // which side is latest and then do a valueset merge. This is also
                             // needing schema awareness depending on the attribute!
-                            todo!();
+                            //
+                            // The behaviour is very dependent on the state of the attributes and
+                            // if they exist.
+                            let take_left = cid_left > cid_right;
+
+                            match (self.attrs.get(attr_name), db_ent.attrs.get(attr_name)) {
+                                (Some(vs_left), Some(vs_right)) if take_left => {
+                                    if let Some(_attr_state) = vs_left.repl_merge_valueset(vs_right)
+                                    {
+                                        todo!();
+                                    } else {
+                                        changes.insert(attr_name.clone(), cid_left.clone());
+                                        eattrs.insert(attr_name.clone(), vs_left.clone());
+                                    }
+                                }
+                                (Some(vs_left), Some(vs_right)) => {
+                                    if let Some(_attr_state) = vs_right.repl_merge_valueset(vs_left)
+                                    {
+                                        todo!();
+                                    } else {
+                                        changes.insert(attr_name.clone(), cid_right.clone());
+                                        eattrs.insert(attr_name.clone(), vs_right.clone());
+                                    }
+                                }
+                                (Some(vs_left), None) if take_left => {
+                                    changes.insert(attr_name.clone(), cid_left.clone());
+                                    eattrs.insert(attr_name.clone(), vs_left.clone());
+                                }
+                                (Some(_vs_left), None) => {
+                                    changes.insert(attr_name.clone(), cid_right.clone());
+                                    // Taking right, nothing to do due to no attr.
+                                }
+                                (None, Some(_vs_right)) if take_left => {
+                                    changes.insert(attr_name.clone(), cid_left.clone());
+                                    // Taking left, nothing to do due to no attr.
+                                }
+                                (None, Some(vs_right)) => {
+                                    changes.insert(attr_name.clone(), cid_right.clone());
+                                    eattrs.insert(attr_name.clone(), vs_right.clone());
+                                }
+                                (None, None) if take_left => {
+                                    changes.insert(attr_name.clone(), cid_left.clone());
+                                    // Taking left, nothing to do due to no attr.
+                                }
+                                (None, None) => {
+                                    changes.insert(attr_name.clone(), cid_right.clone());
+                                    // Taking right, nothing to do due to no attr.
+                                }
+                            }
+                            // End attr merging
                         }
                         (Some(cid_left), None) => {
                             // Keep the value on the left.
@@ -726,10 +775,12 @@ impl Entry<EntryIncremental, EntryNew> {
                                 eattrs.insert(attr_name.clone(), valueset.clone());
                             }
                         }
-                        (None, Some(_cid_right)) => {
+                        (None, Some(cid_right)) => {
                             // Keep the value on the right.
-
-                            todo!();
+                            changes.insert(attr_name.clone(), cid_right.clone());
+                            if let Some(valueset) = db_ent.attrs.get(attr_name) {
+                                eattrs.insert(attr_name.clone(), valueset.clone());
+                            }
                         }
                         (None, None) => {
                             // Should be impossible! At least one side or the other must have a change.

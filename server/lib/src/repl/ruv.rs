@@ -424,31 +424,43 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         // our ruv, that it's maximum matches the ctx ruv.
         //
         // Since the ctx range comes from the supplier, when we rebuild due to the
-        // state machine then some values may not exist since they were replaced. But
-        // the server uuid maximums must exist.
+        // state machine then some values may not exist since they were replaced
+        // or updated. It's also possible that the imported range maximums *may not*
+        // exist especially in three way replication scenarioes where S1:A was the S1
+        // maximum but is replaced by S2:B. This would make S1:A still it's valid
+        // maximum but no entry reflects that in it's change state.
+
         let mut valid = true;
-        for (server_uuid, server_range) in self.ranged.iter() {
-            match ctx_ranges.get(server_uuid) {
-                Some(ctx_range) => {
-                    let ctx_ts = &ctx_range.ts_max;
+
+        for (ctx_server_uuid, ctx_server_range) in ctx_ranges.iter() {
+            match self.ranged.get(ctx_server_uuid) {
+                Some(server_range) => {
+                    let ctx_ts = &ctx_server_range.ts_max;
                     match server_range.last() {
-                        Some(s_ts) if ctx_ts == s_ts => {
-                            // Ok
-                            trace!(?server_uuid, ?ctx_ts, ?s_ts, "valid");
+                        Some(s_ts) if s_ts <= ctx_ts => {
+                            // Ok - our entries reflect maximum or earlier.
+                            trace!(?ctx_server_uuid, ?ctx_ts, ?s_ts, "valid");
                         }
                         Some(s_ts) => {
                             valid = false;
-                            warn!(?server_uuid, ?ctx_ts, ?s_ts, "inconsistent s_uuid in ruv");
+                            warn!(?ctx_server_uuid, ?ctx_ts, ?s_ts, "inconsistent s_uuid in ruv, consumer ruv is advanced past supplier");
                         }
                         None => {
                             valid = false;
-                            warn!(?server_uuid, ?ctx_ts, "inconsistent server range in ruv");
+                            warn!(
+                                ?ctx_server_uuid,
+                                ?ctx_ts,
+                                "inconsistent server range in ruv, no maximum ts found for s_uuid"
+                            );
                         }
                     }
                 }
                 None => {
-                    valid = false;
-                    error!(?server_uuid, "s_uuid absent from in ruv");
+                    // valid = false;
+                    trace!(
+                        ?ctx_server_uuid,
+                        "s_uuid absent from ranged ruv, possible that changes have been expired"
+                    );
                 }
             }
         }
@@ -549,6 +561,9 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         let eid = entry.get_id();
         let ecstate = entry.get_changestate();
+
+        trace!("Updating ruv state from entry {}", eid);
+        trace!(?ecstate);
 
         for cid in ecstate.cid_iter() {
             if let Some(idl) = self.data.get_mut(cid) {
