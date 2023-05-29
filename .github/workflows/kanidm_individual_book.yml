@@ -49,6 +49,7 @@ jobs:
 
       - name: Build the docs
         run: |
+          cargo install mdbook-template
           cargo doc --no-deps
           mdbook build *book
           rm -rf ./docs/
