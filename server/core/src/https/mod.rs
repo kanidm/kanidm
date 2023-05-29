@@ -144,10 +144,19 @@ impl RequestExtensions for tide::Request<AppState> {
     }
 
     fn get_url_param(&self, param: &str) -> Result<String, tide::Error> {
-        self.param(param).map(str::to_string).map_err(|e| {
-            error!(?e);
-            tide::Error::from_str(tide::StatusCode::ImATeapot, "teapot")
-        })
+        self.param(param)
+            .map_err(|e| {
+                error!(?e);
+                tide::Error::from_str(tide::StatusCode::ImATeapot, "teapot")
+            })
+            .and_then(|data| {
+                urlencoding::decode(data)
+                    .map(|s| s.into_owned())
+                    .map_err(|e| {
+                        error!(?e);
+                        tide::Error::from_str(tide::StatusCode::ImATeapot, "teapot")
+                    })
+            })
     }
 
     fn get_url_param_uuid(&self, param: &str) -> Result<Uuid, tide::Error> {
