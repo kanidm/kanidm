@@ -27,6 +27,7 @@
 - Pi-Cla
 - Sebastiano Tocci(Seba-T)
 - Minh Phan (MinhPhan8803)
+- Kenton Groombridge (0xC0ncord)
 
 ## Acknowledgements
 
