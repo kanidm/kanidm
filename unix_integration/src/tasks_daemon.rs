@@ -39,6 +39,8 @@ use kanidm_unix_common::selinux_util;
 #[cfg(all(target_family = "unix", feature = "selinux"))]
 use selinux::SecurityContext;
 #[cfg(all(target_family = "unix", feature = "selinux"))]
+use std::process::Command;
+#[cfg(all(target_family = "unix", feature = "selinux"))]
 use users::get_user_by_uid;
 
 struct TaskCodec;
@@ -189,6 +191,16 @@ fn create_home_directory(
                     fs::copy(entry.path(), dest).map_err(|e| e.to_string())?;
                 }
                 chown(dest, info.gid)?;
+
+                // Create equivalence rule in the SELinux policy
+                #[cfg(all(target_family = "unix", feature = "selinux"))]
+                if Command::new("semanage")
+                    .args(["fcontext", "-ae", &sel_lookup_path_raw, &hd_path_raw])
+                    .spawn()
+                    .is_err()
+                {
+                    return Err("Failed creating SELinux policy equivalence rule".to_string());
+                }
             }
         }
     }
