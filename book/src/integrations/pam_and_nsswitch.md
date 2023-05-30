@@ -55,6 +55,7 @@ home_alias = "spn"
 use_etc_skel = false
 uid_attr_map = "spn"
 gid_attr_map = "spn"
+selinux = true
 ```
 
 `pam_allowed_login_groups` defines a set of POSIX groups where membership of any of these groups
@@ -88,6 +89,12 @@ when first created. Defaults to false.
 
 `gid_attr_map` chooses which attribute is used for domain local groups in presentation. Defaults to
 `spn`. Groups from a trust will always use spn.
+
+`selinux` controls whether the `kanidm_unixd_tasks` daemon should detect and enable SELinux runtime
+compatibility features to ensure that newly created home directories are labeled correctly. This
+setting as no bearing on systems without SELinux, as these features will automatically be disabled
+if SELinux is not detected when the daemon starts. Note that `kanidm_unixd_tasks` must also be built
+with the SELinux feature flag for this functionality. Defaults to true.
 
 You can then check the communication status of the daemon:
 

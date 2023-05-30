@@ -14,6 +14,7 @@ repository.workspace = true
 [features]
 default = ["unix"]
 unix = []
+selinux = ["dep:selinux"]
 
 [[bin]]
 name = "kanidm_unixd"
@@ -55,6 +56,7 @@ r2d2.workspace = true
 r2d2_sqlite.workspace = true
 rpassword.workspace = true
 rusqlite.workspace = true
+selinux = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 sketching.workspace = true
