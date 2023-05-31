@@ -56,7 +56,7 @@ impl IntervalActor {
     #[allow(clippy::result_unit_err)]
     pub fn start_online_backup(
         server: &'static QueryServerReadV1,
-        cfg: &OnlineBackup,
+        online_backup_config: &OnlineBackup,
         mut rx: broadcast::Receiver<CoreAction>,
     ) -> Result<tokio::task::JoinHandle<()>, ()> {
         let outpath = cfg.path.to_owned();
