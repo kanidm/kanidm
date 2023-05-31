@@ -657,17 +657,8 @@ async fn main() -> ExitCode {
 
             let cachelayer = Arc::new(cl_inner);
 
-            // Set the umask while we open the path for most clients.
-            let before = unsafe { umask(0) };
-            let listener = match UnixListener::bind(cfg.sock_path.as_str()) {
-                Ok(l) => l,
-                Err(_e) => {
-                    error!("Failed to bind UNIX socket at {}", cfg.sock_path.as_str());
-                    return ExitCode::FAILURE
-                }
-            };
-            // Setup the root-only socket. Take away all others.
-            let _ = unsafe { umask(0o0077) };
+            // Setup the root-only socket. Take away all other access bits.
+            let before = unsafe { umask(0o0077) };
             let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
                 Ok(l) => l,
                 Err(_e) => {
@@ -675,10 +666,10 @@ async fn main() -> ExitCode {
                     return ExitCode::FAILURE
                 }
             };
-
-            // Undo it.
+            // Undo umask changes.
             let _ = unsafe { umask(before) };
 
+            // Setup the tasks socket first.
             let (task_channel_tx, mut task_channel_rx) = channel(16);
             let task_channel_tx = Arc::new(task_channel_tx);
 
@@ -732,6 +723,19 @@ async fn main() -> ExitCode {
             });
 
             // TODO: Setup a task that handles pre-fetching here.
+
+            // Set the umask while we open the path for most clients.
+            let before = unsafe { umask(0) };
+            let listener = match UnixListener::bind(cfg.sock_path.as_str()) {
+                Ok(l) => l,
+                Err(_e) => {
+                    error!("Failed to bind UNIX socket at {}", cfg.sock_path.as_str());
+                    return ExitCode::FAILURE
+                }
+            };
+            // Undo umask changes.
+            let _ = unsafe { umask(before) };
+
             let task_a = tokio::spawn(async move {
                 loop {
                     let tc_tx = task_channel_tx_cln.clone();
