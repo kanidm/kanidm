@@ -59,14 +59,23 @@ impl IntervalActor {
         online_backup_config: &OnlineBackup,
         mut rx: broadcast::Receiver<CoreAction>,
     ) -> Result<tokio::task::JoinHandle<()>, ()> {
-        let outpath = cfg.path.to_owned();
-        let versions = cfg.versions;
-
+        let outpath = online_backup_config.path.to_owned();
+        let versions = online_backup_config.versions;
+        let crono_expr = online_backup_config.schedule.as_str().to_string();
+        let mut crono_expr_values = crono_expr.split_ascii_whitespace().collect::<Vec<&str>>();
+        if crono_expr_values.len() == 5 {
+            // we add a 0 element at the beginning to simulate the standard crono syntax which always runs
+            // commands at seconds 00
+            crono_expr_values.insert(0, "0");
+            crono_expr_values.push("*");
+        }
+        let crono_expression_schedule = crono_expr_values.join(" ");
         // Cron expression handling
-        let cron_expr = Schedule::from_str(cfg.schedule.as_str()).map_err(|e| {
+        let cron_expr = Schedule::from_str(crono_expression_schedule.as_str()).map_err(|e| {
             error!("Online backup schedule parse error: {}", e);
             error!("valid formats are:");
             error!("sec  min   hour   day of month   month   day of week   year");
+            error!("min   hour   day of month   month   day of week");
             error!("@hourly | @daily | @weekly");
         })?;
 

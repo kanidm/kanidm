@@ -740,8 +740,11 @@ pub async fn create_server_core(
     // Setup timed events associated to the read thread
     let maybe_backup_handle = match &config.online_backup {
         Some(online_backup_config) => {
-            let handle =
-                IntervalActor::start_online_backup(server_read_ref, online_backup_config, broadcast_tx.subscribe())?;
+            let handle = IntervalActor::start_online_backup(
+                server_read_ref,
+                online_backup_config,
+                broadcast_tx.subscribe(),
+            )?;
             Some(handle)
         }
         None => {
