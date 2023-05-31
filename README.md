@@ -9,13 +9,13 @@
 Kanidm is a simple and secure identity management platform, allowing other applications and services
 to offload the challenge of authenticating and storing identities to Kanidm.
 
-The goal of this project is to be a complete identity provider, covering the broadest
-possible set of requirements and integrations. You should not need any other components (like
-Keycloak) when you use Kanidm - we already have everything you need!
+The goal of this project is to be a complete identity provider, covering the broadest possible set
+of requirements and integrations. You should not need any other components (like Keycloak) when you
+use Kanidm - we already have everything you need!
 
 To achieve this we rely heavily on strict defaults, simple configuration, and self-healing
-components. This allows Kanidm to run from small home labs, families, and all the way to the
-largest enterprise needs.
+components. This allows Kanidm to run from small home labs, for families, small business, and all
+the way to the largest enterprise needs.
 
 If you want to host your own authentication service, then Kanidm is for you!
 
@@ -64,9 +64,9 @@ Alternately you can open a new [github discussion].
 
 ## What does Kanidm mean?
 
-Kanidm is a portmanteau of 'kani' and 'idm'. Kani is Japanese for crab, related to Rust's mascot ferris
-the crab. identity management is often abbreviated to 'idm', and is a common industry term for these
-services.
+Kanidm is a portmanteau of 'kani' and 'idm'. Kani is Japanese for crab, related to Rust's mascot
+ferris the crab. identity management is often abbreviated to 'idm', and is a common industry term
+for these services.
 
 Kanidm is pronounced as "kar - nee - dee - em".
 
@@ -84,6 +84,7 @@ may make it easier to administer and deploy for you.
 
 If Kanidm is too complex for your needs, you should check out LLDAP as a smaller alternative. If you
 want a project which has a broader feature set out of the box, then Kanidm might be a better fit.
+
 </details>
 
 <details><summary>389-ds / OpenLDAP</summary>
@@ -97,6 +98,7 @@ Kanidm is a better choice.
 
 Kanidm was originally inspired by many elements of both 389-ds and OpenLDAP. Already Kanidm is as
 fast as (or faster than) 389-ds for performance and scaling as a directory service.
+
 </details>
 
 <details><summary>FreeIPA</summary>
@@ -111,6 +113,7 @@ overheads. If you want a complete IDM package, but in a lighter footprint and ea
 Kanidm is probably for you. In testing with 3000 users + 1500 groups, Kanidm is 3 times faster for
 search operations and 5 times faster for modification and addition of entries (your results may
 differ however, but generally Kanidm is much faster than FreeIPA).
+
 </details>
 
 <details><summary>Keycloak</summary>
@@ -122,8 +125,9 @@ Keycloak requires a significant amount of configuration and experience to deploy
 levels of customisation to every detail of it's authentication work flows, which makes it harder to
 start with in many cases.
 
-Kanidm does NOT require Keycloak to provide services such as Oauth2 and integrates many of the elements
-in a simpler and correct way out of the box in comparison.
+Kanidm does NOT require Keycloak to provide services such as Oauth2 and integrates many of the
+elements in a simpler and correct way out of the box in comparison.
+
 <details>
 
 ## Developer Getting Started
@@ -137,4 +141,3 @@ When developing the server you should refer to the latest commit documentation i
 - [Kanidm book (Latest commit)](https://kanidm.github.io/kanidm/master/)
 
 [guide for developers]: https://kanidm.github.io/kanidm/master/DEVELOPER_README.html
-
