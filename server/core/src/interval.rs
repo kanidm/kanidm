@@ -63,15 +63,22 @@ impl IntervalActor {
         let versions = online_backup_config.versions;
         let crono_expr = online_backup_config.schedule.as_str().to_string();
         let mut crono_expr_values = crono_expr.split_ascii_whitespace().collect::<Vec<&str>>();
-        if crono_expr_values.len() == 5 {
+        let chrono_expr_uses_standard_syntax = crono_expr_values.len() == 5;
+        if chrono_expr_uses_standard_syntax {
             // we add a 0 element at the beginning to simulate the standard crono syntax which always runs
             // commands at seconds 00
             crono_expr_values.insert(0, "0");
             crono_expr_values.push("*");
         }
-        let crono_expression_schedule = crono_expr_values.join(" ");
+        let crono_expr_schedule = crono_expr_values.join(" ");
+        if chrono_expr_uses_standard_syntax {
+            info!(
+                "Provided online backup schedule is: {}, now being transformed to: {}",
+                crono_expr, crono_expr_schedule
+            );
+        }
         // Cron expression handling
-        let cron_expr = Schedule::from_str(crono_expression_schedule.as_str()).map_err(|e| {
+        let cron_expr = Schedule::from_str(crono_expr_schedule.as_str()).map_err(|e| {
             error!("Online backup schedule parse error: {}", e);
             error!("valid formats are:");
             error!("sec  min   hour   day of month   month   day of week   year");
