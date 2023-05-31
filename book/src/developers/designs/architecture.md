@@ -122,9 +122,9 @@ This operation returns a result (9) to the backend, which is then filtered up to
 
 (11) Provided all operations to this point have been successful, we now apply post write plugins
 which may enforce or generate different properties in the transaction. This is similar to the pre
-plugins, but allows different operations. For example, a post plugin ensures uuid reference types are
-consistent and valid across the set of changes in the database. The most critical is memberof, which
-generates reverse reference links from entries to their group memberships, enabling fast rbac
+plugins, but allows different operations. For example, a post plugin ensures uuid reference types
+are consistent and valid across the set of changes in the database. The most critical is memberof,
+which generates reverse reference links from entries to their group memberships, enabling fast rbac
 operations. These are done as post plugins because at this point internal searches can now yield and
 see the modified entries that we have just added to the indexes and datatables, which is important
 for consistency (and simplicity) especially when you consider batched operations.
