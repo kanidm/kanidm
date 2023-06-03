@@ -220,7 +220,8 @@ impl CommonOpt {
                         login_opt.exec().await;
                         // we still use `to_client` instead of `try_to_client` because we may need to prompt user to re-auth again.
                         // since reauth_opt will call `to_client`, this function is recursive anyway.
-                        return self.to_client(optype).await;
+                        // we use copt since it's username is updated.
+                        return login_opt.copt.to_client(optype).await;
                     }
                     ToClientError::NeedReauth(username) => {
                         let login_opt = Select::with_theme(&ColorfulTheme::default())
@@ -239,7 +240,7 @@ impl CommonOpt {
                         // calls `to_client` recursively
                         // but should not goes into `NeedLogin` branch again
                         reauth_opt.exec().await;
-                        if let Ok(c) = self.try_to_client(optype).await {
+                        if let Ok(c) = reauth_opt.copt.try_to_client(optype).await {
                             return c;
                         }
                     }
