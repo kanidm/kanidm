@@ -4,7 +4,7 @@ use std::str::FromStr;
 use async_recursion::async_recursion;
 use compact_jwt::{Jws, JwsUnverified};
 use dialoguer::theme::ColorfulTheme;
-use dialoguer::Select;
+use dialoguer::{Confirm, Select};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME};
 use kanidm_proto::v1::UserAuthToken;
@@ -113,7 +113,7 @@ impl CommonOpt {
                     Some(t) => t.clone(),
                     None => {
                         error!("No valid authentication tokens found for {}.", username);
-                        return Err(ToClientError::Other);
+                        return Err(ToClientError::NeedLogin(username));
                     }
                 }
             }
@@ -201,14 +201,11 @@ impl CommonOpt {
             Err(e) => {
                 match e {
                     ToClientError::NeedLogin(username) => {
-                        let login_opt = Select::with_theme(&ColorfulTheme::default())
+                        if !Confirm::new()
                             .with_prompt("Would you like to login again?")
-                            .default(0)
-                            .item("Yes")
-                            .item("No")
                             .interact()
-                            .expect("Unable to read user input");
-                        if login_opt == 1 {
+                            .expect("Failed to interact with interactive session")
+                        {
                             std::process::exit(1);
                         }
                         let mut copt = self.clone();
@@ -224,14 +221,11 @@ impl CommonOpt {
                         return login_opt.copt.to_client(optype).await;
                     }
                     ToClientError::NeedReauth(username) => {
-                        let login_opt = Select::with_theme(&ColorfulTheme::default())
+                        if !Confirm::new()
                             .with_prompt("Would you like to re-authenticate?")
-                            .default(0)
-                            .item("Yes")
-                            .item("No")
                             .interact()
-                            .expect("Unable to read user input");
-                        if login_opt == 1 {
+                            .expect("Failed to interact with interactive session")
+                        {
                             std::process::exit(1);
                         }
                         let mut copt = self.clone();
