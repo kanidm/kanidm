@@ -23,7 +23,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  generate_tags:
+  pre_deploy:
     runs-on: ubuntu-latest
     outputs:
       tags: ${{ steps.tags.outputs.tags}}
@@ -34,7 +34,7 @@ jobs:
         uses: oraad/get-tags-action@v1.0.0
         with:
           repo: ${{ github.repository }}
-          limit: 100
+          limit: 5
           github-token: ${{ github.token }}
       - uses: actions/checkout@v3
         with:
@@ -57,14 +57,14 @@ jobs:
 
   fanout:
     uses: './.github/workflows/kanidm_individual_book.yml'
-    needs: generate_tags
+    needs: pre_deploy
 
     strategy:
       fail-fast: false
       matrix:
-        # tag: ${{ fromJson(needs.generate_tags.outputs.tags) }}
+        # tag: ${{ fromJson(needs.pre_deploy.outputs.tags) }}
         tag:
-          - ${{ needs.generate_tags.outputs.latest}}
+          - ${{ needs.pre_deploy.outputs.latest}}
     with:
       tag: ${{ matrix.tag }}
       parent_id: ${{ github.ref }}
@@ -81,9 +81,9 @@ jobs:
     if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
 
     needs:
+      - pre_deploy
       - fanout
       - docs_master
-      - generate_tags
     runs-on: ubuntu-latest
     steps:
       - name: Download previously built docs
@@ -100,7 +100,7 @@ jobs:
           find . -name '*.tar.gz' -exec tar zxf "{}" \;
           ls -la docs/
           cd docs && \
-          ln -s ${{ needs.generate_tags.outputs.latest}}/ stable && \
+          ln -s ${{ needs.pre_deploy.outputs.latest}}/ stable && \
           cd ..
           ls -la docs/
 
