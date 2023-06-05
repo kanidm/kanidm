@@ -14,7 +14,7 @@ pub struct DebugOpt {
     pub debug: bool,
 }
 
-#[derive(Debug, Args)]
+#[derive(Debug, Args, Clone)]
 pub struct CommonOpt {
     /// Enable debbuging of the kanidm tool
     #[clap(short, long, env = "KANIDM_DEBUG")]
@@ -29,14 +29,14 @@ pub struct CommonOpt {
     #[clap(parse(from_os_str), short = 'C', long = "ca", env = "KANIDM_CA_PATH")]
     pub ca_path: Option<PathBuf>,
     /// Log format (still in very early development)
-    #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value="text")]
+    #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value = "text")]
     output_mode: String,
 }
 
 #[derive(Debug, Args)]
 pub struct GroupNamedMembers {
     name: String,
-    #[clap(required=true,min_values=1)]
+    #[clap(required = true, min_values = 1)]
     members: Vec<String>,
     #[clap(flatten)]
     copt: CommonOpt,
@@ -503,7 +503,7 @@ pub enum RecycleOpt {
 pub struct LoginOpt {
     #[clap(flatten)]
     copt: CommonOpt,
-    #[clap(short, long, env="KANIDM_PASSWORD", hide=true)]
+    #[clap(short, long, env = "KANIDM_PASSWORD", hide = true)]
     /// Supply a password to the login option
     password: Option<String>,
 }
@@ -711,7 +711,6 @@ pub struct OptSetDomainDisplayName {
     new_display_name: String,
 }
 
-
 #[derive(Debug, Subcommand)]
 pub enum PwBadlistOpt {
     #[clap[name = "show"]]
@@ -724,7 +723,7 @@ pub enum PwBadlistOpt {
     Upload {
         #[clap(flatten)]
         copt: CommonOpt,
-        #[clap(parse(from_os_str),required=true,min_values=1)]
+        #[clap(parse(from_os_str), required = true, min_values = 1)]
         paths: Vec<PathBuf>,
         /// Perform a dry run and display the list that would have been uploaded instead.
         #[clap(short = 'n', long)]
@@ -736,9 +735,9 @@ pub enum PwBadlistOpt {
     Remove {
         #[clap(flatten)]
         copt: CommonOpt,
-        #[clap(parse(from_os_str), required=true, min_values=1)]
+        #[clap(parse(from_os_str), required = true, min_values = 1)]
         paths: Vec<PathBuf>,
-    }
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -863,7 +862,7 @@ pub enum SystemOpt {
     Synch {
         #[clap(subcommand)]
         commands: SynchOpt,
-    }
+    },
 }
 
 #[derive(Debug, Subcommand)]
