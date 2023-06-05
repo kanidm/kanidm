@@ -31,6 +31,7 @@ mod crypto;
 pub mod https;
 mod interval;
 mod ldaps;
+mod totps_tests;
 
 use std::sync::Arc;
 
