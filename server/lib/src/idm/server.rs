@@ -1297,57 +1297,63 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             slock
                         }
                     };
-                    Some(slock_ref)
+                    Ok(slock_ref)
                 }
-                None => None,
+                None => Err(false),
             };
 
-            let maybe_slock = if let Some(s) = maybe_slock_ref.as_ref() {
-                Some(s.lock().await)
-            } else {
-                None
+            let maybe_slock = match maybe_slock_ref.as_ref() {
+                Ok(s) => Ok(s.lock().await),
+                Err(cred_state) => Err(cred_state),
             };
 
-            let maybe_valid = if let Some(mut slock) = maybe_slock {
-                // Apply the current time.
-                slock.apply_time_step(ct);
-                // Now check the results
-                if slock.is_valid() {
-                    Some(slock)
-                } else {
-                    None
+            let maybe_valid = match maybe_slock {
+                Ok(mut slock) => {
+                    // Apply the current time.
+                    slock.apply_time_step(ct);
+                    // Now check the results
+                    if slock.is_valid() {
+                        Ok(slock)
+                    } else {
+                        Err(true)
+                    }
                 }
-            } else {
-                None
+                Err(cred_state) => Err(*cred_state),
             };
 
-            if let Some(mut slock) = maybe_valid {
-                if account
-                    .verify_unix_credential(lae.cleartext.as_str(), &self.async_tx, ct)?
-                    .is_some()
-                {
-                    let session_id = Uuid::new_v4();
-                    security_info!(
-                        "Starting session {} for {} {}",
-                        session_id,
-                        account.spn,
-                        account.uuid
-                    );
+            match maybe_valid {
+                Ok(mut slock) => {
+                    if account
+                        .verify_unix_credential(lae.cleartext.as_str(), &self.async_tx, ct)?
+                        .is_some()
+                    {
+                        let session_id = Uuid::new_v4();
+                        security_info!(
+                            "Starting session {} for {} {}",
+                            session_id,
+                            account.spn,
+                            account.uuid
+                        );
 
-                    Ok(Some(LdapBoundToken {
-                        spn: account.spn,
-                        session_id,
-                        effective_session: LdapSession::UnixBind(account.uuid),
-                    }))
-                } else {
-                    // PW failure, update softlock.
-                    slock.record_failure(ct);
+                        Ok(Some(LdapBoundToken {
+                            spn: account.spn,
+                            session_id,
+                            effective_session: LdapSession::UnixBind(account.uuid),
+                        }))
+                    } else {
+                        // PW failure, update softlock.
+                        slock.record_failure(ct);
+                        Ok(None)
+                    }
+                }
+                Err(true) => {
+                    security_info!("Account is softlocked.");
                     Ok(None)
                 }
-            } else {
-                // Account is slocked!
-                security_info!("Account is softlocked.");
-                Ok(None)
+                Err(false) => {
+                    security_info!("Account does not have a configured posix password.");
+                    Ok(None)
+                }
             }
         }
     }

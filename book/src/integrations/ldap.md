@@ -124,6 +124,15 @@ ldapsearch ... -x '(name=admin)' cn objectClass displayname memberof
 Group membership is defined in rfc2307bis or Active Directory style. This means groups are
 determined from the "memberof" attribute which contains a DN to a group.
 
+## People Accounts
+
+Persons can bind (authenticate) to the LDAP server if they are configured as a posix account and
+have a valid posix password set.
+
+When a person is bound to the directory, they inherit the permissions of anonymous - not their
+account. This is because a posix password as single factor authentication is not as secure and
+should not grant the same privileges as the accounts standard credentials.
+
 ## Service Accounts
 
 If you have
@@ -197,7 +206,9 @@ objectclass: account
 objectclass: memberof
 objectclass: object
 objectclass: person
+objectclass: posixaccount
 displayname: Test User
+gidnumber: 12345
 memberof: spn=group240@idm.example.com,dc=idm,dc=example,dc=com
 name: test1
 spn: test1@idm.example.com
@@ -205,7 +216,7 @@ entryuuid: 22a65b6c-80c8-4e1a-9b76-3f3afdff8400
 ```
 
 LDAP binds can use any unique identifier of the account. The following are all valid bind DNs for
-the object listed above (if it was a POSIX account, that is).
+the object listed above.
 
 ```bash
 ldapwhoami ... -x -D 'name=test1'
@@ -243,3 +254,4 @@ This is despite the fact:
 - The third is an incorrect port.
 
 To diagnose errors like this, you may need to add "-d 1" to your LDAP commands or client.
+
