@@ -39,11 +39,22 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: 'Get Previous tag'
+      - name: Get Previous tag
         id: previoustag
         uses: "WyriHaximus/github-action-get-previous-tag@v1"
         with:
           prefix: v1
+      - name: Move redirector page
+        run: |
+          mkdir docs
+          cp book/index_redirect.html docs/index.html
+      - name: Upload redirector artifact
+        # https://github.com/actions/upload-artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: docs
+          path: docs/index.html
+
   fanout:
     uses: './.github/workflows/kanidm_individual_book.yml'
     needs: generate_tags
@@ -91,7 +102,6 @@ jobs:
           cd docs && \
           ln -s ${{ needs.generate_tags.outputs.latest}}/ stable && \
           cd ..
-          cp book/index_redirect.html docs/index.html
           ls -la docs/
 
       - name: Upload artifact
