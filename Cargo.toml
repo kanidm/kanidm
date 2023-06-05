@@ -38,6 +38,7 @@ homepage = "https://github.com/kanidm/kanidm/"
 repository = "https://github.com/kanidm/kanidm/"
 
 [workspace.dependencies]
+async-recursion = "1.0.4"
 async-trait = "^0.1.68"
 base32 = "^0.4.0"
 base64 = "^0.21.0"
@@ -46,7 +47,7 @@ bytes = "^1.3.0"
 clap = { version = "^3.2", features = ["derive"] }
 clap_complete = "^3.2.5"
 # Forced by saffron/cron
-chrono = "^0.4.24"
+chrono = "^0.4.26"
 compact_jwt = { version = "^0.2.3", default-features = false }
 # compact_jwt = { path = "../compact_jwt" }
 concread = "^0.4.1"
@@ -54,7 +55,7 @@ concread = "^0.4.1"
 cron = "0.12.0"
 crossbeam = "0.8.1"
 criterion = "^0.4.0"
-csv = "1.2.1"
+csv = "1.2.2"
 dialoguer = "0.10.4"
 dyn-clone = "^1.0.11"
 fernet = "^0.2.1"
@@ -92,7 +93,7 @@ ldap3_proto = "^0.3.2"
 # ldap3_client = { git = "https://github.com/kanidm/ldap3.git", version = "0.3.0" }
 # ldap3_proto = { git = "https://github.com/kanidm/ldap3.git", version = "0.3.0" }
 
-libc = "^0.2.144"
+libc = "^0.2.145"
 libnss = "^0.4.0"
 libsqlite3-sys = "^0.25.0"
 lru = "^0.8.0"
@@ -100,7 +101,7 @@ mathru = "^0.13.0"
 num_enum = "^0.5.11"
 oauth2_ext = { version = "^4.1.0", package = "oauth2", default-features = false }
 openssl-sys = "^0.9"
-openssl = "^0.10.52"
+openssl = "^0.10.54"
 paste = "^1.0.12"
 pkg-config = "^0.3.27"
 proc-macro2 = "1.0.58"
@@ -129,7 +130,7 @@ sketching = { path = "./libs/sketching" }
 smartstring = "^1.0.1"
 smolset = "^1.3.1"
 sshkeys = "^0.3.1"
-syn = { version = "2.0.16", features = ["full"] }
+syn = { version = "2.0.18", features = ["full"] }
 testkit-macros = { path = "./server/testkit-macros" }
 tide = "^0.16.0"
 # Including brotli *very* slow, so don't do that. Including the "default" feature pulls a mime-type list from the internet on build, which isn't used.

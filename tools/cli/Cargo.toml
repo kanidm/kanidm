@@ -30,6 +30,7 @@ name = "kanidm_ssh_authorizedkeys_direct"
 path = "src/ssh_authorizedkeys.rs"
 
 [dependencies]
+async-recursion.workplace = true
 clap = { workspace = true, features = ["derive", "env"] }
 compact_jwt = { workspace = true, features = ["openssl"] }
 dialoguer.workspace = true
