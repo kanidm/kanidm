@@ -79,6 +79,9 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: docs
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - name: Setup Pages
         uses: actions/configure-pages@v3
       - name: Extract the files
@@ -89,6 +92,7 @@ jobs:
           cd docs && \
           ln -s ${{ needs.generate_tags.outputs.latest}}/ stable && \
           cd ..
+          cp book/index_redirect.html docs/index.html
           ls -la docs/
 
       - name: Upload artifact
