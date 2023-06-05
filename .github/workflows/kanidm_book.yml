@@ -26,16 +26,16 @@ jobs:
   pre_deploy:
     runs-on: ubuntu-latest
     outputs:
-      tags: ${{ steps.tags.outputs.tags}}
+      # tags: ${{ steps.tags.outputs.tags}}
       latest: ${{ steps.previoustag.outputs.tag }}
     steps:
-      - id: tags
-        name: pull tags
-        uses: oraad/get-tags-action@v1.0.0
-        with:
-          repo: ${{ github.repository }}
-          limit: 5
-          github-token: ${{ github.token }}
+      # - id: tags
+      #   name: pull tags
+      #   uses: oraad/get-tags-action@v1.0.0
+      #   with:
+      #     repo: ${{ github.repository }}
+      #     limit: 5
+      #     github-token: ${{ github.token }}
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
@@ -62,7 +62,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # tag: ${{ fromJson(needs.pre_deploy.outputs.tags) }}
         tag:
           - ${{ needs.pre_deploy.outputs.latest}}
     with:
