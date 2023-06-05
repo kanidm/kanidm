@@ -86,7 +86,6 @@ jobs:
         uses: actions/configure-pages@v3
       - name: Extract the files
         run: |
-          cp book/index_redirect.html docs/index.html
           find . -name '*.tar.gz' -exec tar zxf "{}" \;
           ls -la docs/
           cd docs && \
