@@ -203,6 +203,7 @@ impl CommonOpt {
                     ToClientError::NeedLogin(username) => {
                         if !Confirm::new()
                             .with_prompt("Would you like to login again?")
+                            .default(true)
                             .interact()
                             .expect("Failed to interact with interactive session")
                         {
@@ -223,6 +224,7 @@ impl CommonOpt {
                     ToClientError::NeedReauth(username) => {
                         if !Confirm::new()
                             .with_prompt("Would you like to re-authenticate?")
+                            .default(true)
                             .interact()
                             .expect("Failed to interact with interactive session")
                         {
