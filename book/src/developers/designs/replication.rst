@@ -92,7 +92,7 @@ state must be resolved in a manner consistent to schema of the system.
 
 An additional complexity is that both servers must be able to resolve this
 conflict in isolation, without further communication. All servers must arrive
-at the same result, necesitating a set of conflict management rules that must
+at the same result, necessitating a set of conflict management rules that must
 be the same to all members of the replication topology.
 
 As a result, almost all facets of replication are designed around the possible
