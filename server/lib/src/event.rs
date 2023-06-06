@@ -818,4 +818,12 @@ impl ReviveRecycledEvent {
             filter: filter.into_valid(),
         }
     }
+
+    #[cfg(test)]
+    pub(crate) fn new_internal(filter: Filter<FilterValid>) -> Self {
+        ReviveRecycledEvent {
+            ident: Identity::from_internal(),
+            filter,
+        }
+    }
 }

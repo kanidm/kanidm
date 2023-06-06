@@ -172,16 +172,20 @@ impl<'a> QueryServerReadTransaction<'a> {
             f_eq("uuid", PVUUID_SYSTEM_CONFIG.clone()),
         ]));
 
-        let entry_filter = filter!(f_and!([
-            f_pres("class"),
-            f_andnot(f_or(vec![
-                // These are from above!
-                f_eq("class", PVCLASS_ATTRIBUTETYPE.clone()),
-                f_eq("class", PVCLASS_CLASSTYPE.clone()),
-                f_eq("uuid", PVUUID_DOMAIN_INFO.clone()),
-                f_eq("uuid", PVUUID_SYSTEM_INFO.clone()),
-                f_eq("uuid", PVUUID_SYSTEM_CONFIG.clone()),
-            ])),
+        let entry_filter = filter_all!(f_or!([
+            f_and!([
+                f_pres("class"),
+                f_andnot(f_or(vec![
+                    // These are from above!
+                    f_eq("class", PVCLASS_ATTRIBUTETYPE.clone()),
+                    f_eq("class", PVCLASS_CLASSTYPE.clone()),
+                    f_eq("uuid", PVUUID_DOMAIN_INFO.clone()),
+                    f_eq("uuid", PVUUID_SYSTEM_INFO.clone()),
+                    f_eq("uuid", PVUUID_SYSTEM_CONFIG.clone()),
+                ])),
+            ]),
+            f_eq("class", PVCLASS_TOMBSTONE.clone()),
+            f_eq("class", PVCLASS_RECYCLED.clone()),
         ]));
 
         let schema_entries = self
