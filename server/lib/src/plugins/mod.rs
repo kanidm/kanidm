@@ -19,6 +19,7 @@ pub(crate) mod dyngroup;
 mod gidnumber;
 mod jwskeygen;
 mod memberof;
+mod namehistory;
 mod protected;
 mod refint;
 mod session;
@@ -207,6 +208,7 @@ impl Plugins {
             .and_then(|_| gidnumber::GidNumber::pre_create_transform(qs, cand, ce))
             .and_then(|_| domain::Domain::pre_create_transform(qs, cand, ce))
             .and_then(|_| spn::Spn::pre_create_transform(qs, cand, ce))
+            .and_then(|_| namehistory::NameHistory::pre_create_transform(qs, cand, ce))
             // Should always be last
             .and_then(|_| attrunique::AttrUnique::pre_create_transform(qs, cand, ce))
     }
@@ -245,6 +247,7 @@ impl Plugins {
             .and_then(|_| domain::Domain::pre_modify(qs, pre_cand, cand, me))
             .and_then(|_| spn::Spn::pre_modify(qs, pre_cand, cand, me))
             .and_then(|_| session::SessionConsistency::pre_modify(qs, pre_cand, cand, me))
+            .and_then(|_| namehistory::NameHistory::pre_modify(qs, pre_cand, cand, me))
             // attr unique should always be last
             .and_then(|_| attrunique::AttrUnique::pre_modify(qs, pre_cand, cand, me))
     }
@@ -276,6 +279,7 @@ impl Plugins {
             .and_then(|_| domain::Domain::pre_batch_modify(qs, pre_cand, cand, me))
             .and_then(|_| spn::Spn::pre_batch_modify(qs, pre_cand, cand, me))
             .and_then(|_| session::SessionConsistency::pre_batch_modify(qs, pre_cand, cand, me))
+            .and_then(|_| namehistory::NameHistory::pre_batch_modify(qs, pre_cand, cand, me))
             // attr unique should always be last
             .and_then(|_| attrunique::AttrUnique::pre_batch_modify(qs, pre_cand, cand, me))
     }
