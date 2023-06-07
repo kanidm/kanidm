@@ -51,6 +51,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e
         })?;
 
+        trace!(?db_entries);
+
         // Need to probably handle conflicts here in this phase. I think they
         // need to be pushed to a separate list where they are then "created"
         // as a conflict.

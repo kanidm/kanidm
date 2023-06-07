@@ -1,6 +1,7 @@
 use crate::be::BackendTransaction;
 use crate::prelude::*;
 use crate::repl::consumer::ConsumerState;
+use crate::repl::entry::State;
 use crate::repl::proto::ReplIncrementalContext;
 use crate::repl::ruv::ReplicationUpdateVectorTransaction;
 use crate::repl::ruv::{RangeDiffStatus, ReplicationUpdateVector};
@@ -750,15 +751,373 @@ async fn test_repl_increment_simultaneous_bidirectional_write(
 // TS on B
 // B -> A TS
 
+#[qs_pair_test]
+async fn test_repl_increment_basic_bidirectional_lifecycle(
+    server_a: &QueryServer,
+    server_b: &QueryServer,
+) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // Add an entry.
+    let mut server_b_txn = server_b.write(ct).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_b_txn
+        .internal_create(vec![entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::Uuid(t_uuid)),
+            ("description", Value::new_utf8s("testperson1")),
+            ("displayname", Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Assert the entry is not on A.
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert_eq!(
+        server_a_txn.internal_search_uuid(t_uuid),
+        Err(OperationError::NoMatchingEntries)
+    );
+
+    //               from               to
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Delete on A
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn.internal_delete_uuid(t_uuid).is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    // Repl A -> B
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    // They are consistent again.
+    assert!(e1 == e2);
+    assert!(e1.attribute_equality("class", &PVCLASS_RECYCLED));
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    // At an earlier time make a change on A.
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn.internal_revive_uuid(t_uuid).is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    // Now move past the recyclebin time.
+    let ct = ct + Duration::from_secs(RECYCLEBIN_MAX_AGE + 1);
+
+    // Now TS on B.
+    let mut server_b_txn = server_b.write(ct).await;
+    assert!(server_b_txn.purge_recycled().is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Repl A -> B - B will silently reject the update due to the TS state on B.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    // They are NOT consistent.
+    assert!(e1 != e2);
+    // E1 from A is NOT a tombstone ... yet.
+    assert!(!e1.attribute_equality("class", &PVCLASS_TOMBSTONE));
+    // E2 from B is a tombstone!
+    assert!(e2.attribute_equality("class", &PVCLASS_TOMBSTONE));
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    // Repl B -> A - will have a TS at the end.
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    // Ts on both.
+    assert!(e1.attribute_equality("class", &PVCLASS_TOMBSTONE));
+    assert!(e1 == e2);
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+}
+
 // Create entry on A -> B
 // Recycle on Both A/B
-// Recycle propagates from A -> B, B -> A, keep earliest.
-// TS on A
-// A -> B TS
+// Recycle propagates from A -> B, B -> A, keep latest.
+// We already know the recycle -> ts state is good from other tests.
 
-// Create + recycle entry on A -> B
+#[qs_pair_test]
+async fn test_repl_increment_basic_bidirectional_recycle(
+    server_a: &QueryServer,
+    server_b: &QueryServer,
+) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // Add an entry.
+    let mut server_b_txn = server_b.write(ct).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_b_txn
+        .internal_create(vec![entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::Uuid(t_uuid)),
+            ("description", Value::new_utf8s("testperson1")),
+            ("displayname", Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Assert the entry is not on A.
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    //               from               to
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // On both servers, at seperate timestamps, run the recycle.
+    let ct = ct + Duration::from_secs(1);
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn.internal_delete_uuid(t_uuid).is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    let ct = ct + Duration::from_secs(2);
+    let mut server_b_txn = server_b.write(ct).await;
+    assert!(server_b_txn.internal_delete_uuid(t_uuid).is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Send server a -> b - ignored.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    // They are equal, but their CL states are not. e2 should have been
+    // retained due to being the latest!
+    assert!(e1 == e2);
+    assert!(e1.attribute_equality("class", &PVCLASS_RECYCLED));
+
+    // Remember entry comparison doesn't compare last_mod_cid.
+    assert!(e1.get_last_changed() < e2.get_last_changed());
+
+    let e1_cs = e1.get_changestate();
+    let e2_cs = e2.get_changestate();
+
+    let valid = match (e1_cs.current(), e2_cs.current()) {
+        (
+            State::Live {
+                at: _,
+                changes: changes_left,
+            },
+            State::Live {
+                at: _,
+                changes: changes_right,
+            },
+        ) => match (changes_left.get("class"), changes_right.get("class")) {
+            (Some(cid_left), Some(cid_right)) => cid_left < cid_right,
+            _ => false,
+        },
+        _ => false,
+    };
+    assert!(valid);
+
+    // Now go the other way. They'll be equal again.
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+
+    let e1_cs = e1.get_changestate();
+    let e2_cs = e2.get_changestate();
+    assert!(e1_cs == e2_cs);
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+}
+
+// Create + recycle entry on B -> A
 // TS on Both,
 // TS resolves to lowest AT.
+
+#[qs_pair_test]
+async fn test_repl_increment_basic_bidirectional_tombstone(
+    server_a: &QueryServer,
+    server_b: &QueryServer,
+) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_b_txn = server_b.write(ct).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_b_txn
+        .internal_create(vec![entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::Uuid(t_uuid)),
+            ("description", Value::new_utf8s("testperson1")),
+            ("displayname", Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+    // And then recycle it.
+    assert!(server_b_txn.internal_delete_uuid(t_uuid).is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Now setup repl
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn).is_ok());
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Now on both servers, perform a recycle -> ts at different times.
+    let ct = ct + Duration::from_secs(RECYCLEBIN_MAX_AGE + 1);
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn.purge_recycled().is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    let ct = ct + Duration::from_secs(1);
+    let mut server_b_txn = server_b.write(ct).await;
+    assert!(server_b_txn.purge_recycled().is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Now do B -> A - no change on A as it's TS was earlier.
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1.attribute_equality("class", &PVCLASS_TOMBSTONE));
+    assert!(e2.attribute_equality("class", &PVCLASS_TOMBSTONE));
+    trace!("{:?}", e1.get_last_changed());
+    trace!("{:?}", e2.get_last_changed());
+    assert!(e1.get_last_changed() < e2.get_last_changed());
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // A -> B - B should now have the A TS time.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1.attribute_equality("class", &PVCLASS_TOMBSTONE));
+    assert!(e2.attribute_equality("class", &PVCLASS_TOMBSTONE));
+    assert!(e1.get_last_changed() == e2.get_last_changed());
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+}
 
 // conflict cases.
 

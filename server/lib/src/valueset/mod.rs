@@ -357,6 +357,11 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
+    fn to_cid_single(&self) -> Option<Cid> {
+        error!("to_cid_single should not be called on {:?}", self.syntax());
+        None
+    }
+
     fn to_refer_single(&self) -> Option<Uuid> {
         error!(
             "to_refer_single should not be called on {:?}",

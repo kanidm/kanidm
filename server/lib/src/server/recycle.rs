@@ -220,75 +220,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
         Ok(())
     }
 
-    /*
-    #[instrument(level = "debug", skip_all)]
-    pub(crate) fn revive_recycled_legacy(
-        &mut self,
-        re: &ReviveRecycledEvent,
-    ) -> Result<(), OperationError> {
-        // Revive an entry to live. This is a specialised function, and draws a lot of
-        // inspiration from modify.
-        //
-        //
-        // Access is granted by the ability to ability to search the class=recycled
-        // and the ability modify + remove that class from the object.
-
-        // create the modify for access testing.
-        // tl;dr, remove the class=recycled
-        let modlist = ModifyList::new_list(vec![Modify::Removed(
-            AttrString::from("class"),
-            PVCLASS_RECYCLED.clone(),
-        )]);
-
-        let m_valid = modlist.validate(self.get_schema()).map_err(|e| {
-            admin_error!(
-                "Schema Violation in revive recycled modlist validate: {:?}",
-                e
-            );
-            OperationError::SchemaViolation(e)
-        })?;
-
-        // Get the entries we are about to revive.
-        //    we make a set of per-entry mod lists. A list of lists even ...
-        let revive_cands =
-            self.impersonate_search_valid(re.filter.clone(), re.filter.clone(), &re.ident)?;
-
-        let mut dm_mods: HashMap<Uuid, ModifyList<ModifyInvalid>> =
-            HashMap::with_capacity(revive_cands.len());
-
-        for e in revive_cands {
-            // Get this entries uuid.
-            let u: Uuid = e.get_uuid();
-
-            if let Some(riter) = e.get_ava_as_refuuid("directmemberof") {
-                for g_uuid in riter {
-                    dm_mods
-                        .entry(g_uuid)
-                        .and_modify(|mlist| {
-                            let m = Modify::Present(AttrString::from("member"), Value::Refer(u));
-                            mlist.push_mod(m);
-                        })
-                        .or_insert({
-                            let m = Modify::Present(AttrString::from("member"), Value::Refer(u));
-                            ModifyList::new_list(vec![m])
-                        });
-                }
-            }
-        }
-
-        // Now impersonate the modify
-        self.impersonate_modify_valid(re.filter.clone(), re.filter.clone(), m_valid, &re.ident)?;
-        // If and only if that succeeds, apply the direct membership modifications
-        // if possible.
-        for (g, mods) in dm_mods {
-            // I think the filter/filter_all shouldn't matter here because the only
-            // valid direct memberships should be still valid/live references.
-            let f = filter_all!(f_eq("uuid", PartialValue::Uuid(g)));
-            self.internal_modify(&f, &mods)?;
-        }
-        Ok(())
+    #[cfg(test)]
+    pub(crate) fn internal_revive_uuid(&mut self, target_uuid: Uuid) -> Result<(), OperationError> {
+        // Note the use of filter_rec here for only recycled targets.
+        let filter = filter_rec!(f_eq("uuid", PartialValue::Uuid(target_uuid)));
+        let f_valid = filter
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+        let re = ReviveRecycledEvent::new_internal(f_valid);
+        self.revive_recycled(&re)
     }
-    */
 }
 
 #[cfg(test)]

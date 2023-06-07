@@ -665,9 +665,20 @@ impl Entry<EntryIncremental, EntryNew> {
     }
 
     pub(crate) fn is_add_conflict(&self, db_entry: &EntrySealedCommitted) -> bool {
+        use crate::repl::entry::State;
         debug_assert!(self.valid.uuid == db_entry.valid.uuid);
         // This is a conflict if the state 'at' is not identical
-        self.valid.ecstate.at() != db_entry.valid.ecstate.at()
+        let self_cs = &self.valid.ecstate;
+        let db_cs = db_entry.get_changestate();
+
+        // Can only add conflict on live entries.
+        match (self_cs.current(), db_cs.current()) {
+            (State::Live { at: at_left, .. }, State::Live { at: at_right, .. }) => {
+                at_left != at_right
+            }
+            // Tombstone will always overwrite.
+            _ => false,
+        }
     }
 
     pub(crate) fn merge_state(
@@ -805,10 +816,7 @@ impl Entry<EntryIncremental, EntryNew> {
                     attrs: eattrs,
                 }
             }
-            (State::Tombstone { at: left_at }, State::Tombstone { at: right_at }) => {
-                // Due to previous checks, this must be equal!
-                debug_assert!(left_at == right_at);
-                debug_assert!(self.attrs == db_ent.attrs);
+            (State::Tombstone { at: left_at }, State::Live { .. }) => {
                 // We have to generate the attrs here, since on replication
                 // we just send the tombstone ecstate rather than attrs. Our
                 // db stub also lacks these attributes too.
@@ -831,23 +839,14 @@ impl Entry<EntryIncremental, EntryNew> {
                     attrs: attrs_new,
                 }
             }
-            (State::Tombstone { .. }, State::Live { .. }) => {
-                debug_assert!(false);
-                // Keep the left side.
-                Entry {
-                    valid: EntryIncremental {
-                        uuid: self.valid.uuid,
-                        ecstate: self.valid.ecstate.clone(),
-                    },
-                    state: EntryCommitted {
-                        id: db_ent.state.id,
-                    },
-                    attrs: self.attrs.clone(),
-                }
-            }
             (State::Live { .. }, State::Tombstone { .. }) => {
-                debug_assert!(false);
-                // Keep the right side
+                // Our current DB entry is a tombstone - ignore the incoming live
+                // entry and just retain our DB tombstone.
+                //
+                // Note we don't need to gen the attrs here since if a stub was made then
+                // we'd be live:live. To be in live:ts, then our db entry MUST exist and
+                // must be a ts.
+
                 Entry {
                     valid: EntryIncremental {
                         uuid: db_ent.valid.uuid,
@@ -857,6 +856,36 @@ impl Entry<EntryIncremental, EntryNew> {
                         id: db_ent.state.id,
                     },
                     attrs: db_ent.attrs.clone(),
+                }
+            }
+            (State::Tombstone { at: left_at }, State::Tombstone { at: right_at }) => {
+                // WARNING - this differs from the other tombstone check cases
+                // lower of the two AT values. This way replicas always have the
+                // earliest TS value. It's a rare case but needs handling.
+
+                let (at, ecstate) = if left_at < right_at {
+                    (left_at, self.valid.ecstate.clone())
+                } else {
+                    (right_at, db_ent.valid.ecstate.clone())
+                };
+
+                let mut attrs_new: Eattrs = Map::new();
+                let class_ava = vs_iutf8!["object", "tombstone"];
+                let last_mod_ava = vs_cid![at.clone()];
+
+                attrs_new.insert(AttrString::from("uuid"), vs_uuid![db_ent.valid.uuid]);
+                attrs_new.insert(AttrString::from("class"), class_ava);
+                attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);
+
+                Entry {
+                    valid: EntryIncremental {
+                        uuid: db_ent.valid.uuid,
+                        ecstate,
+                    },
+                    state: EntryCommitted {
+                        id: db_ent.state.id,
+                    },
+                    attrs: attrs_new,
                 }
             }
         }
@@ -2156,6 +2185,14 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     fn set_last_changed(&mut self, cid: Cid) {
         let cv = vs_cid![cid];
         let _ = self.attrs.insert(AttrString::from("last_modified_cid"), cv);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn get_last_changed(&self) -> Cid {
+        self.attrs
+            .get("last_modified_cid")
+            .and_then(|vs| vs.to_cid_single())
+            .unwrap()
     }
 
     #[inline(always)]
