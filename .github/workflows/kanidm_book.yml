@@ -26,8 +26,7 @@ jobs:
   pre_deploy:
     runs-on: ubuntu-latest
     outputs:
-      # tags: ${{ steps.tags.outputs.tags}}
-      latest: ${{ steps.previoustag.outputs.tag }}
+      latest: ${{ steps.previoustag.outputs.semantic-version }}
     steps:
       # - id: tags
       #   name: pull tags
@@ -41,9 +40,10 @@ jobs:
           fetch-depth: 0
       - name: Get Previous tag
         id: previoustag
-        uses: "WyriHaximus/github-action-get-previous-tag@v1"
+        uses: SOLIDSoftworks/semver-tags@v1
         with:
-          prefix: v1
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag-prefix: 'v1'
       - name: Move redirector page
         run: |
           mkdir docs
