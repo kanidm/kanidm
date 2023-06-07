@@ -1037,8 +1037,6 @@ impl QueryServer {
 
         let phase = Arc::new(CowCell::new(ServerPhase::Bootstrap));
 
-        // log_event!(log, "Starting query worker ...");
-
         #[allow(clippy::expect_used)]
         QueryServer {
             phase,

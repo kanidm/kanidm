@@ -29,6 +29,7 @@ use super::event::ReadBackupCodeEvent;
 use super::ldap::{LdapBoundToken, LdapSession};
 use crate::credential::{softlock::CredSoftLock, Credential};
 use crate::idm::account::Account;
+use crate::idm::audit::AuditEvent;
 use crate::idm::authsession::AuthSession;
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
 use crate::idm::delayed::{
@@ -82,6 +83,7 @@ pub struct IdmServer {
     /// The configured crypto policy for the IDM server. Later this could be transactional and loaded from the db similar to access. But today it's just to allow dynamic pbkdf2rounds
     crypto_policy: CryptoPolicy,
     async_tx: Sender<DelayedAction>,
+    audit_tx: Sender<AuditEvent>,
     /// [Webauthn] verifier/config
     webauthn: Webauthn,
     pw_badlist_cache: Arc<CowCell<HashSet<String>>>,
@@ -100,6 +102,7 @@ pub struct IdmServerAuthTransaction<'a> {
     pub(crate) sid: Sid,
     // For flagging eventual actions.
     pub(crate) async_tx: Sender<DelayedAction>,
+    pub(crate) audit_tx: Sender<AuditEvent>,
     pub(crate) webauthn: &'a Webauthn,
     pub(crate) pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
     pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
@@ -120,7 +123,6 @@ pub struct IdmServerProxyReadTransaction<'a> {
     pub qs_read: QueryServerReadTransaction<'a>,
     pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
     pub(crate) oauth2rs: Oauth2ResourceServersReadTransaction,
-    // pub(crate) async_tx: Sender<DelayedAction>,
 }
 
 pub struct IdmServerProxyWriteTransaction<'a> {
@@ -141,12 +143,15 @@ pub struct IdmServerDelayed {
     pub(crate) async_rx: Receiver<DelayedAction>,
 }
 
+pub struct IdmServerAudit {
+    pub(crate) audit_rx: Receiver<AuditEvent>,
+}
+
 impl IdmServer {
-    // TODO: Make number of authsessions configurable!!!
     pub async fn new(
         qs: QueryServer,
         origin: &str,
-    ) -> Result<(IdmServer, IdmServerDelayed), OperationError> {
+    ) -> Result<(IdmServer, IdmServerDelayed, IdmServerAudit), OperationError> {
         // This is calculated back from:
         //  500 auths / thread -> 0.002 sec per op
         //      we can then spend up to ~0.001s hashing
@@ -156,6 +161,7 @@ impl IdmServer {
         // improves.
         let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(1));
         let (async_tx, async_rx) = unbounded();
+        let (audit_tx, audit_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
         let (
@@ -249,12 +255,14 @@ impl IdmServer {
                 qs,
                 crypto_policy,
                 async_tx,
+                audit_tx,
                 webauthn,
                 pw_badlist_cache: Arc::new(CowCell::new(pw_badlist_set)),
                 domain_keys,
                 oauth2rs: Arc::new(oauth2rs),
             },
             IdmServerDelayed { async_rx },
+            IdmServerAudit { audit_rx },
         ))
     }
 
@@ -277,6 +285,7 @@ impl IdmServer {
             qs_read,
             sid,
             async_tx: self.async_tx.clone(),
+            audit_tx: self.audit_tx.clone(),
             webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.read(),
             domain_keys: self.domain_keys.read(),
@@ -339,30 +348,44 @@ impl IdmServer {
     }
 }
 
-impl IdmServerDelayed {
-    // I think we can just make this async in the future?
+impl IdmServerAudit {
     #[cfg(test)]
     pub(crate) fn check_is_empty_or_panic(&mut self) {
-        use core::task::{Context, Poll};
-        use futures::task as futures_task;
+        use tokio::sync::mpsc::error::TryRecvError;
 
-        let waker = futures_task::noop_waker();
-        let mut cx = Context::from_waker(&waker);
-        match self.async_rx.poll_recv(&mut cx) {
-            Poll::Pending | Poll::Ready(None) => {}
-            Poll::Ready(Some(m)) => {
+        match self.audit_rx.try_recv() {
+            Err(TryRecvError::Empty) => {}
+            Err(TryRecvError::Disconnected) => {
+                panic!("Task queue disconnected");
+            }
+            Ok(m) => {
                 trace!(?m);
-                panic!("Task queue not empty")
+                panic!("Task queue not empty");
             }
         }
     }
 
-    /*
-    #[cfg(test)]
-    pub(crate) fn blocking_recv(&mut self) -> Option<DelayedAction> {
-        self.async_rx.blocking_recv()
+    pub fn audit_rx(&mut self) -> &mut Receiver<AuditEvent> {
+        &mut self.audit_rx
     }
-    */
+}
+
+impl IdmServerDelayed {
+    #[cfg(test)]
+    pub(crate) fn check_is_empty_or_panic(&mut self) {
+        use tokio::sync::mpsc::error::TryRecvError;
+
+        match self.async_rx.try_recv() {
+            Err(TryRecvError::Empty) => {}
+            Err(TryRecvError::Disconnected) => {
+                panic!("Task queue disconnected");
+            }
+            Ok(m) => {
+                trace!(?m);
+                panic!("Task queue not empty");
+            }
+        }
+    }
 
     #[cfg(test)]
     pub(crate) fn try_recv(&mut self) -> Result<DelayedAction, OperationError> {
@@ -1106,6 +1129,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             &creds.cred,
                             ct,
                             &self.async_tx,
+                            &self.audit_tx,
                             self.webauthn,
                             pw_badlist_cache,
                             &self.domain_keys.uat_jwt_signer,
@@ -2050,6 +2074,7 @@ mod tests {
 
     use crate::credential::{Credential, Password};
     use crate::idm::account::DestroySessionTokenEvent;
+    use crate::idm::audit::AuditEvent;
     use crate::idm::delayed::{AuthSessionRecord, DelayedAction};
     use crate::idm::event::{AuthEvent, AuthResult};
     use crate::idm::event::{
@@ -2377,8 +2402,12 @@ mod tests {
         idms_auth.commit().expect("Must not fail");
     }
 
-    #[idm_test]
-    async fn test_idm_simple_password_invalid(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+    #[idm_test(audit)]
+    async fn test_idm_simple_password_invalid(
+        idms: &IdmServer,
+        _idms_delayed: &IdmServerDelayed,
+        idms_audit: &mut IdmServerAudit,
+    ) {
         init_admin_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
@@ -2415,6 +2444,12 @@ mod tests {
                 panic!();
             }
         };
+
+        // There should be a queued audit event
+        match idms_audit.audit_rx().try_recv() {
+            Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+            _ => assert!(false),
+        }
 
         idms_auth.commit().expect("Must not fail");
     }
@@ -2987,8 +3022,12 @@ mod tests {
         }
     }
 
-    #[idm_test]
-    async fn test_idm_account_softlocking(idms: &IdmServer, idms_delayed: &mut IdmServerDelayed) {
+    #[idm_test(audit)]
+    async fn test_idm_account_softlocking(
+        idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
+        idms_audit: &mut IdmServerAudit,
+    ) {
         init_admin_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
@@ -3025,6 +3064,13 @@ mod tests {
                 panic!();
             }
         };
+
+        // There should be a queued audit event
+        match idms_audit.audit_rx().try_recv() {
+            Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+            _ => assert!(false),
+        }
+
         idms_auth.commit().expect("Must not fail");
 
         // Auth init, softlock present, count == 1, same time (so before unlock_at)
@@ -3119,10 +3165,11 @@ mod tests {
         // Tested in the softlock state machine.
     }
 
-    #[idm_test]
+    #[idm_test(audit)]
     async fn test_idm_account_softlocking_interleaved(
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
+        idms_audit: &mut IdmServerAudit,
     ) {
         init_admin_w_password(idms, TEST_PASSWORD)
             .await
@@ -3165,6 +3212,12 @@ mod tests {
                 panic!();
             }
         };
+
+        match idms_audit.audit_rx().try_recv() {
+            Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+            _ => assert!(false),
+        }
+
         idms_auth.commit().expect("Must not fail");
 
         // Now check that sid_early is denied due to softlock.

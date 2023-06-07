@@ -168,6 +168,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
 #[cfg(test)]
 mod tests {
     use crate::credential::totp::Totp;
+    use crate::idm::audit::AuditEvent;
     use crate::idm::credupdatesession::{InitCredentialUpdateEvent, MfaRegStateStatus};
     use crate::idm::delayed::DelayedAction;
     use crate::idm::event::{AuthEvent, AuthResult};
@@ -628,8 +629,12 @@ mod tests {
         assert!(matches!(ident.access_scope(), AccessScope::ReadWrite));
     }
 
-    #[idm_test]
-    async fn test_idm_reauth_softlocked_pw(idms: &IdmServer, idms_delayed: &mut IdmServerDelayed) {
+    #[idm_test(audit)]
+    async fn test_idm_reauth_softlocked_pw(
+        idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
+        idms_audit: &mut IdmServerAudit,
+    ) {
         // This test is to enforce that an account in a soft lock state can't proceed
         // we a re-auth.
         let ct = duration_from_epoch_now();
@@ -667,6 +672,12 @@ mod tests {
         )
         .await
         .is_none());
+
+        // There should be a queued audit event
+        match idms_audit.audit_rx().try_recv() {
+            Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+            _ => assert!(false),
+        }
 
         // Start the re-auth - MUST FAIL!
         assert!(

@@ -39,7 +39,6 @@ use kanidm_proto::messages::{AccountChangeMessage, MessageStatus};
 use kanidm_proto::v1::OperationError;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction, FsType};
 use kanidmd_lib::idm::ldap::LdapServer;
-use kanidmd_lib::idm::server::{IdmServer, IdmServerDelayed};
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::schema::Schema;
 use kanidmd_lib::status::StatusActor;
@@ -101,7 +100,7 @@ async fn setup_qs_idms(
     be: Backend,
     schema: Schema,
     config: &Configuration,
-) -> Result<(QueryServer, IdmServer, IdmServerDelayed), OperationError> {
+) -> Result<(QueryServer, IdmServer, IdmServerDelayed, IdmServerAudit), OperationError> {
     // Create a query_server implementation
     let query_server = QueryServer::new(be, schema, config.domain.clone());
 
@@ -119,9 +118,10 @@ async fn setup_qs_idms(
 
     // We generate a SINGLE idms only!
 
-    let (idms, idms_delayed) = IdmServer::new(query_server.clone(), &config.origin).await?;
+    let (idms, idms_delayed, idms_audit) =
+        IdmServer::new(query_server.clone(), &config.origin).await?;
 
-    Ok((query_server, idms, idms_delayed))
+    Ok((query_server, idms, idms_delayed, idms_audit))
 }
 
 async fn setup_qs(
@@ -297,7 +297,7 @@ pub async fn restore_server_core(config: &Configuration, dst_path: &str) {
 
     info!("Attempting to init query server ...");
 
-    let (qs, _idms, _idms_delayed) = match setup_qs_idms(be, schema, config).await {
+    let (qs, _idms, _idms_delayed, _idms_audit) = match setup_qs_idms(be, schema, config).await {
         Ok(t) => t,
         Err(e) => {
             error!("Unable to setup query server or idm server -> {:?}", e);
@@ -354,7 +354,7 @@ pub async fn reindex_server_core(config: &Configuration) {
 
     eprintln!("Attempting to init query server ...");
 
-    let (qs, _idms, _idms_delayed) = match setup_qs_idms(be, schema, config).await {
+    let (qs, _idms, _idms_delayed, _idms_audit) = match setup_qs_idms(be, schema, config).await {
         Ok(t) => t,
         Err(e) => {
             error!("Unable to setup query server or idm server -> {:?}", e);
@@ -515,7 +515,7 @@ pub async fn recover_account_core(config: &Configuration, name: &str) {
         }
     };
     // setup the qs - *with* init of the migrations and schema.
-    let (_qs, idms, _idms_delayed) = match setup_qs_idms(be, schema, config).await {
+    let (_qs, idms, _idms_delayed, _idms_audit) = match setup_qs_idms(be, schema, config).await {
         Ok(t) => t,
         Err(e) => {
             error!("Unable to setup query server or idm server -> {:?}", e);
@@ -651,13 +651,14 @@ pub async fn create_server_core(
         }
     };
     // Start the IDM server.
-    let (_qs, idms, mut idms_delayed) = match setup_qs_idms(be, schema, &config).await {
-        Ok(t) => t,
-        Err(e) => {
-            error!("Unable to setup query server or idm server -> {:?}", e);
-            return Err(());
-        }
-    };
+    let (_qs, idms, mut idms_delayed, mut idms_audit) =
+        match setup_qs_idms(be, schema, &config).await {
+            Ok(t) => t,
+            Err(e) => {
+                error!("Unable to setup query server or idm server -> {:?}", e);
+                return Err(());
+            }
+        };
 
     // Extract any configuration from the IDMS that we may need.
     // For now we just do this per run, but we need to extract this from the db later.
@@ -733,6 +734,24 @@ pub async fn create_server_core(
             }
         }
         info!("Stopped DelayedActionActor");
+    });
+
+    let mut broadcast_rx = broadcast_tx.subscribe();
+
+    let auditd_handle = tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                Ok(action) = broadcast_rx.recv() => {
+                    match action {
+                        CoreAction::Shutdown => break,
+                    }
+                }
+                audit_event = idms_audit.audit_rx().recv() => {
+                    warn!(?audit_event);
+                }
+            }
+        }
+        info!("Stopped AuditdActor");
     });
 
     // Setup timed events associated to the write thread
@@ -811,7 +830,7 @@ pub async fn create_server_core(
         Some(h)
     };
 
-    let mut handles = vec![interval_handle, delayed_handle];
+    let mut handles = vec![interval_handle, delayed_handle, auditd_handle];
 
     if let Some(backup_handle) = maybe_backup_handle {
         handles.push(backup_handle)

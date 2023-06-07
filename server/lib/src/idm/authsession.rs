@@ -28,6 +28,7 @@ use webauthn_rs::prelude::{
 use crate::credential::totp::Totp;
 use crate::credential::{BackupCodes, Credential, CredentialType, Password};
 use crate::idm::account::Account;
+use crate::idm::audit::AuditEvent;
 use crate::idm::delayed::{
     AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, WebauthnCounterIncrement,
 };
@@ -995,6 +996,7 @@ impl AuthSession {
         cred: &AuthCredential,
         time: Duration,
         async_tx: &Sender<DelayedAction>,
+        audit_tx: &Sender<AuditEvent>,
         webauthn: &Webauthn,
         pw_badlist_set: Option<&HashSet<String>>,
         uat_jwt_signer: &JwsSigner,
@@ -1041,6 +1043,11 @@ impl AuthSession {
                         (None, Ok(AuthState::Continue(allowed.into_iter().collect())))
                     }
                     CredState::Denied(reason) => {
+                        if let Err(_) = audit_tx.send(AuditEvent::AuthenticationDenied {
+                            spn: self.account.spn.clone(),
+                        }) {
+                            error!("Unable to submit audit event to queue");
+                        }
                         security_info!(%reason, "Credentials denied");
                         (
                             Some(AuthSessionState::Denied(reason)),
@@ -1204,6 +1211,7 @@ mod tests {
 
     use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::{BackupCodes, Credential};
+    use crate::idm::audit::AuditEvent;
     use crate::idm::authsession::{
         AuthSession, BAD_AUTH_TYPE_MSG, BAD_BACKUPCODE_MSG, BAD_PASSWORD_MSG, BAD_TOTP_MSG,
         BAD_WEBAUTHN_MSG, PW_BADLIST_MSG,
@@ -1316,6 +1324,7 @@ mod tests {
         account.primary = Some(cred);
 
         let (async_tx, mut async_rx) = unbounded();
+        let (audit_tx, mut audit_rx) = unbounded();
 
         // now check
         let (mut session, pw_badlist_cache) =
@@ -1327,6 +1336,7 @@ mod tests {
             &attempt,
             Duration::from_secs(0),
             &async_tx,
+            &audit_tx,
             &webauthn,
             Some(&pw_badlist_cache),
             &jws_signer,
@@ -1334,6 +1344,11 @@ mod tests {
             Ok(AuthState::Denied(_)) => {}
             _ => panic!(),
         };
+
+        match audit_rx.try_recv() {
+            Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+            _ => assert!(false),
+        }
 
         // === Now begin a new session, and use a good pw.
 
@@ -1345,6 +1360,7 @@ mod tests {
             &attempt,
             Duration::from_secs(0),
             &async_tx,
+            &audit_tx,
             &webauthn,
             Some(&pw_badlist_cache),
             &jws_signer,
@@ -1360,6 +1376,8 @@ mod tests {
 
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
+        drop(audit_tx);
+        assert!(audit_rx.blocking_recv().is_none());
     }
 
     #[test]
@@ -1375,6 +1393,7 @@ mod tests {
         account.primary = Some(cred);
 
         let (async_tx, mut async_rx) = unbounded();
+        let (audit_tx, mut audit_rx) = unbounded();
 
         // now check, even though the password is correct, Auth should be denied since it is in badlist
         let (mut session, pw_badlist_cache) =
@@ -1385,6 +1404,7 @@ mod tests {
             &attempt,
             Duration::from_secs(0),
             &async_tx,
+            &audit_tx,
             &webauthn,
             Some(&pw_badlist_cache),
             &jws_signer,
@@ -1393,8 +1413,15 @@ mod tests {
             _ => panic!(),
         };
 
+        match audit_rx.try_recv() {
+            Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+            _ => assert!(false),
+        }
+
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
+        drop(audit_tx);
+        assert!(audit_rx.blocking_recv().is_none());
     }
 
     macro_rules! start_password_mfa_session {
@@ -1487,6 +1514,7 @@ mod tests {
         account.primary = Some(cred);
 
         let (async_tx, mut async_rx) = unbounded();
+        let (audit_tx, mut audit_rx) = unbounded();
 
         // now check
 
@@ -1499,6 +1527,7 @@ mod tests {
                 &AuthCredential::Anonymous,
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -1506,6 +1535,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
 
         // == two step checks
@@ -1519,6 +1553,7 @@ mod tests {
                 &AuthCredential::Password(pw_bad.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -1526,6 +1561,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
         // check send bad totp, should fail immediate
         {
@@ -1536,6 +1576,7 @@ mod tests {
                 &AuthCredential::Totp(totp_bad),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -1543,6 +1584,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
 
         // check send good totp, should continue
@@ -1555,6 +1601,7 @@ mod tests {
                 &AuthCredential::Totp(totp_good),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -1566,6 +1613,7 @@ mod tests {
                 &AuthCredential::Password(pw_bad.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -1573,6 +1621,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
 
         // check send good totp, should continue
@@ -1585,6 +1638,7 @@ mod tests {
                 &AuthCredential::Totp(totp_good),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -1596,6 +1650,7 @@ mod tests {
                 &AuthCredential::Password(pw_good.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -1612,6 +1667,8 @@ mod tests {
 
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
+        drop(audit_tx);
+        assert!(audit_rx.blocking_recv().is_none());
     }
 
     #[test]
@@ -1642,6 +1699,7 @@ mod tests {
         account.primary = Some(cred);
 
         let (async_tx, mut async_rx) = unbounded();
+        let (audit_tx, mut audit_rx) = unbounded();
 
         // now check
 
@@ -1657,6 +1715,7 @@ mod tests {
                 &AuthCredential::Totp(totp_good),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -1668,6 +1727,7 @@ mod tests {
                 &AuthCredential::Password(pw_badlist.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -1675,10 +1735,17 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == PW_BADLIST_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
 
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
+        drop(audit_tx);
+        assert!(audit_rx.blocking_recv().is_none());
     }
 
     macro_rules! start_webauthn_only_session {
@@ -1782,6 +1849,7 @@ mod tests {
     fn test_idm_authsession_webauthn_only_mech() {
         sketching::test_init();
         let (async_tx, mut async_rx) = unbounded();
+        let (audit_tx, mut audit_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
         let mut account = entry_to_account!(E_ADMIN_V1.clone());
@@ -1803,6 +1871,7 @@ mod tests {
                 &AuthCredential::Anonymous,
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 None,
                 &jws_signer,
@@ -1810,6 +1879,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
 
         // Check good challenge
@@ -1825,6 +1899,7 @@ mod tests {
                 &AuthCredential::Passkey(resp),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 None,
                 &jws_signer,
@@ -1859,6 +1934,7 @@ mod tests {
                 &AuthCredential::Passkey(resp),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 None,
                 &jws_signer,
@@ -1866,6 +1942,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
 
         // Use an incorrect softtoken.
@@ -1902,6 +1983,7 @@ mod tests {
                 &AuthCredential::Passkey(resp),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 None,
                 &jws_signer,
@@ -1909,16 +1991,24 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
 
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
+        drop(audit_tx);
+        assert!(audit_rx.blocking_recv().is_none());
     }
 
     #[test]
     fn test_idm_authsession_webauthn_password_mech() {
         sketching::test_init();
         let (async_tx, mut async_rx) = unbounded();
+        let (audit_tx, mut audit_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
         let mut account = entry_to_account!(E_ADMIN_V1);
@@ -1946,6 +2036,7 @@ mod tests {
                 &AuthCredential::Password(pw_bad.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -1953,6 +2044,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
 
         // Check totp first attempt fails.
@@ -1964,6 +2060,7 @@ mod tests {
                 &AuthCredential::Totp(0),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -1971,6 +2068,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
 
         // check bad webauthn (fail)
@@ -1993,6 +2095,7 @@ mod tests {
                 &AuthCredential::SecurityKey(resp),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2000,6 +2103,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
 
         // check good webauthn/bad pw (fail)
@@ -2017,6 +2125,7 @@ mod tests {
                 &AuthCredential::SecurityKey(resp),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2028,6 +2137,7 @@ mod tests {
                 &AuthCredential::Password(pw_bad.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2035,6 +2145,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
 
             // Check the async counter update was sent.
             match async_rx.blocking_recv() {
@@ -2058,6 +2173,7 @@ mod tests {
                 &AuthCredential::SecurityKey(resp),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2069,6 +2185,7 @@ mod tests {
                 &AuthCredential::Password(pw_good.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2090,12 +2207,15 @@ mod tests {
 
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
+        drop(audit_tx);
+        assert!(audit_rx.blocking_recv().is_none());
     }
 
     #[test]
     fn test_idm_authsession_webauthn_password_totp_mech() {
         sketching::test_init();
         let (async_tx, mut async_rx) = unbounded();
+        let (audit_tx, mut audit_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
         let mut account = entry_to_account!(E_ADMIN_V1);
@@ -2134,6 +2254,7 @@ mod tests {
                 &AuthCredential::Password(pw_bad.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2141,6 +2262,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
 
         // Check bad totp (fail)
@@ -2152,6 +2278,7 @@ mod tests {
                 &AuthCredential::Totp(totp_bad),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2159,6 +2286,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
 
         // check bad webauthn (fail)
@@ -2179,6 +2311,7 @@ mod tests {
                 &AuthCredential::SecurityKey(resp),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2186,6 +2319,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
 
         // check good webauthn/bad pw (fail)
@@ -2203,6 +2341,7 @@ mod tests {
                 &AuthCredential::SecurityKey(resp),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2214,6 +2353,7 @@ mod tests {
                 &AuthCredential::Password(pw_bad.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2221,6 +2361,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
 
             // Check the async counter update was sent.
             match async_rx.blocking_recv() {
@@ -2238,6 +2383,7 @@ mod tests {
                 &AuthCredential::Totp(totp_good),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2249,6 +2395,7 @@ mod tests {
                 &AuthCredential::Password(pw_bad.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2256,6 +2403,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
 
         // check good totp/good pw (pass)
@@ -2267,6 +2419,7 @@ mod tests {
                 &AuthCredential::Totp(totp_good),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2278,6 +2431,7 @@ mod tests {
                 &AuthCredential::Password(pw_good.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2307,6 +2461,7 @@ mod tests {
                 &AuthCredential::SecurityKey(resp),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2318,6 +2473,7 @@ mod tests {
                 &AuthCredential::Password(pw_good.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2339,6 +2495,8 @@ mod tests {
 
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
+        drop(audit_tx);
+        assert!(audit_rx.blocking_recv().is_none());
     }
 
     #[test]
@@ -2381,6 +2539,7 @@ mod tests {
         account.primary = Some(cred);
 
         let (async_tx, mut async_rx) = unbounded();
+        let (audit_tx, mut audit_rx) = unbounded();
 
         // now check
         // == two step checks
@@ -2394,6 +2553,7 @@ mod tests {
                 &AuthCredential::Password(pw_bad.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2401,6 +2561,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
         // check send wrong backup code, should fail immediate
         {
@@ -2411,6 +2576,7 @@ mod tests {
                 &AuthCredential::BackupCode(backup_code_bad),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2418,6 +2584,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_BACKUPCODE_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
         // check send good backup code, should continue
         //      then bad pw, fail pw
@@ -2429,6 +2600,7 @@ mod tests {
                 &AuthCredential::BackupCode(backup_code_good.clone()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2440,6 +2612,7 @@ mod tests {
                 &AuthCredential::Password(pw_bad.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2447,6 +2620,11 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
             };
+
+            match audit_rx.try_recv() {
+                Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+                _ => assert!(false),
+            }
         }
         // Can't process BackupCodeRemoval without the server instance
         match async_rx.blocking_recv() {
@@ -2464,6 +2642,7 @@ mod tests {
                 &AuthCredential::BackupCode(backup_code_good),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2475,6 +2654,7 @@ mod tests {
                 &AuthCredential::Password(pw_good.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2506,6 +2686,7 @@ mod tests {
                 &AuthCredential::Totp(totp_good),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2517,6 +2698,7 @@ mod tests {
                 &AuthCredential::Password(pw_good.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2534,6 +2716,8 @@ mod tests {
 
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
+        drop(audit_tx);
+        assert!(audit_rx.blocking_recv().is_none());
     }
 
     #[test]
@@ -2574,6 +2758,7 @@ mod tests {
         account.primary = Some(cred);
 
         let (async_tx, mut async_rx) = unbounded();
+        let (audit_tx, mut audit_rx) = unbounded();
 
         // Test totp_a
         {
@@ -2584,6 +2769,7 @@ mod tests {
                 &AuthCredential::Totp(totp_good_a),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2595,6 +2781,7 @@ mod tests {
                 &AuthCredential::Password(pw_good.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2618,6 +2805,7 @@ mod tests {
                 &AuthCredential::Totp(totp_good_b),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2629,6 +2817,7 @@ mod tests {
                 &AuthCredential::Password(pw_good.to_string()),
                 ts,
                 &async_tx,
+                &audit_tx,
                 &webauthn,
                 Some(&pw_badlist_cache),
                 &jws_signer,
@@ -2645,5 +2834,7 @@ mod tests {
 
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
+        drop(audit_tx);
+        assert!(audit_rx.blocking_recv().is_none());
     }
 }

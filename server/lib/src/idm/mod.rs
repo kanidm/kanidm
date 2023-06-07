@@ -5,6 +5,7 @@
 
 pub mod account;
 pub mod applinks;
+pub mod audit;
 pub mod authsession;
 pub mod credupdatesession;
 pub mod delayed;
