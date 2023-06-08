@@ -19,7 +19,7 @@ pub struct ScimSyncRequest {
 
     // How do I want to represent different entities to kani? Split by type? All in one?
     pub entries: Vec<ScimEntry>,
-    // Delete uuids?
+    // Delete these uuids
     pub delete_uuids: Vec<Uuid>,
 }
 

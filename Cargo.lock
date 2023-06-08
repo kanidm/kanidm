@@ -2346,6 +2346,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "kanidm-ldap-sync"
+version = "1.1.0-beta.13-dev"
+dependencies = [
+ "base64urlsafedata",
+ "chrono",
+ "clap",
+ "clap_complete",
+ "cron",
+ "kanidm_client",
+ "kanidm_proto",
+ "kanidmd_lib",
+ "ldap3_client",
+ "serde",
+ "serde_json",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "users",
+ "uuid",
+]
+
+[[package]]
 name = "kanidm_client"
 version = "1.1.0-beta.13-dev"
 dependencies = [
@@ -2658,9 +2682,7 @@ dependencies = [
 
 [[package]]
 name = "ldap3_client"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0236f3aac28f4f79929664cd635f310fa7469f17b67d45c85848a0f3ca516d53"
+version = "0.3.3"
 dependencies = [
  "base64 0.13.1",
  "base64urlsafedata",
@@ -2678,14 +2700,13 @@ dependencies = [
 
 [[package]]
 name = "ldap3_proto"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57ea4b099d9f84c8424a56e9b361f5f9aeae9d87ca9bd683c54a6a27c8676597"
+version = "0.3.3"
 dependencies = [
  "bytes",
  "lber",
  "nom",
  "peg",
+ "serde",
  "tokio-util",
  "tracing",
  "uuid",
