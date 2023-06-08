@@ -192,7 +192,9 @@ pub(crate) fn qs_pair_test(_args: &TokenStream, item: TokenStream, with_init: bo
     result.into()
 }
 
-pub(crate) fn idm_test(_args: &TokenStream, item: TokenStream) -> TokenStream {
+pub(crate) fn idm_test(args: &TokenStream, item: TokenStream) -> TokenStream {
+    let audit = args.to_string() == "audit";
+
     let input: syn::ItemFn = match syn::parse(item.clone()) {
         Ok(it) => it,
         Err(e) => return token_stream_with_error(item, e),
@@ -237,6 +239,16 @@ pub(crate) fn idm_test(_args: &TokenStream, item: TokenStream) -> TokenStream {
     let test_fn = &input.sig.ident;
     let test_driver = Ident::new(&format!("idm_{}", test_fn), input.sig.span());
 
+    let test_fn_args = if audit {
+        quote! {
+            &test_server, &mut idms_delayed, &mut idms_audit
+        }
+    } else {
+        quote! {
+            &test_server, &mut idms_delayed
+        }
+    };
+
     // Effectively we are just injecting a real test function around this which we will
     // call.
 
@@ -246,9 +258,9 @@ pub(crate) fn idm_test(_args: &TokenStream, item: TokenStream) -> TokenStream {
         #header
         fn #test_driver() {
             let body = async {
-                let (test_server, mut idms_delayed)  = crate::testkit::setup_idm_test().await;
+                let (test_server, mut idms_delayed, mut idms_audit)  = crate::testkit::setup_idm_test().await;
 
-                #test_fn(&test_server, &mut idms_delayed).await;
+                #test_fn(#test_fn_args).await;
 
                 // Any needed teardown?
                 // Make sure there are no errors.
@@ -258,6 +270,7 @@ pub(crate) fn idm_test(_args: &TokenStream, item: TokenStream) -> TokenStream {
                 assert!(verifications.len() == 0);
 
                 idms_delayed.check_is_empty_or_panic();
+                idms_audit.check_is_empty_or_panic();
             };
             #[allow(clippy::expect_used, clippy::diverging_sub_expression)]
             {

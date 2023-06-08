@@ -78,13 +78,15 @@ pub mod prelude {
         f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub, Filter,
         FilterInvalid, FilterValid, FC,
     };
-    pub use crate::idm::server::{IdmServer, IdmServerDelayed};
+    pub use crate::idm::server::{IdmServer, IdmServerAudit, IdmServerDelayed};
     pub use crate::modify::{
         m_assert, m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList, ModifyValid,
     };
     pub use crate::server::access::AccessControlsTransaction;
     pub use crate::server::batch_modify::BatchModifyEvent;
-    pub use crate::server::identity::{AccessScope, IdentType, IdentUser, Identity, IdentityId};
+    pub use crate::server::identity::{
+        AccessScope, IdentType, IdentUser, Identity, IdentityId, Source,
+    };
     pub use crate::server::{
         QueryServer, QueryServerReadTransaction, QueryServerTransaction,
         QueryServerWriteTransaction,

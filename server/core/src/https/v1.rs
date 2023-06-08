@@ -1068,6 +1068,14 @@ pub async fn reauth(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let (eventid, hvalue) = req.new_eventid();
 
+    let ip_addr = req.get_remote_addr().ok_or_else(|| {
+        error!("Unable to process remote addr, refusing to proceed");
+        tide::Error::from_str(
+            tide::StatusCode::InternalServerError,
+            "unable to validate peer address",
+        )
+    })?;
+
     let obj: AuthIssueSession = req.body_json().await.map_err(|e| {
         debug!("Failed get body JSON? {:?}", e);
         e
@@ -1077,7 +1085,7 @@ pub async fn reauth(mut req: tide::Request<AppState>) -> tide::Result {
         .state()
         // This may change in the future ...
         .qe_r_ref
-        .handle_reauth(uat, obj, eventid)
+        .handle_reauth(uat, obj, eventid, ip_addr)
         .await;
 
     auth_session_state_management(req, inter, hvalue)
@@ -1091,6 +1099,14 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
 
     let maybe_sessionid: Option<Uuid> = req.get_current_auth_session_id();
 
+    let ip_addr = req.get_remote_addr().ok_or_else(|| {
+        error!("Unable to process remote addr, refusing to proceed");
+        tide::Error::from_str(
+            tide::StatusCode::InternalServerError,
+            "unable to validate peer address",
+        )
+    })?;
+
     let obj: AuthRequest = req.body_json().await.map_err(|e| {
         debug!("Failed get body JSON? {:?}", e);
         e
@@ -1103,7 +1119,7 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
         .state()
         // This may change in the future ...
         .qe_r_ref
-        .handle_auth(maybe_sessionid, obj, eventid)
+        .handle_auth(maybe_sessionid, obj, eventid, ip_addr)
         .await;
 
     auth_session_state_management(req, inter, hvalue)
