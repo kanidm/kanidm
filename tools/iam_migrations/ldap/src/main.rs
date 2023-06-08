@@ -336,8 +336,34 @@ async fn run_sync(
             delete_uuids,
             present_uuids,
         } => {
+            // refresh deletes is true only on the first refresh from openldap, implying
+            // to delete anything not marked as present. In otherwords
+            // refresh_deletes means to assert the content as it exists from the ldap server
+            // in the openldap case. For our purpose, we can use this to mean "present phase" since
+            // that will imply that all non present entries are purged.
 
-            todo!();
+            // if delete_phase == false && present_phase == false
+            //     Only update entries if they are present in the *add* state.
+            //     Generally also means do nothing with other entries, no updates for example.
+            //
+            //     This is the state for openldap when there are no changes to apply.
+            //     This is the state of 389-ds with no changes *or* entries are updated *only*.
+
+            // if delete_phase == true && present_phase = false
+            //    update entries that are in Add state, delete from delete uuids.
+            //
+            //    This only occurs on 389-ds, which sends a list of deleted uuids as required.
+
+            // if delete_phase == false && present_phase = true
+            //    update entries in Add state, assert entry is live from present_uuids
+            //    NOTE! Even if an entry is updated, it will also be in the present phase set. This
+            //    means we can use present_set > 0 as an indicator too.
+            //
+            //    This occurs only on openldap, where present phase lists all uuids in the filter set
+            //    *and* includes all entries that are updated at the same time.
+
+            // If delete_phase == true && present_phase = true
+            //    error! No Ldap server emits this!
 
         }
         LdapSyncRepl::RefreshRequired => {
