@@ -738,6 +738,9 @@ pub(crate) struct AuthSession {
     // What is the "intent" behind this auth session? Are we doing an initial auth? Or a re-auth
     // for a privilege grant?
     intent: AuthIntent,
+
+    // Where did the event come from?
+    source: Source,
 }
 
 impl AuthSession {
@@ -749,6 +752,7 @@ impl AuthSession {
         issue: AuthIssueSession,
         webauthn: &Webauthn,
         ct: Duration,
+        source: Source,
     ) -> (Option<Self>, AuthState) {
         // During this setup, determine the credential handler that we'll be using
         // for this session. This is currently based on presentation of an application
@@ -804,6 +808,7 @@ impl AuthSession {
                 state,
                 issue,
                 intent: AuthIntent::InitialAuth,
+                source,
             };
             // Get the set of mechanisms that can proceed. This is tied
             // to the session so that it can mutate state and have progression
@@ -828,6 +833,7 @@ impl AuthSession {
         issue: AuthIssueSession,
         webauthn: &Webauthn,
         ct: Duration,
+        source: Source,
     ) -> (Option<Self>, AuthState) {
         /// An inner enum to allow us to more easily define state within this fn
         enum State {
@@ -894,6 +900,7 @@ impl AuthSession {
                         session_id,
                         session_expiry: session.expiry,
                     },
+                    source,
                 };
 
                 let as_state = AuthState::Continue(allow);
@@ -1043,9 +1050,15 @@ impl AuthSession {
                         (None, Ok(AuthState::Continue(allowed.into_iter().collect())))
                     }
                     CredState::Denied(reason) => {
-                        if let Err(_) = audit_tx.send(AuditEvent::AuthenticationDenied {
-                            spn: self.account.spn.clone(),
-                        }) {
+                        if audit_tx
+                            .send(AuditEvent::AuthenticationDenied {
+                                source: self.source.clone().into(),
+                                spn: self.account.spn.clone(),
+                                uuid: self.account.uuid,
+                                time: OffsetDateTime::UNIX_EPOCH + time,
+                            })
+                            .is_err()
+                        {
                             error!("Unable to submit audit event to queue");
                         }
                         security_info!(%reason, "Credentials denied");
@@ -1254,6 +1267,7 @@ mod tests {
             AuthIssueSession::Token,
             &webauthn,
             duration_from_epoch_now(),
+            Source::Internal,
         );
 
         if let AuthState::Choose(auth_mechs) = state {
@@ -1287,6 +1301,7 @@ mod tests {
                 AuthIssueSession::Token,
                 $webauthn,
                 duration_from_epoch_now(),
+                Source::Internal,
             );
             let mut session = session.unwrap();
 
@@ -1434,6 +1449,7 @@ mod tests {
                 AuthIssueSession::Token,
                 $webauthn,
                 duration_from_epoch_now(),
+                Source::Internal,
             );
             let mut session = session.expect("Session was unable to be created.");
 
@@ -1759,6 +1775,7 @@ mod tests {
                 AuthIssueSession::Token,
                 $webauthn,
                 duration_from_epoch_now(),
+                Source::Internal,
             );
             let mut session = session.unwrap();
 

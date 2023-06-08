@@ -6,6 +6,7 @@ mod v1;
 mod v1_scim;
 
 use std::fs::canonicalize;
+use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -71,6 +72,7 @@ pub struct AppState {
     pub jws_validator: std::sync::Arc<JwsValidator>,
     /// The SHA384 hashes of javascript files we're going to serve to users
     pub js_files: Vec<JavaScriptFile>,
+    pub(crate) trust_x_forward_for: bool,
 }
 
 pub trait RequestExtensions {
@@ -85,6 +87,8 @@ pub trait RequestExtensions {
     fn get_url_param_uuid(&self, param: &str) -> Result<Uuid, tide::Error>;
 
     fn new_eventid(&self) -> (Uuid, String);
+
+    fn get_remote_addr(&self) -> Option<IpAddr>;
 }
 
 impl RequestExtensions for tide::Request<AppState> {
@@ -177,6 +181,16 @@ impl RequestExtensions for tide::Request<AppState> {
         let eventid = sketching::tracing_forest::id();
         let hv = eventid.as_hyphenated().to_string();
         (eventid, hv)
+    }
+
+    fn get_remote_addr(&self) -> Option<IpAddr> {
+        if self.state().trust_x_forward_for {
+            self.remote()
+        } else {
+            self.peer_addr()
+        }
+        .and_then(|add_str| add_str.parse().ok())
+        .map(|s_ad: SocketAddr| s_ad.ip())
     }
 }
 
@@ -387,6 +401,7 @@ pub async fn create_https_server(
         jws_signer,
         jws_validator,
         js_files: js_files.to_owned(),
+        trust_x_forward_for,
     });
 
     // Add the logging subsystem.

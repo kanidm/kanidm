@@ -932,6 +932,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         &mut self,
         ae: &AuthEvent,
         ct: Duration,
+        source: Source,
     ) -> Result<AuthResult, OperationError> {
         // Match on the auth event, to see what we need to do.
         match &ae.step {
@@ -1006,7 +1007,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         });
 
                 let (auth_session, state) =
-                    AuthSession::new(account, init.issue, self.webauthn, ct);
+                    AuthSession::new(account, init.issue, self.webauthn, ct, source);
 
                 match auth_session {
                     Some(auth_session) => {
@@ -2100,7 +2101,11 @@ mod tests {
         let anon_init = AuthEvent::anonymous_init();
         // Expect success
         let r1 = idms_auth
-            .auth(&anon_init, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_init,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         /* Some weird lifetime things happen here ... */
 
@@ -2138,7 +2143,11 @@ mod tests {
         let anon_begin = AuthEvent::begin_mech(sid, AuthMech::Anonymous);
 
         let r2 = idms_auth
-            .auth(&anon_begin, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_begin,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -2176,7 +2185,11 @@ mod tests {
 
         // Expect success
         let r2 = idms_auth
-            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -2220,7 +2233,11 @@ mod tests {
 
             // Expect failure
             let r2 = idms_auth
-                .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+                .auth(
+                    &anon_step,
+                    Duration::from_secs(TEST_CURRENT_TIME),
+                    Source::Internal,
+                )
                 .await;
             debug!("r2 ==> {:?}", r2);
 
@@ -2264,7 +2281,7 @@ mod tests {
         let mut idms_auth = idms.auth().await;
         let admin_init = AuthEvent::named_init(name);
 
-        let r1 = idms_auth.auth(&admin_init, ct).await;
+        let r1 = idms_auth.auth(&admin_init, ct, Source::Internal).await;
         let ar = r1.unwrap();
         let AuthResult { sessionid, state } = ar;
 
@@ -2273,7 +2290,7 @@ mod tests {
         // Now push that we want the Password Mech.
         let admin_begin = AuthEvent::begin_mech(sessionid, AuthMech::Password);
 
-        let r2 = idms_auth.auth(&admin_begin, ct).await;
+        let r2 = idms_auth.auth(&admin_begin, ct, Source::Internal).await;
         let ar = r2.unwrap();
         let AuthResult { sessionid, state } = ar;
 
@@ -2299,7 +2316,11 @@ mod tests {
 
         // Expect success
         let r2 = idms_auth
-            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -2367,7 +2388,11 @@ mod tests {
 
         // Expect success
         let r2 = idms_auth
-            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -2418,7 +2443,11 @@ mod tests {
 
         // Expect success
         let r2 = idms_auth
-            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -2873,7 +2902,9 @@ mod tests {
 
         let mut idms_auth = idms.auth().await;
         let admin_init = AuthEvent::named_init("admin");
-        let r1 = idms_auth.auth(&admin_init, time_low).await;
+        let r1 = idms_auth
+            .auth(&admin_init, time_low, Source::Internal)
+            .await;
 
         let ar = r1.unwrap();
         let AuthResult {
@@ -2893,7 +2924,9 @@ mod tests {
         // And here!
         let mut idms_auth = idms.auth().await;
         let admin_init = AuthEvent::named_init("admin");
-        let r1 = idms_auth.auth(&admin_init, time_high).await;
+        let r1 = idms_auth
+            .auth(&admin_init, time_high, Source::Internal)
+            .await;
 
         let ar = r1.unwrap();
         let AuthResult {
@@ -3039,7 +3072,11 @@ mod tests {
         let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
 
         let r2 = idms_auth
-            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -3080,7 +3117,11 @@ mod tests {
         let admin_init = AuthEvent::named_init("admin");
 
         let r1 = idms_auth
-            .auth(&admin_init, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &admin_init,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         let ar = r1.unwrap();
         let AuthResult { sessionid, state } = ar;
@@ -3090,7 +3131,11 @@ mod tests {
         let admin_begin = AuthEvent::begin_mech(sessionid, AuthMech::Password);
 
         let r2 = idms_auth
-            .auth(&admin_begin, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &admin_begin,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         let ar = r2.unwrap();
         let AuthResult {
@@ -3123,7 +3168,11 @@ mod tests {
 
         // Expect success
         let r2 = idms_auth
-            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME + 2))
+            .auth(
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME + 2),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -3187,7 +3236,11 @@ mod tests {
         let anon_step = AuthEvent::cred_step_password(sid_later, TEST_PASSWORD_INC);
 
         let r2 = idms_auth
-            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -3226,7 +3279,11 @@ mod tests {
 
         // Expect success
         let r2 = idms_auth
-            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
         match r2 {

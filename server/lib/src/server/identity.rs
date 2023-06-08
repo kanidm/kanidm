@@ -6,6 +6,7 @@
 use crate::be::Limits;
 use std::collections::BTreeSet;
 use std::hash::Hash;
+use std::net::IpAddr;
 use std::sync::Arc;
 use uuid::uuid;
 
@@ -15,6 +16,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 use crate::value::Session;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Source {
+    Internal,
+    Https(IpAddr),
+    // Ldaps,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AccessScope {

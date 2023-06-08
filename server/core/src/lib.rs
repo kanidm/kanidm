@@ -747,7 +747,16 @@ pub async fn create_server_core(
                     }
                 }
                 audit_event = idms_audit.audit_rx().recv() => {
-                    warn!(?audit_event);
+                    match serde_json::to_string(&audit_event) {
+                        Ok(audit_event) => {
+                            warn!(%audit_event);
+                        }
+                        Err(e) => {
+                            error!(err=?e, "Unable to process audit event to json.");
+                            warn!(?audit_event, json=false);
+                        }
+                    }
+
                 }
             }
         }
