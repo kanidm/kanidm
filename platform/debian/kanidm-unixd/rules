@@ -11,6 +11,7 @@ PKGDIR=debian/${PACKAGE}
 BINDIR=${PKGDIR}/usr/sbin/
 LIBDIR=${PKGDIR}/lib/${DEB_HOST_MULTIARCH}
 SHARED_DIR=${PKGDIR}/usr/share/${PACKAGE}
+PAMDIR=${PKGDIR}/usr/share/pam-configs/
 DISTRIBUTOR_ID=$(shell lsb_release -is)
 DISTRIBUTOR_RELEASE=$(shell lsb_release -rs)
 DISTRIBUTOR=$(DISTRIBUTOR_ID)_$(DISTRIBUTOR_RELEASE)
@@ -80,8 +81,10 @@ override_dh_auto_install:
 		-g root -o root \
 		target/release/libnss_kanidm.so \
 		${LIBDIR}/libnss_kanidm.so.2
-
-
+	install \
+		-g root -o root \
+		kanidm.pam \
+		${PAMDIR}/kanidm
 
 override_dh_installexamples:
 	mkdir -p ${SHARED_DIR}
