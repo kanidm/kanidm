@@ -941,7 +941,7 @@ async fn test_repl_increment_basic_bidirectional_recycle(
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
 
-    // On both servers, at seperate timestamps, run the recycle.
+    // On both servers, at separate timestamps, run the recycle.
     let ct = ct + Duration::from_secs(1);
     let mut server_a_txn = server_a.write(ct).await;
     assert!(server_a_txn.internal_delete_uuid(t_uuid).is_ok());
