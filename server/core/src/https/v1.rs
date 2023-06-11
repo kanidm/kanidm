@@ -1065,16 +1065,18 @@ pub async fn do_nothing(_req: tide::Request<AppState>) -> tide::Result {
 }
 
 pub async fn reauth(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let (eventid, hvalue) = req.new_eventid();
-
+    // check that we can get the remote IP address first, since this doesn't touch the backend at all
     let ip_addr = req.get_remote_addr().ok_or_else(|| {
-        error!("Unable to process remote addr, refusing to proceed");
+        error!("Unable to get remote addr for auth event, refusing to proceed");
         tide::Error::from_str(
             tide::StatusCode::InternalServerError,
             "unable to validate peer address",
         )
     })?;
+
+    let uat = req.get_current_uat();
+    let (eventid, hvalue) = req.new_eventid();
+
 
     let obj: AuthIssueSession = req.body_json().await.map_err(|e| {
         debug!("Failed get body JSON? {:?}", e);
@@ -1092,6 +1094,14 @@ pub async fn reauth(mut req: tide::Request<AppState>) -> tide::Result {
 }
 
 pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
+    // check that we can get the remote IP address first, since this doesn't touch the backend at all
+    let ip_addr = req.get_remote_addr().ok_or_else(|| {
+        error!("Unable to get remote addr for auth event, refusing to proceed");
+        tide::Error::from_str(
+            tide::StatusCode::InternalServerError,
+            "unable to validate peer address",
+        )
+    })?;
     // First, deal with some state management.
     // Do anything here first that's needed like getting the session details
     // out of the req cookie.
@@ -1099,13 +1109,6 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
 
     let maybe_sessionid: Option<Uuid> = req.get_current_auth_session_id();
 
-    let ip_addr = req.get_remote_addr().ok_or_else(|| {
-        error!("Unable to process remote addr, refusing to proceed");
-        tide::Error::from_str(
-            tide::StatusCode::InternalServerError,
-            "unable to validate peer address",
-        )
-    })?;
 
     let obj: AuthRequest = req.body_json().await.map_err(|e| {
         debug!("Failed get body JSON? {:?}", e);
