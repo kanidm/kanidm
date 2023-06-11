@@ -1077,7 +1077,6 @@ pub async fn reauth(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let (eventid, hvalue) = req.new_eventid();
 
-
     let obj: AuthIssueSession = req.body_json().await.map_err(|e| {
         debug!("Failed get body JSON? {:?}", e);
         e
@@ -1108,7 +1107,6 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
     let (eventid, hvalue) = req.new_eventid();
 
     let maybe_sessionid: Option<Uuid> = req.get_current_auth_session_id();
-
 
     let obj: AuthRequest = req.body_json().await.map_err(|e| {
         debug!("Failed get body JSON? {:?}", e);
