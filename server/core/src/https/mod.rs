@@ -190,7 +190,7 @@ impl RequestExtensions for tide::Request<AppState> {
             // xff headers don't have a port, but if we're going direct you might get one
             let res = self
                 .remote()
-                .map(|addr| addr.split(":").next().unwrap_or(""))
+                .map(|addr| addr.split(':').next().unwrap_or(addr))
                 .and_then(|ip| ip.parse::<IpAddr>().ok());
             debug!("Trusting XFF, using remote src_ip={:?}", res);
             res
