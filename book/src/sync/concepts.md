@@ -88,7 +88,7 @@ If the sync tool fails, you can investigate details in the Kanidmd server output
 The sync tool can run "indefinitely" if you wish for Kanidm to always import data from the external
 source.
 
-## Finalisting the Sync Account
+## Finalising the Sync Account
 
 If you are performing a migration from an external IDM to Kanidm, when that migration is completed
 you can nominate that Kanidm now owns all of the imported data. This is achieved by finalising the
