@@ -86,11 +86,11 @@ kanidm_unix_int = { path = "./unix_integration" }
 last-git-commit = "0.2.0"
 # REMOVE this
 lazy_static = "^1.4.0"
-# ldap3_client = "^0.3.2"
-# ldap3_proto = { version = "^0.3.2", features = ["serde"] }
+ldap3_client = "^0.3.4"
+ldap3_proto = { version = "^0.3.4", features = ["serde"] }
 
-ldap3_client = { path = "../ldap3/client", version = "0.3.2" }
-ldap3_proto = { path = "../ldap3/proto", version = "^0.3.2", features = ["serde"] }
+# ldap3_client = { path = "../ldap3/client", version = "0.3.2" }
+# ldap3_proto = { path = "../ldap3/proto", version = "^0.3.2", features = ["serde"] }
 # ldap3_client = { git = "https://github.com/kanidm/ldap3.git", version = "0.3.0" }
 # ldap3_proto = { git = "https://github.com/kanidm/ldap3.git", version = "0.3.0" }
 
