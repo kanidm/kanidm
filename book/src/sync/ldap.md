@@ -39,7 +39,7 @@ moduleload syncprov.la
 overlay syncprov
 ```
 
-In addition you must grant an account full read access and raise it's search limits.
+In addition you must grant an account full read access and raise its search limits.
 
 ```
 access to *
