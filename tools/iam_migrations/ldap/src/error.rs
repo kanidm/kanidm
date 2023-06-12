@@ -4,6 +4,7 @@ pub enum SyncError {
     LdapConn,
     LdapAuth,
     LdapSyncrepl,
+    LdapStateInvalid,
     SyncStatus,
     SyncUpdate,
     Preprocess,

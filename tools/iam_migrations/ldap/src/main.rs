@@ -48,7 +48,7 @@ use uuid::Uuid;
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::scim_v1::{
     ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest, ScimSyncState,
-    ScimTotp,
+    ScimTotp, ScimSyncRetentionMode
 };
 use kanidmd_lib::utils::file_permissions_readonly;
 
@@ -331,7 +331,7 @@ async fn run_sync(
     let scim_sync_request = match sync_result {
         LdapSyncRepl::Success {
             cookie,
-            refresh_deletes,
+            refresh_deletes: _,
             entries,
             delete_uuids,
             present_uuids,
@@ -342,28 +342,65 @@ async fn run_sync(
             // in the openldap case. For our purpose, we can use this to mean "present phase" since
             // that will imply that all non present entries are purged.
 
-            // if delete_phase == false && present_phase == false
-            //     Only update entries if they are present in the *add* state.
-            //     Generally also means do nothing with other entries, no updates for example.
-            //
-            //     This is the state for openldap when there are no changes to apply.
-            //     This is the state of 389-ds with no changes *or* entries are updated *only*.
+            let to_state = if let Some(cookie) = cookie {
+                // Only update the cookie if it's present - openldap omits!
+                ScimSyncState::Active { cookie }
+            } else {
+                info!("no changes required");
+                return Ok(());
+            };
 
-            // if delete_phase == true && present_phase = false
-            //    update entries that are in Add state, delete from delete uuids.
-            //
-            //    This only occurs on 389-ds, which sends a list of deleted uuids as required.
+            let retain = match (delete_uuids, present_uuids) {
+                (None, None) => {
+                    // if delete_phase == false && present_phase == false
+                    //     Only update entries if they are present in the *add* state.
+                    //     Generally also means do nothing with other entries, no updates for example.
+                    //
+                    //     This is the state of 389-ds with no deletes *and* entries are updated *only*.
+                    //     This is the state for openldap and 389-ds when there are no changes to apply.
+                    ScimSyncRetentionMode::Ignore
+                }
+                (Some(d_uuids), None) => {
+                    //    update entries that are in Add state, delete from delete uuids.
+                    //
+                    //    This only occurs on 389-ds, which sends a list of deleted uuids as required.
+                    ScimSyncRetentionMode::Delete(d_uuids)
+                }
+                (None, Some(p_uuids)) => {
+                    //    update entries in Add state, assert entry is live from present_uuids
+                    //    NOTE! Even if an entry is updated, it will also be in the present phase set. This
+                    //    means we can use present_set > 0 as an indicator too.
+                    //
+                    //    This occurs only on openldap, where present phase lists all uuids in the filter set
+                    //    *and* includes all entries that are updated at the same time.
+                    ScimSyncRetentionMode::Retain(p_uuids)
+                }
+                (Some(_), Some(_)) => {
+                    //    error! No Ldap server emits this!
+                    error!("Ldap server provided an invalid sync repl response - unable to have both delete and present phases.");
+                    return Err(SyncError::LdapStateInvalid);
+                }
+            };
 
-            // if delete_phase == false && present_phase = true
-            //    update entries in Add state, assert entry is live from present_uuids
-            //    NOTE! Even if an entry is updated, it will also be in the present phase set. This
-            //    means we can use present_set > 0 as an indicator too.
-            //
-            //    This occurs only on openldap, where present phase lists all uuids in the filter set
-            //    *and* includes all entries that are updated at the same time.
+            let entries = match process_ldap_sync_result(
+                entries,
+                &sync_config.entry_map,
+            )
+            .await
+            {
+                Ok(ssr) => ssr,
+                Err(()) => {
+                    error!("Failed to process IPA entries to SCIM");
+                    return Err(SyncError::Preprocess);
+                }
+            };
 
-            // If delete_phase == true && present_phase = true
-            //    error! No Ldap server emits this!
+            ScimSyncRequest {
+                from_state: scim_sync_status,
+                to_state,
+                entries,
+                retain,
+            }
 
         }
         LdapSyncRepl::RefreshRequired => {
@@ -373,7 +410,7 @@ async fn run_sync(
                 from_state: scim_sync_status,
                 to_state,
                 entries: Vec::new(),
-                delete_uuids: Vec::new(),
+                retain: ScimSyncRetentionMode::Ignore,
             }
         }
     };
@@ -400,6 +437,14 @@ async fn run_sync(
         Ok(())
     }
     // done!
+}
+
+async fn process_ldap_sync_result(
+    ldap_entries: Vec<LdapSyncReplEntry>,
+    entry_config_map: &HashMap<Uuid, EntryConfig>,
+) -> Result<Vec<ScimEntry>, ()> {
+    // For now, ignore this.
+    Ok(Vec::default())
 }
 
 async fn status_task(
