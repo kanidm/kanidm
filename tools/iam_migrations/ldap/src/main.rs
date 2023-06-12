@@ -47,8 +47,8 @@ use uuid::Uuid;
 
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::scim_v1::{
-    ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest, ScimSyncState,
-    ScimTotp, ScimSyncRetentionMode
+    ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
+    ScimSyncRetentionMode, ScimSyncState, ScimTotp,
 };
 use kanidmd_lib::utils::file_permissions_readonly;
 
@@ -238,7 +238,6 @@ async fn driver_main(opt: Opt) {
     }
 }
 
-
 async fn run_sync(
     cb: KanidmClientBuilder,
     sync_config: &Config,
@@ -382,12 +381,7 @@ async fn run_sync(
                 }
             };
 
-            let entries = match process_ldap_sync_result(
-                entries,
-                &sync_config.entry_map,
-            )
-            .await
-            {
+            let entries = match process_ldap_sync_result(entries, &sync_config).await {
                 Ok(ssr) => ssr,
                 Err(()) => {
                     error!("Failed to process IPA entries to SCIM");
@@ -401,7 +395,6 @@ async fn run_sync(
                 entries,
                 retain,
             }
-
         }
         LdapSyncRepl::RefreshRequired => {
             let to_state = ScimSyncState::Refresh;
@@ -441,10 +434,174 @@ async fn run_sync(
 
 async fn process_ldap_sync_result(
     ldap_entries: Vec<LdapSyncReplEntry>,
-    entry_config_map: &HashMap<Uuid, EntryConfig>,
+    sync_config: &Config,
 ) -> Result<Vec<ScimEntry>, ()> {
-    // For now, ignore this.
-    Ok(Vec::default())
+    // Future - make this par-map
+    ldap_entries
+        .into_iter()
+        .filter_map(|lentry| {
+            let e_config = sync_config
+                .entry_map
+                .get(&lentry.entry_uuid)
+                .cloned()
+                .unwrap_or_default();
+
+            match ldap_to_scim_entry(lentry, &e_config, sync_config) {
+                Ok(Some(e)) => Some(Ok(e)),
+                Ok(None) => None,
+                Err(()) => Some(Err(())),
+            }
+        })
+        .collect::<Result<Vec<_>, _>>()
+}
+
+fn ldap_to_scim_entry(
+    sync_entry: LdapSyncReplEntry,
+    entry_config: &EntryConfig,
+    sync_config: &Config,
+) -> Result<Option<ScimEntry>, ()> {
+    debug!("{:#?}", sync_entry);
+
+    // check the sync_entry state?
+    if sync_entry.state != LdapSyncStateValue::Add {
+        unimplemented!();
+    }
+
+    let dn = sync_entry.entry.dn.clone();
+
+    // Is this an entry we need to observe/look at?
+    if entry_config.exclude {
+        info!("entry_config excludes {}", dn);
+        return Ok(None);
+    }
+
+    let oc = sync_entry.entry.attrs.get("objectclass").ok_or_else(|| {
+        error!("Invalid entry - no object class {}", dn);
+    })?;
+
+    if oc.contains(&sync_config.person_objectclass) {
+        let LdapSyncReplEntry {
+            entry_uuid,
+            state: _,
+            mut entry,
+        } = sync_entry;
+
+        let id = entry_uuid;
+
+        let user_name = entry
+            .remove_ava_single(&sync_config.person_attr_user_name)
+            .ok_or_else(|| {
+                error!(
+                    "Missing required attribute {} (person_attr_user_name)",
+                    sync_config.person_attr_user_name
+                );
+            })?;
+
+        let display_name = entry
+            .remove_ava_single(&sync_config.person_attr_display_name)
+            .ok_or_else(|| {
+                error!(
+                    "Missing required attribute {} (person_attr_display_name)",
+                    sync_config.person_attr_display_name
+                );
+            })?;
+
+        let gidnumber = entry
+            .remove_ava_single(&sync_config.person_attr_gidnumber)
+            .map(|gid| {
+                u32::from_str(&gid).map_err(|_| {
+                    error!(
+                        "Invalid gidnumber - {} is not a u32 (person_attr_gidnumber)",
+                        sync_config.person_attr_gidnumber
+                    );
+                })
+            })
+            .transpose()?;
+
+        let password_import = entry.remove_ava_single(&sync_config.person_attr_password);
+
+        let password_import = if let Some(pw_prefix) = sync_config.person_password_prefix.as_ref() {
+            password_import.map(|s| format!("{}{}", pw_prefix, s))
+        } else {
+            password_import
+        };
+
+        let totp_import = Vec::default();
+
+        let login_shell = entry.remove_ava_single(&sync_config.person_attr_login_shell);
+        let external_id = Some(entry.dn);
+
+        Ok(Some(
+            ScimSyncPerson {
+                id,
+                external_id,
+                user_name,
+                display_name,
+                gidnumber,
+                password_import,
+                totp_import,
+                login_shell,
+            }
+            .into(),
+        ))
+    } else if oc.contains(&sync_config.group_objectclass) {
+        let LdapSyncReplEntry {
+            entry_uuid,
+            state: _,
+            mut entry,
+        } = sync_entry;
+
+        let id = entry_uuid;
+
+        let name = entry
+            .remove_ava_single(&sync_config.group_attr_name)
+            .ok_or_else(|| {
+                error!(
+                    "Missing required attribute {} (group_attr_name)",
+                    sync_config.group_attr_name
+                );
+            })?;
+
+        let description = entry.remove_ava_single(&sync_config.group_attr_description);
+
+        let gidnumber = entry
+            .remove_ava_single(&sync_config.group_attr_gidnumber)
+            .map(|gid| {
+                u32::from_str(&gid).map_err(|_| {
+                    error!(
+                        "Invalid gidnumber - {} is not a u32 (group_attr_gidnumber)",
+                        sync_config.group_attr_gidnumber
+                    );
+                })
+            })
+            .transpose()?;
+
+        let members: Vec<_> = entry
+            .remove_ava(&sync_config.group_attr_member)
+            .map(|set| {
+                set.into_iter()
+                    .map(|external_id| ScimExternalMember { external_id })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let external_id = Some(entry.dn);
+
+        Ok(Some(
+            ScimSyncGroup {
+                id,
+                external_id,
+                name,
+                description,
+                gidnumber,
+                members,
+            }
+            .into(),
+        ))
+    } else {
+        debug!("Skipping entry {} with oc {:?}", dn, oc);
+        Ok(None)
+    }
 }
 
 async fn status_task(

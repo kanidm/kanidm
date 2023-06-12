@@ -40,10 +40,10 @@ fn get_cand_attr_set<VALID, STATE>(
                             None => Ok(()),
                             Some(vr) => {
                                 admin_error!(
-                                    "ava already exists -> {:?}: {:?} on {:?}",
+                                    "ava already exists -> {:?}: {:?} conflicts to {:?}",
                                     attr,
                                     vr,
-                                    uuid
+                                    e.get_display_id()
                                 );
                                 Err(OperationError::Plugin(PluginError::AttrUnique(
                                     "ava already exists".to_string(),

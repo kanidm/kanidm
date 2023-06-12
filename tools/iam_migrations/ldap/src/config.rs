@@ -5,6 +5,50 @@ use uuid::Uuid;
 
 use ldap3_client::proto::LdapFilter;
 
+fn person_objectclass() -> String {
+    "person".to_string()
+}
+
+fn person_attr_user_name() -> String {
+    "uid".to_string()
+}
+
+fn person_attr_display_name() -> String {
+    "cn".to_string()
+}
+
+fn person_attr_gidnumber() -> String {
+    "uidnumber".to_string()
+}
+
+fn person_attr_password() -> String {
+    "userpassword".to_string()
+}
+
+fn person_attr_login_shell() -> String {
+    "loginshell".to_string()
+}
+
+fn group_objectclass() -> String {
+    "posixgroup".to_string()
+}
+
+fn group_attr_name() -> String {
+    "cn".to_string()
+}
+
+fn group_attr_description() -> String {
+    "description".to_string()
+}
+
+fn group_attr_member() -> String {
+    "member".to_string()
+}
+
+fn group_attr_gidnumber() -> String {
+    "gidnumber".to_string()
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub sync_token: String,
@@ -17,6 +61,31 @@ pub struct Config {
     pub ldap_sync_base_dn: String,
 
     pub ldap_filter: LdapFilter,
+
+    #[serde(default = "person_objectclass")]
+    pub person_objectclass: String,
+    #[serde(default = "person_attr_user_name")]
+    pub person_attr_user_name: String,
+    #[serde(default = "person_attr_display_name")]
+    pub person_attr_display_name: String,
+    #[serde(default = "person_attr_gidnumber")]
+    pub person_attr_gidnumber: String,
+    #[serde(default = "person_attr_password")]
+    pub person_attr_password: String,
+    pub person_password_prefix: Option<String>,
+    #[serde(default = "person_attr_login_shell")]
+    pub person_attr_login_shell: String,
+
+    #[serde(default = "group_objectclass")]
+    pub group_objectclass: String,
+    #[serde(default = "group_attr_name")]
+    pub group_attr_name: String,
+    #[serde(default = "group_attr_description")]
+    pub group_attr_description: String,
+    #[serde(default = "group_attr_gidnumber")]
+    pub group_attr_gidnumber: String,
+    #[serde(default = "group_attr_member")]
+    pub group_attr_member: String,
 
     #[serde(flatten)]
     pub entry_map: HashMap<Uuid, EntryConfig>,
