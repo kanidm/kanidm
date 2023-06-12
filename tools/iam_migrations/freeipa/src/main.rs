@@ -49,8 +49,8 @@ use uuid::Uuid;
 
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::scim_v1::{
-    ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest, ScimSyncState,
-    ScimTotp,
+    ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
+    ScimSyncRetentionMode, ScimSyncState, ScimTotp,
 };
 use kanidmd_lib::utils::file_permissions_readonly;
 
@@ -413,7 +413,7 @@ async fn run_sync(
                 return Err(SyncError::Preprocess);
             }
 
-            if !present_uuids.is_empty() {
+            if !present_uuids.is_some() {
                 error!("Unsure how to handle presentUuids > 0");
                 return Err(SyncError::Preprocess);
             }
@@ -445,11 +445,17 @@ async fn run_sync(
                 }
             };
 
+            let retain = if let Some(delete_uuids) = delete_uuids {
+                ScimSyncRetentionMode::Delete(delete_uuids)
+            } else {
+                ScimSyncRetentionMode::Ignore
+            };
+
             ScimSyncRequest {
                 from_state: scim_sync_status,
                 to_state,
                 entries,
-                delete_uuids,
+                retain,
             }
         }
         LdapSyncRepl::RefreshRequired => {
@@ -459,7 +465,7 @@ async fn run_sync(
                 from_state: scim_sync_status,
                 to_state,
                 entries: Vec::new(),
-                delete_uuids: Vec::new(),
+                retain: ScimSyncRetentionMode::Ignore,
             }
         }
     };

@@ -1,5 +1,4 @@
-// #![deny(warnings)]
-
+#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
 #![deny(clippy::unimplemented)]
@@ -17,11 +16,9 @@ mod error;
 
 use crate::config::{Config, EntryConfig};
 use crate::error::SyncError;
-use base64urlsafedata::Base64UrlSafeData;
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
-use std::collections::{BTreeMap, HashMap};
 use std::fs::metadata;
 use std::fs::File;
 use std::io::Read;
@@ -43,22 +40,18 @@ use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
-use uuid::Uuid;
 
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::scim_v1::{
     ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
-    ScimSyncRetentionMode, ScimSyncState, ScimTotp,
+    ScimSyncRetentionMode, ScimSyncState,
 };
 use kanidmd_lib::utils::file_permissions_readonly;
 
 #[cfg(target_family = "unix")]
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
-use ldap3_client::{
-    proto, proto::LdapFilter, LdapClient, LdapClientBuilder, LdapSyncRepl, LdapSyncReplEntry,
-    LdapSyncStateValue,
-};
+use ldap3_client::{proto, LdapClientBuilder, LdapSyncRepl, LdapSyncReplEntry, LdapSyncStateValue};
 
 include!("./opt.rs");
 
@@ -303,8 +296,6 @@ async fn run_sync(
         ScimSyncState::Refresh => None,
         ScimSyncState::Active { cookie } => Some(cookie.0.clone()),
     };
-
-    let is_initialise = cookie.is_none();
 
     let filter = sync_config.ldap_filter.clone();
 
