@@ -30,7 +30,7 @@ fn person_attr_login_shell() -> String {
 }
 
 fn group_objectclass() -> String {
-    "posixgroup".to_string()
+    "groupofnames".to_string()
 }
 
 fn group_attr_name() -> String {
