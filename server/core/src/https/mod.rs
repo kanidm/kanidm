@@ -183,14 +183,25 @@ impl RequestExtensions for tide::Request<AppState> {
         (eventid, hv)
     }
 
+    /// Returns the remote address of the client, based on if you've got trust_x_forward_for set in config.
     fn get_remote_addr(&self) -> Option<IpAddr> {
         if self.state().trust_x_forward_for {
-            self.remote()
+            // split the socket address off if we've got one, then parse it as an `IpAddr`
+            // xff headers don't have a port, but if we're going direct you might get one
+            let res = self
+                .remote()
+                .map(|addr| addr.split(':').next().unwrap_or(addr))
+                .and_then(|ip| ip.parse::<IpAddr>().ok());
+            debug!("Trusting XFF, using remote src_ip={:?}", res);
+            res
         } else {
-            self.peer_addr()
+            let res = self
+                .peer_addr()
+                .map(|addr| addr.parse::<SocketAddr>().unwrap())
+                .map(|s_ad: SocketAddr| s_ad.ip());
+            debug!("Not trusting XFF, using peer_addr src_ip={:?}", res);
+            res
         }
-        .and_then(|add_str| add_str.parse().ok())
-        .map(|s_ad: SocketAddr| s_ad.ip())
     }
 }
 

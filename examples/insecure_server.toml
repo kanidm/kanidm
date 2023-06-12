@@ -12,6 +12,7 @@ log_level = "verbose"
 
 domain = "localhost"
 origin = "https://localhost:8443"
+trust_x_forward_for = true
 
 [online_backup]
 path = "/tmp/kanidm/backups/"
