@@ -61,7 +61,7 @@ dsconf --list
 ```
 
 Using this you can show the current status of the retro changelog plugin to see if you need to
-change it's configuration.
+change its configuration.
 
 ```bash
 dsconf <instance name> plugin retro-changelog show
