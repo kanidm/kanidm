@@ -413,7 +413,7 @@ async fn run_sync(
                 return Err(SyncError::Preprocess);
             }
 
-            if !present_uuids.is_some() {
+            if present_uuids.is_some() {
                 error!("Unsure how to handle presentUuids > 0");
                 return Err(SyncError::Preprocess);
             }
