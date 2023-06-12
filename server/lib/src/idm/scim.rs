@@ -1247,8 +1247,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 return Ok(());
             }
             ScimSyncRetentionMode::Retain(present_uuids) => {
-                assert!(false);
-
                 let filter_or = present_uuids
                     .iter()
                     .copied()
@@ -2155,8 +2153,8 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         // Setup two entries.
-
-        let user_sync_uuid = Uuid::new_v4();
+        let sync_uuid_a = Uuid::new_v4();
+        let sync_uuid_b = Uuid::new_v4();
         // Create an entry via sync
 
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
@@ -2171,37 +2169,158 @@ mod tests {
             to_state: ScimSyncState::Active {
                 cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
             },
-            entries: vec![ScimEntry {
-                schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
-                id: user_sync_uuid,
-                external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
-                meta: None,
-                attrs: btreemap!((
-                    "name".to_string(),
-                    ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
-                ),),
-            }],
+            entries: vec![
+                ScimEntry {
+                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                    id: sync_uuid_a,
+                    external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
+                    meta: None,
+                    attrs: btreemap!((
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                    ),),
+                },
+                ScimEntry {
+                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                    id: sync_uuid_b,
+                    external_id: Some("cn=anothergroup,ou=people,dc=test".to_string()),
+                    meta: None,
+                    attrs: btreemap!((
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("anothergroup".to_string()))
+                    ),),
+                },
+            ],
             retain: ScimSyncRetentionMode::Ignore,
         };
 
         assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
-        todo!();
+        // Now retain only a single entry
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let sse = ScimSyncUpdateEvent { ident };
 
-        // Retain only one of them.
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
+            },
+            entries: vec![],
+            retain: ScimSyncRetentionMode::Retain(vec![sync_uuid_a]),
+        };
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+        // Can't use internal_search_uuid since that applies a mask.
+        assert!(idms_prox_write
+            .qs_write
+            .internal_search(filter_all!(f_eq("uuid", PartialValue::Uuid(sync_uuid_b))))
+            // Should be none as the entry was masked by being recycled.
+            .map(|entries| {
+                assert!(entries.len() == 1);
+                let ent = entries.get(0).unwrap();
+                ent.mask_recycled_ts().is_none()
+            })
+            .unwrap_or(false));
+
+        assert!(idms_prox_write.commit().is_ok());
     }
 
     #[idm_test]
-    async fn test_idm_scim_sync_phase_4_retain_single(
+    async fn test_idm_scim_sync_phase_4_retain_none(
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         // Setup two entries.
+        let sync_uuid_a = Uuid::new_v4();
+        let sync_uuid_b = Uuid::new_v4();
 
-        // Retain none of them.
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent {
+            ident: ident.clone(),
+        };
+
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            entries: vec![
+                ScimEntry {
+                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                    id: sync_uuid_a,
+                    external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
+                    meta: None,
+                    attrs: btreemap!((
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                    ),),
+                },
+                ScimEntry {
+                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                    id: sync_uuid_b,
+                    external_id: Some("cn=anothergroup,ou=people,dc=test".to_string()),
+                    meta: None,
+                    attrs: btreemap!((
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("anothergroup".to_string()))
+                    ),),
+                },
+            ],
+            retain: ScimSyncRetentionMode::Ignore,
+        };
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Now retain no entries at all
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let sse = ScimSyncUpdateEvent { ident };
+
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
+            },
+            entries: vec![],
+            retain: ScimSyncRetentionMode::Retain(vec![]),
+        };
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+        // Can't use internal_search_uuid since that applies a mask.
+        assert!(idms_prox_write
+            .qs_write
+            .internal_search(filter_all!(f_eq("uuid", PartialValue::Uuid(sync_uuid_a))))
+            // Should be none as the entry was masked by being recycled.
+            .map(|entries| {
+                assert!(entries.len() == 1);
+                let ent = entries.get(0).unwrap();
+                ent.mask_recycled_ts().is_none()
+            })
+            .unwrap_or(false));
+
+        // Can't use internal_search_uuid since that applies a mask.
+        assert!(idms_prox_write
+            .qs_write
+            .internal_search(filter_all!(f_eq("uuid", PartialValue::Uuid(sync_uuid_b))))
+            // Should be none as the entry was masked by being recycled.
+            .map(|entries| {
+                assert!(entries.len() == 1);
+                let ent = entries.get(0).unwrap();
+                ent.mask_recycled_ts().is_none()
+            })
+            .unwrap_or(false));
+
+        assert!(idms_prox_write.commit().is_ok());
     }
-
 
     // Phase 5
     #[idm_test]
