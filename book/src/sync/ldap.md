@@ -50,7 +50,7 @@ limits dn.exact="cn=sync,dc=example,dc=com" time.soft=unlimited time.hard=unlimi
 ```
 
 For more details see the
-[openldap administration guide](https://openldap.org/doc/admin24/replication.html#Configuring%20the%20different%20replication%20types)
+[openldap administration guide](https://openldap.org/doc/admin24/replication.html#Configuring%20the%20different%20replication%20types).
 
 ### 389 Directory Server
 
