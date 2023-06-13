@@ -1,9 +1,19 @@
 use std::ffi::CString;
 
-use selinux::{kernel_support, label::back_end::File, label::Labeler, KernelSupport};
+use selinux::{
+    current_mode, kernel_support, label::back_end::File, label::Labeler, KernelSupport, SELinuxMode,
+};
 
 pub fn supported() -> bool {
-    return !matches!(kernel_support(), KernelSupport::Unsupported);
+    // check if the running kernel has SELinux support
+    if matches!(kernel_support(), KernelSupport::Unsupported) {
+        return false;
+    }
+    // check if SELinux is actually running
+    match current_mode() {
+        SELinuxMode::Permissive | SELinuxMode::Enforcing => true,
+        _ => false,
+    }
 }
 
 pub fn get_labeler() -> Result<Labeler<File>, String> {
