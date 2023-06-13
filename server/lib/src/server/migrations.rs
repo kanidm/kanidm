@@ -635,6 +635,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES.clone(),
             E_IDM_ACCOUNT_MAIL_READ_PRIV.clone(),
             E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
+            E_IDM_ACCOUNT_SELF_ACP_WRITE_V1.clone(),
         ];
 
         let res: Result<(), _> = idm_entries
