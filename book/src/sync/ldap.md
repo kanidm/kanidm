@@ -118,7 +118,7 @@ kanidm-ldap-sync [-c /path/to/kanidm/config] -i /path/to/kanidm-ldap-sync --sche
 ## Monitoring the Sync Tool
 
 When running in schedule mode, you may wish to monitor the sync tool for failures. Since failures
-block the sync process, this is important to ensuring a smooth and reliable synchronisation process.
+block the sync process, this is important for a smooth and reliable synchronisation process.
 
 You can configure a status listener that can be monitored via tcp with the parameter `status_bind`.
 
