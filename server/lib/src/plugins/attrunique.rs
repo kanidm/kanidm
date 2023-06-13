@@ -6,6 +6,7 @@
 //
 use std::collections::BTreeMap;
 use std::collections::VecDeque;
+use std::sync::Arc;
 
 use kanidm_proto::v1::{ConsistencyError, PluginError};
 use tracing::trace;
@@ -203,6 +204,7 @@ impl Plugin for AttrUnique {
     #[instrument(level = "debug", name = "attrunique_pre_modify", skip_all)]
     fn pre_modify(
         qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -220,6 +222,7 @@ impl Plugin for AttrUnique {
     #[instrument(level = "debug", name = "attrunique_pre_batch_modify", skip_all)]
     fn pre_batch_modify(
         qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {

@@ -11,6 +11,7 @@ use crate::event::ModifyEvent;
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use std::collections::BTreeSet;
+use std::sync::Arc;
 use time::OffsetDateTime;
 
 pub struct SessionConsistency {}
@@ -23,6 +24,7 @@ impl Plugin for SessionConsistency {
     #[instrument(level = "debug", name = "session_consistency", skip_all)]
     fn pre_modify(
         qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -32,6 +34,7 @@ impl Plugin for SessionConsistency {
     #[instrument(level = "debug", name = "session_consistency", skip_all)]
     fn pre_batch_modify(
         qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {

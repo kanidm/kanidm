@@ -122,7 +122,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Pre mod plugins
         // We should probably supply the pre-post cands here.
-        Plugins::run_pre_modify(self, &mut candidates, me).map_err(|e| {
+        Plugins::run_pre_modify(self, &pre_candidates, &mut candidates, me).map_err(|e| {
             admin_error!("Pre-Modify operation failed (plugin), {:?}", e);
             e
         })?;

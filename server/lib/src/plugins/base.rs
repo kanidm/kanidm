@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 use std::iter::once;
+use std::sync::Arc;
 
 use hashbrown::HashSet;
 use kanidm_proto::v1::{ConsistencyError, PluginError};
@@ -154,6 +155,7 @@ impl Plugin for Base {
     #[instrument(level = "debug", name = "base_pre_modify", skip(_qs, _cand, me))]
     fn pre_modify(
         _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -177,6 +179,7 @@ impl Plugin for Base {
     #[instrument(level = "debug", name = "base_pre_modify", skip(_qs, _cand, me))]
     fn pre_batch_modify(
         _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {

@@ -61,6 +61,7 @@ trait Plugin {
 
     fn pre_modify(
         _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         _cand: &mut Vec<EntryInvalidCommitted>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -81,6 +82,7 @@ trait Plugin {
 
     fn pre_batch_modify(
         _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         _cand: &mut Vec<EntryInvalidCommitted>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
@@ -231,19 +233,20 @@ impl Plugins {
     #[instrument(level = "debug", name = "plugins::run_pre_modify", skip_all)]
     pub fn run_pre_modify(
         qs: &mut QueryServerWriteTransaction,
+        pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        protected::Protected::pre_modify(qs, cand, me)
-            .and_then(|_| base::Base::pre_modify(qs, cand, me))
-            .and_then(|_| cred_import::CredImport::pre_modify(qs, cand, me))
-            .and_then(|_| jwskeygen::JwsKeygen::pre_modify(qs, cand, me))
-            .and_then(|_| gidnumber::GidNumber::pre_modify(qs, cand, me))
-            .and_then(|_| domain::Domain::pre_modify(qs, cand, me))
-            .and_then(|_| spn::Spn::pre_modify(qs, cand, me))
-            .and_then(|_| session::SessionConsistency::pre_modify(qs, cand, me))
+        protected::Protected::pre_modify(qs, pre_cand, cand, me)
+            .and_then(|_| base::Base::pre_modify(qs, pre_cand, cand, me))
+            .and_then(|_| cred_import::CredImport::pre_modify(qs, pre_cand, cand, me))
+            .and_then(|_| jwskeygen::JwsKeygen::pre_modify(qs, pre_cand, cand, me))
+            .and_then(|_| gidnumber::GidNumber::pre_modify(qs, pre_cand, cand, me))
+            .and_then(|_| domain::Domain::pre_modify(qs, pre_cand, cand, me))
+            .and_then(|_| spn::Spn::pre_modify(qs, pre_cand, cand, me))
+            .and_then(|_| session::SessionConsistency::pre_modify(qs, pre_cand, cand, me))
             // attr unique should always be last
-            .and_then(|_| attrunique::AttrUnique::pre_modify(qs, cand, me))
+            .and_then(|_| attrunique::AttrUnique::pre_modify(qs, pre_cand, cand, me))
     }
 
     #[instrument(level = "debug", name = "plugins::run_post_modify", skip_all)]
@@ -261,19 +264,20 @@ impl Plugins {
     #[instrument(level = "debug", name = "plugins::run_pre_batch_modify", skip_all)]
     pub fn run_pre_batch_modify(
         qs: &mut QueryServerWriteTransaction,
+        pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        protected::Protected::pre_batch_modify(qs, cand, me)
-            .and_then(|_| base::Base::pre_batch_modify(qs, cand, me))
-            .and_then(|_| cred_import::CredImport::pre_batch_modify(qs, cand, me))
-            .and_then(|_| jwskeygen::JwsKeygen::pre_batch_modify(qs, cand, me))
-            .and_then(|_| gidnumber::GidNumber::pre_batch_modify(qs, cand, me))
-            .and_then(|_| domain::Domain::pre_batch_modify(qs, cand, me))
-            .and_then(|_| spn::Spn::pre_batch_modify(qs, cand, me))
-            .and_then(|_| session::SessionConsistency::pre_batch_modify(qs, cand, me))
+        protected::Protected::pre_batch_modify(qs, pre_cand, cand, me)
+            .and_then(|_| base::Base::pre_batch_modify(qs, pre_cand, cand, me))
+            .and_then(|_| cred_import::CredImport::pre_batch_modify(qs, pre_cand, cand, me))
+            .and_then(|_| jwskeygen::JwsKeygen::pre_batch_modify(qs, pre_cand, cand, me))
+            .and_then(|_| gidnumber::GidNumber::pre_batch_modify(qs, pre_cand, cand, me))
+            .and_then(|_| domain::Domain::pre_batch_modify(qs, pre_cand, cand, me))
+            .and_then(|_| spn::Spn::pre_batch_modify(qs, pre_cand, cand, me))
+            .and_then(|_| session::SessionConsistency::pre_batch_modify(qs, pre_cand, cand, me))
             // attr unique should always be last
-            .and_then(|_| attrunique::AttrUnique::pre_batch_modify(qs, cand, me))
+            .and_then(|_| attrunique::AttrUnique::pre_batch_modify(qs, pre_cand, cand, me))
     }
 
     #[instrument(level = "debug", name = "plugins::run_post_batch_modify", skip_all)]
