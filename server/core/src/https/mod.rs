@@ -188,10 +188,11 @@ impl RequestExtensions for tide::Request<AppState> {
         if self.state().trust_x_forward_for {
             // split the socket address off if we've got one, then parse it as an `IpAddr`
             // xff headers don't have a port, but if we're going direct you might get one
-            let res = self
-                .remote()
-                .map(|addr| addr.split(':').next().unwrap_or(addr))
-                .and_then(|ip| ip.parse::<IpAddr>().ok());
+            let res = self.remote().and_then(|ip| {
+                ip.parse::<IpAddr>()
+                    .ok()
+                    .or_else(|| ip.parse::<SocketAddr>().map(|s_ad| s_ad.ip()).ok())
+            });
             debug!("Trusting XFF, using remote src_ip={:?}", res);
             res
         } else {
