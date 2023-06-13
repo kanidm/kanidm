@@ -18,7 +18,5 @@
   ],
   "module": "kanidmd_web_ui.js",
   "homepage": "https://github.com/kanidm/kanidm/",
-  "sideEffects": [
-    "./snippets/*"
-  ]
+  "sideEffects": false
 }

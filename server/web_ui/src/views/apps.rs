@@ -107,7 +107,11 @@ impl AppsApp {
         <div class={CSS_PAGE_HEADER}>
         <h2>{ "Applications list" }</h2>
         </div>
-          if !apps.is_empty() {
+          if apps.is_empty() {
+            <div>
+              <h5>{ "No linked applications available" }</h5>
+            </div>
+          } else {
             <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
                 {
                     apps.iter().map(|applink| {
