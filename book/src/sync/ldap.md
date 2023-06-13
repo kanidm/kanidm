@@ -3,7 +3,7 @@
 If you have an LDAP server that supports sync repl (rfc4533 content synchronisation) then you are
 able to synchronise from it to Kanidm for the purposes of coexistence or migration.
 
-If there is a specific Kanidm sync tool for your LDAP server you should preference that over the
+If there is a specific Kanidm sync tool for your LDAP server, you should use that instead of the
 generic LDAP server sync.
 
 ## Installing the LDAP Sync Tool
