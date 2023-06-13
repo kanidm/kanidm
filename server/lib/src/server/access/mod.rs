@@ -219,14 +219,13 @@ pub trait AccessControlsTransaction<'a> {
                     SearchResult::Grant => true,
                     SearchResult::Allow(allowed_attrs) => {
                         // The allow set constrained.
-                        security_access!(
-                            requested = ?requested_attrs,
-                            allowed = ?allowed_attrs,
-                            "attributes",
-                        );
-
                         let decision = requested_attrs.is_subset(&allowed_attrs);
-                        security_access!(?decision, "search attr decision");
+                        security_access!(
+                            ?decision,
+                            allowed = ?allowed_attrs,
+                            requested = ?requested_attrs,
+                            "search attribute decision",
+                        );
                         decision
                     }
                 }
@@ -293,16 +292,10 @@ pub trait AccessControlsTransaction<'a> {
                     }
                     SearchResult::Allow(allowed_attrs) => {
                         // The allow set constrained.
-                        security_access!(
+                        debug!(
                             requested = ?requested_attrs,
                             allowed = ?allowed_attrs,
-                            "attributes",
-                        );
-                        // The allow set constrained.
-                        security_access!(
-                            requested = ?requested_attrs,
-                            allowed = ?allowed_attrs,
-                            "attributes",
+                            "reduction",
                         );
 
                         // Reduce requested by allowed.
