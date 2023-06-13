@@ -146,7 +146,7 @@ fn modify_ident_test<'a>(ident: &Identity) -> AccessResult<'a> {
         }
         IdentType::User(_) => {}
     };
-    info!(event = %ident, "Access check for modify event");
+    debug!(event = %ident, "Access check for modify event");
 
     match ident.access_scope() {
         AccessScope::ReadOnly | AccessScope::Synchronise => {

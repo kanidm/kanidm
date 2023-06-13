@@ -646,7 +646,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let mut fail = false;
         existing_entries.iter().for_each(|e| {
             if e.mask_recycled_ts().is_none() {
-                error!("Unable to proceed: entry uuid {} is masked. You must re-map this entries uuid in the sync connector to proceed.", e.get_uuid());
+                error!("Unable to proceed: entry uuid {} ({}) is masked. You must re-map this entries uuid in the sync connector to proceed.", e.get_uuid(), e.get_display_id());
                 fail = true;
             }
         });
@@ -870,7 +870,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     if let Some(uuid) = maybe_uuid {
                         vs.push(Value::Refer(uuid))
                     } else {
-                        warn!("Could not convert external_id to reference - {}", value);
+                        debug!("Could not convert external_id to reference - {}", value);
                     }
                 }
                 Ok(vs)

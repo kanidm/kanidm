@@ -238,7 +238,7 @@ pub trait AccessControlsTransaction<'a> {
                 security_access!("denied ❌ - no entries were released");
             }
         } else {
-            security_access!("allowed {} entries ✅", allowed_entries.len());
+            debug!("allowed search of {} entries ✅", allowed_entries.len());
         }
 
         Ok(allowed_entries)
@@ -329,7 +329,7 @@ pub trait AccessControlsTransaction<'a> {
                 security_access!("reduced to empty set on all entries ❌");
             }
         } else {
-            security_access!(
+            debug!(
                 "attribute set reduced on {} entries ✅",
                 allowed_entries.len()
             );
@@ -450,9 +450,9 @@ pub trait AccessControlsTransaction<'a> {
             })
             .collect();
 
-        security_access!(?requested_pres, "Requested present set");
-        security_access!(?requested_rem, "Requested remove set");
-        security_access!(?requested_classes, "Requested class set");
+        debug!(?requested_pres, "Requested present set");
+        debug!(?requested_rem, "Requested remove set");
+        debug!(?requested_classes, "Requested class set");
 
         let r = entries.iter().all(|e| {
             match apply_modify_access(&me.ident, related_acp.as_slice(), e) {
@@ -492,9 +492,9 @@ pub trait AccessControlsTransaction<'a> {
         });
 
         if r {
-            security_access!("allowed ✅");
+            debug!("allowed modify of {} entries ✅", entries.len());
         } else {
-            security_access!("denied ❌ - modifications may not proceed");
+            security_access!("denied ❌ - modify may not proceed");
         }
         Ok(r)
     }
@@ -584,9 +584,9 @@ pub trait AccessControlsTransaction<'a> {
                 })
                 .collect();
 
-            security_access!(?requested_pres, "Requested present set");
-            security_access!(?requested_rem, "Requested remove set");
-            security_access!(?requested_classes, "Requested class set");
+            debug!(?requested_pres, "Requested present set");
+            debug!(?requested_rem, "Requested remove set");
+            debug!(?requested_classes, "Requested class set");
 
             match apply_modify_access(&me.ident, related_acp.as_slice(), e) {
                 ModifyResult::Denied => false,
@@ -625,7 +625,7 @@ pub trait AccessControlsTransaction<'a> {
         });
 
         if r {
-            security_access!("allowed ✅");
+            debug!("allowed modify of {} entries ✅", entries.len());
         } else {
             security_access!("denied ❌ - modifications may not proceed");
         }
@@ -678,7 +678,7 @@ pub trait AccessControlsTransaction<'a> {
         });
 
         if r {
-            security_access!("allowed ✅");
+            security_access!("allowed create of {} entries ✅", entries.len());
         } else {
             security_access!("denied ❌ - create may not proceed");
         }
@@ -741,7 +741,7 @@ pub trait AccessControlsTransaction<'a> {
             }
         });
         if r {
-            security_access!("allowed ✅");
+            debug!("allowed delete of {} entries ✅", entries.len());
         } else {
             security_access!("denied ❌ - delete may not proceed");
         }

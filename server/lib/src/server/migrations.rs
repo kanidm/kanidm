@@ -393,7 +393,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.internal_apply_writable(mod_candidates)
     }
 
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_core -> start ...");
         // Load in all the "core" schema, that we already have in "memory".
@@ -416,7 +416,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         r
     }
 
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub fn initialise_schema_idm(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_idm -> start ...");
         // List of IDM schemas to init.
@@ -498,7 +498,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     // This function is idempotent
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub fn initialise_idm(&mut self) -> Result<(), OperationError> {
         // First, check the system_info object. This stores some server information
         // and details. It's a pretty const thing. Also check anonymous, important to many

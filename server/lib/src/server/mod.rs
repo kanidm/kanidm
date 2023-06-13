@@ -1463,7 +1463,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.changed_schema = true;
     }
 
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub(crate) fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
         self.be_txn.upgrade_reindex(v)
     }
