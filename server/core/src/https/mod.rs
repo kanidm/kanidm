@@ -186,7 +186,6 @@ impl RequestExtensions for tide::Request<AppState> {
     /// Returns the remote address of the client, based on if you've got trust_x_forward_for set in config.
     fn get_remote_addr(&self) -> Option<IpAddr> {
         if self.state().trust_x_forward_for {
-            // split the socket address off if we've got one, then parse it as an `IpAddr`
             // xff headers don't have a port, but if we're going direct you might get one
             let res = self.remote().and_then(|ip| {
                 ip.parse::<IpAddr>()
