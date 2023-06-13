@@ -95,7 +95,9 @@ jobs:
         uses: actions/configure-pages@v3
       - name: Extract the files
         run: |
-          find . -name '*.tar.gz' -ls -exec tar zxf "{}" \;
+          find . -name '*.tar.gz' -ls -exec tar zxvf "{}" \;
+      - name: Check the docs
+        run: |
           ls -la docs/
           cd docs && \
           ln -s ${{ needs.pre_deploy.outputs.latest}}/ stable && \
