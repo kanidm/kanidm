@@ -62,7 +62,7 @@ fn delete_filter_entry<'a>(
         }
         IdentType::User(_) => {}
     };
-    info!(event = %ident, "Access check for delete event");
+    debug!(event = %ident, "Access check for delete event");
 
     match ident.access_scope() {
         AccessScope::ReadOnly | AccessScope::Synchronise => {
@@ -82,7 +82,7 @@ fn delete_filter_entry<'a>(
                 "entry matches acs"
             );
             // It matches, so we can delete this!
-            security_access!("passed");
+            debug!("passed");
             true
         } else {
             trace!(

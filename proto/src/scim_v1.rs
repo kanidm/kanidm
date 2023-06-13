@@ -13,14 +13,27 @@ pub enum ScimSyncState {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub enum ScimSyncRetentionMode {
+    /// No actions are to be taken - only update or create entries in the
+    /// entries set.
+    Ignore,
+    /// All entries that have their uuid present in this set are retained.
+    /// Anything not present will be deleted.
+    Retain(Vec<Uuid>),
+    /// Any entry with it's uuid in this set will be deleted. Anything not
+    /// present will be retained.
+    Delete(Vec<Uuid>),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ScimSyncRequest {
     pub from_state: ScimSyncState,
     pub to_state: ScimSyncState,
 
     // How do I want to represent different entities to kani? Split by type? All in one?
     pub entries: Vec<ScimEntry>,
-    // Delete uuids?
-    pub delete_uuids: Vec<Uuid>,
+
+    pub retain: ScimSyncRetentionMode,
 }
 
 impl ScimSyncRequest {
@@ -29,7 +42,7 @@ impl ScimSyncRequest {
             from_state,
             to_state: ScimSyncState::Refresh,
             entries: Vec::default(),
-            delete_uuids: Vec::default(),
+            retain: ScimSyncRetentionMode::Ignore,
         }
     }
 }

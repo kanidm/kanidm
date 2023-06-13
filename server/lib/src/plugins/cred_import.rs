@@ -67,6 +67,16 @@ impl CredImport {
 
                 // convert the import_password_string to a password
                 let pw = Password::try_from(im_pw).map_err(|_| {
+                    let len = if im_pw.len() > 5 {
+                        4
+                    } else {
+                        im_pw.len() - 1
+                    };
+                    let hint = im_pw.split_at(len).0;
+                    let id = e.get_display_id();
+
+                    error!(%hint, entry_id = %id, "password_import was unable to convert hash format");
+
                     OperationError::Plugin(PluginError::CredImport(
                         "password_import was unable to convert hash format".to_string(),
                     ))

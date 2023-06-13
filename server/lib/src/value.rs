@@ -1695,16 +1695,16 @@ impl Value {
         match Uuid::parse_str(s) {
             // It is a uuid, disallow.
             Ok(_) => {
-                warn!("iname values may not contain uuids");
+                error!("iname values may not contain uuids");
                 false
             }
             // Not a uuid, check it against the re.
             Err(_) => {
                 if !INAME_RE.is_match(s) {
-                    warn!("iname values may only contain limited characters - \"{}\" does not pass regex pattern \"{}\"", s, *INAME_RE);
+                    error!("iname values may only contain limited characters - \"{}\" does not pass regex pattern \"{}\"", s, *INAME_RE);
                     false
                 } else if DISALLOWED_NAMES.contains(s) {
-                    warn!("iname value \"{}\" is in denied list", s);
+                    error!("iname value \"{}\" is in denied list", s);
                     false
                 } else {
                     true
@@ -1717,7 +1717,7 @@ impl Value {
         if !SINGLELINE_RE.is_match(s) {
             true
         } else {
-            warn!(
+            error!(
                 "value contains invalid whitespace chars forbidden by \"{}\"",
                 *SINGLELINE_RE
             );
@@ -1728,7 +1728,7 @@ impl Value {
     pub(crate) fn validate_str_escapes(s: &str) -> bool {
         // Look for and prevent certain types of string escapes and injections.
         if UNICODE_CONTROL_RE.is_match(s) {
-            warn!("value contains invalid unicode control character",);
+            error!("value contains invalid unicode control character",);
             false
         } else {
             true

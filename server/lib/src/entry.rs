@@ -2195,6 +2195,16 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .unwrap()
     }
 
+    pub(crate) fn get_display_id(&self) -> String {
+        self.attrs
+            .get("spn")
+            .and_then(|vs| vs.to_value_single())
+            .or_else(|| self.attrs.get("name").and_then(|vs| vs.to_value_single()))
+            .or_else(|| self.attrs.get("uuid").and_then(|vs| vs.to_value_single()))
+            .map(|value| value.to_proto_string_clone())
+            .unwrap_or_else(|| "no entry id available".to_string())
+    }
+
     #[inline(always)]
     /// Get an iterator over the current set of attribute names that this entry contains.
     pub fn get_ava_names(&self) -> impl Iterator<Item = &str> {

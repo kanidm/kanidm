@@ -508,6 +508,9 @@ impl LdapServer {
                 // No need to notify on unbind (per rfc4511)
                 Ok(LdapResponseState::Unbind)
             }
+            ServerOps::Compare(cr) => Ok(LdapResponseState::Respond(
+                cr.gen_error(LdapResultCode::Other, "not supported".to_string()),
+            )),
             ServerOps::Whoami(wr) => match uat {
                 Some(u) => Ok(LdapResponseState::Respond(
                     wr.gen_success(format!("u: {}", u.spn).as_str()),

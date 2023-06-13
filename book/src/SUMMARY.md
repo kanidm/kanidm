@@ -35,6 +35,7 @@
 
 - [Concepts](sync/concepts.md)
 - [FreeIPA](sync/freeipa.md)
+- [LDAP](sync/ldap.md)
 
 # Integration Examples
 
