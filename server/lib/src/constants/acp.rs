@@ -139,6 +139,32 @@ lazy_static! {
 }
 
 lazy_static! {
+    pub static ref E_IDM_ACCOUNT_SELF_ACP_WRITE_V1: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
+        ("class", CLASS_ACCESS_CONTROL_MODIFY.clone()),
+        ("name", Value::new_iname("idm_self_account_acp_write")),
+        ("uuid", Value::Uuid(UUID_IDM_ACCOUNT_SELF_ACP_WRITE_V1)),
+        (
+            "description",
+            Value::new_utf8s("Builtin IDM Control for self write - required for accounts to update their own session state.")
+        ),
+        (
+            "acp_receiver_group",
+            Value::Refer(UUID_IDM_ALL_ACCOUNTS)
+        ),
+        (
+            "acp_targetscope",
+            Value::new_json_filter_s(
+                "{\"and\": [{\"eq\": [\"class\",\"account\"]}, \"self\"]}"
+            )
+                .expect("Invalid JSON filter")
+        ),
+        ("acp_modify_removedattr", Value::new_iutf8("user_auth_token_session"))
+    );
+}
+
+lazy_static! {
     pub static ref E_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1: EntryInitNew = entry_init!(
         ("class", CLASS_OBJECT.clone()),
         ("class", CLASS_ACCESS_CONTROL_PROFILE.clone()),
