@@ -2,6 +2,7 @@
 // may only have certain modifications performed.
 
 use hashbrown::HashSet;
+use std::sync::Arc;
 
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::Modify;
@@ -69,6 +70,7 @@ impl Plugin for Protected {
     #[instrument(level = "debug", name = "protected_pre_modify", skip(_qs, cand, me))]
     fn pre_modify(
         _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<EntryInvalidCommitted>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -144,6 +146,7 @@ impl Plugin for Protected {
 
     fn pre_batch_modify(
         _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<EntryInvalidCommitted>,
         me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {

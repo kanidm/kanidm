@@ -1,6 +1,7 @@
 // Transform password import requests into proper kanidm credentials.
 use std::convert::TryFrom;
 use std::iter::once;
+use std::sync::Arc;
 
 use kanidm_proto::v1::PluginError;
 
@@ -36,6 +37,7 @@ impl Plugin for CredImport {
     )]
     fn pre_modify(
         _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -45,6 +47,7 @@ impl Plugin for CredImport {
     #[instrument(level = "debug", name = "password_import_pre_batch_modify", skip_all)]
     fn pre_batch_modify(
         _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {

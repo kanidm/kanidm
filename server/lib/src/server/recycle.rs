@@ -177,7 +177,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Do we need to apply pre-mod?
         // Very likely, in case domain has renamed etc.
-        Plugins::run_pre_modify(self, &mut candidates, &me).map_err(|e| {
+        Plugins::run_pre_modify(self, &pre_candidates, &mut candidates, &me).map_err(|e| {
             admin_error!("Revive operation failed (plugin), {:?}", e);
             e
         })?;

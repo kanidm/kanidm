@@ -34,6 +34,7 @@ impl Plugin for Spn {
     #[instrument(level = "debug", name = "spn_pre_modify", skip_all)]
     fn pre_modify(
         qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -43,6 +44,7 @@ impl Plugin for Spn {
     #[instrument(level = "debug", name = "spn_pre_batch_modify", skip_all)]
     fn pre_batch_modify(
         qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
