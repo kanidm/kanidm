@@ -89,18 +89,15 @@ jobs:
       - name: Extract the files
         run: |
           pwd
-          find . -name '*.tar.gz' -ls
-          find . -name '*.tar.gz' -ls -exec tar zxvf "{}" \;
-        env:
-          ACTIONS_RUNNER_DEBUG: true
-      - name: Check the docs
-        run: |
+          find $(pwd) -ls
+          find $(pwd) '*.tar.gz' -ls -exec tar zxvf "{}" \;
           mkdir -p docs
-          find . -type d -ls
           cd docs
           cp -R "$(git branch -a  | awk '{print $1}' | sort -t. -k3n,3 -k4n,4 | awk -F'/' '{print $NF}' | tail -n1)/" stable
           cd ..
           ls -la docs/
+        env:
+          ACTIONS_RUNNER_DEBUG: true
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
