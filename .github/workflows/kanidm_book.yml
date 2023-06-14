@@ -29,24 +29,15 @@ jobs:
   pre_deploy:
     runs-on: ubuntu-latest
     outputs:
-      latest: ${{ steps.previoustag.outputs.semantic-version }}
+      latest: ${{ steps.branchname.outputs.latest }}
     steps:
-      # - id: tags
-      #   name: pull tags
-      #   uses: oraad/get-tags-action@v1.0.0
-      #   with:
-      #     repo: ${{ github.repository }}
-      #     limit: 5
-      #     github-token: ${{ github.token }}
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Get Previous tag
-        id: previoustag
-        uses: SOLIDSoftworks/semver-tags@v1
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          tag-prefix: 'v1'
+      - name: Latest branch
+        run: |
+          echo "latest=$(git branch -a  | awk '{print $1}' | sort -t. -k3n,3 -k4n,4 | awk -F'/' '{print $NF}' | tail -n1)" >> $GITHUB_OUTPUT
+        id: branchname
       - name: Move redirector page
         run: |
           mkdir docs
@@ -105,10 +96,9 @@ jobs:
           mkdir -p docs
           ls -la docs/
           cd docs && \
-          ln -s ${{ needs.pre_deploy.outputs.latest}}/ stable && \
+          ln -s "$(git branch -a  | awk '{print $1}' | sort -t. -k3n,3 -k4n,4 | awk -F'/' '{print $NF}' | tail -n1)/" stable && \
           cd ..
           ls -la docs/
-
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
