@@ -88,6 +88,7 @@ jobs:
         uses: actions/configure-pages@v3
       - name: Extract the files
         run: |
+          pwd
           find . -name '*.tar.gz' -ls
           find . -name '*.tar.gz' -ls -exec tar zxvf "{}" \;
         env:
