@@ -2138,7 +2138,7 @@ impl Entry<EntryReduced, EntryCommitted> {
 
 // impl<STATE> Entry<EntryValid, STATE> {
 impl<VALID, STATE> Entry<VALID, STATE> {
-    /// This internally adds an AVA to the entry. If the entry was newely added, then true is returned.
+    /// This internally adds an AVA to the entry. If the entry was newly added, then true is returned.
     /// If the value already existed, or was unable to be added, false is returned. Alternately,
     /// you can think of this boolean as "if a write occurred to the structure", true indicating that
     /// a change occurred.
@@ -2154,7 +2154,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
                 .expect("Unable to fail - non-zero iter, and single value type!");
             self.attrs.insert(AttrString::from(attr), vs);
             // The attribute did not exist before.
-            false
+            true
         }
         // Doesn't matter if it already exists, equality will replace.
     }
