@@ -95,8 +95,8 @@ jobs:
         run: |
           mkdir -p docs
           ls -la docs/
-          cd docs && \
-          ln -s "$(git branch -a  | awk '{print $1}' | sort -t. -k3n,3 -k4n,4 | awk -F'/' '{print $NF}' | tail -n1)/" stable && \
+          cd docs
+          cp -R "$(git branch -a  | awk '{print $1}' | sort -t. -k3n,3 -k4n,4 | awk -F'/' '{print $NF}' | tail -n1)/" stable
           cd ..
           ls -la docs/
       - name: Upload artifact
