@@ -2464,6 +2464,7 @@ dependencies = [
  "bytes",
  "clap",
  "clap_complete",
+ "csv",
  "futures",
  "kanidm_client",
  "kanidm_lib_crypto",

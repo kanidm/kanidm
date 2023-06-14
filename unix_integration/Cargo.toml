@@ -43,6 +43,7 @@ path = "src/lib.rs"
 [dependencies]
 bytes.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
+csv.workspace = true
 futures.workspace = true
 libc.workspace = true
 libsqlite3-sys.workspace = true
