@@ -167,6 +167,7 @@ impl CacheLayer {
         let mut nxset_txn = self.nxset.lock().await;
         nxset_txn.clear();
         for id in iter {
+            debug!("Adding {:?} to resolver exclusion set", id);
             nxset_txn.insert(id);
         }
     }

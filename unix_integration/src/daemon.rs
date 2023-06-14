@@ -25,15 +25,18 @@ use clap::{Arg, ArgAction, Command};
 use futures::{SinkExt, StreamExt};
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
-use kanidm_unix_common::cache::CacheLayer;
+use kanidm_unix_common::cache::{CacheLayer, Id};
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
+use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd};
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
 
 use libc::umask;
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
 use sketching::tracing_forest::{self};
+use tokio::fs::File;
+use tokio::io::AsyncReadExt; // for read_to_end()
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -365,6 +368,31 @@ async fn handle_client(
     Ok(())
 }
 
+async fn process_etc_passwd_group(cachelayer: Arc<CacheLayer>) -> Result<(), Box<dyn Error>> {
+    let mut file = File::open("/etc/passwd").await?;
+    let mut contents = vec![];
+    file.read_to_end(&mut contents).await?;
+
+    let users = parse_etc_passwd(contents.as_slice()).map_err(|()| "Invalid passwd content")?;
+
+    let mut file = File::open("/etc/group").await?;
+    let mut contents = vec![];
+    file.read_to_end(&mut contents).await?;
+
+    let groups = parse_etc_group(contents.as_slice()).map_err(|()| "Invalid group content")?;
+
+    let id_iter = users
+        .iter()
+        .map(|user| Id::Name(user.name.clone()))
+        .chain(users.iter().map(|user| Id::Gid(user.uid)))
+        .chain(groups.iter().map(|group| Id::Name(group.name.clone())))
+        .chain(groups.iter().map(|group| Id::Gid(group.gid)));
+
+    cachelayer.reload_nxset(id_iter).await;
+
+    Ok(())
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
     let cuid = get_current_uid();
@@ -544,7 +572,6 @@ async fn main() -> ExitCode {
             rm_if_exist(cfg.task_sock_path.as_str());
 
 
-
             // Check the db path will be okay.
             if !cfg.db_path.is_empty() {
                 let db_path = PathBuf::from(cfg.db_path.as_str());
@@ -667,6 +694,12 @@ async fn main() -> ExitCode {
             };
             // Undo umask changes.
             let _ = unsafe { umask(before) };
+
+            // Pre-process /etc/passwd and /etc/group for nxset
+            if let Err(_) = process_etc_passwd_group(cachelayer.clone()).await {
+                error!("Failed to process system id providers");
+                return ExitCode::FAILURE
+            }
 
             // Setup the tasks socket first.
             let (task_channel_tx, mut task_channel_rx) = channel(16);
