@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
 use std::num::NonZeroUsize;
 use std::ops::{Add, Sub};
 use std::path::Path;
@@ -14,6 +14,8 @@ use tokio::sync::{Mutex, RwLock};
 use crate::db::Db;
 use crate::unix_config::{HomeAttr, UidAttr};
 use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser};
+
+// use crate::unix_passwd::{EtcUser, EtcGroup};
 
 const NXCACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(2048) };
 
@@ -43,6 +45,7 @@ pub struct CacheLayer {
     home_alias: Option<HomeAttr>,
     uid_attr_map: UidAttr,
     gid_attr_map: UidAttr,
+    nxset: Mutex<HashSet<Id>>,
     nxcache: Mutex<LruCache<Id, SystemTime>>,
 }
 
@@ -100,6 +103,7 @@ impl CacheLayer {
             home_alias,
             uid_attr_map,
             gid_attr_map,
+            nxset: Mutex::new(HashSet::new()),
             nxcache: Mutex::new(LruCache::new(NXCACHE_SIZE)),
         })
     }
@@ -157,6 +161,19 @@ impl CacheLayer {
     pub async fn check_nxcache(&self, id: &Id) -> Option<SystemTime> {
         let mut nxcache_txn = self.nxcache.lock().await;
         nxcache_txn.get(id).copied()
+    }
+
+    pub async fn reload_nxset(&self, iter: impl Iterator<Item = Id>) {
+        let mut nxset_txn = self.nxset.lock().await;
+        nxset_txn.clear();
+        for id in iter {
+            nxset_txn.insert(id);
+        }
+    }
+
+    pub async fn check_nxset(&self, name: &str, idnumber: u32) -> bool {
+        let nxset_txn = self.nxset.lock().await;
+        nxset_txn.contains(&Id::Gid(idnumber)) || nxset_txn.contains(&Id::Name(name.to_string()))
     }
 
     async fn get_cached_usertoken(
@@ -269,7 +286,7 @@ impl CacheLayer {
             .map_err(|e| {
                 error!("time conversion error - ex_time less than epoch? {:?}", e);
             })?;
-        // WIP #392
+
         // Check if requested `shell` exists on the system, else use `default_shell`
         let requested_shell_exists: bool = token
             .shell
@@ -293,11 +310,20 @@ impl CacheLayer {
             token.shell = Some(self.default_shell.clone())
         }
 
+        // Filter out groups that are in the nxset
+        {
+            let nxset_txn = self.nxset.lock().await;
+            token.groups.retain(|g| {
+                !(nxset_txn.contains(&Id::Gid(g.gidnumber))
+                    || nxset_txn.contains(&Id::Name(g.name.clone())))
+            });
+        }
+
         let dbtxn = self.db.write().await;
-        // We need to add the groups first
         token
             .groups
             .iter()
+            // We need to add the groups first
             .try_for_each(|g| dbtxn.update_group(g, offset.as_secs()))
             .and_then(|_|
                 // So that when we add the account it can make the relationships.
@@ -358,9 +384,15 @@ impl CacheLayer {
             .await
         {
             Ok(mut n_tok) => {
-                // We have the token!
-                self.set_cache_usertoken(&mut n_tok).await?;
-                Ok(Some(n_tok))
+                if self.check_nxset(&n_tok.name, n_tok.gidnumber).await {
+                    // Refuse to release the token, it's in the denied set.
+                    self.delete_cache_usertoken(&n_tok.uuid).await?;
+                    Ok(None)
+                } else {
+                    // We have the token!
+                    self.set_cache_usertoken(&mut n_tok).await?;
+                    Ok(Some(n_tok))
+                }
             }
             Err(e) => {
                 match e {
@@ -438,9 +470,15 @@ impl CacheLayer {
             .await
         {
             Ok(n_tok) => {
-                // We have the token!
-                self.set_cache_grouptoken(&n_tok).await?;
-                Ok(Some(n_tok))
+                if self.check_nxset(&n_tok.name, n_tok.gidnumber).await {
+                    // Refuse to release the token, it's in the denied set.
+                    self.delete_cache_grouptoken(&n_tok.uuid).await?;
+                    Ok(None)
+                } else {
+                    // We have the token!
+                    self.set_cache_grouptoken(&n_tok).await?;
+                    Ok(Some(n_tok))
+                }
             }
             Err(e) => {
                 match e {
@@ -761,10 +799,16 @@ impl CacheLayer {
             .await
         {
             Ok(Some(mut n_tok)) => {
-                debug!("online password check success.");
-                self.set_cache_usertoken(&mut n_tok).await?;
-                self.set_cache_userpassword(&n_tok.uuid, cred).await?;
-                Ok(Some(true))
+                if self.check_nxset(&n_tok.name, n_tok.gidnumber).await {
+                    // Refuse to release the token, it's in the denied set.
+                    self.delete_cache_usertoken(&n_tok.uuid).await?;
+                    Ok(None)
+                } else {
+                    debug!("online password check success.");
+                    self.set_cache_usertoken(&mut n_tok).await?;
+                    self.set_cache_userpassword(&n_tok.uuid, cred).await?;
+                    Ok(Some(true))
+                }
             }
             Ok(None) => {
                 error!("incorrect password");

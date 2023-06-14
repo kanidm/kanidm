@@ -681,3 +681,118 @@ async fn test_cache_nxcache() {
         .is_none());
     assert!(cachelayer.check_nxcache(&Id::Gid(3000)).await.is_none());
 }
+
+#[tokio::test]
+async fn test_cache_nxset_account() {
+    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+
+    // Important! This is what sets up that testaccount1 won't be resolved
+    // because it's in the "local" user set.
+    cachelayer
+        .reload_nxset(vec![Id::Name("testaccount1".to_string())].into_iter())
+        .await;
+
+    // Force offline. Show we have no account
+    cachelayer.mark_offline().await;
+
+    let ut = cachelayer
+        .get_nssaccount_name("testaccount1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(ut.is_none());
+
+    // go online
+    cachelayer.attempt_online().await;
+    assert!(cachelayer.test_connection().await);
+
+    // get the account
+    let ut = cachelayer
+        .get_nssaccount_name("testaccount1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(ut.is_none());
+
+    // go offline
+    cachelayer.mark_offline().await;
+
+    // still not present, was not cached.
+    let ut = cachelayer
+        .get_nssaccount_name("testaccount1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(ut.is_none());
+
+    // Finally, check it's not in all accounts.
+    let us = cachelayer
+        .get_nssaccounts()
+        .await
+        .expect("failed to list all accounts");
+    assert!(us.is_empty());
+}
+
+#[tokio::test]
+async fn test_cache_nxset_group() {
+    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+
+    // Important! This is what sets up that testgroup1 won't be resolved
+    // because it's in the "local" group set.
+    cachelayer
+        .reload_nxset(vec![Id::Name("testgroup1".to_string())].into_iter())
+        .await;
+
+    // Force offline. Show we have no groups.
+    cachelayer.mark_offline().await;
+    let gt = cachelayer
+        .get_nssgroup_name("testgroup1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_none());
+
+    // go online. Get the group
+    cachelayer.attempt_online().await;
+    assert!(cachelayer.test_connection().await);
+    let gt = cachelayer
+        .get_nssgroup_name("testgroup1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_none());
+
+    // go offline. still works
+    cachelayer.mark_offline().await;
+    let gt = cachelayer
+        .get_nssgroup_name("testgroup1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_none());
+
+    // clear cache, go online
+    assert!(cachelayer.invalidate().await.is_ok());
+    cachelayer.attempt_online().await;
+    assert!(cachelayer.test_connection().await);
+
+    // get an account with the group
+    // DO NOT get the group yet.
+    let ut = cachelayer
+        .get_nssaccount_name("testaccount1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(ut.is_some());
+
+    // go offline.
+    cachelayer.mark_offline().await;
+
+    // show we have the group despite no direct calls
+    let gt = cachelayer
+        .get_nssgroup_name("testgroup1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_none());
+
+    // Finally, check we only have the upg in the list
+    let gs = cachelayer
+        .get_nssgroups()
+        .await
+        .expect("failed to list all groups");
+    assert!(gs.len() == 1);
+    assert!(gs[0].name == "testaccount1@idm.example.com");
+}

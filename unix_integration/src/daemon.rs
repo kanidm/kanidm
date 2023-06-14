@@ -633,7 +633,6 @@ async fn main() -> ExitCode {
                 }
             };
 
-
             let cl_inner = match CacheLayer::new(
                 cfg.db_path.as_str(), // The sqlite db path
                 cfg.cache_timeout,
@@ -721,6 +720,8 @@ async fn main() -> ExitCode {
                     // done
                 }
             });
+
+            // TODO: Setup a task that watches /etc/passwd for changes
 
             // TODO: Setup a task that handles pre-fetching here.
 
