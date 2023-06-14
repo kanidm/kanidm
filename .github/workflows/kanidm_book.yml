@@ -102,6 +102,7 @@ jobs:
           ACTIONS_RUNNER_DEBUG: true
       - name: Check the docs
         run: |
+          mkdir -p docs
           ls -la docs/
           cd docs && \
           ln -s ${{ needs.pre_deploy.outputs.latest}}/ stable && \
