@@ -45,6 +45,8 @@ use tokio::time;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
+use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, notify::Watcher};
+
 //=== the codec
 
 type AsyncTaskRequest = (TaskRequest, oneshot::Sender<()>);
@@ -368,7 +370,7 @@ async fn handle_client(
     Ok(())
 }
 
-async fn process_etc_passwd_group(cachelayer: Arc<CacheLayer>) -> Result<(), Box<dyn Error>> {
+async fn process_etc_passwd_group(cachelayer: &CacheLayer) -> Result<(), Box<dyn Error>> {
     let mut file = File::open("/etc/passwd").await?;
     let mut contents = vec![];
     file.read_to_end(&mut contents).await?;
@@ -671,6 +673,7 @@ async fn main() -> ExitCode {
                 cfg.home_alias,
                 cfg.uid_attr_map,
                 cfg.gid_attr_map,
+                cfg.allow_local_account_override.clone(),
             )
             .await
             {
@@ -696,7 +699,7 @@ async fn main() -> ExitCode {
             let _ = unsafe { umask(before) };
 
             // Pre-process /etc/passwd and /etc/group for nxset
-            if let Err(_) = process_etc_passwd_group(cachelayer.clone()).await {
+            if let Err(_) = process_etc_passwd_group(&cachelayer).await {
                 error!("Failed to process system id providers");
                 return ExitCode::FAILURE
             }
@@ -754,9 +757,49 @@ async fn main() -> ExitCode {
                 }
             });
 
-            // TODO: Setup a task that watches /etc/passwd for changes
-
             // TODO: Setup a task that handles pre-fetching here.
+
+            let (inotify_tx, mut inotify_rx) = channel(4);
+
+            let _watcher =
+            match new_debouncer(Duration::from_secs(2), None, move |_event| {
+                let _ = inotify_tx.try_send(true);
+            })
+                .and_then(|mut debouncer| {
+                    debouncer.watcher().watch(Path::new("/etc/passwd"), RecursiveMode::NonRecursive)
+                        .map(|()| debouncer)
+                })
+                .and_then(|mut debouncer| debouncer.watcher().watch(Path::new("/etc/group"), RecursiveMode::NonRecursive)
+                        .map(|()| debouncer)
+                )
+
+            {
+                Ok(watcher) => {
+                    watcher
+                }
+                Err(e) => {
+                    error!("Failed to setup inotify {:?}",  e);
+                    return ExitCode::FAILURE
+                }
+            };
+
+            let mut c_broadcast_rx = broadcast_tx.subscribe();
+
+            let inotify_cachelayer = cachelayer.clone();
+            let task_c = tokio::spawn(async move {
+                loop {
+                    tokio::select! {
+                        _ = c_broadcast_rx.recv() => {
+                            break;
+                        }
+                        _ = inotify_rx.recv() => {
+                            if let Err(_) = process_etc_passwd_group(&inotify_cachelayer).await {
+                                error!("Failed to process system id providers");
+                            }
+                        }
+                    }
+                }
+            });
 
             // Set the umask while we open the path for most clients.
             let before = unsafe { umask(0) };
@@ -846,6 +889,7 @@ async fn main() -> ExitCode {
 
             let _ = task_a.await;
             let _ = task_b.await;
+            let _ = task_c.await;
 
             ExitCode::SUCCESS
     })

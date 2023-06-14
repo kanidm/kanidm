@@ -31,6 +31,8 @@ struct ConfigInt {
     uid_attr_map: Option<String>,
     gid_attr_map: Option<String>,
     selinux: Option<bool>,
+    #[serde(default)]
+    allow_local_account_override: Vec<String>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -90,6 +92,7 @@ pub struct KanidmUnixdConfig {
     pub uid_attr_map: UidAttr,
     pub gid_attr_map: UidAttr,
     pub selinux: bool,
+    pub allow_local_account_override: Vec<String>,
 }
 
 impl Default for KanidmUnixdConfig {
@@ -122,7 +125,12 @@ impl Display for KanidmUnixdConfig {
         writeln!(f, "uid_attr_map: {}", self.uid_attr_map)?;
         writeln!(f, "gid_attr_map: {}", self.gid_attr_map)?;
 
-        writeln!(f, "selinux: {}", self.selinux)
+        writeln!(f, "selinux: {}", self.selinux)?;
+        writeln!(
+            f,
+            "allow_local_account_override: {:#?}",
+            self.allow_local_account_override
+        )
     }
 }
 
@@ -148,6 +156,7 @@ impl KanidmUnixdConfig {
             uid_attr_map: DEFAULT_UID_ATTR_MAP,
             gid_attr_map: DEFAULT_GID_ATTR_MAP,
             selinux: DEFAULT_SELINUX,
+            allow_local_account_override: Vec::default(),
         }
     }
 
@@ -259,6 +268,7 @@ impl KanidmUnixdConfig {
                 true => selinux_util::supported(),
                 _ => false,
             },
+            allow_local_account_override: config.allow_local_account_override,
         })
     }
 }

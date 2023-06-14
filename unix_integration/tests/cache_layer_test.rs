@@ -110,6 +110,7 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
         DEFAULT_HOME_ALIAS,
         DEFAULT_UID_ATTR_MAP,
         DEFAULT_GID_ATTR_MAP,
+        vec!["masked_group".to_string()],
     )
     .await
     .expect("Failed to build cache layer.");
@@ -169,6 +170,13 @@ async fn test_fixture(rsclient: KanidmClient) {
     rsclient.idm_group_create("allowed_group").await.unwrap();
     rsclient
         .idm_group_unix_extend("allowed_group", Some(20002))
+        .await
+        .unwrap();
+
+    // Setup a group that is masked by nxset, but allowed in overrides
+    rsclient.idm_group_create("masked_group").await.unwrap();
+    rsclient
+        .idm_group_unix_extend("masked_group", Some(20003))
         .await
         .unwrap();
 }
@@ -795,4 +803,40 @@ async fn test_cache_nxset_group() {
         .expect("failed to list all groups");
     assert!(gs.len() == 1);
     assert!(gs[0].name == "testaccount1@idm.example.com");
+}
+
+#[tokio::test]
+async fn test_cache_nxset_allow_overrides() {
+    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+
+    // Important! masked_group is set as an allowed override group even though
+    // it's been "inserted" to the nxset. This means it will still resolve!
+    cachelayer
+        .reload_nxset(vec![Id::Name("masked_group".to_string())].into_iter())
+        .await;
+
+    // Force offline. Show we have no groups.
+    cachelayer.mark_offline().await;
+    let gt = cachelayer
+        .get_nssgroup_name("masked_group")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_none());
+
+    // go online. Get the group
+    cachelayer.attempt_online().await;
+    assert!(cachelayer.test_connection().await);
+    let gt = cachelayer
+        .get_nssgroup_name("masked_group")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_some());
+
+    // go offline. still works
+    cachelayer.mark_offline().await;
+    let gt = cachelayer
+        .get_nssgroup_name("masked_group")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_some());
 }

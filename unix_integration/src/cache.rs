@@ -45,6 +45,7 @@ pub struct CacheLayer {
     home_alias: Option<HomeAttr>,
     uid_attr_map: UidAttr,
     gid_attr_map: UidAttr,
+    allow_id_overrides: HashSet<Id>,
     nxset: Mutex<HashSet<Id>>,
     nxcache: Mutex<LruCache<Id, SystemTime>>,
 }
@@ -75,6 +76,7 @@ impl CacheLayer {
         home_alias: Option<HomeAttr>,
         uid_attr_map: UidAttr,
         gid_attr_map: UidAttr,
+        allow_id_overrides: Vec<String>,
     ) -> Result<Self, ()> {
         let db = Db::new(path)?;
 
@@ -103,6 +105,10 @@ impl CacheLayer {
             home_alias,
             uid_attr_map,
             gid_attr_map,
+            allow_id_overrides: allow_id_overrides
+                .into_iter()
+                .map(|name| Id::Name(name))
+                .collect(),
             nxset: Mutex::new(HashSet::new()),
             nxcache: Mutex::new(LruCache::new(NXCACHE_SIZE)),
         })
@@ -167,8 +173,11 @@ impl CacheLayer {
         let mut nxset_txn = self.nxset.lock().await;
         nxset_txn.clear();
         for id in iter {
-            debug!("Adding {:?} to resolver exclusion set", id);
-            nxset_txn.insert(id);
+            // Skip anything that the admin opted in to
+            if !self.allow_id_overrides.contains(&id) {
+                debug!("Adding {:?} to resolver exclusion set", id);
+                nxset_txn.insert(id);
+            }
         }
     }
 
