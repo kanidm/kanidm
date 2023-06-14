@@ -88,13 +88,14 @@ jobs:
         uses: actions/configure-pages@v3
       - name: Extract the files
         run: |
-          find . -name '*.tar.gz' -ls -exec tar zxvf "{}" \; 1>&2
+          find . -name '*.tar.gz' -ls
+          find . -name '*.tar.gz' -ls -exec tar zxvf "{}" \;
         env:
           ACTIONS_RUNNER_DEBUG: true
       - name: Check the docs
         run: |
           mkdir -p docs
-          ls -la docs/
+          find . -type d -ls
           cd docs
           cp -R "$(git branch -a  | awk '{print $1}' | sort -t. -k3n,3 -k4n,4 | awk -F'/' '{print $NF}' | tail -n1)/" stable
           cd ..
