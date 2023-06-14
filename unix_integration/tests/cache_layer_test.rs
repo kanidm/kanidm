@@ -620,70 +620,64 @@ async fn test_cache_nxcache() {
     assert!(cachelayer.test_connection().await);
     // Is it in the nxcache?
 
-    assert!(
-        !cachelayer
-            .check_nxcache(&Id::Name("root".to_string()))
-            .await
-    );
-    assert!(!cachelayer.check_nxcache(&Id::Gid(0)).await);
-    assert!(
-        !cachelayer
-            .check_nxcache(&Id::Name("root_group".to_string()))
-            .await
-    );
-    assert!(!cachelayer.check_nxcache(&Id::Gid(1)).await);
+    assert!(cachelayer
+        .check_nxcache(&Id::Name("oracle".to_string()))
+        .await
+        .is_none());
+    assert!(cachelayer.check_nxcache(&Id::Gid(2000)).await.is_none());
+    assert!(cachelayer
+        .check_nxcache(&Id::Name("oracle_group".to_string()))
+        .await
+        .is_none());
+    assert!(cachelayer.check_nxcache(&Id::Gid(3000)).await.is_none());
 
     // Look for the acc id + nss id
     let ut = cachelayer
-        .get_nssaccount_name("root")
+        .get_nssaccount_name("oracle")
         .await
         .expect("Failed to get from cache");
     assert!(ut.is_none());
     let ut = cachelayer
-        .get_nssaccount_gid(0)
+        .get_nssaccount_gid(2000)
         .await
         .expect("Failed to get from cache");
     assert!(ut.is_none());
 
     let gt = cachelayer
-        .get_nssgroup_name("root_group")
+        .get_nssgroup_name("oracle_group")
         .await
         .expect("Failed to get from cache");
     assert!(gt.is_none());
     let gt = cachelayer
-        .get_nssgroup_gid(1)
+        .get_nssgroup_gid(3000)
         .await
         .expect("Failed to get from cache");
     assert!(gt.is_none());
 
     // Should all now be nxed
-    assert!(
-        cachelayer
-            .check_nxcache(&Id::Name("root".to_string()))
-            .await
-    );
-    assert!(cachelayer.check_nxcache(&Id::Gid(0)).await);
-    assert!(
-        cachelayer
-            .check_nxcache(&Id::Name("root_group".to_string()))
-            .await
-    );
-    assert!(cachelayer.check_nxcache(&Id::Gid(1)).await);
+    assert!(cachelayer
+        .check_nxcache(&Id::Name("oracle".to_string()))
+        .await
+        .is_some());
+    assert!(cachelayer.check_nxcache(&Id::Gid(2000)).await.is_some());
+    assert!(cachelayer
+        .check_nxcache(&Id::Name("oracle_group".to_string()))
+        .await
+        .is_some());
+    assert!(cachelayer.check_nxcache(&Id::Gid(3000)).await.is_some());
 
     // invalidate cache
     assert!(cachelayer.invalidate().await.is_ok());
 
     // Both should NOT be in nxcache now.
-    assert!(
-        !cachelayer
-            .check_nxcache(&Id::Name("root".to_string()))
-            .await
-    );
-    assert!(!cachelayer.check_nxcache(&Id::Gid(0)).await);
-    assert!(
-        !cachelayer
-            .check_nxcache(&Id::Name("root_group".to_string()))
-            .await
-    );
-    assert!(!cachelayer.check_nxcache(&Id::Gid(1)).await);
+    assert!(cachelayer
+        .check_nxcache(&Id::Name("oracle".to_string()))
+        .await
+        .is_none());
+    assert!(cachelayer.check_nxcache(&Id::Gid(2000)).await.is_none());
+    assert!(cachelayer
+        .check_nxcache(&Id::Name("oracle_group".to_string()))
+        .await
+        .is_none());
+    assert!(cachelayer.check_nxcache(&Id::Gid(3000)).await.is_none());
 }

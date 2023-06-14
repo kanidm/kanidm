@@ -83,7 +83,7 @@ impl CacheLayer {
         }
 
         if pam_allow_groups.is_empty() {
-            eprintln!("Will not be able to authenticate users, pam_allow_groups config is not configured.");
+            eprintln!("Will not be able to authorise user logins, pam_allow_groups config is not configured.");
         }
 
         // We assume we are offline at start up, and we mark the next "online check" as
@@ -154,9 +154,9 @@ impl CacheLayer {
         nxcache_txn.put(id.clone(), ex_time);
     }
 
-    pub async fn check_nxcache(&self, id: &Id) -> bool {
-        let nxcache_txn = self.nxcache.lock().await;
-        nxcache_txn.contains(id)
+    pub async fn check_nxcache(&self, id: &Id) -> Option<SystemTime> {
+        let mut nxcache_txn = self.nxcache.lock().await;
+        nxcache_txn.get(id).copied()
     }
 
     async fn get_cached_usertoken(
@@ -187,11 +187,10 @@ impl CacheLayer {
             }
             None => {
                 // it wasn't in the DB - lets see if it's in the nxcache.
-                let mut nxcache_txn = self.nxcache.lock().await;
-                match nxcache_txn.get(account_id) {
+                match self.check_nxcache(account_id).await {
                     Some(ex_time) => {
                         let now = SystemTime::now();
-                        if &now >= ex_time {
+                        if now >= ex_time {
                             // It's in the LRU, but we are past the expiry so
                             // lets attempt a refresh.
                             Ok((true, None))
@@ -239,11 +238,10 @@ impl CacheLayer {
             }
             None => {
                 // it wasn't in the DB - lets see if it's in the nxcache.
-                let mut nxcache_txn = self.nxcache.lock().await;
-                match nxcache_txn.get(grp_id) {
+                match self.check_nxcache(grp_id).await {
                     Some(ex_time) => {
                         let now = SystemTime::now();
-                        if &now >= ex_time {
+                        if now >= ex_time {
                             // It's in the LRU, but we are past the expiry so
                             // lets attempt a refresh.
                             Ok((true, None))
