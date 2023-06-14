@@ -19,6 +19,9 @@ permissions:
   statuses: read
   pages: write
 
+env:
+  ACTIONS_RUNNER_DEBUG: true
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -77,7 +80,6 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
     needs:
       - pre_deploy
       - fanout
@@ -96,6 +98,8 @@ jobs:
       - name: Extract the files
         run: |
           find . -name '*.tar.gz' -ls -exec tar zxvf "{}" \; 1>&2
+        env:
+          ACTIONS_RUNNER_DEBUG: true
       - name: Check the docs
         run: |
           ls -la docs/
