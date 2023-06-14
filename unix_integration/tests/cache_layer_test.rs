@@ -697,7 +697,7 @@ async fn test_cache_nxset_account() {
     // Important! This is what sets up that testaccount1 won't be resolved
     // because it's in the "local" user set.
     cachelayer
-        .reload_nxset(vec![Id::Name("testaccount1".to_string())].into_iter())
+        .reload_nxset(vec![("testaccount1".to_string(), 20000)].into_iter())
         .await;
 
     // Force offline. Show we have no account
@@ -745,7 +745,7 @@ async fn test_cache_nxset_group() {
     // Important! This is what sets up that testgroup1 won't be resolved
     // because it's in the "local" group set.
     cachelayer
-        .reload_nxset(vec![Id::Name("testgroup1".to_string())].into_iter())
+        .reload_nxset(vec![("testgroup1".to_string(), 20001)].into_iter())
         .await;
 
     // Force offline. Show we have no groups.
@@ -812,7 +812,7 @@ async fn test_cache_nxset_allow_overrides() {
     // Important! masked_group is set as an allowed override group even though
     // it's been "inserted" to the nxset. This means it will still resolve!
     cachelayer
-        .reload_nxset(vec![Id::Name("masked_group".to_string())].into_iter())
+        .reload_nxset(vec![("masked_group".to_string(), 20003)].into_iter())
         .await;
 
     // Force offline. Show we have no groups.

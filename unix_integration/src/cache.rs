@@ -169,14 +169,19 @@ impl CacheLayer {
         nxcache_txn.get(id).copied()
     }
 
-    pub async fn reload_nxset(&self, iter: impl Iterator<Item = Id>) {
+    pub async fn reload_nxset(&self, iter: impl Iterator<Item = (String, u32)>) {
         let mut nxset_txn = self.nxset.lock().await;
         nxset_txn.clear();
-        for id in iter {
+        for (name, gid) in iter {
+            let name = Id::Name(name);
+            let gid = Id::Gid(gid);
+
             // Skip anything that the admin opted in to
-            if !self.allow_id_overrides.contains(&id) {
-                debug!("Adding {:?} to resolver exclusion set", id);
-                nxset_txn.insert(id);
+            if !(self.allow_id_overrides.contains(&gid) || self.allow_id_overrides.contains(&name))
+            {
+                debug!("Adding {:?}:{:?} to resolver exclusion set", name, gid);
+                nxset_txn.insert(name);
+                nxset_txn.insert(gid);
             }
         }
     }

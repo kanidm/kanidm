@@ -25,7 +25,7 @@ use clap::{Arg, ArgAction, Command};
 use futures::{SinkExt, StreamExt};
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
-use kanidm_unix_common::cache::{CacheLayer, Id};
+use kanidm_unix_common::cache::CacheLayer;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd};
@@ -385,10 +385,8 @@ async fn process_etc_passwd_group(cachelayer: &CacheLayer) -> Result<(), Box<dyn
 
     let id_iter = users
         .iter()
-        .map(|user| Id::Name(user.name.clone()))
-        .chain(users.iter().map(|user| Id::Gid(user.uid)))
-        .chain(groups.iter().map(|group| Id::Name(group.name.clone())))
-        .chain(groups.iter().map(|group| Id::Gid(group.gid)));
+        .map(|user| (user.name.clone(), user.uid))
+        .chain(groups.iter().map(|group| (group.name.clone(), group.gid)));
 
     cachelayer.reload_nxset(id_iter).await;
 
