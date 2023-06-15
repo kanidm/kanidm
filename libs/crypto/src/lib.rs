@@ -166,7 +166,12 @@ impl CryptoPolicy {
         // Raise the time target until we hit a time that is acceptable.
         while t < target_time {
             t_cost += 1;
-            let params = Params::new(m_cost, t_cost, p_cost, None).unwrap();
+            let params = if let Ok(p) = Params::new(m_cost, t_cost, p_cost, None) {
+                p
+            } else {
+                // Unable to proceed.
+                break;
+            };
 
             if let Some(ubt) = Password::bench_argon2id(params) {
                 t = ubt;
@@ -180,7 +185,12 @@ impl CryptoPolicy {
         // Lower (tune) the memory usage while staying above that target.
         while t > target_time && m_cost >= 2048 {
             m_cost -= 1024;
-            let params = Params::new(m_cost, t_cost, p_cost, None).unwrap();
+            let params = if let Ok(p) = Params::new(m_cost, t_cost, p_cost, None) {
+                p
+            } else {
+                // Unable to proceed.
+                break;
+            };
 
             if let Some(ubt) = Password::bench_argon2id(params) {
                 t = ubt;
@@ -191,7 +201,9 @@ impl CryptoPolicy {
             }
         }
 
-        let argon2id_params = Params::new(m_cost, t_cost, p_cost, None).unwrap();
+        let argon2id_params = Params::new(m_cost, t_cost, p_cost, None)
+            // fallback
+            .unwrap_or_default();
 
         let p = CryptoPolicy {
             pbkdf2_cost,
@@ -618,11 +630,7 @@ impl Password {
     pub fn new_argon2id(policy: &CryptoPolicy, cleartext: &str) -> Result<Self, OperationError> {
         let version = Version::V0x13;
 
-        let argon = Argon2::new(
-            Algorithm::Argon2id,
-            version.clone(),
-            policy.argon2id_params.clone(),
-        );
+        let argon = Argon2::new(Algorithm::Argon2id, version, policy.argon2id_params.clone());
 
         let mut rng = rand::thread_rng();
         let salt: Vec<u8> = (0..ARGON2_SALT_LEN).map(|_| rng.gen()).collect();

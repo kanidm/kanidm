@@ -105,10 +105,7 @@ impl CacheLayer {
             home_alias,
             uid_attr_map,
             gid_attr_map,
-            allow_id_overrides: allow_id_overrides
-                .into_iter()
-                .map(|name| Id::Name(name))
-                .collect(),
+            allow_id_overrides: allow_id_overrides.into_iter().map(Id::Name).collect(),
             nxset: Mutex::new(HashSet::new()),
             nxcache: Mutex::new(LruCache::new(NXCACHE_SIZE)),
         })
