@@ -81,6 +81,8 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: docs
+        env:
+          ACTIONS_RUNNER_DEBUG: true
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
@@ -89,7 +91,7 @@ jobs:
       - name: Extract the files
         run: |
           pwd
-          find $(pwd) -ls
+          find $(pwd) -ls -maxdepth 2
           find $(pwd) -name '*.tar.gz' -ls -exec tar zxvf "{}" \;
           mkdir -p docs
           cd docs
