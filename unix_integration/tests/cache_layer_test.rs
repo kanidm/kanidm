@@ -110,6 +110,7 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
         DEFAULT_HOME_ALIAS,
         DEFAULT_UID_ATTR_MAP,
         DEFAULT_GID_ATTR_MAP,
+        vec!["masked_group".to_string()],
     )
     .await
     .expect("Failed to build cache layer.");
@@ -169,6 +170,13 @@ async fn test_fixture(rsclient: KanidmClient) {
     rsclient.idm_group_create("allowed_group").await.unwrap();
     rsclient
         .idm_group_unix_extend("allowed_group", Some(20002))
+        .await
+        .unwrap();
+
+    // Setup a group that is masked by nxset, but allowed in overrides
+    rsclient.idm_group_create("masked_group").await.unwrap();
+    rsclient
+        .idm_group_unix_extend("masked_group", Some(20003))
         .await
         .unwrap();
 }
@@ -620,70 +628,215 @@ async fn test_cache_nxcache() {
     assert!(cachelayer.test_connection().await);
     // Is it in the nxcache?
 
-    assert!(
-        !cachelayer
-            .check_nxcache(&Id::Name("root".to_string()))
-            .await
-    );
-    assert!(!cachelayer.check_nxcache(&Id::Gid(0)).await);
-    assert!(
-        !cachelayer
-            .check_nxcache(&Id::Name("root_group".to_string()))
-            .await
-    );
-    assert!(!cachelayer.check_nxcache(&Id::Gid(1)).await);
+    assert!(cachelayer
+        .check_nxcache(&Id::Name("oracle".to_string()))
+        .await
+        .is_none());
+    assert!(cachelayer.check_nxcache(&Id::Gid(2000)).await.is_none());
+    assert!(cachelayer
+        .check_nxcache(&Id::Name("oracle_group".to_string()))
+        .await
+        .is_none());
+    assert!(cachelayer.check_nxcache(&Id::Gid(3000)).await.is_none());
 
     // Look for the acc id + nss id
     let ut = cachelayer
-        .get_nssaccount_name("root")
+        .get_nssaccount_name("oracle")
         .await
         .expect("Failed to get from cache");
     assert!(ut.is_none());
     let ut = cachelayer
-        .get_nssaccount_gid(0)
+        .get_nssaccount_gid(2000)
         .await
         .expect("Failed to get from cache");
     assert!(ut.is_none());
 
     let gt = cachelayer
-        .get_nssgroup_name("root_group")
+        .get_nssgroup_name("oracle_group")
         .await
         .expect("Failed to get from cache");
     assert!(gt.is_none());
     let gt = cachelayer
-        .get_nssgroup_gid(1)
+        .get_nssgroup_gid(3000)
         .await
         .expect("Failed to get from cache");
     assert!(gt.is_none());
 
     // Should all now be nxed
-    assert!(
-        cachelayer
-            .check_nxcache(&Id::Name("root".to_string()))
-            .await
-    );
-    assert!(cachelayer.check_nxcache(&Id::Gid(0)).await);
-    assert!(
-        cachelayer
-            .check_nxcache(&Id::Name("root_group".to_string()))
-            .await
-    );
-    assert!(cachelayer.check_nxcache(&Id::Gid(1)).await);
+    assert!(cachelayer
+        .check_nxcache(&Id::Name("oracle".to_string()))
+        .await
+        .is_some());
+    assert!(cachelayer.check_nxcache(&Id::Gid(2000)).await.is_some());
+    assert!(cachelayer
+        .check_nxcache(&Id::Name("oracle_group".to_string()))
+        .await
+        .is_some());
+    assert!(cachelayer.check_nxcache(&Id::Gid(3000)).await.is_some());
 
     // invalidate cache
     assert!(cachelayer.invalidate().await.is_ok());
 
     // Both should NOT be in nxcache now.
-    assert!(
-        !cachelayer
-            .check_nxcache(&Id::Name("root".to_string()))
-            .await
-    );
-    assert!(!cachelayer.check_nxcache(&Id::Gid(0)).await);
-    assert!(
-        !cachelayer
-            .check_nxcache(&Id::Name("root_group".to_string()))
-            .await
-    );
-    assert!(!cachelayer.check_nxcache(&Id::Gid(1)).await);
+    assert!(cachelayer
+        .check_nxcache(&Id::Name("oracle".to_string()))
+        .await
+        .is_none());
+    assert!(cachelayer.check_nxcache(&Id::Gid(2000)).await.is_none());
+    assert!(cachelayer
+        .check_nxcache(&Id::Name("oracle_group".to_string()))
+        .await
+        .is_none());
+    assert!(cachelayer.check_nxcache(&Id::Gid(3000)).await.is_none());
+}
+
+#[tokio::test]
+async fn test_cache_nxset_account() {
+    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+
+    // Important! This is what sets up that testaccount1 won't be resolved
+    // because it's in the "local" user set.
+    cachelayer
+        .reload_nxset(vec![("testaccount1".to_string(), 20000)].into_iter())
+        .await;
+
+    // Force offline. Show we have no account
+    cachelayer.mark_offline().await;
+
+    let ut = cachelayer
+        .get_nssaccount_name("testaccount1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(ut.is_none());
+
+    // go online
+    cachelayer.attempt_online().await;
+    assert!(cachelayer.test_connection().await);
+
+    // get the account
+    let ut = cachelayer
+        .get_nssaccount_name("testaccount1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(ut.is_none());
+
+    // go offline
+    cachelayer.mark_offline().await;
+
+    // still not present, was not cached.
+    let ut = cachelayer
+        .get_nssaccount_name("testaccount1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(ut.is_none());
+
+    // Finally, check it's not in all accounts.
+    let us = cachelayer
+        .get_nssaccounts()
+        .await
+        .expect("failed to list all accounts");
+    assert!(us.is_empty());
+}
+
+#[tokio::test]
+async fn test_cache_nxset_group() {
+    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+
+    // Important! This is what sets up that testgroup1 won't be resolved
+    // because it's in the "local" group set.
+    cachelayer
+        .reload_nxset(vec![("testgroup1".to_string(), 20001)].into_iter())
+        .await;
+
+    // Force offline. Show we have no groups.
+    cachelayer.mark_offline().await;
+    let gt = cachelayer
+        .get_nssgroup_name("testgroup1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_none());
+
+    // go online. Get the group
+    cachelayer.attempt_online().await;
+    assert!(cachelayer.test_connection().await);
+    let gt = cachelayer
+        .get_nssgroup_name("testgroup1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_none());
+
+    // go offline. still works
+    cachelayer.mark_offline().await;
+    let gt = cachelayer
+        .get_nssgroup_name("testgroup1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_none());
+
+    // clear cache, go online
+    assert!(cachelayer.invalidate().await.is_ok());
+    cachelayer.attempt_online().await;
+    assert!(cachelayer.test_connection().await);
+
+    // get an account with the group
+    // DO NOT get the group yet.
+    let ut = cachelayer
+        .get_nssaccount_name("testaccount1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(ut.is_some());
+
+    // go offline.
+    cachelayer.mark_offline().await;
+
+    // show we have the group despite no direct calls
+    let gt = cachelayer
+        .get_nssgroup_name("testgroup1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_none());
+
+    // Finally, check we only have the upg in the list
+    let gs = cachelayer
+        .get_nssgroups()
+        .await
+        .expect("failed to list all groups");
+    assert!(gs.len() == 1);
+    assert!(gs[0].name == "testaccount1@idm.example.com");
+}
+
+#[tokio::test]
+async fn test_cache_nxset_allow_overrides() {
+    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+
+    // Important! masked_group is set as an allowed override group even though
+    // it's been "inserted" to the nxset. This means it will still resolve!
+    cachelayer
+        .reload_nxset(vec![("masked_group".to_string(), 20003)].into_iter())
+        .await;
+
+    // Force offline. Show we have no groups.
+    cachelayer.mark_offline().await;
+    let gt = cachelayer
+        .get_nssgroup_name("masked_group")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_none());
+
+    // go online. Get the group
+    cachelayer.attempt_online().await;
+    assert!(cachelayer.test_connection().await);
+    let gt = cachelayer
+        .get_nssgroup_name("masked_group")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_some());
+
+    // go offline. still works
+    cachelayer.mark_offline().await;
+    let gt = cachelayer
+        .get_nssgroup_name("masked_group")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_some());
 }

@@ -42,17 +42,10 @@ lazy_static! {
     };
 
     pub static ref DISALLOWED_NAMES: HashSet<&'static str> = {
-        let mut m = HashSet::with_capacity(16);
+        // Most of these were removed in favour of the unixd daemon filtering out
+        // local users instead.
+        let mut m = HashSet::with_capacity(2);
         m.insert("root");
-        m.insert("nobody");
-        m.insert("nogroup");
-        m.insert("wheel");
-        m.insert("sshd");
-        m.insert("shadow");
-        m.insert("systemd");
-        m.insert("mail");
-        m.insert("man");
-        m.insert("administrator");
         m.insert("dn=token");
         m
     };

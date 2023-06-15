@@ -43,6 +43,7 @@ path = "src/lib.rs"
 [dependencies]
 bytes.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
+csv.workspace = true
 futures.workspace = true
 libc.workspace = true
 libsqlite3-sys.workspace = true
@@ -51,7 +52,7 @@ kanidm_client.workspace = true
 kanidm_proto.workspace = true
 kanidm_lib_crypto.workspace = true
 kanidm_lib_file_permissions.workspace = true
-
+notify-debouncer-full.workspace = true
 r2d2.workspace = true
 r2d2_sqlite.workspace = true
 rpassword.workspace = true
@@ -62,7 +63,7 @@ serde_json.workspace = true
 sketching.workspace = true
 
 toml.workspace = true
-tokio = { workspace = true, features = ["rt", "macros", "sync", "time", "net", "io-util"] }
+tokio = { workspace = true, features = ["rt", "fs", "macros", "sync", "time", "net", "io-util"] }
 tokio-util = { workspace = true, features = ["codec"] }
 tracing.workspace = true
 reqwest = { workspace = true, default-features = false }

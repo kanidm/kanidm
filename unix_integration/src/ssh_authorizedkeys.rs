@@ -25,7 +25,7 @@ use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
 include!("./opt/ssh_authorizedkeys.rs");
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
     let opt = SshAuthorizedOpt::parse();
     if opt.debug {
