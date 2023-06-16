@@ -1017,7 +1017,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             (SyntaxType::EmailAddress, true, ScimAttr::MultiComplex(values)) => {
                 let mut vs = Vec::with_capacity(values.len());
                 for complex in values.iter() {
-                    let mail_addr = complex.attrs.get("value")
+                    let mail_addr = complex
+                        .attrs
+                        .get("value")
                         .ok_or_else(|| {
                             error!("Invalid scim complex attr - missing required key value");
                             OperationError::InvalidAttribute(format!(
@@ -1027,9 +1029,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         .and_then(|external_id| match external_id {
                             ScimSimpleAttr::String(value) => Ok(value.clone()),
                             _ => {
-                                error!(
-                                    "Invalid value attribute - must be scim simple string"
-                                );
+                                error!("Invalid value attribute - must be scim simple string");
                                 Err(OperationError::InvalidAttribute(format!(
                                     "value must be scim simple string - {scim_attr_name}"
                                 )))
@@ -1040,9 +1040,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         match primary {
                             ScimSimpleAttr::Bool(value) => Ok(value.clone()),
                             _ => {
-                                error!(
-                                    "Invalid primary attribute - must be scim simple bool"
-                                );
+                                error!("Invalid primary attribute - must be scim simple bool");
                                 Err(OperationError::InvalidAttribute(format!(
                                     "primary must be scim simple bool - {scim_attr_name}"
                                 )))
