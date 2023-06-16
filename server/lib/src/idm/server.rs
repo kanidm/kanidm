@@ -153,13 +153,8 @@ impl IdmServer {
         origin: &str,
     ) -> Result<(IdmServer, IdmServerDelayed, IdmServerAudit), OperationError> {
         // This is calculated back from:
-        //  500 auths / thread -> 0.002 sec per op
-        //      we can then spend up to ~0.001s hashing
-        //      that means an attacker could possibly have
-        //      1000 attempts/sec on a compromised pw.
-        // overtime, we could increase this as auth parallelism
-        // improves.
-        let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(1));
+        //  100 password auths / thread -> 0.010 sec per op
+        let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(10));
         let (async_tx, async_rx) = unbounded();
         let (audit_tx, audit_rx) = unbounded();
 

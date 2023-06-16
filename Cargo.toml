@@ -39,6 +39,7 @@ homepage = "https://github.com/kanidm/kanidm/"
 repository = "https://github.com/kanidm/kanidm/"
 
 [workspace.dependencies]
+argon2 = { version = "0.5.0", features = ["alloc"] }
 async-recursion = "1.0.4"
 async-trait = "^0.1.68"
 base32 = "^0.4.0"
