@@ -158,7 +158,7 @@ impl CryptoPolicy {
             None => PBKDF2_MIN_NIST_COST,
         };
 
-        // Argon2id has multiple paramaters. These all are about *exchanges* that you can
+        // Argon2id has multiple parameters. These all are about *exchanges* that you can
         // request in how the computation is performed.
         //
         // rfc9106 explains that there are two algorithms stacked here. Argon2i has defences
