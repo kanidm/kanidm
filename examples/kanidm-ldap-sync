@@ -74,3 +74,17 @@ ldap_filter = "(|(objectclass=person)(objectclass=posixgroup))"
 # my-problematic-entry
 exclude = true
 
+# Remap the uuid of this entry to a new uuid on Kanidm
+#
+# map_uuid = <uuid>
+
+# Remap the name of this entry to a new name on Kanidm
+#
+# map_name = <name>
+
+# Remap the gidnumber for groups, and uidnumber for users
+#
+# map_gidnumber = <number>
+
+
+

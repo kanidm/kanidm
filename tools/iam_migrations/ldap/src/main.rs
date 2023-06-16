@@ -477,16 +477,24 @@ fn ldap_to_scim_entry(
             mut entry,
         } = sync_entry;
 
-        let id = entry_uuid;
+        let id = if let Some(map_uuid) = &entry_config.map_uuid {
+            *map_uuid
+        } else {
+            entry_uuid
+        };
 
-        let user_name = entry
-            .remove_ava_single(&sync_config.person_attr_user_name)
-            .ok_or_else(|| {
-                error!(
-                    "Missing required attribute {} (person_attr_user_name)",
-                    sync_config.person_attr_user_name
-                );
-            })?;
+        let user_name = if let Some(name) = entry_config.map_name.clone() {
+            name
+        } else {
+            entry
+                .remove_ava_single(&sync_config.person_attr_user_name)
+                .ok_or_else(|| {
+                    error!(
+                        "Missing required attribute {} (person_attr_user_name)",
+                        sync_config.person_attr_user_name
+                    );
+                })?
+        };
 
         let display_name = entry
             .remove_ava_single(&sync_config.person_attr_display_name)
@@ -497,17 +505,21 @@ fn ldap_to_scim_entry(
                 );
             })?;
 
-        let gidnumber = entry
-            .remove_ava_single(&sync_config.person_attr_gidnumber)
-            .map(|gid| {
-                u32::from_str(&gid).map_err(|_| {
-                    error!(
-                        "Invalid gidnumber - {} is not a u32 (person_attr_gidnumber)",
-                        sync_config.person_attr_gidnumber
-                    );
+        let gidnumber = if let Some(number) = entry_config.map_gidnumber.clone() {
+            Some(number)
+        } else {
+            entry
+                .remove_ava_single(&sync_config.person_attr_gidnumber)
+                .map(|gid| {
+                    u32::from_str(&gid).map_err(|_| {
+                        error!(
+                            "Invalid gidnumber - {} is not a u32 (person_attr_gidnumber)",
+                            sync_config.person_attr_gidnumber
+                        );
+                    })
                 })
-            })
-            .transpose()?;
+                .transpose()?
+        };
 
         let password_import = entry.remove_ava_single(&sync_config.person_attr_password);
 
