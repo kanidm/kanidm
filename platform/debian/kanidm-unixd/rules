@@ -83,7 +83,7 @@ override_dh_auto_install:
 		target/release/libnss_kanidm.so \
 		${LIBDIR}/libnss_kanidm.so.2
 	install \
-		-g root -o root \
+		-g root -o root -m 644 \
 		debian/kanidm.pam \
 		${PAMDIR}/kanidm
 
