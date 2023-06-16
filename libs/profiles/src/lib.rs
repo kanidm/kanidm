@@ -6,6 +6,7 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 #[allow(non_camel_case_types)]
 enum CpuOptLevel {
+    apple_m1,
     none,
     native,
     neon_v8,
@@ -18,8 +19,13 @@ impl Default for CpuOptLevel {
     fn default() -> Self {
         if cfg!(target_arch = "x86_64") {
             CpuOptLevel::x86_64_v2
-        } else if cfg!(target_arch = "aarch64") {
-            CpuOptLevel::neon_v8
+        } else if cfg!(target_arch = "aarch64") && cfg!(target_os = "macos") {
+            CpuOptLevel::apple_m1
+        } else if cfg!(target_arch = "aarch64") && cfg!(target_os = "linux") {
+            // Disable neon_v8 on linux - this has issues on non-apple hardware and on
+            // opensuse/distro builds.
+            // CpuOptLevel::neon_v8
+            CpuOptLevel::none
         } else {
             CpuOptLevel::none
         }
@@ -29,6 +35,7 @@ impl Default for CpuOptLevel {
 impl std::fmt::Display for CpuOptLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
+            CpuOptLevel::apple_m1 => write!(f, "apple_m1"),
             CpuOptLevel::none => write!(f, "none"),
             CpuOptLevel::native => write!(f, "native"),
             CpuOptLevel::neon_v8 => write!(f, "neon_v8"),
@@ -63,6 +70,7 @@ pub fn apply_profile() {
         .unwrap_or_else(|_| panic!("Failed to parse profile - {} - {}", profile, contents));
 
     match profile_cfg.cpu_flags {
+        CpuOptLevel::apple_m1 => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=apple_m1"),
         CpuOptLevel::none => {}
         CpuOptLevel::native => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=native"),
         CpuOptLevel::neon_v8 => {
