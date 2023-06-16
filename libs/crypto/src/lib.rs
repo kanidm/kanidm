@@ -46,6 +46,7 @@ const DS_SSHA512_HASH_LEN: usize = 64;
 
 const ARGON2_SALT_LEN: usize = 24;
 const ARGON2_KEY_LEN: usize = 32;
+const ARGON2_MAX_RAM_KIB: u32 = 32 * 1024;
 
 #[derive(Serialize, Deserialize)]
 #[allow(non_camel_case_types)]
@@ -157,34 +158,52 @@ impl CryptoPolicy {
             None => PBKDF2_MIN_NIST_COST,
         };
 
+        // Argon2id has multiple paramaters. These all are about *exchanges* that you can
+        // request in how the computation is performed.
+        //
+        // rfc9106 explains that there are two algorithms stacked here. Argon2i has defences
+        // against side-channel timing. Argon2d provides defences for time-memory tradeoffs.
+        //
+        // We can see how this impacts timings from sources like:
+        // https://www.twelve21.io/how-to-choose-the-right-parameters-for-argon2/
+        //
+        // M =  256 MB, T =    2, d = 8, Time = 0.732 s
+        // M =  128 MB, T =    6, d = 8, Time = 0.99 s
+        // M =   64 MB, T =   12, d = 8, Time = 0.968 s
+        // M =   32 MB, T =   24, d = 8, Time = 0.896 s
+        // M =   16 MB, T =   49, d = 8, Time = 0.973 s
+        // M =    8 MB, T =   96, d = 8, Time = 0.991 s
+        // M =    4 MB, T =  190, d = 8, Time = 0.977 s
+        // M =    2 MB, T =  271, d = 8, Time = 0.973 s
+        // M =    1 MB, T =  639, d = 8, Time = 0.991 s
+        //
+        // As we can see, the time taken stays constant, but as ram decreases the amount of
+        // CPU work required goes up. In our case, our primary threat is from GPU hashcat
+        // cracking. GPU's tend to have many fast cores but very little amounts of fast ram
+        // for those cores. So we want to have as much ram as *possible* up to a limit, and
+        // then we want to increase iterations.
+        //
+        // This way a GPU has to expend further GPU time to compensate for the less ram.
+        //
+        // We also need to balance this against the fact we are a database, and we do have
+        // caches. We also don't want to over-use RAM, especially because in the worst case
+        // every thread will be operationg in argon2id at the same time. That means
+        // thread x ram will be used. If we had 8 threads at 64mb of ram, that would require
+        // 512mb of ram alone just for hashing. This becomes worse as core counts scale, with
+        // 24 core xeons easily reaching 1.5GB in these cases.
+        //
+        // To try to balance this we cap max ram at 32MB for now.
+
         let mut t = Duration::ZERO;
-        // Default amount of ram we sacrifice per thread
-        let mut m_cost = 19 * 1024;
-        let mut t_cost = 0;
+        // Default amount of ram we sacrifice per thread is 8MB
+        let mut m_cost = 8 * 1024;
+        // Default t/p from argon2 library.
+        let t_cost = 2;
         let p_cost = 1;
 
-        // Raise the time target until we hit a time that is acceptable.
-        while t < target_time {
-            t_cost += 1;
-            let params = if let Ok(p) = Params::new(m_cost, t_cost, p_cost, None) {
-                p
-            } else {
-                // Unable to proceed.
-                break;
-            };
-
-            if let Some(ubt) = Password::bench_argon2id(params) {
-                t = ubt;
-                trace!("{}µs for t_cost {}", t.as_nanos(), t_cost);
-            } else {
-                error!("Unable to perform bench of argon2id, stopping benchmark");
-                t = Duration::MAX;
-            }
-        }
-
-        // Lower (tune) the memory usage while staying above that target.
-        while t > target_time && m_cost >= 2048 {
-            m_cost -= 1024;
+        // Raise memory usage until an acceptable ram amount is reached.
+        while t < target_time && m_cost < ARGON2_MAX_RAM_KIB {
+            m_cost += 1024;
             let params = if let Ok(p) = Params::new(m_cost, t_cost, p_cost, None) {
                 p
             } else {
