@@ -1038,7 +1038,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                     let primary = if let Some(primary) = complex.attrs.get("primary") {
                         match primary {
-                            ScimSimpleAttr::Bool(value) => Ok(value.clone()),
+                            ScimSimpleAttr::Bool(value) => Ok(*value),
                             _ => {
                                 error!("Invalid primary attribute - must be scim simple bool");
                                 Err(OperationError::InvalidAttribute(format!(
