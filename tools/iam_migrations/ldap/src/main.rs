@@ -43,7 +43,7 @@ use tracing_subscriber::{fmt, EnvFilter};
 
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::scim_v1::{
-    ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
+    MultiValueAttr, ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
     ScimSyncRetentionMode, ScimSyncState,
 };
 use kanidmd_lib::utils::file_permissions_readonly;
@@ -477,16 +477,24 @@ fn ldap_to_scim_entry(
             mut entry,
         } = sync_entry;
 
-        let id = entry_uuid;
+        let id = if let Some(map_uuid) = &entry_config.map_uuid {
+            *map_uuid
+        } else {
+            entry_uuid
+        };
 
-        let user_name = entry
-            .remove_ava_single(&sync_config.person_attr_user_name)
-            .ok_or_else(|| {
-                error!(
-                    "Missing required attribute {} (person_attr_user_name)",
-                    sync_config.person_attr_user_name
-                );
-            })?;
+        let user_name = if let Some(name) = entry_config.map_name.clone() {
+            name
+        } else {
+            entry
+                .remove_ava_single(&sync_config.person_attr_user_name)
+                .ok_or_else(|| {
+                    error!(
+                        "Missing required attribute {} (person_attr_user_name)",
+                        sync_config.person_attr_user_name
+                    );
+                })?
+        };
 
         let display_name = entry
             .remove_ava_single(&sync_config.person_attr_display_name)
@@ -497,17 +505,21 @@ fn ldap_to_scim_entry(
                 );
             })?;
 
-        let gidnumber = entry
-            .remove_ava_single(&sync_config.person_attr_gidnumber)
-            .map(|gid| {
-                u32::from_str(&gid).map_err(|_| {
-                    error!(
-                        "Invalid gidnumber - {} is not a u32 (person_attr_gidnumber)",
-                        sync_config.person_attr_gidnumber
-                    );
+        let gidnumber = if let Some(number) = entry_config.map_gidnumber.clone() {
+            Some(number)
+        } else {
+            entry
+                .remove_ava_single(&sync_config.person_attr_gidnumber)
+                .map(|gid| {
+                    u32::from_str(&gid).map_err(|_| {
+                        error!(
+                            "Invalid gidnumber - {} is not a u32 (person_attr_gidnumber)",
+                            sync_config.person_attr_gidnumber
+                        );
+                    })
                 })
-            })
-            .transpose()?;
+                .transpose()?
+        };
 
         let password_import = entry.remove_ava_single(&sync_config.person_attr_password);
 
@@ -516,6 +528,21 @@ fn ldap_to_scim_entry(
         } else {
             password_import
         };
+
+        let mail: Vec<_> = entry
+            .remove_ava(&sync_config.person_attr_mail)
+            .map(|set| {
+                set.into_iter()
+                    .map(|addr| MultiValueAttr {
+                        type_: None,
+                        primary: None,
+                        display: None,
+                        ref_: None,
+                        value: addr,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
 
         let totp_import = Vec::default();
 
@@ -532,6 +559,7 @@ fn ldap_to_scim_entry(
                 password_import,
                 totp_import,
                 login_shell,
+                mail,
             }
             .into(),
         ))

@@ -1014,6 +1014,46 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }
                 Ok(vs)
             }
+            (SyntaxType::EmailAddress, true, ScimAttr::MultiComplex(values)) => {
+                let mut vs = Vec::with_capacity(values.len());
+                for complex in values.iter() {
+                    let mail_addr = complex
+                        .attrs
+                        .get("value")
+                        .ok_or_else(|| {
+                            error!("Invalid scim complex attr - missing required key value");
+                            OperationError::InvalidAttribute(format!(
+                                "missing required key value - {scim_attr_name}"
+                            ))
+                        })
+                        .and_then(|external_id| match external_id {
+                            ScimSimpleAttr::String(value) => Ok(value.clone()),
+                            _ => {
+                                error!("Invalid value attribute - must be scim simple string");
+                                Err(OperationError::InvalidAttribute(format!(
+                                    "value must be scim simple string - {scim_attr_name}"
+                                )))
+                            }
+                        })?;
+
+                    let primary = if let Some(primary) = complex.attrs.get("primary") {
+                        match primary {
+                            ScimSimpleAttr::Bool(value) => Ok(*value),
+                            _ => {
+                                error!("Invalid primary attribute - must be scim simple bool");
+                                Err(OperationError::InvalidAttribute(format!(
+                                    "primary must be scim simple bool - {scim_attr_name}"
+                                )))
+                            }
+                        }?
+                    } else {
+                        false
+                    };
+
+                    vs.push(Value::EmailAddress(mail_addr, primary))
+                }
+                Ok(vs)
+            }
             (syn, mv, sa) => {
                 error!(?syn, ?mv, ?sa, "Unsupported scim attribute conversion. This may be a syntax error in your import, or a missing feature in Kanidm.");
                 Err(OperationError::InvalidAttribute(format!(
@@ -2914,6 +2954,11 @@ mod tests {
       "gidnumber": 12345,
       "loginshell": "/bin/sh",
       "name": "testuser",
+      "mail": [
+        {
+          "value": "testuser@dev.blackhats.net.au"
+        }
+      ],
       "password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA"
     },
     {

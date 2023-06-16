@@ -159,7 +159,7 @@ impl ValueSetT for ValueSetCid {
 
     fn to_cid_single(&self) -> Option<Cid> {
         if self.set.len() == 1 {
-            self.set.iter().take(1).cloned().next()
+            self.set.iter().take(1).next().cloned()
         } else {
             None
         }

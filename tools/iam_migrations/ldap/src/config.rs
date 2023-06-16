@@ -29,6 +29,10 @@ fn person_attr_login_shell() -> String {
     "loginshell".to_string()
 }
 
+fn person_attr_mail() -> String {
+    "mail".to_string()
+}
+
 fn group_objectclass() -> String {
     "groupofnames".to_string()
 }
@@ -75,6 +79,8 @@ pub struct Config {
     pub person_password_prefix: Option<String>,
     #[serde(default = "person_attr_login_shell")]
     pub person_attr_login_shell: String,
+    #[serde(default = "person_attr_mail")]
+    pub person_attr_mail: String,
 
     #[serde(default = "group_objectclass")]
     pub group_objectclass: String,
@@ -93,12 +99,11 @@ pub struct Config {
 
 #[derive(Debug, Deserialize, Default, Clone)]
 pub struct EntryConfig {
-    // uuid: Uuid,
-
     // Default false
     #[serde(default)]
     pub exclude: bool,
-    // map_uuid: Option<Uuid>,
-    // map_external_id: Option<String>,
-    // map_name: Option<String>,
+
+    pub map_uuid: Option<Uuid>,
+    pub map_name: Option<String>,
+    pub map_gidnumber: Option<u32>,
 }
