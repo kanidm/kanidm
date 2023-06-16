@@ -32,6 +32,7 @@ pub mod https;
 mod interval;
 mod ldaps;
 
+use std::path::Path;
 use std::sync::Arc;
 
 use compact_jwt::JwsSigner;
@@ -51,7 +52,6 @@ use tokio::sync::broadcast;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::Configuration;
-use crate::crypto::setup_tls;
 use crate::interval::IntervalActor;
 
 // === internal setup helpers
@@ -553,6 +553,97 @@ pub async fn recover_account_core(config: &Configuration, name: &str) {
     );
 }
 
+pub fn cert_generate_core(config: &Configuration) {
+    // Get the cert root
+
+    let (tls_key_path, tls_chain_path) = match &config.tls_config {
+        Some(tls_config) => (
+            Path::new(tls_config.key.as_str()),
+            Path::new(tls_config.chain.as_str()),
+        ),
+        None => {
+            error!("Unable to find tls configuration");
+            std::process::exit(1);
+        }
+    };
+
+    if tls_key_path.exists() && tls_chain_path.exists() {
+        info!(
+            "tls key and chain already exist - remove them first if you intend to regenerate these"
+        );
+        return;
+    }
+
+    let origin = match Url::parse(&config.origin) {
+        Ok(url) => url,
+        Err(e) => {
+            error!(err = ?e, "Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", config.origin);
+            std::process::exit(1);
+        }
+    };
+
+    let origin_domain = if let Some(d) = origin.domain() {
+        d
+    } else {
+        error!("origin does not contain a valid domain");
+        std::process::exit(1);
+    };
+
+    let cert_root = match tls_key_path.parent() {
+        Some(parent) => parent,
+        None => {
+            error!("Unable to find parent directory of {:?}", tls_key_path);
+            std::process::exit(1);
+        }
+    };
+
+    let ca_cert = cert_root.join("ca.pem");
+    let ca_key = cert_root.join("cakey.pem");
+
+    let ca_handle = if !ca_cert.exists() || !ca_key.exists() {
+        // Generate the CA again.
+        let ca_handle = match crypto::build_ca() {
+            Ok(ca_handle) => ca_handle,
+            Err(e) => {
+                error!(err = ?e, "Failed to build CA");
+                std::process::exit(1);
+            }
+        };
+
+        if crypto::write_ca(ca_key, ca_cert, &ca_handle).is_err() {
+            error!("Failed to write CA");
+            std::process::exit(1);
+        }
+
+        ca_handle
+    } else {
+        match crypto::load_ca(ca_key, ca_cert) {
+            Ok(ca_handle) => ca_handle,
+            Err(_) => {
+                error!("Failed to load CA");
+                std::process::exit(1);
+            }
+        }
+    };
+
+    if !tls_key_path.exists() || !tls_chain_path.exists() {
+        // Generate the cert from the ca.
+        let cert_handle = match crypto::build_cert(origin_domain, &ca_handle) {
+            Ok(cert_handle) => cert_handle,
+            Err(e) => {
+                error!(err = ?e, "Failed to build certificate");
+                std::process::exit(1);
+            }
+        };
+
+        if crypto::write_cert(tls_key_path, tls_chain_path, &cert_handle).is_err() {
+            error!("Failed to write certificates");
+            std::process::exit(1);
+        }
+    }
+    info!("certificate generation complete");
+}
+
 #[derive(Clone, Debug)]
 pub enum CoreAction {
     Shutdown,
@@ -626,7 +717,7 @@ pub async fn create_server_core(
     let status_ref = StatusActor::start();
 
     // Setup TLS (if any)
-    let _opt_tls_params = match setup_tls(&config) {
+    let _opt_tls_params = match crypto::setup_tls(&config) {
         Ok(opt_tls_params) => opt_tls_params,
         Err(e) => {
             error!("Failed to configure TLS parameters -> {:?}", e);
@@ -784,7 +875,7 @@ pub async fn create_server_core(
     // If we have been requested to init LDAP, configure it now.
     let maybe_ldap_acceptor_handle = match &config.ldapaddress {
         Some(la) => {
-            let opt_ldap_tls_params = match setup_tls(&config) {
+            let opt_ldap_tls_params = match crypto::setup_tls(&config) {
                 Ok(t) => t,
                 Err(e) => {
                     error!("Failed to configure LDAP TLS parameters -> {:?}", e);

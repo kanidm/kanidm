@@ -25,10 +25,10 @@ use std::process::ExitCode;
 use clap::{Args, Parser, Subcommand};
 use kanidmd_core::config::{Configuration, ServerConfig};
 use kanidmd_core::{
-    backup_server_core, create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
-    dbscan_list_index_analysis_core, dbscan_list_index_core, dbscan_list_indexes_core,
-    domain_rename_core, recover_account_core, reindex_server_core, restore_server_core,
-    vacuum_server_core, verify_server_core,
+    backup_server_core, cert_generate_core, create_server_core, dbscan_get_id2entry_core,
+    dbscan_list_id2entry_core, dbscan_list_index_analysis_core, dbscan_list_index_core,
+    dbscan_list_indexes_core, domain_rename_core, recover_account_core, reindex_server_core,
+    restore_server_core, vacuum_server_core, verify_server_core,
 };
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
@@ -44,6 +44,7 @@ impl KanidmdOpt {
     fn commonopt(&self) -> &CommonOpt {
         match self {
             KanidmdOpt::Server(sopt)
+            | KanidmdOpt::CertGenerate(sopt)
             | KanidmdOpt::ConfigTest(sopt)
             | KanidmdOpt::DbScan {
                 commands: DbScanOpt::ListIndexes(sopt),
@@ -381,8 +382,11 @@ async fn main() -> ExitCode {
                         }
                         info!("Stopped 🛑 ");
                     }
-
-
+                }
+                KanidmdOpt::CertGenerate(_sopt) => {
+                    info!("Running in certificate generate mode ...");
+                    config.update_config_for_server_mode(&sconfig);
+                    cert_generate_core(&config);
                 }
                 KanidmdOpt::Database {
                     commands: DbCommands::Backup(bopt),
