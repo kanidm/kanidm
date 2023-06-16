@@ -119,8 +119,8 @@ reqwest = { version = "0.11.18", default-features = false, features=["cookies", 
 rpassword = "^7.2.0"
 rusqlite = "^0.28.0"
 
-scim_proto = "^0.2.0"
-# scim_proto = { path = "../scim/proto", version = "^0.2.0" }
+scim_proto = "^0.2.1"
+# scim_proto = { path = "../scim/proto", version = "^0.2.1" }
 # scim_proto = { git = "https://github.com/kanidm/scim.git", version = "0.1.1" }
 
 selinux = "^0.4.1"

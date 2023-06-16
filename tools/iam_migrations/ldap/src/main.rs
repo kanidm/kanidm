@@ -44,7 +44,7 @@ use tracing_subscriber::{fmt, EnvFilter};
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::scim_v1::{
     ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
-    ScimSyncRetentionMode, ScimSyncState,
+    ScimSyncRetentionMode, ScimSyncState, MultiValueAttr
 };
 use kanidmd_lib::utils::file_permissions_readonly;
 
@@ -529,6 +529,21 @@ fn ldap_to_scim_entry(
             password_import
         };
 
+        let mail: Vec<_> = entry
+            .remove_ava(&sync_config.person_attr_mail)
+            .map(|set| {
+                set.into_iter()
+                    .map(|addr| MultiValueAttr {
+                        type_: None,
+                        primary: None,
+                        display: None,
+                        ref_: None,
+                        value: addr,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
         let totp_import = Vec::default();
 
         let login_shell = entry.remove_ava_single(&sync_config.person_attr_login_shell);
@@ -544,6 +559,7 @@ fn ldap_to_scim_entry(
                 password_import,
                 totp_import,
                 login_shell,
+                mail,
             }
             .into(),
         ))

@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use uuid::Uuid;
 
 pub use scim_proto::prelude::{ScimAttr, ScimComplexAttr, ScimEntry, ScimError, ScimSimpleAttr};
+pub use scim_proto::user::MultiValueAttr;
 use scim_proto::*;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -105,6 +106,7 @@ pub struct ScimSyncPerson {
     pub password_import: Option<String>,
     pub totp_import: Vec<ScimTotp>,
     pub login_shell: Option<String>,
+    pub mail: Vec<MultiValueAttr>,
 }
 
 // Need to allow this because clippy is broken and doesn't realise scimentry is out of crate
@@ -121,6 +123,7 @@ impl Into<ScimEntry> for ScimSyncPerson {
             password_import,
             totp_import,
             login_shell,
+            mail,
         } = self;
 
         let schemas = if gidnumber.is_some() {
@@ -144,6 +147,7 @@ impl Into<ScimEntry> for ScimSyncPerson {
         set_option_string!(attrs, "password_import", password_import);
         set_multi_complex!(attrs, "totp_import", totp_import);
         set_option_string!(attrs, "loginshell", login_shell);
+        set_multi_complex!(attrs, "mail", mail);
 
         ScimEntry {
             schemas,
