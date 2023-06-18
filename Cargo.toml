@@ -66,7 +66,7 @@ fs2 = "^0.4.3"
 futures = "^0.3.28"
 futures-concurrency = "^3.1.0"
 futures-util = { version = "^0.3.21", features = ["sink"] }
-gloo = "^0.8.0"
+gloo = "^0.8.1"
 gloo-net = "0.2.6"
 hashbrown = { version = "0.14.0", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
