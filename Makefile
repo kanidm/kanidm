@@ -60,6 +60,7 @@ build/kanidmd:	## Build the kanidmd docker image locally
 build/kanidmd:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f server/Dockerfile \
 		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
+		--platform $(IMAGE_ARCH) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
 		$(CONTAINER_BUILD_ARGS) .
@@ -68,6 +69,7 @@ build/kanidmd:
 build/radiusd:	## Build the radiusd docker image locally
 build/radiusd:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) \
+		--platform $(IMAGE_ARCH) \
 		-f rlm_python/Dockerfile \
 		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
 

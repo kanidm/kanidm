@@ -1,6 +1,7 @@
 # Kanidm
 
 - [Introduction to Kanidm](intro.md)
+- [Evaluation Quickstart](quickstart.md)
 - [Installing the Server](installing_the_server.md)
   - [Choosing a Domain Name](choosing_a_domain_name.md)
   - [Preparing for your Deployment](prepare_the_server.md)

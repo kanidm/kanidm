@@ -136,6 +136,11 @@ enum KanidmdOpt {
     #[clap(name = "configtest")]
     /// Test the IDM Server configuration, without starting network listeners.
     ConfigTest(CommonOpt),
+    #[clap(name = "cert-generate")]
+    /// Create a self-signed ca and tls certificate in the locations listed from the
+    /// configuration. These certificates should *not* be used in production, they
+    /// are for testing and evaluation only!
+    CertGenerate(CommonOpt),
     #[clap(name = "recover-account")]
     /// Recover an account's password
     RecoverAccount(RecoverAccountOpt),

@@ -2,10 +2,6 @@
 
 # This script based on the developer readme and allows you to run a test server.
 
-if [ -z "$KANI_TMP" ]; then
-    KANI_TMP=/tmp/kanidm
-fi
-
 if [ -z "$KANI_CARGO_OPTS" ]; then
     KANI_CARGO_OPTS=""
 fi
@@ -17,14 +13,9 @@ if [ ! -f "${CONFIG_FILE}" ]; then
     echo "Couldn't find configuration file at ${CONFIG_FILE}, please ensure you're running this script from its base directory (${SCRIPT_DIR})."
     exit 1
 fi
-if [ ! -f "${KANI_TMP}/chain.pem" ]; then
-    echo "Couldn't find certificate at /tmp/kanidm/chain.pem, quitting"
-    exit 1
-fi
-if [ ! -f "${KANI_TMP}/key.pem" ]; then
-    echo "Couldn't find key file at /tmp/kanidm/key.pem, quitting"
-    exit 1
-fi
+
+#shellcheck disable=SC2086
+cargo run ${KANI_CARGO_OPTS} --bin kanidmd -- cert-generate -c "${CONFIG_FILE}"
 
 COMMAND="server"
 if [ -n "${1}" ]; then
