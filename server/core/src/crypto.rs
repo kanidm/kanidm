@@ -20,6 +20,9 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 
+const CA_VALID_DAYS: u32 = 30;
+const CERT_VALID_DAYS: u32 = 5;
+
 /// From the server configuration, generate an OpenSSL acceptor that we can use
 /// to build our sockets for https/ldaps.
 pub fn setup_tls(config: &Configuration) -> Result<Option<SslAcceptorBuilder>, ErrorStack> {
@@ -98,7 +101,7 @@ pub(crate) fn build_ca() -> Result<CaHandle, ErrorStack> {
 
     let not_before = asn1::Asn1Time::days_from_now(0)?;
     cert_builder.set_not_before(&not_before)?;
-    let not_after = asn1::Asn1Time::days_from_now(1)?;
+    let not_after = asn1::Asn1Time::days_from_now(CA_VALID_DAYS)?;
     cert_builder.set_not_after(&not_after)?;
 
     cert_builder.append_extension(BasicConstraints::new().critical().ca().pathlen(0).build()?)?;
@@ -169,18 +172,22 @@ pub(crate) struct CertHandle {
 pub(crate) fn write_cert(
     key_ar: impl AsRef<Path>,
     chain_ar: impl AsRef<Path>,
+    cert_ar: impl AsRef<Path>,
     handle: &CertHandle,
 ) -> Result<(), ()> {
     let key_path: &Path = key_ar.as_ref();
     let chain_path: &Path = chain_ar.as_ref();
+    let cert_path: &Path = cert_ar.as_ref();
 
     let key_pem = handle.key.private_key_to_pem_pkcs8().map_err(|e| {
         error!(err = ?e, "Failed to convert key to PEM");
     })?;
 
-    let mut chain_pem = handle.cert.to_pem().map_err(|e| {
+    let cert_pem = handle.cert.to_pem().map_err(|e| {
         error!(err = ?e, "Failed to convert cert to PEM");
     })?;
+
+    let mut chain_pem = cert_pem.clone();
 
     // Build the chain PEM.
     for ca_cert in &handle.chain {
@@ -205,6 +212,12 @@ pub(crate) fn write_cert(
         .and_then(|mut file| file.write_all(&chain_pem))
         .map_err(|e| {
             error!(err = ?e, "Failed to create {:?}", chain_path);
+        })?;
+
+    File::create(cert_path)
+        .and_then(|mut file| file.write_all(&cert_pem))
+        .map_err(|e| {
+            error!(err = ?e, "Failed to create {:?}", cert_path);
         })
 }
 
@@ -247,7 +260,7 @@ pub(crate) fn build_cert(
 
     let not_before = asn1::Asn1Time::days_from_now(0)?;
     cert_builder.set_not_before(&not_before)?;
-    let not_after = asn1::Asn1Time::days_from_now(1)?;
+    let not_after = asn1::Asn1Time::days_from_now(CERT_VALID_DAYS)?;
     cert_builder.set_not_after(&not_after)?;
 
     cert_builder.append_extension(BasicConstraints::new().build()?)?;

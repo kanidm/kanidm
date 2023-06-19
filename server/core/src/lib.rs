@@ -599,6 +599,7 @@ pub fn cert_generate_core(config: &Configuration) {
 
     let ca_cert = cert_root.join("ca.pem");
     let ca_key = cert_root.join("cakey.pem");
+    let tls_cert_path = cert_root.join("cert.pem");
 
     let ca_handle = if !ca_cert.exists() || !ca_key.exists() {
         // Generate the CA again.
@@ -626,7 +627,7 @@ pub fn cert_generate_core(config: &Configuration) {
         }
     };
 
-    if !tls_key_path.exists() || !tls_chain_path.exists() {
+    if !tls_key_path.exists() || !tls_chain_path.exists() || !tls_cert_path.exists() {
         // Generate the cert from the ca.
         let cert_handle = match crypto::build_cert(origin_domain, &ca_handle) {
             Ok(cert_handle) => cert_handle,
@@ -636,7 +637,7 @@ pub fn cert_generate_core(config: &Configuration) {
             }
         };
 
-        if crypto::write_cert(tls_key_path, tls_chain_path, &cert_handle).is_err() {
+        if crypto::write_cert(tls_key_path, tls_chain_path, tls_cert_path, &cert_handle).is_err() {
             error!("Failed to write certificates");
             std::process::exit(1);
         }

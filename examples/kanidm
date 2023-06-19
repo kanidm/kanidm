@@ -19,8 +19,8 @@ auth_token = "putyourtokenhere"
 
 radius_cert_path = "/certs/cert.pem" # the TLS certificate
 radius_key_path = "/certs/key.pem"   # the signing key for radius TLS
-radius_dh_path = "/certs/dh.pem"     # the diffie-hellman output
 radius_ca_path = "/certs/ca.pem"     # the CA certificate
+radius_dh_path = "/certs/dh.pem"     # the diffie-hellman output
 
 # A list of groups, if a user is in them, they're approved for RADIUS authentication
 radius_required_groups = [

@@ -47,7 +47,6 @@ RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/pykanid
 
 COPY rlm_python/radius_entrypoint.py /radius_entrypoint.py
 
-ENV LD_PRELOAD=/usr/lib64/libpython3.so
 ENV KANIDM_CONFIG_FILE="/data/kanidm"
 
 RUN chmod a+r /etc/raddb/certs/ -R
