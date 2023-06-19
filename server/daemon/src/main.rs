@@ -149,7 +149,18 @@ async fn main() -> ExitCode {
             // Check the permissions are OK.
             #[cfg(target_family = "unix")]
             {
-                let cfg_path = &opt.commands.commonopt().config_path;
+                let cfg_path = &opt.commands.commonopt().config_path; // TODO: this needs to be pulling from the default or something?
+                if format!("{}", cfg_path.display()) == "".to_string() {
+                    error!("Refusing to run - config file path is empty");
+                    return ExitCode::FAILURE
+                }
+                if !cfg_path.exists() {
+                    error!(
+                        "Refusing to run - config file {} does not exist",
+                        cfg_path.to_str().unwrap_or("invalid file path")
+                    );
+                    return ExitCode::FAILURE
+                }
                 let cfg_meta = match metadata(cfg_path) {
                     Ok(m) => m,
                     Err(e) => {
