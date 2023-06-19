@@ -50,12 +50,15 @@ impl ClientCodec {
 
 /// Makes a call to kanidm_unixd via a unix socket at `path`
 pub async fn call_daemon(path: &str, req: ClientRequest) -> Result<ClientResponse, Box<dyn Error>> {
+    trace!(?path, ?req);
     let stream = UnixStream::connect(path).await?;
+    trace!("connected");
 
     let mut reqs = Framed::new(stream, ClientCodec::new());
 
     reqs.send(req).await?;
     reqs.flush().await?;
+    trace!("flushed, waiting ...");
 
     match reqs.next().await {
         Some(Ok(res)) => {
