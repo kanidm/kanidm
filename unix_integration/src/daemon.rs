@@ -58,6 +58,7 @@ impl Decoder for ClientCodec {
     type Item = ClientRequest;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        trace!("Attempting to decode request ...");
         match serde_json::from_slice::<ClientRequest>(src) {
             Ok(msg) => {
                 // Clear the buffer for the next message.
@@ -73,7 +74,7 @@ impl Encoder<ClientResponse> for ClientCodec {
     type Error = io::Error;
 
     fn encode(&mut self, msg: ClientResponse, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        debug!("Attempting to send response -> {:?} ...", msg);
+        trace!("Attempting to send response -> {:?} ...", msg);
         let data = serde_json::to_vec(&msg).map_err(|e| {
             error!("socket encoding error -> {:?}", e);
             io::Error::new(io::ErrorKind::Other, "JSON encode error")
@@ -194,9 +195,9 @@ async fn handle_client(
     task_channel_tx: &Sender<AsyncTaskRequest>,
 ) -> Result<(), Box<dyn Error>> {
     debug!("Accepted connection");
-
     let mut reqs = Framed::new(sock, ClientCodec::new());
 
+    trace!("Waiting for requests ...");
     while let Some(Ok(req)) = reqs.next().await {
         let resp = match req {
             ClientRequest::SshKey(account_id) => {
