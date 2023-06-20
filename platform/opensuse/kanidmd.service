@@ -16,7 +16,7 @@ ExecStart=/usr/sbin/kanidmd server -c /etc/kanidm/server.toml
 
 NoNewPrivileges=true
 PrivateTmp=true
-PrivateDevices=true
+# PrivateDevices=true
 ProtectHostname=true
 ProtectClock=true
 ProtectKernelTunables=true
