@@ -1172,6 +1172,7 @@ fn do_tpm_hmac(
 #[cfg(test)]
 mod tests {
     use std::convert::TryFrom;
+    use std::str::FromStr;
 
     use crate::*;
 
@@ -1347,7 +1348,7 @@ mod tests {
         use tss_esapi::{Context, TctiNameConf};
 
         let mut context =
-            Context::new(TctiNameConf::from_environment_variable().expect("Failed to get TCTI"))
+            Context::new(TctiNameConf::from_str("device:/dev/tpmrm0").expect("Failed to get TCTI"))
                 .expect("Failed to create Context");
 
         let key = context

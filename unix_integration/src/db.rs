@@ -45,6 +45,7 @@ impl Db {
         debug!("Configured {:?}", crypto_policy);
 
         // Test a tpm context.
+        #[allow(unused_variables)]
         let require_tpm = if let Some(tcti_str) = require_tpm {
             #[cfg(feature = "tpm")]
             let r = Db::tpm_setup_context(
