@@ -77,8 +77,9 @@ impl CacheLayer {
         uid_attr_map: UidAttr,
         gid_attr_map: UidAttr,
         allow_id_overrides: Vec<String>,
+        require_tpm: Option<&str>,
     ) -> Result<Self, ()> {
-        let db = Db::new(path)?;
+        let db = Db::new(path, require_tpm)?;
 
         // setup and do a migrate.
         {

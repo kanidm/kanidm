@@ -673,6 +673,7 @@ async fn main() -> ExitCode {
                 cfg.uid_attr_map,
                 cfg.gid_attr_map,
                 cfg.allow_local_account_override.clone(),
+                cfg.require_tpm.as_deref(),
             )
             .await
             {
