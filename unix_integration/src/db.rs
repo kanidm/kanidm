@@ -896,6 +896,8 @@ pub(crate) mod tpm {
             })
             .map(|_| ())?;
 
+            info!("tpm binding configured");
+
             Ok(TpmConfig { tcti, ctx })
         }
 
