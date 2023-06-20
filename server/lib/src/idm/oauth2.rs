@@ -2244,7 +2244,7 @@ mod tests {
                 == Oauth2Error::InvalidClientId
         );
 
-        //  * mis match origin in the redirect.
+        //  * mismatched origin in the redirect.
         let auth_req = AuthorisationRequest {
             response_type: "code".to_string(),
             client_id: "test_resource_server".to_string(),

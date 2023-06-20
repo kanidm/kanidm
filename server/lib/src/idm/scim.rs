@@ -278,7 +278,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         if !eperm.delete {
             security_info!(
-                "Requestor {} does not have permission to delete sync account {}",
+                "Requester {} does not have permission to delete sync account {}",
                 sfe.ident,
                 sync_account.name
             );
@@ -403,7 +403,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         if !eperm.delete {
             security_info!(
-                "Requestor {} does not have permission to delete sync account {}",
+                "Requester {} does not have permission to delete sync account {}",
                 ste.ident,
                 sync_account.name
             );

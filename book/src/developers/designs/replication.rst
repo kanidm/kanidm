@@ -385,7 +385,7 @@ server of the change. A psudeo example of this is:
 Summarised, this shows that on our server, our changelog has changes from A for time range
 T4 to T8, B T6 to T16, and C T0 to T7.
 
-Individiually, a RUV does not allow much, but now we can compare RUVs to another server. Lets
+Individually, a RUV does not allow much, but now we can compare RUVs to another server. Lets
 assume a second server exists with the RUV of:
 
 ::
