@@ -458,7 +458,14 @@ impl Account {
         self.primary
             .as_ref()
             .ok_or(OperationError::InvalidState)
-            .and_then(|cred| cred.password_ref().and_then(|pw| pw.verify(cleartext)))
+            .and_then(|cred| {
+                cred.password_ref().and_then(|pw| {
+                    pw.verify(cleartext).map_err(|e| {
+                        error!(crypto_err = ?e);
+                        e.into()
+                    })
+                })
+            })
     }
 
     pub(crate) fn regenerate_radius_secret_mod(
