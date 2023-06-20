@@ -24,7 +24,8 @@ ExecStart=/usr/sbin/kanidm_unixd
 # SystemCallFilter=@aio @basic-io @chown @file-system @io-event @network-io @sync
 NoNewPrivileges=true
 PrivateTmp=true
-PrivateDevices=true
+# We have to disable this to allow tpmrm0 access for tpm binding.
+PrivateDevices=false
 ProtectHostname=true
 ProtectClock=true
 ProtectKernelTunables=true
