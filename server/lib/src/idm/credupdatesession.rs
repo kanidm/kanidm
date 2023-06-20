@@ -375,7 +375,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         if !eperm_search_primary_cred || !eperm_mod_primary_cred || !eperm_rem_primary_cred {
             security_info!(
-                "Requestor {} does not have permission to update credentials of {}",
+                "Requester {} does not have permission to update credentials of {}",
                 ident,
                 account.spn
             );

@@ -57,7 +57,7 @@ pub enum Access {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccessEffectivePermission {
-    // I don't think we need this? The ident is implied by the requestor.
+    // I don't think we need this? The ident is implied by the requester.
     // ident: Uuid,
     pub target: Uuid,
     pub delete: bool,
