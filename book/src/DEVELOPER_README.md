@@ -259,15 +259,11 @@ is critical.
 Once you have the source code, you need encryption certificates to use with the server, because
 without certificates, authentication will fail.
 
-We recommend using [Let's Encrypt](https://letsencrypt.org), but if this is not possible, please use
-our insecure certificate tool (`scripts/insecure_generate_tls.sh`). The insecure certificate tool
-creates `/tmp/kanidm` and puts some self-signed certificates there.
-
-**NOTE:** Windows developers can use `scripts/insecure_generate_tls.ps1`, which puts everything
-(including a templated config file) in `$TEMP\kanidm`. Please adjust paths below to suit.
+We recommend using [Let's Encrypt](https://letsencrypt.org), but if this is not possible kanidmd
+will create self-signed certificates in `/tmp/kanidm`.
 
 You can now build and run the server with the commands below. It will use a database in
-`/tmp/kanidm.db`.
+`/tmp/kanidm/kanidm.db`.
 
 Create the initial database and generate an `admin` password:
 

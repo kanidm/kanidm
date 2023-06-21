@@ -138,7 +138,7 @@ pub struct AccountNamedExpireDateTimeOpt {
     #[clap(flatten)]
     copt: CommonOpt,
     #[clap(name = "datetime", verbatim_doc_comment)]
-    /// This accepts mulitple options:
+    /// This accepts multiple options:
     /// - An RFC3339 time of the format "YYYY-MM-DDTHH:MM:SS+TZ", "2020-09-25T11:22:02+10:00"
     /// - One of "any", "clear" or "never" to remove account expiry.
     /// - "epoch" to set the expiry to the UNIX epoch
