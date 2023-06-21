@@ -119,9 +119,12 @@ pub struct AccountNamedExpireDateTimeOpt {
     aopts: AccountCommonOpt,
     #[clap(flatten)]
     copt: CommonOpt,
-    #[clap(name = "datetime")]
-    /// An rfc3339 time of the format "YYYY-MM-DDTHH:MM:SS+TZ", "2020-09-25T11:22:02+10:00"
-    /// or the word "never", "clear" to remove account expiry.
+    #[clap(name = "datetime", verbatim_doc_comment)]
+    /// This accepts mulitple options:
+    /// - An RFC3339 time of the format "YYYY-MM-DDTHH:MM:SS+TZ", "2020-09-25T11:22:02+10:00"
+    /// - One of "any", "clear" or "never" to remove account expiry.
+    /// - "epoch" to set the expiry to the UNIX epoch
+    /// - "now" to expire immediately (this will affect authentication with Kanidm, but external systems may not be aware of the change until next time it's validated, typically ~15 minutes)
     datetime: String,
 }
 

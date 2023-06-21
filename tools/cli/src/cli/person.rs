@@ -417,6 +417,36 @@ impl PersonOpt {
                             Err(e) => error!("Error -> {:?}", e),
                             _ => println!("Success"),
                         }
+                    } else if matches!(ano.datetime.as_str(), "now") {
+                        // set the expiry to *now*
+                        let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
+                        debug!("Setting expiry to {}", now);
+                        match client
+                            .idm_person_account_set_attr(
+                                ano.aopts.account_id.as_str(),
+                                "account_expire",
+                                &[&now],
+                            )
+                            .await
+                        {
+                            Err(e) => error!("Error setting expiry to 'now' -> {:?}", e),
+                            _ => println!("Success"),
+                        }
+                    } else if matches!(ano.datetime.as_str(), "epoch") {
+                        // set the expiry to the epoch
+                        let epoch_str = OffsetDateTime::UNIX_EPOCH.format(&Rfc3339).unwrap();
+                        debug!("Setting expiry to {}", epoch_str);
+                        match client
+                            .idm_person_account_set_attr(
+                                ano.aopts.account_id.as_str(),
+                                "account_expire",
+                                &[&epoch_str],
+                            )
+                            .await
+                        {
+                            Err(e) => error!("Error setting expiry to 'epoch' -> {:?}", e),
+                            _ => println!("Success"),
+                        }
                     } else {
                         if let Err(e) = OffsetDateTime::parse(ano.datetime.as_str(), &Rfc3339) {
                             error!("Error -> {:?}", e);
@@ -447,7 +477,11 @@ impl PersonOpt {
                             )
                             .await
                         {
-                            Err(e) => error!("Error -> {:?}", e),
+                            Err(e) => error!(
+                                "Error setting begin-from to '{}' -> {:?}",
+                                ano.datetime.as_str(),
+                                e
+                            ),
                             _ => println!("Success"),
                         }
                     } else {
@@ -465,7 +499,11 @@ impl PersonOpt {
                             )
                             .await
                         {
-                            Err(e) => error!("Error -> {:?}", e),
+                            Err(e) => error!(
+                                "Error setting begin-from to '{}' -> {:?}",
+                                ano.datetime.as_str(),
+                                e
+                            ),
                             _ => println!("Success"),
                         }
                     }

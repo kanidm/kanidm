@@ -475,7 +475,11 @@ impl KanidmClient {
             warn!(server_version = ?ver, client_version = ?EXPECT_VERSION, "Mismatched client and server version - features may not work, or other unforeseen errors may occur.")
         }
 
-        debug_assert!(matching);
+        #[cfg(debug_assertions)]
+        if !matching {
+            error!("You're in debug/dev mode, so we're going to quit here.");
+            std::process::exit(1);
+        }
 
         // Check is done once, mark as no longer needing to occur
         *guard = false;
