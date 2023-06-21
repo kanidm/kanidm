@@ -713,6 +713,7 @@ async fn main() -> ExitCode {
             // Start to build the worker tasks
             let (broadcast_tx, mut broadcast_rx) = broadcast::channel(4);
             let mut c_broadcast_rx = broadcast_tx.subscribe();
+            let mut d_broadcast_rx = broadcast_tx.subscribe();
 
             let task_b = tokio::spawn(async move {
                 loop {
@@ -740,10 +741,15 @@ async fn main() -> ExitCode {
                                     debug!("A task handler has connected.");
                                     // It did? Great, now we can wait and spin on that one
                                     // client.
-                                    if let Err(e) =
-                                        handle_task_client(socket, &task_channel_tx, &mut task_channel_rx).await
-                                    {
-                                        error!("Task client error occurred; error = {:?}", e);
+
+                                    tokio::select! {
+                                        _ = d_broadcast_rx.recv() => {
+                                            break;
+                                        }
+                                        // We have to check for signals here else this tasks waits forever.
+                                        Err(e) = handle_task_client(socket, &task_channel_tx, &mut task_channel_rx) => {
+                                            error!("Task client error occurred; error = {:?}", e);
+                                        }
                                     }
                                     // If they DC we go back to accept.
                                 }
@@ -755,13 +761,14 @@ async fn main() -> ExitCode {
                     }
                     // done
                 }
+                info!("Stopped task connector");
             });
 
             // TODO: Setup a task that handles pre-fetching here.
 
             let (inotify_tx, mut inotify_rx) = channel(4);
 
-            let _watcher =
+            let watcher =
             match new_debouncer(Duration::from_secs(2), None, move |_event| {
                 let _ = inotify_tx.try_send(true);
             })
@@ -799,6 +806,7 @@ async fn main() -> ExitCode {
                         }
                     }
                 }
+                info!("Stopped inotify watcher");
             });
 
             // Set the umask while we open the path for most clients.
@@ -840,6 +848,7 @@ async fn main() -> ExitCode {
                     }
 
                 }
+                info!("Stopped resolver");
             });
 
             info!("Server started ...");
@@ -881,11 +890,13 @@ async fn main() -> ExitCode {
                     }
                 }
             }
-            info!("Signal received, shutting down");
+            info!("Signal received, sending down signal to tasks");
             // Send a broadcast that we are done.
             if let Err(e) = broadcast_tx.send(true) {
                 error!("Unable to shutdown workers {:?}", e);
             }
+
+            drop(watcher);
 
             let _ = task_a.await;
             let _ = task_b.await;
