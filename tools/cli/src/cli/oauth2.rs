@@ -1,5 +1,5 @@
 use crate::common::OpType;
-use crate::Oauth2Opt;
+use crate::{Oauth2Opt, OutputMode};
 
 impl Oauth2Opt {
     pub fn debug(&self) -> bool {
@@ -134,7 +134,10 @@ impl Oauth2Opt {
                     .await
                 {
                     Ok(Some(secret)) => {
-                        println!("{secret}");
+                        match nopt.copt.output_mode {
+                            OutputMode::Text => println!("{}", secret),
+                            OutputMode::Json => println!("{{\"secret\": \"{}\"}}", secret),
+                        }
                         eprintln!("Success");
                     }
                     Ok(None) => {

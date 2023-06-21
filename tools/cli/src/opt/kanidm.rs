@@ -14,6 +14,24 @@ pub struct DebugOpt {
     pub debug: bool,
 }
 
+#[derive(Debug, Clone)]
+/// The CLI output mode, either text or json, falls back to text if you ask for something other than text/json
+pub enum OutputMode {
+    Text,
+    Json,
+}
+
+impl std::str::FromStr for OutputMode {
+    type Err = String;
+    fn from_str(s: &str) -> Result<OutputMode, std::string::String> {
+        match s.to_lowercase().as_str() {
+            "text" => Ok(OutputMode::Text),
+            "json" => Ok(OutputMode::Json),
+            _ => Ok(OutputMode::Text),
+        }
+    }
+}
+
 #[derive(Debug, Args, Clone)]
 pub struct CommonOpt {
     /// Enable debbuging of the kanidm tool
@@ -30,7 +48,7 @@ pub struct CommonOpt {
     pub ca_path: Option<PathBuf>,
     /// Log format (still in very early development)
     #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value = "text")]
-    output_mode: String,
+    output_mode: OutputMode,
 }
 
 #[derive(Debug, Args)]

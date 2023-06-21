@@ -3,7 +3,7 @@ use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageSta
 use time::OffsetDateTime;
 
 use crate::{
-    AccountSsh, AccountUserAuthToken, AccountValidity, ServiceAccountApiToken,
+    AccountSsh, AccountUserAuthToken, AccountValidity, OutputMode, ServiceAccountApiToken,
     ServiceAccountCredential, ServiceAccountOpt, ServiceAccountPosix,
 };
 use time::format_description::well_known::Rfc3339;
@@ -139,8 +139,8 @@ impl ServiceAccountOpt {
                         )
                         .await
                     {
-                        Ok(new_token) => match copt.output_mode.as_str() {
-                            "json" => {
+                        Ok(new_token) => match copt.output_mode {
+                            OutputMode::Json => {
                                 let message = AccountChangeMessage {
                                     output_mode: ConsoleOutputMode::JSON,
                                     action: "api-token generate".to_string(),
@@ -154,7 +154,7 @@ impl ServiceAccountOpt {
                                 };
                                 println!("{}", message);
                             }
-                            _ => {
+                            OutputMode::Text => {
                                 println!("Success: This token will only be displayed ONCE");
                                 println!("{}", new_token)
                             }
