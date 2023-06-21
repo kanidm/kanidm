@@ -6,6 +6,16 @@ if [ -z "$KANI_CARGO_OPTS" ]; then
     KANI_CARGO_OPTS=""
 fi
 
+# also where the files are stored
+if [ -z "$KANI_TMP" ]; then
+    KANI_TMP=/tmp/kanidm/
+fi
+
+if [ ! -d "${KANI_TMP}" ]; then
+    echo "Creating temp kanidm dir: ${KANI_TMP}"
+    mkdir -p "${KANI_TMP}"
+fi
+
 CONFIG_FILE="../../examples/insecure_server.toml"
 
 if [ ! -f "${CONFIG_FILE}" ]; then
