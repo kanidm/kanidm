@@ -1,4 +1,4 @@
-///! Macros for the web UI
+//! Macros for the web UI
 
 /// Adds a set of CSS classes to the body element when we're presenting a full-page form
 #[macro_export]
