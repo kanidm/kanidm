@@ -375,6 +375,9 @@ pub enum ReplAttrV1 {
     TotpSecret {
         set: Vec<(String, ReplTotpV1)>,
     },
+    AuditLogString {
+        set: Vec<(Cid, String)>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]

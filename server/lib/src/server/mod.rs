@@ -4,28 +4,20 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use crate::prelude::*;
-
 use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
 use concread::cowcell::*;
 use hashbrown::HashSet;
-use kanidm_proto::v1::{ConsistencyError, UiHint};
 use tokio::sync::{Semaphore, SemaphorePermit};
 use tracing::trace;
 
-use self::access::{
-    profiles::{
-        AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
-    },
-    AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
-    AccessControlsWriteTransaction,
-};
+use kanidm_proto::v1::{ConsistencyError, UiHint};
 
 use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 // We use so many, we just import them all ...
 use crate::filter::{Filter, FilterInvalid, FilterValid, FilterValidResolved};
 use crate::plugins::dyngroup::{DynGroup, DynGroupCache};
 use crate::plugins::Plugins;
+use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::repl::proto::ReplRuvRange;
 use crate::repl::ruv::ReplicationUpdateVectorTransaction;
@@ -35,6 +27,14 @@ use crate::schema::{
 };
 use crate::value::EXTRACT_VAL_DN;
 use crate::valueset::uuid_to_proto_string;
+
+use self::access::{
+    profiles::{
+        AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
+    },
+    AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
+    AccessControlsWriteTransaction,
+};
 
 pub mod access;
 pub mod batch_modify;
@@ -543,6 +543,7 @@ pub trait QueryServerTransaction<'a> {
                         .map(Value::UiHint)
                         .map_err(|()| OperationError::InvalidAttribute("Invalid uihint syntax".to_string())),
                     SyntaxType::TotpSecret => Err(OperationError::InvalidAttribute("TotpSecret Values can not be supplied through modification".to_string())),
+                    SyntaxType::AuditLogString => Err(OperationError::InvalidAttribute("Audit logs are generated and not able to be set.".to_string())),
                 }
             }
             None => {
@@ -649,6 +650,7 @@ pub trait QueryServerTransaction<'a> {
                         .map_err(|()| {
                             OperationError::InvalidAttribute("Invalid uihint syntax".to_string())
                         }),
+                    SyntaxType::AuditLogString => Ok(PartialValue::new_utf8s(value)),
                 }
             }
             None => {
@@ -1544,7 +1546,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-
     use crate::prelude::*;
 
     #[qs_test]

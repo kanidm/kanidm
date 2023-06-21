@@ -3,8 +3,6 @@
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
 //! these into a form for the backend that can be persistent into the [`Backend`](crate::be::Backend).
 
-use crate::prelude::*;
-
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::fmt;
@@ -12,15 +10,10 @@ use std::fmt::Formatter;
 use std::str::FromStr;
 use std::time::Duration;
 
-use crate::valueset::uuid_to_proto_string;
 #[cfg(test)]
 use base64::{engine::general_purpose, Engine as _};
 use compact_jwt::JwsSigner;
 use hashbrown::HashSet;
-use kanidm_proto::v1::ApiTokenPurpose;
-use kanidm_proto::v1::Filter as ProtoFilter;
-use kanidm_proto::v1::UatPurposeStatus;
-use kanidm_proto::v1::UiHint;
 use num_enum::TryFromPrimitive;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -30,10 +23,17 @@ use url::Url;
 use uuid::Uuid;
 use webauthn_rs::prelude::{DeviceKey as DeviceKeyV4, Passkey as PasskeyV4};
 
+use kanidm_proto::v1::ApiTokenPurpose;
+use kanidm_proto::v1::Filter as ProtoFilter;
+use kanidm_proto::v1::UatPurposeStatus;
+use kanidm_proto::v1::UiHint;
+
 use crate::be::dbentry::DbIdentSpn;
 use crate::credential::{totp::Totp, Credential};
+use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::server::identity::IdentityId;
+use crate::valueset::uuid_to_proto_string;
 
 lazy_static! {
     pub static ref SPN_RE: Regex = {
@@ -239,6 +239,7 @@ pub enum SyntaxType {
     UiHint = 29,
     TotpSecret = 30,
     ApiToken = 31,
+    AuditLogString = 32,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -280,6 +281,7 @@ impl TryFrom<&str> for SyntaxType {
             "UIHINT" => Ok(SyntaxType::UiHint),
             "TOTPSECRET" => Ok(SyntaxType::TotpSecret),
             "APITOKEN" => Ok(SyntaxType::ApiToken),
+            "AUDIT_LOG_STRING" => Ok(SyntaxType::AuditLogString),
             _ => Err(()),
         }
     }
@@ -320,6 +322,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::UiHint => "UIHINT",
             SyntaxType::TotpSecret => "TOTPSECRET",
             SyntaxType::ApiToken => "APITOKEN",
+            SyntaxType::AuditLogString => "AUDIT_LOG_STRING",
         })
     }
 }
@@ -887,6 +890,7 @@ pub enum Value {
     UiHint(UiHint),
 
     TotpSecret(String, Totp),
+    AuditLogString(Cid, String),
 }
 
 impl PartialEq for Value {
@@ -1087,6 +1091,10 @@ impl Value {
 
     pub fn new_bools(s: &str) -> Option<Self> {
         bool::from_str(s).map(Value::Bool).ok()
+    }
+
+    pub fn new_audit_log_string(e: (Cid, String)) -> Option<Self> {
+        Some(Value::AuditLogString(e.0, e.1))
     }
 
     #[inline]
@@ -1653,7 +1661,9 @@ impl Value {
             Value::ApiToken(_, at) => {
                 Value::validate_str_escapes(&at.label) && Value::validate_singleline(&at.label)
             }
-
+            Value::AuditLogString(_, s) => {
+                Value::validate_str_escapes(s) && Value::validate_singleline(s)
+            }
             // These have stricter validators so not needed.
             Value::Nsuniqueid(s) => NSUNIQUEID_RE.is_match(s),
             Value::DateTime(odt) => odt.offset() == time::UtcOffset::UTC,
