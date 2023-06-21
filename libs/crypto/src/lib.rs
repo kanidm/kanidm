@@ -28,6 +28,13 @@ use openssl::nid::Nid;
 use openssl::pkcs5::pbkdf2_hmac;
 use openssl::sha::Sha512;
 
+#[cfg(feature = "tpm")]
+pub use tss_esapi::{handles::ObjectHandle as TpmHandle, Context as TpmContext, Error as TpmError};
+#[cfg(not(feature = "tpm"))]
+pub struct TpmContext {}
+#[cfg(not(feature = "tpm"))]
+pub struct TpmHandle {}
+
 // NIST 800-63.b salt should be 112 bits -> 14  8u8.
 const PBKDF2_SALT_LEN: usize = 24;
 
@@ -48,9 +55,43 @@ const ARGON2_SALT_LEN: usize = 24;
 const ARGON2_KEY_LEN: usize = 32;
 const ARGON2_MAX_RAM_KIB: u32 = 32 * 1024;
 
+#[derive(Clone, Debug)]
+pub enum CryptoError {
+    Tpm2,
+    Tpm2FeatureMissing,
+    Tpm2InputExceeded,
+    Tpm2ContextMissing,
+    OpenSSL,
+    Md4Disabled,
+    Argon2,
+    Argon2Version,
+    Argon2Parameters,
+}
+
+impl Into<OperationError> for CryptoError {
+    fn into(self) -> OperationError {
+        OperationError::CryptographyError
+    }
+}
+
+#[cfg(feature = "tpm")]
+impl From<TpmError> for CryptoError {
+    fn from(_e: TpmError) -> Self {
+        CryptoError::Tpm2
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 #[allow(non_camel_case_types)]
 pub enum DbPasswordV1 {
+    TPM_ARGON2ID {
+        m: u32,
+        t: u32,
+        p: u32,
+        v: u32,
+        s: Base64UrlSafeData,
+        k: Base64UrlSafeData,
+    },
     ARGON2ID {
         m: u32,
         t: u32,
@@ -69,6 +110,14 @@ pub enum DbPasswordV1 {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[allow(non_camel_case_types)]
 pub enum ReplPasswordV1 {
+    TPM_ARGON2ID {
+        m_cost: u32,
+        t_cost: u32,
+        p_cost: u32,
+        version: u32,
+        salt: Base64UrlSafeData,
+        key: Base64UrlSafeData,
+    },
     ARGON2ID {
         m_cost: u32,
         t_cost: u32,
@@ -104,6 +153,7 @@ pub enum ReplPasswordV1 {
 impl fmt::Debug for DbPasswordV1 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            DbPasswordV1::TPM_ARGON2ID { .. } => write!(f, "TPM_ARGON2ID"),
             DbPasswordV1::ARGON2ID { .. } => write!(f, "ARGON2ID"),
             DbPasswordV1::PBKDF2(_, _, _) => write!(f, "PBKDF2"),
             DbPasswordV1::PBKDF2_SHA1(_, _, _) => write!(f, "PBKDF2_SHA1"),
@@ -239,6 +289,14 @@ impl CryptoPolicy {
 #[derive(Clone, Debug, PartialEq)]
 #[allow(non_camel_case_types)]
 enum Kdf {
+    TPM_ARGON2ID {
+        m_cost: u32,
+        t_cost: u32,
+        p_cost: u32,
+        version: u32,
+        salt: Vec<u8>,
+        key: Vec<u8>,
+    },
     //
     ARGON2ID {
         m_cost: u32,
@@ -272,6 +330,16 @@ impl TryFrom<DbPasswordV1> for Password {
 
     fn try_from(value: DbPasswordV1) -> Result<Self, Self::Error> {
         match value {
+            DbPasswordV1::TPM_ARGON2ID { m, t, p, v, s, k } => Ok(Password {
+                material: Kdf::TPM_ARGON2ID {
+                    m_cost: m,
+                    t_cost: t,
+                    p_cost: p,
+                    version: v,
+                    salt: s.into(),
+                    key: k.into(),
+                },
+            }),
             DbPasswordV1::ARGON2ID { m, t, p, v, s, k } => Ok(Password {
                 material: Kdf::ARGON2ID {
                     m_cost: m,
@@ -306,6 +374,23 @@ impl TryFrom<&ReplPasswordV1> for Password {
 
     fn try_from(value: &ReplPasswordV1) -> Result<Self, Self::Error> {
         match value {
+            ReplPasswordV1::TPM_ARGON2ID {
+                m_cost,
+                t_cost,
+                p_cost,
+                version,
+                salt,
+                key,
+            } => Ok(Password {
+                material: Kdf::TPM_ARGON2ID {
+                    m_cost: *m_cost,
+                    t_cost: *t_cost,
+                    p_cost: *p_cost,
+                    version: *version,
+                    salt: salt.0.clone(),
+                    key: key.0.clone(),
+                },
+            }),
             ReplPasswordV1::ARGON2ID {
                 m_cost,
                 t_cost,
@@ -624,7 +709,7 @@ impl Password {
         end.checked_duration_since(start)
     }
 
-    pub fn new_pbkdf2(policy: &CryptoPolicy, cleartext: &str) -> Result<Self, OperationError> {
+    pub fn new_pbkdf2(policy: &CryptoPolicy, cleartext: &str) -> Result<Self, CryptoError> {
         let pbkdf2_cost = policy.pbkdf2_cost;
         let mut rng = rand::thread_rng();
         let salt: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.gen()).collect();
@@ -642,11 +727,11 @@ impl Password {
             // Turn key to a vec.
             Kdf::PBKDF2(pbkdf2_cost, salt, key)
         })
-        .map_err(|_| OperationError::CryptographyError)
+        .map_err(|_| CryptoError::OpenSSL)
         .map(|material| Password { material })
     }
 
-    pub fn new_argon2id(policy: &CryptoPolicy, cleartext: &str) -> Result<Self, OperationError> {
+    pub fn new_argon2id(policy: &CryptoPolicy, cleartext: &str) -> Result<Self, CryptoError> {
         let version = Version::V0x13;
 
         let argon = Argon2::new(Algorithm::Argon2id, version, policy.argon2id_params.clone());
@@ -665,28 +750,72 @@ impl Password {
                 salt,
                 key,
             })
-            .map_err(|_| OperationError::CryptographyError)
+            .map_err(|_| CryptoError::Argon2)
+            .map(|material| Password { material })
+    }
+
+    pub fn new_argon2id_tpm(
+        policy: &CryptoPolicy,
+        cleartext: &str,
+        tpm_ctx: &mut TpmContext,
+        tpm_key_handle: TpmHandle,
+    ) -> Result<Self, CryptoError> {
+        let version = Version::V0x13;
+
+        let argon = Argon2::new(Algorithm::Argon2id, version, policy.argon2id_params.clone());
+
+        let mut rng = rand::thread_rng();
+        let salt: Vec<u8> = (0..ARGON2_SALT_LEN).map(|_| rng.gen()).collect();
+        let mut check_key: Vec<u8> = (0..ARGON2_KEY_LEN).map(|_| 0).collect();
+
+        argon
+            .hash_password_into(
+                cleartext.as_bytes(),
+                salt.as_slice(),
+                check_key.as_mut_slice(),
+            )
+            .map_err(|_| CryptoError::Argon2)
+            .and_then(|()| do_tpm_hmac(check_key, tpm_ctx, tpm_key_handle))
+            .map(|key| Kdf::TPM_ARGON2ID {
+                m_cost: policy.argon2id_params.m_cost(),
+                t_cost: policy.argon2id_params.t_cost(),
+                p_cost: policy.argon2id_params.p_cost(),
+                version: version as u32,
+                salt,
+                key,
+            })
             .map(|material| Password { material })
     }
 
     #[inline]
-    pub fn new(policy: &CryptoPolicy, cleartext: &str) -> Result<Self, OperationError> {
+    pub fn new(policy: &CryptoPolicy, cleartext: &str) -> Result<Self, CryptoError> {
         Self::new_pbkdf2(policy, cleartext)
     }
 
-    pub fn verify(&self, cleartext: &str) -> Result<bool, OperationError> {
-        match &self.material {
-            Kdf::ARGON2ID {
-                m_cost,
-                t_cost,
-                p_cost,
-                version,
-                salt,
-                key,
-            } => {
+    pub fn verify(&self, cleartext: &str) -> Result<bool, CryptoError> {
+        self.verify_ctx(cleartext, None)
+    }
+
+    pub fn verify_ctx<'a>(
+        &self,
+        cleartext: &str,
+        tpm: Option<(&'a mut TpmContext, TpmHandle)>,
+    ) -> Result<bool, CryptoError> {
+        match (&self.material, tpm) {
+            (
+                Kdf::TPM_ARGON2ID {
+                    m_cost,
+                    t_cost,
+                    p_cost,
+                    version,
+                    salt,
+                    key,
+                },
+                Some((tpm_ctx, tpm_key_handle)),
+            ) => {
                 let version: Version = (*version).try_into().map_err(|_| {
                     error!("Failed to convert {} to valid argon2id version", version);
-                    OperationError::CryptographyError
+                    CryptoError::Argon2Version
                 })?;
 
                 let key_len = key.len();
@@ -694,7 +823,7 @@ impl Password {
                 let params =
                     Params::new(*m_cost, *t_cost, *p_cost, Some(key_len)).map_err(|e| {
                         error!(err = ?e, "invalid argon2id parameters");
-                        OperationError::CryptographyError
+                        CryptoError::Argon2Parameters
                     })?;
 
                 let argon = Argon2::new(Algorithm::Argon2id, version, params);
@@ -708,14 +837,61 @@ impl Password {
                     )
                     .map_err(|e| {
                         error!(err = ?e, "unable to perform argon2id hash");
-                        OperationError::CryptographyError
+                        CryptoError::Argon2
+                    })
+                    .and_then(|()| do_tpm_hmac(check_key, tpm_ctx, tpm_key_handle))
+                    .map(|hmac_key| {
+                        // Actually compare the outputs.
+                        &hmac_key == key
+                    })
+            }
+            (Kdf::TPM_ARGON2ID { .. }, None) => {
+                error!("Unable to validate password - not tpm context available");
+                Err(CryptoError::Tpm2ContextMissing)
+            }
+            (
+                Kdf::ARGON2ID {
+                    m_cost,
+                    t_cost,
+                    p_cost,
+                    version,
+                    salt,
+                    key,
+                },
+                _,
+            ) => {
+                let version: Version = (*version).try_into().map_err(|_| {
+                    error!("Failed to convert {} to valid argon2id version", version);
+                    CryptoError::Argon2Version
+                })?;
+
+                let key_len = key.len();
+
+                let params =
+                    Params::new(*m_cost, *t_cost, *p_cost, Some(key_len)).map_err(|e| {
+                        error!(err = ?e, "invalid argon2id parameters");
+                        CryptoError::Argon2Parameters
+                    })?;
+
+                let argon = Argon2::new(Algorithm::Argon2id, version, params);
+                let mut check_key: Vec<u8> = (0..key_len).map(|_| 0).collect();
+
+                argon
+                    .hash_password_into(
+                        cleartext.as_bytes(),
+                        salt.as_slice(),
+                        check_key.as_mut_slice(),
+                    )
+                    .map_err(|e| {
+                        error!(err = ?e, "unable to perform argon2id hash");
+                        CryptoError::Argon2
                     })
                     .map(|()| {
                         // Actually compare the outputs.
                         &check_key == key
                     })
             }
-            Kdf::PBKDF2(cost, salt, key) => {
+            (Kdf::PBKDF2(cost, salt, key), _) => {
                 // We have to get the number of bits to derive from our stored hash
                 // as some imported hash types may have variable lengths
                 let key_len = key.len();
@@ -728,13 +904,13 @@ impl Password {
                     MessageDigest::sha256(),
                     chal_key.as_mut_slice(),
                 )
-                .map_err(|_| OperationError::CryptographyError)
+                .map_err(|_| CryptoError::OpenSSL)
                 .map(|()| {
                     // Actually compare the outputs.
                     &chal_key == key
                 })
             }
-            Kdf::PBKDF2_SHA1(cost, salt, key) => {
+            (Kdf::PBKDF2_SHA1(cost, salt, key), _) => {
                 let key_len = key.len();
                 debug_assert!(key_len >= PBKDF2_SHA1_MIN_KEY_LEN);
                 let mut chal_key: Vec<u8> = (0..key_len).map(|_| 0).collect();
@@ -745,13 +921,13 @@ impl Password {
                     MessageDigest::sha1(),
                     chal_key.as_mut_slice(),
                 )
-                .map_err(|_| OperationError::CryptographyError)
+                .map_err(|_| CryptoError::OpenSSL)
                 .map(|()| {
                     // Actually compare the outputs.
                     &chal_key == key
                 })
             }
-            Kdf::PBKDF2_SHA512(cost, salt, key) => {
+            (Kdf::PBKDF2_SHA512(cost, salt, key), _) => {
                 let key_len = key.len();
                 debug_assert!(key_len >= PBKDF2_MIN_NIST_KEY_LEN);
                 let mut chal_key: Vec<u8> = (0..key_len).map(|_| 0).collect();
@@ -762,20 +938,20 @@ impl Password {
                     MessageDigest::sha512(),
                     chal_key.as_mut_slice(),
                 )
-                .map_err(|_| OperationError::CryptographyError)
+                .map_err(|_| CryptoError::OpenSSL)
                 .map(|()| {
                     // Actually compare the outputs.
                     &chal_key == key
                 })
             }
-            Kdf::SSHA512(salt, key) => {
+            (Kdf::SSHA512(salt, key), _) => {
                 let mut hasher = Sha512::new();
                 hasher.update(cleartext.as_bytes());
                 hasher.update(salt);
                 let r = hasher.finish();
                 Ok(key == &(r.to_vec()))
             }
-            Kdf::NT_MD4(key) => {
+            (Kdf::NT_MD4(key), _) => {
                 // We need to get the cleartext to utf16le for reasons.
                 let clear_utf16le: Vec<u8> = cleartext
                     .encode_utf16()
@@ -786,7 +962,7 @@ impl Password {
                 let dgst = MessageDigest::from_nid(Nid::MD4).ok_or_else(|| {
                     error!("Unable to access MD4 - fips mode may be enabled, or you may need to activate the legacy provider.");
                     error!("For more details, see https://wiki.openssl.org/index.php/OpenSSL_3.0#Providers");
-                    OperationError::CryptographyError
+                    CryptoError::Md4Disabled
                 })?;
 
                 hash::hash(dgst, &clear_utf16le)
@@ -794,7 +970,7 @@ impl Password {
                         debug!(?e);
                         error!("Unable to digest MD4 - fips mode may be enabled, or you may need to activate the legacy provider.");
                         error!("For more details, see https://wiki.openssl.org/index.php/OpenSSL_3.0#Providers");
-                        OperationError::CryptographyError
+                        CryptoError::Md4Disabled
                     })
                     .map(|chal_key| chal_key.as_ref() == key)
             }
@@ -803,6 +979,21 @@ impl Password {
 
     pub fn to_dbpasswordv1(&self) -> DbPasswordV1 {
         match &self.material {
+            Kdf::TPM_ARGON2ID {
+                m_cost,
+                t_cost,
+                p_cost,
+                version,
+                salt,
+                key,
+            } => DbPasswordV1::TPM_ARGON2ID {
+                m: *m_cost,
+                t: *t_cost,
+                p: *p_cost,
+                v: *version,
+                s: salt.clone().into(),
+                k: key.clone().into(),
+            },
             Kdf::ARGON2ID {
                 m_cost,
                 t_cost,
@@ -834,6 +1025,21 @@ impl Password {
 
     pub fn to_repl_v1(&self) -> ReplPasswordV1 {
         match &self.material {
+            Kdf::TPM_ARGON2ID {
+                m_cost,
+                t_cost,
+                p_cost,
+                version,
+                salt,
+                key,
+            } => ReplPasswordV1::TPM_ARGON2ID {
+                m_cost: *m_cost,
+                t_cost: *t_cost,
+                p_cost: *p_cost,
+                version: *version,
+                salt: salt.clone().into(),
+                key: key.clone().into(),
+            },
             Kdf::ARGON2ID {
                 m_cost,
                 t_cost,
@@ -876,6 +1082,7 @@ impl Password {
 
     pub fn requires_upgrade(&self) -> bool {
         match &self.material {
+            Kdf::TPM_ARGON2ID { .. } => false,
             Kdf::ARGON2ID { .. } => false,
             Kdf::PBKDF2_SHA512(cost, salt, hash) | Kdf::PBKDF2(cost, salt, hash) => {
                 *cost < PBKDF2_MIN_NIST_COST
@@ -885,6 +1092,81 @@ impl Password {
             Kdf::PBKDF2_SHA1(_, _, _) | Kdf::SSHA512(_, _) | Kdf::NT_MD4(_) => true,
         }
     }
+
+    #[cfg(feature = "tpm")]
+    pub fn prepare_tpm_key(tpm_ctx: &mut TpmContext) -> Result<TpmHandle, CryptoError> {
+        use tss_esapi::{
+            attributes::ObjectAttributesBuilder,
+            interface_types::{
+                algorithm::{HashingAlgorithm, PublicAlgorithm},
+                resource_handles::Hierarchy,
+            },
+            structures::{Digest, KeyedHashScheme, PublicBuilder, PublicKeyedHashParameters},
+        };
+
+        let object_attributes = ObjectAttributesBuilder::new()
+            .with_sign_encrypt(true)
+            .with_sensitive_data_origin(true)
+            .with_user_with_auth(true)
+            .build()
+            .map_err(|e| {
+                error!(tpm_err = ?e, "unable to proceed, tpm error");
+                CryptoError::Tpm2
+            })?;
+        let key_pub = PublicBuilder::new()
+            .with_public_algorithm(PublicAlgorithm::KeyedHash)
+            .with_name_hashing_algorithm(HashingAlgorithm::Sha256)
+            .with_object_attributes(object_attributes)
+            .with_keyed_hash_parameters(PublicKeyedHashParameters::new(
+                KeyedHashScheme::HMAC_SHA_256,
+            ))
+            .with_keyed_hash_unique_identifier(Digest::default())
+            .build()
+            .map_err(|e| {
+                error!(tpm_err = ?e, "unable to proceed, tpm error");
+                CryptoError::Tpm2
+            })?;
+
+        tpm_ctx
+            .create_primary(Hierarchy::Owner, key_pub, None, None, None, None)
+            .map(|key| key.key_handle.into())
+            .map_err(|e| {
+                error!(tpm_err = ?e, "unable to proceed, tpm error");
+                CryptoError::Tpm2
+            })
+    }
+}
+
+#[cfg(feature = "tpm")]
+fn do_tpm_hmac(
+    data: Vec<u8>,
+    ctx: &mut TpmContext,
+    key_handle: TpmHandle,
+) -> Result<Vec<u8>, CryptoError> {
+    use tss_esapi::interface_types::algorithm::HashingAlgorithm;
+    use tss_esapi::structures::MaxBuffer;
+
+    let data: MaxBuffer = data.try_into().map_err(|_| {
+        error!("input data exceeds maximum tpm input buffer");
+        CryptoError::Tpm2InputExceeded
+    })?;
+
+    ctx.hmac(key_handle, data.into(), HashingAlgorithm::Sha256)
+        .map(|dgst| dgst.to_vec())
+        .map_err(|e| {
+            error!(tpm_err = ?e, "unable to proceed, tpm error");
+            CryptoError::Tpm2
+        })
+}
+
+#[cfg(not(feature = "tpm"))]
+fn do_tpm_hmac(
+    _data: Vec<u8>,
+    _ctx: &mut TpmContext,
+    _key_handle: TpmHandle,
+) -> Result<Vec<u8>, CryptoError> {
+    error!("Unable to perform hmac - tpm feature not compiled");
+    Err(CryptoError::Tpm2FeatureMissing)
 }
 
 #[cfg(test)]
@@ -1055,5 +1337,77 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[cfg(feature = "tpm")]
+    #[test]
+    fn test_password_argon2id_tpm_bind() {
+        use std::str::FromStr;
+
+        sketching::test_init();
+
+        use tss_esapi::{Context, TctiNameConf};
+
+        let mut context =
+            Context::new(TctiNameConf::from_str("device:/dev/tpmrm0").expect("Failed to get TCTI"))
+                .expect("Failed to create Context");
+
+        let key = context
+            .execute_with_nullauth_session(|ctx| Password::prepare_tpm_key(ctx))
+            .unwrap();
+
+        let p = CryptoPolicy::minimum();
+        let c = context
+            .execute_with_nullauth_session(|ctx| {
+                Password::new_argon2id_tpm(&p, "password", ctx, key)
+            })
+            .unwrap();
+
+        assert!(matches!(
+            c.verify("password"),
+            Err(CryptoError::Tpm2ContextMissing)
+        ));
+
+        // Assert it fails without the hmac
+        let dup = match &c.material {
+            Kdf::TPM_ARGON2ID {
+                m_cost,
+                t_cost,
+                p_cost,
+                version,
+                salt,
+                key,
+            } => Password {
+                material: Kdf::ARGON2ID {
+                    m_cost: *m_cost,
+                    t_cost: *t_cost,
+                    p_cost: *p_cost,
+                    version: *version,
+                    salt: salt.clone(),
+                    key: key.clone(),
+                },
+            },
+            _ => unreachable!(),
+        };
+
+        assert!(!dup.verify("password").unwrap());
+
+        context
+            .execute_with_nullauth_session(|ctx| {
+                assert!(c.verify_ctx("password", Some((ctx, key))).unwrap());
+                assert!(!c.verify_ctx("password1", Some((ctx, key))).unwrap());
+                assert!(!c.verify_ctx("Password1", Some((ctx, key))).unwrap());
+
+                ctx.flush_context(key).expect("Failed to unload hmac key");
+
+                // Should fail, no key!
+                assert!(matches!(
+                    c.verify_ctx("password", Some((ctx, key))),
+                    Err(CryptoError::Tpm2)
+                ));
+
+                Ok::<(), CryptoError>(())
+            })
+            .unwrap();
     }
 }

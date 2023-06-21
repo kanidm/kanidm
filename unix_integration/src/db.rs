@@ -17,6 +17,7 @@ pub struct Db {
     pool: Pool<SqliteConnectionManager>,
     lock: Mutex<()>,
     crypto_policy: CryptoPolicy,
+    require_tpm: Option<tpm::TpmConfig>,
 }
 
 pub struct DbTxn<'a> {
@@ -24,10 +25,11 @@ pub struct DbTxn<'a> {
     committed: bool,
     conn: r2d2::PooledConnection<SqliteConnectionManager>,
     crypto_policy: &'a CryptoPolicy,
+    require_tpm: Option<&'a tpm::TpmConfig>,
 }
 
 impl Db {
-    pub fn new(path: &str) -> Result<Self, ()> {
+    pub fn new(path: &str, require_tpm: Option<&str>) -> Result<Self, ()> {
         let before = unsafe { umask(0o0027) };
         let manager = SqliteConnectionManager::file(path);
         let _ = unsafe { umask(before) };
@@ -42,10 +44,30 @@ impl Db {
 
         debug!("Configured {:?}", crypto_policy);
 
+        // Test a tpm context.
+        #[allow(unused_variables)]
+        let require_tpm = if let Some(tcti_str) = require_tpm {
+            #[cfg(feature = "tpm")]
+            let r = Db::tpm_setup_context(
+                tcti_str,
+                pool.get().expect("Unable to get connection from pool!!!"),
+            )?;
+
+            #[cfg(not(feature = "tpm"))]
+            warn!("require_tpm is set, but tpm was not built in. This instance will NOT cache passwords!");
+            #[cfg(not(feature = "tpm"))]
+            let r = tpm::TpmConfig {};
+
+            Some(r)
+        } else {
+            None
+        };
+
         Ok(Db {
             pool,
             lock: Mutex::new(()),
             crypto_policy,
+            require_tpm,
         })
     }
 
@@ -56,7 +78,7 @@ impl Db {
             .pool
             .get()
             .expect("Unable to get connection from pool!!!");
-        DbTxn::new(conn, guard, &self.crypto_policy)
+        DbTxn::new(conn, guard, &self.crypto_policy, self.require_tpm.as_ref())
     }
 }
 
@@ -71,6 +93,7 @@ impl<'a> DbTxn<'a> {
         conn: r2d2::PooledConnection<SqliteConnectionManager>,
         guard: MutexGuard<'a, ()>,
         crypto_policy: &'a CryptoPolicy,
+        require_tpm: Option<&'a tpm::TpmConfig>,
     ) -> Self {
         // Start the transaction
         // debug!("Starting db WR txn ...");
@@ -82,6 +105,7 @@ impl<'a> DbTxn<'a> {
             conn,
             _guard: guard,
             crypto_policy,
+            require_tpm,
         }
     }
 
@@ -448,9 +472,22 @@ impl<'a> DbTxn<'a> {
     }
 
     pub fn update_account_password(&self, a_uuid: &str, cred: &str) -> Result<(), ()> {
-        let pw = Password::new(self.crypto_policy, cred).map_err(|e| {
-            error!("password error -> {:?}", e);
-        })?;
+        #[allow(unused_variables)]
+        let pw = if let Some(tcti_str) = self.require_tpm {
+            // Do nothing.
+            #[cfg(not(feature = "tpm"))]
+            return Ok(());
+
+            #[cfg(feature = "tpm")]
+            let pw = Db::tpm_new(self.crypto_policy, cred, tcti_str)?;
+            #[cfg(feature = "tpm")]
+            pw
+        } else {
+            Password::new(self.crypto_policy, cred).map_err(|e| {
+                error!("password error -> {:?}", e);
+            })?
+        };
+
         let dbpw = pw.to_dbpasswordv1();
         let data = serde_json::to_vec(&dbpw).map_err(|e| {
             error!("json error -> {:?}", e);
@@ -471,6 +508,11 @@ impl<'a> DbTxn<'a> {
     }
 
     pub fn check_account_password(&self, a_uuid: &str, cred: &str) -> Result<bool, ()> {
+        #[cfg(not(feature = "tpm"))]
+        if self.require_tpm.is_some() {
+            return Ok(false);
+        }
+
         let mut stmt = self
             .conn
             .prepare("SELECT password FROM account_t WHERE uuid = :a_uuid AND password IS NOT NULL")
@@ -502,20 +544,34 @@ impl<'a> DbTxn<'a> {
             return Err(());
         }
 
-        let r: Result<bool, ()> = data
-            .first()
-            .map(|raw| {
-                // Map the option from data.first.
-                let dbpw: DbPasswordV1 = serde_json::from_slice(raw.as_slice()).map_err(|e| {
-                    error!("json error -> {:?}", e);
-                })?;
-                let pw = Password::try_from(dbpw)?;
-                pw.verify(cred).map_err(|e| {
-                    error!("password error -> {:?}", e);
-                })
+        let pw = data.first().map(|raw| {
+            // Map the option from data.first.
+            let dbpw: DbPasswordV1 = serde_json::from_slice(raw.as_slice()).map_err(|e| {
+                error!("json error -> {:?}", e);
+            })?;
+            Password::try_from(dbpw)
+        });
+
+        let pw = match pw {
+            Some(Ok(p)) => p,
+            _ => return Ok(false),
+        };
+
+        #[allow(unused_variables)]
+        if let Some(tcti_str) = self.require_tpm {
+            #[cfg(feature = "tpm")]
+            let r = Db::tpm_verify(pw, cred, tcti_str);
+
+            // Do nothing.
+            #[cfg(not(feature = "tpm"))]
+            let r = Ok(false);
+
+            r
+        } else {
+            pw.verify(cred).map_err(|e| {
+                error!("password error -> {:?}", e);
             })
-            .unwrap_or(Ok(false));
-        r
+        }
     }
 
     fn get_group_data_name(&self, grp_id: &str) -> Result<Vec<(Vec<u8>, i64)>, ()> {
@@ -726,6 +782,170 @@ impl<'a> Drop for DbTxn<'a> {
     }
 }
 
+#[cfg(not(feature = "tpm"))]
+pub(crate) mod tpm {
+    pub struct TpmConfig {}
+}
+
+#[cfg(feature = "tpm")]
+pub(crate) mod tpm {
+    use super::Db;
+
+    use r2d2_sqlite::SqliteConnectionManager;
+    use rusqlite::OptionalExtension;
+
+    use kanidm_lib_crypto::{CryptoError, CryptoPolicy, Password, TpmError};
+    use tss_esapi::{utils::TpmsContext, Context, TctiNameConf};
+
+    use std::str::FromStr;
+
+    pub struct TpmConfig {
+        tcti: TctiNameConf,
+        ctx: TpmsContext,
+    }
+
+    impl Db {
+        pub fn tpm_setup_context(
+            tcti_str: &str,
+            conn: r2d2::PooledConnection<SqliteConnectionManager>,
+        ) -> Result<TpmConfig, ()> {
+            let tcti = TctiNameConf::from_str(tcti_str).map_err(|e| {
+                error!(tpm_err = ?e, "Failed to parse tcti name");
+            })?;
+
+            let mut context = Context::new(tcti.clone()).map_err(|e| {
+                error!(tpm_err = ?e, "Failed to create tpm context");
+            })?;
+
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS config_t (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                )
+                ",
+                [],
+            )
+            .map_err(|e| {
+                error!(sqlite_err = ?e, "update config_t tpm_ctx");
+            })?;
+
+            // Try and get the db context.
+            let ctx_data: Option<Vec<u8>> = conn
+                .query_row(
+                    "SELECT value FROM config_t WHERE key='tpm2_ctx'",
+                    [],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(|e| {
+                    error!(sqlite_err = ?e, "Failed to load tpm2_ctx");
+                })
+                .unwrap_or(None);
+
+            trace!(ctx_data_present = %ctx_data.is_some());
+
+            let ex_ctx = if let Some(ctx_data) = ctx_data {
+                // Test loading, blank it out if it fails.
+                // deserialise
+                let maybe_ctx: TpmsContext =
+                    serde_json::from_slice(ctx_data.as_slice()).map_err(|e| {
+                        warn!("json error -> {:?}", e);
+                    })?;
+
+                // can it load?
+                context
+                    .execute_with_nullauth_session(|ctx| ctx.context_load(maybe_ctx.clone()))
+                    .map_err(|e| {
+                        error!(tpm_err = ?e, "Failed to load tpm context");
+                    })?;
+
+                Some(maybe_ctx)
+            } else {
+                None
+            };
+
+            let ctx = if let Some(existing_ctx) = ex_ctx {
+                existing_ctx
+            } else {
+                // Need to regenerate for some reason
+                info!("Creating new tpm ctx key");
+                context
+                    .execute_with_nullauth_session(|ctx| {
+                        let key = Password::prepare_tpm_key(ctx)?;
+
+                        ctx.context_save(key.into()).map_err(|e| e.into())
+                    })
+                    .map_err(|e: CryptoError| {
+                        error!(tpm_err = ?e, "Failed to create tpm key");
+                    })?
+            };
+
+            // Serialise it out.
+            let data = serde_json::to_vec(&ctx).map_err(|e| {
+                error!("json error -> {:?}", e);
+            })?;
+
+            // Update the tpm ctx str
+            conn.execute(
+                "INSERT OR REPLACE INTO config_t (key, value) VALUES ('tpm2_ctx', :data)",
+                named_params! {
+                    ":data": &data,
+                },
+            )
+            .map_err(|e| {
+                error!(sqlite_err = ?e, "update config_t tpm_ctx");
+            })
+            .map(|_| ())?;
+
+            info!("tpm binding configured");
+
+            Ok(TpmConfig { tcti, ctx })
+        }
+
+        pub fn tpm_new(
+            policy: &CryptoPolicy,
+            cred: &str,
+            tpm_conf: &TpmConfig,
+        ) -> Result<Password, ()> {
+            let mut context = Context::new(tpm_conf.tcti.clone()).map_err(|e| {
+                error!(tpm_err = ?e, "Failed to create tpm context");
+            })?;
+
+            context
+                .execute_with_nullauth_session(|ctx| {
+                    let key = ctx.context_load(tpm_conf.ctx.clone()).map_err(|e| {
+                        error!(tpm_err = ?e, "Failed to load tpm context");
+                        <TpmError as Into<CryptoError>>::into(e)
+                    })?;
+
+                    Password::new_argon2id_tpm(policy, cred, ctx, key)
+                })
+                .map_err(|e: CryptoError| {
+                    error!(tpm_err = ?e, "Failed to create tpm bound password");
+                })
+        }
+
+        pub fn tpm_verify(pw: Password, cred: &str, tpm_conf: &TpmConfig) -> Result<bool, ()> {
+            let mut context = Context::new(tpm_conf.tcti.clone()).map_err(|e| {
+                error!(tpm_err = ?e, "Failed to create tpm context");
+            })?;
+
+            context
+                .execute_with_nullauth_session(|ctx| {
+                    let key = ctx.context_load(tpm_conf.ctx.clone()).map_err(|e| {
+                        error!(tpm_err = ?e, "Failed to load tpm context");
+                        <TpmError as Into<CryptoError>>::into(e)
+                    })?;
+
+                    pw.verify_ctx(cred, Some((ctx, key)))
+                })
+                .map_err(|e: CryptoError| {
+                    error!(tpm_err = ?e, "Failed to create tpm bound password");
+                })
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
@@ -739,7 +959,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_account_basic() {
         sketching::test_init();
-        let db = Db::new("").expect("failed to create.");
+        let db = Db::new("", None).expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -823,7 +1043,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_group_basic() {
         sketching::test_init();
-        let db = Db::new("").expect("failed to create.");
+        let db = Db::new("", None).expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -898,7 +1118,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_account_group_update() {
         sketching::test_init();
-        let db = Db::new("").expect("failed to create.");
+        let db = Db::new("", None).expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -966,7 +1186,15 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_account_password() {
         sketching::test_init();
-        let db = Db::new("").expect("failed to create.");
+
+        #[cfg(feature = "tpm")]
+        let tcti_str = Some("device:/dev/tpmrm0");
+
+        #[cfg(not(feature = "tpm"))]
+        let tcti_str = None;
+
+        let db = Db::new("", tcti_str).expect("failed to create.");
+
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -1015,7 +1243,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_group_rename_duplicate() {
         sketching::test_init();
-        let db = Db::new("").expect("failed to create.");
+        let db = Db::new("", None).expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -1070,7 +1298,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_account_rename_duplicate() {
         sketching::test_init();
-        let db = Db::new("").expect("failed to create.");
+        let db = Db::new("", None).expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 

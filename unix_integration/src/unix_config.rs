@@ -33,6 +33,7 @@ struct ConfigInt {
     selinux: Option<bool>,
     #[serde(default)]
     allow_local_account_override: Vec<String>,
+    require_tpm: Option<String>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -92,6 +93,7 @@ pub struct KanidmUnixdConfig {
     pub uid_attr_map: UidAttr,
     pub gid_attr_map: UidAttr,
     pub selinux: bool,
+    pub require_tpm: Option<String>,
     pub allow_local_account_override: Vec<String>,
 }
 
@@ -128,6 +130,11 @@ impl Display for KanidmUnixdConfig {
         writeln!(f, "selinux: {}", self.selinux)?;
         writeln!(
             f,
+            "require_tpm: {}",
+            self.require_tpm.as_deref().unwrap_or("-")
+        )?;
+        writeln!(
+            f,
             "allow_local_account_override: {:#?}",
             self.allow_local_account_override
         )
@@ -156,6 +163,7 @@ impl KanidmUnixdConfig {
             uid_attr_map: DEFAULT_UID_ATTR_MAP,
             gid_attr_map: DEFAULT_GID_ATTR_MAP,
             selinux: DEFAULT_SELINUX,
+            require_tpm: None,
             allow_local_account_override: Vec::default(),
         }
     }
@@ -268,6 +276,7 @@ impl KanidmUnixdConfig {
                 true => selinux_util::supported(),
                 _ => false,
             },
+            require_tpm: config.require_tpm.or(self.require_tpm),
             allow_local_account_override: config.allow_local_account_override,
         })
     }

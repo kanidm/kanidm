@@ -111,6 +111,7 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
         DEFAULT_UID_ATTR_MAP,
         DEFAULT_GID_ATTR_MAP,
         vec!["masked_group".to_string()],
+        None,
     )
     .await
     .expect("Failed to build cache layer.");

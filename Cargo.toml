@@ -156,6 +156,8 @@ tracing-subscriber = { version = "^0.3.17", features = ["env-filter"] }
 # tracing-forest = { path = "/Users/william/development/tracing-forest/tracing-forest" }
 tracing-forest = { git = "https://github.com/QnnOkabayashi/tracing-forest.git", rev = "77daf8c8abf010b87d45ece2bf656983c6f8cecb" }
 
+tss-esapi = "^7.2.0"
+
 url = "^2.4.0"
 urlencoding = "2.1.2"
 users = "^0.11.0"

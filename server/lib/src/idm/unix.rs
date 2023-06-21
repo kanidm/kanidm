@@ -234,7 +234,10 @@ impl UnixUserAccount {
         match &self.cred {
             Some(cred) => {
                 cred.password_ref().and_then(|pw| {
-                    if pw.verify(cleartext)? {
+                    if pw.verify(cleartext).map_err(|e| {
+                        error!(crypto_err = ?e);
+                        e.into()
+                    })? {
                         security_info!("Successful unix cred handling");
                         if pw.requires_upgrade() {
                             async_tx
@@ -270,7 +273,12 @@ impl UnixUserAccount {
 
     pub(crate) fn check_existing_pw(&self, cleartext: &str) -> Result<bool, OperationError> {
         match &self.cred {
-            Some(cred) => cred.password_ref().and_then(|pw| pw.verify(cleartext)),
+            Some(cred) => cred.password_ref().and_then(|pw| {
+                pw.verify(cleartext).map_err(|e| {
+                    error!(crypto_err = ?e);
+                    e.into()
+                })
+            }),
             None => Err(OperationError::InvalidState),
         }
     }
