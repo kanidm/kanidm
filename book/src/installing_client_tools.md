@@ -126,6 +126,19 @@ If you have a ca.pem you may need to bind mount this in as required as well.
 alias kanidm="docker run ..."
 ```
 
+## Initializing the configuration
+
+The client requires a configuration file to connect to the server.
+This should be at `/etc/kanidm/config` or `~/.config/kanidm`, and configures the kanidm command line tool.
+
+Here is a minimal example:
+
+```toml
+uri = "https://idm.example.com"
+verify_ca = true
+verify_hostnames = true
+```
+
 ## Checking that the tools work
 
 Now you can check your instance is working. You may need to provide a CA certificate for
