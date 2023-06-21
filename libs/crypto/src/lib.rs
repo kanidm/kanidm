@@ -1172,7 +1172,6 @@ fn do_tpm_hmac(
 #[cfg(test)]
 mod tests {
     use std::convert::TryFrom;
-    use std::str::FromStr;
 
     use crate::*;
 
@@ -1343,6 +1342,8 @@ mod tests {
     #[cfg(feature = "tpm")]
     #[test]
     fn test_password_argon2id_tpm_bind() {
+        use std::str::FromStr;
+
         sketching::test_init();
 
         use tss_esapi::{Context, TctiNameConf};

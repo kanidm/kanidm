@@ -887,7 +887,7 @@ pub(crate) mod tpm {
 
             // Update the tpm ctx str
             conn.execute(
-                "UPDATE config_t SET value = :data WHERE key='tpm2_ctx'",
+                "INSERT OR REPLACE INTO config_t (key, value) VALUES ('tpm2_ctx', :data)",
                 named_params! {
                     ":data": &data,
                 },
