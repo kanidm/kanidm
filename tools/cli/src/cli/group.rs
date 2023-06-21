@@ -1,5 +1,5 @@
 use crate::common::OpType;
-use crate::{GroupOpt, GroupPosix};
+use crate::{GroupOpt, GroupPosix, OutputMode};
 
 impl GroupOpt {
     pub fn debug(&self) -> bool {
@@ -25,15 +25,15 @@ impl GroupOpt {
             GroupOpt::List(copt) => {
                 let client = copt.to_client(OpType::Read).await;
                 match client.idm_group_list().await {
-                    Ok(r) => r.iter().for_each(|ent| match copt.output_mode.as_str() {
-                        "json" => {
+                    Ok(r) => r.iter().for_each(|ent| match copt.output_mode {
+                        OutputMode::Json => {
                             println!(
                                 "{}",
                                 serde_json::to_string(&ent.attrs)
                                     .expect("Failed to serialise json")
                             );
                         }
-                        _ => println!("{}", ent),
+                        OutputMode::Text => println!("{}", ent),
                     }),
                     Err(e) => error!("Error -> {:?}", e),
                 }
@@ -42,14 +42,14 @@ impl GroupOpt {
                 let client = gcopt.copt.to_client(OpType::Read).await;
                 // idm_group_get
                 match client.idm_group_get(gcopt.name.as_str()).await {
-                    Ok(Some(e)) => match gcopt.copt.output_mode.as_str() {
-                        "json" => {
+                    Ok(Some(e)) => match gcopt.copt.output_mode {
+                        OutputMode::Json => {
                             println!(
                                 "{}",
                                 serde_json::to_string(&e.attrs).expect("Failed to serialise json")
                             );
                         }
-                        _ => println!("{}", e),
+                        OutputMode::Text => println!("{}", e),
                     },
                     Ok(None) => warn!("No matching group '{}'", gcopt.name.as_str()),
                     Err(e) => error!("Error -> {:?}", e),
