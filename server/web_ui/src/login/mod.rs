@@ -373,7 +373,9 @@ impl LoginApp {
                         <div class={CLASS_DIV_LOGIN_BUTTON}>
                             <button
                                 type="submit"
-                                class={CLASS_BUTTON_DARK}
+                                class="autofocus form-control btn btn-dark"
+                                autofocus=true
+                                id="begin"
                                 disabled={ !enable }
                             >{" Begin "}</button>
                         </div>
@@ -1145,5 +1147,6 @@ impl Component for LoginApp {
         crate::utils::autofocus("password");
         crate::utils::autofocus("backup_code");
         crate::utils::autofocus("otp");
+        crate::utils::autofocus("begin");
     }
 }

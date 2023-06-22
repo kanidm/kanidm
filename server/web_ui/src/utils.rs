@@ -1,12 +1,12 @@
 use gloo::console;
 use gloo_net::http::Request;
+use url::Url;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 pub use web_sys::InputEvent;
 use web_sys::{Document, HtmlElement, HtmlInputElement, RequestCredentials, RequestMode, Window};
 use yew::virtual_dom::VNode;
 use yew::{html, Html};
-use url::Url;
 
 pub fn window() -> Window {
     web_sys::window().expect_throw("Unable to retrieve window")
@@ -23,10 +23,10 @@ pub fn body() -> HtmlElement {
 }
 
 pub fn origin() -> Url {
-    let uri_string = document().document_uri()
+    let uri_string = document()
+        .document_uri()
         .expect_throw("Unable to access document uri");
-    let mut url = Url::parse(&uri_string)
-        .expect_throw("Unable to parse document uri");
+    let mut url = Url::parse(&uri_string).expect_throw("Unable to parse document uri");
     url.set_path("/");
     url
 }

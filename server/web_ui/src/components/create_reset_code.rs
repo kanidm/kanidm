@@ -1,13 +1,18 @@
+use crate::utils;
 #[cfg(debug_assertions)]
 use gloo::console;
-use kanidm_proto::v1::{UserAuthToken, CUIntentToken};
+use kanidm_proto::v1::{CUIntentToken, UserAuthToken};
 use yew::prelude::*;
-use crate::utils;
 
-use wasm_bindgen::UnwrapThrowExt;
-use web_sys::Node;
 use qrcode::render::svg;
 use qrcode::QrCode;
+use wasm_bindgen::UnwrapThrowExt;
+use web_sys::Node;
+
+use crate::error::*;
+use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::JsFuture;
+use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
 
 enum State {
     Valid,
@@ -17,15 +22,24 @@ enum State {
 #[allow(dead_code)]
 enum CodeState {
     Waiting,
-    Ready { token: CUIntentToken }
+    Ready { token: CUIntentToken },
 }
 
 #[allow(dead_code)]
 pub enum Msg {
     Activate,
-    // Ready,
+    Ready { token: CUIntentToken },
     Dismiss,
     Error { emsg: String, kopid: Option<String> },
+}
+
+impl From<FetchError> for Msg {
+    fn from(fe: FetchError) -> Self {
+        Msg::Error {
+            emsg: fe.as_string(),
+            kopid: None,
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Properties)]
@@ -50,22 +64,38 @@ impl Component for CreateResetCode {
         }
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::Activate => {
                 #[cfg(debug_assertions)]
                 console::debug!("modal activate");
+
+                let uat = &ctx.props().uat;
+                let id = uat.uuid.to_string();
+
+                ctx.link().send_future(async {
+                    match Self::credential_get_update_intent_token(id).await {
+                        Ok(v) => v,
+                        Err(v) => v.into(),
+                    }
+                });
+
                 true
             }
             Msg::Error { emsg, kopid } => {
-                self.reset();
+                self.code_state = CodeState::Waiting;
                 self.state = State::Error { emsg, kopid };
                 true
             }
             Msg::Dismiss => {
-                self.reset();
-                utils::modal_hide_by_id(crate::constants::ID_CRED_RESET_CODE);
+                self.code_state = CodeState::Waiting;
                 self.state = State::Valid;
+                utils::modal_hide_by_id(crate::constants::ID_CRED_RESET_CODE);
+                true
+            }
+            Msg::Ready { token } => {
+                self.state = State::Valid;
+                self.code_state = CodeState::Ready { token };
                 true
             }
         }
@@ -100,6 +130,11 @@ impl Component for CreateResetCode {
                 let mut url = utils::origin();
 
                 url.set_path("/ui/reset");
+                let reset_link = html! {
+                    <a href={ url.to_string() }>{ url.to_string() }</a>
+                };
+                url.to_string();
+
                 url.query_pairs_mut()
                     .append_pair("token", token.token.as_str());
 
@@ -119,10 +154,11 @@ impl Component for CreateResetCode {
 
                 html! {
                     <>
-                      <div class="col-8">
+                      <div class="col-6">
                         { svg_html }
                       </div>
-                      <div class="col-4">
+                      <div class="col-5">
+                        <p>{ reset_link }</p>
                         <p>{ code }</p>
                       </div>
                     </>
@@ -146,10 +182,10 @@ impl Component for CreateResetCode {
               { "Update your Authentication Settings on Another Device" }
             </button>
             <div class="modal" tabindex="-1" role="dialog" id={crate::constants::ID_CRED_RESET_CODE}>
-              <div class="modal-dialog" role="document">
+              <div class="modal-dialog modal-lg" role="document">
                     <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">{"Update your authentication settings"}</h5>
+                        <h5 class="modal-title">{"Update your Authentication Settings on Another Device"}</h5>
                         <button
                             aria-label="Close"
                             class="btn-close"
@@ -168,6 +204,9 @@ impl Component for CreateResetCode {
                         <div class="container">
                           <div class="row">
                             { code_reset_state }
+                          </div>
+                          <div class="row">
+                            <p>{ "You can add another device to your account by scanning this qr code, or going to the url above and entering in the code." }</p>
                           </div>
                         </div>
                     </div>
@@ -197,7 +236,38 @@ impl Component for CreateResetCode {
 }
 
 impl CreateResetCode {
-    fn reset(&mut self) {
-        self.code_state = CodeState::Waiting;
+    async fn credential_get_update_intent_token(id: String) -> Result<Msg, FetchError> {
+        let mut opts = RequestInit::new();
+        opts.method("GET");
+        opts.mode(RequestMode::SameOrigin);
+        opts.credentials(RequestCredentials::SameOrigin);
+
+        let uri = format!("/v1/person/{}/_credential/_update_intent", id);
+
+        let request = Request::new_with_str_and_init(uri.as_str(), &opts)?;
+
+        request
+            .headers()
+            .set("content-type", "application/json")
+            .expect_throw("failed to set header");
+
+        let window = utils::window();
+        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
+        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
+        let status = resp.status();
+
+        if status == 200 {
+            let jsval = JsFuture::from(resp.json()?).await?;
+            let token: CUIntentToken =
+                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
+            Ok(Msg::Ready { token })
+        } else {
+            let headers = resp.headers();
+            let kopid = headers.get("x-kanidm-opid").ok().flatten();
+            let text = JsFuture::from(resp.text()?).await?;
+            let emsg = text.as_string().unwrap_or_default();
+            // let jsval_json = JsFuture::from(resp.json()?).await?;
+            Ok(Msg::Error { emsg, kopid })
+        }
     }
 }
