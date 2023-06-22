@@ -1146,7 +1146,6 @@ impl Password {
                 salt,
                 key,
             } => {
-                eprintln!("{:?} {:?} {:?}", version, salt.len(), key.len());
                 *version < ARGON2_VERSION ||
                 salt.len() < ARGON2_SALT_LEN ||
                 key.len() < ARGON2_KEY_LEN ||
