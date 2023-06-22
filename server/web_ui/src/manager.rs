@@ -22,14 +22,11 @@ pub enum Route {
     #[at("/")]
     Landing,
 
-    #[at("/ui/view/*")]
-    Views,
-
     #[at("/ui/login")]
     Login,
 
-    #[at("/ui/reauth")]
-    Reauth,
+    #[at("/ui/reauth/:spn")]
+    Reauth { spn: String },
 
     #[at("/ui/oauth2")]
     Oauth2,
@@ -40,6 +37,9 @@ pub enum Route {
     #[not_found]
     #[at("/ui/404")]
     NotFound,
+
+    #[at("/ui/*")]
+    Views,
 }
 
 #[function_component(Landing)]
@@ -62,7 +62,7 @@ fn switch(route: Route) -> Html {
         #[allow(clippy::let_unit_value)]
         Route::Login => html! { <LoginApp workflow={ LoginWorkflow::Login } /> },
         #[allow(clippy::let_unit_value)]
-        Route::Reauth => html! { <LoginApp workflow={ LoginWorkflow::Reauth } /> },
+        Route::Reauth { spn } => html! { <LoginApp workflow={ LoginWorkflow::Reauth { spn } } /> },
         #[allow(clippy::let_unit_value)]
         Route::Oauth2 => html! { <Oauth2App /> },
         #[allow(clippy::let_unit_value)]

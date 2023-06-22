@@ -8,7 +8,7 @@ use openssl::ssl::{SslAcceptor, SslAcceptorBuilder, SslFiletype, SslMethod};
 use openssl::x509::{
     extension::{
         AuthorityKeyIdentifier, BasicConstraints, KeyUsage, SubjectAlternativeName,
-        SubjectKeyIdentifier,
+        SubjectKeyIdentifier, ExtendedKeyUsage
     },
     X509NameBuilder, X509ReqBuilder, X509,
 };
@@ -268,9 +268,16 @@ pub(crate) fn build_cert(
     cert_builder.append_extension(
         KeyUsage::new()
             .critical()
-            .non_repudiation()
+            // .non_repudiation()
             .digital_signature()
             .key_encipherment()
+            .build()?,
+    )?;
+
+    cert_builder.append_extension(
+        ExtendedKeyUsage::new()
+            // .critical()
+            .server_auth()
             .build()?,
     )?;
 

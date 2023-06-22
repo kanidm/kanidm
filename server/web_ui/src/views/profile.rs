@@ -1,82 +1,34 @@
+#[cfg(debug_assertions)]
 use gloo::console;
-use kanidm_proto::v1::{Entry, WhoamiResponse};
-use uuid::Uuid;
+use kanidm_proto::v1::{CUSessionToken, CUStatus, UiHint};
+use time::format_description::well_known::Rfc3339;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
 use yew::prelude::*;
-use yew::virtual_dom::VNode;
+use yew_router::prelude::*;
 
+use crate::components::change_unix_password::ChangeUnixPassword;
 use crate::constants::CSS_PAGE_HEADER;
-use crate::error::FetchError;
-use crate::utils;
-use crate::views::ViewProps;
+use crate::error::*;
+use crate::manager::Route;
+use crate::views::{ViewProps, ViewRoute};
+use crate::{models, utils};
 
-struct Profile {
-    mail_primary: Option<String>,
-    spn: String,
-    displayname: String,
-    groups: Vec<String>,
-    uuid: Uuid,
-}
-
-impl TryFrom<Entry> for Profile {
-    type Error = String;
-
-    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
-        console::error!("Entry Dump", format!("{:?}", entry));
-
-        let uuid = entry
-            .attrs
-            .get("uuid")
-            .and_then(|list| list.get(0))
-            .ok_or_else(|| "Missing UUID".to_string())
-            .and_then(|uuid_str| {
-                Uuid::parse_str(uuid_str).map_err(|_| "Invalid UUID".to_string())
-            })?;
-
-        let spn = entry
-            .attrs
-            .get("spn")
-            .and_then(|list| list.get(0))
-            .cloned()
-            .ok_or_else(|| "Missing SPN".to_string())?;
-
-        let displayname = entry
-            .attrs
-            .get("displayname")
-            .and_then(|list| list.get(0))
-            .cloned()
-            .ok_or_else(|| "Missing displayname".to_string())?;
-
-        let mut groups = entry.attrs.get("memberof").cloned().unwrap_or_default();
-        groups.sort_unstable();
-
-        let mail_primary = entry
-            .attrs
-            .get("mail_primary")
-            .and_then(|list| list.get(0))
-            .cloned();
-
-        Ok(Profile {
-            mail_primary,
-            spn,
-            displayname,
-            groups,
-            uuid,
-        })
-    }
-}
-
-enum State {
-    Loading,
-    Ready(Profile),
-    Error { emsg: String, kopid: Option<String> },
-}
-
+#[allow(clippy::large_enum_variant)]
+// Page state
 pub enum Msg {
-    Profile { entry: Entry },
-    Error { emsg: String, kopid: Option<String> },
+    // Nothing
+    RequestCredentialUpdate,
+    BeginCredentialUpdate {
+        token: CUSessionToken,
+        status: CUStatus,
+    },
+    Error {
+        emsg: String,
+        kopid: Option<String>,
+    },
+    RequestReauth,
 }
 
 impl From<FetchError> for Msg {
@@ -88,7 +40,12 @@ impl From<FetchError> for Msg {
     }
 }
 
-// User Profile UI
+enum State {
+    Init,
+    Waiting,
+    Error { emsg: String, kopid: Option<String> },
+}
+
 pub struct ProfileApp {
     state: State,
 }
@@ -97,36 +54,66 @@ impl Component for ProfileApp {
     type Message = Msg;
     type Properties = ViewProps;
 
-    fn create(ctx: &Context<Self>) -> Self {
+    fn create(_ctx: &Context<Self>) -> Self {
         #[cfg(debug_assertions)]
-        console::debug!("views::profile::create");
-
-        ctx.link().send_future(async {
-            match Self::fetch_profile_data().await {
-                Ok(v) => v,
-                Err(v) => v.into(),
-            }
-        });
-
-        ProfileApp {
-            state: State::Loading,
-        }
+        console::debug!("views::security::create");
+        ProfileApp { state: State::Init }
     }
 
     fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
+        #[cfg(debug_assertions)]
+        console::debug!("views::security::changed");
         true
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         #[cfg(debug_assertions)]
-        console::debug!("profile::update");
+        console::debug!("views::security::update");
         match msg {
-            Msg::Profile { entry } => {
-                self.state = match Profile::try_from(entry) {
-                    Ok(profile) => State::Ready(profile),
-                    Err(emsg) => State::Error { emsg, kopid: None },
-                };
+            Msg::RequestCredentialUpdate => {
+                // Submit a req to init the session.
+                // The uuid we want to submit against - hint, it's us.
+
+                let uat = &ctx.props().current_user_uat;
+                let id = uat.uuid.to_string();
+
+                ctx.link().send_future(async {
+                    match Self::request_credential_update(id).await {
+                        Ok(v) => v,
+                        Err(v) => v.into(),
+                    }
+                });
+
+                self.state = State::Waiting;
                 true
+            }
+            Msg::BeginCredentialUpdate { token, status } => {
+                // Got the rec, setup.
+                models::push_cred_update_session((token, status));
+                models::push_return_location(models::Location::Views(ViewRoute::Profile));
+
+                ctx.link()
+                    .navigator()
+                    .expect_throw("failed to read history")
+                    .push(&Route::CredentialReset);
+                // No need to redraw, or reset state, since this redirect will destroy
+                // the state.
+                false
+            }
+            Msg::RequestReauth => {
+                models::push_return_location(models::Location::Views(ViewRoute::Profile));
+
+                let uat = &ctx.props().current_user_uat;
+                let spn = uat.spn.to_string();
+
+                ctx.link()
+                    .navigator()
+                    .expect_throw("failed to read history")
+                    .push(&Route::Reauth { spn });
+
+                // No need to redraw, or reset state, since this redirect will destroy
+                // the state.
+                false
             }
             Msg::Error { emsg, kopid } => {
                 self.state = State::Error { emsg, kopid };
@@ -137,156 +124,114 @@ impl Component for ProfileApp {
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
         #[cfg(debug_assertions)]
-        console::debug!("views::profile::rendered");
+        console::debug!("views::security::rendered");
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        match &self.state {
-            State::Loading => {
+        let uat = ctx.props().current_user_uat.clone();
+
+        let jsdate = js_sys::Date::new_0();
+        let isotime: String = jsdate.to_iso_string().into();
+        // TODO: Actually check the time of expiry on the uat and have a timer set that
+        // re-locks things nicely.
+        let time = time::OffsetDateTime::parse(&isotime, &Rfc3339)
+            .map(|odt| odt + time::Duration::new(60, 0))
+            .expect_throw("Unable to process time stamp");
+
+        let is_priv_able = uat.purpose_readwrite_active(time);
+
+        let submit_enabled = match self.state {
+            State::Init | State::Error { .. } => is_priv_able,
+            State::Waiting => false,
+        };
+
+        let flash = match &self.state {
+            State::Error { emsg, kopid } => {
+                let message = match kopid {
+                    Some(k) => format!("An error occurred - {} - {}", emsg, k),
+                    None => format!("An error occurred - {} - No Operation ID", emsg),
+                };
                 html! {
-                  <main class="text-center form-signin h-100">
-                    <div class="vert-center">
-                      <div class="spinner-border text-dark" role="status">
-                        <span class="visually-hidden">{ "Loading..." }</span>
-                      </div>
-                    </div>
-                  </main>
+                  <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    { message }
+                    <button type="button" class="btn btn-close" data-dismiss="alert" aria-label="Close"></button>
+                  </div>
                 }
             }
-            State::Ready(profile) => self.view_profile(ctx, profile),
-            State::Error { emsg, kopid } => self.do_alert_error(
-                "An error has occurred 😔 ",
-                Some(
-                    format!(
-                        "{}\n\n{}",
-                        emsg.as_str(),
-                        if let Some(opid) = kopid.as_ref() {
-                            format!("Operation ID: {}", opid.clone())
-                        } else {
-                            "Error occurred client-side.".to_string()
-                        }
-                    )
-                    .as_str(),
-                ),
-                ctx,
-            ),
+            _ => html! { <></> },
+        };
+
+        let unlock = if is_priv_able {
+            html! {
+              <div>
+               <button type="button" class="btn btn-primary"
+                 disabled=true
+               >
+                 { "Profile Settings Unlocked 🔓" }
+               </button>
+              </div>
+            }
+        } else {
+            html! {
+              <div>
+               <button type="button" class="btn btn-primary"
+                 onclick={
+                    ctx.link().callback(|_e| {
+                        Msg::RequestReauth
+                    })
+                 }
+               >
+                 { "Unlock Profile Settings 🔒" }
+               </button>
+              </div>
+            }
+        };
+
+        html! {
+            <>
+              <div class={CSS_PAGE_HEADER}>
+                <h2>{ "Profile" }</h2>
+              </div>
+              { flash }
+              { unlock }
+              <hr/>
+              <div>
+                <p>
+                   <button type="button" class="btn btn-primary"
+                     disabled={ !submit_enabled }
+                     onclick={
+                        ctx.link().callback(|_e| {
+                            Msg::RequestCredentialUpdate
+                        })
+                     }
+                   >
+                     { "Password and Authentication Settings" }
+                   </button>
+                </p>
+              </div>
+              <hr/>
+                if uat.ui_hints.contains(&UiHint::PosixAccount) {
+                  <div>
+                      <p>
+                        <ChangeUnixPassword uat={ uat } enabled={ is_priv_able } />
+                      </p>
+                  </div>
+                }
+            </>
         }
     }
 }
 
 impl ProfileApp {
-    fn do_alert_error(
-        &self,
-        alert_title: &str,
-        alert_message: Option<&str>,
-        _ctx: &Context<Self>,
-    ) -> VNode {
-        html! {
-        <div class="container">
-            <div class="row justify-content-md-center">
-                <div class="alert alert-danger" role="alert">
-                    <p><strong>{ alert_title }</strong></p>
-                    if let Some(value) = alert_message {
-                        <p>{ value }</p>
-                    }
-                </div>
-            </div>
-        </div>
-        }
-    }
-
-    /// UI view for the user profile
-    fn view_profile(&self, _ctx: &Context<Self>, profile: &Profile) -> Html {
-        let mail_primary = match profile.mail_primary.as_ref() {
-            Some(email_address) => {
-                html! {
-                    <a href={ format!("mailto:{}", &email_address)}>
-                    {email_address}
-                    </a>
-                }
-            }
-            None => html! { {"<primary email is unset>"}},
-        };
-
-        let spn = &profile.spn.to_owned();
-        let spn_split = spn.split('@');
-        let username = &spn_split.clone().next().unwrap_throw();
-        let domain = &spn_split.clone().last().unwrap_throw();
-        let display_name = profile.displayname.to_owned();
-        let user_groups: Vec<String> = profile
-            .groups
-            .iter()
-            .map(|group_spn| {
-                #[allow(clippy::unwrap_used)]
-                group_spn.split('@').next().unwrap().to_string()
-            })
-            .collect();
-
-        let pagecontent = html! {
-            <dl class="row">
-                <dt class="col-6">{ "Display Name" }</dt>
-                <dd class="col">{ display_name }</dd>
-
-                <dt class="col-6">{ "Primary Email" }</dt>
-                <dd class="col">{mail_primary}</dd>
-
-                <dt class="col-6">{ "Group Memberships" }</dt>
-                <dd class="col">
-                    <ul class="list-group">
-                    {
-                        if user_groups.is_empty() {
-                            html!{
-                                <li>{"Not a member of any groups"}</li>
-                            }
-                        } else {
-                            html!{
-                                {
-                                    for user_groups.iter()
-                                        .map(|group|
-                                            html!{ <li>{ group }</li> }
-                                        )
-                                }
-                            }
-                        }
-                    }
-                    </ul>
-                </dd>
-
-
-            <dt class="col-6">
-            { "User's SPN" }
-            </dt>
-              <dd class="col">
-              { username.to_string() }{"@"}{ domain }
-              </dd>
-
-            <dt class="col-6">
-            { "User's UUID" }
-            </dt>
-              <dd class="col">
-              { format!("{}", &profile.uuid ) }
-              </dd>
-
-        </dl>
-        };
-        html! {
-            <>
-            <div class={CSS_PAGE_HEADER}>
-                <h2>{ "Profile" }</h2>
-            </div>
-
-            { pagecontent }
-            </>
-        }
-    }
-
-    async fn fetch_profile_data() -> Result<Msg, FetchError> {
+    async fn request_credential_update(id: String) -> Result<Msg, FetchError> {
         let mut opts = RequestInit::new();
         opts.method("GET");
         opts.mode(RequestMode::SameOrigin);
         opts.credentials(RequestCredentials::SameOrigin);
 
-        let request = Request::new_with_str_and_init("/v1/self", &opts)?;
+        let uri = format!("/v1/person/{}/_credential/_update", id);
+
+        let request = Request::new_with_str_and_init(uri.as_str(), &opts)?;
 
         request
             .headers()
@@ -300,21 +245,15 @@ impl ProfileApp {
 
         if status == 200 {
             let jsval = JsFuture::from(resp.json()?).await?;
-            let state: WhoamiResponse = serde_wasm_bindgen::from_value(jsval)
-                .map_err(|e| {
-                    let e_msg = format!("serde error -> {:?}", e);
-                    console::error!(e_msg.as_str());
-                })
-                .expect_throw("Invalid response type");
-
-            Ok(Msg::Profile {
-                entry: state.youare,
-            })
+            let (token, status): (CUSessionToken, CUStatus) =
+                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
+            Ok(Msg::BeginCredentialUpdate { token, status })
         } else {
             let headers = resp.headers();
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
             let text = JsFuture::from(resp.text()?).await?;
             let emsg = text.as_string().unwrap_or_default();
+            // let jsval_json = JsFuture::from(resp.json()?).await?;
             Ok(Msg::Error { emsg, kopid })
         }
     }

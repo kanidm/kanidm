@@ -3,9 +3,7 @@ use gloo_net::http::Request;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 pub use web_sys::InputEvent;
-use web_sys::{
-    Document, Event, HtmlElement, HtmlInputElement, RequestCredentials, RequestMode, Window,
-};
+use web_sys::{Document, HtmlElement, HtmlInputElement, RequestCredentials, RequestMode, Window};
 use yew::virtual_dom::VNode;
 use yew::{html, Html};
 
@@ -38,12 +36,12 @@ pub fn autofocus(target: &str) {
     }
 }
 
-pub fn get_value_from_input_event(e: InputEvent) -> String {
-    let event: Event = e.dyn_into().unwrap_throw();
-    let event_target = event.target().unwrap_throw();
-    let target: HtmlInputElement = event_target.dyn_into().unwrap_throw();
-    target.value()
-}
+// pub fn get_value_from_input_event(e: InputEvent) -> String {
+//     let event: Event = e.dyn_into().unwrap_throw();
+//     let event_target = event.target().unwrap_throw();
+//     let target: HtmlInputElement = event_target.dyn_into().unwrap_throw();
+//     target.value()
+// }
 
 // pub fn get_element_by_id(id: &str) -> Option<HtmlElement> {
 //     document()
