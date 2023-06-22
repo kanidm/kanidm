@@ -38,7 +38,7 @@ pub struct TpmHandle {}
 // NIST 800-63.b salt should be 112 bits -> 14  8u8.
 const PBKDF2_SALT_LEN: usize = 24;
 
-const PBKDF2_MIN_NIST_SALT_LEN: usize = 14;
+pub const PBKDF2_MIN_NIST_SALT_LEN: usize = 14;
 
 // Min number of rounds for a pbkdf2
 pub const PBKDF2_MIN_NIST_COST: usize = 10000;
@@ -51,9 +51,15 @@ const PBKDF2_SHA1_MIN_KEY_LEN: usize = 19;
 const DS_SSHA512_SALT_LEN: usize = 8;
 const DS_SSHA512_HASH_LEN: usize = 64;
 
-const ARGON2_SALT_LEN: usize = 24;
+// Taken from the argon2 library and rfc 9106
+const ARGON2_VERSION: u32 = 19;
+const ARGON2_SALT_LEN: usize = 16;
 const ARGON2_KEY_LEN: usize = 32;
+const ARGON2_MIN_RAM_KIB: u32 = 8 * 1024;
 const ARGON2_MAX_RAM_KIB: u32 = 32 * 1024;
+const ARGON2_MIN_T_COST: u32 = 2;
+const ARGON2_MAX_T_COST: u32 = 4;
+const ARGON2_MAX_P_COST: u32 = 1;
 
 #[derive(Clone, Debug)]
 pub enum CryptoError {
@@ -190,7 +196,7 @@ impl CryptoPolicy {
                 // Get the cost per thousand rounds
                 let per_thou = (PBKDF2_MIN_NIST_COST * PBKDF2_BENCH_FACTOR) / 1000;
                 let t_per_thou = ubt / per_thou;
-                trace!("{}µs / 1000 rounds", t_per_thou);
+                trace!("{:010}µs / 1000 rounds", t_per_thou);
 
                 // Now we need the attacker work in nanos
                 let target = target_time.as_nanos() as usize;
@@ -244,29 +250,79 @@ impl CryptoPolicy {
         //
         // To try to balance this we cap max ram at 32MB for now.
 
-        let mut t = Duration::ZERO;
         // Default amount of ram we sacrifice per thread is 8MB
-        let mut m_cost = 8 * 1024;
-        // Default t/p from argon2 library.
-        let t_cost = 2;
-        let p_cost = 1;
+        let mut m_cost = ARGON2_MIN_RAM_KIB;
+        let mut t_cost = ARGON2_MIN_T_COST;
+        let p_cost = ARGON2_MAX_P_COST;
 
         // Raise memory usage until an acceptable ram amount is reached.
-        while t < target_time && m_cost < ARGON2_MAX_RAM_KIB {
-            m_cost += 1024;
+        loop {
             let params = if let Ok(p) = Params::new(m_cost, t_cost, p_cost, None) {
                 p
             } else {
                 // Unable to proceed.
+                error!(
+                    ?m_cost,
+                    ?t_cost,
+                    ?p_cost,
+                    "Parameters were not valid for argon2"
+                );
                 break;
             };
 
             if let Some(ubt) = Password::bench_argon2id(params) {
-                t = ubt;
-                trace!("{}µs for m_cost {}", t.as_nanos(), m_cost);
+                trace!("{}µs - t_cost {} m_cost {}", ubt.as_nanos(), t_cost, m_cost);
+                // Parameter adjustment
+                if ubt < target_time {
+                    if m_cost < ARGON2_MAX_RAM_KIB {
+                        // Help narrow in quicker.
+                        let m_adjust = if target_time
+                            .as_nanos()
+                            .checked_div(ubt.as_nanos())
+                            .unwrap_or(1)
+                            >= 2
+                        {
+                            // Very far from target, double m_cost.
+                            m_cost * 2
+                        } else {
+                            // Close! Increase in a small step
+                            m_cost + (2 * 1024)
+                        };
+
+                        m_cost = if m_adjust > ARGON2_MAX_RAM_KIB {
+                            ARGON2_MAX_RAM_KIB
+                        } else {
+                            m_adjust
+                        };
+                        continue;
+                    } else if t_cost < ARGON2_MAX_T_COST {
+                        // t=2 with m = 32MB is about the same as t=3 m=20MB, so we want to start with ram
+                        // higher on these iterations. About 12MB appears to be one iteration. We use 8MB
+                        // here though, just to give a little window under that for adjustment.
+                        //
+                        // Similar, once we hit t=4 we just need to have max ram.
+                        let m_adjust = (t_cost.checked_sub(ARGON2_MIN_T_COST).unwrap_or(0)
+                            * ARGON2_MIN_RAM_KIB)
+                            + ARGON2_MAX_RAM_KIB;
+                        m_cost = if m_adjust > ARGON2_MAX_RAM_KIB {
+                            ARGON2_MAX_RAM_KIB
+                        } else {
+                            m_adjust
+                        };
+                        t_cost += 1;
+                        continue;
+                    } else {
+                        // Unable to proceed, parameters are maxed out.
+                        warn!("Argon2 parameters have hit their maximums - this may be a bug!");
+                        break;
+                    }
+                } else {
+                    // Found the target time.
+                    break;
+                }
             } else {
                 error!("Unable to perform bench of argon2id, stopping benchmark");
-                t = Duration::MAX;
+                break;
             }
         }
 
@@ -612,7 +668,7 @@ impl TryFrom<&str> for Password {
                         return Err(());
                     }
 
-                    let version = version.unwrap_or(19);
+                    let version = version.unwrap_or(ARGON2_VERSION);
                     let version: Version = version.try_into().map_err(|_| {
                         error!("Failed to convert {} to valid argon2id version", version);
                     })?;
@@ -789,7 +845,7 @@ impl Password {
 
     #[inline]
     pub fn new(policy: &CryptoPolicy, cleartext: &str) -> Result<Self, CryptoError> {
-        Self::new_pbkdf2(policy, cleartext)
+        Self::new_argon2id(policy, cleartext)
     }
 
     pub fn verify(&self, cleartext: &str) -> Result<bool, CryptoError> {
@@ -1082,14 +1138,33 @@ impl Password {
 
     pub fn requires_upgrade(&self) -> bool {
         match &self.material {
-            Kdf::TPM_ARGON2ID { .. } => false,
-            Kdf::ARGON2ID { .. } => false,
-            Kdf::PBKDF2_SHA512(cost, salt, hash) | Kdf::PBKDF2(cost, salt, hash) => {
-                *cost < PBKDF2_MIN_NIST_COST
-                    || salt.len() < PBKDF2_MIN_NIST_SALT_LEN
-                    || hash.len() < PBKDF2_MIN_NIST_KEY_LEN
+            Kdf::ARGON2ID {
+                m_cost,
+                t_cost,
+                p_cost,
+                version,
+                salt,
+                key,
+            } => {
+                eprintln!("{:?} {:?} {:?}", version, salt.len(), key.len());
+                *version < ARGON2_VERSION ||
+                salt.len() < ARGON2_SALT_LEN ||
+                key.len() < ARGON2_KEY_LEN ||
+                // Can't multi-thread
+                *p_cost > ARGON2_MAX_P_COST ||
+                // Likely too long on cpu time.
+                *t_cost > ARGON2_MAX_T_COST ||
+                // Too much ram
+                *m_cost > ARGON2_MAX_RAM_KIB
             }
-            Kdf::PBKDF2_SHA1(_, _, _) | Kdf::SSHA512(_, _) | Kdf::NT_MD4(_) => true,
+            // Only used in unixd today
+            Kdf::TPM_ARGON2ID { .. } => false,
+            // All now upgraded to argon2id
+            Kdf::PBKDF2(_, _, _)
+            | Kdf::PBKDF2_SHA512(_, _, _)
+            | Kdf::PBKDF2_SHA1(_, _, _)
+            | Kdf::SSHA512(_, _)
+            | Kdf::NT_MD4(_) => true,
         }
     }
 
@@ -1253,7 +1328,7 @@ mod tests {
         let im_pw = "{PBKDF2-SHA256}10000$henZGfPWw79Cs8ORDeVNrQ$1dTJy73v6n3bnTmTZFghxHXHLsAzKaAy8SksDfZBPIw";
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
-        assert!(!r.requires_upgrade());
+        assert!(r.requires_upgrade());
         assert!(r.verify(password).unwrap_or(false));
     }
 
@@ -1262,7 +1337,7 @@ mod tests {
         let im_pw = "{PBKDF2-SHA512}10000$Je1Uw19Bfv5lArzZ6V3EPw$g4T/1sqBUYWl9o93MVnyQ/8zKGSkPbKaXXsT8WmysXQJhWy8MRP2JFudSL.N9RklQYgDPxPjnfum/F2f/TrppA";
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
-        assert!(!r.requires_upgrade());
+        assert!(r.requires_upgrade());
         assert!(r.verify(password).unwrap_or(false));
     }
 
@@ -1273,7 +1348,7 @@ mod tests {
         let im_pw = "{ARGON2}$argon2id$v=19$m=65536,t=2,p=1$IyTQMsvzB2JHDiWx8fq7Ew$VhYOA7AL0kbRXI5g2kOyyp8St1epkNj7WZyUY4pAIQQ";
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
-        assert!(!r.requires_upgrade());
+        assert!(r.requires_upgrade());
         assert!(r.verify(password).unwrap_or(false));
     }
 
