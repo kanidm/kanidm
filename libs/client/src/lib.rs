@@ -1511,9 +1511,19 @@ impl KanidmClient {
     pub async fn idm_person_account_credential_update_intent(
         &self,
         id: &str,
+        ttl: Option<u32>,
     ) -> Result<CUIntentToken, ClientError> {
-        self.perform_get_request(format!("/v1/person/{}/_credential/_update_intent", id).as_str())
+        if let Some(ttl) = ttl {
+            self.perform_get_request(
+                format!("/v1/person/{}/_credential/_update_intent?ttl={}", id, ttl).as_str(),
+            )
             .await
+        } else {
+            self.perform_get_request(
+                format!("/v1/person/{}/_credential/_update_intent", id).as_str(),
+            )
+            .await
+        }
     }
 
     pub async fn idm_account_credential_update_begin(

@@ -7,8 +7,8 @@ use openssl::nid::Nid;
 use openssl::ssl::{SslAcceptor, SslAcceptorBuilder, SslFiletype, SslMethod};
 use openssl::x509::{
     extension::{
-        AuthorityKeyIdentifier, BasicConstraints, KeyUsage, SubjectAlternativeName,
-        SubjectKeyIdentifier, ExtendedKeyUsage
+        AuthorityKeyIdentifier, BasicConstraints, ExtendedKeyUsage, KeyUsage,
+        SubjectAlternativeName, SubjectKeyIdentifier,
     },
     X509NameBuilder, X509ReqBuilder, X509,
 };

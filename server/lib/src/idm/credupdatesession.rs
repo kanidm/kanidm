@@ -26,7 +26,7 @@ use crate::value::IntentTokenState;
 
 const MAXIMUM_CRED_UPDATE_TTL: Duration = Duration::from_secs(900);
 const MAXIMUM_INTENT_TTL: Duration = Duration::from_secs(86400);
-const MINIMUM_INTENT_TTL: Duration = MAXIMUM_CRED_UPDATE_TTL;
+const MINIMUM_INTENT_TTL: Duration = Duration::from_secs(300);
 
 #[derive(Debug)]
 pub enum PasswordQuality {

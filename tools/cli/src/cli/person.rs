@@ -517,7 +517,7 @@ impl AccountCredential {
     pub fn debug(&self) -> bool {
         match self {
             AccountCredential::Status(aopt) => aopt.copt.debug,
-            AccountCredential::CreateResetToken(aopt) => aopt.copt.debug,
+            AccountCredential::CreateResetToken { copt, .. } => copt.debug,
             AccountCredential::UseResetToken(aopt) => aopt.copt.debug,
             AccountCredential::Update(aopt) => aopt.copt.debug,
         }
@@ -580,12 +580,12 @@ impl AccountCredential {
                     }
                 }
             }
-            AccountCredential::CreateResetToken(aopt) => {
-                let client = aopt.copt.to_client(OpType::Write).await;
+            AccountCredential::CreateResetToken { aopts, copt, ttl } => {
+                let client = copt.to_client(OpType::Write).await;
 
                 // What's the client url?
                 match client
-                    .idm_person_account_credential_update_intent(aopt.aopts.account_id.as_str())
+                    .idm_person_account_credential_update_intent(aopts.account_id.as_str(), *ttl)
                     .await
                 {
                     Ok(cuintent_token) => {
@@ -602,7 +602,7 @@ impl AccountCredential {
 
                         debug!(
                             "Successfully created credential reset token for {}: {}",
-                            aopt.aopts.account_id, cuintent_token.token
+                            aopts.account_id, cuintent_token.token
                         );
                         println!(
                             "The person can use one of the following to allow the credential reset"

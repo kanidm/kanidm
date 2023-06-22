@@ -242,7 +242,7 @@ impl CreateResetCode {
         opts.mode(RequestMode::SameOrigin);
         opts.credentials(RequestCredentials::SameOrigin);
 
-        let uri = format!("/v1/person/{}/_credential/_update_intent", id);
+        let uri = format!("/v1/person/{}/_credential/_update_intent?ttl=0", id);
 
         let request = Request::new_with_str_and_init(uri.as_str(), &opts)?;
 
