@@ -200,6 +200,11 @@ mod tests {
         e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_PERSONS));
         e.add_ava("memberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));
         e.add_ava("directmemberof", Value::Refer(UUID_IDM_ALL_ACCOUNTS));
+        // we also add the name_history ava!
+        e.add_ava(
+            "name_history",
+            Value::AuditLogString(server_txn.get_txn_cid().clone(), "testperson".to_string()),
+        );
 
         let expected = unsafe { vec![Arc::new(e.into_sealed_committed())] };
 
