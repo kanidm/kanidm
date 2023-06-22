@@ -1,6 +1,6 @@
 #[cfg(debug_assertions)]
 use gloo::console;
-use kanidm_proto::v1::{CUSessionToken, CUStatus, UiHint};
+use kanidm_proto::v1::{CUSessionToken, CUStatus, UiHint, UserAuthToken};
 use time::format_description::well_known::Rfc3339;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
@@ -161,16 +161,8 @@ impl Component for ProfileApp {
             _ => html! { <></> },
         };
 
-        let unlock = if is_priv_able {
-            html! {
-              <div>
-               <button type="button" class="btn btn-primary"
-                 disabled=true
-               >
-                 { "Profile Settings Unlocked 🔓" }
-               </button>
-              </div>
-            }
+        let main = if is_priv_able {
+            self.view_profile(ctx, submit_enabled, uat)
         } else {
             html! {
               <div>
@@ -193,36 +185,50 @@ impl Component for ProfileApp {
                 <h2>{ "Profile" }</h2>
               </div>
               { flash }
-              { unlock }
-              <hr/>
-              <div>
-                <p>
-                   <button type="button" class="btn btn-primary"
-                     disabled={ !submit_enabled }
-                     onclick={
-                        ctx.link().callback(|_e| {
-                            Msg::RequestCredentialUpdate
-                        })
-                     }
-                   >
-                     { "Password and Authentication Settings" }
-                   </button>
-                </p>
-              </div>
-              <hr/>
-                if uat.ui_hints.contains(&UiHint::PosixAccount) {
-                  <div>
-                      <p>
-                        <ChangeUnixPassword uat={ uat } enabled={ is_priv_able } />
-                      </p>
-                  </div>
-                }
+              { main }
             </>
         }
     }
 }
 
 impl ProfileApp {
+    fn view_profile(&self, ctx: &Context<Self>, submit_enabled: bool, uat: UserAuthToken) -> Html {
+        html! {
+          <>
+            <div>
+             <button type="button" class="btn btn-primary"
+               disabled=true
+             >
+               { "Profile Settings Unlocked 🔓" }
+             </button>
+            </div>
+            <hr/>
+            <div>
+              <p>
+                 <button type="button" class="btn btn-primary"
+                   disabled={ !submit_enabled }
+                   onclick={
+                      ctx.link().callback(|_e| {
+                          Msg::RequestCredentialUpdate
+                      })
+                   }
+                 >
+                   { "Password and Authentication Settings" }
+                 </button>
+              </p>
+            </div>
+            <hr/>
+              if uat.ui_hints.contains(&UiHint::PosixAccount) {
+                <div>
+                    <p>
+                      <ChangeUnixPassword uat={ uat } enabled={ submit_enabled } />
+                    </p>
+                </div>
+              }
+          </>
+        }
+    }
+
     async fn request_credential_update(id: String) -> Result<Msg, FetchError> {
         let mut opts = RequestInit::new();
         opts.method("GET");
