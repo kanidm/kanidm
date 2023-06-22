@@ -6,6 +6,7 @@ pub mod admin_groups;
 pub mod admin_menu;
 pub mod admin_oauth2;
 pub mod change_unix_password;
+pub mod create_reset_code;
 
 /// creates the "Kanidm is alpha" banner
 pub fn alpha_warning_banner() -> Html {

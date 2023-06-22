@@ -9,6 +9,7 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::components::change_unix_password::ChangeUnixPassword;
+use crate::components::create_reset_code::CreateResetCode;
 use crate::constants::CSS_PAGE_HEADER;
 use crate::error::*;
 use crate::manager::Route;
@@ -128,7 +129,7 @@ impl Component for ProfileApp {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let uat = ctx.props().current_user_uat.clone();
+        let uat = &ctx.props().current_user_uat;
 
         let jsdate = js_sys::Date::new_0();
         let isotime: String = jsdate.to_iso_string().into();
@@ -162,7 +163,7 @@ impl Component for ProfileApp {
         };
 
         let main = if is_priv_able {
-            self.view_profile(ctx, submit_enabled, uat)
+            self.view_profile(ctx, submit_enabled, uat.clone())
         } else {
             html! {
               <div>
@@ -218,6 +219,12 @@ impl ProfileApp {
               </p>
             </div>
             <hr/>
+            <div>
+              <p>
+                <CreateResetCode uat={ uat.clone() } enabled={ submit_enabled } />
+              </p>
+            </div>
+            <hr/>
               if uat.ui_hints.contains(&UiHint::PosixAccount) {
                 <div>
                     <p>
@@ -264,3 +271,10 @@ impl ProfileApp {
         }
     }
 }
+
+
+
+
+
+
+
