@@ -370,9 +370,7 @@ impl CredentialResetApp {
 
                       <p>{ "❌ MFA Disabled" }</p>
                       <p>
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticTotpCreate">
-                          { "Add TOTP" }
-                        </button>
+                        <TotpModalApp token={ token.clone() } cb={ cb.clone() }/>
                       </p>
 
                       <p>
@@ -413,9 +411,7 @@ impl CredentialResetApp {
                       </>
 
                       <p>
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticTotpCreate">
-                          { "Add TOTP" }
-                        </button>
+                        <TotpModalApp token={ token.clone() } cb={ cb.clone() }/>
                       </p>
 
                       <p>
@@ -506,9 +502,7 @@ impl CredentialResetApp {
 
                     { passkey_html }
 
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticPasskeyCreate">
-                      { "Add Passkey" }
-                    </button>
+                    <PasskeyModalApp token={ token.clone() } cb={ cb.clone() } />
 
                     <hr class="my-4" />
 
@@ -543,11 +537,8 @@ impl CredentialResetApp {
               </div>
             </main>
 
-            <PasskeyModalApp token={ token.clone() } cb={ cb.clone() } />
 
             <PwModalApp token={ token.clone() } cb={ cb.clone() } />
-
-            <TotpModalApp token={ token.clone() } cb={ cb.clone() }/>
 
             <DeleteApp token= { token.clone() } cb={ cb.clone() }/>
 

@@ -1088,19 +1088,6 @@ impl TotpSecret {
     }
 }
 
-/*
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum SetCredentialResponse {
-    Success,
-    Token(String),
-    TotpCheck(Uuid, TotpSecret),
-    TotpInvalidSha1(Uuid),
-    SecurityKeyCreateChallenge(Uuid, CreationChallengeResponse),
-    BackupCodes(Vec<String>),
-}
-*/
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CUIntentToken {
     pub token: String,

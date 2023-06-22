@@ -300,21 +300,7 @@ impl Component for TotpModalApp {
 
         let totp_secret_state = match &self.secret {
             // TODO: change this so it automagically starts the cred update session once the modal is created.
-            TotpValue::Init => {
-                html! {
-                    <button
-                        class="btn btn-secondary"
-                        id="totp-generate"
-                        type="button"
-                        onclick={
-                            ctx.link()
-                                .callback(move |_| {
-                                    Msg::TotpGenerate
-                                })
-                        }
-                    >{ "Click here to start the TOTP registration process" }</button>
-                }
-            }
+            TotpValue::Init |
             TotpValue::Waiting => {
                 html! {
                       <div class="spinner-border text-dark" role="status">
@@ -359,6 +345,20 @@ impl Component for TotpModalApp {
         };
 
         html! {
+          <>
+            <button type="button"
+                class="btn btn-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#staticTotpCreate"
+                onclick={
+                    ctx.link()
+                        .callback(move |_| {
+                            Msg::TotpGenerate
+                        })
+                }
+            >
+              { "Add TOTP" }
+            </button>
             <div class="modal fade" id="staticTotpCreate" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticTotpCreate" aria-hidden="true">
               <div class="modal-dialog modal-lg">
                 <div class="modal-content">
@@ -459,6 +459,7 @@ impl Component for TotpModalApp {
                 </div>
               </div>
             </div>
+          </>
         }
     }
 }

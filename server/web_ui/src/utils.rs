@@ -6,6 +6,7 @@ pub use web_sys::InputEvent;
 use web_sys::{Document, HtmlElement, HtmlInputElement, RequestCredentials, RequestMode, Window};
 use yew::virtual_dom::VNode;
 use yew::{html, Html};
+use url::Url;
 
 pub fn window() -> Window {
     web_sys::window().expect_throw("Unable to retrieve window")
@@ -19,6 +20,15 @@ pub fn document() -> Document {
 
 pub fn body() -> HtmlElement {
     document().body().expect_throw("Unable to retrieve body")
+}
+
+pub fn origin() -> Url {
+    let uri_string = document().document_uri()
+        .expect_throw("Unable to access document uri");
+    let mut url = Url::parse(&uri_string)
+        .expect_throw("Unable to parse document uri");
+    url.set_path("/");
+    url
 }
 
 pub fn autofocus(target: &str) {
