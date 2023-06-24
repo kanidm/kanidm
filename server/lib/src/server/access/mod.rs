@@ -220,7 +220,7 @@ pub trait AccessControlsTransaction<'a> {
                     SearchResult::Allow(allowed_attrs) => {
                         // The allow set constrained.
                         let decision = requested_attrs.is_subset(&allowed_attrs);
-                        security_access!(
+                        security_debug!(
                             ?decision,
                             allowed = ?allowed_attrs,
                             requested = ?requested_attrs,
