@@ -200,7 +200,7 @@ pub trait QueryServerTransaction<'a> {
             trace!(internal_filter = ?se.filter, "search");
         } else {
             security_info!(initiator = %se.ident, "search");
-            admin_info!(external_filter = ?se.filter, "search");
+            admin_debug!(external_filter = ?se.filter, "search");
         }
 
         // This is an important security step because it prevents us from

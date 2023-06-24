@@ -23,7 +23,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{Args, Parser, Subcommand};
-use kanidmd_core::config::{Configuration, ServerConfig};
+use kanidmd_core::config::{Configuration, LogLevel, ServerConfig};
 use kanidmd_core::{
     backup_server_core, cert_generate_core, create_server_core, dbscan_get_id2entry_core,
     dbscan_list_id2entry_core, dbscan_list_index_analysis_core, dbscan_list_index_core,
@@ -98,21 +98,67 @@ fn get_user_details_windows() {
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> ExitCode {
+    // Read CLI args, determine what the user has asked us to do.
+    let opt = KanidmdParser::parse();
+
+    let mut config_error: Vec<String> = Vec::new();
+    let mut config = Configuration::new();
+    // Check the permissions are OK.
+    let cfg_path = &opt.commands.commonopt().config_path; // TODO: this needs to be pulling from the default or something?
+    if format!("{}", cfg_path.display()) == "".to_string() {
+        config_error.push(format!("Refusing to run - config file path is empty"));
+    }
+    if !cfg_path.exists() {
+        config_error.push(format!(
+            "Refusing to run - config file {} does not exist",
+            cfg_path.to_str().unwrap_or("invalid file path")
+        ));
+    }
+
+    // Read our config
+    let sconfig: Option<ServerConfig> =
+        match ServerConfig::new(&(opt.commands.commonopt().config_path)) {
+            Ok(c) => Some(c),
+            Err(e) => {
+                format!("Config Parse failure {:?}", e);
+                None
+            }
+        };
+
+    // if they specified it in the environment then that overrides everything
+    let log_level = match EnvFilter::try_from_default_env() {
+        Ok(val) => val,
+        Err(_e) => {
+            // we couldn't get it from the env, so we'll try the config file!
+            match sconfig.as_ref() {
+                Some(val) => {
+                    let tmp = val.log_level.clone();
+                    tmp.unwrap_or_default()
+                }
+                None => LogLevel::Info,
+            }
+            .into()
+        }
+    };
     tracing_forest::worker_task()
         .set_global(true)
         .set_tag(sketching::event_tagger)
         // Fall back to stderr
         .map_sender(|sender| sender.or_stderr())
         .build_on(|subscriber| subscriber
-            .with(EnvFilter::try_from_default_env()
-                .or_else(|_| EnvFilter::try_new("info"))
-                .expect("Failed to init envfilter")
-            )
+            .with(log_level)
         )
         .on(async {
             // Get information on the windows username
             #[cfg(target_family = "windows")]
             get_user_details_windows();
+
+            if !config_error.is_empty() {
+                for e in config_error {
+                    error!("{}", e);
+                }
+                return ExitCode::FAILURE
+            }
 
             // Get info about who we are.
             #[cfg(target_family = "unix")]
@@ -136,31 +182,17 @@ async fn main() -> ExitCode {
                 (cuid, ceuid)
             };
 
-            // Read cli args, determine if we should backup/restore
-            let opt = KanidmdParser::parse();
-
             // print the app version and bail
             if let KanidmdOpt::Version(_) = &opt.commands {
                 kanidm_proto::utils::show_version("kanidmd");
                 return ExitCode::SUCCESS
             };
 
-            let mut config = Configuration::new();
-            // Check the permissions are OK.
+            let sconfig = sconfig.expect("Somehow you got an empty ServerConfig after error checking?");
+
+
             #[cfg(target_family = "unix")]
             {
-                let cfg_path = &opt.commands.commonopt().config_path; // TODO: this needs to be pulling from the default or something?
-                if format!("{}", cfg_path.display()) == "".to_string() {
-                    error!("Refusing to run - config file path is empty");
-                    return ExitCode::FAILURE
-                }
-                if !cfg_path.exists() {
-                    error!(
-                        "Refusing to run - config file {} does not exist",
-                        cfg_path.to_str().unwrap_or("invalid file path")
-                    );
-                    return ExitCode::FAILURE
-                }
                 let cfg_meta = match metadata(cfg_path) {
                     Ok(m) => m,
                     Err(e) => {
@@ -191,14 +223,6 @@ async fn main() -> ExitCode {
                 }
             }
 
-            // Read our config
-            let sconfig = match ServerConfig::new(&(opt.commands.commonopt().config_path)) {
-                Ok(c) => c,
-                Err(e) => {
-                    error!("Config Parse failure {:?}", e);
-                    return ExitCode::FAILURE
-                }
-            };
             // Check the permissions of the files from the configuration.
 
             let db_path = PathBuf::from(sconfig.db_path.as_str());

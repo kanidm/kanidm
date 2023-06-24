@@ -3355,7 +3355,7 @@ mod tests {
     }
 
     #[test]
-    fn test_be_mulitple_create() {
+    fn test_be_multiple_create() {
         sketching::test_init();
 
         // This is a demo idxmeta, purely for testing.

@@ -46,10 +46,11 @@ db_path = "/data/kanidm.db"
 tls_chain = "/data/chain.pem"
 tls_key = "/data/key.pem"
 #
-#   The log level of the server. May be default, verbose,
-#   perfbasic, perffull
-#   Defaults to "default"
-# log_level = "default"
+#   The log level of the server. May be one of info, debug, trace
+#
+#   NOTE: this is overridden by environment variables at runtime
+#   Defaults to "info"
+# log_level = "info"
 #
 #   The DNS domain name of the server. This is used in a
 #   number of security-critical contexts

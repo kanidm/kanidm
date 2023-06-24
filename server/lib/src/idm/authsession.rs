@@ -317,7 +317,7 @@ impl CredHandler {
         match cred {
             AuthCredential::Anonymous => {
                 // For anonymous, no claims will ever be issued.
-                security_info!("Handler::Anonymous -> Result::Success");
+                security_debug!("Handler::Anonymous -> Result::Success");
                 CredState::Success {
                     auth_type: AuthType::Anonymous,
                     cred_id,
@@ -1097,7 +1097,7 @@ impl AuthSession {
         async_tx: &Sender<DelayedAction>,
         cred_id: Uuid,
     ) -> Result<UserAuthToken, OperationError> {
-        security_info!("Successful cred handling");
+        security_debug!("Successful cred handling");
         match self.intent {
             AuthIntent::InitialAuth => {
                 let session_id = Uuid::new_v4();
