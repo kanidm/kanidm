@@ -11,8 +11,8 @@ tls_key = "/tmp/kanidm/key.pem"
 #   NOTE: this is overridden by environment variables at runtime
 #   Defaults to "info"
 #
-log_level = "info"
-# log_level = "debug"
+# log_level = "info"
+log_level = "debug"
 # log_level = "trace"
 
 domain = "localhost"

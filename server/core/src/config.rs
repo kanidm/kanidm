@@ -77,7 +77,7 @@ impl ServerConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Default, Eq, PartialEq)]
 pub enum ServerRole {
     #[default]
     WriteReplica,

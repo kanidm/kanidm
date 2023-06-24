@@ -52,14 +52,41 @@ impl JavaScriptFile {
     /// returns a `<script>` HTML tag
     fn as_tag(self) -> String {
         let typeattr = match self.filetype {
-            Some(val) => format!("type=\"{}\" ", val),
+            Some(val) => {
+                let mut res = String::from(r#" type=""#);
+                res.push_str(val.as_str());
+                res.push_str(r#"""#);
+                res
+            },
             _ => String::from(""),
         };
-        format!(
-            r#"<script src="/pkg/{}" integrity="{}" {}></script>"#,
-            self.filepath, self.hash, typeattr,
-        )
+        let stringbits = vec![
+            r#"<script src="/pkg/"#,
+            self.filepath,
+            r#"" integrity=""#,
+            &self.hash,
+            r#"""#,
+            &typeattr,
+            r#"></script>"#,
+        ];
+        stringbits.join("")
     }
+}
+
+
+#[test]
+fn test_javscriptfile() {
+    use JavaScriptFile;
+    let jsf = JavaScriptFile {
+        filepath: "wasmloader.js",
+        hash: "sha384-1234567890".to_string(),
+        filetype: Some("module".to_string()),
+    };
+    assert_eq!(
+        jsf.as_tag(),
+        r#"<script src="/pkg/wasmloader.js" integrity="sha384-1234567890" type="module"></script>"#
+    );
+
 }
 
 #[derive(Clone)]
@@ -352,8 +379,7 @@ pub fn generate_integrity_hash(filename: String) -> Result<String, String> {
 
 pub async fn create_https_server(
     address: String,
-    domain: String,
-    // opt_tls_params: Option<SslAcceptorBuilder>,
+    domain: &String,
     opt_tls_params: Option<&TlsConfiguration>,
     role: ServerRole,
     trust_x_forward_for: bool,
