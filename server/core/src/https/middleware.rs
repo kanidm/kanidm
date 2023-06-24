@@ -200,6 +200,9 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
                 "base-uri 'self'",
                 // nobody wants to be in a frame
                 "frame-ancestors 'none'",
+                // allow inline images because bootstrap
+                "img-src 'self' data:"
+
             ]
             .join(";"),
         );
