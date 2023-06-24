@@ -107,10 +107,13 @@ impl Component for ProfileApp {
                 let uat = &ctx.props().current_user_uat;
                 let spn = uat.spn.to_string();
 
+                // Setup the ui hint.
+                models::push_login_hint(spn);
+
                 ctx.link()
                     .navigator()
                     .expect_throw("failed to read history")
-                    .push(&Route::Reauth { spn });
+                    .push(&Route::Reauth);
 
                 // No need to redraw, or reset state, since this redirect will destroy
                 // the state.

@@ -26,7 +26,7 @@ pub struct LoginApp {
 #[derive(Debug, PartialEq, Clone)]
 pub enum LoginWorkflow {
     Login,
-    Reauth { spn: String },
+    Reauth,
 }
 
 #[derive(PartialEq, Properties)]
@@ -664,7 +664,7 @@ impl Component for LoginApp {
                 // -- clear the bearer to prevent conflict
                 models::clear_bearer_token();
                 // Do we have a login hint?
-                let (username, remember_me) = models::pop_login_hint()
+                let (username, remember_me) = models::get_login_hint()
                     .map(|user| (user, false))
                     .or_else(|| models::get_login_remember_me().map(|user| (user, true)))
                     .unwrap_or_default();
@@ -690,12 +690,19 @@ impl Component for LoginApp {
                     username,
                 }
             }
-            LoginWorkflow::Reauth { spn } => {
+            LoginWorkflow::Reauth => {
                 // Unlike login, don't clear tokens or cookies - these are needed during the operation
                 // to actually start the reauth as the same user.
-                LoginState::InitReauth {
-                    enable: true,
-                    spn: spn.clone(),
+
+                match models::get_login_hint() {
+                    Some(spn) => LoginState::InitReauth {
+                        enable: true,
+                        spn: spn.clone(),
+                    },
+                    None => LoginState::Error {
+                        emsg: "Client Error - No login hint available".to_string(),
+                        kopid: None,
+                    },
                 }
             }
         };
@@ -715,8 +722,9 @@ impl Component for LoginApp {
                 // Clear any leftover input. Reset to the remembered username if any.
                 match &ctx.props().workflow {
                     LoginWorkflow::Login => {
-                        let (username, remember_me) = models::get_login_remember_me()
-                            .map(|user| (user, true))
+                        let (username, remember_me) = models::get_login_hint()
+                            .map(|user| (user, false))
+                            .or_else(|| models::get_login_remember_me().map(|user| (user, true)))
                             .unwrap_or_default();
 
                         self.state = LoginState::InitLogin {
@@ -725,10 +733,16 @@ impl Component for LoginApp {
                             username,
                         };
                     }
-                    LoginWorkflow::Reauth { spn } => {
-                        self.state = LoginState::InitReauth {
-                            enable: true,
-                            spn: spn.clone(),
+                    LoginWorkflow::Reauth => {
+                        match models::get_login_hint() {
+                            Some(spn) => LoginState::InitReauth {
+                                enable: true,
+                                spn: spn.clone(),
+                            },
+                            None => LoginState::Error {
+                                emsg: "Client Error - No login hint available".to_string(),
+                                kopid: None,
+                            },
                         };
                     }
                 }
@@ -776,7 +790,7 @@ impl Component for LoginApp {
                             username,
                         };
                     }
-                    LoginWorkflow::Reauth { spn } => {
+                    LoginWorkflow::Reauth => {
                         ctx.link().send_future(async {
                             match Self::reauth_init().await {
                                 Ok(v) => v,
@@ -784,9 +798,15 @@ impl Component for LoginApp {
                             }
                         });
 
-                        self.state = LoginState::InitReauth {
-                            enable: false,
-                            spn: spn.clone(),
+                        self.state = match models::get_login_hint() {
+                            Some(spn) => LoginState::InitReauth {
+                                enable: false,
+                                spn: spn.clone(),
+                            },
+                            None => LoginState::Error {
+                                emsg: "Client Error - No login hint available".to_string(),
+                                kopid: None,
+                            },
                         };
                     }
                 }
@@ -1136,6 +1156,10 @@ impl Component for LoginApp {
     fn destroy(&mut self, _ctx: &Context<Self>) {
         #[cfg(debug_assertions)]
         console::debug!("login::destroy".to_string());
+
+        // Done with this, clear it.
+        let _ = models::pop_login_hint();
+
         remove_body_form_classes!();
     }
 

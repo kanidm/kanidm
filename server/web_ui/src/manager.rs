@@ -25,8 +25,8 @@ pub enum Route {
     #[at("/ui/login")]
     Login,
 
-    #[at("/ui/reauth/:spn")]
-    Reauth { spn: String },
+    #[at("/ui/reauth")]
+    Reauth,
 
     #[at("/ui/oauth2")]
     Oauth2,
@@ -62,7 +62,7 @@ fn switch(route: Route) -> Html {
         #[allow(clippy::let_unit_value)]
         Route::Login => html! { <LoginApp workflow={ LoginWorkflow::Login } /> },
         #[allow(clippy::let_unit_value)]
-        Route::Reauth { spn } => html! { <LoginApp workflow={ LoginWorkflow::Reauth { spn } } /> },
+        Route::Reauth => html! { <LoginApp workflow={ LoginWorkflow::Reauth } /> },
         #[allow(clippy::let_unit_value)]
         Route::Oauth2 => html! { <Oauth2App /> },
         #[allow(clippy::let_unit_value)]
