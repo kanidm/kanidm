@@ -524,7 +524,7 @@ impl Account {
         // of the token. This is already done for us as noted above.
 
         if uat.uuid == UUID_ANONYMOUS {
-            security_info!("Anonymous sessions do not have session records, session is valid.");
+            security_debug!("Anonymous sessions do not have session records, session is valid.");
             true
         } else {
             // Get the sessions.

@@ -81,6 +81,11 @@ macro_rules! security_info {
 }
 
 #[macro_export]
+macro_rules! security_debug {
+    ($($arg:tt)*) => { tagged_event!(DEBUG, EventTag::SecurityDebug, $($arg)*) }
+}
+
+#[macro_export]
 macro_rules! security_access {
     ($($arg:tt)*) => { tagged_event!(INFO, EventTag::SecurityAccess, $($arg)*) }
 }
