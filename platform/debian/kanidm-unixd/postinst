@@ -8,7 +8,7 @@ set -e
 
 case "$1" in
     configure)
-        pan-auth-update --package
+        pam-auth-update --package
         if [ ! -f /etc/kanidm/config ]; then
             echo "============================="
             echo "Thanks for installing Kanidm!"
