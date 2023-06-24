@@ -695,10 +695,7 @@ impl Component for LoginApp {
                 // to actually start the reauth as the same user.
 
                 match models::get_login_hint() {
-                    Some(spn) => LoginState::InitReauth {
-                        enable: true,
-                        spn: spn.clone(),
-                    },
+                    Some(spn) => LoginState::InitReauth { enable: true, spn },
                     None => LoginState::Error {
                         emsg: "Client Error - No login hint available".to_string(),
                         kopid: None,
@@ -735,10 +732,7 @@ impl Component for LoginApp {
                     }
                     LoginWorkflow::Reauth => {
                         match models::get_login_hint() {
-                            Some(spn) => LoginState::InitReauth {
-                                enable: true,
-                                spn: spn.clone(),
-                            },
+                            Some(spn) => LoginState::InitReauth { enable: true, spn },
                             None => LoginState::Error {
                                 emsg: "Client Error - No login hint available".to_string(),
                                 kopid: None,
@@ -799,10 +793,7 @@ impl Component for LoginApp {
                         });
 
                         self.state = match models::get_login_hint() {
-                            Some(spn) => LoginState::InitReauth {
-                                enable: false,
-                                spn: spn.clone(),
-                            },
+                            Some(spn) => LoginState::InitReauth { enable: false, spn },
                             None => LoginState::Error {
                                 emsg: "Client Error - No login hint available".to_string(),
                                 kopid: None,

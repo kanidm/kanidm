@@ -66,7 +66,6 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
     config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
     config.role = ServerRole::WriteReplicaNoUI;
-    // config.log_level = Some(LogLevel::Verbose as u32);
     config.threads = 1;
 
     create_server_core(config, false)
