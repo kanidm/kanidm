@@ -13,56 +13,50 @@ use crate::manager::Route;
 use crate::{models, utils};
 
 mod apps;
-mod components;
 mod profile;
-mod security;
 
 use apps::AppsApp;
 use profile::ProfileApp;
-use security::SecurityApp;
 
 #[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum ViewRoute {
-    #[at("/ui/view/admin/*")]
+    #[at("/ui/admin/*")]
     Admin,
 
-    #[at("/ui/view/apps")]
+    #[at("/ui/apps")]
     Apps,
 
-    #[at("/ui/view/profile")]
+    #[at("/ui/profile")]
     Profile,
 
-    #[at("/ui/view/security")]
-    Security,
-
     #[not_found]
-    #[at("/ui/view/404")]
+    #[at("/ui/404")]
     NotFound,
 }
 
 #[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum AdminRoute {
-    #[at("/ui/view/admin/menu")]
+    #[at("/ui/admin/menu")]
     AdminMenu,
 
-    #[at("/ui/view/admin/groups")]
+    #[at("/ui/admin/groups")]
     AdminListGroups,
-    #[at("/ui/view/admin/accounts")]
+    #[at("/ui/admin/accounts")]
     AdminListAccounts,
-    #[at("/ui/view/admin/oauth2")]
+    #[at("/ui/admin/oauth2")]
     AdminListOAuth2,
 
-    #[at("/ui/view/admin/group/:uuid")]
+    #[at("/ui/admin/group/:uuid")]
     ViewGroup { uuid: String },
-    #[at("/ui/view/admin/person/:uuid")]
+    #[at("/ui/admin/person/:uuid")]
     ViewPerson { uuid: String },
-    #[at("/ui/view/admin/service_account/:uuid")]
+    #[at("/ui/admin/service_account/:uuid")]
     ViewServiceAccount { uuid: String },
-    #[at("/ui/view/admin/oauth2/:rs_name")]
+    #[at("/ui/admin/oauth2/:rs_name")]
     ViewOAuth2RP { rs_name: String },
 
     #[not_found]
-    #[at("/ui/view/admin/404")]
+    #[at("/ui/404")]
     NotFound,
 }
 
@@ -257,20 +251,11 @@ impl ViewsApp {
                       </Link<ViewRoute>>
                     </li>
 
-                    if ui_hint_experimental {
+                    if credential_update {
                       <li class="mb-1">
                         <Link<ViewRoute> classes="nav-link" to={ViewRoute::Profile}>
                           <span data-feather="file"></span>
                           { "Profile" }
-                        </Link<ViewRoute>>
-                      </li>
-                    }
-
-                    if credential_update {
-                      <li class="mb-1">
-                        <Link<ViewRoute> classes="nav-link" to={ViewRoute::Security}>
-                          <span data-feather="file"></span>
-                          { "Security" }
                         </Link<ViewRoute>>
                       </li>
                     }
@@ -331,7 +316,6 @@ impl ViewsApp {
                         #[allow(clippy::let_unit_value)]
                         ViewRoute::Apps => html! { <AppsApp /> },
                         ViewRoute::Profile => html! { <ProfileApp current_user_uat={ current_user_uat.clone() } /> },
-                        ViewRoute::Security => html! { <SecurityApp current_user_uat={ current_user_uat.clone() } /> },
                         ViewRoute::NotFound => html! {
                             <Redirect<Route> to={Route::NotFound}/>
                         },

@@ -260,21 +260,7 @@ impl Component for PasskeyModalApp {
         let label_val = self.label_val.clone();
 
         let passkey_state = match &self.state {
-            State::Init => {
-                html! {
-                    <button id="passkey-generate" type="button" class="btn btn-secondary"
-                        onclick={
-                            ctx.link()
-                                .callback(move |_| {
-                                    Msg::Generate
-                                })
-                        }
-                    >
-                    // TODO: start the session once the modal is popped up
-                    { "Start Creating a New Passkey" }</button>
-                }
-            }
-            State::Submitting | State::FetchingChallenge => {
+            State::Init | State::Submitting | State::FetchingChallenge => {
                 html! {
                       <div class="spinner-border text-dark" role="status">
                         <span class="visually-hidden">{ "Loading..." }</span>
@@ -291,7 +277,7 @@ impl Component for PasskeyModalApp {
                                     Msg::CredentialCreate
                                 })
                         }
-                    >{ "Do it!" }</button>
+                    >{ "Begin Passkey Enrollment" }</button>
                 }
             }
             State::CredentialReady(_) => {
@@ -363,6 +349,20 @@ impl Component for PasskeyModalApp {
         };
 
         html! {
+          <>
+            <button type="button"
+                class="btn btn-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#staticPasskeyCreate"
+                onclick={
+                    ctx.link()
+                        .callback(move |_| {
+                            Msg::Generate
+                        })
+                }
+            >
+              { "Add Passkey" }
+            </button>
             <div class="modal fade" id="staticPasskeyCreate" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticPasskeyLabel" aria-hidden="true">
               <div class="modal-dialog">
                 <div class="modal-content">
@@ -391,6 +391,7 @@ impl Component for PasskeyModalApp {
                 </div>
               </div>
             </div>
+          </>
         }
     }
 }

@@ -5,7 +5,7 @@ use qrcode::render::svg;
 use qrcode::QrCode;
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Node, Request, RequestInit, RequestMode, Response};
+use web_sys::{Node, Request, RequestCredentials, RequestInit, RequestMode, Response};
 use yew::prelude::*;
 
 use super::reset::{EventBusMsg, ModalProps};
@@ -77,6 +77,7 @@ impl TotpModalApp {
         let mut opts = RequestInit::new();
         opts.method("POST");
         opts.mode(RequestMode::SameOrigin);
+        opts.credentials(RequestCredentials::SameOrigin);
 
         opts.body(Some(&req_jsvalue));
 
@@ -300,22 +301,7 @@ impl Component for TotpModalApp {
 
         let totp_secret_state = match &self.secret {
             // TODO: change this so it automagically starts the cred update session once the modal is created.
-            TotpValue::Init => {
-                html! {
-                    <button
-                        class="btn btn-secondary"
-                        id="totp-generate"
-                        type="button"
-                        onclick={
-                            ctx.link()
-                                .callback(move |_| {
-                                    Msg::TotpGenerate
-                                })
-                        }
-                    >{ "Click here to start the TOTP registration process" }</button>
-                }
-            }
-            TotpValue::Waiting => {
+            TotpValue::Init | TotpValue::Waiting => {
                 html! {
                       <div class="spinner-border text-dark" role="status">
                         <span class="visually-hidden">{ "Loading..." }</span>
@@ -359,6 +345,20 @@ impl Component for TotpModalApp {
         };
 
         html! {
+          <>
+            <button type="button"
+                class="btn btn-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#staticTotpCreate"
+                onclick={
+                    ctx.link()
+                        .callback(move |_| {
+                            Msg::TotpGenerate
+                        })
+                }
+            >
+              { "Add TOTP" }
+            </button>
             <div class="modal fade" id="staticTotpCreate" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticTotpCreate" aria-hidden="true">
               <div class="modal-dialog modal-lg">
                 <div class="modal-content">
@@ -459,6 +459,7 @@ impl Component for TotpModalApp {
                 </div>
               </div>
             </div>
+          </>
         }
     }
 }

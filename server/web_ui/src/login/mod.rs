@@ -20,11 +20,10 @@ use crate::error::FetchError;
 use crate::{models, utils};
 
 pub struct LoginApp {
-    inputvalue: String,
     state: LoginState,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum LoginWorkflow {
     Login,
     Reauth,
@@ -43,8 +42,15 @@ enum TotpState {
 }
 
 enum LoginState {
-    InitLogin { enable: bool, remember_me: bool },
-    InitReauth { enable: bool },
+    InitLogin {
+        enable: bool,
+        remember_me: bool,
+        username: String,
+    },
+    InitReauth {
+        enable: bool,
+        spn: String,
+    },
     // Select between different cred types, either password (and MFA) or Passkey
     Select(Vec<AuthMech>),
     // The choices of authentication mechanism.
@@ -56,14 +62,16 @@ enum LoginState {
     Passkey(CredentialRequestOptions),
     SecurityKey(CredentialRequestOptions),
     // Error, state handling.
-    Error { emsg: String, kopid: Option<String> },
+    Error {
+        emsg: String,
+        kopid: Option<String>,
+    },
     UnknownUser,
     Denied(String),
     Authenticated,
 }
 
 pub enum LoginAppMsg {
-    Input(String),
     Restart,
     Begin,
     PasswordSubmit,
@@ -291,12 +299,14 @@ impl LoginApp {
     }
 
     fn view_state(&self, ctx: &Context<Self>) -> Html {
-        let inputvalue = self.inputvalue.clone();
         match &self.state {
             LoginState::InitLogin {
                 enable,
                 remember_me,
+                username,
             } => {
+                let username = username.clone();
+
                 html! {
                     <>
                     <div class="container">
@@ -316,10 +326,9 @@ impl LoginApp {
                                 disabled={ !enable }
                                 id="username"
                                 name="username"
-                                oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
                                 type="text"
                                 autocomplete="username"
-                                value={ inputvalue }
+                                value={ username }
                             />
                         </div>
 
@@ -347,11 +356,12 @@ impl LoginApp {
                     </>
                 }
             }
-            LoginState::InitReauth { enable } => {
+            LoginState::InitReauth { enable, spn } => {
+                let msg = format!("Reauthenticate as {} to continue", spn);
                 html! {
                     <>
                     <div class="container">
-                        <p>{ "Reauthenticate to continue" }</p>
+                        <p>{ msg }</p>
                         <form
                         onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                             #[cfg(debug_assertions)]
@@ -363,7 +373,9 @@ impl LoginApp {
                         <div class={CLASS_DIV_LOGIN_BUTTON}>
                             <button
                                 type="submit"
-                                class={CLASS_BUTTON_DARK}
+                                class="autofocus form-control btn btn-dark"
+                                autofocus=true
+                                id="begin"
                                 disabled={ !enable }
                             >{" Begin "}</button>
                         </div>
@@ -431,10 +443,9 @@ impl LoginApp {
                                 disabled={ !enable }
                                 id="password"
                                 name="password"
-                                oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
                                 type="password"
                                 autocomplete="current-password"
-                                value={ inputvalue }
+                                value=""
                             />
                             </div>
                             <div class={CLASS_DIV_LOGIN_BUTTON}>
@@ -467,10 +478,9 @@ impl LoginApp {
                                 disabled={ !enable }
                                 id="backup_code"
                                 name="backup_code"
-                                oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e))) }
                                 type="text"
                                 autocomplete="off"
-                                value={ inputvalue }
+                                value=""
                             />
                             </div>
                             <div class={CLASS_DIV_LOGIN_BUTTON}>
@@ -498,12 +508,11 @@ impl LoginApp {
                             autofocus=true
                             class="autofocus form-control"
                             disabled={ state==&TotpState::Disabled }
-                            id="otp"
-                            name="otp"
-                            oninput={ ctx.link().callback(|e: InputEvent| LoginAppMsg::Input(utils::get_value_from_input_event(e)))}
+                            id="totp"
+                            name="totp"
                             type="text"
                             autocomplete="off"
-                            value={ inputvalue }
+                            value=""
                             />
                         </div>
                             <div class={CLASS_DIV_LOGIN_BUTTON}>
@@ -648,20 +657,17 @@ impl Component for LoginApp {
         #[cfg(debug_assertions)]
         console::debug!("create".to_string());
 
-        let mut inputvalue = "".to_string();
-        let workflow = ctx.props().workflow;
+        let workflow = &ctx.props().workflow;
         let state = match workflow {
             LoginWorkflow::Login => {
                 // Assume we are here for a good reason.
                 // -- clear the bearer to prevent conflict
                 models::clear_bearer_token();
                 // Do we have a login hint?
-                let (model_iv, remember_me) = models::pop_login_hint()
+                let (username, remember_me) = models::get_login_hint()
                     .map(|user| (user, false))
                     .or_else(|| models::get_login_remember_me().map(|user| (user, true)))
                     .unwrap_or_default();
-
-                inputvalue = model_iv;
 
                 #[cfg(debug_assertions)]
                 {
@@ -681,18 +687,29 @@ impl Component for LoginApp {
                 LoginState::InitLogin {
                     enable: true,
                     remember_me,
+                    username,
                 }
             }
             LoginWorkflow::Reauth => {
                 // Unlike login, don't clear tokens or cookies - these are needed during the operation
                 // to actually start the reauth as the same user.
-                LoginState::InitReauth { enable: true }
+
+                match models::get_login_hint() {
+                    Some(spn) => LoginState::InitReauth {
+                        enable: true,
+                        spn: spn.clone(),
+                    },
+                    None => LoginState::Error {
+                        emsg: "Client Error - No login hint available".to_string(),
+                        kopid: None,
+                    },
+                }
             }
         };
 
         add_body_form_classes!();
 
-        LoginApp { inputvalue, state }
+        LoginApp { state }
     }
 
     fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
@@ -701,38 +718,46 @@ impl Component for LoginApp {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            LoginAppMsg::Input(mut inputvalue) => {
-                std::mem::swap(&mut self.inputvalue, &mut inputvalue);
-                true
-            }
             LoginAppMsg::Restart => {
                 // Clear any leftover input. Reset to the remembered username if any.
-                match ctx.props().workflow {
+                match &ctx.props().workflow {
                     LoginWorkflow::Login => {
-                        let (inputvalue, remember_me) = models::get_login_remember_me()
-                            .map(|user| (user, true))
+                        let (username, remember_me) = models::get_login_hint()
+                            .map(|user| (user, false))
+                            .or_else(|| models::get_login_remember_me().map(|user| (user, true)))
                             .unwrap_or_default();
 
-                        self.inputvalue = inputvalue;
                         self.state = LoginState::InitLogin {
                             enable: true,
                             remember_me,
+                            username,
                         };
                     }
                     LoginWorkflow::Reauth => {
-                        self.inputvalue = "".to_string();
-                        self.state = LoginState::InitReauth { enable: true };
+                        match models::get_login_hint() {
+                            Some(spn) => LoginState::InitReauth {
+                                enable: true,
+                                spn: spn.clone(),
+                            },
+                            None => LoginState::Error {
+                                emsg: "Client Error - No login hint available".to_string(),
+                                kopid: None,
+                            },
+                        };
                     }
                 }
                 true
             }
             LoginAppMsg::Begin => {
-                match ctx.props().workflow {
+                match &ctx.props().workflow {
                     LoginWorkflow::Login => {
-                        #[cfg(debug_assertions)]
-                        console::debug!(format!("begin -> {:?}", self.inputvalue));
                         // Disable the button?
-                        let username = self.inputvalue.clone();
+                        let username =
+                            utils::get_value_from_element_id("username").unwrap_or_default();
+
+                        #[cfg(debug_assertions)]
+                        console::debug!(format!("begin for username -> {:?}", username));
+
                         // If the remember-me was checked, stash it here.
                         // If it was false, clear existing data.
 
@@ -750,8 +775,10 @@ impl Component for LoginApp {
                         #[cfg(debug_assertions)]
                         console::debug!(format!("begin remember_me -> {:?}", remember_me));
 
+                        let username_clone = username.clone();
+
                         ctx.link().send_future(async {
-                            match Self::auth_init(username).await {
+                            match Self::auth_init(username_clone).await {
                                 Ok(v) => v,
                                 Err(v) => v.into(),
                             }
@@ -760,6 +787,7 @@ impl Component for LoginApp {
                         self.state = LoginState::InitLogin {
                             enable: false,
                             remember_me,
+                            username,
                         };
                     }
                     LoginWorkflow::Reauth => {
@@ -770,19 +798,29 @@ impl Component for LoginApp {
                             }
                         });
 
-                        self.inputvalue = "".to_string();
-                        self.state = LoginState::InitReauth { enable: false };
+                        self.state = match models::get_login_hint() {
+                            Some(spn) => LoginState::InitReauth {
+                                enable: false,
+                                spn: spn.clone(),
+                            },
+                            None => LoginState::Error {
+                                emsg: "Client Error - No login hint available".to_string(),
+                                kopid: None,
+                            },
+                        };
                     }
                 }
                 true
             }
             LoginAppMsg::PasswordSubmit => {
+                let password = utils::get_value_from_element_id("password").unwrap_or_default();
+
                 #[cfg(debug_assertions)]
-                console::debug!("At password step".to_string());
+                console::debug!("password step".to_string());
                 // Disable the button?
                 self.state = LoginState::Password(false);
                 let authreq = AuthRequest {
-                    step: AuthStep::Cred(AuthCredential::Password(self.inputvalue.clone())),
+                    step: AuthStep::Cred(AuthCredential::Password(password)),
                 };
                 ctx.link().send_future(async {
                     match Self::auth_step(authreq).await {
@@ -790,17 +828,18 @@ impl Component for LoginApp {
                         Err(v) => v.into(),
                     }
                 });
-                // Clear the password from memory.
-                self.inputvalue = "".to_string();
                 true
             }
             LoginAppMsg::BackupCodeSubmit => {
+                let backup_code =
+                    utils::get_value_from_element_id("backup_code").unwrap_or_default();
+
                 #[cfg(debug_assertions)]
-                console::debug!("backupcode".to_string());
+                console::debug!("backup_code".to_string());
                 // Disable the button?
                 self.state = LoginState::BackupCode(false);
                 let authreq = AuthRequest {
-                    step: AuthStep::Cred(AuthCredential::BackupCode(self.inputvalue.clone())),
+                    step: AuthStep::Cred(AuthCredential::BackupCode(backup_code)),
                 };
                 ctx.link().send_future(async {
                     match Self::auth_step(authreq).await {
@@ -808,15 +847,15 @@ impl Component for LoginApp {
                         Err(v) => v.into(),
                     }
                 });
-                // Clear the backup code from memory.
-                self.inputvalue = "".to_string();
                 true
             }
             LoginAppMsg::TotpSubmit => {
+                let totp_str = utils::get_value_from_element_id("totp").unwrap_or_default();
+
                 #[cfg(debug_assertions)]
                 console::debug!("totp".to_string());
                 // Disable the button?
-                match self.inputvalue.parse::<u32>() {
+                match totp_str.parse::<u32>() {
                     Ok(totp) => {
                         self.state = LoginState::Totp(TotpState::Disabled);
                         let authreq = AuthRequest {
@@ -833,9 +872,6 @@ impl Component for LoginApp {
                         self.state = LoginState::Totp(TotpState::Invalid);
                     }
                 }
-
-                // Clear the totp from memory.
-                self.inputvalue = "".to_string();
 
                 true
             }
@@ -871,7 +907,6 @@ impl Component for LoginApp {
             }
             LoginAppMsg::Start(resp) => {
                 // Clear any leftover input
-                self.inputvalue = "".to_string();
                 #[cfg(debug_assertions)]
                 console::debug!(format!("start -> {:?}", resp));
                 match resp.state {
@@ -949,7 +984,6 @@ impl Component for LoginApp {
             }
             LoginAppMsg::Next(resp) => {
                 // Clear any leftover input
-                self.inputvalue = "".to_string();
                 #[cfg(debug_assertions)]
                 console::debug!(format!("next -> {:?}", resp));
 
@@ -1066,14 +1100,12 @@ impl Component for LoginApp {
             }
             LoginAppMsg::UnknownUser => {
                 // Clear any leftover input
-                self.inputvalue = "".to_string();
                 console::warn!("Unknown user".to_string());
                 self.state = LoginState::UnknownUser;
                 true
             }
             LoginAppMsg::Error { emsg, kopid } => {
                 // Clear any leftover input
-                self.inputvalue = "".to_string();
                 console::error!(format!("error -> {:?}, {:?}", emsg, kopid));
                 self.state = LoginState::Error { emsg, kopid };
                 true
@@ -1124,6 +1156,10 @@ impl Component for LoginApp {
     fn destroy(&mut self, _ctx: &Context<Self>) {
         #[cfg(debug_assertions)]
         console::debug!("login::destroy".to_string());
+
+        // Done with this, clear it.
+        let _ = models::pop_login_hint();
+
         remove_body_form_classes!();
     }
 
@@ -1135,5 +1171,6 @@ impl Component for LoginApp {
         crate::utils::autofocus("password");
         crate::utils::autofocus("backup_code");
         crate::utils::autofocus("otp");
+        crate::utils::autofocus("begin");
     }
 }

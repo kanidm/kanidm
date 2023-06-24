@@ -1,11 +1,10 @@
 use gloo::console;
 use gloo_net::http::Request;
+use url::Url;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 pub use web_sys::InputEvent;
-use web_sys::{
-    Document, Event, HtmlElement, HtmlInputElement, RequestCredentials, RequestMode, Window,
-};
+use web_sys::{Document, HtmlElement, HtmlInputElement, RequestCredentials, RequestMode, Window};
 use yew::virtual_dom::VNode;
 use yew::{html, Html};
 
@@ -23,6 +22,15 @@ pub fn body() -> HtmlElement {
     document().body().expect_throw("Unable to retrieve body")
 }
 
+pub fn origin() -> Url {
+    let uri_string = document()
+        .document_uri()
+        .expect_throw("Unable to access document uri");
+    let mut url = Url::parse(&uri_string).expect_throw("Unable to parse document uri");
+    url.set_path("/");
+    url
+}
+
 pub fn autofocus(target: &str) {
     // If an element with an id attribute matching 'target' exists, focus it.
     let doc = document();
@@ -38,12 +46,12 @@ pub fn autofocus(target: &str) {
     }
 }
 
-pub fn get_value_from_input_event(e: InputEvent) -> String {
-    let event: Event = e.dyn_into().unwrap_throw();
-    let event_target = event.target().unwrap_throw();
-    let target: HtmlInputElement = event_target.dyn_into().unwrap_throw();
-    target.value()
-}
+// pub fn get_value_from_input_event(e: InputEvent) -> String {
+//     let event: Event = e.dyn_into().unwrap_throw();
+//     let event_target = event.target().unwrap_throw();
+//     let target: HtmlInputElement = event_target.dyn_into().unwrap_throw();
+//     target.value()
+// }
 
 // pub fn get_element_by_id(id: &str) -> Option<HtmlElement> {
 //     document()

@@ -11,6 +11,7 @@ pub const ID_SIGNOUTMODAL: &str = "signoutModal";
 
 // the HTML element ID that the unix password dialog box has
 pub const ID_UNIX_PASSWORDCHANGE: &str = "unixPasswordModal";
+pub const ID_CRED_RESET_CODE: &str = "credResetCodeModal";
 // classes for buttons
 pub const CLASS_BUTTON_DARK: &str = "btn btn-dark";
 pub const CLASS_BUTTON_SUCCESS: &str = "btn btn-success";

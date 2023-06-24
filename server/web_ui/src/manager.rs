@@ -22,9 +22,6 @@ pub enum Route {
     #[at("/")]
     Landing,
 
-    #[at("/ui/view/*")]
-    Views,
-
     #[at("/ui/login")]
     Login,
 
@@ -40,6 +37,9 @@ pub enum Route {
     #[not_found]
     #[at("/ui/404")]
     NotFound,
+
+    #[at("/ui/*")]
+    Views,
 }
 
 #[function_component(Landing)]

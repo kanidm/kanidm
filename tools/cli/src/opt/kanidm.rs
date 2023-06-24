@@ -213,7 +213,15 @@ pub enum AccountCredential {
     /// Create a reset token that can be given to another person so they can
     /// recover or reset their account credentials.
     #[clap(name = "create-reset-token")]
-    CreateResetToken(AccountNamedOpt),
+    CreateResetToken {
+        #[clap(flatten)]
+        aopts: AccountCommonOpt,
+        #[clap(flatten)]
+        copt: CommonOpt,
+        /// Optionally set how many seconds the reset token should be valid for.
+        #[clap(long = "ttl")]
+        ttl: Option<u32>,
+    },
 }
 
 /// RADIUS secret management

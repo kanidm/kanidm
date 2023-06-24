@@ -147,7 +147,9 @@ impl KanidmClientBuilder {
             let path = Path::new(ca_path);
             let ca_meta = read_file_metadata(&path)?;
 
-            #[cfg(target_family = "unix")]
+            trace!("uid:gid {}:{}", ca_meta.uid(), ca_meta.gid());
+
+            #[cfg(not(debug_assertions))]
             if ca_meta.uid() != 0 || ca_meta.gid() != 0 {
                 warn!(
                     "{} should be owned be root:root to prevent tampering",
@@ -155,9 +157,9 @@ impl KanidmClientBuilder {
                 );
             }
 
-            #[cfg(target_family = "unix")]
-            if ca_meta.mode() != 0o644 {
-                warn!("permissions on {} may not be secure. Should be set to 0644. This could be a security risk ...", ca_path);
+            trace!("mode={:o}", ca_meta.mode());
+            if (ca_meta.mode() & 0o7133) != 0 {
+                warn!("permissions on {} are NOT secure. 0644 is a secure default. Should not be setuid, executable or allow group/other writes.", ca_path);
             }
         }
 
@@ -1509,9 +1511,19 @@ impl KanidmClient {
     pub async fn idm_person_account_credential_update_intent(
         &self,
         id: &str,
+        ttl: Option<u32>,
     ) -> Result<CUIntentToken, ClientError> {
-        self.perform_get_request(format!("/v1/person/{}/_credential/_update_intent", id).as_str())
+        if let Some(ttl) = ttl {
+            self.perform_get_request(
+                format!("/v1/person/{}/_credential/_update_intent?ttl={}", id, ttl).as_str(),
+            )
             .await
+        } else {
+            self.perform_get_request(
+                format!("/v1/person/{}/_credential/_update_intent", id).as_str(),
+            )
+            .await
+        }
     }
 
     pub async fn idm_account_credential_update_begin(

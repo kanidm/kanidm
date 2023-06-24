@@ -938,7 +938,7 @@ async fn test_server_credential_update_session_pw(rsclient: KanidmClient) {
 
     // Create an intent token for them
     let intent_token = rsclient
-        .idm_person_account_credential_update_intent("demo_account")
+        .idm_person_account_credential_update_intent("demo_account", Some(0))
         .await
         .unwrap();
 
@@ -996,7 +996,7 @@ async fn test_server_credential_update_session_totp_pw(rsclient: KanidmClient) {
         .unwrap();
 
     let intent_token = rsclient
-        .idm_person_account_credential_update_intent("demo_account")
+        .idm_person_account_credential_update_intent("demo_account", Some(999999))
         .await
         .unwrap();
 
@@ -1125,7 +1125,7 @@ async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> WebauthnAuthenti
 
     // Create an intent token for them
     let intent_token = rsclient
-        .idm_person_account_credential_update_intent("demo_account")
+        .idm_person_account_credential_update_intent("demo_account", Some(1234))
         .await
         .unwrap();
 
@@ -1289,7 +1289,7 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
     {
         // Create an intent token for them
         let intent_token = rsclient
-            .idm_person_account_credential_update_intent("demo_account")
+            .idm_person_account_credential_update_intent("demo_account", None)
             .await
             .unwrap();
 

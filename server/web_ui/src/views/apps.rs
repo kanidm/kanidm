@@ -66,7 +66,19 @@ impl Component for AppsApp {
         #[cfg(debug_assertions)]
         console::debug!("views::apps::update");
         match msg {
-            Msg::Ready { apps } => self.state = State::Ready { apps },
+            Msg::Ready { mut apps } => {
+                apps.sort_by(|a, b| match (a, b) {
+                    (
+                        AppLink::Oauth2 {
+                            display_name: dna, ..
+                        },
+                        AppLink::Oauth2 {
+                            display_name: dnb, ..
+                        },
+                    ) => dna.cmp(dnb),
+                });
+                self.state = State::Ready { apps }
+            }
             Msg::Error { emsg, kopid } => self.state = State::Error { emsg, kopid },
         }
 
