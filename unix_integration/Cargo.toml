@@ -54,8 +54,6 @@ kanidm_proto.workspace = true
 kanidm_lib_crypto.workspace = true
 kanidm_lib_file_permissions.workspace = true
 notify-debouncer-full.workspace = true
-r2d2.workspace = true
-r2d2_sqlite.workspace = true
 rpassword.workspace = true
 rusqlite.workspace = true
 selinux = { workspace = true, optional = true }

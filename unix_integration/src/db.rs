@@ -7,23 +7,20 @@ use kanidm_lib_crypto::DbPasswordV1;
 use kanidm_lib_crypto::Password;
 use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 use libc::umask;
-use r2d2::Pool;
-use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::Connection;
 use tokio::sync::{Mutex, MutexGuard};
 
 use crate::cache::Id;
 
 pub struct Db {
-    pool: Pool<SqliteConnectionManager>,
-    lock: Mutex<()>,
+    conn: Mutex<Connection>,
     crypto_policy: CryptoPolicy,
     require_tpm: Option<tpm::TpmConfig>,
 }
 
 pub struct DbTxn<'a> {
-    _guard: MutexGuard<'a, ()>,
+    conn: MutexGuard<'a, Connection>,
     committed: bool,
-    conn: r2d2::PooledConnection<SqliteConnectionManager>,
     crypto_policy: &'a CryptoPolicy,
     require_tpm: Option<&'a tpm::TpmConfig>,
 }
@@ -31,15 +28,12 @@ pub struct DbTxn<'a> {
 impl Db {
     pub fn new(path: &str, require_tpm: Option<&str>) -> Result<Self, ()> {
         let before = unsafe { umask(0o0027) };
-        let manager = SqliteConnectionManager::file(path);
+        let conn = Connection::open(path).map_err(|e| {
+            error!(err = ?e, "rusqulite error");
+        })?;
         let _ = unsafe { umask(before) };
         // We only build a single thread. If we need more than one, we'll
         // need to re-do this to account for path = "" for debug.
-        let builder1 = Pool::builder().max_size(1);
-        let pool = builder1.build(manager).map_err(|e| {
-            error!("r2d2 error {:?}", e);
-        })?;
-
         let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(250));
 
         debug!("Configured {:?}", crypto_policy);
@@ -64,8 +58,7 @@ impl Db {
         };
 
         Ok(Db {
-            pool,
-            lock: Mutex::new(()),
+            conn: Mutex::new(conn),
             crypto_policy,
             require_tpm,
         })
@@ -73,12 +66,8 @@ impl Db {
 
     #[allow(clippy::expect_used)]
     pub async fn write(&self) -> DbTxn<'_> {
-        let guard = self.lock.lock().await;
-        let conn = self
-            .pool
-            .get()
-            .expect("Unable to get connection from pool!!!");
-        DbTxn::new(conn, guard, &self.crypto_policy, self.require_tpm.as_ref())
+        let conn = self.conn.lock().await;
+        DbTxn::new(conn, &self.crypto_policy, self.require_tpm.as_ref())
     }
 }
 
@@ -90,8 +79,7 @@ impl fmt::Debug for Db {
 
 impl<'a> DbTxn<'a> {
     pub fn new(
-        conn: r2d2::PooledConnection<SqliteConnectionManager>,
-        guard: MutexGuard<'a, ()>,
+        conn: MutexGuard<'a, Connection>,
         crypto_policy: &'a CryptoPolicy,
         require_tpm: Option<&'a tpm::TpmConfig>,
     ) -> Self {
@@ -103,7 +91,6 @@ impl<'a> DbTxn<'a> {
         DbTxn {
             committed: false,
             conn,
-            _guard: guard,
             crypto_policy,
             require_tpm,
         }

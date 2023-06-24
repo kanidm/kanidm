@@ -253,6 +253,7 @@ pub enum OperationError {
     ReplInvalidRUVState,
     ReplDomainLevelUnsatisfiable,
     ReplDomainUuidMismatch,
+    TransactionAlreadyCommitted,
 }
 
 impl PartialEq for OperationError {

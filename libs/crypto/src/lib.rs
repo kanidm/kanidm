@@ -74,6 +74,7 @@ pub enum CryptoError {
     Argon2Parameters,
 }
 
+#[allow(clippy::from_over_into)]
 impl Into<OperationError> for CryptoError {
     fn into(self) -> OperationError {
         OperationError::CryptographyError
@@ -301,7 +302,7 @@ impl CryptoPolicy {
                         // here though, just to give a little window under that for adjustment.
                         //
                         // Similar, once we hit t=4 we just need to have max ram.
-                        let m_adjust = (t_cost.checked_sub(ARGON2_MIN_T_COST).unwrap_or(0)
+                        let m_adjust = (t_cost.saturating_sub(ARGON2_MIN_T_COST)
                             * ARGON2_MIN_RAM_KIB)
                             + ARGON2_MAX_RAM_KIB;
                         m_cost = if m_adjust > ARGON2_MAX_RAM_KIB {
@@ -852,10 +853,10 @@ impl Password {
         self.verify_ctx(cleartext, None)
     }
 
-    pub fn verify_ctx<'a>(
+    pub fn verify_ctx(
         &self,
         cleartext: &str,
-        tpm: Option<(&'a mut TpmContext, TpmHandle)>,
+        tpm: Option<(&mut TpmContext, TpmHandle)>,
     ) -> Result<bool, CryptoError> {
         match (&self.material, tpm) {
             (
@@ -1234,6 +1235,7 @@ fn do_tpm_hmac(
 }
 
 #[cfg(not(feature = "tpm"))]
+#[allow(clippy::needless_pass_by_value)]
 fn do_tpm_hmac(
     _data: Vec<u8>,
     _ctx: &mut TpmContext,

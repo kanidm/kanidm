@@ -419,7 +419,13 @@ impl PersonOpt {
                         }
                     } else if matches!(ano.datetime.as_str(), "now") {
                         // set the expiry to *now*
-                        let now = OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
+                        let now = match OffsetDateTime::now_utc().format(&Rfc3339) {
+                            Ok(s) => s,
+                            Err(e) => {
+                                error!(err = ?e, "Unable to format current time to rfc3339");
+                                return;
+                            }
+                        };
                         debug!("Setting expiry to {}", now);
                         match client
                             .idm_person_account_set_attr(
@@ -434,7 +440,13 @@ impl PersonOpt {
                         }
                     } else if matches!(ano.datetime.as_str(), "epoch") {
                         // set the expiry to the epoch
-                        let epoch_str = OffsetDateTime::UNIX_EPOCH.format(&Rfc3339).unwrap();
+                        let epoch_str = match OffsetDateTime::UNIX_EPOCH.format(&Rfc3339) {
+                            Ok(s) => s,
+                            Err(e) => {
+                                error!(err = ?e, "Unable to format unix epoch to rfc3339");
+                                return;
+                            }
+                        };
                         debug!("Setting expiry to {}", epoch_str);
                         match client
                             .idm_person_account_set_attr(

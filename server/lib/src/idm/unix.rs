@@ -234,10 +234,11 @@ impl UnixUserAccount {
         match &self.cred {
             Some(cred) => {
                 cred.password_ref().and_then(|pw| {
-                    if pw.verify(cleartext).map_err(|e| {
+                    let valid = pw.verify(cleartext).map_err(|e| {
                         error!(crypto_err = ?e);
                         e.into()
-                    })? {
+                    })?;
+                    if valid {
                         security_info!("Successful unix cred handling");
                         if pw.requires_upgrade() {
                             async_tx
