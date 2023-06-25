@@ -22,9 +22,6 @@ repository = "https://github.com/kanidm/kanidm/"
 # homepage = { workspace = true }
 # repository = { workspace = true }
 
-# These are ignored because the crate is in a workspace
-#[profile.release]
-# less code to include into binary
 
 [lib]
 crate-type = ["cdylib", "rlib"]
