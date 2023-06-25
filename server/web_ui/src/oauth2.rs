@@ -6,7 +6,7 @@ pub use kanidm_proto::oauth2::{
 };
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, RequestRedirect, Response};
+use web_sys::{Request, RequestInit, RequestMode, RequestRedirect, Response};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -73,7 +73,6 @@ impl Oauth2App {
         let mut opts = RequestInit::new();
         opts.method("GET");
         opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
         let request = Request::new_with_str_and_init("/v1/auth/valid", &opts)?;
 
         request
@@ -108,7 +107,6 @@ impl Oauth2App {
         let mut opts = RequestInit::new();
         opts.method("POST");
         opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
 
         opts.body(Some(&authreq_jsvalue));
 
@@ -174,7 +172,6 @@ impl Oauth2App {
         opts.method("POST");
         opts.mode(RequestMode::SameOrigin);
         opts.redirect(RequestRedirect::Manual);
-        opts.credentials(RequestCredentials::SameOrigin);
 
         opts.body(Some(&consentreq_jsvalue));
 

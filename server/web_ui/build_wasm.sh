@@ -23,7 +23,7 @@ fi
 
 # we can disable this since we want it to expand
 # shellcheck disable=SC2086
-wasm-pack build ${BUILD_FLAGS} --target web || exit 1
+wasm-pack build ${BUILD_FLAGS} --target web --mode no-install --no-pack || exit 1
 
 touch ./pkg/ANYTHING_HERE_WILL_BE_DELETED_ADD_TO_SRC && \
     rsync --delete-after -r --copy-links -v ./static/* ./pkg/ && \

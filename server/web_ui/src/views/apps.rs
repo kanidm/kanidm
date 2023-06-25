@@ -8,7 +8,7 @@ use crate::utils;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
+use web_sys::{Request, RequestInit, RequestMode, Response};
 
 use kanidm_proto::internal::AppLink;
 
@@ -185,7 +185,6 @@ impl AppsApp {
         let mut opts = RequestInit::new();
         opts.method("GET");
         opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
 
         let request = Request::new_with_str_and_init("/v1/self/_applinks", &opts)?;
 

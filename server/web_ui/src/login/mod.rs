@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::{spawn_local, JsFuture};
 use web_sys::{
-    CredentialRequestOptions, Request, RequestCredentials, RequestInit, RequestMode, Response,
+    CredentialRequestOptions, Request, RequestInit, RequestMode, Response,
 };
 use yew::prelude::*;
 use yew::virtual_dom::VNode;
@@ -112,7 +112,6 @@ impl LoginApp {
         let mut opts = RequestInit::new();
         opts.method("POST");
         opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
 
         opts.body(Some(&authreq_jsvalue));
 
@@ -160,7 +159,6 @@ impl LoginApp {
         let mut opts = RequestInit::new();
         opts.method("POST");
         opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
 
         opts.body(Some(&authreq_jsvalue));
 
@@ -207,7 +205,6 @@ impl LoginApp {
         let mut opts = RequestInit::new();
         opts.method("POST");
         opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
 
         opts.body(Some(&authreq_jsvalue));
 

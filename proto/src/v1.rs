@@ -1099,7 +1099,7 @@ pub struct CUSessionToken {
     pub token: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CURequest {
     PrimaryRemove,

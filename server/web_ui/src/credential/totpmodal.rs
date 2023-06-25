@@ -5,7 +5,7 @@ use qrcode::render::svg;
 use qrcode::QrCode;
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Node, Request, RequestCredentials, RequestInit, RequestMode, Response};
+use web_sys::{Node, Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
 
 use super::reset::{EventBusMsg, ModalProps};
@@ -77,7 +77,6 @@ impl TotpModalApp {
         let mut opts = RequestInit::new();
         opts.method("POST");
         opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
 
         opts.body(Some(&req_jsvalue));
 

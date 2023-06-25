@@ -3,7 +3,7 @@ use kanidm_proto::v1::{UiHint, UserAuthToken};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
+use web_sys::{Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -331,7 +331,6 @@ impl ViewsApp {
         let mut opts = RequestInit::new();
         opts.method("GET");
         opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
 
         let request = Request::new_with_str_and_init("/v1/auth/valid", &opts)?;
 
@@ -367,7 +366,6 @@ impl ViewsApp {
         let mut opts = RequestInit::new();
         opts.method("GET");
         opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
 
         let request = Request::new_with_str_and_init("/v1/self/_uat", &opts)?;
 
@@ -404,7 +402,6 @@ impl ViewsApp {
         let mut opts = RequestInit::new();
         opts.method("GET");
         opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
 
         let request = Request::new_with_str_and_init("/v1/logout", &opts)?;
 

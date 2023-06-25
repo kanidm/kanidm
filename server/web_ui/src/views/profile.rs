@@ -2,9 +2,7 @@
 use gloo::console;
 use kanidm_proto::v1::{CUSessionToken, CUStatus, UiHint, UserAuthToken};
 use time::format_description::well_known::Rfc3339;
-use wasm_bindgen::{JsCast, UnwrapThrowExt};
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
+use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -14,7 +12,7 @@ use crate::constants::CSS_PAGE_HEADER;
 use crate::error::*;
 use crate::manager::Route;
 use crate::views::{ViewProps, ViewRoute};
-use crate::{models, utils};
+use crate::models;
 
 #[allow(clippy::large_enum_variant)]
 // Page state
@@ -240,35 +238,20 @@ impl ProfileApp {
     }
 
     async fn request_credential_update(id: String) -> Result<Msg, FetchError> {
-        let mut opts = RequestInit::new();
-        opts.method("GET");
-        opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
+        // let mut opts = RequestInit::new();
+        // opts.method("GET");
+        // opts.mode(RequestMode::SameOrigin);
 
         let uri = format!("/v1/person/{}/_credential/_update", id);
 
-        let request = Request::new_with_str_and_init(uri.as_str(), &opts)?;
-
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
+        let (kopid, status, value, _headers) = crate::do_request(&uri, crate::RequestMethod::GET, None).await?;
 
         if status == 200 {
-            let jsval = JsFuture::from(resp.json()?).await?;
             let (token, status): (CUSessionToken, CUStatus) =
-                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
+                serde_wasm_bindgen::from_value(value).expect_throw("Invalid response type");
             Ok(Msg::BeginCredentialUpdate { token, status })
         } else {
-            let headers = resp.headers();
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             // let jsval_json = JsFuture::from(resp.json()?).await?;
             Ok(Msg::Error { emsg, kopid })
         }
