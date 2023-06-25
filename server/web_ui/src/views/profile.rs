@@ -11,8 +11,8 @@ use crate::components::create_reset_code::CreateResetCode;
 use crate::constants::CSS_PAGE_HEADER;
 use crate::error::*;
 use crate::manager::Route;
-use crate::views::{ViewProps, ViewRoute};
 use crate::models;
+use crate::views::{ViewProps, ViewRoute};
 
 #[allow(clippy::large_enum_variant)]
 // Page state
@@ -244,7 +244,8 @@ impl ProfileApp {
 
         let uri = format!("/v1/person/{}/_credential/_update", id);
 
-        let (kopid, status, value, _headers) = crate::do_request(&uri, crate::RequestMethod::GET, None).await?;
+        let (kopid, status, value, _headers) =
+            crate::do_request(&uri, crate::RequestMethod::GET, None).await?;
 
         if status == 200 {
             let (token, status): (CUSessionToken, CUStatus) =

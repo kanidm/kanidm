@@ -12,10 +12,10 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
 use error::FetchError;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, Headers, RequestInit, RequestMode, Response};
+use web_sys::{Headers, Request, RequestInit, RequestMode, Response};
 
 #[macro_use]
 mod macros;
@@ -41,25 +41,30 @@ pub fn run_app() -> Result<(), JsValue> {
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(rename_all="lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum RequestMethod {
-    POST,
     GET,
+    POST,
+    PUT,
 }
 
 impl ToString for RequestMethod {
     fn to_string(&self) -> String {
         match self {
+            RequestMethod::PUT => "PUT".to_string(),
             RequestMethod::POST => "POST".to_string(),
             RequestMethod::GET => "GET".to_string(),
         }
     }
 }
 
-
-pub async fn do_request(uri: &str, method: RequestMethod, body: Option<JsValue>) -> Result<(Option<String>, u16, JsValue, Headers),FetchError> {
-
-
+/// Build and send a request to the backend, with some standard headers and pull back
+/// (kopid, status, json, headers)
+pub async fn do_request(
+    uri: &str,
+    method: RequestMethod,
+    body: Option<JsValue>,
+) -> Result<(Option<String>, u16, JsValue, Headers), FetchError> {
     let mut opts = RequestInit::new();
     opts.method(&method.to_string());
     opts.mode(RequestMode::SameOrigin);

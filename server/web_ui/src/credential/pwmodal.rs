@@ -2,13 +2,12 @@ use gloo::console;
 use kanidm_proto::v1::{CURequest, CUSessionToken, CUStatus, OperationError, PasswordFeedback};
 use wasm_bindgen::{JsValue, UnwrapThrowExt};
 
-
 use yew::prelude::*;
 
 use super::reset::{EventBusMsg, ModalProps};
-use crate::{do_request, RequestMethod};
 use crate::error::*;
 use crate::utils;
+use crate::{do_request, RequestMethod};
 
 enum PwState {
     Init,
@@ -62,10 +61,14 @@ impl PwModalApp {
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise pw curequest");
 
-        let (kopid, status, value, _) = do_request("/v1/credential/_update", RequestMethod::POST, Some(req_jsvalue)).await?;
+        let (kopid, status, value, _) = do_request(
+            "/v1/credential/_update",
+            RequestMethod::POST,
+            Some(req_jsvalue),
+        )
+        .await?;
 
         if status == 200 {
-
             let status: CUStatus =
                 serde_wasm_bindgen::from_value(value).expect_throw("Invalid response type");
             Ok(Msg::PasswordResponseSuccess { status })

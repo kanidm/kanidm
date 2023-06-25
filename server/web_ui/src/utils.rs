@@ -96,6 +96,7 @@ pub fn do_footer() -> VNode {
 
 /// Builds a request object to a server-local endpoint with the usual requirements
 pub fn init_request(endpoint: &str) -> gloo_net::http::Request {
+    // TODO replace this with crate::do_request...
     Request::new(endpoint)
         .mode(RequestMode::SameOrigin)
         .header("content-type", "application/json")

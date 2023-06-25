@@ -7,8 +7,8 @@ use wasm_bindgen_futures::JsFuture;
 use yew::prelude::*;
 
 use super::reset::{EventBusMsg, ModalProps};
-use crate::{error::*, do_request, RequestMethod};
 use crate::utils;
+use crate::{do_request, error::*, RequestMethod};
 
 pub struct PasskeyModalApp {
     state: State,
@@ -61,7 +61,12 @@ impl PasskeyModalApp {
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise pw curequest");
 
-        let (kopid, status, value, _) = do_request("/v1/credential/_update", RequestMethod::POST, Some(req_jsvalue)).await?;
+        let (kopid, status, value, _) = do_request(
+            "/v1/credential/_update",
+            RequestMethod::POST,
+            Some(req_jsvalue),
+        )
+        .await?;
 
         if status == 200 {
             let status: CUStatus =

@@ -6,9 +6,9 @@ use wasm_bindgen::{JsValue, UnwrapThrowExt};
 use yew::prelude::*;
 
 use super::reset::{EventBusMsg, PasskeyRemoveModalProps};
-use crate::{do_request,RequestMethod};
 use crate::error::*;
 use crate::utils;
+use crate::{do_request, RequestMethod};
 
 pub struct PasskeyRemoveModalApp {
     state: State,
@@ -70,7 +70,12 @@ impl PasskeyRemoveModalApp {
             .expect_throw("Failed to serialise pw curequest");
 
         // this really should require a DELETE not a post!
-        let (kopid, status, value, _) = do_request("/v1/credential/_update", RequestMethod::POST, Some(req_jsvalue)).await?;
+        let (kopid, status, value, _) = do_request(
+            "/v1/credential/_update",
+            RequestMethod::POST,
+            Some(req_jsvalue),
+        )
+        .await?;
 
         if status == 200 {
             let status: CUStatus =

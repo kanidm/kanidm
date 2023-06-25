@@ -1,8 +1,7 @@
 use kanidm_proto::v1::{SingleStringRequest, UserAuthToken};
 use uuid::Uuid;
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{FormData, HtmlFormElement, Request, RequestInit, RequestMode, Response};
+use web_sys::{FormData, HtmlFormElement};
 use yew::prelude::*;
 
 use crate::error::*;
@@ -250,32 +249,14 @@ impl ChangeUnixPassword {
         })
         .map(|s| JsValue::from(&s))
         .expect_throw("Failed to change request");
-        let mut opts = RequestInit::new();
-        opts.method("PUT");
-        opts.mode(RequestMode::SameOrigin);
-        opts.body(Some(&changereq_jsvalue));
-
         let uri = format!("/v1/person/{}/_unix/_credential", id);
-
-        let request = Request::new_with_str_and_init(uri.as_str(), &opts)?;
-
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
+        let (kopid, status, value, _) =
+            crate::do_request(&uri, crate::RequestMethod::PUT, Some(changereq_jsvalue)).await?;
 
         if status == 200 {
             Ok(Msg::Success)
         } else {
-            let headers = resp.headers();
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             Ok(Msg::Error { emsg, kopid })
         }
     }

@@ -8,9 +8,7 @@ use kanidm_proto::webauthn::PublicKeyCredential;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::{spawn_local, JsFuture};
-use web_sys::{
-    CredentialRequestOptions, Request, RequestInit, RequestMode, Response,
-};
+use web_sys::{CredentialRequestOptions, Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
 use yew::virtual_dom::VNode;
 use yew_router::prelude::*;
