@@ -238,7 +238,6 @@ impl ProfileApp {
     }
 
     async fn request_credential_update(id: String) -> Result<Msg, FetchError> {
-
         let uri = format!("/v1/person/{}/_credential/_update", id);
         let (kopid, status, value, _headers) =
             crate::do_request(&uri, crate::RequestMethod::GET, None).await?;

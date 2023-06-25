@@ -54,17 +54,15 @@ impl JavaScriptFile {
         let typeattr = match self.filetype {
             Some(val) => {
                 format!(" type=\"{}\"", val.as_str())
-            },
+            }
             _ => String::from(""),
         };
-        format!(r#"<script src="/pkg/{}" integrity="{}"{}></script>"#,
-            self.filepath,
-            &self.hash,
-            &typeattr,
+        format!(
+            r#"<script src="/pkg/{}" integrity="{}"{}></script>"#,
+            self.filepath, &self.hash, &typeattr,
         )
     }
 }
-
 
 #[test]
 fn test_javscriptfile() {
@@ -88,7 +86,6 @@ fn test_javscriptfile() {
         jsf.as_tag(),
         r#"<script src="/pkg/wasmloader.js" integrity="sha384-1234567890"></script>"#
     );
-
 }
 
 #[derive(Clone)]
