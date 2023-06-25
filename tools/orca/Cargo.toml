@@ -3,42 +3,42 @@ name = "orca"
 description = "Orca - load testing for LDAP and Kanidm"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
 
-version.workspace = true
-authors.workspace = true
-rust-version.workspace = true
-edition.workspace = true
-license.workspace = true
-homepage.workspace = true
-repository.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+rust-version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
 
 [[bin]]
 name = "orca"
 path = "src/main.rs"
 
 [dependencies]
-clap.workspace = true
-crossbeam.workspace = true
-csv.workspace = true
-dialoguer.workspace = true
+clap = { workspace = true }
+crossbeam = { workspace = true }
+csv = { workspace = true }
+dialoguer = { workspace = true }
 futures-util = { workspace = true, features = ["sink"] }
-kanidm_client.workspace = true
-kanidm_proto.workspace = true
-ldap3_proto.workspace = true
-mathru.workspace = true
-openssl.workspace = true
-rand.workspace = true
+kanidm_client = { workspace = true }
+kanidm_proto = { workspace = true }
+ldap3_proto = { workspace = true }
+mathru = { workspace = true }
+openssl = { workspace = true }
+rand = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
+serde_json = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
-tokio-openssl.workspace = true
+tokio-openssl = { workspace = true }
 tokio-util = { workspace = true, features = ["codec"] }
-toml.workspace = true
-tracing.workspace = true
-tracing-subscriber.workspace = true
+toml = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4" ] }
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
-tikv-jemallocator.workspace = true
+tikv-jemallocator = { workspace = true }
 
 [build-dependencies]
-profiles.workspace = true
+profiles = { workspace = true }

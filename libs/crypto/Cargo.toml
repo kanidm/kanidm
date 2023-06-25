@@ -7,20 +7,20 @@ edition = "2021"
 tpm = ["dep:tss-esapi"]
 
 [dependencies]
-argon2.workspace = true
-base64.workspace = true
-base64urlsafedata.workspace = true
-hex.workspace = true
-kanidm_proto.workspace = true
+argon2 = { workspace = true }
+base64 = { workspace = true }
+base64urlsafedata = { workspace = true }
+hex = { workspace = true }
+kanidm_proto = { workspace = true }
 
 # We need to explicitly ask for openssl-sys so that we get the version propagated
 # into the build.rs for legacy feature checks.
-openssl-sys.workspace = true
-openssl.workspace = true
-rand.workspace = true
+openssl-sys = { workspace = true }
+openssl = { workspace = true }
+rand = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-tracing.workspace = true
+tracing = { workspace = true }
 tss-esapi = { workspace = true, optional = true }
 
 [dev-dependencies]
-sketching.workspace = true
+sketching = { workspace = true }
