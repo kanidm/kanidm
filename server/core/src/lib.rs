@@ -912,7 +912,6 @@ pub async fn create_server_core(
         None
     } else {
         // ⚠️  only start the sockets and listeners in non-config-test modes.
-        let port: String = config.address.split(":").last().unwrap_or("443").to_string();
         let h = self::https::create_https_server(
             config.address,
             &config.domain,
@@ -929,9 +928,10 @@ pub async fn create_server_core(
         .await?;
 
         if config.role != ServerRole::WriteReplicaNoUI {
-            admin_debug!("UI should be available at: https://{}:{}", config.domain, port);
+            admin_info!("ready to rock! 🪨 UI available at: {}", config.origin);
+        } else {
+            admin_info!("ready to rock! 🪨");
         }
-        admin_info!("ready to rock! 🪨 ");
         Some(h)
     };
 
