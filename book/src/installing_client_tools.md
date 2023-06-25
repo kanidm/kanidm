@@ -128,8 +128,8 @@ alias kanidm="docker run ..."
 
 ## Initializing the configuration
 
-The client requires a configuration file to connect to the server.
-This should be at `/etc/kanidm/config` or `~/.config/kanidm`, and configures the kanidm command line tool.
+The client requires a configuration file to connect to the server. This should be at
+`/etc/kanidm/config` or `~/.config/kanidm`, and configures the kanidm command line tool.
 
 Here is a minimal example:
 
