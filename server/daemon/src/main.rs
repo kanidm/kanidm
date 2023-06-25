@@ -126,7 +126,7 @@ async fn main() -> ExitCode {
         };
 
     // if they specified it in the environment then that overrides everything
-    let log_level = match EnvFilter::try_from_default_env() {
+    let log_filter = match EnvFilter::try_from_default_env() {
         Ok(val) => val,
         Err(_e) => {
             // we couldn't get it from the env, so we'll try the config file!
@@ -140,14 +140,25 @@ async fn main() -> ExitCode {
             .into()
         }
     };
+
+    // TODO: only send to stderr when we're not in a TTY
     tracing_forest::worker_task()
         .set_global(true)
         .set_tag(sketching::event_tagger)
         // Fall back to stderr
         .map_sender(|sender| sender.or_stderr())
-        .build_on(|subscriber| subscriber
-            .with(log_level)
-        )
+        .build_on(|subscriber|{
+            let sub = subscriber.with(log_filter);
+            // this does NOT work, it just adds a layer.
+            // if std::io::stdout().is_terminal() {
+            //     println!("Stdout is a terminal");
+            //     sub.with(sketching::tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
+            // } else {
+            //     println!("Stdout is not a terminal");
+            //     sub.with(sketching::tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
+            // }
+            sub
+        })
         .on(async {
             // Get information on the windows username
             #[cfg(target_family = "windows")]
