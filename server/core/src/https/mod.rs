@@ -53,29 +53,22 @@ impl JavaScriptFile {
     fn as_tag(self) -> String {
         let typeattr = match self.filetype {
             Some(val) => {
-                let mut res = String::from(r#" type=""#);
-                res.push_str(val.as_str());
-                res.push_str(r#"""#);
-                res
+                format!(" type=\"{}\"", val.as_str())
             },
             _ => String::from(""),
         };
-        let stringbits = vec![
-            r#"<script src="/pkg/"#,
+        format!(r#"<script src="/pkg/{}" integrity="{}"{}></script>"#,
             self.filepath,
-            r#"" integrity=""#,
             &self.hash,
-            r#"""#,
             &typeattr,
-            r#"></script>"#,
-        ];
-        stringbits.join("")
+        )
     }
 }
 
 
 #[test]
 fn test_javscriptfile() {
+    // make sure it outputs what we think it does
     use JavaScriptFile;
     let jsf = JavaScriptFile {
         filepath: "wasmloader.js",
@@ -85,6 +78,15 @@ fn test_javscriptfile() {
     assert_eq!(
         jsf.as_tag(),
         r#"<script src="/pkg/wasmloader.js" integrity="sha384-1234567890" type="module"></script>"#
+    );
+    let jsf = JavaScriptFile {
+        filepath: "wasmloader.js",
+        hash: "sha384-1234567890".to_string(),
+        filetype: None,
+    };
+    assert_eq!(
+        jsf.as_tag(),
+        r#"<script src="/pkg/wasmloader.js" integrity="sha384-1234567890"></script>"#
     );
 
 }
