@@ -40,7 +40,7 @@ pub fn run_app() -> Result<(), JsValue> {
     Ok(())
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum RequestMethod {
     GET,
@@ -70,6 +70,10 @@ pub async fn do_request(
     opts.mode(RequestMode::SameOrigin);
     opts.credentials(web_sys::RequestCredentials::SameOrigin);
     if let Some(body) = body {
+        #[cfg(debug_assertions)]
+        if method == RequestMethod::GET {
+            gloo::console::debug!("This seems odd, you've supplied a body with a GET request?")
+        }
         opts.body(Some(&body));
     }
 

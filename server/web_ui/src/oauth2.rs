@@ -1,16 +1,15 @@
-// use anyhow::Error;
 use gloo::console;
 pub use kanidm_proto::oauth2::{
     AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisationResponse,
     CodeChallengeMethod, ErrorResponse,
 };
-use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
+use wasm_bindgen::{JsValue, UnwrapThrowExt, JsCast};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestInit, RequestMode, RequestRedirect, Response};
+use web_sys::{RequestRedirect, RequestMode, RequestInit, Request, Response};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use crate::error::*;
+use crate::{error::*, do_request, RequestMethod};
 use crate::manager::Route;
 use crate::{models, utils};
 
@@ -70,30 +69,15 @@ impl From<FetchError> for Oauth2Msg {
 
 impl Oauth2App {
     async fn fetch_session_valid() -> Result<Oauth2Msg, FetchError> {
-        let mut opts = RequestInit::new();
-        opts.method("GET");
-        opts.mode(RequestMode::SameOrigin);
-        let request = Request::new_with_str_and_init("/v1/auth/valid", &opts)?;
 
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
+        let (kopid, status, value, _) = do_request("/v1/auth/valid", RequestMethod::GET, None).await?;
 
         if status == 200 {
             Ok(Oauth2Msg::TokenValid)
         } else if status == 401 {
             Ok(Oauth2Msg::LoginRequired)
         } else {
-            let headers = resp.headers();
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             // let jsval_json = JsFuture::from(resp.json()?).await?;
             Ok(Oauth2Msg::Error { emsg, kopid })
         }
@@ -104,28 +88,11 @@ impl Oauth2App {
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise authreq");
 
-        let mut opts = RequestInit::new();
-        opts.method("POST");
-        opts.mode(RequestMode::SameOrigin);
+        let (kopid, status, value, headers) = do_request("/oauth2/authorise", RequestMethod::POST, Some(authreq_jsvalue)).await?;
 
-        opts.body(Some(&authreq_jsvalue));
-
-        let request = Request::new_with_str_and_init("/oauth2/authorise", &opts)?;
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
-        let headers = resp.headers();
-        let kopid = headers.get("x-kanidm-opid").ok().flatten();
 
         if status == 200 {
-            let jsval = JsFuture::from(resp.json()?).await?;
-            let state: AuthorisationResponse = serde_wasm_bindgen::from_value(jsval)
+            let state: AuthorisationResponse = serde_wasm_bindgen::from_value(value)
                 .map_err(|e| {
                     let e_msg = format!("serde error -> {:?}", e);
                     console::error!(e_msg.as_str());
@@ -157,8 +124,7 @@ impl Oauth2App {
         } else if status == 403 {
             Ok(Oauth2Msg::AccessDenied { kopid })
         } else {
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             Ok(Oauth2Msg::Error { emsg, kopid })
         }
     }
@@ -171,7 +137,7 @@ impl Oauth2App {
         let mut opts = RequestInit::new();
         opts.method("POST");
         opts.mode(RequestMode::SameOrigin);
-        opts.redirect(RequestRedirect::Manual);
+        opts.redirect(RequestRedirect::Manual); // can't replace with do_request because of this
 
         opts.body(Some(&consentreq_jsvalue));
 

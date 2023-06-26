@@ -6,16 +6,15 @@ use kanidm_proto::v1::{
 };
 use kanidm_proto::webauthn::PublicKeyCredential;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::{spawn_local, JsFuture};
-use web_sys::{CredentialRequestOptions, Request, RequestInit, RequestMode, Response};
+use web_sys::{CredentialRequestOptions};
 use yew::prelude::*;
 use yew::virtual_dom::VNode;
 use yew_router::prelude::*;
 
 use crate::constants::{CLASS_BUTTON_DARK, CLASS_DIV_LOGIN_BUTTON, CLASS_DIV_LOGIN_FIELD};
 use crate::error::FetchError;
-use crate::{models, utils};
+use crate::{models, utils, do_request, RequestMethod};
 
 pub struct LoginApp {
     state: LoginState,
@@ -103,47 +102,26 @@ impl LoginApp {
                 issue: AuthIssueSession::Cookie,
             },
         };
-        let authreq_jsvalue = serde_json::to_string(&authreq)
+        let req_jsvalue = serde_json::to_string(&authreq)
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise authreq");
 
-        let mut opts = RequestInit::new();
-        opts.method("POST");
-        opts.mode(RequestMode::SameOrigin);
+        let (kopid, status, value, _) = do_request("/v1/auth", RequestMethod::POST, Some(req_jsvalue)).await?;
 
-        opts.body(Some(&authreq_jsvalue));
-
-        let request = Request::new_with_str_and_init("/v1/auth", &opts)?;
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value
-            .dyn_into()
-            .expect_throw("Invalid response type - auth_init::Response");
-        let status = resp.status();
-        let headers = resp.headers();
 
         if status == 200 {
-            let jsval = JsFuture::from(resp.json()?).await?;
-            let state: AuthResponse = serde_wasm_bindgen::from_value(jsval)
+            let state: AuthResponse = serde_wasm_bindgen::from_value(value)
                 .expect_throw("Invalid response type - auth_init::AuthResponse");
             Ok(LoginAppMsg::Start(state))
         } else if status == 404 {
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
+
             console::error!(format!(
                 "User not found: {:?}. Operation ID: {:?}",
-                text, kopid
+                value.as_string().unwrap_or_default(), kopid
             ));
             Ok(LoginAppMsg::UnknownUser)
         } else {
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             Ok(LoginAppMsg::Error { emsg, kopid })
         }
     }
@@ -153,44 +131,21 @@ impl LoginApp {
         let authreq_jsvalue = serde_json::to_string(&issue)
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise authreq");
-
-        let mut opts = RequestInit::new();
-        opts.method("POST");
-        opts.mode(RequestMode::SameOrigin);
-
-        opts.body(Some(&authreq_jsvalue));
-
-        let request = Request::new_with_str_and_init("/v1/reauth", &opts)?;
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value
-            .dyn_into()
-            .expect_throw("Invalid response type - reauth_init::Response");
-        let status = resp.status();
-        let headers = resp.headers();
+        let url = "/v1/reauth";
+        let (kopid, status, value, _) = do_request(url, RequestMethod::POST, Some(authreq_jsvalue)).await?;
 
         if status == 200 {
-            let jsval = JsFuture::from(resp.json()?).await?;
-            let state: AuthResponse = serde_wasm_bindgen::from_value(jsval)
+            let state: AuthResponse = serde_wasm_bindgen::from_value(value)
                 .expect_throw("Invalid response type - auth_init::AuthResponse");
             Ok(LoginAppMsg::Next(state))
         } else if status == 404 {
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
             console::error!(format!(
                 "User not found: {:?}. Operation ID: {:?}",
-                text, kopid
+                value.as_string(), kopid
             ));
             Ok(LoginAppMsg::UnknownUser)
         } else {
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             Ok(LoginAppMsg::Error { emsg, kopid })
         }
     }
@@ -200,29 +155,11 @@ impl LoginApp {
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise authreq");
 
-        let mut opts = RequestInit::new();
-        opts.method("POST");
-        opts.mode(RequestMode::SameOrigin);
 
-        opts.body(Some(&authreq_jsvalue));
-
-        let request = Request::new_with_str_and_init("/v1/auth", &opts)?;
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set content-type header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value
-            .dyn_into()
-            .expect_throw("Invalid response type - auth_step::Response");
-        let status = resp.status();
-        let headers = resp.headers();
+        let (kopid, status, value, _) = do_request("/v1/auth", RequestMethod::POST, Some(authreq_jsvalue)).await?;
 
         if status == 200 {
-            let jsval = JsFuture::from(resp.json()?).await?;
-            let state: AuthResponse = serde_wasm_bindgen::from_value(jsval)
+            let state: AuthResponse = serde_wasm_bindgen::from_value(value)
                 .map_err(|e| {
                     console::error!(format!("auth_step::AuthResponse: {:?}", e));
                     e
@@ -230,9 +167,7 @@ impl LoginApp {
                 .expect_throw("Invalid response type - auth_step::AuthResponse");
             Ok(LoginAppMsg::Next(state))
         } else {
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string()
+            let emsg = value.as_string()
                 .unwrap_or_else(|| "Unhandled error, please report this along with the operation ID below to your administrator. 😔".to_string());
             Ok(LoginAppMsg::Error { emsg, kopid })
         }
