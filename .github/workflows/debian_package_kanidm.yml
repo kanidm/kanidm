@@ -40,8 +40,6 @@ jobs:
           version: "v0.4.2"
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      - name: Install wasm-pack
-        run: cargo install wasm-pack
       - name: Install dependencies
         run: |
           scripts/install_ubuntu_dependencies.sh
@@ -58,6 +56,8 @@ jobs:
       #       sudo \
       #       build-essential \
       #       rsync
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
       - name: Build packages
         run: |
           make -f platform/debian/Makefile debs/all
