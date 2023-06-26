@@ -34,14 +34,14 @@ jobs:
       - name: install curl
         run: |
           apt-get update && apt-get install -y curl
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Install wasm-pack
-        run: cargo install wasm-pack
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3
         with:
           version: "v0.4.2"
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
       - name: Install dependencies
         run: |
           scripts/install_ubuntu_dependencies.sh
