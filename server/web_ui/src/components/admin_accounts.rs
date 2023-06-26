@@ -102,12 +102,12 @@ pub async fn get_accounts() -> Result<AdminListAccountsMsg, GetError> {
                 })
             }
         };
-
+        // TODO: this kind of thing comes back when you're logged out:  SerdeError(Error("invalid type: string \"sessionexpired\", expected a sequence", line: 1, column: 16))', server/web_ui/src/components/admin_accounts.rs:107:27
         let data: Vec<Entity> = match serde_wasm_bindgen::from_value(value) {
             Ok(value) => value,
             Err(error) => {
                 return Err(GetError {
-                    err: format!("{:?}", error),
+                    err: format!("Failed to grab the account data into JSON: {:?}", error),
                 });
             }
         };
@@ -580,7 +580,7 @@ pub async fn get_service_account(uuid: &str) -> Result<AdminViewServiceAccountMs
         Ok(val) => val,
         Err(error) => {
             return Err(GetError {
-                err: format!("{:?}", error),
+                err: format!("Failed to grab the service_account data into JSON: {:?}", error),
             })
         }
     };

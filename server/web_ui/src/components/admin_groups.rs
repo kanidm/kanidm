@@ -75,7 +75,7 @@ pub async fn get_groups() -> Result<AdminListGroupsMsg, GetError> {
             Ok(val) => val,
             Err(error) => {
                 return Err(GetError {
-                    err: format!("{:?}", error),
+                    err: format!("Failed to grab the group data into JSON: {:?}", error),
                 })
             }
         };

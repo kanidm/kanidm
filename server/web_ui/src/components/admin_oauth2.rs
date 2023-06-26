@@ -85,12 +85,12 @@ pub async fn get_entities() -> Result<AdminListOAuth2Msg, GetError> {
             Ok(value) => value,
             Err(error) => {
                 return Err(GetError {
-                    err: format!("{:?}", error),
+                    err: format!("Failed to grab the oauth2 data into JSON: {:?}", error),
                 });
             }
         };
 
-        for entity in data.iter() {
+        for entity in data.into_iter() {
             let mut new_entity = entity.to_owned();
             new_entity.object_type = object_type.clone();
 
@@ -99,9 +99,8 @@ pub async fn get_entities() -> Result<AdminListOAuth2Msg, GetError> {
             let entity_id = entity
                 .attrs
                 .uuid
-                .first()
-                .expect("Failed to grab the SPN for an account.");
-            oauth2_objects.insert(entity_id.to_string(), new_entity);
+                .first().map(|e| e.to_owned()).unwrap_or(String::from("Unknown entity name!"));
+            oauth2_objects.insert(entity_id, new_entity);
         }
     }
 
