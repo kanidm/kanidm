@@ -114,3 +114,9 @@ echo "Creating cred reset link for ${TEST_USER_NAME}"
 ${KANIDM} person credential create-reset-token "${TEST_USER_NAME}" -D idm_admin
 
 echo "Done!"
+
+echo "###################################"
+echo "admin password:     ${ADMIN_PASS}"
+echo "idm_admin password: ${IDM_ADMIN_PASS}"
+echo "UI URL:             ${KANIDM_URL}"
+echo "###################################"

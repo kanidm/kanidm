@@ -177,6 +177,7 @@ impl LoginApp {
     fn button_start_again(&self, ctx: &Context<Self>) -> VNode {
         html! {
             <div class="col-md-auto text-center">
+                // TODO: this doesn't seem to work if you failed to login
                 <button type="button" class={CLASS_BUTTON_DARK} onclick={ ctx.link().callback(|_| LoginAppMsg::Restart) } >{" Start Again "}</button>
             </div>
         }
