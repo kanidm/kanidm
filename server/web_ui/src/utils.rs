@@ -1,5 +1,4 @@
 use gloo::console;
-use gloo_net::http::Request;
 use url::Url;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
@@ -97,7 +96,7 @@ pub fn do_footer() -> VNode {
 /// Builds a request object to a server-local endpoint with the usual requirements
 pub fn init_request(endpoint: &str) -> gloo_net::http::Request {
     // TODO replace this with crate::do_request...
-    Request::new(endpoint)
+    gloo_net::http::Request::new(endpoint)
         .mode(RequestMode::SameOrigin)
         .header("content-type", "application/json")
 }
