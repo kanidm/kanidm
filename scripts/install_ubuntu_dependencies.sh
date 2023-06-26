@@ -19,7 +19,7 @@ ${SUDOCMD} apt-get install -y \
     rsync \
     build-essential
 
-if [ -z "$(which rustup)" ]; then
+if [ -z "$(which cargo)" ]; then
     if [ -f "$HOME/.cargo/env" ]; then
         #shellcheck disable=SC1091
         source "$HOME/.cargo/env"
@@ -29,11 +29,6 @@ if [ -z "$(which rustup)" ]; then
         source "$HOME/.cargo/env"
     fi
 
-    if [ -z "$(which rustup)" ] && [ "$CI" -ne 1 ]; then
-        echo "You don't have rustup installed! Something went wrong :("
-        echo "Go to <https://www.rust-lang.org/tools/install> for instructions!"
-        exit 1
-    fi
 fi
 
 ERROR=0
