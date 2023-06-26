@@ -3,7 +3,6 @@ use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus};
 use kanidm_proto::webauthn::{CreationChallengeResponse, RegisterPublicKeyCredential};
 use wasm_bindgen::{JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
-// use web_sys::{Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
 
 use super::reset::{EventBusMsg, ModalProps};
