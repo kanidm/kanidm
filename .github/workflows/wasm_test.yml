@@ -24,7 +24,7 @@ jobs:
         with:
           version: "v0.4.2"
       - name: Install wasm-pack
-        run: cargo install wasm-pack wasm-bindgen
+        run: cargo install wasm-pack
       - name: Install dependencies
         run: |
           sudo scripts/install_ubuntu_dependencies.sh
