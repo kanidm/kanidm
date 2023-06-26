@@ -23,11 +23,13 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.3
         with:
           version: "v0.4.2"
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
       - name: Install wasm-pack
         run: cargo install wasm-pack
       - name: Install dependencies
         run: |
-          sudo scripts/install_ubuntu_dependencies.sh
+          scripts/install_ubuntu_dependencies.sh
       # https://github.com/browser-actions/setup-chrome
       - name: Install Chrome Headless
         uses: browser-actions/setup-chrome@latest
