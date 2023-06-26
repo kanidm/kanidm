@@ -16,18 +16,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Check arch
-        run: |
-          uname -a
-      - name: Install dependencies
-        run: |
-          sudo scripts/install_ubuntu_dependencies.sh
+      # - name: Check arch
+      #   run: |
+      #     uname -a
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3
         with:
           version: "v0.4.2"
       - name: Install wasm-pack
         run: cargo install wasm-pack wasm-bindgen
+      - name: Install dependencies
+        run: |
+          sudo scripts/install_ubuntu_dependencies.sh
       # https://github.com/browser-actions/setup-chrome
       - name: Install Chrome Headless
         uses: browser-actions/setup-chrome@latest
