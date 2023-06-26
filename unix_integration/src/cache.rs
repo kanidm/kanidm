@@ -12,7 +12,7 @@ use reqwest::StatusCode;
 use tokio::sync::{Mutex, RwLock};
 
 use crate::db::Db;
-use crate::unix_config::{HomeAttr, UidAttr};
+use crate::unix_config::{HomeAttr, TpmPolicy, UidAttr};
 use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser};
 
 // use crate::unix_passwd::{EtcUser, EtcGroup};
@@ -77,9 +77,9 @@ impl CacheLayer {
         uid_attr_map: UidAttr,
         gid_attr_map: UidAttr,
         allow_id_overrides: Vec<String>,
-        require_tpm: Option<&str>,
+        tpm_policy: &TpmPolicy,
     ) -> Result<Self, ()> {
-        let db = Db::new(path, require_tpm)?;
+        let db = Db::new(path, tpm_policy)?;
 
         // setup and do a migrate.
         {

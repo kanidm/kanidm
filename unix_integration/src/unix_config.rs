@@ -12,7 +12,8 @@ use serde::Deserialize;
 use crate::constants::{
     DEFAULT_CACHE_TIMEOUT, DEFAULT_CONN_TIMEOUT, DEFAULT_DB_PATH, DEFAULT_GID_ATTR_MAP,
     DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SELINUX, DEFAULT_SHELL,
-    DEFAULT_SOCK_PATH, DEFAULT_TASK_SOCK_PATH, DEFAULT_UID_ATTR_MAP, DEFAULT_USE_ETC_SKEL,
+    DEFAULT_SOCK_PATH, DEFAULT_TASK_SOCK_PATH, DEFAULT_TPM_TCTI_NAME, DEFAULT_UID_ATTR_MAP,
+    DEFAULT_USE_ETC_SKEL,
 };
 
 #[derive(Debug, Deserialize)]
@@ -33,7 +34,8 @@ struct ConfigInt {
     selinux: Option<bool>,
     #[serde(default)]
     allow_local_account_override: Vec<String>,
-    require_tpm: Option<String>,
+    tpm_tcti_name: Option<String>,
+    tpm_policy: Option<String>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -76,6 +78,28 @@ impl Display for UidAttr {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub enum TpmPolicy {
+    #[default]
+    Ignore,
+    IfPossible(String),
+    Required(String),
+}
+
+impl Display for TpmPolicy {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TpmPolicy::Ignore => write!(f, "Ignore"),
+            TpmPolicy::IfPossible(p) => {
+                write!(f, "IfPossible ({})", p)
+            }
+            TpmPolicy::Required(p) => {
+                write!(f, "Required ({})", p)
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct KanidmUnixdConfig {
     pub db_path: String,
@@ -93,7 +117,7 @@ pub struct KanidmUnixdConfig {
     pub uid_attr_map: UidAttr,
     pub gid_attr_map: UidAttr,
     pub selinux: bool,
-    pub require_tpm: Option<String>,
+    pub tpm_policy: TpmPolicy,
     pub allow_local_account_override: Vec<String>,
 }
 
@@ -128,11 +152,7 @@ impl Display for KanidmUnixdConfig {
         writeln!(f, "gid_attr_map: {}", self.gid_attr_map)?;
 
         writeln!(f, "selinux: {}", self.selinux)?;
-        writeln!(
-            f,
-            "require_tpm: {}",
-            self.require_tpm.as_deref().unwrap_or("-")
-        )?;
+        writeln!(f, "tpm_policy: {}", self.tpm_policy)?;
         writeln!(
             f,
             "allow_local_account_override: {:#?}",
@@ -163,7 +183,7 @@ impl KanidmUnixdConfig {
             uid_attr_map: DEFAULT_UID_ATTR_MAP,
             gid_attr_map: DEFAULT_GID_ATTR_MAP,
             selinux: DEFAULT_SELINUX,
-            require_tpm: None,
+            tpm_policy: TpmPolicy::default(),
             allow_local_account_override: Vec::default(),
         }
     }
@@ -276,7 +296,23 @@ impl KanidmUnixdConfig {
                 true => selinux_util::supported(),
                 _ => false,
             },
-            require_tpm: config.require_tpm.or(self.require_tpm),
+            tpm_policy: config
+                .tpm_policy
+                .and_then(|v| {
+                    let tpm_tcti_name = config
+                        .tpm_tcti_name
+                        .unwrap_or(DEFAULT_TPM_TCTI_NAME.to_string());
+                    match v.as_str() {
+                        "ignore" => Some(TpmPolicy::Ignore),
+                        "if_possible" => Some(TpmPolicy::IfPossible(tpm_tcti_name)),
+                        "required" => Some(TpmPolicy::Required(tpm_tcti_name)),
+                        _ => {
+                            warn!("Invalid tpm_policy configured, using default ...");
+                            None
+                        }
+                    }
+                })
+                .unwrap_or(self.tpm_policy),
             allow_local_account_override: config.allow_local_account_override,
         })
     }
