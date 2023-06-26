@@ -1,5 +1,5 @@
 ---
-name: "Build Debian Packages"
+name: "Build Deb Packages"
 
 "on":
   push:
@@ -31,25 +31,30 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Install dependencies
-        run: |
-          apt-get update && \
-          apt-get install -y \
-            lsb-release \
-            libpam0g-dev \
-            libudev-dev \
-            libssl-dev \
-            libsqlite3-dev \
-            pkg-config \
-            make \
-            curl \
-            sudo
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3
         with:
           version: "v0.4.2"
+      - name: Install dependencies
+        run: |
+          scripts/install_ubuntu_dependencies.sh
+      #     apt-get update && \
+      #     apt-get install -y \
+      #       lsb-release \
+      #       libpam0g-dev \
+      #       libudev-dev \
+      #       libssl-dev \
+      #       libsqlite3-dev \
+      #       pkg-config \
+      #       make \
+      #       curl \
+      #       sudo \
+      #       build-essential \
+      #       rsync
       - name: Build packages
         run: |
           make -f platform/debian/Makefile debs/all
