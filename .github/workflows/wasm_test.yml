@@ -21,19 +21,13 @@ jobs:
           uname -a
       - name: Install dependencies
         run: |
-          sudo apt-get update &&
-          sudo apt-get install -y \
-            libpam0g-dev \
-            libudev-dev \
-            libssl-dev \
-            libsqlite3-dev \
-            pkg-config
+          sudo scripts/install_ubuntu_dependencies.sh
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3
         with:
           version: "v0.4.2"
       - name: Install wasm-pack
-        run: cargo install wasm-pack
+        run: cargo install wasm-pack wasm-bindgen
       # https://github.com/browser-actions/setup-chrome
       - name: Install Chrome Headless
         uses: browser-actions/setup-chrome@latest

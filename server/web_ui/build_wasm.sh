@@ -16,6 +16,11 @@ if [ -z "$(which rsync)" ]; then
     exit 1
 fi
 
+if [ -z "$(which wasm-pack)" ]; then
+    echo "Cannot find wasm-pack which is needed to build the UI, quitting!"
+    exit 1
+fi
+
 if [ "$(find ./pkg/ -name 'kanidmd*' | wc -l)" -gt 0 ]; then
     echo "Cleaning up"
     rm pkg/kanidmd*

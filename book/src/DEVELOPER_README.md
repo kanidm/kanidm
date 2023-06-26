@@ -19,6 +19,8 @@ git and compiler tools. You should install this first.
 
 You will need [rustup](https://rustup.rs/) to install a Rust toolchain.
 
+To build the Web UI you'll need [wasm-pack](https://rustwasm.github.io/wasm-pack/) (`cargo install wasm-pack`).
+
 #### SUSE / OpenSUSE
 
 You will need to install rustup and our build dependencies with:
