@@ -4,12 +4,12 @@ use gloo::console;
 use yew::{html, Component, Context, Html, Properties};
 use yew_router::prelude::Link;
 
-use crate::{RequestMethod, do_request};
 use crate::components::admin_menu::{Entity, EntityType, GetError};
 use crate::components::alpha_warning_banner;
 use crate::constants::{CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_TABLE};
 use crate::utils::{do_alert_error, do_page_header};
 use crate::views::AdminRoute;
+use crate::{do_request, RequestMethod};
 
 impl From<GetError> for AdminListOAuth2Msg {
     fn from(ge: GetError) -> Self {
@@ -72,7 +72,7 @@ pub async fn get_entities() -> Result<AdminListOAuth2Msg, GetError> {
     let endpoints = [("/v1/oauth2", EntityType::OAuth2RP)];
 
     for (endpoint, object_type) in endpoints {
-        let (_, _, value, _) = match do_request(endpoint,RequestMethod::GET, None).await {
+        let (_, _, value, _) = match do_request(endpoint, RequestMethod::GET, None).await {
             Ok(val) => val,
             Err(error) => {
                 return Err(GetError {
@@ -83,11 +83,11 @@ pub async fn get_entities() -> Result<AdminListOAuth2Msg, GetError> {
 
         let data: Vec<Entity> = match serde_wasm_bindgen::from_value(value) {
             Ok(value) => value,
-            Err(error) =>  {
+            Err(error) => {
                 return Err(GetError {
                     err: format!("{:?}", error),
-                    });
-                }
+                });
+            }
         };
 
         for entity in data.iter() {
@@ -406,7 +406,7 @@ impl Component for AdminViewOAuth2 {
 
 pub async fn get_oauth2_rp(rs_name: &str) -> Result<AdminViewOAuth2Msg, GetError> {
     let endpoint = format!("/v1/oauth2/{}", rs_name);
-    let (_, _, value, _) = match do_request(&endpoint,RequestMethod::GET, None).await {
+    let (_, _, value, _) = match do_request(&endpoint, RequestMethod::GET, None).await {
         Ok(val) => val,
         Err(error) => {
             return Err(GetError {

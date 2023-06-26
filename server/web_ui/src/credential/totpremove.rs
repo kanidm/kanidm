@@ -4,9 +4,9 @@ use gloo::console;
 use kanidm_proto::v1::{CURequest, CUSessionToken, CUStatus};
 use wasm_bindgen::{JsValue, UnwrapThrowExt};
 
-use crate::RequestMethod;
 use crate::do_request;
 use crate::error::*;
+use crate::RequestMethod;
 use yew::prelude::*;
 
 pub enum Msg {
@@ -107,8 +107,12 @@ impl TotpRemoveComp {
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise pw curequest");
 
-
-        let (kopid, status, value, _) = do_request("/v1/credential/_update", RequestMethod::POST, Some(req_jsvalue)).await?;
+        let (kopid, status, value, _) = do_request(
+            "/v1/credential/_update",
+            RequestMethod::POST,
+            Some(req_jsvalue),
+        )
+        .await?;
         if status == 200 {
             let status: CUStatus =
                 serde_wasm_bindgen::from_value(value).expect_throw("Invalid response type");

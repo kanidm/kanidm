@@ -2,9 +2,9 @@
 use gloo::console;
 use yew::prelude::*;
 
-use crate::{do_request,RequestMethod};
 use crate::constants::{CSS_CARD, CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER};
 use crate::error::FetchError;
+use crate::{do_request, RequestMethod};
 use wasm_bindgen::prelude::*;
 
 use kanidm_proto::internal::AppLink;
@@ -179,7 +179,8 @@ impl AppsApp {
     }
 
     async fn fetch_user_apps() -> Result<Msg, FetchError> {
-        let (kopid, status, value, _) = do_request("/v1/self/_applinks", RequestMethod::GET, None).await?;
+        let (kopid, status, value, _) =
+            do_request("/v1/self/_applinks", RequestMethod::GET, None).await?;
 
         if status == 200 {
             let apps: Vec<AppLink> = serde_wasm_bindgen::from_value(value)

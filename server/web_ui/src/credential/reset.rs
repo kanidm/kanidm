@@ -13,7 +13,7 @@ use super::passkeyremove::PasskeyRemoveModalApp;
 use super::pwmodal::PwModalApp;
 use super::totpmodal::TotpModalApp;
 use super::totpremove::TotpRemoveComp;
-use crate::{error::*, RequestMethod, do_request};
+use crate::{do_request, error::*, RequestMethod};
 use crate::{models, utils};
 
 // use std::rc::Rc;
@@ -579,7 +579,12 @@ impl CredentialResetApp {
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise intent request");
 
-        let (kopid, status, value, _) = do_request("/v1/credential/_exchange_intent", RequestMethod::POST, Some(req_jsvalue)).await?;
+        let (kopid, status, value, _) = do_request(
+            "/v1/credential/_exchange_intent",
+            RequestMethod::POST,
+            Some(req_jsvalue),
+        )
+        .await?;
 
         if status == 200 {
             let (token, status): (CUSessionToken, CUStatus) =
@@ -596,7 +601,8 @@ impl CredentialResetApp {
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise session token");
 
-        let (kopid, status, value, _) = do_request(url, RequestMethod::POST, Some(req_jsvalue)).await?;
+        let (kopid, status, value, _) =
+            do_request(url, RequestMethod::POST, Some(req_jsvalue)).await?;
 
         if status == 200 {
             Ok(Msg::Success)

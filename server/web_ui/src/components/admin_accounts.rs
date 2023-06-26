@@ -9,9 +9,9 @@ use crate::components::alpha_warning_banner;
 use crate::constants::{
     CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_DT, CSS_TABLE,
 };
-use crate::{do_request, RequestMethod};
 use crate::utils::{do_alert_error, do_page_header};
 use crate::views::AdminRoute;
+use crate::{do_request, RequestMethod};
 
 impl From<GetError> for AdminListAccountsMsg {
     fn from(ge: GetError) -> Self {
@@ -94,7 +94,7 @@ pub async fn get_accounts() -> Result<AdminListAccountsMsg, GetError> {
     ];
 
     for (endpoint, object_type) in endpoints {
-        let (_, _, value, _) = match do_request(endpoint,RequestMethod::GET, None).await {
+        let (_, _, value, _) = match do_request(endpoint, RequestMethod::GET, None).await {
             Ok(val) => val,
             Err(error) => {
                 return Err(GetError {
@@ -105,11 +105,11 @@ pub async fn get_accounts() -> Result<AdminListAccountsMsg, GetError> {
 
         let data: Vec<Entity> = match serde_wasm_bindgen::from_value(value) {
             Ok(value) => value,
-            Err(error) =>  {
+            Err(error) => {
                 return Err(GetError {
                     err: format!("{:?}", error),
-                    });
-                }
+                });
+            }
         };
 
         for entity in data.iter() {
@@ -542,8 +542,13 @@ impl Component for AdminViewServiceAccount {
 
 /// pull the details for a single person by UUID
 pub async fn get_person(uuid: &str) -> Result<AdminViewPersonMsg, GetError> {
-
-    let (_, _, value, _) = match do_request(format!("/v1/person/{}",  uuid).as_str(),RequestMethod::GET, None).await {
+    let (_, _, value, _) = match do_request(
+        format!("/v1/person/{}", uuid).as_str(),
+        RequestMethod::GET,
+        None,
+    )
+    .await
+    {
         Ok(val) => val,
         Err(error) => {
             return Err(GetError {
@@ -554,19 +559,24 @@ pub async fn get_person(uuid: &str) -> Result<AdminViewPersonMsg, GetError> {
 
     let data: Entity = match serde_wasm_bindgen::from_value(value) {
         Ok(value) => value,
-        Err(error) =>  {
+        Err(error) => {
             return Err(GetError {
                 err: format!("{:?}", error),
-                });
-            }
+            });
+        }
     };
     Ok(AdminViewPersonMsg::Responded { response: data })
 }
 
 /// pull the details for a single service_account by UUID
 pub async fn get_service_account(uuid: &str) -> Result<AdminViewServiceAccountMsg, GetError> {
-
-    let (_, _, value, _) = match do_request(format!("/v1/service_account/{}", uuid).as_str(),RequestMethod::GET, None).await {
+    let (_, _, value, _) = match do_request(
+        format!("/v1/service_account/{}", uuid).as_str(),
+        RequestMethod::GET,
+        None,
+    )
+    .await
+    {
         Ok(val) => val,
         Err(error) => {
             return Err(GetError {
@@ -577,11 +587,11 @@ pub async fn get_service_account(uuid: &str) -> Result<AdminViewServiceAccountMs
 
     let data: Entity = match serde_wasm_bindgen::from_value(value) {
         Ok(value) => value,
-        Err(error) =>  {
+        Err(error) => {
             return Err(GetError {
                 err: format!("{:?}", error),
-                });
-            }
+            });
+        }
     };
     Ok(AdminViewServiceAccountMsg::Responded { response: data })
 }

@@ -7,9 +7,9 @@ use yew_router::prelude::Link;
 use crate::components::admin_menu::{Entity, EntityType, GetError};
 use crate::components::alpha_warning_banner;
 use crate::constants::{CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_TABLE};
-use crate::{do_request, RequestMethod};
 use crate::utils::{do_alert_error, do_page_header};
 use crate::views::AdminRoute;
+use crate::{do_request, RequestMethod};
 
 impl From<GetError> for AdminListGroupsMsg {
     fn from(ge: GetError) -> Self {
@@ -71,7 +71,7 @@ pub async fn get_groups() -> Result<AdminListGroupsMsg, GetError> {
     let endpoints = [("/v1/group", EntityType::Group)];
 
     for (endpoint, object_type) in endpoints {
-        let (_, _, value, _) = match do_request(endpoint,RequestMethod::GET, None).await {
+        let (_, _, value, _) = match do_request(endpoint, RequestMethod::GET, None).await {
             Ok(val) => val,
             Err(error) => {
                 return Err(GetError {
@@ -82,11 +82,11 @@ pub async fn get_groups() -> Result<AdminListGroupsMsg, GetError> {
 
         let data: Vec<Entity> = match serde_wasm_bindgen::from_value(value) {
             Ok(value) => value,
-            Err(error) =>  {
+            Err(error) => {
                 return Err(GetError {
                     err: format!("{:?}", error),
-                    });
-                }
+                });
+            }
         };
 
         for entity in data.iter() {
@@ -365,7 +365,7 @@ impl Component for AdminViewGroup {
 /// pull the details for a single group by UUID
 pub async fn get_group(groupid: &str) -> Result<AdminViewGroupMsg, GetError> {
     let endpoint = format!("/v1/group/{}", groupid);
-    let (_, _, value, _) = match do_request(&endpoint,RequestMethod::GET, None).await {
+    let (_, _, value, _) = match do_request(&endpoint, RequestMethod::GET, None).await {
         Ok(val) => val,
         Err(error) => {
             return Err(GetError {
@@ -376,11 +376,11 @@ pub async fn get_group(groupid: &str) -> Result<AdminViewGroupMsg, GetError> {
 
     let data: Entity = match serde_wasm_bindgen::from_value(value) {
         Ok(value) => value,
-        Err(error) =>  {
+        Err(error) => {
             return Err(GetError {
                 err: format!("{:?}", error),
-                });
-            }
+            });
+        }
     };
     Ok(AdminViewGroupMsg::Responded { response: data })
 }

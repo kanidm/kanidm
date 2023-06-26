@@ -3,14 +3,14 @@ pub use kanidm_proto::oauth2::{
     AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisationResponse,
     CodeChallengeMethod, ErrorResponse,
 };
-use wasm_bindgen::{JsValue, UnwrapThrowExt, JsCast};
+use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{RequestRedirect, RequestMode, RequestInit, Request, Response};
+use web_sys::{Request, RequestInit, RequestMode, RequestRedirect, Response};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use crate::{error::*, do_request, RequestMethod};
 use crate::manager::Route;
+use crate::{do_request, error::*, RequestMethod};
 use crate::{models, utils};
 
 use std::collections::BTreeSet;
@@ -69,8 +69,8 @@ impl From<FetchError> for Oauth2Msg {
 
 impl Oauth2App {
     async fn fetch_session_valid() -> Result<Oauth2Msg, FetchError> {
-
-        let (kopid, status, value, _) = do_request("/v1/auth/valid", RequestMethod::GET, None).await?;
+        let (kopid, status, value, _) =
+            do_request("/v1/auth/valid", RequestMethod::GET, None).await?;
 
         if status == 200 {
             Ok(Oauth2Msg::TokenValid)
@@ -88,8 +88,12 @@ impl Oauth2App {
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise authreq");
 
-        let (kopid, status, value, headers) = do_request("/oauth2/authorise", RequestMethod::POST, Some(authreq_jsvalue)).await?;
-
+        let (kopid, status, value, headers) = do_request(
+            "/oauth2/authorise",
+            RequestMethod::POST,
+            Some(authreq_jsvalue),
+        )
+        .await?;
 
         if status == 200 {
             let state: AuthorisationResponse = serde_wasm_bindgen::from_value(value)

@@ -8,9 +8,9 @@ use web_sys::Node;
 use yew::prelude::*;
 
 use super::reset::{EventBusMsg, ModalProps};
-use crate::{RequestMethod,do_request};
 use crate::error::*;
 use crate::utils;
+use crate::{do_request, RequestMethod};
 
 enum TotpState {
     Init,
@@ -74,8 +74,12 @@ impl TotpModalApp {
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise pw curequest");
 
-
-        let (kopid, status, value, _) = do_request("/v1/credential/_update", RequestMethod::POST, Some(req_jsvalue)).await?;
+        let (kopid, status, value, _) = do_request(
+            "/v1/credential/_update",
+            RequestMethod::POST,
+            Some(req_jsvalue),
+        )
+        .await?;
         if status == 200 {
             let status: CUStatus =
                 serde_wasm_bindgen::from_value(value).expect_throw("Invalid response type");
