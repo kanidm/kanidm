@@ -44,6 +44,11 @@ if [ $ERROR -eq 0 ] && [ -z "$(which wasm-pack)" ]; then
     echo "You don't have wasm-pack installed! Installing it now..."
     cargo install wasm-pack
 fi
+if [ $ERROR -eq 0 ] && [ -z "$(which wasm-bindgen)" ]; then
+    echo "You don't have wasm-bindgen installed! Installing it now..."
+    cargo install -f wasm-bindgen-cli
+fi
+
 
 if [ $ERROR -eq 1 ]; then
     exit 1
