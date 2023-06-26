@@ -99,7 +99,9 @@ pub async fn get_entities() -> Result<AdminListOAuth2Msg, GetError> {
             let entity_id = entity
                 .attrs
                 .uuid
-                .first().map(|e| e.to_owned()).unwrap_or(String::from("Unknown entity name!"));
+                .first()
+                .map(|e| e.to_owned())
+                .unwrap_or(String::from("Unknown entity name!"));
             oauth2_objects.insert(entity_id, new_entity);
         }
     }

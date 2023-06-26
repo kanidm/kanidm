@@ -580,7 +580,10 @@ pub async fn get_service_account(uuid: &str) -> Result<AdminViewServiceAccountMs
         Ok(val) => val,
         Err(error) => {
             return Err(GetError {
-                err: format!("Failed to grab the service_account data into JSON: {:?}", error),
+                err: format!(
+                    "Failed to grab the service_account data into JSON: {:?}",
+                    error
+                ),
             })
         }
     };
