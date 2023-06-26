@@ -29,7 +29,7 @@ if [ -z "$(which rustup)" ]; then
         source "$HOME/.cargo/env"
     fi
 
-    if [ -z "$(which rustup)" ]; then
+    if [ -z "$(which rustup)" ] && [ "$CI" -ne 1 ]; then
         echo "You don't have rustup installed! Something went wrong :("
         echo "Go to <https://www.rust-lang.org/tools/install> for instructions!"
         exit 1
