@@ -48,5 +48,6 @@ jobs:
       # docs here:
       # https://rustwasm.github.io/docs/wasm-bindgen/wasm-bindgen-test/browsers.html
       - run: make webui
-      - run: wasm-pack test --headless --chrome
+      - name: "Run wasm-pack test"
+        run: make webui/test
         continue-on-error: true
