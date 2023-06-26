@@ -92,8 +92,11 @@ ${KANIDM} group create "${TEST_GROUP}" -D idm_admin
 # create testuser (person)
 ${KANIDM} person create "${TEST_USER_NAME}" "${TEST_USER_DISPLAY}" -D idm_admin
 
-# add testuser to test_users
+echo "Adding ${TEST_USER_NAME} to ${TEST_GROUP}"
 ${KANIDM} group add-members "${TEST_GROUP}" "${TEST_USER_NAME}" -D idm_admin
+
+echo "Enable experimental UI for admin idm_admin ${TEST_USER_NAME}"
+${KANIDM} group add-members  idm_ui_enable_experimental_features admin idm_admin "${TEST_USER_NAME}"
 
 # create oauth2 rp
 echo "Creating the OAuth2 RP"
