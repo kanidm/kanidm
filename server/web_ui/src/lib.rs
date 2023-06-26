@@ -68,6 +68,7 @@ pub async fn do_request(
     let mut opts = RequestInit::new();
     opts.method(&method.to_string());
     opts.mode(RequestMode::SameOrigin);
+    opts.credentials(web_sys::RequestCredentials::SameOrigin);
     if let Some(body) = body {
         opts.body(Some(&body));
     }

@@ -30,7 +30,6 @@ crate-type = ["cdylib", "rlib"]
 compact_jwt = { workspace = true, default-features = false, features = ["unsafe_release_without_verify"] }
 # gloo = "^0.8.0"
 gloo = { workspace = true }
-gloo-net = { workspace = true }
 js-sys = { workspace = true }
 kanidm_proto = { workspace = true, features = ["wasm"] }
 qrcode = { workspace = true, features = ["svg"] }

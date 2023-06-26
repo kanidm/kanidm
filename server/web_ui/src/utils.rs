@@ -3,7 +3,7 @@ use url::Url;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 pub use web_sys::InputEvent;
-use web_sys::{Document, HtmlElement, HtmlInputElement, RequestMode, Window};
+use web_sys::{Document, HtmlElement, HtmlInputElement, Window};
 use yew::virtual_dom::VNode;
 use yew::{html, Html};
 
@@ -91,14 +91,6 @@ pub fn do_footer() -> VNode {
             </div>
         </footer>
     }
-}
-
-/// Builds a request object to a server-local endpoint with the usual requirements
-pub fn init_request(endpoint: &str) -> gloo_net::http::Request {
-    // TODO replace this with crate::do_request...
-    gloo_net::http::Request::new(endpoint)
-        .mode(RequestMode::SameOrigin)
-        .header("content-type", "application/json")
 }
 
 pub fn do_alert_error(alert_title: &str, alert_message: Option<&str>) -> Html {

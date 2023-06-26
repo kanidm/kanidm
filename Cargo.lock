@@ -2731,7 +2731,6 @@ version = "1.1.0-beta.13"
 dependencies = [
  "compact_jwt",
  "gloo",
- "gloo-net",
  "js-sys",
  "kanidm_proto",
  "qrcode",
