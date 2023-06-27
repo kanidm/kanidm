@@ -82,7 +82,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: base
-          path: docs
+          path: ./docs/
         env:
           ACTIONS_RUNNER_DEBUG: true
       - uses: actions/checkout@v3
@@ -90,6 +90,9 @@ jobs:
           fetch-depth: 0
       - name: Setup Pages
         uses: actions/configure-pages@v3
+      - name: Log more stuff
+        run: |
+          find $(pwd) -ls > ./docs/manifest.txt
       - name: Upload docs dir as an artifact
         # https://github.com/actions/upload-artifact
         uses: actions/upload-artifact@v3
@@ -105,6 +108,7 @@ jobs:
           find $(pwd) -name '*.tar.gz' -ls
           echo "extracting"
           find $(pwd) -name '*.tar.gz' -ls -exec tar zxvf "{}" \;
+          echo "Carrying on..."
           mkdir -p docs
           cd docs && cp -R "$(git branch -a  | awk '{print $1}' | sort -t. -k3n,3 -k4n,4 | awk -F'/' '{print $NF}' | tail -n1)/" stable && cd ..
           ls -la docs/
