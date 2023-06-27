@@ -101,19 +101,41 @@ impl CommonOpt {
             return Err(ToClientError::Other);
         }
 
-        // we need to store guessed username for login and reauth.
-        let username;
-
         // If we have a username, use that to select tokens
-        let token = match &self.username {
-            Some(_username) => {
-                username = _username.clone();
+        let (spn, token) = match &self.username {
+            Some(filter_username) => {
+                let possible_token = if filter_username.contains('@') {
+                    // If there is an @, it's an spn so just get the token directly.
+                    tokens
+                        .get(filter_username)
+                        .map(|t| (filter_username.clone(), t.clone()))
+                } else {
+                    // First, filter for tokens that match.
+                    let mut token_refs: Vec<_> = tokens
+                        .iter()
+                        .filter(|(t, _)| t.starts_with(filter_username))
+                        .map(|(k, v)| (k.clone(), v.clone()))
+                        .collect();
+
+                    match token_refs.len() {
+                        0 => None,
+                        1 => token_refs.pop(),
+                        _ => {
+                            error!("Multiple authentication tokens found for {}. Please specify the full spn to proceed", filter_username);
+                            return Err(ToClientError::Other);
+                        }
+                    }
+                };
+
                 // Is it in the store?
-                match tokens.get(&username) {
+                match possible_token {
                     Some(t) => t.clone(),
                     None => {
-                        error!("No valid authentication tokens found for {}.", username);
-                        return Err(ToClientError::NeedLogin(username));
+                        error!(
+                            "No valid authentication tokens found for {}.",
+                            filter_username
+                        );
+                        return Err(ToClientError::NeedLogin(filter_username.clone()));
                     }
                 }
             }
@@ -123,16 +145,12 @@ impl CommonOpt {
                     let (f_uname, f_token) = tokens.iter().next().expect("Memory Corruption");
                     // else pick the first token
                     debug!("Using cached token for name {}", f_uname);
-                    username = f_uname.clone();
-                    f_token.clone()
+                    (f_uname.clone(), f_token.clone())
                 } else {
                     // Unable to automatically select the user because multiple tokens exist
                     // so we'll prompt the user to select one
                     match prompt_for_username_get_values() {
-                        Ok((f_uname, f_token)) => {
-                            username = f_uname;
-                            f_token
-                        }
+                        Ok(tuple) => tuple,
                         Err(msg) => {
                             error!("{}", msg);
                             std::process::exit(1);
@@ -163,7 +181,7 @@ impl CommonOpt {
                             "Session has expired for {} - you may need to login again.",
                             uat.spn
                         );
-                        return Err(ToClientError::NeedLogin(username));
+                        return Err(ToClientError::NeedLogin(spn));
                     }
                 }
 
@@ -176,7 +194,7 @@ impl CommonOpt {
                                 "Privileges have expired for {} - you need to re-authenticate again.",
                                 uat.spn
                             );
-                            return Err(ToClientError::NeedReauth(username));
+                            return Err(ToClientError::NeedReauth(spn));
                         }
                     }
                 }
@@ -184,7 +202,7 @@ impl CommonOpt {
             Err(e) => {
                 error!("Unable to read token for requested user - you may need to login again.");
                 debug!(?e, "JWT Error");
-                return Err(ToClientError::NeedLogin(username));
+                return Err(ToClientError::NeedLogin(spn));
             }
         };
 
