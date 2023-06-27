@@ -317,7 +317,7 @@ async fn process_auth_state(
                 }
             };
 
-            let spn = tonk.spn.clone();
+            let spn = tonk.spn;
             // Return the un-parsed token
             (spn, t)
         }
@@ -474,7 +474,7 @@ impl LogoutOpt {
                 }
             };
 
-            uat.spn.clone()
+            uat.spn
         };
 
         let mut tokens = read_tokens().unwrap_or_else(|_| {

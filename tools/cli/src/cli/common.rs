@@ -129,7 +129,7 @@ impl CommonOpt {
 
                 // Is it in the store?
                 match possible_token {
-                    Some(t) => t.clone(),
+                    Some(t) => t,
                     None => {
                         error!(
                             "No valid authentication tokens found for {}.",
