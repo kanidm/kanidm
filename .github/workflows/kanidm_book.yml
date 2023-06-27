@@ -83,16 +83,24 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Download existing artifacts
+      - name: Download base artifact
         uses: actions/download-artifact@v3
         with:
+          name: base
+          path: ./docs/
+        env:
+          ACTIONS_RUNNER_DEBUG: true
+      - name: Download individual artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: individual
           path: ./docs/
         env:
           ACTIONS_RUNNER_DEBUG: true
       - name: Log more stuff
         run: |
           echo "Currently in $(pwd)"
-          mkdir docs && find $(pwd) -ls > ./docs/manifest.txt
+          mkdir -p docs && find $(pwd) -ls > ./docs/manifest.txt
         env:
           ACTIONS_RUNNER_DEBUG: true
       - name: Upload docs dir as an artifact
