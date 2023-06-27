@@ -21,20 +21,13 @@ jobs:
           alert-lookup: true
           compat-lookup: true
       - uses: actions/checkout@v3
-      - name: Approve a PR if not already approved
-
-        run: |
-          # sets the upstream metadata for `gh pr status`
-          gh pr checkout "$PR_URL"
-          if [ "$(gh pr status --json reviewDecision -q .currentBranch.reviewDecision)" != "APPROVED" ];
-          then gh pr review --approve "$PR_URL"
-          else echo "PR already approved, skipping additional approvals to minimize emails/notification noise.";
-          fi
+      - name: Enable auto-merge for Dependabot PRs
+        run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-      - name: Enable auto-merge for Dependabot PRs
-        run: gh pr merge --auto --squash "$PR_URL"
+      - name: Approve a PR if not already approved
+        run: scripts/dependabot_automerge_check.sh "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
