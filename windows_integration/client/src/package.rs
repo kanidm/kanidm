@@ -4,6 +4,7 @@ use std::mem::size_of;
 use std::ptr::null_mut;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::v1::UnixUserToken;
 use kanidm_windows::{AuthPkgError, AuthPkgRequest, AuthPkgResponse, AuthenticateAccountResponse};
 use once_cell::sync::Lazy;
@@ -24,23 +25,18 @@ use windows::Win32::Security::{
 };
 use windows::Win32::System::Kernel::STRING;
 
-use crate::client::KanidmWindowsClient;
 use crate::mem::{allocate_mem_client, allocate_mem_lsa, MemoryAllocationError};
 use crate::structs::{AuthInfo, LogonId, ProfileBuffer};
 use crate::PROGRAM_DIR;
 
-pub(crate) static mut KANIDM_WINDOWS_CLIENT: Lazy<Option<KanidmWindowsClient>> = Lazy::new(|| {
-    let client = match KanidmWindowsClient::new(&format!("{}/authlib_client.toml", PROGRAM_DIR)) {
-        Ok(client) => client,
-        Err(e) => {
-            event!(Level::ERROR, "Failed to create new KanidmWindowsClient");
-            event!(Level::INFO, "KanidmWindowsClientError {:?}", e);
-
-            return None;
-        }
-    };
-
-    Some(client)
+pub(crate) static mut KANIDM_CLIENT: Lazy<KanidmClient> = Lazy::new(|| {
+    let config_path = format!("{}/authlib_client.toml", PROGRAM_DIR);
+    
+    KanidmClientBuilder::new()
+        .read_options_from_optional_config(config_path)
+        .unwrap_or_else(|_| std::process::exit(1))
+        .build()
+        .unwrap_or_else(|_| std::process::exit(1))
 });
 static mut AP_DISPATCH_TABLE: Option<LSA_DISPATCH_TABLE> = None;
 static mut AP_PACKAGE_ID: u32 = 0;
@@ -96,14 +92,6 @@ pub async unsafe extern "system" fn ApInitialisePackage(
         *out_package_name = alloc_package_name;
         AP_DISPATCH_TABLE = Some(dt_ref.to_owned());
         AP_PACKAGE_ID = package_id;
-    }
-
-    if unsafe { KANIDM_WINDOWS_CLIENT.is_none() } {
-        event!(
-            Level::ERROR,
-            "Kanidm Windows Client did not initialise correctly"
-        );
-        return STATUS_UNSUCCESSFUL;
     }
 
     apips.exit();
@@ -184,10 +172,26 @@ pub async unsafe extern "system" fn ApLogonUser(
         }
     };
 
+    let client = match Lazy::get(unsafe { &KANIDM_CLIENT }) {
+        Some(client) => client,
+        None => {
+            event!(Level::ERROR, "Failed to get a reference to kanidm client");
+            return STATUS_UNSUCCESSFUL;
+        }
+    };
+
     // * Get token from kanidm server
-    let client = unsafe { KANIDM_WINDOWS_CLIENT.as_ref().unwrap() };
-    let token = match client.logon_user_unix(&username, &password).await {
-        Ok(token) => token,
+    let token = match client
+        .idm_account_unix_cred_verify(&username, &password)
+        .await
+    {
+        Ok(token) => match token {
+            Some(token) => token,
+            None => {
+                event!(Level::ERROR, "Kanidm Client did not return a token");
+                return STATUS_UNSUCCESSFUL;
+            }
+        },
         Err(_) => return STATUS_UNSUCCESSFUL,
     };
 
@@ -387,13 +391,10 @@ pub async unsafe extern "system" fn ApCallPackage(
         }
     };
 
-    let client = match unsafe { KANIDM_WINDOWS_CLIENT.as_ref() } {
+    let client = match Lazy::get(unsafe { &KANIDM_CLIENT }) {
         Some(client) => client,
         None => {
-            span!(
-                Level::ERROR,
-                "Failed to get the kanidm client as a reference"
-            );
+            event!(Level::ERROR, "Failed to get a reference to kanidm client");
             return STATUS_UNSUCCESSFUL;
         }
     };
@@ -407,13 +408,19 @@ pub async unsafe extern "system" fn ApCallPackage(
     let response = match request {
         AuthPkgRequest::AuthenticateAccount(auth_request) => {
             let logon_result = client
-                .logon_user_unix(&auth_request.id, &auth_request.password)
+                .idm_account_unix_cred_verify(&auth_request.id, &auth_request.password)
                 .await;
 
             AuthPkgResponse::AuthenticateAccount(match logon_result {
-                Ok(token) => AuthenticateAccountResponse {
-                    status: Ok(()),
-                    token: Some(token),
+                Ok(token_opt) => match token_opt {
+                    Some(token) => AuthenticateAccountResponse {
+                        status: Ok(()),
+                        token: Some(token),
+                    },
+                    None => AuthenticateAccountResponse {
+                        status: Err(AuthPkgError::AuthenticationFailed),
+                        token: None,
+                    },
                 },
                 Err(_) => AuthenticateAccountResponse {
                     status: Err(AuthPkgError::AuthenticationFailed),
