@@ -2,6 +2,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::time::Duration;
 
+use crate::unix_config::TpmPolicy;
 use kanidm_lib_crypto::CryptoPolicy;
 use kanidm_lib_crypto::DbPasswordV1;
 use kanidm_lib_crypto::Password;
@@ -26,7 +27,7 @@ pub struct DbTxn<'a> {
 }
 
 impl Db {
-    pub fn new(path: &str, require_tpm: Option<&str>) -> Result<Self, ()> {
+    pub fn new(path: &str, tpm_policy: &TpmPolicy) -> Result<Self, ()> {
         let before = unsafe { umask(0o0027) };
         let conn = Connection::open(path).map_err(|e| {
             error!(err = ?e, "rusqulite error");
@@ -38,23 +39,12 @@ impl Db {
 
         debug!("Configured {:?}", crypto_policy);
 
-        // Test a tpm context.
-        #[allow(unused_variables)]
-        let require_tpm = if let Some(tcti_str) = require_tpm {
-            #[cfg(feature = "tpm")]
-            let r = Db::tpm_setup_context(
-                tcti_str,
-                pool.get().expect("Unable to get connection from pool!!!"),
-            )?;
+        // Test if we have a tpm context.
 
-            #[cfg(not(feature = "tpm"))]
-            warn!("require_tpm is set, but tpm was not built in. This instance will NOT cache passwords!");
-            #[cfg(not(feature = "tpm"))]
-            let r = tpm::TpmConfig {};
-
-            Some(r)
-        } else {
-            None
+        let require_tpm = match tpm_policy {
+            TpmPolicy::Ignore => None,
+            TpmPolicy::IfPossible(tcti_str) => Db::tpm_setup_context(tcti_str, &conn).ok(),
+            TpmPolicy::Required(tcti_str) => Some(Db::tpm_setup_context(tcti_str, &conn)?),
         };
 
         Ok(Db {
@@ -771,15 +761,25 @@ impl<'a> Drop for DbTxn<'a> {
 
 #[cfg(not(feature = "tpm"))]
 pub(crate) mod tpm {
+    use super::Db;
+
+    use rusqlite::Connection;
+
     pub struct TpmConfig {}
+
+    impl Db {
+        pub fn tpm_setup_context(_tcti_str: &str, _conn: &Connection) -> Result<TpmConfig, ()> {
+            warn!("tpm feature is not available in this build");
+            Err(())
+        }
+    }
 }
 
 #[cfg(feature = "tpm")]
 pub(crate) mod tpm {
     use super::Db;
 
-    use r2d2_sqlite::SqliteConnectionManager;
-    use rusqlite::OptionalExtension;
+    use rusqlite::{Connection, OptionalExtension};
 
     use kanidm_lib_crypto::{CryptoError, CryptoPolicy, Password, TpmError};
     use tss_esapi::{utils::TpmsContext, Context, TctiNameConf};
@@ -792,10 +792,7 @@ pub(crate) mod tpm {
     }
 
     impl Db {
-        pub fn tpm_setup_context(
-            tcti_str: &str,
-            conn: r2d2::PooledConnection<SqliteConnectionManager>,
-        ) -> Result<TpmConfig, ()> {
+        pub fn tpm_setup_context(tcti_str: &str, conn: &Connection) -> Result<TpmConfig, ()> {
             let tcti = TctiNameConf::from_str(tcti_str).map_err(|e| {
                 error!(tpm_err = ?e, "Failed to parse tcti name");
             })?;
@@ -939,6 +936,7 @@ mod tests {
 
     use super::Db;
     use crate::cache::Id;
+    use crate::unix_config::TpmPolicy;
 
     const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
     const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
@@ -946,7 +944,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_account_basic() {
         sketching::test_init();
-        let db = Db::new("", None).expect("failed to create.");
+        let db = Db::new("", &TpmPolicy::default()).expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -1030,7 +1028,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_group_basic() {
         sketching::test_init();
-        let db = Db::new("", None).expect("failed to create.");
+        let db = Db::new("", &TpmPolicy::default()).expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -1105,7 +1103,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_account_group_update() {
         sketching::test_init();
-        let db = Db::new("", None).expect("failed to create.");
+        let db = Db::new("", &TpmPolicy::default()).expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -1175,12 +1173,12 @@ mod tests {
         sketching::test_init();
 
         #[cfg(feature = "tpm")]
-        let tcti_str = Some("device:/dev/tpmrm0");
+        let tpm_policy = TpmPolicy::Required("device:/dev/tpmrm0".to_string());
 
         #[cfg(not(feature = "tpm"))]
-        let tcti_str = None;
+        let tpm_policy = TpmPolicy::default();
 
-        let db = Db::new("", tcti_str).expect("failed to create.");
+        let db = Db::new("", &tpm_policy).expect("failed to create.");
 
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
@@ -1230,7 +1228,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_group_rename_duplicate() {
         sketching::test_init();
-        let db = Db::new("", None).expect("failed to create.");
+        let db = Db::new("", &TpmPolicy::default()).expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -1285,7 +1283,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_account_rename_duplicate() {
         sketching::test_init();
-        let db = Db::new("", None).expect("failed to create.");
+        let db = Db::new("", &TpmPolicy::default()).expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 

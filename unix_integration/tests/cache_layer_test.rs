@@ -11,6 +11,7 @@ use kanidm_unix_common::constants::{
     DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
     DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
 };
+use kanidm_unix_common::unix_config::TpmPolicy;
 use kanidmd_core::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidmd_core::create_server_core;
 use tokio::task;
@@ -110,7 +111,7 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
         DEFAULT_UID_ATTR_MAP,
         DEFAULT_GID_ATTR_MAP,
         vec!["masked_group".to_string()],
-        None,
+        &TpmPolicy::default(),
     )
     .await
     .expect("Failed to build cache layer.");
