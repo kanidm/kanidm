@@ -1542,6 +1542,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .and_then(|_| accesscontrols.commit())
             .and_then(|_| be_txn.commit())
     }
+    pub(crate) fn get_txn_cid(&self) -> &Cid {
+        &self.cid
+    }
 }
 
 #[cfg(test)]
