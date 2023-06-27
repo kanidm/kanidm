@@ -92,7 +92,7 @@ jobs:
         uses: actions/configure-pages@v3
       - name: Log more stuff
         run: |
-          find $(pwd) -ls > ./docs/manifest.txt
+          mkdir docs && find $(pwd) -ls > ./docs/manifest.txt
       - name: Upload docs dir as an artifact
         # https://github.com/actions/upload-artifact
         uses: actions/upload-artifact@v3
