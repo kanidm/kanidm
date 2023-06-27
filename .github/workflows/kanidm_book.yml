@@ -81,7 +81,6 @@ jobs:
       - name: Download existing artifacts
         uses: actions/download-artifact@v3
         with:
-          name: base
           path: ./docs/
         env:
           ACTIONS_RUNNER_DEBUG: true
@@ -92,7 +91,10 @@ jobs:
         uses: actions/configure-pages@v3
       - name: Log more stuff
         run: |
+          echo "Currently in $(pwd)"
           mkdir docs && find $(pwd) -ls > ./docs/manifest.txt
+        env:
+          ACTIONS_RUNNER_DEBUG: true
       - name: Upload docs dir as an artifact
         # https://github.com/actions/upload-artifact
         uses: actions/upload-artifact@v3
