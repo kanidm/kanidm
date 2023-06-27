@@ -5,7 +5,6 @@ use tracing::{event, Level};
 use windows::Win32::Foundation::{NTSTATUS, STATUS_SUCCESS};
 use windows::Win32::Security::Authentication::Identity::SECPKG_FUNCTION_TABLE;
 
-pub(crate) mod client;
 pub(crate) mod mem;
 pub mod package;
 pub(crate) mod structs;
