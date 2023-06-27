@@ -41,12 +41,13 @@ jobs:
       - name: Move redirector page
         run: |
           mkdir docs
-          cp book/index_redirect.html docs/index.html
+          cp book/index_redirect.html ./docs/index.html
+          find ./docs > docs/manifest.txt
       - name: Upload redirector artifact
         # https://github.com/actions/upload-artifact
         uses: actions/upload-artifact@v3
         with:
-          name: docs
+          name: base
           path: docs/index.html
 
   fanout:
@@ -80,7 +81,11 @@ jobs:
       - name: Download previously built docs
         uses: actions/download-artifact@v3
         with:
-          name: docs
+          name: base
+      - name: Download previously built docs
+        uses: actions/download-artifact@v3
+        with:
+          name: individual
         env:
           ACTIONS_RUNNER_DEBUG: true
       - uses: actions/checkout@v3

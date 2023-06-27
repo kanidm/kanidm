@@ -67,7 +67,6 @@ jobs:
           cd ..
           mv pykanidm/site ./docs/${{ inputs.tag }}/pykanidm
         continue-on-error: true
-
       - name: archive things
         run: |
           tar czvf ${{ inputs.tag }}.tar.gz ./docs/
@@ -76,5 +75,5 @@ jobs:
         # https://github.com/actions/upload-artifact
         uses: actions/upload-artifact@v3
         with:
-          name: docs
+          name: individual
           path: ${{inputs.tag }}.tar.gz
