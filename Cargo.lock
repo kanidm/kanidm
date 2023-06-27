@@ -1215,6 +1215,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "fs2",
+ "is-terminal",
  "kanidm_lib_file_permissions",
  "kanidm_proto",
  "kanidmd_core",
@@ -2384,6 +2385,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "12b6ee2129af8d4fb011108c73d99a1b83a85977f23b82460c0ae2e25bb4b57f"
 
 [[package]]
+name = "is-terminal"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "adcf93614601c8129ddf72e2d5633df827ba6551541c6d8c59520a371475be1f"
+dependencies = [
+ "hermit-abi 0.3.1",
+ "io-lifetimes",
+ "rustix",
+ "windows-sys 0.48.0",
+]
+
+[[package]]
 name = "itertools"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2718,7 +2731,6 @@ version = "1.1.0-beta.13"
 dependencies = [
  "compact_jwt",
  "gloo",
- "gloo-net",
  "js-sys",
  "kanidm_proto",
  "qrcode",

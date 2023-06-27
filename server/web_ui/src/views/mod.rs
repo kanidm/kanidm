@@ -1,16 +1,14 @@
 use gloo::console;
 use kanidm_proto::v1::{UiHint, UserAuthToken};
 use serde::{Deserialize, Serialize};
-use wasm_bindgen::{JsCast, UnwrapThrowExt};
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
+use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::components::{admin_accounts, admin_groups, admin_menu, admin_oauth2};
-use crate::error::*;
 use crate::manager::Route;
-use crate::{models, utils};
+use crate::models;
+use crate::{do_request, error::*, RequestMethod};
 
 mod apps;
 mod profile;
@@ -328,62 +326,25 @@ impl ViewsApp {
     }
 
     async fn check_session_valid() -> Result<ViewsMsg, FetchError> {
-        let mut opts = RequestInit::new();
-        opts.method("GET");
-        opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
-
-        let request = Request::new_with_str_and_init("/v1/auth/valid", &opts)?;
-
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request))
-            .await
-            .map_err(|e| {
-                console::error!(&format!("fetch request failed {:?}", e));
-                e
-            })?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
+        let (kopid, status, value, _) =
+            do_request("/v1/auth/valid", RequestMethod::GET, None).await?;
 
         if status == 200 {
             Ok(ViewsMsg::Verified)
         } else if status == 401 {
             Ok(ViewsMsg::LogoutComplete)
         } else {
-            let headers = resp.headers();
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             Ok(ViewsMsg::Error { emsg, kopid })
         }
     }
 
     async fn fetch_user_data() -> Result<ViewsMsg, FetchError> {
-        let mut opts = RequestInit::new();
-        opts.method("GET");
-        opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
-
-        let request = Request::new_with_str_and_init("/v1/self/_uat", &opts)?;
-
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
+        let (kopid, status, value, _) =
+            do_request("/v1/self/_uat", RequestMethod::GET, None).await?;
 
         if status == 200 {
-            let jsval = JsFuture::from(resp.json()?).await?;
-            let uat: UserAuthToken = serde_wasm_bindgen::from_value(jsval)
+            let uat: UserAuthToken = serde_wasm_bindgen::from_value(value)
                 .map_err(|e| {
                     let e_msg = format!("serde error -> {:?}", e);
                     console::error!(e_msg.as_str());
@@ -392,39 +353,18 @@ impl ViewsApp {
 
             Ok(ViewsMsg::ProfileInfoReceived { uat })
         } else {
-            let headers = resp.headers();
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             Ok(ViewsMsg::Error { emsg, kopid })
         }
     }
 
     async fn fetch_logout() -> Result<ViewsMsg, FetchError> {
-        let mut opts = RequestInit::new();
-        opts.method("GET");
-        opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
-
-        let request = Request::new_with_str_and_init("/v1/logout", &opts)?;
-
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
+        let (kopid, status, value, _) = do_request("/v1/logout", RequestMethod::GET, None).await?;
 
         if status == 200 {
             Ok(ViewsMsg::LogoutComplete)
         } else {
-            let headers = resp.headers();
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             Ok(ViewsMsg::Error { emsg, kopid })
         }
     }

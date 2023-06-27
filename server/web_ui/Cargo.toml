@@ -22,9 +22,6 @@ repository = "https://github.com/kanidm/kanidm/"
 # homepage = { workspace = true }
 # repository = { workspace = true }
 
-# These are ignored because the crate is in a workspace
-#[profile.release]
-# less code to include into binary
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -33,7 +30,6 @@ crate-type = ["cdylib", "rlib"]
 compact_jwt = { workspace = true, default-features = false, features = ["unsafe_release_without_verify"] }
 # gloo = "^0.8.0"
 gloo = { workspace = true }
-gloo-net = { workspace = true }
 js-sys = { workspace = true }
 kanidm_proto = { workspace = true, features = ["wasm"] }
 qrcode = { workspace = true, features = ["svg"] }

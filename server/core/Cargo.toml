@@ -38,7 +38,7 @@ tokio-openssl = { workspace = true }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = {workspace = true}
 tracing = { workspace = true, features = ["attributes"] }
-urlencoding.workspace = true
+urlencoding = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4" ] }
 
 [build-dependencies]

@@ -4,11 +4,8 @@ use yew::prelude::*;
 
 use crate::constants::{CSS_CARD, CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER};
 use crate::error::FetchError;
-use crate::utils;
+use crate::{do_request, RequestMethod};
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
 
 use kanidm_proto::internal::AppLink;
 
@@ -182,33 +179,15 @@ impl AppsApp {
     }
 
     async fn fetch_user_apps() -> Result<Msg, FetchError> {
-        let mut opts = RequestInit::new();
-        opts.method("GET");
-        opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
-
-        let request = Request::new_with_str_and_init("/v1/self/_applinks", &opts)?;
-
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
+        let (kopid, status, value, _) =
+            do_request("/v1/self/_applinks", RequestMethod::GET, None).await?;
 
         if status == 200 {
-            let jsval = JsFuture::from(resp.json()?).await?;
-            let apps: Vec<AppLink> = serde_wasm_bindgen::from_value(jsval)
+            let apps: Vec<AppLink> = serde_wasm_bindgen::from_value(value)
                 .expect_throw("Invalid response type - auth_init::AuthResponse");
             Ok(Msg::Ready { apps })
         } else {
-            let headers = resp.headers();
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             Ok(Msg::Error { emsg, kopid })
         }
     }

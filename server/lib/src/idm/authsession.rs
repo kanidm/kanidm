@@ -815,7 +815,7 @@ impl AuthSession {
             // of what's next, or ordering.
             let valid_mechs = auth_session.valid_auth_mechs();
 
-            security_info!(?valid_mechs, "Offering auth mechanisms");
+            security_debug!(?valid_mechs, "Offering auth mechanisms");
             let as_state = AuthState::Choose(valid_mechs);
             (Some(auth_session), as_state)
         }

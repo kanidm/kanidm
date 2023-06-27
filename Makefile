@@ -122,7 +122,7 @@ codespell:
 	--skip='./book/book/*' \
 	--skip='./docs/*,./.git' \
 	--skip='./rlm_python/mods-available/eap' \
-	--skip='./server/web_ui/src/external,./server/web_ui/pkg/external' \
+	--skip='./server/web_ui/static/external,./server/web_ui/pkg/external' \
 	--skip='./server/lib/src/constants/system_config.rs,./pykanidm/site,./server/lib/src/constants/*.json'
 
 .PHONY: test/pykanidm/pytest
@@ -255,3 +255,7 @@ cert/clean:
 .PHONY: webui
 webui: ## Build the WASM web frontend
 	cd server/web_ui && ./build_wasm_release.sh
+
+.PHONY: webui/test
+webui/test: ## Run wasm-pack test
+	cd server/web_ui && wasm-pack test --headless --chrome

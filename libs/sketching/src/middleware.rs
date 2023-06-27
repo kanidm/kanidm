@@ -76,6 +76,12 @@ impl TreeMiddleware {
                     status = format_args!("{} - {}", status as u16, status.canonical_reason()),
                     "Client error --> Response sent"
                 );
+            } else if status == 404 {
+                // because not-found isn't really an error, is it?
+                request_info!(
+                    status = format_args!("{} - {}", status as u16, status.canonical_reason()),
+                    "--> Response sent"
+                );
             } else {
                 request_warn!(
                     status = format_args!("{} - {}", status as u16, status.canonical_reason()),

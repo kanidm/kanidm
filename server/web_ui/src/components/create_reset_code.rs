@@ -10,9 +10,6 @@ use wasm_bindgen::UnwrapThrowExt;
 use web_sys::Node;
 
 use crate::error::*;
-use wasm_bindgen::JsCast;
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
 
 enum State {
     Valid,
@@ -237,35 +234,17 @@ impl Component for CreateResetCode {
 
 impl CreateResetCode {
     async fn credential_get_update_intent_token(id: String) -> Result<Msg, FetchError> {
-        let mut opts = RequestInit::new();
-        opts.method("GET");
-        opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
-
         let uri = format!("/v1/person/{}/_credential/_update_intent?ttl=0", id);
 
-        let request = Request::new_with_str_and_init(uri.as_str(), &opts)?;
-
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
+        let (kopid, status, value, _) =
+            crate::do_request(&uri, crate::RequestMethod::GET, None).await?;
 
         if status == 200 {
-            let jsval = JsFuture::from(resp.json()?).await?;
             let token: CUIntentToken =
-                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
+                serde_wasm_bindgen::from_value(value).expect_throw("Invalid response type");
             Ok(Msg::Ready { token })
         } else {
-            let headers = resp.headers();
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             // let jsval_json = JsFuture::from(resp.json()?).await?;
             Ok(Msg::Error { emsg, kopid })
         }

@@ -16,6 +16,11 @@ if [ -z "$(which rsync)" ]; then
     exit 1
 fi
 
+if [ -z "$(which wasm-pack)" ]; then
+    echo "Cannot find wasm-pack which is needed to build the UI, quitting!"
+    exit 1
+fi
+
 if [ "$(find ./pkg/ -name 'kanidmd*' | wc -l)" -gt 0 ]; then
     echo "Cleaning up"
     rm pkg/kanidmd*
@@ -23,13 +28,10 @@ fi
 
 # we can disable this since we want it to expand
 # shellcheck disable=SC2086
-wasm-pack build ${BUILD_FLAGS} --target web || exit 1
+wasm-pack build ${BUILD_FLAGS} --target web --mode no-install --no-pack || exit 1
 
 touch ./pkg/ANYTHING_HERE_WILL_BE_DELETED_ADD_TO_SRC && \
-    rsync --delete-after -r --copy-links -v ./src/img/ ./pkg/img/ && \
-    rsync --delete-after -r --copy-links -v ./src/external/ ./pkg/external/ && \
+    rsync --delete-after -r --copy-links -v ./static/* ./pkg/ && \
     cp ../../README.md ./pkg/
     cp ../../LICENSE.md ./pkg/
-    cp ./src/style.css ./pkg/style.css && \
-    cp ./src/wasmloader.js ./pkg/wasmloader.js && \
     rm ./pkg/.gitignore

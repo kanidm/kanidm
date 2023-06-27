@@ -51,7 +51,7 @@ use tokio::sync::broadcast;
 
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
-use crate::config::Configuration;
+use crate::config::{Configuration, ServerRole};
 use crate::interval::IntervalActor;
 
 // === internal setup helpers
@@ -914,7 +914,7 @@ pub async fn create_server_core(
         // ⚠️  only start the sockets and listeners in non-config-test modes.
         let h = self::https::create_https_server(
             config.address,
-            config.domain,
+            &config.domain,
             config.tls_config.as_ref(),
             config.role,
             config.trust_x_forward_for,
@@ -927,7 +927,11 @@ pub async fn create_server_core(
         )
         .await?;
 
-        admin_info!("ready to rock! 🪨 ");
+        if config.role != ServerRole::WriteReplicaNoUI {
+            admin_info!("ready to rock! 🪨 UI available at: {}", config.origin);
+        } else {
+            admin_info!("ready to rock! 🪨");
+        }
         Some(h)
     };
 

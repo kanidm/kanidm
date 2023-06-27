@@ -1,13 +1,13 @@
 use gloo::console;
 use kanidm_proto::v1::{CURequest, CUSessionToken, CUStatus, OperationError, PasswordFeedback};
-use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestInit, RequestMode, Response};
+use wasm_bindgen::{JsValue, UnwrapThrowExt};
+
 use yew::prelude::*;
 
 use super::reset::{EventBusMsg, ModalProps};
 use crate::error::*;
 use crate::utils;
+use crate::{do_request, RequestMethod};
 
 enum PwState {
     Init,
@@ -57,38 +57,24 @@ impl PwModalApp {
     }
 
     async fn submit_password_update(token: CUSessionToken, pw: String) -> Result<Msg, FetchError> {
-        let intentreq_jsvalue = serde_json::to_string(&(CURequest::Password(pw), token))
+        let req_jsvalue = serde_json::to_string(&(CURequest::Password(pw), token))
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise pw curequest");
 
-        let mut opts = RequestInit::new();
-        opts.method("POST");
-        opts.mode(RequestMode::SameOrigin);
-
-        opts.body(Some(&intentreq_jsvalue));
-
-        let request = Request::new_with_str_and_init("/v1/credential/_update", &opts)?;
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
-        let headers = resp.headers();
+        let (kopid, status, value, _) = do_request(
+            "/v1/credential/_update",
+            RequestMethod::POST,
+            Some(req_jsvalue),
+        )
+        .await?;
 
         if status == 200 {
-            let jsval = JsFuture::from(resp.json()?).await?;
             let status: CUStatus =
-                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
+                serde_wasm_bindgen::from_value(value).expect_throw("Invalid response type");
             Ok(Msg::PasswordResponseSuccess { status })
         } else if status == 400 {
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let jsval = JsFuture::from(resp.json()?).await?;
             let status: OperationError =
-                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
+                serde_wasm_bindgen::from_value(value).expect_throw("Invalid response type");
             match status {
                 OperationError::PasswordQuality(feedback) => {
                     Ok(Msg::PasswordResponseQuality { feedback })
@@ -99,9 +85,7 @@ impl PwModalApp {
                 }),
             }
         } else {
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             Ok(Msg::Error { emsg, kopid })
         }
     }

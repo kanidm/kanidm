@@ -1254,7 +1254,7 @@ impl<'a> BackendWriteTransaction<'a> {
             })?;
 
         if entries.is_empty() {
-            admin_info!("No entries affected - reap_tombstones operation success");
+            admin_debug!("No entries affected - reap_tombstones operation success");
             return Ok(0);
         }
 

@@ -3,14 +3,14 @@ use gloo::console;
 use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus, TotpSecret};
 use qrcode::render::svg;
 use qrcode::QrCode;
-use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{Node, Request, RequestCredentials, RequestInit, RequestMode, Response};
+use wasm_bindgen::{JsValue, UnwrapThrowExt};
+use web_sys::Node;
 use yew::prelude::*;
 
 use super::reset::{EventBusMsg, ModalProps};
 use crate::error::*;
 use crate::utils;
+use crate::{do_request, RequestMethod};
 
 enum TotpState {
     Init,
@@ -74,31 +74,15 @@ impl TotpModalApp {
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise pw curequest");
 
-        let mut opts = RequestInit::new();
-        opts.method("POST");
-        opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
-
-        opts.body(Some(&req_jsvalue));
-
-        let request = Request::new_with_str_and_init("/v1/credential/_update", &opts)?;
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
-        let headers = resp.headers();
-
-        let kopid = headers.get("x-kanidm-opid").ok().flatten();
-
+        let (kopid, status, value, _) = do_request(
+            "/v1/credential/_update",
+            RequestMethod::POST,
+            Some(req_jsvalue),
+        )
+        .await?;
         if status == 200 {
-            let jsval = JsFuture::from(resp.json()?).await?;
             let status: CUStatus =
-                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
+                serde_wasm_bindgen::from_value(value).expect_throw("Invalid response type");
 
             cb.emit(EventBusMsg::UpdateStatus {
                 status: status.clone(),
@@ -115,8 +99,7 @@ impl TotpModalApp {
                 CURegState::TotpInvalidSha1 => Msg::TotpInvalidSha1,
             })
         } else {
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             Ok(Msg::Error { emsg, kopid })
         }
     }

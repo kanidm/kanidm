@@ -39,7 +39,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         ])))?;
 
         if rc.is_empty() {
-            admin_info!("No recycled present - purge operation success");
+            admin_info!("No recycled items present - purge operation success");
             return Ok(());
         }
 
