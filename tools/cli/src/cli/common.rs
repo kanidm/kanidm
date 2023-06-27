@@ -110,10 +110,11 @@ impl CommonOpt {
                         .get(filter_username)
                         .map(|t| (filter_username.clone(), t.clone()))
                 } else {
+                    let filter_username = format!("{}@", filter_username);
                     // First, filter for tokens that match.
                     let mut token_refs: Vec<_> = tokens
                         .iter()
-                        .filter(|(t, _)| t.starts_with(filter_username))
+                        .filter(|(t, _)| t.starts_with(&filter_username))
                         .map(|(k, v)| (k.clone(), v.clone()))
                         .collect();
 
