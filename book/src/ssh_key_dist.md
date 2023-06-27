@@ -63,7 +63,7 @@ If the account has SSH public keys you should see them listed, one per line.
 To configure servers to accept these keys, you must change their /etc/ssh/sshd_config to contain the
 lines:
 
-```
+```text
 PubkeyAuthentication yes
 UsePAM yes
 AuthorizedKeysCommand /usr/bin/kanidm_ssh_authorizedkeys %u
@@ -78,7 +78,7 @@ management tool such as salt or ansible.
 > **NOTICE:** With a working SSH key setup, you should also consider adding the following
 > sshd\_config options as hardening.
 
-```
+```text
 PermitRootLogin no
 PasswordAuthentication no
 PermitEmptyPasswords no
@@ -111,7 +111,7 @@ If the account has SSH public keys you should see them listed, one per line.
 To configure servers to accept these keys, you must change their /etc/ssh/sshd\_config to contain
 the lines:
 
-```
+```text
 PubkeyAuthentication yes
 UsePAM yes
 AuthorizedKeysCommand /usr/bin/kanidm_ssh_authorizedkeys_direct -D anonymous %u

@@ -97,18 +97,18 @@ jobs:
           path: ./docs/
         env:
           ACTIONS_RUNNER_DEBUG: true
-      - name: Log more stuff
-        run: |
-          echo "Currently in $(pwd)"
-          mkdir -p docs && find $(pwd) -ls > ./docs/manifest.txt
-        env:
-          ACTIONS_RUNNER_DEBUG: true
-      - name: Upload docs dir as an artifact
-        # https://github.com/actions/upload-artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: logs
-          path: docs/
+      # - name: Log more stuff
+      #   run: |
+      #     echo "Currently in $(pwd)"
+      #     mkdir -p docs && find $(pwd) -ls > ./docs/manifest.txt
+      #   env:
+      #     ACTIONS_RUNNER_DEBUG: true
+      # - name: Upload docs dir as an artifact
+      #   # https://github.com/actions/upload-artifact
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: logs
+      #     path: docs/
       - name: Extract the files
         run: |
           pwd
@@ -122,6 +122,8 @@ jobs:
           mkdir -p docs
           cd docs && cp -R "$(git branch -a  | awk '{print $1}' | sort -t. -k3n,3 -k4n,4 | awk -F'/' '{print $NF}' | tail -n1)/" stable && cd ..
           ls -la docs/
+          echo "Cleaning up docs archives"
+          rm docs/*.tar.gz
         env:
           ACTIONS_RUNNER_DEBUG: true
       - name: Upload pages artifacts
