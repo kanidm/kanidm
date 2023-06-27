@@ -78,14 +78,11 @@ jobs:
       - docs_master
     runs-on: ubuntu-latest
     steps:
-      - name: Download previously built docs
+      - name: Download existing artifacts
         uses: actions/download-artifact@v3
         with:
           name: base
-      - name: Download previously built docs
-        uses: actions/download-artifact@v3
-        with:
-          name: individual
+          path: docs
         env:
           ACTIONS_RUNNER_DEBUG: true
       - uses: actions/checkout@v3
@@ -93,7 +90,6 @@ jobs:
           fetch-depth: 0
       - name: Setup Pages
         uses: actions/configure-pages@v3
-
       - name: Upload docs dir as an artifact
         # https://github.com/actions/upload-artifact
         uses: actions/upload-artifact@v3
