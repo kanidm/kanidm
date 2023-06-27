@@ -31,7 +31,7 @@ use crate::PROGRAM_DIR;
 
 pub(crate) static mut KANIDM_CLIENT: Lazy<KanidmClient> = Lazy::new(|| {
     let config_path = format!("{}/authlib_client.toml", PROGRAM_DIR);
-    
+
     KanidmClientBuilder::new()
         .read_options_from_optional_config(config_path)
         .unwrap_or_else(|_| std::process::exit(1))
@@ -137,9 +137,7 @@ pub async unsafe extern "system" fn ApLogonUser(
 
     // * Set mandatory fields
     {
-        /*
-           Since the dispatch table exists, we re-set the return account which is allocated to the LSA's memory space
-        */
+        // Since the dispatch table exists, we re-set the return account which is allocated to the LSA's memory space
         let username_ptr = match unsafe {
             allocate_mem_lsa(auth_info.username, &dispatch_table.AllocateLsaHeap)
         } {
