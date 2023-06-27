@@ -93,19 +93,28 @@ jobs:
           fetch-depth: 0
       - name: Setup Pages
         uses: actions/configure-pages@v3
+
+      - name: Upload docs dir as an artifact
+        # https://github.com/actions/upload-artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: logs
+          path: docs/
       - name: Extract the files
         run: |
           pwd
+          echo "doing find $(pwd) -ls maxdepth 2"
           find $(pwd) -ls -maxdepth 2
+          echo "doing find tar.gz ls"
+          find $(pwd) -name '*.tar.gz' -ls
+          echo "extracting"
           find $(pwd) -name '*.tar.gz' -ls -exec tar zxvf "{}" \;
           mkdir -p docs
-          cd docs
-          cp -R "$(git branch -a  | awk '{print $1}' | sort -t. -k3n,3 -k4n,4 | awk -F'/' '{print $NF}' | tail -n1)/" stable
-          cd ..
+          cd docs && cp -R "$(git branch -a  | awk '{print $1}' | sort -t. -k3n,3 -k4n,4 | awk -F'/' '{print $NF}' | tail -n1)/" stable && cd ..
           ls -la docs/
         env:
           ACTIONS_RUNNER_DEBUG: true
-      - name: Upload artifact
+      - name: Upload pages artifacts
         uses: actions/upload-pages-artifact@v1
         with:
           # Upload entire repository
