@@ -17,6 +17,7 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 use std::fs::{metadata, File};
 // This works on both unix and windows.
 use fs2::FileExt;
+use kanidm_proto::messages::ConsoleOutputMode;
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
@@ -284,24 +285,30 @@ async fn main() -> ExitCode {
             config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());
             config.update_trust_x_forward_for(sconfig.trust_x_forward_for);
 
-            // Okay - Lets now create our lock and go.
-            let klock_path = format!("{}.klock" ,sconfig.db_path.as_str());
-            let flock = match File::create(&klock_path) {
-                Ok(flock) => flock,
-                Err(e) => {
-                    error!("ERROR: Refusing to start - unable to create kanidm exclusive lock at {} - {:?}", klock_path, e);
-                    return ExitCode::FAILURE
-                }
-            };
+            match &opt.commands  {
+                // we aren't going to touch the DB so we can carry on
+                KanidmdOpt::HealthCheck(_) => (),
+                _ => {
+                    // Okay - Lets now create our lock and go.
+                    let klock_path = format!("{}.klock" ,sconfig.db_path.as_str());
+                    let flock = match File::create(&klock_path) {
+                        Ok(flock) => flock,
+                        Err(e) => {
+                            error!("ERROR: Refusing to start - unable to create kanidm exclusive lock at {} - {:?}", klock_path, e);
+                            return ExitCode::FAILURE
+                        }
+                    };
 
-            match flock.try_lock_exclusive() {
-                Ok(()) => debug!("Acquired kanidm exclusive lock"),
-                Err(e) => {
-                    error!("ERROR: Refusing to start - unable to lock kanidm exclusive lock at {} - {:?}", klock_path, e);
-                    error!("Is another kanidm process running?");
-                    return ExitCode::FAILURE
+                    match flock.try_lock_exclusive() {
+                        Ok(()) => debug!("Acquired kanidm exclusive lock"),
+                        Err(e) => {
+                            error!("ERROR: Refusing to start - unable to lock kanidm exclusive lock at {} - {:?}", klock_path, e);
+                            error!("Is another kanidm process running?");
+                            return ExitCode::FAILURE
+                        }
+                    };
                 }
-            };
+            }
 
             /*
             // Apply any cli overrides, normally debug level.
@@ -523,36 +530,41 @@ async fn main() -> ExitCode {
 
                     debug!("{sopt:?}");
 
-                    let healthcheck_url = format!("https://{}/status", config.address);
+
+                    let healthcheck_url = match &sopt.check_origin {
+                        true => format!("{}/status", config.origin),
+                        false => format!("https://{}/status", config.address),
+                    };
+
                     debug!("Checking {healthcheck_url}");
 
 
 
-                    let client = reqwest::ClientBuilder::new()
+                    let mut client = reqwest::ClientBuilder::new()
                         .danger_accept_invalid_certs(sopt.no_verify_tls)
                         .danger_accept_invalid_hostnames(sopt.no_verify_tls)
                         .https_only(true);
-                    // TODO: work out how to pull the CA from the chain
-                    // client = match config.tls_config {
-                    //     Some(tls_config) => {
-                    //         eprintln!("{:?}", tls_config);
-                    //         let mut buf = Vec::new();
-                    //         File::open(tls_config.chain)
-                    //             .unwrap()
-                    //             .read_to_end(&mut buf)
-                    //             .unwrap();
-                    //         eprintln!("buf: {:?}", buf);
-                    //         match reqwest::Certificate::from_pem(&buf){
-                    //             Ok(cert) => client.add_root_certificate(cert),
-                    //             Err(err) => {
-                    //                 error!("Failed to read TLS chain: {err:?}");
-                    //                 client
-                    //             }
-                    //         }
-
-                    //     },
-                    //     None => client,
-                    // };
+                    client = match &sopt.ca_cert {
+                        None => client,
+                        Some(ca_cert) => {
+                            debug!("Trying to load {}", ca_cert);
+                            // if the ca_cert file exists, then we'll use it
+                            let ca_cert_path = PathBuf::from(ca_cert);
+                            match ca_cert_path.exists() {
+                                true => {
+                                    let ca_cert_parsed = reqwest::Certificate::from_pem(
+                                        &std::fs::read(ca_cert_path).expect(&format!("Failed to load {} as a cert!", ca_cert)),
+                                    )
+                                    .expect(&format!("Failed to parse {} as a valid certificate!", ca_cert));
+                                    client.add_root_certificate(ca_cert_parsed)
+                                },
+                                false => {
+                                    warn!("Couldn't find ca cert {} but carrying on...", ca_cert);
+                                    client
+                                }
+                            }
+                        }
+                    };
 
                     let client = client
                         .build()
@@ -576,7 +588,16 @@ async fn main() -> ExitCode {
                         }
                     };
                     debug!("Request: {req:?}");
-                    info!("OK")
+                    let output_mode: ConsoleOutputMode = sopt.commonopts.output_mode.to_owned().into();
+                    match output_mode {
+                        ConsoleOutputMode::JSON => {
+                            println!("{{\"result\":\"OK\"}}")
+                        },
+                        ConsoleOutputMode::Text => {
+                            info!("OK")
+                        },
+                    }
+
                 }
                 KanidmdOpt::Version(_) => {}
             }
