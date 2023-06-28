@@ -1,4 +1,3 @@
-use kanidm_proto::v1::UnixUserToken;
 use windows::Win32::Foundation::{LUID, UNICODE_STRING};
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]

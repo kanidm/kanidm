@@ -1,33 +1,39 @@
 use std::collections::HashMap;
 use std::ffi::c_void;
 use std::mem::size_of;
-use std::ptr::null_mut;
+use std::ptr::{null, null_mut};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use kanidm_client::{KanidmClient, KanidmClientBuilder};
+use kanidm_client::{ClientError, KanidmClient, KanidmClientBuilder};
 use kanidm_proto::v1::UnixUserToken;
 use kanidm_windows::{
-    AuthInfo, AuthPkgError, AuthPkgRequest, AuthPkgResponse, AuthenticateAccountResponse,
-    ProfileBuffer,
+    AuthPkgError, AuthPkgRequest, AuthPkgResponse, AuthenticateAccountResponse,
+    AuthenticationInformation,
 };
 use once_cell::sync::Lazy;
 use tracing::{event, span, Level};
 
-use windows::core::PSTR;
+use windows::core::{PSTR, PWSTR};
 use windows::Win32::Foundation::{
-    BOOL, LUID, NTSTATUS, PSID, STATUS_SUCCESS, STATUS_UNSUCCESSFUL, UNICODE_STRING,
+    BOOL, BOOLEAN, FALSE, HANDLE, LUID, NTSTATUS, PSID, STATUS_SUCCESS, STATUS_UNSUCCESSFUL, TRUE,
+    UNICODE_STRING,
 };
 use windows::Win32::Security::Authentication::Identity::{
-    LsaTokenInformationV3, LSA_DISPATCH_TABLE, LSA_SECPKG_FUNCTION_TABLE,
-    LSA_TOKEN_INFORMATION_TYPE, LSA_TOKEN_INFORMATION_V3, SECPKG_PARAMETERS, SECURITY_LOGON_TYPE,
+    LsaTokenInformationV3, SecNameFlat, LSA_DISPATCH_TABLE, LSA_SECPKG_FUNCTION_TABLE,
+    LSA_TOKEN_INFORMATION_TYPE, LSA_TOKEN_INFORMATION_V1, LSA_TOKEN_INFORMATION_V3,
+    SECPKG_NAME_TYPE, SECPKG_PARAMETERS, SECURITY_LOGON_TYPE, LsaTokenInformationV2,
 };
+use windows::Win32::Security::Credentials::{STATUS_LOGON_FAILURE, STATUS_NO_SUCH_USER};
 use windows::Win32::Security::{
-    AllocateLocallyUniqueId, ACL, LUID_AND_ATTRIBUTES, SID_AND_ATTRIBUTES, TOKEN_DEFAULT_DACL,
-    TOKEN_DEVICE_CLAIMS, TOKEN_GROUPS, TOKEN_OWNER, TOKEN_PRIMARY_GROUP, TOKEN_PRIVILEGES,
-    TOKEN_PRIVILEGES_ATTRIBUTES, TOKEN_USER, TOKEN_USER_CLAIMS,
+    AllocateLocallyUniqueId, GetTokenInformation, SecurityImpersonation, TokenUser, ACL,
+    LUID_AND_ATTRIBUTES, SID_AND_ATTRIBUTES, TOKEN_DEFAULT_DACL, TOKEN_DEVICE_CLAIMS, TOKEN_GROUPS,
+    TOKEN_OWNER, TOKEN_PRIMARY_GROUP, TOKEN_PRIVILEGES, TOKEN_PRIVILEGES_ATTRIBUTES, TOKEN_SOURCE,
+    TOKEN_USER, TOKEN_USER_CLAIMS, TokenGroups, TokenPrimaryGroup, TokenPrivileges, TokenOwner, TokenDefaultDacl,
 };
 use windows::Win32::System::Kernel::STRING;
+use windows::Win32::System::SystemInformation::GetLocalTime;
 
+use crate::convert::{rust_to_unicode, unicode_to_rust};
 use crate::mem::{allocate_mem_client, allocate_mem_lsa, MemoryAllocationError};
 use crate::structs::LogonId;
 use crate::PROGRAM_DIR;
@@ -47,6 +53,11 @@ static mut AP_LOGON_IDS: Lazy<HashMap<LogonId, UnixUserToken>> = Lazy::new(HashM
 static mut SP_PACKAGE_ID: usize = 0;
 static mut SP_SECPKG_PARAMS: Option<SECPKG_PARAMETERS> = None;
 static mut SP_FUNC_TABLE: Option<LSA_SECPKG_FUNCTION_TABLE> = None;
+
+fn error_then_return(msg: &str) -> NTSTATUS {
+    event!(Level::ERROR, msg);
+    STATUS_UNSUCCESSFUL
+}
 
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
@@ -101,274 +112,198 @@ pub async unsafe extern "system" fn ApInitialisePackage(
     STATUS_SUCCESS
 }
 
-// TODO: Remove use of ::default() in favour of proper methods
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
 pub async unsafe extern "system" fn ApLogonUser(
-    client_req: *const *const c_void,
-    _: SECURITY_LOGON_TYPE,
-    auth_info_ptr: *const c_void, // Cast to own Auth Info type
-    _: *const c_void,             // Pointer to auth_info
-    _: u32,
-    out_prof_buf: *mut *mut c_void, // Cast to own profile buffer
-    out_prof_buf_len: *mut u32,
-    out_logon_id: *mut LUID,
-    out_substatus: *mut i32,
-    out_token_type: *mut LSA_TOKEN_INFORMATION_TYPE,
-    out_token: *mut *mut c_void,
-    out_account: *mut *mut UNICODE_STRING,
-    _: *mut *mut UNICODE_STRING,
+    _client_req: *const *const c_void,
+    _security_logon_type: SECURITY_LOGON_TYPE,
+    authentication_information: *const c_void,
+    _client_authentication_base: *const c_void,
+    _authentication_information_length: u32,
+    _profile_buffer: *mut *mut c_void,
+    _profile_buffer_length: *mut u32,
+    mut logon_id: *mut LUID,
+    mut substatus: *mut i32,
+    mut token_information_type: *mut LSA_TOKEN_INFORMATION_TYPE,
+    token_information: *mut *mut c_void,
+    account_name: *mut *mut UNICODE_STRING,
+    authenticating_authority: *mut *mut UNICODE_STRING,
 ) -> NTSTATUS {
-    let auth_info_ptr_casted = auth_info_ptr.cast::<*const AuthInfo>();
-    let auth_info: &AuthInfo = match unsafe { (*auth_info_ptr_casted).as_ref() } {
-        Some(auth_info) => auth_info,
+    event!(Level::INFO, "AP: Starting logon process for unknown user");
+
+    // * Get needed global vars
+    let secpkg_dispatch_table = match unsafe { SP_FUNC_TABLE } {
+        Some(tbl) => tbl,
         None => {
-            event!(Level::ERROR, "Failed to get reference to AuthInfo");
-            return STATUS_UNSUCCESSFUL;
+            return error_then_return("AP: Failed to obtain reference to the LSA dispatch table")
         }
     };
-
-    unsafe {
-        *(*out_account) = auth_info.username;
-    }
-
-    let dispatch_table = match unsafe { AP_DISPATCH_TABLE.as_ref() } {
-        Some(dt) => dt,
-        None => {
-            span!(
-                Level::ERROR,
-                "Failed to get the LSA's dispatch table as a reference"
-            );
-            return STATUS_UNSUCCESSFUL;
-        }
-    };
-
-    // * Set mandatory fields
-    {
-        // Since the dispatch table exists, we re-set the return account which is allocated to the LSA's memory space
-        let username_ptr = match unsafe {
-            allocate_mem_lsa(auth_info.username, &dispatch_table.AllocateLsaHeap)
-        } {
-            Ok(ptr) => ptr,
-            Err(_) => {
-                span!(Level::ERROR, "Failed to allocate username to LSA heap");
-                return STATUS_UNSUCCESSFUL;
-            }
-        };
-
-        unsafe {
-            *out_account = username_ptr;
-        }
-    }
-
-    // * Get username & password as rust strings
-    let username = match unsafe { auth_info.username.Buffer.to_string() } {
-        Ok(un) => un,
-        Err(_) => {
-            event!(Level::ERROR, "Failed to convert username to string");
-            return STATUS_UNSUCCESSFUL;
-        }
-    };
-
-    let password = match unsafe { auth_info.password.Buffer.to_string() } {
-        Ok(pw) => pw,
-        Err(_) => {
-            event!(Level::ERROR, "Failed to convert password to string");
-            return STATUS_UNSUCCESSFUL;
-        }
-    };
-
-    let client = match Lazy::get(unsafe { &KANIDM_CLIENT }) {
+    let kanidm_client = match Lazy::get(unsafe { &KANIDM_CLIENT }) {
         Some(client) => client,
         None => {
-            event!(Level::ERROR, "Failed to get a reference to kanidm client");
-            return STATUS_UNSUCCESSFUL;
+            return error_then_return("AP: Failed to obtain reference to the kanidm client");
         }
     };
 
-    // * Get token from kanidm server
-    let token = match client
-        .idm_account_unix_cred_verify(&username, &password)
+    let authentication_information = authentication_information.cast::<AuthenticationInformation>();
+
+    if authentication_information.is_null() {
+        return error_then_return("AP: Authentication information provided is null");
+    }
+
+    let provided_credentials = unsafe { authentication_information.read() };
+    let username = match unicode_to_rust(provided_credentials.username) {
+        Some(str) => str,
+        None => return STATUS_UNSUCCESSFUL,
+    };
+    let password = match unicode_to_rust(provided_credentials.password) {
+        Some(str) => str,
+        None => return STATUS_UNSUCCESSFUL,
+    };
+
+    let upn_name = format!("{}@{}", username, kanidm_client.get_url());
+    let upn_name_win = rust_to_unicode(upn_name);
+    let upn_name_win_ptr = &upn_name_win as *const UNICODE_STRING;
+
+    match kanidm_client
+        .idm_account_unix_cred_verify(&*username, &*password)
         .await
     {
-        Ok(token) => match token {
-            Some(token) => token,
-            None => {
-                event!(Level::ERROR, "Kanidm Client did not return a token");
-                return STATUS_UNSUCCESSFUL;
-            }
-        },
-        Err(_) => return STATUS_UNSUCCESSFUL,
+        Ok(_) => event!(Level::INFO, "AP: Successfully logged on {}", username),
+        Err(ClientError::AuthenticationFailed) => {
+            event!(Level::INFO, "AP: {} failed credential check", username);
+            return STATUS_LOGON_FAILURE;
+        }
+        Err(_) => {
+            let msg = format!("AP: Failed to authenticate user {}", username);
+            return error_then_return(&*msg);
+        }
     };
 
-    // * Prepare & return profile buffer
-    let profile_buffer = ProfileBuffer {
-        token: token.clone(),
+    // Logon ID
+    let logon_id_new: *mut LUID = null_mut();
+
+    if let TRUE = unsafe { AllocateLocallyUniqueId(logon_id_new) } {
+        return error_then_return("AP: Failed to allocate logon id");
+    }
+
+    // Expiry Time
+    let current_time = match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+        Ok(time) => time,
+        Err(_) => return error_then_return("AP: Failed to get the current time"),
     };
-    let profile_buffer_ptr = match unsafe {
-        allocate_mem_client(
-            profile_buffer,
-            &dispatch_table.AllocateClientBuffer,
-            client_req,
+    let expiry_time = current_time.as_secs() as i64 + (24 * 60 * 60);
+
+    // User Handle
+    let open_sam_user = match secpkg_dispatch_table.OpenSamUser {
+        Some(func) => func,
+        None => return error_then_return("AP: Failed to get reference to LSA OpenSamUser"),
+    };
+
+    let user_handle_ptr: *mut *mut c_void = null_mut();
+    let sam_return_value = unsafe {
+        open_sam_user(
+            upn_name_win_ptr,
+            SecNameFlat,
+            null(),
+            BOOLEAN(0),
+            0,
+            user_handle_ptr,
         )
-    } {
-        Ok(ptr) => ptr,
-        Err(_) => {
-            span!(
-                Level::ERROR,
-                "Failed to allocate the profile buffer to the client's memory space"
-            );
-            return STATUS_UNSUCCESSFUL;
-        }
     };
 
+    let user_handle = unsafe { user_handle_ptr.cast::<*mut HANDLE>().read().read() };
+
+    if sam_return_value == STATUS_NO_SUCH_USER {
+        // TODO: Create new user
+    }
+
+    // Token Information
+    let user_token: *mut c_void = null_mut();
+    let groups_token: *mut c_void = null_mut();
+    let primary_group_token: *mut c_void = null_mut();
+    let privileges_token: *mut c_void = null_mut();
+    let owner_token: *mut c_void = null_mut();
+    let default_dacl_token: *mut c_void = null_mut();
+
+    if unsafe { GetTokenInformation(user_handle, TokenUser, Some(user_token), 0, null_mut()) }
+        == FALSE
     {
-        let return_ptr = out_prof_buf.cast::<*mut ProfileBuffer>();
-
-        unsafe {
-            *out_prof_buf_len = size_of::<ProfileBuffer>() as u32;
-            *return_ptr = profile_buffer_ptr;
-        }
+        return error_then_return("AP: Failed to get user token");
     }
 
-    // * Generate LUID
-    let luid_ptr = null_mut::<LUID>();
-
-    if let BOOL(0) = unsafe { AllocateLocallyUniqueId(luid_ptr) } {
-        event!(Level::ERROR, "Failed to allocate unique id");
-        return STATUS_UNSUCCESSFUL;
+    if unsafe { GetTokenInformation(user_handle, TokenGroups, Some(groups_token), 0, null_mut()) }
+        == FALSE
+    {
+        return error_then_return("AP: Failed to get groups token");
     }
 
-    unsafe {
-        *out_logon_id = *luid_ptr;
-
-        // Save the Logon ID
-        AP_LOGON_IDS.insert((*luid_ptr).into(), token);
+    if unsafe { GetTokenInformation(user_handle, TokenPrimaryGroup, Some(primary_group_token), 0, null_mut()) }
+        == FALSE
+    {
+        return error_then_return("AP: Failed to get primary group token");
     }
 
-    // * Prepare & return token
-    // Set expiry time
-    let current_time = match SystemTime::now().duration_since(UNIX_EPOCH) {
-        Ok(time) => time.as_secs() as i64,
-        Err(_) => {
-            event!(Level::ERROR, "Failed to get current unix timestamp");
-            return STATUS_UNSUCCESSFUL;
-        }
-    };
-    let expiry_time = current_time + (18 * 60 * 60);
-
-    // Set user & group token
-    let user_token = TOKEN_USER {
-        User: SID_AND_ATTRIBUTES::default(),
-    };
-    let group_token = TOKEN_GROUPS {
-        GroupCount: 0,
-        Groups: [SID_AND_ATTRIBUTES::default(); 1],
-    };
-    let primary_group_token = TOKEN_PRIMARY_GROUP {
-        PrimaryGroup: PSID::default(),
-    };
-
-    let group_token_ptr = null_mut::<TOKEN_GROUPS>();
-
-    unsafe {
-        *group_token_ptr = group_token;
+    if unsafe { GetTokenInformation(user_handle, TokenPrivileges, Some(privileges_token), 0, null_mut()) }
+        == FALSE
+    {
+        return error_then_return("AP: Failed to get privileges token");
     }
 
-    // Set privileges token
-    let luid_attributes = LUID_AND_ATTRIBUTES {
-        Luid: unsafe { *luid_ptr },
-        Attributes: TOKEN_PRIVILEGES_ATTRIBUTES::default(),
-    };
-    let privileges_token = TOKEN_PRIVILEGES {
-        PrivilegeCount: 0,
-        Privileges: [luid_attributes; 1],
-    };
-    let privileges_token_ptr = null_mut::<TOKEN_PRIVILEGES>();
-
-    unsafe {
-        *privileges_token_ptr = privileges_token;
+    if unsafe { GetTokenInformation(user_handle, TokenOwner, Some(owner_token), 0, null_mut()) }
+        == FALSE
+    {
+        return error_then_return("AP: Failed to get owner token");
     }
 
-    // Set owner token
-    let owner_token = TOKEN_OWNER {
-        Owner: PSID::default(),
-    };
-
-    // Set default dacl token
-    let acl = ACL {
-        AclRevision: 1,
-        Sbz1: 0,
-        AclSize: 0,
-        AceCount: 0,
-        Sbz2: 0,
-    };
-    let acl_ptr = null_mut::<ACL>();
-
-    unsafe {
-        *acl_ptr = acl;
+    if unsafe { GetTokenInformation(user_handle, TokenDefaultDacl, Some(default_dacl_token), 0, null_mut()) }
+        == FALSE
+    {
+        return error_then_return("AP: Failed to get default DACL token");
     }
 
-    let dacl_token = TOKEN_DEFAULT_DACL {
-        DefaultDacl: acl_ptr,
-    };
-
-    // Set user & device claims token
-    let user_claims_token = TOKEN_USER_CLAIMS {
-        UserClaims: null_mut(),
-    };
-    let device_claims_token = TOKEN_DEVICE_CLAIMS {
-        DeviceClaims: null_mut(),
-    };
-
-    // Set device groups token
-    let device_groups_token = TOKEN_GROUPS {
-        GroupCount: 0,
-        Groups: [SID_AND_ATTRIBUTES::default(); 1],
-    };
-    let device_groups_token_ptr = null_mut::<TOKEN_GROUPS>();
-
-    unsafe {
-        *device_groups_token_ptr = device_groups_token;
-    }
-
-    // Create logon token
-    let logon_token = LSA_TOKEN_INFORMATION_V3 {
+    let token_information_v2 = unsafe { LSA_TOKEN_INFORMATION_V1 {
         ExpirationTime: expiry_time,
-        User: user_token,
-        Groups: group_token_ptr,
-        PrimaryGroup: primary_group_token,
-        Privileges: privileges_token_ptr,
-        Owner: owner_token,
-        DefaultDacl: dacl_token,
-        UserClaims: user_claims_token,
-        DeviceClaims: device_claims_token,
-        DeviceGroups: device_groups_token_ptr,
+        User: user_token.cast::<TOKEN_USER>().read(),
+        Groups: groups_token.cast::<TOKEN_GROUPS>(),
+        PrimaryGroup: primary_group_token.cast::<TOKEN_PRIMARY_GROUP>().read(),
+        Privileges: privileges_token.cast::<TOKEN_PRIVILEGES>(),
+        Owner: owner_token.cast::<TOKEN_OWNER>().read(),
+        DefaultDacl: default_dacl_token.cast::<TOKEN_DEFAULT_DACL>().read(),
+    }};
+
+    // Allocate to LSA heap space
+    let substatus_lsa = match unsafe { allocate_mem_lsa(0i32, &secpkg_dispatch_table.AllocateLsaHeap) } {
+        Ok(ptr) => ptr,
+        Err(_) => return error_then_return("AP: Failed to allocate substatus"),
+    };
+    let token_information_type_lsa = match unsafe { allocate_mem_lsa(LsaTokenInformationV2, &secpkg_dispatch_table.AllocateLsaHeap)} {
+        Ok(ptr) => ptr,
+        Err(_) => return error_then_return("AP: Failed to allocate token information type"),
+    };
+    let token_information_lsa = match unsafe { allocate_mem_lsa(token_information_v2, &secpkg_dispatch_table.AllocateLsaHeap) } {
+        Ok(ptr) => ptr,
+        Err(_) => return error_then_return("AP: Failed to allocate the token information"),
+    };
+    let authenticating_authority_lsa = match unsafe { allocate_mem_lsa(rust_to_unicode(kanidm_client.get_url().to_string()), &secpkg_dispatch_table.AllocateLsaHeap)} {
+        Ok(ptr) => ptr,
+        Err(_) => return error_then_return("AP: Failed to allocate the authenticating authority"),
+    };
+    let account_name_lsa = match unsafe { allocate_mem_lsa(provided_credentials.username, &secpkg_dispatch_table.AllocateLsaHeap)} {
+        Ok(ptr) => ptr,
+        Err(_) => return error_then_return("AP: Failed to allocate the authenticating authority"),
     };
 
-    // Set logon token
-    let logon_token_ptr =
-        match unsafe { allocate_mem_lsa(logon_token, &dispatch_table.AllocateLsaHeap) } {
-            Ok(ptr) => ptr,
-            Err(_) => {
-                event!(Level::ERROR, "Failed to allocate logon token");
-                return STATUS_UNSUCCESSFUL;
-            }
-        };
-
-    {
-        let return_ptr = out_token.cast::<*mut LSA_TOKEN_INFORMATION_V3>();
-
-        unsafe {
-            *out_token_type = LsaTokenInformationV3;
-            *return_ptr = logon_token_ptr;
-        }
-    }
-
-    // Set return status
     unsafe {
-        *out_substatus = 0;
+        let token_information = token_information.cast::<*mut LSA_TOKEN_INFORMATION_V1>();
+
+        substatus = substatus_lsa;
+        token_information_type = token_information_type_lsa;
+        *token_information = token_information_lsa;
+        *account_name = account_name_lsa;
+        *authenticating_authority = authenticating_authority_lsa;
+        logon_id = logon_id_new;
     }
 
     STATUS_SUCCESS

@@ -8,6 +8,7 @@ use windows::Win32::Security::Authentication::Identity::SECPKG_FUNCTION_TABLE;
 pub(crate) mod mem;
 pub mod package;
 pub(crate) mod structs;
+pub(crate) mod convert;
 
 pub(crate) const PROGRAM_DIR: &str = "C:\\Program Files\\kanidm";
 

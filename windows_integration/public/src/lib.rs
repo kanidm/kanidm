@@ -32,11 +32,7 @@ pub struct AuthenticateAccountResponse {
 }
 
 // Authentication Package Logon User
-pub struct AuthInfo {
+pub struct AuthenticationInformation {
     pub username: UNICODE_STRING,
     pub password: UNICODE_STRING,
-}
-
-pub struct ProfileBuffer {
-    pub token: UnixUserToken,
 }
