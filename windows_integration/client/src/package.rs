@@ -6,7 +6,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::v1::UnixUserToken;
-use kanidm_windows::{AuthPkgError, AuthPkgRequest, AuthPkgResponse, AuthenticateAccountResponse, AuthInfo, ProfileBuffer};
+use kanidm_windows::{
+    AuthInfo, AuthPkgError, AuthPkgRequest, AuthPkgResponse, AuthenticateAccountResponse,
+    ProfileBuffer,
+};
 use once_cell::sync::Lazy;
 use tracing::{event, span, Level};
 
@@ -26,7 +29,7 @@ use windows::Win32::Security::{
 use windows::Win32::System::Kernel::STRING;
 
 use crate::mem::{allocate_mem_client, allocate_mem_lsa, MemoryAllocationError};
-use crate::structs::{LogonId};
+use crate::structs::LogonId;
 use crate::PROGRAM_DIR;
 
 pub(crate) static mut KANIDM_CLIENT: Lazy<KanidmClient> = Lazy::new(|| {
@@ -117,8 +120,14 @@ pub async unsafe extern "system" fn ApLogonUser(
     out_account: *mut *mut UNICODE_STRING,
     _: *mut *mut UNICODE_STRING,
 ) -> NTSTATUS {
-    let auth_info: &AuthInfo =
-        unsafe { (*auth_info_ptr.cast::<*const AuthInfo>()).as_ref().unwrap() };
+    let auth_info_ptr_casted = auth_info_ptr.cast::<*const AuthInfo>();
+    let auth_info: &AuthInfo = match unsafe { (*auth_info_ptr_casted).as_ref() } {
+        Some(auth_info) => auth_info,
+        None => {
+            event!(Level::ERROR, "Failed to get reference to AuthInfo");
+            return STATUS_UNSUCCESSFUL;
+        }
+    };
 
     unsafe {
         *(*out_account) = auth_info.username;
