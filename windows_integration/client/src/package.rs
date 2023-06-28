@@ -98,7 +98,7 @@ pub async unsafe extern "system" fn ApInitialisePackage(
     STATUS_SUCCESS
 }
 
-// TODO: Figure out structs which currently use ::default()
+// TODO: Remove use of ::default() in favour of proper methods
 #[tokio::main(flavor = "current_thread")]
 #[no_mangle]
 #[allow(non_snake_case)]
