@@ -70,7 +70,7 @@ jobs:
 
   deploy:
     environment:
-      name: github-pages
+      name: "github-pages"
       url: ${{ steps.deployment.outputs.page_url }}
     needs:
       - pre_deploy
@@ -80,6 +80,7 @@ jobs:
     steps:
       - name: Setup Pages
         uses: actions/configure-pages@v3
+        if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
@@ -97,18 +98,6 @@ jobs:
           path: ./docs/
         env:
           ACTIONS_RUNNER_DEBUG: true
-      # - name: Log more stuff
-      #   run: |
-      #     echo "Currently in $(pwd)"
-      #     mkdir -p docs && find $(pwd) -ls > ./docs/manifest.txt
-      #   env:
-      #     ACTIONS_RUNNER_DEBUG: true
-      # - name: Upload docs dir as an artifact
-      #   # https://github.com/actions/upload-artifact
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: logs
-      #     path: docs/
       - name: Extract the files
         run: |
           pwd
