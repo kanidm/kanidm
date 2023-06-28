@@ -77,10 +77,10 @@ jobs:
       - fanout
       - docs_master
     runs-on: ubuntu-latest
+    if: ${{ github.action_ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' && github.event == 'merge' }}
     steps:
       - name: Setup Pages
         uses: actions/configure-pages@v3
-        if: ${{ github.action_ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' && github.event == 'merge' }}
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
