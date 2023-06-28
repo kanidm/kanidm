@@ -45,9 +45,9 @@ pub struct JavaScriptFile {
 
 impl JavaScriptFile {
     /// return the hash for use in CSP headers
-    pub fn as_csp_hash(self) -> String {
-        self.hash
-    }
+    // pub fn as_csp_hash(self) -> String {
+    //     self.hash
+    // }
 
     /// returns a `<script>` HTML tag
     fn as_tag(self) -> String {
@@ -130,6 +130,7 @@ impl RequestExtensions for tide::Request<AppState> {
             .and_then(|h| {
                 // Turn it to a &str, and then check the prefix
                 h.as_str().strip_prefix("Bearer ")
+
             })
             .map(str::to_string)
     }

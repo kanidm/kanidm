@@ -110,37 +110,39 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictRes
         Ok(response)
     }
 }
-#[derive(Default)]
-struct StrictRequestMiddleware;
 
-#[async_trait::async_trait]
-impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictRequestMiddleware {
-    async fn handle(
-        &self,
-        request: tide::Request<State>,
-        next: tide::Next<'_, State>,
-    ) -> tide::Result {
-        let proceed = request
-            .header("sec-fetch-site")
-            .map(|hv| {
-                matches!(hv.as_str(), "same-origin" | "same-site" | "none")
-                    || (request.header("sec-fetch-mode").map(|v| v.as_str()) == Some("navigate")
-                        && request.method() == tide::http::Method::Get
-                        && request.header("sec-fetch-dest").map(|v| v.as_str()) != Some("object")
-                        && request.header("sec-fetch-dest").map(|v| v.as_str()) != Some("embed"))
-            })
-            .unwrap_or(true);
+// unused
+// #[derive(Default)]
+// struct StrictRequestMiddleware;
 
-        if proceed {
-            Ok(next.run(request).await)
-        } else {
-            Err(tide::Error::from_str(
-                tide::StatusCode::MethodNotAllowed,
-                "StrictRequestViolation",
-            ))
-        }
-    }
-}
+// #[async_trait::async_trait]
+// impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictRequestMiddleware {
+//     async fn handle(
+//         &self,
+//         request: tide::Request<State>,
+//         next: tide::Next<'_, State>,
+//     ) -> tide::Result {
+//         let proceed = request
+//             .header("sec-fetch-site")
+//             .map(|hv| {
+//                 matches!(hv.as_str(), "same-origin" | "same-site" | "none")
+//                     || (request.header("sec-fetch-mode").map(|v| v.as_str()) == Some("navigate")
+//                         && request.method() == tide::http::Method::Get
+//                         && request.header("sec-fetch-dest").map(|v| v.as_str()) != Some("object")
+//                         && request.header("sec-fetch-dest").map(|v| v.as_str()) != Some("embed"))
+//             })
+//             .unwrap_or(true);
+
+//         if proceed {
+//             Ok(next.run(request).await)
+//         } else {
+//             Err(tide::Error::from_str(
+//                 tide::StatusCode::MethodNotAllowed,
+//                 "StrictRequestViolation",
+//             ))
+//         }
+//     }
+// }
 
 #[derive(Default)]
 /// This tide MiddleWare adds headers like Content-Security-Policy

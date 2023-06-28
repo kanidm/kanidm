@@ -758,3 +758,72 @@ async fn test_self_write_mail_priv_people(rsclient: KanidmClient) {
     login_account_via_admin(&rsclient, "nonperson").await;
     test_write_attrs(&rsclient, "nonperson", &["mail"], false).await;
 }
+
+
+#[kanidmd_testkit::test]
+async fn test_https_robots_txt(rsclient: KanidmClient) {
+    // We need to do manual reqwests here.
+    let addr = rsclient.get_url();
+
+    // here we test the /ui/ endpoint which should have the headers
+    let response = match reqwest::get(format!("{}/robots.txt", &addr)).await {
+        Ok(value) => value,
+        Err(error) => {
+            panic!("Failed to query {:?} : {:#?}", addr, error);
+        }
+    };
+    eprintln!("response: {:#?}", response);
+    assert_eq!(response.status(), 200);
+
+    eprintln!(
+        "csp headers: {:#?}",
+        response.headers().get("content-security-policy")
+    );
+    assert_ne!(response.headers().get("content-security-policy"), None);
+    eprintln!("{}", response.text().await.unwrap());
+}
+
+#[kanidmd_testkit::test]
+async fn test_https_route_map(rsclient: KanidmClient) {
+    // We need to do manual reqwests here.
+    let addr = rsclient.get_url();
+
+
+    // here we test the /ui/ endpoint which should have the headers
+    let response = match reqwest::get(format!("{}/v1/routemap", &addr)).await {
+        Ok(value) => value,
+        Err(error) => {
+            panic!("Failed to query {:?} : {:#?}", addr, error);
+        }
+    };
+    eprintln!("response: {:#?}", response);
+    assert_eq!(response.status(), 200);
+
+    let body = response.text().await.unwrap();
+    eprintln!("{}", body);
+    assert!(body.contains("/scim/v1/Sync"));
+    assert!(body.contains(r#""path": "/v1/routemap""#));
+}
+
+/// This literally tests that the thing exists and responds in a way we expect, probably worth testing it better...
+#[kanidmd_testkit::test]
+async fn test_v1_raw_delete(rsclient: KanidmClient) {
+    // We need to do manual reqwests here.
+    let addr = rsclient.get_url();
+    let client = reqwest::ClientBuilder::new()
+    .danger_accept_invalid_certs(true)
+    .build().unwrap();
+
+    // here we test the /ui/ endpoint which should have the headers
+    let response = match client.post(format!("{}/v1/raw/delete", &addr)).send().await {
+        Ok(value) => value,
+        Err(error) => {
+            panic!("Failed to query {:?} : {:#?}", addr, error);
+        }
+    };
+    eprintln!("response: {:#?}", response);
+    assert_eq!(response.status(), 422);
+
+    let body = response.text().await.unwrap();
+    eprintln!("{}", body);
+}

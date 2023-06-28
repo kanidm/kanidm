@@ -259,3 +259,26 @@ webui: ## Build the WASM web frontend
 .PHONY: webui/test
 webui/test: ## Run wasm-pack test
 	cd server/web_ui && wasm-pack test --headless --chrome
+
+.PHONY: rust/coverage
+coverage/test: ## Run coverage tests
+coverage/test:
+	LLVM_PROFILE_FILE="$(PWD)/target/profile/coverage-%p-%m.profraw" RUSTFLAGS="-C instrument-coverage" cargo test
+
+.PHONY: coverage/grcov
+coverage/grcov: ## Run grcov
+coverage/grcov:
+	rm -rf ./target/coverage/html/*
+	grcov . --binary-path ./target/debug/deps/ \
+		-s . \
+		-t html \
+		--branch \
+		--ignore-not-existing \
+		--ignore '../*' \
+		--ignore "/*" \
+		-o target/coverage/html/
+
+.PHONY: coverage
+coverage: ## Run all the coverage tests
+coverage: coverage/test coverage/grcov
+	echo "Coverage report is in ./target/coverage/html/index.html"
