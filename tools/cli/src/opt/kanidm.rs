@@ -802,6 +802,17 @@ pub enum SynchOpt {
     #[clap(name = "get")]
     /// Display a selected IDM sync account
     Get(Named),
+    #[clap(name = "set-credential-portal")]
+    /// Set the url to the external credential portal. This will be displayed to synced users
+    /// so that they can be redirected to update their credentials on this portal.
+    SetCredentialPortal {
+        #[clap()]
+        account_id: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(name = "url")]
+        url: Option<Url>,
+    },
     /// Create a new IDM sync account
     #[clap(name = "create")]
     Create {

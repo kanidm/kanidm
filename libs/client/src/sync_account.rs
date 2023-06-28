@@ -1,6 +1,7 @@
 use crate::{ClientError, KanidmClient};
 use kanidm_proto::v1::Entry;
 use std::collections::BTreeMap;
+use url::Url;
 
 impl KanidmClient {
     pub async fn idm_sync_account_list(&self) -> Result<Vec<Entry>, ClientError> {
@@ -10,6 +11,24 @@ impl KanidmClient {
     pub async fn idm_sync_account_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
         self.perform_get_request(format!("/v1/sync_account/{}", id).as_str())
             .await
+    }
+
+    pub async fn idm_sync_account_set_credential_portal(
+        &self,
+        id: &str,
+        url: Option<&Url>,
+    ) -> Result<(), ClientError> {
+        let m = if let Some(url) = url {
+            vec![url.to_owned()]
+        } else {
+            vec![]
+        };
+
+        self.perform_put_request(
+            format!("/v1/sync_account/{}/_attr/sync_credential_portal", id).as_str(),
+            m,
+        )
+        .await
     }
 
     pub async fn idm_sync_account_create(

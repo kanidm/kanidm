@@ -16,6 +16,7 @@ extern crate tracing;
 
 use crate::common::OpType;
 use std::path::PathBuf;
+use url::Url;
 use uuid::Uuid;
 
 include!("../opt/kanidm.rs");
