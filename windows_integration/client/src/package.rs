@@ -6,7 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::v1::UnixUserToken;
-use kanidm_windows::{AuthPkgError, AuthPkgRequest, AuthPkgResponse, AuthenticateAccountResponse};
+use kanidm_windows::{AuthPkgError, AuthPkgRequest, AuthPkgResponse, AuthenticateAccountResponse, AuthInfo, ProfileBuffer};
 use once_cell::sync::Lazy;
 use tracing::{event, span, Level};
 
@@ -26,7 +26,7 @@ use windows::Win32::Security::{
 use windows::Win32::System::Kernel::STRING;
 
 use crate::mem::{allocate_mem_client, allocate_mem_lsa, MemoryAllocationError};
-use crate::structs::{AuthInfo, LogonId, ProfileBuffer};
+use crate::structs::{LogonId};
 use crate::PROGRAM_DIR;
 
 pub(crate) static mut KANIDM_CLIENT: Lazy<KanidmClient> = Lazy::new(|| {

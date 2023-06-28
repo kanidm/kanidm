@@ -15,3 +15,7 @@ repository.workspace = true
 [dependencies]
 kanidm_proto.workspace = true
 kanidm_client.workspace = true
+
+[dependencies.windows]
+version = "0.48"
+features = ["Win32_Foundation"]
