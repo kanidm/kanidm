@@ -844,7 +844,7 @@ pub(crate) mod tpm {
                             })
                             .ok()
                             // It loaded, so sub in our context.
-                            .map(|_handle: TpmHandle| maybe_ctx)
+                            .map(|_handle| maybe_ctx)
                     })
             } else {
                 None
