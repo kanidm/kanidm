@@ -830,20 +830,22 @@ pub(crate) mod tpm {
 
             let ex_ctx = if let Some(ctx_data) = ctx_data {
                 // Test loading, blank it out if it fails.
-                // deserialise
-                let maybe_ctx: TpmsContext =
-                    serde_json::from_slice(ctx_data.as_slice()).map_err(|e| {
+                serde_json::from_slice(ctx_data.as_slice()).map_err(|e| {
                         warn!("json error -> {:?}", e);
-                    })?;
-
-                // can it load?
-                context
-                    .execute_with_nullauth_session(|ctx| ctx.context_load(maybe_ctx.clone()))
-                    .map_err(|e| {
-                        error!(tpm_err = ?e, "Failed to load tpm context");
-                    })?;
-
-                Some(maybe_ctx)
+                    })
+                    // On error, becomes none and we do nothing else.
+                    .ok()
+                    .and_then(|maybe_ctx: TpmsContext| {
+                        // can it load?
+                        context
+                            .execute_with_nullauth_session(|ctx| ctx.context_load(maybe_ctx.clone()))
+                            .map_err(|e| {
+                                error!(tpm_err = ?e, "Failed to load tpm context");
+                            })
+                            .ok()
+                            // It loaded, so sub in our context.
+                            .map(|_handle| maybe_ctx)
+                    })
             } else {
                 None
             };
