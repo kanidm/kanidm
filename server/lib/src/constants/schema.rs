@@ -1,6 +1,11 @@
 // Core
 // Schema uuids start at 00000000-0000-0000-0000-ffff00000000
 
+use crate::constants::uuids::*;
+use crate::constants::values::*;
+use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
+use crate::value::{Value, SyntaxType};
+
 // system supplementary
 pub const JSON_SCHEMA_ATTR_DISPLAYNAME: &str = r#"{
     "attrs": {
@@ -1457,6 +1462,23 @@ pub const JSON_SCHEMA_ATTR_GRANT_UI_HINT: &str = r#"{
     }
 }"#;
 
+lazy_static! {
+    pub static ref E_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_SYSTEM.clone()),
+        ("class", CLASS_ATTRIBUTETYPE.clone()),
+        (
+            "description",
+            Value::new_utf8s("The url of an external credential portal for synced accounts to visit to update their credentials.")
+        ),
+        ("unique", Value::Bool(false)),
+        ("multivalue", Value::Bool(false)),
+        ("attributename", Value::new_iutf8("sync_credential_portal")),
+        ("syntax", Value::Syntax(SyntaxType::Url)),
+        ("uuid", Value::Uuid(UUID_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL))
+    );
+}
+
 // === classes ===
 
 pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
@@ -1685,7 +1707,8 @@ pub const JSON_SCHEMA_CLASS_SYNC_ACCOUNT: &str = r#"
       ],
       "systemmay": [
         "sync_token_session",
-        "sync_cookie"
+        "sync_cookie",
+        "sync_credential_portal"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000114"
