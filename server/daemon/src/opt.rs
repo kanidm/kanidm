@@ -75,9 +75,9 @@ struct DbScanListIndex {
 struct HealthCheckArgs {
     /// Disable TLS verification
     #[clap(short, long, action)]
-    no_verify_tls: bool,
+    verify_tls: bool,
     /// Specify the CA cert file path to use for TLS verification
-    #[clap(short='C', long,env="KANIDM_CA_CERT")]
+    #[clap(long,env="KANIDM_CA_CERT")]
     ca_cert: Option<String>,
     /// Check the 'origin' URL from the server configuration file, instead of the 'address'
     #[clap(short='O', long, action)]

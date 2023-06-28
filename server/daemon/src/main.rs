@@ -541,8 +541,8 @@ async fn main() -> ExitCode {
 
 
                     let mut client = reqwest::ClientBuilder::new()
-                        .danger_accept_invalid_certs(sopt.no_verify_tls)
-                        .danger_accept_invalid_hostnames(sopt.no_verify_tls)
+                        .danger_accept_invalid_certs(!sopt.verify_tls)
+                        .danger_accept_invalid_hostnames(!sopt.verify_tls)
                         .https_only(true);
                     client = match &sopt.ca_cert {
                         None => client,
