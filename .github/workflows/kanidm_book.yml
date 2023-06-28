@@ -53,6 +53,7 @@ jobs:
   fanout:
     uses: './.github/workflows/kanidm_individual_book.yml'
     needs: pre_deploy
+    if: ${{ github.action_ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' && github.event == 'merge' }}
 
     strategy:
       fail-fast: false
