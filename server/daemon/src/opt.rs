@@ -75,7 +75,10 @@ struct DbScanListIndex {
 struct HealthCheckArgs {
     /// Disable TLS verification
     #[clap(short, long, action)]
-    no_verify_tls: bool,
+    verify_tls: bool,
+    /// Check the 'origin' URL from the server configuration file, instead of the 'address'
+    #[clap(short='O', long, action)]
+    check_origin: bool,
     #[clap(flatten)]
     commonopts: CommonOpt,
 }
