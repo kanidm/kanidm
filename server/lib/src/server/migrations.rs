@@ -423,6 +423,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let idm_schema: Vec<&str> = vec![
             JSON_SCHEMA_ATTR_DISPLAYNAME,
             JSON_SCHEMA_ATTR_LEGALNAME,
+            JSON_SCHEMA_ATTR_NAME_HISTORY,
             JSON_SCHEMA_ATTR_MAIL,
             JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
             JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL,

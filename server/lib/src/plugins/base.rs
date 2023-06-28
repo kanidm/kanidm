@@ -12,7 +12,7 @@ use crate::prelude::*;
 
 // This module has some special properties around it's operation, namely that it
 // has to make a certain number of assertions *early* in the entry lifecycle around
-// names and uuids since these have such signifigance to every other part of the
+// names and uuids since these have such significance to every other part of the
 // servers operation. As a result, this is the ONLY PLUGIN that does validation in the
 // pre_create_transform step, where every other SHOULD use the post_* hooks for all
 // validation operations.
