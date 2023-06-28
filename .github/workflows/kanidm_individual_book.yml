@@ -14,7 +14,7 @@ name: "Github Pages - Branch"
 env:
   SCCACHE_GHA_ENABLED: "true"
   RUSTC_WRAPPER: "sccache"
-
+  ACTIONS_RUNNER_DEBUG: true
 jobs:
   generate_mdbook:
     runs-on: ubuntu-latest
@@ -67,14 +67,17 @@ jobs:
           cd ..
           mv pykanidm/site ./docs/${{ inputs.tag }}/pykanidm
         continue-on-error: true
-
       - name: archive things
         run: |
           tar czvf ${{ inputs.tag }}.tar.gz ./docs/
 
+        env:
+          ACTIONS_RUNNER_DEBUG: true
       - name: Upload artifact
         # https://github.com/actions/upload-artifact
         uses: actions/upload-artifact@v3
         with:
-          name: docs
+          name: individual
           path: ${{inputs.tag }}.tar.gz
+        env:
+          ACTIONS_RUNNER_DEBUG: true
