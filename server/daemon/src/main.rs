@@ -544,7 +544,9 @@ async fn main() -> ExitCode {
                         .danger_accept_invalid_certs(!sopt.verify_tls)
                         .danger_accept_invalid_hostnames(!sopt.verify_tls)
                         .https_only(true);
-                    client = match &sopt.ca_cert {
+
+
+                    client = match &sconfig.tls_chain {
                         None => client,
                         Some(ca_cert) => {
                             debug!("Trying to load {}", ca_cert);
@@ -552,10 +554,17 @@ async fn main() -> ExitCode {
                             let ca_cert_path = PathBuf::from(ca_cert);
                             match ca_cert_path.exists() {
                                 true => {
-                                    let ca_cert_parsed = reqwest::Certificate::from_pem(
-                                        &std::fs::read(ca_cert_path).expect(&format!("Failed to load {} as a cert!", ca_cert)),
-                                    )
-                                    .expect(&format!("Failed to parse {} as a valid certificate!", ca_cert));
+                                    let ca_contents = std::fs::read_to_string(ca_cert_path.clone()).expect(&format!("Failed to read {}!", ca_cert));
+                                    let content = ca_contents
+                                        .split("-----END CERTIFICATE-----")
+                                        .into_iter()
+                                        .filter_map(|c| if c.trim().is_empty() { None } else { Some(c.trim().to_string())})
+                                        .collect::<Vec<String>>();
+                                    let content = content.last().expect(&format!("Failed to pull the last chunk of {} as a valid certificate!", ca_cert));
+                                    let content = format!("{}-----END CERTIFICATE-----", content);
+
+                                    let ca_cert_parsed = reqwest::Certificate::from_pem(content.as_bytes())
+                                    .expect(&format!("Failed to parse {} as a valid certificate!\n{}", ca_cert, content));
                                     client.add_root_certificate(ca_cert_parsed)
                                 },
                                 false => {
