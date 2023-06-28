@@ -233,6 +233,9 @@ pub async unsafe extern "system" fn ApLogonUser(
 
     unsafe {
         *out_logon_id = *luid_ptr;
+
+        // Save the Logon ID
+        AP_LOGON_IDS.insert((*luid_ptr).into(), token);
     }
 
     // * Prepare & return token
@@ -357,10 +360,6 @@ pub async unsafe extern "system" fn ApLogonUser(
     // Set return status
     unsafe {
         *out_substatus = 0;
-
-        // Save the Logon ID
-        let logon_id = LogonId::from(*luid_ptr);
-        AP_LOGON_IDS.insert(logon_id, token);
     }
 
     STATUS_SUCCESS
@@ -453,8 +452,7 @@ pub async unsafe extern "system" fn ApCallPackage(
 #[allow(non_snake_case)]
 pub async unsafe extern "system" fn ApLogonTerminated(luid: *const LUID) {
     unsafe {
-        let logon_id = LogonId::from(*luid);
-        AP_LOGON_IDS.remove(&logon_id);
+        AP_LOGON_IDS.remove(&(*luid).into());
     }
 }
 
