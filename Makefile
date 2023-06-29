@@ -268,7 +268,7 @@ coverage/test:
 .PHONY: coverage/grcov
 coverage/grcov: ## Run grcov
 coverage/grcov:
-	rm -rf ./target/coverage/html/*
+	rm -rf ./target/coverage/html
 	grcov . --binary-path ./target/debug/deps/ \
 		-s . \
 		-t html \
@@ -276,7 +276,7 @@ coverage/grcov:
 		--ignore-not-existing \
 		--ignore '../*' \
 		--ignore "/*" \
-		-o target/coverage/html/
+		-o target/coverage/html
 
 .PHONY: coverage
 coverage: ## Run all the coverage tests
