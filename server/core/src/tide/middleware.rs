@@ -1,12 +1,12 @@
 use regex::Regex;
 
 ///! Custom tide middleware for Kanidm
-use crate::https::JavaScriptFile;
+use crate::tide::JavaScriptFile;
 
 /// This is for the tide_compression middleware so that we only compress certain content types.
 ///
 /// ```
-/// use kanidmd_core::https::middleware::compression_content_type_checker;
+/// use kanidmd_core::tide::middleware::compression_content_type_checker;
 /// let these_should_match = vec![
 ///     "application/wasm",
 ///     "application/x-javascript",

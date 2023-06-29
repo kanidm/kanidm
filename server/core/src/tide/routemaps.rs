@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 use tide::{Endpoint, Route};
 
-use crate::https::AppState;
+use crate::tide::AppState;
 
 // Extends the tide::Route for RouteMaps, this would really be nice if it was generic :(
 pub trait RouteMaps {

@@ -28,9 +28,9 @@ extern crate kanidmd_lib;
 pub mod actors;
 pub mod config;
 mod crypto;
-pub mod https;
 mod interval;
 mod ldaps;
+pub mod tide;
 
 use std::path::Path;
 use std::sync::Arc;
@@ -912,7 +912,7 @@ pub async fn create_server_core(
         None
     } else {
         // ⚠️  only start the sockets and listeners in non-config-test modes.
-        let h = self::https::create_https_server(
+        let h = self::tide::create_https_server(
             config.address,
             &config.domain,
             config.tls_config.as_ref(),

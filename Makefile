@@ -276,6 +276,7 @@ coverage/grcov:
 		--ignore-not-existing \
 		--ignore '../*' \
 		--ignore "/*" \
+		--ignore "target/*" \
 		-o target/coverage/html
 
 .PHONY: coverage
