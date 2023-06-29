@@ -784,21 +784,69 @@ pub(crate) mod tpm {
     use kanidm_lib_crypto::{CryptoError, CryptoPolicy, Password, TpmError};
     use tss_esapi::{Context, TctiNameConf};
 
-        use tss_esapi::{
-            handles::KeyHandle,
-            attributes::ObjectAttributesBuilder,
-            interface_types::{
-                algorithm::{HashingAlgorithm, PublicAlgorithm},
-                resource_handles::Hierarchy,
-            },
-            structures::{Digest, KeyedHashScheme, PublicBuilder, PublicKeyedHashParameters, Public, Private, SymmetricDefinitionObject, SymmetricCipherParameters},
-        };
+    use tss_esapi::{
+        attributes::ObjectAttributesBuilder,
+        handles::KeyHandle,
+        interface_types::{
+            algorithm::{HashingAlgorithm, PublicAlgorithm},
+            resource_handles::Hierarchy,
+        },
+        structures::{
+            Digest, KeyedHashScheme, Private, Public, PublicBuilder, PublicKeyedHashParameters,
+            SymmetricCipherParameters, SymmetricDefinitionObject,
+        },
+        traits::{Marshall, UnMarshall},
+    };
 
     use std::str::FromStr;
+
+    use base64urlsafedata::Base64UrlSafeData;
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Serialize, Deserialize, Debug)]
+    struct BinaryLoadableKey {
+        private: Base64UrlSafeData,
+        public: Base64UrlSafeData,
+    }
+
+    impl Into<BinaryLoadableKey> for LoadableKey {
+        fn into(self) -> BinaryLoadableKey {
+            BinaryLoadableKey {
+                private: self.private.as_slice().to_owned().into(),
+                public: self.public.marshall().unwrap().into(),
+            }
+        }
+    }
+
+    impl TryFrom<BinaryLoadableKey> for LoadableKey {
+        type Error = &'static str;
+
+        fn try_from(value: BinaryLoadableKey) -> Result<Self, Self::Error> {
+            let private = Private::try_from(value.private.0).map_err(|e| {
+                error!(tpm_err = ?e, "Failed to restore tpm hmac key");
+                "private try from"
+            })?;
+
+            let public = Public::unmarshall(value.public.0.as_slice()).map_err(|e| {
+                error!(tpm_err = ?e, "Failed to restore tpm hmac key");
+                "public unmarshall"
+            })?;
+
+            Ok(LoadableKey { public, private })
+        }
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone)]
+    #[serde(try_from = "BinaryLoadableKey", into = "BinaryLoadableKey")]
+    struct LoadableKey {
+        private: Private,
+        public: Public,
+    }
 
     pub struct TpmConfig {
         tcti: TctiNameConf,
         private: Private,
+        public: Public,
     }
 
     // First, setup the primary key we will be using. Remember tpm Primary keys
@@ -806,12 +854,13 @@ pub(crate) mod tpm {
     // seed hasn't been reset.
     fn get_primary_key_public() -> Result<Public, ()> {
         let object_attributes = ObjectAttributesBuilder::new()
-            .with_fixed_tpm(false)
-            .with_fixed_parent(false)
+            .with_fixed_tpm(true)
+            .with_fixed_parent(true)
             .with_st_clear(false)
             .with_sensitive_data_origin(true)
             .with_user_with_auth(true)
             .with_decrypt(true)
+            // .with_sign_encrypt(true)
             .with_restricted(true)
             .build()
             .map_err(|e| {
@@ -822,9 +871,9 @@ pub(crate) mod tpm {
             .with_public_algorithm(PublicAlgorithm::SymCipher)
             .with_name_hashing_algorithm(HashingAlgorithm::Sha256)
             .with_object_attributes(object_attributes)
-            .with_symmetric_cipher_parameters(
-                SymmetricCipherParameters::new(SymmetricDefinitionObject::AES_128_CFB)
-            )
+            .with_symmetric_cipher_parameters(SymmetricCipherParameters::new(
+                SymmetricDefinitionObject::AES_128_CFB,
+            ))
             .with_symmetric_cipher_unique_identifier(Digest::default())
             .build()
             .map_err(|e| {
@@ -832,10 +881,10 @@ pub(crate) mod tpm {
             })
     }
 
-    fn get_hmac_public() -> Result<Public, ()> {
+    fn new_hmac_public() -> Result<Public, ()> {
         let object_attributes = ObjectAttributesBuilder::new()
-            .with_fixed_tpm(false)
-            .with_fixed_parent(false)
+            .with_fixed_tpm(true)
+            .with_fixed_parent(true)
             .with_st_clear(false)
             .with_sensitive_data_origin(true)
             .with_user_with_auth(true)
@@ -849,7 +898,9 @@ pub(crate) mod tpm {
             .with_public_algorithm(PublicAlgorithm::KeyedHash)
             .with_name_hashing_algorithm(HashingAlgorithm::Sha256)
             .with_object_attributes(object_attributes)
-            .with_keyed_hash_parameters(PublicKeyedHashParameters::new(KeyedHashScheme::HMAC_SHA_256))
+            .with_keyed_hash_parameters(PublicKeyedHashParameters::new(
+                KeyedHashScheme::HMAC_SHA_256,
+            ))
             .with_keyed_hash_unique_identifier(Digest::default())
             .build()
             .map_err(|e| {
@@ -857,33 +908,33 @@ pub(crate) mod tpm {
             })
     }
 
-    fn setup_keys(
-        ctx: &mut Context,
-        private: &Private,
-    ) -> Result<KeyHandle, CryptoError> {
+    fn setup_keys(ctx: &mut Context, tpm_conf: &TpmConfig) -> Result<KeyHandle, CryptoError> {
         // Given our public and private parts, setup our keys for usage.
-            let primary_pub = get_primary_key_public()
-                .map_err(|_| CryptoError::Tpm2PublicBuilder )
-            ?;
-            trace!(?primary_pub);
-            let primary_key =
-            ctx.create_primary(Hierarchy::Owner, primary_pub, None, None, None, None)
-                .map_err(|e| {
-                        error!(tpm_err = ?e, "Failed to load tpm context");
-                        <TpmError as Into<CryptoError>>::into(e)
-                    })
-            ?;
+        let primary_pub = get_primary_key_public().map_err(|_| CryptoError::Tpm2PublicBuilder)?;
+        trace!(?primary_pub);
+        let primary_key = ctx
+            .create_primary(Hierarchy::Owner, primary_pub, None, None, None, None)
+            .map_err(|e| {
+                error!(tpm_err = ?e, "Failed to load tpm context");
+                <TpmError as Into<CryptoError>>::into(e)
+            })?;
 
-            let hmac_pub = get_hmac_public()
-                .map_err(|_| CryptoError::Tpm2PublicBuilder )
-            ?;
-            trace!(?hmac_pub);
+        /*
+        let hmac_pub = new_hmac_public()
+            .map_err(|_| CryptoError::Tpm2PublicBuilder )
+        ?;
+        trace!(?hmac_pub);
+        */
 
-            ctx.load(primary_key.key_handle.clone(), private.clone(), hmac_pub.clone())
-                .map_err(|e| {
-                        error!(tpm_err = ?e, "Failed to load tpm context");
-                        <TpmError as Into<CryptoError>>::into(e)
-                    })
+        ctx.load(
+            primary_key.key_handle.clone(),
+            tpm_conf.private.clone(),
+            tpm_conf.public.clone(),
+        )
+        .map_err(|e| {
+            error!(tpm_err = ?e, "Failed to load tpm context");
+            <TpmError as Into<CryptoError>>::into(e)
+        })
     }
 
     impl Db {
@@ -892,8 +943,7 @@ pub(crate) mod tpm {
                 error!(tpm_err = ?e, "Failed to parse tcti name");
             })?;
 
-            let mut context = Context::new(tcti.clone())
-            .map_err(|e| {
+            let mut context = Context::new(tcti.clone()).map_err(|e| {
                 error!(tpm_err = ?e, "Failed to create tpm context");
             })?;
 
@@ -937,54 +987,58 @@ pub(crate) mod tpm {
 
             trace!(ctx_data_present = %ctx_data.is_some());
 
-            // Okay, we have something. Lets get the hmac public parameters now.
-            let hmac_pub = get_hmac_public()?;
-
             let ex_private = if let Some(ctx_data) = ctx_data {
                 // Test loading, blank it out if it fails.
-                serde_json::from_slice(ctx_data.as_slice()).map_err(|e| {
+                serde_json::from_slice(ctx_data.as_slice())
+                    .map_err(|e| {
                         warn!("json error -> {:?}", e);
                     })
                     // On error, becomes none and we do nothing else.
                     .ok()
-                    .and_then(|private_bytes: Vec<u8>| {
-                        Private::try_from(private_bytes)
-                            .map_err(|e| {
-                                error!(tpm_err = ?e, "Failed to restore tpm hmac key");
-                            })
-                            .ok()
-                    })
-                    .and_then(|private: Private| {
+                    .and_then(|loadable: LoadableKey| {
                         // test if it can load?
                         context
-                            .execute_with_nullauth_session(|ctx|
-                                ctx.load(primary_key.key_handle.clone(), private.clone(), hmac_pub.clone())
-                                    // We have to flush the handle here to not overfill tpm context memory.
-                                    // We'll be reloading the key later anyway.
-                                    .and_then(|kh| ctx.flush_context(kh.into()))
-                            )
+                            .execute_with_nullauth_session(|ctx| {
+                                ctx.load(
+                                    primary_key.key_handle.clone(),
+                                    loadable.private.clone(),
+                                    loadable.public.clone(),
+                                )
+                                // We have to flush the handle here to not overfill tpm context memory.
+                                // We'll be reloading the key later anyway.
+                                .and_then(|kh| ctx.flush_context(kh.into()))
+                            })
                             .map_err(|e| {
                                 error!(tpm_err = ?e, "Failed to load tpm hmac key");
                             })
                             .ok()
                             // It loaded, so sub in our Private data.
-                            .map(|_hmac_handle| {
-                                private
-                            })
+                            .map(|_hmac_handle| loadable)
                     })
             } else {
                 None
             };
 
-            let private = if let Some(existing_private) = ex_private {
-                existing_private
+            let loadable = if let Some(existing) = ex_private {
+                existing
             } else {
                 // Need to regenerate the private key for some reason
                 info!("Creating new hmac key");
+                let hmac_pub = new_hmac_public()?;
                 context
                     .execute_with_nullauth_session(|ctx| {
-                        ctx.create(primary_key.key_handle.clone(), hmac_pub.clone(), None, None, None, None)
-                            .map(|key| key.out_private)
+                        ctx.create(
+                            primary_key.key_handle.clone(),
+                            hmac_pub,
+                            None,
+                            None,
+                            None,
+                            None,
+                        )
+                        .map(|key| LoadableKey {
+                            public: key.out_public,
+                            private: key.out_private,
+                        })
                     })
                     .map_err(|e| {
                         error!(tpm_err = ?e, "Failed to create tpm hmac key");
@@ -992,7 +1046,7 @@ pub(crate) mod tpm {
             };
 
             // Serialise it out.
-            let data = serde_json::to_vec(private.as_slice()).map_err(|e| {
+            let data = serde_json::to_vec(&loadable).map_err(|e| {
                 error!("json error -> {:?}", e);
             })?;
 
@@ -1012,7 +1066,13 @@ pub(crate) mod tpm {
 
             info!("tpm binding configured");
 
-            Ok(TpmConfig { tcti, private })
+            let LoadableKey { private, public } = loadable;
+
+            Ok(TpmConfig {
+                tcti,
+                private,
+                public,
+            })
         }
 
         pub fn tpm_new(
@@ -1026,7 +1086,7 @@ pub(crate) mod tpm {
 
             context
                 .execute_with_nullauth_session(|ctx| {
-                    let key = setup_keys(ctx, &tpm_conf.private)?;
+                    let key = setup_keys(ctx, tpm_conf)?;
                     Password::new_argon2id_tpm(policy, cred, ctx, key.into())
                 })
                 .map_err(|e: CryptoError| {
@@ -1041,7 +1101,7 @@ pub(crate) mod tpm {
 
             context
                 .execute_with_nullauth_session(|ctx| {
-                    let key = setup_keys(ctx, &tpm_conf.private)?;
+                    let key = setup_keys(ctx, tpm_conf)?;
                     pw.verify_ctx(cred, Some((ctx, key.into())))
                 })
                 .map_err(|e: CryptoError| {
