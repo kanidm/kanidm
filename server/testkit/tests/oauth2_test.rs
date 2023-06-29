@@ -367,3 +367,30 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     assert!(userinfo == oidc);
 }
+
+
+#[kanidmd_testkit::test]
+async fn test_oauth2_token_post_bad_body(rsclient: KanidmClient) {
+    let res = rsclient
+        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+
+    let url = rsclient.get_url().to_string();
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .no_proxy()
+        .build()
+        .expect("Failed to create client.");
+
+    // test for a bad-body request
+    let response = client
+    .post(format!("{}/oauth2/token", url))
+    .body(serde_json::json!({}).to_string())
+    // .bearer_auth(atr.access_token.clone())
+    .send()
+    .await
+    .expect("Failed to send userinfo request.");
+    println!("{:?}", response);
+    assert!(response.status() == reqwest::StatusCode::BAD_REQUEST);
+}
