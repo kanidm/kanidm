@@ -35,6 +35,20 @@ pub fn readonly(meta: &Metadata) -> bool {
     )
 }
 
+#[cfg(target_family = "unix")]
+#[test]
+fn test_readonly() {
+    // check if the file Cargo.toml exists
+    use std::path::Path;
+    if Path::new("Cargo.toml").exists() == false {
+        panic!("Can't find Cargo.toml");
+    }
+
+    let meta = std::fs::metadata("Cargo.toml").expect("Can't find Cargo.toml");
+    println!("meta={:?} -> readonly={:?}", meta, readonly(&meta));
+    assert!(readonly(&meta)==false);
+}
+
 #[cfg(not(target_family = "unix"))]
 /// Check a given file's metadata is read-only for the current user (true = read-only) Stub function if you're building for windows!
 pub fn readonly(meta: &Metadata) -> bool {

@@ -1058,11 +1058,11 @@ pub async fn do_routemap(req: tide::Request<RouteMap>) -> tide::Result {
     Ok(res)
 }
 
-pub async fn do_nothing(_req: tide::Request<AppState>) -> tide::Result {
-    let mut res = tide::Response::new(200);
-    res.set_body("did nothing");
-    Ok(res)
-}
+// pub async fn do_nothing(_req: tide::Request<AppState>) -> tide::Result {
+//     let mut res = tide::Response::new(200);
+//     res.set_body("did nothing");
+//     Ok(res)
+// }
 
 pub async fn reauth(mut req: tide::Request<AppState>) -> tide::Result {
     // check that we can get the remote IP address first, since this doesn't touch the backend at all

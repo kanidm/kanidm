@@ -7,7 +7,7 @@ CONTAINER_BUILD_ARGS ?=
 MARKDOWN_FORMAT_ARGS ?= --options-line-width=100
 CONTAINER_TOOL ?= docker
 BUILDKIT_PROGRESS ?= plain
-
+TESTS ?=
 BOOK_VERSION ?= master
 
 .DEFAULT: help
@@ -263,7 +263,7 @@ webui/test: ## Run wasm-pack test
 .PHONY: rust/coverage
 coverage/test: ## Run coverage tests
 coverage/test:
-	LLVM_PROFILE_FILE="$(PWD)/target/profile/coverage-%p-%m.profraw" RUSTFLAGS="-C instrument-coverage" cargo test
+	LLVM_PROFILE_FILE="$(PWD)/target/profile/coverage-%p-%m.profraw" RUSTFLAGS="-C instrument-coverage" cargo test $(TESTS)
 
 .PHONY: coverage/grcov
 coverage/grcov: ## Run grcov

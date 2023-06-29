@@ -561,10 +561,10 @@ pub async fn create_https_server(
         .mapped_get(&mut routemap, group_get_id_unix_token);
 
     // We allow caching oauth2 RP icons.
-    let mut oauth2_route_cacheable = tserver_cacheable.at("/v1/oauth2");
-    oauth2_route_cacheable
-        .at("/:rs_name/_icon")
-        .mapped_get(&mut routemap, do_nothing);
+    // let mut oauth2_route_cacheable = tserver_cacheable.at("/v1/oauth2");
+    // oauth2_route_cacheable
+    //     .at("/:rs_name/_icon")
+    //     .mapped_get(&mut routemap, do_nothing);
 
     // ==== These routes can not be cached
     let mut appserver = tserver.at("");
@@ -605,22 +605,26 @@ pub async fn create_https_server(
     schema_route
         .at("/attributetype")
         .mapped_get(&mut routemap, schema_attributetype_get)
-        .mapped_post(&mut routemap, do_nothing);
+        // .mapped_post(&mut routemap, do_nothing)
+        ;
     schema_route
         .at("/attributetype/:id")
         .mapped_get(&mut routemap, schema_attributetype_get_id)
-        .mapped_put(&mut routemap, do_nothing)
-        .mapped_patch(&mut routemap, do_nothing);
+        // .mapped_put(&mut routemap, do_nothing)
+        // .mapped_patch(&mut routemap, do_nothing)
+        ;
 
     schema_route
         .at("/classtype")
         .mapped_get(&mut routemap, schema_classtype_get)
-        .mapped_post(&mut routemap, do_nothing);
+        // .mapped_post(&mut routemap, do_nothing)
+        ;
     schema_route
         .at("/classtype/:id")
         .mapped_get(&mut routemap, schema_classtype_get_id)
-        .mapped_put(&mut routemap, do_nothing)
-        .mapped_patch(&mut routemap, do_nothing);
+        // .mapped_put(&mut routemap, do_nothing)
+        // .mapped_patch(&mut routemap, do_nothing)
+        ;
 
     let mut oauth2_route = appserver.at("/v1/oauth2");
     oauth2_route.at("/").mapped_get(&mut routemap, oauth2_get);
@@ -655,32 +659,32 @@ pub async fn create_https_server(
     self_route.at("/").mapped_get(&mut routemap, whoami);
     self_route.at("/_uat").mapped_get(&mut routemap, whoami_uat);
 
-    self_route
-        .at("/_attr/:attr")
-        .mapped_get(&mut routemap, do_nothing);
-    self_route
-        .at("/_credential")
-        .mapped_get(&mut routemap, do_nothing);
+    // self_route
+    //     .at("/_attr/:attr")
+    //     .mapped_get(&mut routemap, do_nothing);
+    // self_route
+    //     .at("/_credential")
+    //     .mapped_get(&mut routemap, do_nothing);
 
-    self_route
-        .at("/_credential/:cid/_lock")
-        .mapped_get(&mut routemap, do_nothing);
+    // self_route
+    //     .at("/_credential/:cid/_lock")
+    //     .mapped_get(&mut routemap, do_nothing);
 
-    self_route
-        .at("/_radius")
-        .mapped_get(&mut routemap, do_nothing)
-        .mapped_delete(&mut routemap, do_nothing)
-        .mapped_post(&mut routemap, do_nothing);
+    // self_route
+    //     .at("/_radius")
+    //     .mapped_get(&mut routemap, do_nothing)
+    //     .mapped_delete(&mut routemap, do_nothing)
+    //     .mapped_post(&mut routemap, do_nothing);
 
-    self_route
-        .at("/_radius/_config")
-        .mapped_post(&mut routemap, do_nothing);
-    self_route
-        .at("/_radius/_config/:token")
-        .mapped_get(&mut routemap, do_nothing);
-    self_route
-        .at("/_radius/_config/:token/apple")
-        .mapped_get(&mut routemap, do_nothing);
+    // self_route
+    //     .at("/_radius/_config")
+    //     .mapped_post(&mut routemap, do_nothing);
+    // self_route
+    //     .at("/_radius/_config/:token")
+    //     .mapped_get(&mut routemap, do_nothing);
+    // self_route
+    //     .at("/_radius/_config/:token/apple")
+    //     .mapped_get(&mut routemap, do_nothing);
 
     // Applinks are the list of apps this account can access.
     self_route
@@ -704,18 +708,18 @@ pub async fn create_https_server(
         .mapped_post(&mut routemap, account_id_post_attr)
         .mapped_delete(&mut routemap, account_id_delete_attr);
 
-    person_route
-        .at("/:id/_lock")
-        .mapped_get(&mut routemap, do_nothing);
-    person_route
-        .at("/:id/_credential")
-        .mapped_get(&mut routemap, do_nothing);
+    // person_route
+    //     .at("/:id/_lock")
+    //     .mapped_get(&mut routemap, do_nothing);
+    // person_route
+    //     .at("/:id/_credential")
+    //     .mapped_get(&mut routemap, do_nothing);
     person_route
         .at("/:id/_credential/_status")
         .mapped_get(&mut routemap, account_get_id_credential_status);
-    person_route
-        .at("/:id/_credential/:cid/_lock")
-        .mapped_get(&mut routemap, do_nothing);
+    // person_route
+    //     .at("/:id/_credential/:cid/_lock")
+    //     .mapped_get(&mut routemap, do_nothing);
     person_route
         .at("/:id/_credential/_update")
         .mapped_get(&mut routemap, account_get_id_credential_update);
@@ -768,9 +772,9 @@ pub async fn create_https_server(
         .mapped_post(&mut routemap, account_id_post_attr)
         .mapped_delete(&mut routemap, account_id_delete_attr);
 
-    service_account_route
-        .at("/:id/_lock")
-        .mapped_get(&mut routemap, do_nothing);
+    // service_account_route
+    //     .at("/:id/_lock")
+    //     .mapped_get(&mut routemap, do_nothing);
 
     service_account_route
         .at("/:id/_into_person")
@@ -784,18 +788,18 @@ pub async fn create_https_server(
         .at("/:id/_api_token/:token_id")
         .mapped_delete(&mut routemap, service_account_api_token_delete);
 
-    service_account_route
-        .at("/:id/_credential")
-        .mapped_get(&mut routemap, do_nothing);
+    // service_account_route
+    //     .at("/:id/_credential")
+    //     .mapped_get(&mut routemap, do_nothing);
     service_account_route
         .at("/:id/_credential/_generate")
         .mapped_get(&mut routemap, service_account_credential_generate);
     service_account_route
         .at("/:id/_credential/_status")
         .mapped_get(&mut routemap, account_get_id_credential_status);
-    service_account_route
-        .at("/:id/_credential/:cid/_lock")
-        .mapped_get(&mut routemap, do_nothing);
+    // service_account_route
+    //     .at("/:id/_credential/:cid/_lock")
+    //     .mapped_get(&mut routemap, do_nothing);
 
     service_account_route
         .at("/:id/_ssh_pubkeys")
@@ -897,16 +901,16 @@ pub async fn create_https_server(
         .at("/:id/_revive")
         .mapped_post(&mut routemap, recycle_bin_revive_id_post);
 
-    let mut accessprof_route = appserver.at("/v1/access_profile");
-    accessprof_route
-        .at("/")
-        .mapped_get(&mut routemap, do_nothing);
-    accessprof_route
-        .at("/:id")
-        .mapped_get(&mut routemap, do_nothing);
-    accessprof_route
-        .at("/:id/_attr/:attr")
-        .mapped_get(&mut routemap, do_nothing);
+    // let mut accessprof_route = appserver.at("/v1/access_profile");
+    // accessprof_route
+    //     .at("/")
+    //     .mapped_get(&mut routemap, do_nothing);
+    // accessprof_route
+    //     .at("/:id")
+    //     .mapped_get(&mut routemap, do_nothing);
+    // accessprof_route
+    //     .at("/:id/_attr/:attr")
+    //     .mapped_get(&mut routemap, do_nothing);
 
     routemap.push_self("/v1/routemap".to_string(), http_types::Method::Get);
     appserver.at("/v1/routemap").nest({

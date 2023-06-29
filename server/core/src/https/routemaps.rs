@@ -19,7 +19,7 @@ pub trait RouteMaps {
     fn mapped_patch(&mut self, routemap: &mut RouteMap, ep: impl Endpoint<AppState>) -> &mut Self;
     fn mapped_post(&mut self, routemap: &mut RouteMap, ep: impl Endpoint<AppState>) -> &mut Self;
     fn mapped_put(&mut self, routemap: &mut RouteMap, ep: impl Endpoint<AppState>) -> &mut Self;
-    fn mapped_update(&mut self, routemap: &mut RouteMap, ep: impl Endpoint<AppState>) -> &mut Self;
+    // fn mapped_update(&mut self, routemap: &mut RouteMap, ep: impl Endpoint<AppState>) -> &mut Self;
 }
 
 impl RouteMaps for Route<'_, AppState> {
@@ -64,9 +64,9 @@ impl RouteMaps for Route<'_, AppState> {
         self.mapped_method(routemap, http_types::Method::Put, ep)
     }
 
-    fn mapped_update(&mut self, routemap: &mut RouteMap, ep: impl Endpoint<AppState>) -> &mut Self {
-        self.mapped_method(routemap, http_types::Method::Update, ep)
-    }
+    // fn mapped_update(&mut self, routemap: &mut RouteMap, ep: impl Endpoint<AppState>) -> &mut Self {
+    //     self.mapped_method(routemap, http_types::Method::Update, ep)
+    // }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
