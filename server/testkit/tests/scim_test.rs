@@ -90,7 +90,6 @@ async fn test_sync_account_lifecycle(rsclient: KanidmClient) {
         .expect("Failed to destroy token");
 }
 
-
 #[kanidmd_testkit::test]
 async fn test_scim_sync_get(rsclient: KanidmClient) {
     // We need to do manual reqwests here.

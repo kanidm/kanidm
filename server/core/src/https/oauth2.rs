@@ -738,7 +738,6 @@ pub async fn oauth2_token_introspect_post(mut req: tide::Request<AppState>) -> t
     })
 }
 
-
 // TODO: #1787 test this
 pub async fn oauth2_token_revoke_post(mut req: tide::Request<AppState>) -> tide::Result {
     // This is called directly by the resource server, where we then revoke

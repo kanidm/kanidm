@@ -759,7 +759,6 @@ async fn test_self_write_mail_priv_people(rsclient: KanidmClient) {
     test_write_attrs(&rsclient, "nonperson", &["mail"], false).await;
 }
 
-
 #[kanidmd_testkit::test]
 async fn test_https_robots_txt(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
@@ -787,7 +786,6 @@ async fn test_https_route_map(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
     let addr = rsclient.get_url();
 
-
     let response = match reqwest::get(format!("{}/v1/routemap", &addr)).await {
         Ok(value) => value,
         Err(error) => {
@@ -809,12 +807,18 @@ async fn test_v1_raw_delete(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
     let addr = rsclient.get_url();
     let client = reqwest::ClientBuilder::new()
-    .danger_accept_invalid_certs(true)
-    .build().unwrap();
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
 
     let post_body = serde_json::json!({"filter": "self"}).to_string();
 
-    let response = match client.post(format!("{}/v1/raw/delete", &addr)).body(post_body).send().await {
+    let response = match client
+        .post(format!("{}/v1/raw/delete", &addr))
+        .body(post_body)
+        .send()
+        .await
+    {
         Ok(value) => value,
         Err(error) => {
             panic!("Failed to query {:?} : {:#?}", addr, error);
@@ -833,8 +837,9 @@ async fn test_v1_raw_logout(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
     let addr = rsclient.get_url();
     let client = reqwest::ClientBuilder::new()
-    .danger_accept_invalid_certs(true)
-    .build().unwrap();
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
 
     let response = match client.get(format!("{}/v1/logout", &addr)).send().await {
         Ok(value) => value,
@@ -855,8 +860,9 @@ async fn test_v1_self_whoami_uat(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
     let addr = rsclient.get_url();
     let client = reqwest::ClientBuilder::new()
-    .danger_accept_invalid_certs(true)
-    .build().unwrap();
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
 
     let response = match client.get(format!("{}/v1/self/_uat", &addr)).send().await {
         Ok(value) => value,
@@ -877,8 +883,9 @@ async fn test_status_endpoint(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
     let addr = rsclient.get_url();
     let client = reqwest::ClientBuilder::new()
-    .danger_accept_invalid_certs(true)
-    .build().unwrap();
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
 
     let response = match client.get(format!("{}/status", &addr)).send().await {
         Ok(value) => value,
@@ -891,7 +898,7 @@ async fn test_status_endpoint(rsclient: KanidmClient) {
 
     let body = response.text().await.unwrap();
     eprintln!("{}", body);
-    assert!(body.contains("true")==true);
+    assert!(body.contains("true") == true);
 }
 
 /// This literally tests that the thing exists and responds in a way we expect, probably worth testing it better...
@@ -900,12 +907,18 @@ async fn test_v1_system_post_attr(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
     let addr = rsclient.get_url();
     let client = reqwest::ClientBuilder::new()
-    .danger_accept_invalid_certs(true)
-    .build().unwrap();
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
 
     let post_body = serde_json::json!({"filter": "self"}).to_string();
 
-    let response = match client.post(format!("{}/v1/system/_attr/domain_name", &addr)).body(post_body).send().await {
+    let response = match client
+        .post(format!("{}/v1/system/_attr/domain_name", &addr))
+        .body(post_body)
+        .send()
+        .await
+    {
         Ok(value) => value,
         Err(error) => {
             panic!("Failed to query {:?} : {:#?}", addr, error);
@@ -924,12 +937,17 @@ async fn test_v1_service_account_id_attr_attr_delete(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
     let addr = rsclient.get_url();
     let client = reqwest::ClientBuilder::new()
-    .danger_accept_invalid_certs(true)
-    .build().unwrap();
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
 
     // let post_body = serde_json::json!({"filter": "self"}).to_string();
 
-    let response = match client.delete(format!("{}/v1/service_account/admin/_attr/email", &addr)).send().await {
+    let response = match client
+        .delete(format!("{}/v1/service_account/admin/_attr/email", &addr))
+        .send()
+        .await
+    {
         Ok(value) => value,
         Err(error) => {
             panic!("Failed to query {:?} : {:#?}", addr, error);
@@ -948,12 +966,18 @@ async fn test_v1_person_patch(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
     let addr = rsclient.get_url();
     let client = reqwest::ClientBuilder::new()
-    .danger_accept_invalid_certs(true)
-    .build().unwrap();
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
 
     let post_body = serde_json::json!({"attrs": { "email" : "crab@example.com"}}).to_string();
 
-    let response = match client.patch(format!("{}/v1/person/foo", &addr)).body(post_body).send().await {
+    let response = match client
+        .patch(format!("{}/v1/person/foo", &addr))
+        .body(post_body)
+        .send()
+        .await
+    {
         Ok(value) => value,
         Err(error) => {
             panic!("Failed to query {:?} : {:#?}", addr, error);
@@ -965,7 +989,6 @@ async fn test_v1_person_patch(rsclient: KanidmClient) {
     let body = response.text().await.unwrap();
     eprintln!("{}", body);
 }
-
 
 // TODO: #1787 credential_update_cancel
 // TODO: #1787 domain_delete_attr

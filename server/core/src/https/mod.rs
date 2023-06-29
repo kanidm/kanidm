@@ -130,7 +130,6 @@ impl RequestExtensions for tide::Request<AppState> {
             .and_then(|h| {
                 // Turn it to a &str, and then check the prefix
                 h.as_str().strip_prefix("Bearer ")
-
             })
             .map(str::to_string)
     }

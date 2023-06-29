@@ -46,7 +46,7 @@ fn test_readonly() {
 
     let meta = std::fs::metadata("Cargo.toml").expect("Can't find Cargo.toml");
     println!("meta={:?} -> readonly={:?}", meta, readonly(&meta));
-    assert!(readonly(&meta)==false);
+    assert!(readonly(&meta) == false);
 }
 
 #[cfg(not(target_family = "unix"))]
