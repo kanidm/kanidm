@@ -418,9 +418,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn initialise_schema_idm(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_idm -> start ...");
 
-        let idm_schema_attrs = [
-            E_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL.clone(),
-        ];
+        let idm_schema_attrs = [E_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL.clone()];
 
         let r: Result<(), _> = idm_schema_attrs
             .into_iter()

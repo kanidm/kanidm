@@ -1,6 +1,6 @@
 use compact_jwt::JwsUnverified;
 use kanidm_client::KanidmClient;
-use kanidm_proto::v1::ApiToken;
+use kanidm_proto::internal::ScimSyncToken;
 use kanidmd_testkit::ADMIN_TEST_PASSWORD;
 use std::str::FromStr;
 use url::Url;
@@ -49,7 +49,24 @@ async fn test_sync_account_lifecycle(rsclient: KanidmClient) {
 
     let sync_entry = a.expect("No sync account present?");
     // Should have a cred portal.
-    assert!(sync_entry.attrs.contains_key("sync_credential_portal"));
+
+    let url_a = sync_entry
+        .attrs
+        .get("sync_credential_portal")
+        .and_then(|x| x.get(0));
+
+    assert_eq!(
+        url_a.map(|s| s.as_str()),
+        Some("https://sink.ipa.example.com/reset")
+    );
+
+    // Also check we can get it direct
+    let url_b = rsclient
+        .idm_sync_account_get_credential_portal("ipa_sync_account")
+        .await
+        .unwrap();
+
+    assert_eq!(url_b, Some(url));
 
     // Get a token
     let token = rsclient
@@ -59,7 +76,7 @@ async fn test_sync_account_lifecycle(rsclient: KanidmClient) {
 
     let token_unverified = JwsUnverified::from_str(&token).expect("Failed to parse apitoken");
 
-    let token: ApiToken = token_unverified
+    let token: ScimSyncToken = token_unverified
         .validate_embeded()
         .map(|j| j.into_inner())
         .expect("Embedded jwk not found");

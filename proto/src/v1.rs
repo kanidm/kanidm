@@ -309,6 +309,7 @@ pub enum UiHint {
     ExperimentalFeatures = 0,
     PosixAccount = 1,
     CredentialUpdate = 2,
+    SynchronisedAccount = 3,
 }
 
 impl fmt::Display for UiHint {
@@ -317,6 +318,7 @@ impl fmt::Display for UiHint {
             UiHint::PosixAccount => write!(f, "PosixAccount"),
             UiHint::CredentialUpdate => write!(f, "CredentialUpdate"),
             UiHint::ExperimentalFeatures => write!(f, "ExperimentalFeatures"),
+            UiHint::SynchronisedAccount => write!(f, "SynchronisedAccount"),
         }
     }
 }
@@ -329,6 +331,7 @@ impl FromStr for UiHint {
             "CredentialUpdate" => Ok(UiHint::CredentialUpdate),
             "PosixAccount" => Ok(UiHint::PosixAccount),
             "ExperimentalFeatures" => Ok(UiHint::ExperimentalFeatures),
+            "SynchronisedAccount" => Ok(UiHint::SynchronisedAccount),
             _ => Err(()),
         }
     }
@@ -408,7 +411,6 @@ pub struct UserAuthToken {
     pub displayname: String,
     pub spn: String,
     pub mail_primary: Option<String>,
-    // pub groups: Vec<Group>,
     pub ui_hints: BTreeSet<UiHint>,
 }
 
@@ -431,11 +433,6 @@ impl fmt::Display for UserAuthToken {
                 writeln!(f, "purpose: read write (expiry: none)")?
             }
         }
-        /*
-        for group in &self.groups {
-            writeln!(f, "group: {:?}", group.spn)?;
-        }
-        */
         Ok(())
     }
 }

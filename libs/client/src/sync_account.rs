@@ -31,6 +31,17 @@ impl KanidmClient {
         .await
     }
 
+    pub async fn idm_sync_account_get_credential_portal(
+        &self,
+        id: &str,
+    ) -> Result<Option<Url>, ClientError> {
+        self.perform_get_request(
+            format!("/v1/sync_account/{}/_attr/sync_credential_portal", id).as_str(),
+        )
+        .await
+        .map(|values: Vec<Url>| values.get(0).map(|u| u.clone()))
+    }
+
     pub async fn idm_sync_account_create(
         &self,
         name: &str,

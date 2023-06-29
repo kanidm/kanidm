@@ -4,7 +4,7 @@
 use crate::constants::uuids::*;
 use crate::constants::values::*;
 use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
-use crate::value::{Value, SyntaxType};
+use crate::value::{SyntaxType, Value};
 
 // system supplementary
 pub const JSON_SCHEMA_ATTR_DISPLAYNAME: &str = r#"{

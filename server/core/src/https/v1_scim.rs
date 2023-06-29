@@ -4,7 +4,10 @@ use kanidm_proto::scim_v1::ScimSyncRequest;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
 
-use super::v1::{json_rest_event_get, json_rest_event_get_id, json_rest_event_post};
+use super::v1::{
+    json_rest_event_get, json_rest_event_get_id, json_rest_event_get_id_attr, json_rest_event_post,
+    json_rest_event_put_id_attr,
+};
 
 pub async fn sync_account_get(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("sync_account")));
@@ -19,6 +22,16 @@ pub async fn sync_account_post(req: tide::Request<AppState>) -> tide::Result {
 pub async fn sync_account_id_get(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("sync_account")));
     json_rest_event_get_id(req, filter, None).await
+}
+
+pub async fn sync_account_id_get_attr(req: tide::Request<AppState>) -> tide::Result {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("sync_account")));
+    json_rest_event_get_id_attr(req, filter).await
+}
+
+pub async fn sync_account_id_put_attr(req: tide::Request<AppState>) -> tide::Result {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("sync_account")));
+    json_rest_event_put_id_attr(req, filter).await
 }
 
 pub async fn sync_account_id_patch(mut req: tide::Request<AppState>) -> tide::Result {
@@ -263,6 +276,11 @@ pub fn scim_route_setup(appserver: &mut tide::Route<'_, AppState>, routemap: &mu
         .at("/:id")
         .mapped_get(routemap, sync_account_id_get)
         .mapped_patch(routemap, sync_account_id_patch);
+
+    sync_account_route
+        .at("/:id/_attr/:attr")
+        .mapped_get(routemap, sync_account_id_get_attr)
+        .mapped_put(routemap, sync_account_id_put_attr);
 
     sync_account_route
         .at("/:id/_finalise")

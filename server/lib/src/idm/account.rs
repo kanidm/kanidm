@@ -98,8 +98,12 @@ macro_rules! try_from_entry {
             .copied()
             .collect();
 
-        if !$value.attribute_equality("class", &PVCLASS_SYNC_OBJECT) {
+        if $value.attribute_equality("class", &PVCLASS_PERSON) {
             ui_hints.insert(UiHint::CredentialUpdate);
+        }
+
+        if $value.attribute_equality("class", &PVCLASS_SYNC_OBJECT) {
+            ui_hints.insert(UiHint::SynchronisedAccount);
         }
 
         if $value.attribute_equality("class", &PVCLASS_POSIXACCOUNT) {
