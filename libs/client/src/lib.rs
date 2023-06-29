@@ -62,6 +62,8 @@ pub enum ClientError {
     JsonDecode(reqwest::Error, String),
     JsonEncode(SerdeJsonError),
     SystemError,
+    ConfigParseIssue(String),
+    CertParseIssue(String),
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -136,7 +138,7 @@ impl KanidmClientBuilder {
         }
     }
 
-    fn parse_certificate(ca_path: &str) -> Result<reqwest::Certificate, ()> {
+    fn parse_certificate(ca_path: &str) -> Result<reqwest::Certificate, ClientError> {
         let mut buf = Vec::new();
         // Is the CA secure?
         #[cfg(target_family = "windows")]
@@ -145,7 +147,10 @@ impl KanidmClientBuilder {
         #[cfg(target_family = "unix")]
         {
             let path = Path::new(ca_path);
-            let ca_meta = read_file_metadata(&path)?;
+            let ca_meta = read_file_metadata(&path).map_err(|e| {
+                error!("{:?}", e);
+                ClientError::ConfigParseIssue(format!("{:?}", e))
+            })?;
 
             trace!("uid:gid {}:{}", ca_meta.uid(), ca_meta.gid());
 
@@ -165,17 +170,20 @@ impl KanidmClientBuilder {
 
         // TODO #725: Handle these errors better, or at least provide diagnostics - this currently fails silently
         let mut f = File::open(ca_path).map_err(|e| {
-            error!(?e);
+            error!("{:?}", e);
+            ClientError::ConfigParseIssue(format!("{:?}", e))
         })?;
         f.read_to_end(&mut buf).map_err(|e| {
-            error!(?e);
+            error!("{:?}", e);
+            ClientError::ConfigParseIssue(format!("{:?}", e))
         })?;
         reqwest::Certificate::from_pem(&buf).map_err(|e| {
-            error!(?e);
+            error!("{:?}", e);
+            ClientError::CertParseIssue(format!("{:?}", e))
         })
     }
 
-    fn apply_config_options(self, kcc: KanidmClientConfig) -> Result<Self, ()> {
+    fn apply_config_options(self, kcc: KanidmClientConfig) -> Result<Self, ClientError> {
         let KanidmClientBuilder {
             address,
             verify_ca,
@@ -213,7 +221,7 @@ impl KanidmClientBuilder {
     pub fn read_options_from_optional_config<P: AsRef<Path> + std::fmt::Debug>(
         self,
         config_path: P,
-    ) -> Result<Self, ()> {
+    ) -> Result<Self, ClientError> {
         debug!("Attempting to load configuration from {:#?}", &config_path);
 
         // We have to check the .exists case manually, because there are some weird overlayfs
@@ -257,11 +265,15 @@ impl KanidmClientBuilder {
         };
 
         let mut contents = String::new();
-        f.read_to_string(&mut contents)
-            .map_err(|e| error!("{:?}", e))?;
+        f.read_to_string(&mut contents).map_err(|e| {
+            error!("{:?}", e);
+            ClientError::ConfigParseIssue(format!("{:?}", e))
+        })?;
 
-        let config: KanidmClientConfig =
-            toml::from_str(contents.as_str()).map_err(|e| error!("{:?}", e))?;
+        let config: KanidmClientConfig = toml::from_str(contents.as_str()).map_err(|e| {
+            error!("{:?}", e);
+            ClientError::ConfigParseIssue(format!("{:?}", e))
+        })?;
 
         self.apply_config_options(config)
     }
@@ -324,9 +336,12 @@ impl KanidmClientBuilder {
     }
 
     #[allow(clippy::result_unit_err)]
-    pub fn add_root_certificate_filepath(self, ca_path: &str) -> Result<Self, ()> {
+    pub fn add_root_certificate_filepath(self, ca_path: &str) -> Result<Self, ClientError> {
         //Okay we have a ca to add. Let's read it in and setup.
-        let ca = Self::parse_certificate(ca_path)?;
+        let ca = Self::parse_certificate(ca_path).map_err(|e| {
+            error!("{:?}", e);
+            ClientError::CertParseIssue(format!("{:?}", e))
+        })?;
 
         Ok(KanidmClientBuilder {
             address: self.address,

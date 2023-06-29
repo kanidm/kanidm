@@ -30,7 +30,7 @@ pub fn do_setfscreatecon_for_path(
 ) -> Result<(), String> {
     match labeler.look_up(&CString::new(path_raw.to_owned()).unwrap(), 0) {
         Ok(context) => {
-            if let Err(_) = context.set_for_new_file_system_objects(true) {
+            if context.set_for_new_file_system_objects(true).is_err() {
                 return Err("Failed setting creation context home directory path".to_string());
             }
             Ok(())
