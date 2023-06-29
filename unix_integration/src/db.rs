@@ -782,13 +782,108 @@ pub(crate) mod tpm {
     use rusqlite::{Connection, OptionalExtension};
 
     use kanidm_lib_crypto::{CryptoError, CryptoPolicy, Password, TpmError};
-    use tss_esapi::{utils::TpmsContext, Context, TctiNameConf};
+    use tss_esapi::{Context, TctiNameConf};
+
+        use tss_esapi::{
+            handles::KeyHandle,
+            attributes::ObjectAttributesBuilder,
+            interface_types::{
+                algorithm::{HashingAlgorithm, PublicAlgorithm},
+                resource_handles::Hierarchy,
+            },
+            structures::{Digest, KeyedHashScheme, PublicBuilder, PublicKeyedHashParameters, Public, Private, SymmetricDefinitionObject, SymmetricCipherParameters},
+        };
 
     use std::str::FromStr;
 
     pub struct TpmConfig {
         tcti: TctiNameConf,
-        ctx: TpmsContext,
+        private: Private,
+    }
+
+    // First, setup the primary key we will be using. Remember tpm Primary keys
+    // are the same provided the *same* public parameters are used and the tpm
+    // seed hasn't been reset.
+    fn get_primary_key_public() -> Result<Public, ()> {
+        let object_attributes = ObjectAttributesBuilder::new()
+            .with_fixed_tpm(false)
+            .with_fixed_parent(false)
+            .with_st_clear(false)
+            .with_sensitive_data_origin(true)
+            .with_user_with_auth(true)
+            .with_decrypt(true)
+            .with_restricted(true)
+            .build()
+            .map_err(|e| {
+                error!(tpm_err = ?e, "Failed to create tpm primary key attributes");
+            })?;
+
+        PublicBuilder::new()
+            .with_public_algorithm(PublicAlgorithm::SymCipher)
+            .with_name_hashing_algorithm(HashingAlgorithm::Sha256)
+            .with_object_attributes(object_attributes)
+            .with_symmetric_cipher_parameters(
+                SymmetricCipherParameters::new(SymmetricDefinitionObject::AES_128_CFB)
+            )
+            .with_symmetric_cipher_unique_identifier(Digest::default())
+            .build()
+            .map_err(|e| {
+                error!(tpm_err = ?e, "Failed to create tpm primary key public");
+            })
+    }
+
+    fn get_hmac_public() -> Result<Public, ()> {
+        let object_attributes = ObjectAttributesBuilder::new()
+            .with_fixed_tpm(false)
+            .with_fixed_parent(false)
+            .with_st_clear(false)
+            .with_sensitive_data_origin(true)
+            .with_user_with_auth(true)
+            .with_sign_encrypt(true)
+            .build()
+            .map_err(|e| {
+                error!(tpm_err = ?e, "Failed to create tpm hmac key attributes");
+            })?;
+
+        PublicBuilder::new()
+            .with_public_algorithm(PublicAlgorithm::KeyedHash)
+            .with_name_hashing_algorithm(HashingAlgorithm::Sha256)
+            .with_object_attributes(object_attributes)
+            .with_keyed_hash_parameters(PublicKeyedHashParameters::new(KeyedHashScheme::HMAC_SHA_256))
+            .with_keyed_hash_unique_identifier(Digest::default())
+            .build()
+            .map_err(|e| {
+                error!(tpm_err = ?e, "Failed to create tpm hmac key public");
+            })
+    }
+
+    fn setup_keys(
+        ctx: &mut Context,
+        private: &Private,
+    ) -> Result<KeyHandle, CryptoError> {
+        // Given our public and private parts, setup our keys for usage.
+            let primary_pub = get_primary_key_public()
+                .map_err(|_| CryptoError::Tpm2PublicBuilder )
+            ?;
+            trace!(?primary_pub);
+            let primary_key =
+            ctx.create_primary(Hierarchy::Owner, primary_pub, None, None, None, None)
+                .map_err(|e| {
+                        error!(tpm_err = ?e, "Failed to load tpm context");
+                        <TpmError as Into<CryptoError>>::into(e)
+                    })
+            ?;
+
+            let hmac_pub = get_hmac_public()
+                .map_err(|_| CryptoError::Tpm2PublicBuilder )
+            ?;
+            trace!(?hmac_pub);
+
+            ctx.load(primary_key.key_handle.clone(), private.clone(), hmac_pub.clone())
+                .map_err(|e| {
+                        error!(tpm_err = ?e, "Failed to load tpm context");
+                        <TpmError as Into<CryptoError>>::into(e)
+                    })
     }
 
     impl Db {
@@ -797,9 +892,23 @@ pub(crate) mod tpm {
                 error!(tpm_err = ?e, "Failed to parse tcti name");
             })?;
 
-            let mut context = Context::new(tcti.clone()).map_err(|e| {
+            let mut context = Context::new(tcti.clone())
+            .map_err(|e| {
                 error!(tpm_err = ?e, "Failed to create tpm context");
             })?;
+
+            // Create the primary object that will contain our key.
+            let primary_pub = get_primary_key_public()?;
+            let primary_key = context
+                .execute_with_nullauth_session(|ctx| {
+                    ctx.create_primary(Hierarchy::Owner, primary_pub, None, None, None, None)
+                })
+                .map_err(|e| {
+                    error!(tpm_err = ?e, "Failed to create tpm primary key");
+                })?;
+
+            // Now we know we can establish a correct primary key, lets get any previously saved
+            // hmac keys.
 
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS config_t (
@@ -828,46 +937,62 @@ pub(crate) mod tpm {
 
             trace!(ctx_data_present = %ctx_data.is_some());
 
-            let ex_ctx = if let Some(ctx_data) = ctx_data {
+            // Okay, we have something. Lets get the hmac public parameters now.
+            let hmac_pub = get_hmac_public()?;
+
+            let ex_private = if let Some(ctx_data) = ctx_data {
                 // Test loading, blank it out if it fails.
                 serde_json::from_slice(ctx_data.as_slice()).map_err(|e| {
                         warn!("json error -> {:?}", e);
                     })
                     // On error, becomes none and we do nothing else.
                     .ok()
-                    .and_then(|maybe_ctx: TpmsContext| {
-                        // can it load?
-                        context
-                            .execute_with_nullauth_session(|ctx| ctx.context_load(maybe_ctx.clone()))
+                    .and_then(|private_bytes: Vec<u8>| {
+                        Private::try_from(private_bytes)
                             .map_err(|e| {
-                                error!(tpm_err = ?e, "Failed to load tpm context");
+                                error!(tpm_err = ?e, "Failed to restore tpm hmac key");
                             })
                             .ok()
-                            // It loaded, so sub in our context.
-                            .map(|_handle| maybe_ctx)
+                    })
+                    .and_then(|private: Private| {
+                        // test if it can load?
+                        context
+                            .execute_with_nullauth_session(|ctx|
+                                ctx.load(primary_key.key_handle.clone(), private.clone(), hmac_pub.clone())
+                                    // We have to flush the handle here to not overfill tpm context memory.
+                                    // We'll be reloading the key later anyway.
+                                    .and_then(|kh| ctx.flush_context(kh.into()))
+                            )
+                            .map_err(|e| {
+                                error!(tpm_err = ?e, "Failed to load tpm hmac key");
+                            })
+                            .ok()
+                            // It loaded, so sub in our Private data.
+                            .map(|_hmac_handle| {
+                                private
+                            })
                     })
             } else {
                 None
             };
 
-            let ctx = if let Some(existing_ctx) = ex_ctx {
-                existing_ctx
+            let private = if let Some(existing_private) = ex_private {
+                existing_private
             } else {
-                // Need to regenerate for some reason
-                info!("Creating new tpm ctx key");
+                // Need to regenerate the private key for some reason
+                info!("Creating new hmac key");
                 context
                     .execute_with_nullauth_session(|ctx| {
-                        let key = Password::prepare_tpm_key(ctx)?;
-
-                        ctx.context_save(key.into()).map_err(|e| e.into())
+                        ctx.create(primary_key.key_handle.clone(), hmac_pub.clone(), None, None, None, None)
+                            .map(|key| key.out_private)
                     })
-                    .map_err(|e: CryptoError| {
-                        error!(tpm_err = ?e, "Failed to create tpm key");
+                    .map_err(|e| {
+                        error!(tpm_err = ?e, "Failed to create tpm hmac key");
                     })?
             };
 
             // Serialise it out.
-            let data = serde_json::to_vec(&ctx).map_err(|e| {
+            let data = serde_json::to_vec(private.as_slice()).map_err(|e| {
                 error!("json error -> {:?}", e);
             })?;
 
@@ -883,9 +1008,11 @@ pub(crate) mod tpm {
             })
             .map(|_| ())?;
 
+            //
+
             info!("tpm binding configured");
 
-            Ok(TpmConfig { tcti, ctx })
+            Ok(TpmConfig { tcti, private })
         }
 
         pub fn tpm_new(
@@ -899,12 +1026,8 @@ pub(crate) mod tpm {
 
             context
                 .execute_with_nullauth_session(|ctx| {
-                    let key = ctx.context_load(tpm_conf.ctx.clone()).map_err(|e| {
-                        error!(tpm_err = ?e, "Failed to load tpm context");
-                        <TpmError as Into<CryptoError>>::into(e)
-                    })?;
-
-                    Password::new_argon2id_tpm(policy, cred, ctx, key)
+                    let key = setup_keys(ctx, &tpm_conf.private)?;
+                    Password::new_argon2id_tpm(policy, cred, ctx, key.into())
                 })
                 .map_err(|e: CryptoError| {
                     error!(tpm_err = ?e, "Failed to create tpm bound password");
@@ -918,12 +1041,8 @@ pub(crate) mod tpm {
 
             context
                 .execute_with_nullauth_session(|ctx| {
-                    let key = ctx.context_load(tpm_conf.ctx.clone()).map_err(|e| {
-                        error!(tpm_err = ?e, "Failed to load tpm context");
-                        <TpmError as Into<CryptoError>>::into(e)
-                    })?;
-
-                    pw.verify_ctx(cred, Some((ctx, key)))
+                    let key = setup_keys(ctx, &tpm_conf.private)?;
+                    pw.verify_ctx(cred, Some((ctx, key.into())))
                 })
                 .map_err(|e: CryptoError| {
                     error!(tpm_err = ?e, "Failed to create tpm bound password");
