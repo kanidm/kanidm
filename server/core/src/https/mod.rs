@@ -528,66 +528,41 @@ pub async fn create_https_server(
     .layer(session_layer)
     .with_state(state);
 
-// let opt_tls_params = Some(tlsconfig.clone());
-
     let addr = SocketAddr::from_str(&address).unwrap();
-    let _ = match tlsconfig {
-        Some(tls_param) => {
-            let config = axum_server::tls_openssl::OpenSSLConfig::from_pem_file(
-                tls_param.chain.clone(),
-                tls_param.key.clone(),
-            )
-            .map_err(|e| {
-                error!("Failed to build TLS Listener -> {:?}", e);
-            })?;
-
-            let _ = tokio::spawn(
-                axum_server::bind_openssl(addr, config).serve(app.into_make_service())
-            )
-            .await
-            .unwrap();
-        }
-        None => {
-            let _ = tokio::spawn(axum_server::bind(addr).serve(app.into_make_service()))
-                .await
-                .unwrap();
-
-            // if let Err(e) = listener.bind(tserver).await {
-            //     error!(
-            //         "Failed to start server listener on address {:?} -> {:?}",
-            //         &address, e
-            //     );
-            //     return Err(());
-            // }
-
-            // tokio::spawn(async move {
-            //     tokio::select! {
-            //         Ok(action) = rx.recv() => {
-            //             match action {
-            //                 CoreAction::Shutdown => {},
-            //             }
-            //         }
-            //         // server_result = listener.accept() => {
-            //         //     if let Err(e) = server_result {
-            //         //         error!(
-            //         //             "Failed to accept via listener on address {:?} -> {:?}",
-            //         //             &address, e
-            //         //         );
-            //         //     }
-            //         // }
-            //     }
-            // })
-        }
-    };
-    error!("AXUM listening on {}", addr);
-
     Ok(tokio::spawn(async move {
+
+        match tlsconfig {
+            Some(tls_param) => {
+                let config = match axum_server::tls_openssl::OpenSSLConfig::from_pem_file(
+                    tls_param.chain.clone(),
+                    tls_param.key.clone(),
+                ) {
+                    Ok(value) => value,
+                    Err(err) => {
+                        error!("Failed to build TLS configuration -> {:?}", err);
+                        std::process::exit(1);
+                    }
+                };
+
+                let _ = axum_server::bind_openssl(addr, config).serve(app.into_make_service()).await
+                .unwrap();
+            }
+            None => {
+                let _ = axum_server::bind(addr).serve(app.into_make_service())
+                    .await
+                    .unwrap();
+            }
+        };
+        error!("Axum listening on {}", addr);
+
         tokio::select! {
             Ok(action) = rx.recv() => {
                 match action {
                     CoreAction::Shutdown => {},
                 }
             }
+
+
             // server_result = listener.accept() => {
             //     if let Err(e) = server_result {
             //         error!(
