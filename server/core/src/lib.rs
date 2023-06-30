@@ -949,9 +949,9 @@ pub async fn create_server_core(
             }
         };
         if config.role != ServerRole::WriteReplicaNoUI {
-            admin_info!("ready to rock! 🪨 UI available at: {}", config.origin);
+            admin_info!("ready to rock! 🪨  UI available at: {}", config.origin);
         } else {
-            admin_info!("ready to rock! 🪨");
+            admin_info!("ready to rock! 🪨 ");
         }
         Some(h)
     };
