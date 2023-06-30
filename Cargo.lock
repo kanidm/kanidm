@@ -2571,6 +2571,7 @@ dependencies = [
 name = "kanidm_unix_int"
 version = "1.1.0-beta.13-dev"
 dependencies = [
+ "base64urlsafedata",
  "bytes",
  "clap",
  "clap_complete",

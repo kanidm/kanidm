@@ -42,6 +42,7 @@ name = "kanidm_unix_common"
 path = "src/lib.rs"
 
 [dependencies]
+base64urlsafedata = { workspace = true }
 bytes = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 csv = { workspace = true }
