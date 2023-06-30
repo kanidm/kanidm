@@ -38,7 +38,7 @@ fn default_online_backup_versions() -> usize {
     7
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TlsConfiguration {
     pub chain: String,
     pub key: String,

@@ -42,6 +42,7 @@ repository = "https://github.com/kanidm/kanidm/"
 argon2 = { version = "0.5.0", features = ["alloc"] }
 async-recursion = "1.0.4"
 async-trait = "^0.1.68"
+axum-csp = { path="/Users/yaleman/Projects/goatns/axum-csp" }
 base32 = "^0.4.0"
 base64 = "^0.21.0"
 base64urlsafedata = "0.1.3"
@@ -67,7 +68,6 @@ futures = "^0.3.28"
 futures-concurrency = "^3.1.0"
 futures-util = { version = "^0.3.21", features = ["sink"] }
 gloo = "^0.8.1"
-gloo-net = "0.3.0"
 hashbrown = { version = "0.14.0", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
 http-types = "^2.12.0"
@@ -75,12 +75,10 @@ idlset = "^0.2.4"
 # idlset = { path = "../idlset" }
 js-sys = "^0.3.63"
 kanidmd_core = { path = "./server/core" }
-kanidmd_idm = { path = "./server/idm" }
 kanidmd_lib = { path = "./server/lib" }
 kanidmd_lib_macros = { path = "./server/lib-macros" }
 kanidm_lib_crypto = { path = "./libs/crypto" }
 kanidm_lib_file_permissions = { path = "./libs/file_permissions" }
-kanidmd_testkit = { path = "./server/testkit" }
 kanidm_client = { path = "./libs/client", version = "1.1.0-alpha.11" }
 kanidm_proto = { path = "./proto", version = "1.1.0-alpha.11" }
 kanidm_unix_int = { path = "./unix_integration" }
@@ -182,12 +180,5 @@ yew-router = "^0.17.0"
 zxcvbn = "^2.2.2"
 
 nonempty = "0.8.1"
-
-# enshrinken the WASMs
-[profile.release.package.kanidmd_web_ui]
-# optimization over all codebase ( better optimization, slower build )
-codegen-units = 1
-# optimization for size ( more aggressive )
-opt-level = 'z'
 # link time optimization using using whole-program analysis
 # lto = true

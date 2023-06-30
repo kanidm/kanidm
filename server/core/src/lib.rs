@@ -8,7 +8,7 @@
 //! the entry point for all client traffic which is then directed to the
 //! various `actors`.
 
-#![deny(warnings)]
+// #![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
 #![deny(clippy::unimplemented)]
@@ -28,9 +28,10 @@ extern crate kanidmd_lib;
 pub mod actors;
 pub mod config;
 mod crypto;
+mod https; // new axum hotness
 mod interval;
 mod ldaps;
-pub mod tide;
+// pub mod tide; // old tide busted
 
 use std::path::Path;
 use std::sync::Arc;
@@ -911,14 +912,28 @@ pub async fn create_server_core(
         admin_info!("this config rocks! 🪨 ");
         None
     } else {
+        // let tide_address = config.address.clone().replace(":8443",":18443");
         // ⚠️  only start the sockets and listeners in non-config-test modes.
-        let h = self::tide::create_https_server(
+        // let h: tokio::task::JoinHandle<()> = self::tide::create_https_server(
+        //     tide_address,
+        //     &config.domain,
+        //     config.tls_config.as_ref(),
+        //     config.role,
+        //     config.trust_x_forward_for,
+        //     &cookie_key,
+        //     jws_signer,
+        //     status_ref,
+        //     server_write_ref,
+        //     server_read_ref,
+        //     broadcast_tx.subscribe(),
+        // )
+        // .await?;
+
+        let h: tokio::task::JoinHandle<()> = https::create_https_server(
             config.address,
-            &config.domain,
-            config.tls_config.as_ref(),
+            config.tls_config.unwrap(),
             config.role,
-            config.trust_x_forward_for,
-            &cookie_key,
+            cookie_key,
             jws_signer,
             status_ref,
             server_write_ref,
@@ -926,7 +941,6 @@ pub async fn create_server_core(
             broadcast_tx.subscribe(),
         )
         .await?;
-
         if config.role != ServerRole::WriteReplicaNoUI {
             admin_info!("ready to rock! 🪨 UI available at: {}", config.origin);
         } else {

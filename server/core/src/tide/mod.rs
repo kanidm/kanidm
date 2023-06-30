@@ -1,4 +1,3 @@
-mod manifest;
 pub mod middleware;
 mod oauth2;
 mod routemaps;
@@ -15,12 +14,10 @@ use kanidmd_lib::prelude::*;
 use kanidmd_lib::status::StatusActor;
 use serde::Serialize;
 use tide::listener::{Listener, ToListener};
-use tide_compress::CompressMiddleware;
 use tide_openssl::TlsListener;
 use tracing::{error, info};
 use uuid::Uuid;
 
-use self::manifest::manifest;
 use self::middleware::*;
 use self::oauth2::*;
 use self::routemaps::{RouteMap, RouteMaps};
@@ -36,11 +33,11 @@ use tokio::sync::broadcast;
 #[derive(Clone)]
 pub struct JavaScriptFile {
     // Relative to the pkg/ dir
-    filepath: &'static str,
+    pub filepath: &'static str,
     // SHA384 hash of the file
-    hash: String,
+    pub hash: String,
     // if it's a module add the "type"
-    filetype: Option<String>,
+    pub filetype: Option<String>,
 }
 
 impl JavaScriptFile {
@@ -50,7 +47,7 @@ impl JavaScriptFile {
     // }
 
     /// returns a `<script>` HTML tag
-    fn as_tag(self) -> String {
+    pub fn as_tag(self) -> String {
         let typeattr = match self.filetype {
             Some(val) => {
                 format!(" type=\"{}\"", val.as_str())
@@ -495,10 +492,10 @@ pub async fn create_https_server(
         [1] - https://resources.infosecinstitute.com/topic/the-breach-attack/
         */
 
-        let compress_middleware = CompressMiddleware::builder()
-            .threshold(1024)
-            .content_type_check(Some(compression_content_type_checker()))
-            .build();
+        // let compress_middleware = CompressMiddleware::builder()
+        //     .threshold(1024)
+        //     .content_type_check(Some(compression_content_type_checker()))
+        //     .build();
 
         let mut static_tserver = tserver.at("");
         static_tserver.with(StaticContentMiddleware::default());
@@ -506,15 +503,12 @@ pub async fn create_https_server(
         static_tserver.with(UIContentSecurityPolicyResponseMiddleware::new(js_files));
 
         // The compression middleware needs to be the last one added before routes
-        static_tserver.with(compress_middleware.clone());
+        // static_tserver.with(compress_middleware.clone());
 
         static_tserver.at("/").mapped_get(&mut routemap, index_view);
         static_tserver
             .at("/robots.txt")
             .mapped_get(&mut routemap, robots_txt);
-        static_tserver
-            .at("/manifest.webmanifest")
-            .mapped_get(&mut routemap, manifest);
         static_tserver
             .at("/ui/")
             .mapped_get(&mut routemap, index_view);
@@ -525,7 +519,7 @@ pub async fn create_https_server(
         let mut static_dir_tserver = tserver.at("");
         static_dir_tserver.with(StaticContentMiddleware::default());
         // The compression middleware needs to be the last one added before routes
-        static_dir_tserver.with(compress_middleware);
+        // static_dir_tserver.with(compress_middleware);
         static_dir_tserver
             .at("/pkg")
             .serve_dir(env!("KANIDM_WEB_UI_PKG_PATH"))
@@ -589,7 +583,7 @@ pub async fn create_https_server(
     raw_route.at("/delete").mapped_post(&mut routemap, delete);
     raw_route.at("/search").mapped_post(&mut routemap, search);
 
-    appserver.at("/v1/auth").mapped_post(&mut routemap, auth);
+    // appserver.at("/v1/auth").mapped_post(&mut routemap, auth);
     appserver
         .at("/v1/auth/valid")
         .mapped_get(&mut routemap, auth_valid);

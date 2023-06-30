@@ -1,6 +1,7 @@
 use std::str::FromStr;
 use std::time::Duration;
 
+use axum::extract::Path;
 use compact_jwt::Jws;
 use kanidm_proto::v1::{
     AccountUnixExtend, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
@@ -107,12 +108,12 @@ pub async fn json_rest_event_get(
 }
 
 pub async fn json_rest_event_get_id(
+    id: String,
     req: tide::Request<AppState>,
     filter: Filter<FilterInvalid>,
     attrs: Option<Vec<String>>,
 ) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
 
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
 
@@ -128,11 +129,11 @@ pub async fn json_rest_event_get_id(
 }
 
 pub async fn json_rest_event_delete_id(
+    Path(id): Path<String>,
     req: tide::Request<AppState>,
     filter: Filter<FilterInvalid>,
 ) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
 
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
     let (eventid, hvalue) = req.new_eventid();
@@ -146,11 +147,11 @@ pub async fn json_rest_event_delete_id(
 }
 
 pub async fn json_rest_event_get_attr(
+    attr: String,
     req: tide::Request<AppState>,
     id: &str,
     filter: Filter<FilterInvalid>,
 ) -> tide::Result {
-    let attr = req.get_url_param("attr")?;
     let uat = req.get_current_uat();
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id)));
 
@@ -1092,7 +1093,7 @@ pub async fn reauth(mut req: tide::Request<AppState>) -> tide::Result {
     auth_session_state_management(req, inter, hvalue)
 }
 
-pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
+pub async fn post_auth(mut req: tide::Request<AppState>) -> tide::Result {
     // check that we can get the remote IP address first, since this doesn't touch the backend at all
     let ip_addr = req.get_remote_addr().ok_or_else(|| {
         error!("Unable to get remote addr for auth event, refusing to proceed");

@@ -1,23 +1,26 @@
+use axum::extract::State;
+use axum::response::{IntoResponse, Response};
+use http::HeaderValue;
 use serde::{Deserialize, Serialize};
 
 ///! Builds a Progressive Web App Manifest page.
 // Thanks to the webmanifest crate for a lot of this code
-use crate::tide::{AppState, RequestExtensions};
+use super::ServerState;
 
 /// The MIME type for `.webmanifest` files.
 const MIME_TYPE_MANIFEST: &str = "application/manifest+json;charset=utf-8";
 
 /// Create a new manifest builder.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Manifest<'s> {
-    name: &'s str,
-    short_name: &'s str,
-    start_url: &'s str,
+pub struct Manifest {
+    name: String,
+    short_name: String,
+    start_url: String,
     #[serde(rename = "display")]
     display_mode: DisplayMode,
-    background_color: &'s str,
+    background_color: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<&'s str>,
+    description: Option<String>,
     #[serde(rename = "dir")]
     direction: Direction,
     // direction: Option<Direction>,
@@ -25,11 +28,11 @@ pub struct Manifest<'s> {
     orientation: Option<String>,
     // orientation: Option<Orientation>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    lang: Option<&'s str>,
+    lang: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    scope: Option<&'s str>,
+    scope: Option<String>,
     // #[serde(skip_serializing_if = "Option::is_none")]
-    theme_color: &'s str,
+    theme_color: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     prefer_related_applications: Option<bool>,
     // #[serde(borrow)]
@@ -94,12 +97,7 @@ enum DisplayMode {
     Browser,
 }
 
-/// Generates a manifest.json file for progressive web app usage
-pub async fn manifest(req: tide::Request<AppState>) -> tide::Result {
-    let mut res = tide::Response::new(200);
-    let (eventid, _) = req.new_eventid();
-    let domain_display_name = req.state().qe_r_ref.get_domain_display_name(eventid).await;
-
+pub fn manifest_data(host_req: Option<&str>, domain_display_name: String) -> Manifest {
     let icons = vec![
         ManifestIcon {
             sizes: String::from("512x512"),
@@ -127,32 +125,43 @@ pub async fn manifest(req: tide::Request<AppState>) -> tide::Result {
         },
     ];
 
-    let start_url = match req.host() {
+    let start_url = match host_req {
         Some(value) => format!("https://{}/", value),
         None => String::from("/"),
     };
 
-    let manifest_struct = Manifest {
-        short_name: "Kanidm",
-        name: domain_display_name.as_str(),
-        start_url: start_url.as_str(),
+    Manifest {
+        short_name: "Kanidm".to_string(),
+        name: domain_display_name,
+        start_url,
         display_mode: DisplayMode::MinimalUi,
         description: None,
         orientation: None,
-        lang: Some("en"),
-        theme_color: "white",
-        background_color: "white",
+        lang: Some("en".to_string()),
+        theme_color: "white".to_string(),
+        background_color: "white".to_string(),
         direction: Direction::Auto,
         scope: None,
         prefer_related_applications: None,
         icons,
         related_applications: None,
-    };
+    }
+}
 
-    let manifest_string = serde_json::to_string_pretty(&manifest_struct)?;
+/// Generates a manifest.json file for progressive web app usage
+pub async fn manifest(State(state): State<ServerState>) -> impl IntoResponse {
+    let (eventid, _) = state.new_eventid();
+    let domain_display_name = state.qe_r_ref.get_domain_display_name(eventid).await;
+    // TODO: fix the None here to make it the request host
+    let manifest_string =
+        serde_json::to_string_pretty(&manifest_data(None, domain_display_name)).unwrap();
+    let mut res = Response::new(manifest_string);
 
-    res.set_content_type(MIME_TYPE_MANIFEST);
-    res.set_body(manifest_string);
+    let headers = res.headers_mut();
+    headers.insert(
+        "Content-Type",
+        HeaderValue::from_str(MIME_TYPE_MANIFEST).unwrap(),
+    );
 
-    Ok(res)
+    res
 }
