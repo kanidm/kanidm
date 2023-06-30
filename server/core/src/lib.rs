@@ -929,9 +929,9 @@ pub async fn create_server_core(
         // )
         // .await?;
 
-        let h: tokio::task::JoinHandle<()> = https::create_https_server(
+        let h: tokio::task::JoinHandle<()> = match https::create_https_server(
             config.address,
-            config.tls_config.unwrap(),
+            config.tls_config,
             config.role,
             cookie_key,
             jws_signer,
@@ -940,7 +940,14 @@ pub async fn create_server_core(
             server_read_ref,
             broadcast_tx.subscribe(),
         )
-        .await?;
+        .await
+        {
+            Ok(h) => h,
+            Err(e) => {
+                error!("Failed to start HTTPS server -> {:?}", e);
+                return Err(());
+            }
+        };
         if config.role != ServerRole::WriteReplicaNoUI {
             admin_info!("ready to rock! 🪨 UI available at: {}", config.origin);
         } else {

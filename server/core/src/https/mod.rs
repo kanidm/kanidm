@@ -110,7 +110,7 @@ pub fn get_js_files(role: ServerRole) -> Vec<JavaScriptFile> {
 
 pub async fn create_https_server(
     address: String,
-    tlsconfig: crate::config::TlsConfiguration,
+    tlsconfig: Option<crate::config::TlsConfiguration>,
     role: ServerRole,
     // trust_x_forward_for: bool,
     cookie_key: [u8; 32],
@@ -139,14 +139,7 @@ pub async fn create_https_server(
         js_files: get_js_files(role.clone()),
     };
 
-    let config = axum_server::tls_openssl::OpenSSLConfig::from_pem_file(
-        tlsconfig.chain.clone(),
-        tlsconfig.key.clone(),
-    )
-    .unwrap();
-
-    let app = Router::new();
-
+    let app = Router::new().route("/status", get(status));
     let app = match role {
         ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
             let pkg_path = PathBuf::from(env!("KANIDM_WEB_UI_PKG_PATH"));
@@ -526,71 +519,38 @@ pub async fn create_https_server(
     //  // ===  End routes
 
     let app = app
-        .nest("/v1", crate::https::v1::new(state.clone()))
-        .route_layer(from_fn_with_state(
-            state.clone(),
-            crate::https::csp_headers::cspheaders_layer,
-        ))
-        .layer(TraceLayer::new_for_http())
-        .layer(session_layer)
-        .with_state(state);
+    .nest("/v1", crate::https::v1::new(state.clone()))
+    .route_layer(from_fn_with_state(
+        state.clone(),
+        crate::https::csp_headers::cspheaders_layer,
+    ))
+    .layer(TraceLayer::new_for_http())
+    .layer(session_layer)
+    .with_state(state);
+
+// let opt_tls_params = Some(tlsconfig.clone());
 
     let addr = SocketAddr::from_str(&address).unwrap();
-    println!("AXUM listening on {}", addr);
-    axum_server::bind_openssl(addr, config)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let _ = match tlsconfig {
+        Some(tls_param) => {
+            let config = axum_server::tls_openssl::OpenSSLConfig::from_pem_file(
+                tls_param.chain.clone(),
+                tls_param.key.clone(),
+            )
+            .map_err(|e| {
+                error!("Failed to build TLS Listener -> {:?}", e);
+            })?;
 
-    let opt_tls_params = Some(tlsconfig.clone());
-
-    let handle = match opt_tls_params {
-        Some(_tls_param) => {
-            // let tlsl = TlsListener::build()
-            //     .addrs(&address)
-            //     .cert(&tls_param.chain)
-            //     .key(&tls_param.key)
-            //     .finish()
-            //     .map_err(|e| {
-            //         error!("Failed to build TLS Listener -> {:?}", e);
-            //     })?;
-
-            // let mut listener = tlsl.to_listener().map_err(|e| {
-            // error!("Failed to convert to Listener -> {:?}", e);
-            // })?;
-
-            // if let Err(e) = listener.bind(tserver).await {
-            //     error!(
-            //         "Failed to start server listener on address {:?} -> {:?}",
-            //         &address, e
-            //     );
-            //     return Err(());
-            // }
-
-            tokio::spawn(async move {
-                tokio::select! {
-                    Ok(action) = rx.recv() => {
-                        match action {
-                            CoreAction::Shutdown => {},
-                        }
-                    }
-                    // server_result = listener.accept() => {
-                    //     if let Err(e) = server_result {
-                    //         error!(
-                    //             "Failed to accept via listener on address {:?} -> {:?}",
-                    //             &address, e
-                    //         );
-                    //     }
-                    // }
-                };
-                info!("Stopped HTTPSAcceptorActor");
-            })
+            let _ = tokio::spawn(
+                axum_server::bind_openssl(addr, config).serve(app.into_make_service())
+            )
+            .await
+            .unwrap();
         }
         None => {
-            // Create without https
-            // let mut listener = (&address).to_listener().map_err(|e| {
-            //     error!("Failed to convert to Listener -> {:?}", e);
-            // })?;
+            let _ = tokio::spawn(axum_server::bind(addr).serve(app.into_make_service()))
+                .await
+                .unwrap();
 
             // if let Err(e) = listener.bind(tserver).await {
             //     error!(
@@ -600,28 +560,47 @@ pub async fn create_https_server(
             //     return Err(());
             // }
 
-            tokio::spawn(async move {
-                tokio::select! {
-                    Ok(action) = rx.recv() => {
-                        match action {
-                            CoreAction::Shutdown => {},
-                        }
-                    }
-                    // server_result = listener.accept() => {
-                    //     if let Err(e) = server_result {
-                    //         error!(
-                    //             "Failed to accept via listener on address {:?} -> {:?}",
-                    //             &address, e
-                    //         );
-                    //     }
-                    // }
-                }
-                info!("Stopped HTTPAcceptorActor");
-            })
+            // tokio::spawn(async move {
+            //     tokio::select! {
+            //         Ok(action) = rx.recv() => {
+            //             match action {
+            //                 CoreAction::Shutdown => {},
+            //             }
+            //         }
+            //         // server_result = listener.accept() => {
+            //         //     if let Err(e) = server_result {
+            //         //         error!(
+            //         //             "Failed to accept via listener on address {:?} -> {:?}",
+            //         //             &address, e
+            //         //         );
+            //         //     }
+            //         // }
+            //     }
+            // })
         }
     };
+    error!("AXUM listening on {}", addr);
 
-    Ok(handle)
+    Ok(tokio::spawn(async move {
+        tokio::select! {
+            Ok(action) = rx.recv() => {
+                match action {
+                    CoreAction::Shutdown => {},
+                }
+            }
+            // server_result = listener.accept() => {
+            //     if let Err(e) = server_result {
+            //         error!(
+            //             "Failed to accept via listener on address {:?} -> {:?}",
+            //             &address, e
+            //         );
+            //     }
+            // }
+        };
+        info!("Stopped AxumAcceptorActor");
+    }))
+
+    // Ok(handle)
 }
 
 pub async fn status(State(state): State<ServerState>) -> impl IntoResponse {

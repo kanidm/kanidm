@@ -3,28 +3,33 @@
 use std::str::FromStr;
 
 use axum::body;
-use axum::extract::{Path, State};
+use axum::extract::State;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
 use axum_macros::debug_handler;
-use axum_sessions::extractors::WritableSession;
+// use axum_sessions::extractors::WritableSession;
 use http::{HeaderMap, HeaderValue};
 use hyper::Body;
 use kanidm_proto::v1::{
-    AccountUnixExtend, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
-    AuthState as ProtoAuthState, CUIntentToken, CURequest, CUSessionToken, CreateRequest,
-    DeleteRequest, Entry as ProtoEntry, GroupUnixExtend, ModifyRequest, OperationError,
-    SearchRequest, SearchResponse, SingleStringRequest, WhoamiResponse,
+    // AccountUnixExtend, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
+    // AuthState as ProtoAuthState, CUIntentToken, CURequest, CUSessionToken,
+    CreateRequest,
+    DeleteRequest,
+    // Entry as ProtoEntry, GroupUnixExtend,
+    ModifyRequest,
+    OperationError,
+    SearchRequest,
+    // SearchResponse, SingleStringRequest, WhoamiResponse,
 };
-use kanidmd_lib::filter::{Filter, FilterInvalid};
-use kanidmd_lib::idm::event::AuthResult;
-use kanidmd_lib::idm::AuthState;
-use kanidmd_lib::prelude::*;
-use kanidmd_lib::status::StatusRequestEvent;
+// use kanidmd_lib::filter::{Filter, FilterInvalid};
+// use kanidmd_lib::idm::event::AuthResult;
+// use kanidmd_lib::idm::AuthState;
+// use kanidmd_lib::prelude::*;
+// use kanidmd_lib::status::StatusRequestEvent;
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::json;
 use uuid::Uuid;
 
 use super::ServerState;
