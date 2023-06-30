@@ -150,7 +150,9 @@ pub async fn create_https_server(
                 );
                 std::process::exit(1);
             }
-            app.route("/", get(|| async { Redirect::temporary("/ui/") }))
+            app.route("/", get(|| async { Redirect::temporary("/ui/login") }))
+                .route("/ui", get(crate::https::ui::ui_handler))
+                .route("/ui/", get(crate::https::ui::ui_handler))
                 .route("/ui/*ui", get(crate::https::ui::ui_handler))
                 .route("/manifest.webmanifest", get(manifest::manifest))
                 .route("/robots.txt", get(|| async { todo!() }))
@@ -519,16 +521,16 @@ pub async fn create_https_server(
     //  // ===  End routes
 
     let app = app
-    .nest("/v1", crate::https::v1::new(state.clone()))
-    .route_layer(from_fn_with_state(
-        state.clone(),
-        crate::https::csp_headers::cspheaders_layer,
-    ))
-    .layer(TraceLayer::new_for_http())
-    .layer(session_layer)
-    .with_state(state);
+        .nest("/v1", crate::https::v1::new(state.clone()))
+        .route_layer(from_fn_with_state(
+            state.clone(),
+            crate::https::csp_headers::cspheaders_layer,
+        ))
+        .layer(TraceLayer::new_for_http())
+        .layer(session_layer)
+        .with_state(state);
 
-// let opt_tls_params = Some(tlsconfig.clone());
+    // let opt_tls_params = Some(tlsconfig.clone());
 
     let addr = SocketAddr::from_str(&address).unwrap();
     info!("Starting the web server...");

@@ -14,7 +14,11 @@ pub async fn cspheaders_layer<B>(
 ) -> Response {
     let directive: CspDirective = CspDirective {
         directive_type: CspDirectiveType::ImgSrc,
-        values: vec![CspValue::SelfSite, CspValue::SchemeHttps],
+        values: vec![
+            CspValue::SelfSite,
+            CspValue::SchemeHttps,
+            CspValue::SchemeData,
+        ],
     };
 
     // wait for the middleware to come back
