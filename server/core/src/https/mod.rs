@@ -526,8 +526,9 @@ pub async fn create_https_server(
             state.clone(),
             crate::https::csp_headers::cspheaders_layer,
         ))
-        .layer(TraceLayer::new_for_http())
         .layer(session_layer)
+        .layer(axum::middleware::from_fn(middleware::version_middleware))
+        .layer(TraceLayer::new_for_http())
         .with_state(state);
 
     // let opt_tls_params = Some(tlsconfig.clone());
