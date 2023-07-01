@@ -21,7 +21,6 @@ use tokio::sync::broadcast;
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 use uuid::Uuid;
-
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::ServerRole;
@@ -120,9 +119,11 @@ pub async fn create_https_server(
     qe_r_ref: &'static QueryServerReadV1,
     mut rx: broadcast::Receiver<CoreAction>,
 ) -> Result<tokio::task::JoinHandle<()>, ()> {
+
     let jws_validator = jws_signer.get_validator().map_err(|e| {
         error!(?e, "Failed to get jws validator");
-    })?;
+    }).unwrap();
+
 
     let store = async_session::MemoryStore::new();
     // let secret = b"..."; // MUST be at least 64 bytes!
@@ -528,7 +529,9 @@ pub async fn create_https_server(
         ))
         .layer(session_layer)
         .layer(axum::middleware::from_fn(middleware::version_middleware))
+        .layer(axum::middleware::from_fn_with_state(state.clone(), middleware::kopid_middleware))
         .layer(TraceLayer::new_for_http())
+
         .with_state(state);
 
     // let opt_tls_params = Some(tlsconfig.clone());
@@ -553,7 +556,9 @@ pub async fn create_https_server(
                         error!("Failed to build TLS Listener for web server: {:?}", e);
                     }).unwrap();
 
-                    tokio::spawn(axum_server::bind_openssl(addr, config).serve(app.into_make_service()))
+                    tokio::spawn(
+                        axum_server::bind_openssl(addr, config).serve(app.into_make_service())
+                    )
                 },
                 None => {
                     tokio::spawn(axum_server::bind(addr).serve(app.into_make_service()))
@@ -564,6 +569,9 @@ pub async fn create_https_server(
                 }
             }
         };
+        #[cfg(feature = "otel")]
+        opentelemetry::global::shutdown_tracer_provider();
+
         info!("Stopped WebAcceptorActor");
     }))
 
