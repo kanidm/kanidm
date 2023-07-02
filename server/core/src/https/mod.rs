@@ -1,11 +1,11 @@
-pub mod csp_headers;
+mod csp_headers;
 mod manifest;
-pub mod middleware;
-pub mod oauth2;
+mod middleware;
+mod oauth2;
 mod tests;
-pub mod ui;
-pub mod v1;
-pub mod v1_scim;
+mod ui;
+mod v1;
+mod v1_scim;
 
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
