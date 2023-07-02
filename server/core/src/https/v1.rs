@@ -205,16 +205,13 @@ pub async fn json_rest_event_get(
 //     Path(id): Path<String>,
 //     State(state): State<ServerState>,
 //     filter: Filter<FilterInvalid>,
-//     headers: HeaderMap,
+//     kopid: KOpId,
 // ) -> impl IntoResponse {
 //     let uat = state.get_current_uat(headers);
-
 //     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
-//     let (eventid, hvalue) = state.new_eventid();
-
 //     let res = state
 //         .qe_w_ref
-//         .handle_internaldelete(uat, filter, eventid)
+//         .handle_internaldelete(kopid.uat, filter, kopid.eventid)
 //         .await;
 //     to_axum_response(res)
 // }
@@ -227,9 +224,7 @@ pub async fn json_rest_event_get_attr(
     kopid: KOpId,
 ) -> impl IntoResponse {
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id)));
-
     let attrs = Some(vec![attr.clone()]);
-
     let res: Result<Option<_>, _> = state
         .qe_r_ref
         .handle_internalsearch(kopid.uat, filter, attrs, kopid.eventid)
