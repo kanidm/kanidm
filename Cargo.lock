@@ -597,6 +597,8 @@ dependencies = [
 [[package]]
 name = "axum-csp"
 version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56c880343d9c0c0c86c457ebd23050072482edc4f835e3cfa88245e02a0772f9"
 dependencies = [
  "axum",
  "http",
