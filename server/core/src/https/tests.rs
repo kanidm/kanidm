@@ -235,19 +235,19 @@ async fn test_routes() {
         "method": "GET"
       },
       {
-        "path": "/v1/oauth2/:id/_scopemap/:group",
+        "path": "/v1/oauth2/_scopemap/:id/:group",
         "method": "POST"
       },
       {
-        "path": "/v1/oauth2/:id/_scopemap/:group",
+        "path": "/v1/oauth2/_scopemap/:id/:group",
         "method": "DELETE"
       },
       {
-        "path": "/v1/oauth2/:id/_sup_scopemap/:group",
+        "path": "/v1/oauth2/_sup_scopemap/:id/:group",
         "method": "POST"
       },
       {
-        "path": "/v1/oauth2/:id/_sup_scopemap/:group",
+        "path": "/v1/oauth2/_sup_scopemap/:id/:group",
         "method": "DELETE"
       },
       {
@@ -670,4 +670,28 @@ async fn test_routes() {
             .unwrap();
         assert!(res.status() != 404);
     }
+}
+
+#[test]
+fn test_javscriptfile() {
+    // make sure it outputs what we think it does
+    use crate::https::JavaScriptFile;
+    let jsf = JavaScriptFile {
+        filepath: "wasmloader.js",
+        hash: "sha384-1234567890".to_string(),
+        filetype: Some("module".to_string()),
+    };
+    assert_eq!(
+        jsf.as_tag(),
+        r#"<script src="/pkg/wasmloader.js" integrity="sha384-1234567890" type="module"></script>"#
+    );
+    let jsf = JavaScriptFile {
+        filepath: "wasmloader.js",
+        hash: "sha384-1234567890".to_string(),
+        filetype: None,
+    };
+    assert_eq!(
+        jsf.as_tag(),
+        r#"<script src="/pkg/wasmloader.js" integrity="sha384-1234567890"></script>"#
+    );
 }

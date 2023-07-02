@@ -15,6 +15,7 @@ use kanidm_unix_common::unix_config::TpmPolicy;
 use kanidmd_core::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidmd_core::create_server_core;
 use tokio::task;
+use tracing::log::debug;
 
 static PORT_ALLOC: AtomicU16 = AtomicU16::new(28080);
 const ADMIN_TEST_USER: &str = "admin";
@@ -126,6 +127,7 @@ async fn test_fixture(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
+    debug!("auth_simple_password res: {:?}", res);
     assert!(res.is_ok());
     // Not recommended in production!
     rsclient

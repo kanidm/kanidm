@@ -6,8 +6,8 @@ use std::str::FromStr;
 
 use axum::extract::{ConnectInfo, Path, State};
 use axum::response::{IntoResponse, Response};
-use axum::routing::get;
-use axum::{Extension, Json, Router};
+
+use axum::{Extension, Json};
 use axum_macros::debug_handler;
 use axum_sessions::extractors::WritableSession;
 use compact_jwt::Jws;
@@ -16,11 +16,15 @@ use http::HeaderValue;
 // use axum_sessions::extractors::WritableSession;
 use hyper::Body;
 use kanidm_proto::v1::{
+    AccountUnixExtend,
     AuthIssueSession,
+    AuthRequest,
     AuthResponse,
-    // SearchResponse, SingleStringRequest, WhoamiResponse,
-    // AccountUnixExtend, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
+    // ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
     AuthState as ProtoAuthState,
+    CUIntentToken,
+    CURequest,
+    CUSessionToken,
     // CUIntentToken, CURequest, CUSessionToken,
     CreateRequest,
     DeleteRequest,
@@ -29,6 +33,8 @@ use kanidm_proto::v1::{
     // GroupUnixExtend,
     ModifyRequest,
     SearchRequest,
+    // SearchResponse,
+    SingleStringRequest,
 };
 // use kanidmd_lib::filter::{Filter, FilterInvalid};
 // use kanidmd_lib::idm::event::AuthResult;
@@ -41,36 +47,12 @@ use kanidmd_lib::idm::AuthState;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use uuid::Uuid;
 
 use crate::https::to_axum_response;
 
 use super::middleware::KOpId;
 use super::ServerState;
-
-pub fn new(state: ServerState) -> Router<ServerState> {
-    Router::new()
-        .route(
-            "/",
-            get(|| async { json!({"Hello" : "world"}).to_string() }),
-        )
-        .nest("/auth", auth_router(state.clone()))
-        .with_state(state)
-}
-
-pub fn auth_router(state: ServerState) -> Router<ServerState> {
-    Router::new()
-        .route(
-            "/",
-            get(|| async { json!({"Hello" : "world"}).to_string() }),
-        )
-        .route(
-            "/valid",
-            get(|| async { json!({"Hello" : "world"}).to_string() }),
-        )
-        .with_state(state)
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct SessionId {
@@ -180,41 +162,36 @@ pub async fn json_rest_event_get(
     to_axum_response(res)
 }
 
-// pub async fn json_rest_event_get_id(
-//     Path(id): Path<String>,
-//     State(state): State<ServerState>,
-//     filter: Filter<FilterInvalid>,
-//     attrs: Option<Vec<String>>,
-//     headers: HeaderMap,
-// ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
+pub async fn json_rest_event_get_id(
+    state: ServerState,
+    id: String,
+    filter: Filter<FilterInvalid>,
+    attrs: Option<Vec<String>>,
+    kopid: KOpId,
+) -> impl IntoResponse {
+    let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
 
-//     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
+    let res = state
+        .qe_r_ref
+        .handle_internalsearch(kopid.uat, filter, attrs, kopid.eventid)
+        .await
+        .map(|mut r| r.pop());
+    to_axum_response(res)
+}
 
-//     let (eventid, hvalue) = state.new_eventid();
-
-//     let res = state
-//         .qe_r_ref
-//         .handle_internalsearch(uat, filter, attrs, eventid)
-//         .await
-//         .map(|mut r| r.pop());
-//     to_axum_response(res)
-// }
-
-// pub async fn json_rest_event_delete_id(
-//     Path(id): Path<String>,
-//     State(state): State<ServerState>,
-//     filter: Filter<FilterInvalid>,
-//     kopid: KOpId,
-// ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-//     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
-//     let res = state
-//         .qe_w_ref
-//         .handle_internaldelete(kopid.uat, filter, kopid.eventid)
-//         .await;
-//     to_axum_response(res)
-// }
+pub async fn json_rest_event_delete_id(
+    state: ServerState,
+    id: String,
+    filter: Filter<FilterInvalid>,
+    kopid: KOpId,
+) -> impl IntoResponse {
+    let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
+    let res = state
+        .qe_w_ref
+        .handle_internaldelete(kopid.uat, filter, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
 pub async fn json_rest_event_get_attr(
     state: ServerState,
@@ -233,13 +210,15 @@ pub async fn json_rest_event_get_attr(
     to_axum_response(res)
 }
 
-// // pub async fn json_rest_event_get_id_attr(
-// //     State(state): State<ServerState>,
-// //     filter: Filter<FilterInvalid>,
-// // ) -> impl IntoResponse {
-// //     let id = req.get_url_param("id")?;
-// //     json_rest_event_get_attr(state, id.as_str(), filter).await
-// // }
+pub async fn json_rest_event_get_id_attr(
+    state: ServerState,
+    id: String,
+    attr: String,
+    filter: Filter<FilterInvalid>,
+    kopid: KOpId,
+) -> impl IntoResponse {
+    json_rest_event_get_attr(state, id.as_str(), attr, filter, kopid).await
+}
 
 pub async fn json_rest_event_post(
     state: ServerState,
@@ -262,45 +241,35 @@ pub async fn json_rest_event_post(
     to_axum_response(res)
 }
 
-// pub async fn json_rest_event_post_id_attr(
-//     Path((id, attr)): Path<(String, String)>,
+pub async fn json_rest_event_post_id_attr(
+    state: ServerState,
+    id: String,
+    attr: String,
+    filter: Filter<FilterInvalid>,
+    values: Vec<String>,
+    kopid: KOpId,
+) -> impl IntoResponse {
+    let res = state
+        .qe_w_ref
+        .handle_appendattribute(kopid.uat, id, attr, values, filter, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
-//     State(state): State<ServerState>,
-//     filter: Filter<FilterInvalid>,
-//     Json(values): Json<Vec<String>>,
-//     headers: HeaderMap,
-// ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-//     let uuid_or_name = id;
-
-//     // let values: Vec<String> = req.body_json().await?;
-//     let (eventid, hvalue) = state.new_eventid();
-//     let res = state
-//         .qe_w_ref
-//         .handle_appendattribute(uat, uuid_or_name, attr, values, filter, eventid)
-//         .await;
-//     to_axum_response(res)
-// }
-
-// pub async fn json_rest_event_put_attr(
-//     State(state): State<ServerState>,
-//     Path((id, attr)): Path<(String, String)>,
-//     uuid_or_name: String,
-//     filter: Filter<FilterInvalid>,
-//     Json(values): Json<Vec<String>>,
-//     headers: HeaderMap,
-// ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-//     let uuid_or_name = id;
-//     // let values: Vec<String> = req.body_json().await?;
-
-//     let (eventid, hvalue) = state.new_eventid();
-//     let res = state
-//         .qe_w_ref
-//         .handle_setattribute(uat, uuid_or_name, attr, values, filter, eventid)
-//         .await;
-//     to_axum_response(res)
-// }
+pub async fn json_rest_event_put_attr(
+    state: ServerState,
+    id: String,
+    attr: String,
+    filter: Filter<FilterInvalid>,
+    values: Vec<String>,
+    kopid: KOpId,
+) -> impl IntoResponse {
+    let res = state
+        .qe_w_ref
+        .handle_setattribute(kopid.uat, id, attr, values, filter, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
 pub async fn json_rest_event_post_attr(
     state: ServerState,
@@ -318,28 +287,33 @@ pub async fn json_rest_event_post_attr(
     to_axum_response(res)
 }
 
-// // pub async fn json_rest_event_put_id_attr(
-// //     State(state): State<ServerState>,
-// //     filter: Filter<FilterInvalid>,
-// // ) -> impl IntoResponse {
-// //     let uuid_or_name = req.get_url_param("id")?;
-// //     json_rest_event_put_attr(state, uuid_or_name, filter).await
-// // }
+pub async fn json_rest_event_put_id_attr(
+    state: ServerState,
+    id: String,
+    attr: String,
+    filter: Filter<FilterInvalid>,
+    values: Vec<String>,
+    kopid: KOpId,
+) -> impl IntoResponse {
+    json_rest_event_put_attr(state, id, attr, filter, values, kopid).await
+}
 
-// // pub async fn json_rest_event_delete_id_attr(
-// //     State(state): State<ServerState>,
-// //     filter: Filter<FilterInvalid>,
-// //     attr: String,
-// // ) -> impl IntoResponse {
-// //     let uuid_or_name = req.get_url_param("id")?;
-// //     json_rest_event_delete_attr(state, filter, uuid_or_name, attr).await
-// // }
+pub async fn json_rest_event_delete_id_attr(
+    state: ServerState,
+    id: String,
+    attr: String,
+    filter: Filter<FilterInvalid>,
+    values: Option<Vec<String>>,
+    kopid: KOpId,
+) -> impl IntoResponse {
+    json_rest_event_delete_attr(state, id, attr, filter, values, kopid).await
+}
 
 pub async fn json_rest_event_delete_attr(
     state: ServerState,
-    filter: Filter<FilterInvalid>,
     uuid_or_name: String,
     attr: String,
+    filter: Filter<FilterInvalid>,
     values: Option<Vec<String>>,
     kopid: KOpId,
 ) -> impl IntoResponse {
@@ -398,34 +372,30 @@ pub async fn schema_get(
 
 // pub async fn schema_attributetype_get(
 //     State(state): State<ServerState>,
-//     headers: HeaderMap,
+//     Extension(kopid): Extension<KOpId>,
 // ) -> impl IntoResponse {
 //     let filter = filter_all!(f_eq("class", PartialValue::new_class("attributetype")));
-//     json_rest_event_get(state, filter, headers, None).await
+//     json_rest_event_get(state, attrs, filter, kopid).await
 // }
 
-// pub async fn schema_attributetype_get_id(
-//     State(state): State<ServerState>,
-//     headers: HeaderMap,
-// ) -> impl IntoResponse {
-//     // These can't use get_id because they attribute name and class name aren't ... well name.
-//     let uat = state.get_current_uat(headers);
-//     let id = req.get_url_param("id")?;
+pub async fn schema_attributetype_get_id(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    // These can't use get_id because the attribute name and class name aren't ... well name.
+    let filter = filter_all!(f_and!([
+        f_eq("class", PartialValue::new_class("attributetype")),
+        f_eq("attributename", PartialValue::new_iutf8(id.as_str()))
+    ]));
 
-//     let filter = filter_all!(f_and!([
-//         f_eq("class", PartialValue::new_class("attributetype")),
-//         f_eq("attributename", PartialValue::new_iutf8(id.as_str()))
-//     ]));
-
-//     let (eventid, hvalue) = state.new_eventid();
-
-//     let res = state
-//         .qe_r_ref
-//         .handle_internalsearch(uat, filter, None, eventid)
-//         .await
-//         .map(|mut r| r.pop());
-//     to_axum_response(res)
-// }
+    let res = state
+        .qe_r_ref
+        .handle_internalsearch(kopid.uat, filter, None, kopid.eventid)
+        .await
+        .map(|mut r| r.pop());
+    to_axum_response(res)
+}
 
 // pub async fn schema_classtype_get(
 //     State(state): State<ServerState>,
@@ -438,17 +408,13 @@ pub async fn schema_get(
 // pub async fn schema_classtype_get_id(
 //     State(state): State<ServerState>,
 //     headers: HeaderMap,
+//  Path(id): Path<String>
 // ) -> impl IntoResponse {
 //     // These can't use get_id because they attribute name and class name aren't ... well name.
-//     let uat = state.get_current_uat(headers);
-//     let id = req.get_url_param("id")?;
-
 //     let filter = filter_all!(f_and!([
 //         f_eq("class", PartialValue::new_class("classtype")),
 //         f_eq("classname", PartialValue::new_iutf8(id.as_str()))
 //     ]));
-
-//     let (eventid, hvalue) = state.new_eventid();
 
 //     let res = state
 //         .qe_r_ref
@@ -482,15 +448,23 @@ pub async fn person_post(
     json_rest_event_post(state, classes, obj, kopid).await
 }
 
-// pub async fn person_id_get(State(state): State<ServerState>) -> impl IntoResponse {
-//     let filter = filter_all!(f_eq("class", PartialValue::new_class("person")));
-//     json_rest_event_get_id(state, filter, None).await
-// }
+pub async fn person_id_get(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("person")));
+    json_rest_event_get_id(state, id, filter, None, kopid).await
+}
 
-// pub async fn person_account_id_delete(State(state): State<ServerState>) -> impl IntoResponse {
-//     let filter = filter_all!(f_eq("class", PartialValue::new_class("person")));
-//     json_rest_event_delete_id(state, filter).await
-// }
+pub async fn person_account_id_delete(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("person")));
+    json_rest_event_delete_id(state, id, filter, kopid).await
+}
 
 // // == account ==
 
@@ -514,28 +488,33 @@ pub async fn service_account_get(
 //     json_rest_event_post(state, classes, headers).await
 // }
 
-// pub async fn service_account_id_get(State(state): State<ServerState>) -> impl IntoResponse {
-//     let filter = filter_all!(f_eq("class", PartialValue::new_class("service_account")));
-//     json_rest_event_get_id(state, filter, None).await
-// }
+pub async fn service_account_id_get(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("service_account")));
+    json_rest_event_get_id(state, id, filter, None, kopid).await
+}
 
-// pub async fn service_account_id_delete(State(state): State<ServerState>) -> impl IntoResponse {
-//     let filter = filter_all!(f_eq("class", PartialValue::new_class("service_account")));
-//     json_rest_event_delete_id(state, filter).await
-// }
+pub async fn service_account_id_delete(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("service_accont")));
+    json_rest_event_delete_id(state, id, filter, kopid).await
+}
 
 // pub async fn service_account_credential_generate(
 //     State(state): State<ServerState>,
+
+// Path(id): Path<String>,
 //     headers: HeaderMap,
 // ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-//     let uuid_or_name = req.get_url_param("id")?;
-
-//     let (eventid, hvalue) = state.new_eventid();
-
 //     let res = state
 //         .qe_w_ref
-//         .handle_service_account_credential_generate(uat, uuid_or_name, eventid)
+//         .handle_service_account_credential_generate(uat, id, eventid)
 //         .await;
 //     to_axum_response(res)
 // }
@@ -548,15 +527,11 @@ pub async fn service_account_get(
 // pub async fn service_account_into_person(
 //     State(state): State<ServerState>,
 //     headers: HeaderMap,
+// Path(id): Path<String>,
 // ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-//     let uuid_or_name = req.get_url_param("id")?;
-
-//     let (eventid, hvalue) = state.new_eventid();
-
 //     let res = state
 //         .qe_w_ref
-//         .handle_service_account_into_person(uat, uuid_or_name, eventid)
+//         .handle_service_account_into_person(uat, id, eventid)
 //         .await;
 //     to_axum_response(res)
 // }
@@ -565,15 +540,12 @@ pub async fn service_account_get(
 // pub async fn service_account_api_token_get(
 //     State(state): State<ServerState>,
 //     headers: HeaderMap,
+// Path(id): Path<String>,
 // ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-//     let uuid_or_name = req.get_url_param("id")?;
-
-//     let (eventid, hvalue) = state.new_eventid();
 
 //     let res = state
 //         .qe_r_ref
-//         .handle_service_account_api_token_get(uat, uuid_or_name, eventid)
+//         .handle_service_account_api_token_get(uat, id, eventid)
 //         .await;
 //     to_axum_response(res)
 // }
@@ -581,23 +553,19 @@ pub async fn service_account_get(
 // pub async fn service_account_api_token_post(
 //     State(state): State<ServerState>,
 //     headers: HeaderMap,
-//     Json(msg): Json<CreateRequest>,
+// Path(id): Path<String>,
+//     Json(msg): Json<ApiTokenGenerate>, // TODO work out if this limits the fields?
 // ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-//     let uuid_or_name = req.get_url_param("id")?;
 //     let ApiTokenGenerate {
 //         label,
 //         expiry,
 //         read_write,
 //     } = req.body_json().await?;
-
-//     let (eventid, hvalue) = state.new_eventid();
-
 //     let res = state
 //         .qe_w_ref
 //         .handle_service_account_api_token_generate(
 //             uat,
-//             uuid_or_name,
+//             id,
 //             label,
 //             expiry,
 //             read_write,
@@ -609,73 +577,72 @@ pub async fn service_account_get(
 
 // pub async fn service_account_api_token_delete(
 //     State(state): State<ServerState>,
+// Path((id, token_id)): Path<(String, Uuid)>,
 // ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-//     let uuid_or_name = req.get_url_param("id")?;
 //     let token_id = req.get_url_param_uuid("token_id")?;
-
-//     let (eventid, hvalue) = state.new_eventid();
 
 //     let res = state
 //         .qe_w_ref
-//         .handle_service_account_api_token_destroy(uat, uuid_or_name, token_id, eventid)
+//         .handle_service_account_api_token_destroy(kopid.uat, id, token_id, kopid.eventid)
 //         .await;
 //     to_axum_response(res)
 // }
 
 // // Account stuff
-// pub async fn account_id_get_attr(
-//     State(state): State<ServerState>,
-//     Path(id): Path<String>,
-// ) -> impl IntoResponse {
-//     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-//     json_rest_event_get_attr(state, id.as_str(), filter).await
-// }
+// TODO: shouldn't this be service_account?
+pub async fn account_id_get_attr(
+    State(state): State<ServerState>,
+    Path((id, attr)): Path<(String, String)>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    json_rest_event_get_attr(state, id.as_str(), attr, filter, kopid).await
+}
 
-// pub async fn account_id_post_attr(
-//     State(state): State<ServerState>,
-//     Path(id): Path<String>,
-// ) -> impl IntoResponse {
-//     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-//     json_rest_event_post_id_attr(state, filter).await
-// }
+pub async fn account_id_post_attr(
+    State(state): State<ServerState>,
+    Path((id, attr)): Path<(String, String)>,
+    Extension(kopid): Extension<KOpId>,
+    Json(values): Json<Vec<String>>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    json_rest_event_post_id_attr(state, id, attr, filter, values, kopid).await
+}
 
-// pub async fn account_id_delete_attr(
-//     State(state): State<ServerState>,
-//     Path(id): Path<String>,
-// ) -> impl IntoResponse {
-//     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-//     let attr = req.get_url_param("attr")?;
-//     json_rest_event_delete_id_attr(state, filter, attr).await
-// }
+pub async fn account_id_delete_attr(
+    State(state): State<ServerState>,
+    Path((id, attr)): Path<(String, String)>,
+    Extension(kopid): Extension<KOpId>,
+    Json(values): Json<Option<Vec<String>>>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    json_rest_event_delete_id_attr(state, id, attr, filter, values, kopid).await
+}
 
-// pub async fn account_id_put_attr(
-//     State(state): State<ServerState>,
-//     Path(id): Path<String>,
-// ) -> impl IntoResponse {
-//     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-//     json_rest_event_put_attr(id, filter).await
-// }
+pub async fn account_id_put_attr(
+    State(state): State<ServerState>,
+    Path((id, attr)): Path<(String, String)>,
+    Extension(kopid): Extension<KOpId>,
+    Json(values): Json<Vec<String>>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    json_rest_event_put_attr(state, id, attr, filter, values, kopid).await
+}
 
 // pub async fn account_id_patch(
 //     State(state): State<ServerState>,
 //     headers: HeaderMap,
-//     Json(msg): Json<CreateRequest>,
+
+// Path(id): Path<String>,
+//     Json(msg): Json<ProtoEntry>,
 // ) -> impl IntoResponse {
 //     // Update a value / attrs
-//     let uat = state.get_current_uat(headers);
-//     let id = req.get_url_param("id")?;
-
-//     let obj: ProtoEntry = req.body_json().await?;
 
 //     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
 //     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
-
-//     let (eventid, hvalue) = state.new_eventid();
-
 //     let res = state
 //         .qe_w_ref
-//         .handle_internalpatch(uat, filter, obj, eventid)
+//         .handle_internalpatch(kopid.uat, filter, obj, kopid.eventid)
 //         .await;
 //     to_axum_response(res)
 // }
@@ -685,9 +652,6 @@ pub async fn service_account_get(
 //     headers: HeaderMap,
 //     Query(uuid_or_name): Query<String>,
 // ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-
-//     let (eventid, hvalue) = req.new_eventid();
 
 //     let res = req
 //         .qe_w_ref
@@ -699,9 +663,8 @@ pub async fn service_account_get(
 // pub async fn account_get_id_credential_update_intent(
 //     State(state): State<ServerState>,
 //     headers: HeaderMap,
-//     Query(uuid_or_name): Query<String>,
+//     Path(id): Path<String>,
 // ) -> impl IntoResponse {
-//     let uat = req.get_current_uat(headers);
 //     let ttl = req
 //         .param("ttl")
 //         .ok()
@@ -713,139 +676,108 @@ pub async fn service_account_get(
 //                 .ok()
 //         })
 //         .map(Duration::from_secs);
-
-//     let (eventid, hvalue) = state.new_eventid();
-
 //     let res = state
 //         .qe_w_ref
-//         .handle_idmcredentialupdateintent(uat, uuid_or_name, ttl, eventid)
+//         .handle_idmcredentialupdateintent(kopid.uat, id, ttl, kopid.eventid)
 //         .await;
 //     to_axum_response(res)
 // }
 
-// pub async fn account_get_id_user_auth_token(
-//     State(state): State<ServerState>,
-//     headers: HeaderMap,
-// ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-//     let uuid_or_name = req.get_url_param("id")?;
+pub async fn account_get_id_user_auth_token(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_r_ref
+        .handle_account_user_auth_token_get(kopid.uat, id, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
-//     let (eventid, hvalue) = state.new_eventid();
+pub async fn account_user_auth_token_delete(
+    State(state): State<ServerState>,
+    Path((id, token_id)): Path<(String, Uuid)>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_w_ref
+        .handle_account_user_auth_token_destroy(kopid.uat, id, token_id, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
-//     let res = state
-//         .qe_r_ref
-//         .handle_account_user_auth_token_get(uat, uuid_or_name, eventid)
-//         .await;
-//     to_axum_response(res)
-// }
+pub async fn credential_update_exchange_intent(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Json(intent_token): Json<CUIntentToken>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_w_ref
+        .handle_idmcredentialexchangeintent(intent_token, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
-// pub async fn account_user_auth_token_delete(
-//     State(state): State<ServerState>,
-//     headers: HeaderMap,
-// ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-//     let uuid_or_name = req.get_url_param("id")?;
-//     let token_id = req.get_url_param_uuid("token_id")?;
+pub async fn credential_update_status(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Json(session_token): Json<CUSessionToken>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_r_ref
+        .handle_idmcredentialupdatestatus(session_token, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
-//     let (eventid, hvalue) = state.new_eventid();
+pub async fn credential_update_update(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Json((scr, session_token)): Json<(CURequest, CUSessionToken)>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_r_ref
+        .handle_idmcredentialupdate(session_token, scr, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
-//     let res = state
-//         .qe_w_ref
-//         .handle_account_user_auth_token_destroy(uat, uuid_or_name, token_id, eventid)
-//         .await;
-//     to_axum_response(res)
-// }
+pub async fn credential_update_commit(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Json(session_token): Json<CUSessionToken>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_w_ref
+        .handle_idmcredentialupdatecommit(session_token, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
-// pub async fn credential_update_exchange_intent(
-//     State(state): State<ServerState>,
-//     headers: HeaderMap,
-//     Json(msg): Json<CreateRequest>,
-// ) -> impl IntoResponse {
-//     let (eventid, hvalue) = state.new_eventid();
-//     let intent_token: CUIntentToken = req.body_json().await?;
+pub async fn credential_update_cancel(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Json(session_token): Json<CUSessionToken>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_w_ref
+        .handle_idmcredentialupdatecancel(session_token, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
-//     let res = state
-//         .qe_w_ref
-//         .handle_idmcredentialexchangeintent(intent_token, eventid)
-//         .await;
-//     to_axum_response(res)
-// }
-
-// pub async fn credential_update_status(
-//     State(state): State<ServerState>,
-//     headers: HeaderMap,
-//     Json(msg): Json<CreateRequest>,
-// ) -> impl IntoResponse {
-//     let (eventid, hvalue) = state.new_eventid();
-//     let session_token: CUSessionToken = req.body_json().await?;
-
-//     let res = state
-//         .qe_r_ref
-//         .handle_idmcredentialupdatestatus(session_token, eventid)
-//         .await;
-//     to_axum_response(res)
-// }
-
-// pub async fn credential_update_update(
-//     State(state): State<ServerState>,
-//     headers: HeaderMap,
-//     Json(msg): Json<CreateRequest>,
-// ) -> impl IntoResponse {
-//     let (eventid, hvalue) = state.new_eventid();
-//     let (scr, session_token): (CURequest, CUSessionToken) = req.body_json().await?;
-
-//     let res = state
-//         .qe_r_ref
-//         .handle_idmcredentialupdate(session_token, scr, eventid)
-//         .await;
-//     to_axum_response(res)
-// }
-
-// pub async fn credential_update_commit(
-//     State(state): State<ServerState>,
-//     headers: HeaderMap,
-//     Json(msg): Json<CreateRequest>,
-// ) -> impl IntoResponse {
-//     let (eventid, hvalue) = state.new_eventid();
-//     let session_token: CUSessionToken = req.body_json().await?;
-
-//     let res = state
-//         .qe_w_ref
-//         .handle_idmcredentialupdatecommit(session_token, eventid)
-//         .await;
-//     to_axum_response(res)
-// }
-
-// pub async fn credential_update_cancel(
-//     State(state): State<ServerState>,
-//     headers: HeaderMap,
-//     Json(msg): Json<CreateRequest>,
-// ) -> impl IntoResponse {
-//     let (eventid, hvalue) = state.new_eventid();
-//     let session_token: CUSessionToken = req.body_json().await?;
-
-//     let res = state
-//         .qe_w_ref
-//         .handle_idmcredentialupdatecancel(session_token, eventid)
-//         .await;
-//     to_axum_response(res)
-// }
-
-// pub async fn account_get_id_credential_status(
-//     State(state): State<ServerState>,
-//     headers: HeaderMap,
-// ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-//     let uuid_or_name = req.get_url_param("id")?;
-
-//     let (eventid, hvalue) = state.new_eventid();
-
-//     let res = state
-//         .qe_r_ref
-//         .handle_idmcredentialstatus(uat, uuid_or_name, eventid)
-//         .await;
-//     to_axum_response(res)
-// }
+pub async fn account_get_id_credential_status(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_r_ref
+        .handle_idmcredentialstatus(kopid.uat, id, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
 // // Return a vec of str
 // pub async fn account_get_id_ssh_pubkeys(
@@ -854,8 +786,6 @@ pub async fn service_account_get(
 // ) -> impl IntoResponse {
 //     let uat = state.get_current_uat(headers);
 //     let uuid_or_name = req.get_url_param("id")?;
-
-//     let (eventid, hvalue) = state.new_eventid();
 
 //     let res = state
 //         .qe_r_ref
@@ -874,7 +804,6 @@ pub async fn service_account_get(
 //     let (tag, key): (String, String) = req.body_json().await?;
 //     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
 
-//     let (eventid, hvalue) = state.new_eventid();
 //     // Add a msg here
 //     let res = state
 //         .qe_w_ref
@@ -890,8 +819,6 @@ pub async fn service_account_get(
 //     let uat = state.get_current_uat(headers);
 //     let uuid_or_name = req.get_url_param("id")?;
 //     let tag = req.get_url_param("tag")?;
-
-//     let (eventid, hvalue) = state.new_eventid();
 
 //     let res = state
 //         .qe_r_ref
@@ -911,8 +838,6 @@ pub async fn service_account_get(
 //     let values = vec![tag];
 //     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
 
-//     let (eventid, hvalue) = state.new_eventid();
-
 //     let res = state
 //         .qe_w_ref
 //         .handle_removeattributevalues(uat, uuid_or_name, attr, values, filter, eventid)
@@ -921,76 +846,65 @@ pub async fn service_account_get(
 // }
 
 // // Get and return a single str
-// pub async fn account_get_id_radius(
-//     State(state): State<ServerState>,
-//     headers: HeaderMap,
-// ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-//     let uuid_or_name = req.get_url_param("id")?;
+pub async fn account_get_id_radius(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_r_ref
+        .handle_internalradiusread(kopid.uat, id, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
-//     let (eventid, hvalue) = state.new_eventid();
+pub async fn account_post_id_radius_regenerate(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    // Need to to send the regen msg
+    let res = state
+        .qe_w_ref
+        .handle_regenerateradius(kopid.uat, id, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
-//     let res = state
-//         .qe_r_ref
-//         .handle_internalradiusread(uat, uuid_or_name, eventid)
-//         .await;
-//     to_axum_response(res)
-// }
+pub async fn account_delete_id_radius(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let attr = "radius_secret".to_string();
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid).await
+}
 
-// pub async fn account_post_id_radius_regenerate(
-//     State(state): State<ServerState>,
-//     headers: HeaderMap,
-// ) -> impl IntoResponse {
-//     // Need to to send the regen msg
-//     let uat = state.get_current_uat(headers);
-//     let uuid_or_name = req.get_url_param("id")?;
+pub async fn account_get_id_radius_token(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_r_ref
+        .handle_internalradiustokenread(kopid.uat, id, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
-//     let (eventid, hvalue) = state.new_eventid();
-
-//     let res = state
-//         .qe_w_ref
-//         .handle_regenerateradius(uat, uuid_or_name, eventid)
-//         .await;
-//     to_axum_response(res)
-// }
-
-// pub async fn account_delete_id_radius(State(state): State<ServerState>) -> impl IntoResponse {
-//     let attr = "radius_secret".to_string();
-//     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-//     json_rest_event_delete_id_attr(state, filter, attr).await
-// }
-
-// pub async fn account_get_id_radius_token(
-//     State(state): State<ServerState>,
-//     headers: HeaderMap,
-// ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-//     let uuid_or_name = req.get_url_param("id")?;
-
-//     let (eventid, hvalue) = state.new_eventid();
-
-//     let res = state
-//         .qe_r_ref
-//         .handle_internalradiustokenread(uat, uuid_or_name, eventid)
-//         .await;
-//     to_axum_response(res)
-// }
-
-// pub async fn account_post_id_unix(
-//     State(state): State<ServerState>,
-//     headers: HeaderMap,
-//     Json(msg): Json<CreateRequest>,
-// ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-//     let uuid_or_name = req.get_url_param("id")?;
-//     let obj: AccountUnixExtend = req.body_json().await?;
-//     let (eventid, hvalue) = state.new_eventid();
-//     let res = state
-//         .qe_w_ref
-//         .handle_idmaccountunixextend(uat, uuid_or_name, obj, eventid)
-//         .await;
-//     to_axum_response(res)
-// }
+pub async fn account_post_id_unix(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    Json(obj): Json<AccountUnixExtend>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_w_ref
+        .handle_idmaccountunixextend(kopid.uat, id, obj, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
 // pub async fn account_get_id_unix_token(
 //     State(state): State<ServerState>,
@@ -999,8 +913,6 @@ pub async fn service_account_get(
 //     let uat = state.get_current_uat(headers);
 //     let uuid_or_name = req.get_url_param("id")?;
 
-//     let (eventid, hvalue) = state.new_eventid();
-
 //     let res = state
 //         .qe_r_ref
 //         .handle_internalunixusertokenread(uat, uuid_or_name, eventid)
@@ -1008,57 +920,50 @@ pub async fn service_account_get(
 //     to_axum_response(res)
 // }
 
-// pub async fn account_post_id_unix_auth(
-//     State(state): State<ServerState>,
-//     headers: HeaderMap,
-//     Json(msg): Json<CreateRequest>,
-// ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-//     let uuid_or_name = req.get_url_param("id")?;
-//     let obj: SingleStringRequest = req.body_json().await?;
-//     let cred = obj.value;
-//     let (eventid, hvalue) = state.new_eventid();
-//     let res = state
-//         .qe_r_ref
-//         .handle_idmaccountunixauth(uat, uuid_or_name, cred, eventid)
-//         .await;
-//     to_axum_response(res)
-// }
+pub async fn account_post_id_unix_auth(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(id): Path<String>,
+    Json(obj): Json<SingleStringRequest>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_r_ref
+        .handle_idmaccountunixauth(kopid.uat, id, obj.value, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
-// pub async fn account_put_id_unix_credential(
-//     State(state): State<ServerState>,
-//     headers: HeaderMap,
-//     Json(msg): Json<CreateRequest>,
-// ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-//     let uuid_or_name = req.get_url_param("id")?;
-//     let obj: SingleStringRequest = req.body_json().await?;
-//     let cred = obj.value;
-//     let (eventid, hvalue) = state.new_eventid();
-//     let res = state
-//         .qe_w_ref
-//         .handle_idmaccountunixsetcred(uat, uuid_or_name, cred, eventid)
-//         .await;
-//     to_axum_response(res)
-// }
+pub async fn account_put_id_unix_credential(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(id): Path<String>,
+    Json(obj): Json<SingleStringRequest>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_w_ref
+        .handle_idmaccountunixsetcred(kopid.uat, id, obj.value, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
-// pub async fn account_delete_id_unix_credential(
-//     State(state): State<ServerState>,
-//     headers: HeaderMap,
-// ) -> impl IntoResponse {
-//     let uat = state.get_current_uat(headers);
-//     let uuid_or_name = req.get_url_param("id")?;
-//     let attr = "unix_password".to_string();
-//     let filter = filter_all!(f_eq("class", PartialValue::new_class("posixaccount")));
-
-//     let (eventid, hvalue) = state.new_eventid();
-
-//     let res = state
-//         .qe_w_ref
-//         .handle_purgeattribute(uat, uuid_or_name, attr, filter, eventid)
-//         .await;
-//     to_axum_response(res)
-// }
+pub async fn account_delete_id_unix_credential(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("posixaccount")));
+    let res = state
+        .qe_w_ref
+        .handle_purgeattribute(
+            kopid.uat,
+            id,
+            "unix_password".to_string(),
+            filter,
+            kopid.eventid,
+        )
+        .await;
+    to_axum_response(res)
+}
 
 // pub async fn group_get(State(state): State<ServerState>) -> impl IntoResponse {
 //     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
@@ -1075,33 +980,44 @@ pub async fn service_account_get(
 //     json_rest_event_get_id(state, filter, None).await
 // }
 
-// pub async fn group_id_get_attr(
-//     State(state): State<ServerState>,
-//     Path(id): Path<String>,
-// ) -> impl IntoResponse {
-//     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-//     json_rest_event_get_id_attr(state, filter).await
-// }
+pub async fn group_id_get_attr(
+    State(state): State<ServerState>,
+    Path((id, attr)): Path<(String, String)>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
+    json_rest_event_get_id_attr(state, id, attr, filter, kopid).await
+}
 
-// pub async fn group_id_post_attr(State(state): State<ServerState>) -> impl IntoResponse {
-//     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-//     json_rest_event_post_id_attr(state, filter).await
-// }
+pub async fn group_id_post_attr(
+    Path((id, attr)): Path<(String, String)>,
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Json(values): Json<Vec<String>>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
+    json_rest_event_post_id_attr(state, id, attr, filter, values, kopid).await
+}
 
-// pub async fn group_id_delete_attr(
-//     Path(attr): Path<String>,
-//     State(state): State<ServerState>,
-// ) -> impl IntoResponse {
-//     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
+pub async fn group_id_delete_attr(
+    Path((id, attr)): Path<(String, String)>,
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Json(values): Json<Option<Vec<String>>>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
+    json_rest_event_delete_id_attr(state, id, attr, filter, values, kopid).await
+}
 
-//     json_rest_event_delete_id_attr(state, filter, attr).await
-// }
-
-// pub async fn group_id_put_attr(State(state): State<ServerState>) -> impl IntoResponse {
-//     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-//     json_rest_event_put_id_attr(state, filter).await
-// }
-
+pub async fn group_id_put_attr(
+    Path((id, attr)): Path<(String, String)>,
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Json(values): Json<Vec<String>>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
+    json_rest_event_put_id_attr(state, id, attr, filter, values, kopid).await
+}
 // pub async fn group_id_delete(State(state): State<ServerState>) -> impl IntoResponse {
 //     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
 //     json_rest_event_delete_id(state, filter).await
@@ -1155,7 +1071,6 @@ pub async fn domain_get_attr(
 //     json_rest_event_put_attr(state, STR_UUID_DOMAIN_INFO.to_string(), filter).await
 // }
 
-#[debug_handler]
 pub async fn domain_delete_attr(
     State(state): State<ServerState>,
     Path(attr): Path<String>,
@@ -1165,9 +1080,9 @@ pub async fn domain_delete_attr(
     let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
     json_rest_event_delete_attr(
         state,
-        filter,
         STR_UUID_DOMAIN_INFO.to_string(),
         attr,
+        filter,
         values,
         kopid,
     )
@@ -1216,9 +1131,9 @@ pub async fn system_delete_attr(
     let filter = filter_all!(f_eq("class", PartialValue::new_class("system_config")));
     json_rest_event_delete_attr(
         state,
-        filter,
         STR_UUID_SYSTEM_CONFIG.to_string(),
         attr,
+        filter,
         values,
         kopid,
     )
@@ -1231,7 +1146,6 @@ pub async fn recycle_bin_get(
 ) -> impl IntoResponse {
     let filter = filter_all!(f_pres("class"));
     let attrs = None;
-
     let res = state
         .qe_r_ref
         .handle_internalsearchrecycled(kopid.uat, filter, attrs, kopid.eventid)
@@ -1313,41 +1227,47 @@ pub async fn reauth(
     auth_session_state_management(state, inter, session)
 }
 
-// pub async fn auth(
-//     State(state): State<ServerState>,
-//     headers: HeaderMap,
-//     Extension(kopid): Extension<KOpId>,
-//     ConnectInfo(addr): ConnectInfo<SocketAddr>,
-//     Json(obj): Json<AuthRequest>,
-// ) -> impl IntoResponse {
-//     // TODO: check this trusts the x-ff-header
-//     let ip_addr = addr.ip();
-//     // check that we can get the remote IP address first, since this doesn't touch the backend at all
-//     // let ip_addr = req.get_remote_addr().ok_or_else(|| {
-//     //     error!("Unable to get remote addr for auth event, refusing to proceed");
-//     //     tide::Error::from_str(
-//     //         tide::StatusCode::InternalServerError,
-//     //         "unable to validate peer address",
-//     //     )
-//     // })?;
+pub async fn auth(
+    State(state): State<ServerState>,
+    // headers: HeaderMap,
+    session: WritableSession,
+    Extension(kopid): Extension<KOpId>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Json(obj): Json<AuthRequest>,
+) -> impl IntoResponse {
+    // TODO: check this trusts the x-ff-header
+    let ip_addr = addr.ip();
+    // check that we can get the remote IP address first, since this doesn't touch the backend at all
+    // let ip_addr = req.get_remote_addr().ok_or_else(|| {
+    //     error!("Unable to get remote addr for auth event, refusing to proceed");
+    //     tide::Error::from_str(
+    //         tide::StatusCode::InternalServerError,
+    //         "unable to validate peer address",
+    //     )
+    // })?;
 
-//     // First, deal with some state management.
-//     // Do anything here first that's needed like getting the session details
-//     // out of the req cookie.
+    // First, deal with some state management.
+    // Do anything here first that's needed like getting the session details
+    // out of the req cookie.
 
-//     // TODO
-//     let maybe_sessionid: Option<Uuid> = Some(session.id());
+    // TODO
+    let maybe_sessionid = session.id().to_owned();
+    debug!("Session ID: {}", maybe_sessionid);
+    let mut foo: Vec<u8> = maybe_sessionid.as_bytes().to_vec();
+    foo.truncate(16);
+    let foo = foo.to_owned();
+    let session_uuid = Uuid::from_slice(&foo).unwrap();
+    // let session_uuid = Uuid::from_str(maybe_sessionid).unwrap();
+    // We probably need to know if we allocate the cookie, that this is a
+    // new session, and in that case, anything *except* authrequest init is
+    // invalid.
+    let inter = state // This may change in the future ...
+        .qe_r_ref
+        .handle_auth(Some(session_uuid), obj, kopid.eventid, ip_addr)
+        .await;
 
-//     // We probably need to know if we allocate the cookie, that this is a
-//     // new session, and in that case, anything *except* authrequest init is
-//     // invalid.
-//     let inter = state// This may change in the future ...
-//         .qe_r_ref
-//         .handle_auth(maybe_sessionid, obj, kopid.eventid, ip_addr)
-//         .await;
-
-//     auth_session_state_management(state, inter, kopid.value)
-// }
+    auth_session_state_management(state, inter, session)
+}
 
 fn auth_session_state_management(
     state: ServerState,

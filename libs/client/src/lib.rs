@@ -552,7 +552,7 @@ impl KanidmClient {
         request: R,
     ) -> Result<T, ClientError> {
         let dest = format!("{}{}", self.get_url(), dest);
-
+        trace!("perform_auth_post_request connecting to {}", dest);
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
 
         let response = self
@@ -921,6 +921,7 @@ impl KanidmClient {
             .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
+    #[instrument]
     pub async fn auth_step_init(&self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
         let auth_init = AuthRequest {
             step: AuthStep::Init2 {
@@ -1083,11 +1084,13 @@ impl KanidmClient {
         }
     }
 
+    #[instrument]
     pub async fn auth_simple_password(
         &self,
         ident: &str,
         password: &str,
     ) -> Result<(), ClientError> {
+        trace!("Init auth step");
         let mechs = match self.auth_step_init(ident).await {
             Ok(s) => s,
             Err(e) => return Err(e),

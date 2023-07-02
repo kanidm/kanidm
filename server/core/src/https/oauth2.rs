@@ -16,6 +16,7 @@ use kanidmd_lib::idm::oauth2::{
 use kanidmd_lib::prelude::f_eq;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
+// use serde::{Deserialize, Serialize};
 
 // // == Oauth2 Configuration Endpoints ==
 pub async fn oauth2_get(
@@ -42,10 +43,10 @@ pub async fn oauth2_basic_post(
     json_rest_event_post(state, classes, obj, kopid).await
 }
 
-fn oauth2_id(id: &str) -> Filter<FilterInvalid> {
+fn oauth2_id(rs_name: &str) -> Filter<FilterInvalid> {
     filter_all!(f_and!([
         f_eq("class", PartialValue::new_class("oauth2_resource_server")),
-        f_eq("oauth2_rs_name", PartialValue::new_iname(id))
+        f_eq("oauth2_rs_name", PartialValue::new_iname(rs_name))
     ]))
 }
 
@@ -96,75 +97,73 @@ pub async fn oauth2_id_patch(
     to_axum_response(res)
 }
 
-// pub async fn oauth2_id_scopemap_post(State(state): State<ServerState>,headers: HeaderMap) -> impl IntoResponse {
-//     let id = req.get_url_param("id")?;
-//     let group = req.get_url_param("group")?;
+pub async fn oauth2_id_scopemap_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path((rs_name, group)): Path<(String, String)>,
+    Json(scopes): Json<Vec<String>>,
+) -> impl IntoResponse {
+    let filter = oauth2_id(&rs_name);
+    let res = state
+        .qe_w_ref
+        .handle_oauth2_scopemap_update(kopid.uat, group, scopes, filter, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
-//     let scopes: Vec<String> = req.body_json().await?;
+pub async fn oauth2_id_scopemap_delete(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path((rs_name, group)): Path<(String, String)>,
+) -> impl IntoResponse {
+    let filter = oauth2_id(&rs_name);
+    let res = state
+        .qe_w_ref
+        .handle_oauth2_scopemap_delete(kopid.uat, group, filter, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
-//     let filter = oauth2_id(&id);
+pub async fn oauth2_id_sup_scopemap_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path((rs_name, group)): Path<(String, String)>,
+    Json(scopes): Json<Vec<String>>,
+) -> impl IntoResponse {
+    let filter = oauth2_id(&rs_name);
+    let res = state
+        .qe_w_ref
+        .handle_oauth2_sup_scopemap_update(kopid.uat, group, scopes, filter, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
-//     let res = state
-//         .qe_w_ref
-//         .handle_oauth2_scopemap_update(uat, group, scopes, filter, eventid)
-//         .await;
-//     to_axum_response(res, hvalue)
-// }
+pub async fn oauth2_id_sup_scopemap_delete(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path((rs_name, group)): Path<(String, String)>,
+) -> impl IntoResponse {
+    let filter = oauth2_id(&rs_name);
 
-// pub async fn oauth2_id_scopemap_delete(State(state): State<ServerState>,headers: HeaderMap) -> impl IntoResponse {
+    let res = state
+        .qe_w_ref
+        .handle_oauth2_sup_scopemap_delete(kopid.uat, group, filter, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
-//     let id = req.get_url_param("id")?;
-//     let group = req.get_url_param("group")?;
-
-//     let filter = oauth2_id(&id);
-
-//     let res = state
-//         .qe_w_ref
-//         .handle_oauth2_scopemap_delete(uat, group, filter, eventid)
-//         .await;
-//     to_axum_response(res, hvalue)
-// }
-
-// pub async fn oauth2_id_sup_scopemap_post(State(state): State<ServerState>,headers: HeaderMap) -> impl IntoResponse {
-//     let id = req.get_url_param("id")?;
-//     let group = req.get_url_param("group")?;
-
-//     let scopes: Vec<String> = req.body_json().await?;
-
-//     let filter = oauth2_id(&id);
-
-//     let res = state
-//         .qe_w_ref
-//         .handle_oauth2_sup_scopemap_update(uat, group, scopes, filter, eventid)
-//         .await;
-//     to_axum_response(res, hvalue)
-// }
-
-// pub async fn oauth2_id_sup_scopemap_delete(State(state): State<ServerState>,headers: HeaderMap) -> impl IntoResponse {
-//     let id = req.get_url_param("id")?;
-//     let group = req.get_url_param("group")?;
-
-//     let filter = oauth2_id(&id);
-
-//     let res = state
-//         .qe_w_ref
-//         .handle_oauth2_sup_scopemap_delete(uat, group, filter, eventid)
-//         .await;
-//     to_axum_response(res, hvalue)
-// }
-
-// pub async fn oauth2_id_delete(State(state): State<ServerState>,headers: HeaderMap) -> impl IntoResponse {
-//     // Delete this
-//     let id = req.get_url_param("rs_name")?;
-
-//     let filter = oauth2_id(&id);
-
-//     let res = state
-//         .qe_w_ref
-//         .handle_internaldelete(uat, filter, eventid)
-//         .await;
-//     to_axum_response(res, hvalue)
-// }
+pub async fn oauth2_id_delete(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(rs_name): Path<String>,
+) -> impl IntoResponse {
+    let filter = oauth2_id(&rs_name);
+    let res = state
+        .qe_w_ref
+        .handle_internaldelete(kopid.uat, filter, kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
 
 // // == OAUTH2 PROTOCOL FLOW HANDLERS ==
 
@@ -352,86 +351,94 @@ async fn oauth2_authorise(
     }
 }
 
-// pub async fn oauth2_authorise_permit_post(State(state): State<ServerState>) -> impl IntoResponse {
-//     let consent_req: String = req.body_json().await?;
-//     oauth2_authorise_permit(req, consent_req)
-//         .await
-//         .map(|mut res| {
-//             if res.status() == 302 {
-//                 // in post, we need the redirect not to be issued, so we mask 302 to 200
-//                 res.set_status(200);
-//             }
-//             res
-//         })
-// }
+pub async fn oauth2_authorise_permit_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Json(consent_req): Json<String>,
+) -> impl IntoResponse {
+    let mut res = oauth2_authorise_permit(state, consent_req, kopid)
+        .await
+        .into_response();
+    if res.status() == 302 {
+        // in post, we need the redirect not to be issued, so we mask 302 to 200
+        *res.status_mut() = StatusCode::OK;
+    }
+    res
+}
 
 // #[derive(Serialize, Deserialize, Debug)]
-// struct ConsentRequestData {
+// pub struct ConsentRequestData {
 //     token: String,
 // }
 
-// pub async fn oauth2_authorise_permit_get(State(state): State<ServerState>) -> impl IntoResponse {
-//     // When this is called, this indicates consent to proceed from the user.
-//     debug!("Request Query - {:?}", req.url().query());
+pub async fn oauth2_authorise_permit_get(
+    State(state): State<ServerState>,
+    Query(token): Query<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    // When this is called, this indicates consent to proceed from the user.
 
-//     let consent_req: ConsentRequestData = req.query().map_err(|e| {
-//         error!("{:?}", e);
-//         tide::Error::from_str(
-//             tide::StatusCode::BadRequest,
-//             "Invalid Oauth2 Consent Permit",
-//         )
-//     })?;
+    // let consent_req: ConsentRequestData = req.query().map_err(|e| {
+    //     error!("{:?}", e);
+    //     tide::Error::from_str(
+    //         tide::StatusCode::BadRequest,
+    //         "Invalid Oauth2 Consent Permit",
+    //     )
+    // })?;
 
-//     oauth2_authorise_permit(req, consent_req.token).await
-// }
+    oauth2_authorise_permit(state, token, kopid).await
+}
 
-// async fn oauth2_authorise_permit(
-//     State(state): State<ServerState>,headers: HeaderMap,
-//     consent_req: String,
-// ) -> impl IntoResponse {
+async fn oauth2_authorise_permit(
+    state: ServerState,
+    consent_req: String,
+    kopid: KOpId,
+) -> impl IntoResponse {
+    let res = state
+        .qe_w_ref
+        .handle_oauth2_authorise_permit(kopid.uat, consent_req, kopid.eventid)
+        .await;
 
-//     let res = state
-//         .qe_w_ref
-//         .handle_oauth2_authorise_permit(uat, consent_req, eventid)
-//         .await;
-
-//     let mut res = match res {
-//         Ok(AuthorisePermitSuccess {
-//             mut redirect_uri,
-//             state,
-//             code,
-//         }) => {
-//             // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.11
-//             // We could consider changing this to 303?
-//             let mut res = tide::Response::new(302);
-//             redirect_uri
-//                 .query_pairs_mut()
-//                 .clear()
-//                 .append_pair("state", &state)
-//                 .append_pair("code", &code);
-//             res.insert_header("Location", redirect_uri.as_str());
-//             // I think the client server needs this
-//             res.insert_header(
-//                 "Access-Control-Allow-Origin",
-//                 redirect_uri.origin().ascii_serialization(),
-//             );
-//             res
-//         }
-//         Err(_e) => {
-//             // If an error happens in our consent flow, I think
-//             // that we should NOT redirect to the calling application
-//             // and we need to handle that locally somehow.
-//             // This needs to be better!
-//             //
-//             // Turns out this instinct was correct:
-//             //  https://www.proofpoint.com/us/blog/cloud-security/microsoft-and-github-oauth-implementation-vulnerabilities-lead-redirection
-//             // Possible to use this with a malicious client configuration to phish / spam.
-//             tide::Response::new(tide::StatusCode::InternalServerError)
-//         }
-//     };
-//     res.insert_header("X-KANIDM-OPID", hvalue);
-//     Ok(res)
-// }
+    match res {
+        Ok(AuthorisePermitSuccess {
+            mut redirect_uri,
+            state,
+            code,
+        }) => {
+            // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.11
+            // We could consider changing this to 303?
+            // let mut res = tide::Response::new(302);
+            redirect_uri
+                .query_pairs_mut()
+                .clear()
+                .append_pair("state", &state)
+                .append_pair("code", &code);
+            Response::builder()
+                .status(StatusCode::FOUND)
+                .header("Location", redirect_uri.as_str())
+                .header(
+                    "Access-Control-Allow-Origin",
+                    redirect_uri.origin().ascii_serialization(),
+                )
+                .body(Body::empty())
+                .unwrap()
+        }
+        Err(_e) => {
+            // If an error happens in our consent flow, I think
+            // that we should NOT redirect to the calling application
+            // and we need to handle that locally somehow.
+            // This needs to be better!
+            //
+            // Turns out this instinct was correct:
+            //  https://www.proofpoint.com/us/blog/cloud-security/microsoft-and-github-oauth-implementation-vulnerabilities-lead-redirection
+            // Possible to use this with a malicious client configuration to phish / spam.
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::empty())
+                .unwrap()
+        }
+    }
+}
 
 // // When this is called, this indicates the user has REJECTED the intent to proceed.
 // pub async fn oauth2_authorise_reject_post(State(state): State<ServerState>) -> impl IntoResponse {
@@ -792,6 +799,7 @@ pub async fn oauth2_token_revoke_post(
 }
 
 pub fn oauth2_route_setup(state: ServerState) -> Router<ServerState> {
+    // this has all the openid-related routes
     let openid_router = Router::new() // appserver.at("/oauth2/openid");
         // // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
@@ -811,18 +819,23 @@ pub fn oauth2_route_setup(state: ServerState) -> Router<ServerState> {
         .with_state(state.clone());
 
     Router::new() //= appserver.at("/oauth2");
+        .route("/", get(oauth2_get))
+        .route("/_basic", post(oauth2_basic_post))
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-        .route("/authorise", post(oauth2_authorise_post))
-        .route("/authorise", get(oauth2_authorise_get))
+        .route(
+            "/authorise",
+            post(oauth2_authorise_post).get(oauth2_authorise_get),
+        )
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-        // .route("/authorise/permit", post(oauth2_authorise_permit_post))
-        // .route("/authorise/permit", get(oauth2_authorise_permit_get))
+        .route(
+            "/authorise/permit",
+            post(oauth2_authorise_permit_post).get(oauth2_authorise_permit_get),
+        )
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-        // .route("/authorise/reject", post(oauth2_authorise_reject_post))
-        // .route("/authorise/reject", get(oauth2_authorise_reject_get))
+        // .route("/authorise/reject", post(oauth2_authorise_reject_post).get(oauth2_authorise_reject_get))
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route("/token", post(oauth2_token_post))
@@ -831,5 +844,20 @@ pub fn oauth2_route_setup(state: ServerState) -> Router<ServerState> {
         .route("/token/introspect", post(oauth2_token_introspect_post))
         .route("/token/revoke", post(oauth2_token_revoke_post))
         .nest("/openid", openid_router)
+        .route(
+            "/:rs_name",
+            get(oauth2_id_get)
+                .patch(oauth2_id_patch)
+                .delete(oauth2_id_delete),
+        )
+        .route("/:rs_name/_basic_secret", get(oauth2_id_get_basic_secret))
+        .route(
+            "/:rs_name/_scopemap/:group",
+            post(oauth2_id_scopemap_post).delete(oauth2_id_scopemap_delete),
+        )
+        .route(
+            "/:rs_name/_sup_scopemap/:group",
+            post(oauth2_id_sup_scopemap_post).delete(oauth2_id_sup_scopemap_delete),
+        )
         .with_state(state)
 }
