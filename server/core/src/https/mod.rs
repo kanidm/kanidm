@@ -16,8 +16,10 @@ use axum::routing::*;
 use axum::{body, Extension};
 use axum::{middleware::from_fn_with_state, Router};
 use axum_macros::FromRef;
+use axum_sessions::extractors::WritableSession;
 use axum_sessions::{async_session, SameSite, SessionLayer};
-use compact_jwt::JwsSigner;
+use compact_jwt::{Jws, JwsSigner, JwsUnverified};
+use http::HeaderMap;
 use hyper::Body;
 use kanidm_proto::v1::OperationError;
 use kanidmd_lib::status::{StatusActor, StatusRequestEvent};
@@ -27,10 +29,12 @@ use std::{net::SocketAddr, str::FromStr};
 use tokio::sync::broadcast;
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
+use uuid::Uuid;
 
 use crate::CoreAction;
 
 use self::middleware::KOpId;
+use self::v1::SessionId;
 
 #[derive(Clone, FromRef)]
 pub struct ServerState {
@@ -46,27 +50,31 @@ pub struct ServerState {
 }
 
 impl ServerState {
-    // fn get_current_auth_session_id(&self, session_id_header: String) -> Option<Uuid> {
-    //     // We see if there is a signed header copy first.
-    //     let kref = &self.jws_validator;
-    //     self.header("X-KANIDM-AUTH-SESSION-ID")
-    //         .and_then(|hv| {
-    //             // Get the first header value.
-    //             hv.get(0)
-    //         })
-    //         .and_then(|h| {
-    //             // Take the token str and attempt to decrypt
-    //             // Attempt to re-inflate a uuid from bytes.
-    //             JwsUnverified::from_str(h.as_str()).ok()
-    //         })
-    //         .and_then(|jwsu| {
-    //             jwsu.validate(&self.jws_validator)
-    //                 .map(|jws: Jws<SessionId>| jws.into_inner().sessionid)
-    //                 .ok()
-    //         })
-    //         // If not there, get from the cookie instead.
-    //         .or_else(|| self.session().get::<Uuid>("auth-session-id"))
-    // }
+    fn get_current_auth_session_id(
+        &self,
+        headers: HeaderMap,
+        session: &WritableSession,
+    ) -> Option<Uuid> {
+        // We see if there is a signed header copy first.
+        headers
+            .get("X-KANIDM-AUTH-SESSION-ID")
+            .and_then(|hv| {
+                // Get the first header value.
+                hv.to_str().ok()
+            })
+            .and_then(|h| {
+                // Take the token str and attempt to decrypt
+                // Attempt to re-inflate a uuid from bytes.
+                JwsUnverified::from_str(h).ok()
+            })
+            .and_then(|jwsu| {
+                jwsu.validate(&self.jws_validator)
+                    .map(|jws: Jws<SessionId>| jws.into_inner().sessionid)
+                    .ok()
+            })
+            // If not there, get from the cookie instead.
+            .or_else(|| session.get::<Uuid>("auth-session-id"))
+    }
 }
 
 pub fn get_js_files(role: ServerRole) -> Vec<JavaScriptFile> {
@@ -159,7 +167,7 @@ pub async fn create_https_server(
             Router::new()
                 .route("/", get(|| async { Redirect::temporary("/ui/login") }))
                 .route("/ui", get(crate::https::ui::ui_handler))
-                .route("/ui/", get(crate::https::ui::ui_handler))
+                .route("/ui", get(crate::https::ui::ui_handler))
                 .route("/ui/*ui", get(crate::https::ui::ui_handler))
                 .route("/manifest.webmanifest", get(manifest::manifest))
                 .route("/robots.txt", get(|| async { todo!() }))
@@ -179,7 +187,7 @@ pub async fn create_https_server(
         .route("/v1/raw/modify", post(v1::modify))
         .route("/v1/raw/delete", post(v1::delete))
         .route("/v1/raw/search", post(v1::search))
-        .route("/v1/schema/", get(v1::schema_get))
+        .route("/v1/schema", get(v1::schema_get))
         .route(
             "/v1/schema/attributetype",
             get(v1::schema_attributetype_get),
@@ -198,7 +206,7 @@ pub async fn create_https_server(
             "/v1/schema/classtype/:id",
             get(v1::schema_classtype_get_id), // .put(do_nothing).patch(do_nothing)
         )
-        .route("/v1/self/", get(v1::whoami))
+        .route("/v1/self", get(v1::whoami))
         .route("/v1/self/_uat", get(v1::whoami_uat))
         .route("/v1/self/_attr/:attr", get(do_nothing))
         .route("/v1/self/_credential", get(do_nothing))
@@ -212,8 +220,8 @@ pub async fn create_https_server(
         // Applinks are the list of apps this account can access.
         .route("/v1/self/_applinks", get(v1::applinks_get))
         // Person routes
-        .route("/v1/person/", get(v1::person_get))
-        .route("/v1/person/", post(v1::person_post))
+        .route("/v1/person", get(v1::person_get))
+        .route("/v1/person", post(v1::person_post))
         .route(
             "/v1/person/:id",
             get(v1::person_id_get)
@@ -338,7 +346,7 @@ pub async fn create_https_server(
         )
         .route(
             "/v1/account/:id/_unix/_token",
-            post(v1::account_get_id_unix_token), // TODO: make this cacheable
+            post(v1::account_get_id_unix_token).get(v1::account_get_id_unix_token), // TODO: make this cacheable
         )
         .route(
             "/v1/account/:id/_ssh_pubkeys",
@@ -372,12 +380,12 @@ pub async fn create_https_server(
                 .put(v1::domain_put_attr)
                 .delete(v1::domain_delete_attr),
         )
-        .route("/v1/group/:id/_unix", post(v1::group_post_id_unix))
         .route(
             "/v1/group/:id/_unix/_token",
             get(v1::group_get_id_unix_token),
         )
-        .route("/v1/group/", get(v1::group_get).post(v1::group_post))
+        .route("/v1/group/:id/_unix", post(v1::group_post_id_unix))
+        .route("/v1/group", get(v1::group_get).post(v1::group_post))
         .route(
             "/v1/group/:id",
             get(v1::group_id_get).delete(v1::group_id_delete),
@@ -390,20 +398,20 @@ pub async fn create_https_server(
                 .post(v1::group_id_post_attr),
         )
         .with_state(state.clone())
-        .route("/v1/system/", get(v1::system_get))
+        .route("/v1/system", get(v1::system_get))
         .route(
             "/v1/system/_attr/:attr",
             get(v1::system_get_attr)
                 .post(v1::system_post_attr)
                 .delete(v1::system_delete_attr),
         )
-        .route("/v1/recycle_bin/", get(v1::recycle_bin_get))
+        .route("/v1/recycle_bin", get(v1::recycle_bin_get))
         .route("/v1/recycle_bin/:id", get(v1::recycle_bin_id_get))
         .route(
             "/v1/recycle_bin/:id/_revive",
             post(v1::recycle_bin_revive_id_post),
         )
-        .route("/v1/access_profile/", get(do_nothing))
+        .route("/v1/access_profile", get(do_nothing))
         .route("/v1/access_profile/:id", get(do_nothing))
         .route("/v1/access_profile/:id/_attr/:attr", get(do_nothing))
         .route("/v1/auth/valid", get(v1::auth_valid))

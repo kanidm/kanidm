@@ -666,10 +666,13 @@ async fn test_cache_nxcache() {
     assert!(gt.is_none());
 
     // Should all now be nxed
-    assert!(cachelayer
-        .check_nxcache(&Id::Name("oracle".to_string()))
-        .await
-        .is_some());
+    assert!(
+        cachelayer
+            .check_nxcache(&Id::Name("oracle".to_string()))
+            .await
+            .is_some(),
+        "'oracle' Wasn't in the nxcache!"
+    );
     assert!(cachelayer.check_nxcache(&Id::Gid(2000)).await.is_some());
     assert!(cachelayer
         .check_nxcache(&Id::Name("oracle_group".to_string()))

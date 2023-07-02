@@ -4,13 +4,14 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 
 use axum::extract::{ConnectInfo, Path, Query, State};
+use axum::headers::{CacheControl, HeaderMapExt};
 use axum::response::{IntoResponse, Response};
 
 use axum::{Extension, Json};
 use axum_macros::debug_handler;
 use axum_sessions::extractors::WritableSession;
 use compact_jwt::Jws;
-use http::HeaderValue;
+use http::{HeaderMap, HeaderValue};
 use hyper::Body;
 use kanidm_proto::v1::{
     AccountUnixExtend, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
@@ -837,7 +838,12 @@ pub async fn account_get_id_radius_token(
         .qe_r_ref
         .handle_internalradiustokenread(kopid.uat, id, kopid.eventid)
         .await;
-    to_axum_response(res)
+    let mut res = to_axum_response(res);
+    let cache_header = CacheControl::new()
+        .with_max_age(Duration::from_secs(300))
+        .with_private();
+    res.headers_mut().typed_insert(cache_header);
+    res
 }
 
 pub async fn account_post_id_unix(
@@ -1197,14 +1203,14 @@ pub async fn reauth(
         .qe_r_ref
         .handle_reauth(kopid.uat.clone(), obj, kopid.eventid.clone(), addr.ip())
         .await;
-
+    debug!("REAuth result: {:?}", inter);
     auth_session_state_management(state, inter, session)
 }
 
 pub async fn auth(
     State(state): State<ServerState>,
-    // Extension(kopid): Extension<KOpId>,
     session: WritableSession,
+    headers: HeaderMap,
     Extension(kopid): Extension<KOpId>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(obj): Json<AuthRequest>,
@@ -1225,19 +1231,13 @@ pub async fn auth(
     // out of the req cookie.
 
     // TODO
-    let maybe_sessionid = session.id().to_owned();
-    debug!("Session ID: {}", maybe_sessionid);
-    let mut foo: Vec<u8> = maybe_sessionid.as_bytes().to_vec();
-    foo.truncate(16);
-    let foo = foo.to_owned();
-    let session_uuid = Uuid::from_slice(&foo).unwrap();
-    // let session_uuid = Uuid::from_str(maybe_sessionid).unwrap();
+    let maybe_sessionid = state.get_current_auth_session_id(headers, &session);
     // We probably need to know if we allocate the cookie, that this is a
     // new session, and in that case, anything *except* authrequest init is
     // invalid.
     let inter = state // This may change in the future ...
         .qe_r_ref
-        .handle_auth(Some(session_uuid), obj, kopid.eventid, ip_addr)
+        .handle_auth(maybe_sessionid, obj, kopid.eventid, ip_addr)
         .await;
 
     auth_session_state_management(state, inter, session)
