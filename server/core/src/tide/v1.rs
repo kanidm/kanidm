@@ -147,11 +147,11 @@ pub async fn json_rest_event_delete_id(
 }
 
 pub async fn json_rest_event_get_attr(
-    attr: String,
     req: tide::Request<AppState>,
     id: &str,
     filter: Filter<FilterInvalid>,
 ) -> tide::Result {
+    let attr = req.get_url_param("attr")?;
     let uat = req.get_current_uat();
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id)));
 

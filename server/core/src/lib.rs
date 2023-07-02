@@ -931,6 +931,7 @@ pub async fn create_server_core(
 
         let h: tokio::task::JoinHandle<()> = match https::create_https_server(
             config.address,
+            config.domain,
             config.tls_config,
             config.role,
             cookie_key,

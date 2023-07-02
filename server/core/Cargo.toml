@@ -14,11 +14,19 @@ repository = { workspace = true }
 
 [dependencies]
 async-trait = { workspace = true }
+axum = { workspace=true }
+axum-csp = { workspace = true }
+axum-macros = "0.3.7"
+axum-server = { version = "0.5.1", features = ["tls-openssl"] }
+axum-sessions = "0.5.0"
 chrono = { workspace = true }
-cron = { workspace = true }
 compact_jwt = { workspace = true }
+cron = { workspace = true }
 futures-util = { workspace = true }
+http = "0.2.9"
 http-types = { workspace = true }
+hyper = { workspace = true }
+hyper-tls = "0.5.0"
 kanidm_proto = { workspace = true }
 kanidmd_lib = { workspace = true }
 ldap3_proto = { workspace = true }
@@ -26,32 +34,24 @@ libc = { workspace = true }
 openssl = { workspace = true }
 rand = { workspace = true }
 regex = { workspace = true }
+reqwest = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 sketching = { workspace = true }
 tide = { workspace = true }
-time = { workspace = true, features = ["serde", "std","local-offset"] }
 tide-compress = { workspace = true }
 tide-openssl = { workspace = true }
+time = { workspace = true, features = ["serde", "std","local-offset"] }
 tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
 tokio-openssl = { workspace = true }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = {workspace = true}
+tower = { version = "0.4.13", features = ["tokio-stream", "tracing"] }
+tower-http = { version = "0.4.1", features = ["tokio", "tracing", "uuid", "compression-gzip", "compression-zstd", "trace", "fs"] }
 tracing = { workspace = true, features = ["attributes"] }
+tracing-subscriber = { workspace = true, features = ["time", "json"] }
 urlencoding = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4" ] }
-axum = { version = "0.6.18", features = ["http2", "macros", "tracing", "headers"] }
-axum-csp = { workspace = true }
-hyper = { version = "0.14.27", features = ["full"] }
-tower = { version = "0.4.13", features = ["tokio-stream", "tracing"] }
-hyper-tls = "0.5.0"
-reqwest = { workspace = true }
-axum-server = { version = "0.5.1", features = ["tls-openssl"] }
-http = "0.2.9"
-axum-macros = "0.3.7"
-tower-http = { version = "0.4.1", features = ["tokio", "tracing", "uuid", "compression-gzip", "compression-zstd", "trace", "fs"] }
-tracing-subscriber = { workspace = true, features = ["time", "json"] }
-axum-sessions = "0.5.0"
 
 [build-dependencies]
 profiles = { workspace = true }

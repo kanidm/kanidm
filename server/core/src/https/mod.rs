@@ -1,29 +1,34 @@
 pub mod csp_headers;
 mod manifest;
 pub mod middleware;
+pub mod oauth2;
+mod tests;
 pub mod ui;
 pub mod v1;
-// pub mod oauth2;
 // pub mod v1_scim;
 
+use crate::actors::v1_read::QueryServerReadV1;
+use crate::actors::v1_write::QueryServerWriteV1;
+use crate::config::ServerRole;
+use axum::body;
 use axum::extract::State;
 use axum::response::{IntoResponse, Redirect, Response};
-use axum::routing::post;
-use axum::{middleware::from_fn_with_state, routing::get, Router};
+use axum::routing::{delete, get, patch, post, put};
+use axum::{middleware::from_fn_with_state, Router};
 use axum_macros::FromRef;
-use axum_sessions::{async_session, SessionLayer};
+use axum_sessions::{async_session, SameSite, SessionLayer};
 use compact_jwt::JwsSigner;
 use http::{HeaderMap, HeaderValue};
+use hyper::Body;
+use kanidm_proto::v1::OperationError;
 use kanidmd_lib::status::{StatusActor, StatusRequestEvent};
+use serde::Serialize;
 use std::path::PathBuf;
 use std::{net::SocketAddr, str::FromStr};
 use tokio::sync::broadcast;
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 use uuid::Uuid;
-use crate::actors::v1_read::QueryServerReadV1;
-use crate::actors::v1_write::QueryServerWriteV1;
-use crate::config::ServerRole;
 
 use crate::CoreAction;
 
@@ -69,6 +74,28 @@ impl ServerState {
         // TODO: session thingies
         // .or_else(|| self.session().get::<String>("bearer"))
     }
+
+    // fn get_current_auth_session_id(&self, session_id_header: String) -> Option<Uuid> {
+    //     // We see if there is a signed header copy first.
+    //     let kref = &self.jws_validator;
+    //     self.header("X-KANIDM-AUTH-SESSION-ID")
+    //         .and_then(|hv| {
+    //             // Get the first header value.
+    //             hv.get(0)
+    //         })
+    //         .and_then(|h| {
+    //             // Take the token str and attempt to decrypt
+    //             // Attempt to re-inflate a uuid from bytes.
+    //             JwsUnverified::from_str(h.as_str()).ok()
+    //         })
+    //         .and_then(|jwsu| {
+    //             jwsu.validate(&self.jws_validator)
+    //                 .map(|jws: Jws<SessionId>| jws.into_inner().sessionid)
+    //                 .ok()
+    //         })
+    //         // If not there, get from the cookie instead.
+    //         .or_else(|| self.session().get::<Uuid>("auth-session-id"))
+    // }
 }
 
 pub fn get_js_files(role: ServerRole) -> Vec<JavaScriptFile> {
@@ -109,6 +136,7 @@ pub fn get_js_files(role: ServerRole) -> Vec<JavaScriptFile> {
 
 pub async fn create_https_server(
     address: String,
+    domain: String,
     tlsconfig: Option<crate::config::TlsConfiguration>,
     role: ServerRole,
     // trust_x_forward_for: bool,
@@ -119,17 +147,23 @@ pub async fn create_https_server(
     qe_r_ref: &'static QueryServerReadV1,
     mut rx: broadcast::Receiver<CoreAction>,
 ) -> Result<tokio::task::JoinHandle<()>, ()> {
+    let jws_validator = jws_signer
+        .get_validator()
+        .map_err(|e| {
+            error!(?e, "Failed to get jws validator");
+        })
+        .unwrap();
 
-    let jws_validator = jws_signer.get_validator().map_err(|e| {
-        error!(?e, "Failed to get jws validator");
-    }).unwrap();
-
-
-    let store = async_session::MemoryStore::new();
+    let store = async_session::CookieStore::new();
     // let secret = b"..."; // MUST be at least 64 bytes!
     let secret = format!("{:?}", cookie_key);
     let secret = secret.as_bytes(); // TODO lol the cookie/session secret needs to be longer?
-    let session_layer = SessionLayer::new(store, secret);
+    let session_layer = SessionLayer::new(store, secret)
+        .with_cookie_name("kanidm-session")
+        .with_session_ttl(None)
+        .with_cookie_domain(domain)
+        .with_same_site_policy(SameSite::Strict)
+        .with_secure(true);
 
     let state = ServerState {
         status_ref,
@@ -166,7 +200,7 @@ pub async fn create_https_server(
     // TODO: version middleware
 
     //  // == oauth endpoints.
-    //  oauth2_route_setup(&mut appserver, &mut routemap);
+    let app = app.nest("/oauth2", oauth2::oauth2_route_setup(state.clone()));
 
     //  // == scim endpoints.
     //  scim_route_setup(&mut appserver, &mut routemap);
@@ -176,349 +210,183 @@ pub async fn create_https_server(
         .route("/modify", post(v1::modify))
         .route("/delete", post(v1::delete))
         .route("/search", post(v1::search))
+        // .route("/v1/auth", post(v1::auth))
+        .route("/v1/auth/valid", get(v1::auth_valid))
+        .route("/v1/logout", get(v1::logout))
+        .route("/v1/reauth", post(v1::reauth))
         .with_state(state.clone());
 
     let app = app.nest("/v1/raw", raw_route);
-    //  // appserver.route("/v1/auth").mapped_post(&mut routemap, auth);
-    //  appserver
-    //      .route("/v1/auth/valid")
-    //      .mapped_get(&mut routemap, auth_valid);
-    //  appserver
-    //      .route("/v1/reauth")
-    //      .mapped_post(&mut routemap, reauth);
 
-    //  appserver.route("/v1/logout").mapped_get(&mut routemap, logout);
+    let schema_route = Router::new()
+        .route("/", get(v1::schema_get))
+        //  .route("/attributetype", get(schema_attributetype_get))
+        .route("/attributetype", post(do_nothing))
+        //  .route("/attributetype/:id", get(schema_attributetype_get_id))
+        .route("/attributetype/:id", put(do_nothing))
+        .route("/attributetype/:id", patch(do_nothing))
+        //  .route("/classtype", get(schema_classtype_get))
+        .route("/classtype", post(do_nothing))
+        //  .route("/classtype/:id", get(schema_classtype_get_id))
+        .route("/classtype/:id", put(do_nothing))
+        .route("/classtype/:id", patch(do_nothing));
+    let app = app.nest("/v1/schema", schema_route);
 
-    //  let mut schema_route = appserver.route("/v1/schema");
-    //  schema_route.route("/").mapped_get(&mut routemap, schema_get);
-    //  schema_route
-    //      .route("/attributetype")
-    //      .mapped_get(&mut routemap, schema_attributetype_get)
-    //      // .mapped_post(&mut routemap, do_nothing)
-    //      ;
-    //  schema_route
-    //      .route("/attributetype/:id")
-    //      .mapped_get(&mut routemap, schema_attributetype_get_id)
-    //      // .mapped_put(&mut routemap, do_nothing)
-    //      // .mapped_patch(&mut routemap, do_nothing)
-    //      ;
+    let oauth2_route = Router::new()
+        .route("/", get(oauth2::oauth2_get))
+        .route("/:rs_name", get(oauth2::oauth2_id_get))
+        .route("/:rs_name", patch(oauth2::oauth2_id_patch))
+        // TODO: #1787 work out what this comment means: It's not really possible to replace this wholesale.// ..put(xxxx&mut routemap, oauth2_id_put, patch(oauth2_id_patch), delete(oauth2_id_delete));
+        .route(
+            "/:rs_name/_basic_secret",
+            get(oauth2::oauth2_id_get_basic_secret),
+        )
+        .route("/_basic", post(oauth2::oauth2_basic_post))
+        .with_state(state.clone());
 
-    //  schema_route
-    //      .route("/classtype")
-    //      .mapped_get(&mut routemap, schema_classtype_get)
-    //      // .mapped_post(&mut routemap, do_nothing)
-    //      ;
-    //  schema_route
-    //      .route("/classtype/:id")
-    //      .mapped_get(&mut routemap, schema_classtype_get_id)
-    //      // .mapped_put(&mut routemap, do_nothing)
-    //      // .mapped_patch(&mut routemap, do_nothing)
-    //      ;
+    //  oauth2_route.route("/:id/_scopemap/:group", post(oauth2_id_scopemap_post), delete(oauth2_id_scopemap_delete));
 
-    //  let mut oauth2_route = appserver.route("/v1/oauth2");
-    //  oauth2_route.route("/").mapped_get(&mut routemap, oauth2_get);
-
-    //  oauth2_route
-    //      .route("/_basic")
-    //      .mapped_post(&mut routemap, oauth2_basic_post);
-
-    //  oauth2_route
-    //      .route("/:rs_name")
-    //      .mapped_get(&mut routemap, oauth2_id_get)
-    //      // It's not really possible to replace this wholesale.
-    //      // .mapped_put(&mut routemap, oauth2_id_put)
-    //      .mapped_patch(&mut routemap, oauth2_id_patch)
-    //      .mapped_delete(&mut routemap, oauth2_id_delete);
-
-    //  oauth2_route
-    //      .route("/:rs_name/_basic_secret")
-    //      .mapped_get(&mut routemap, oauth2_id_get_basic_secret);
-
-    //  oauth2_route
-    //      .route("/:id/_scopemap/:group")
-    //      .mapped_post(&mut routemap, oauth2_id_scopemap_post)
-    //      .mapped_delete(&mut routemap, oauth2_id_scopemap_delete);
-
-    //  oauth2_route
-    //      .route("/:id/_sup_scopemap/:group")
-    //      .mapped_post(&mut routemap, oauth2_id_sup_scopemap_post)
-    //      .mapped_delete(&mut routemap, oauth2_id_sup_scopemap_delete);
+    //  oauth2_route.route("/:id/_sup_scopemap/:group", post(oauth2_id_sup_scopemap_post), delete(oauth2_id_sup_scopemap_delete));
+    let app = app.nest("/v1/oauth2", oauth2_route);
 
     let self_route = Router::new()
         .route("/", get(v1::whoami))
         .route("/_uat", get(v1::whoami_uat))
+        .route("/_attr/:attr", get(do_nothing))
+        .route("/_credential", get(do_nothing))
+        .route("/_credential/:cid/_lock", get(do_nothing))
+        .route("/_radius", get(do_nothing))
+        .route("/_radius", delete(do_nothing))
+        .route("/_radius", post(do_nothing))
+        .route("/_radius/_config", post(do_nothing))
+        .route("/_radius/_config/:token", get(do_nothing))
+        .route("/_radius/_config/:token/apple", get(do_nothing))
+        //  // Applinks are the list of apps this account can access.
+        .route("/_applinks", get(v1::applinks_get))
         .with_state(state.clone());
     let app = app.nest("/v1/self", self_route);
 
-    //  // self_route
-    //  //     .route("/_attr/:attr")
-    //  //     .mapped_get(&mut routemap, do_nothing);
-    //  // self_route
-    //  //     .route("/_credential")
-    //  //     .mapped_get(&mut routemap, do_nothing);
-
-    //  // self_route
-    //  //     .route("/_credential/:cid/_lock")
-    //  //     .mapped_get(&mut routemap, do_nothing);
-
-    //  // self_route
-    //  //     .route("/_radius")
-    //  //     .mapped_get(&mut routemap, do_nothing)
-    //  //     .mapped_delete(&mut routemap, do_nothing)
-    //  //     .mapped_post(&mut routemap, do_nothing);
-
-    //  // self_route
-    //  //     .route("/_radius/_config")
-    //  //     .mapped_post(&mut routemap, do_nothing);
-    //  // self_route
-    //  //     .route("/_radius/_config/:token")
-    //  //     .mapped_get(&mut routemap, do_nothing);
-    //  // self_route
-    //  //     .route("/_radius/_config/:token/apple")
-    //  //     .mapped_get(&mut routemap, do_nothing);
-
-    //  // Applinks are the list of apps this account can access.
-    //  self_route
-    //      .route("/_applinks")
-    //      .mapped_get(&mut routemap, applinks_get);
-
-    let person_route = Router::new().with_state(state.clone());
+    let person_route = Router::new()
+        .route("/", get(v1::person_get))
+        .route("/", post(v1::person_post))
+        // .route("/:id", get(v1::person_id_get))
+        // .route("/:id",  patch(v1::account_id_patch))
+        // .route("/:id", delete(v1::person_account_id_delete))
+        // .route("/:id/_attr/:attr", get(v1::account_id_get_attr))
+        // .route("/:id/_attr/:attr", put(v1::account_id_put_attr))
+        // .route("/:id/_attr/:attr", post(v1::account_id_post_attr))
+        // .route("/:id/_attr/:attr", delete(v1::account_id_delete_attr))
+        .with_state(state.clone());
     let app = app.nest("/v1/person", person_route);
-    //  person_route
-    //      .route("/")
-    //      .mapped_get(&mut routemap, person_get)
-    //      .mapped_post(&mut routemap, person_post);
-    //  person_route
-    //      .route("/:id")
-    //      .mapped_get(&mut routemap, person_id_get)
-    //      .mapped_patch(&mut routemap, account_id_patch)
-    //      .mapped_delete(&mut routemap, person_account_id_delete);
-    //  person_route
-    //      .route("/:id/_attr/:attr")
-    //      .mapped_get(&mut routemap, account_id_get_attr)
-    //      .mapped_put(&mut routemap, account_id_put_attr)
-    //      .mapped_post(&mut routemap, account_id_post_attr)
-    //      .mapped_delete(&mut routemap, account_id_delete_attr);
 
-    //  // person_route
-    //  //     .route("/:id/_lock")
-    //  //     .mapped_get(&mut routemap, do_nothing);
-    //  // person_route
-    //  //     .route("/:id/_credential")
-    //  //     .mapped_get(&mut routemap, do_nothing);
-    //  person_route
-    //      .route("/:id/_credential/_status")
-    //      .mapped_get(&mut routemap, account_get_id_credential_status);
-    //  // person_route
-    //  //     .route("/:id/_credential/:cid/_lock")
-    //  //     .mapped_get(&mut routemap, do_nothing);
-    //  person_route
-    //      .route("/:id/_credential/_update")
-    //      .mapped_get(&mut routemap, account_get_id_credential_update);
-    //  person_route
-    //      .route("/:id/_credential/_update_intent")
-    //      .mapped_get(&mut routemap, account_get_id_credential_update_intent);
-    //  person_route
-    //      .route("/:id/_credential/_update_intent/:ttl")
-    //      .mapped_get(&mut routemap, account_get_id_credential_update_intent);
+    //  // person_route.route("/:id/_lock", get(do_nothing));
+    //  // person_route.route("/:id/_credential", get(do_nothing));
+    //  person_route.route("/:id/_credential/_status", get(account_get_id_credential_status));
+    //  // person_route.route("/:id/_credential/:cid/_lock", get(do_nothing));
+    //  person_route.route("/:id/_credential/_update", get(account_get_id_credential_update));
+    //  person_route.route("/:id/_credential/_update_intent", get(account_get_id_credential_update_intent));
+    //  person_route.route("/:id/_credential/_update_intent/:ttl", get(account_get_id_credential_update_intent));
 
-    //  person_route
-    //      .route("/:id/_ssh_pubkeys")
-    //      .mapped_get(&mut routemap, account_get_id_ssh_pubkeys)
-    //      .mapped_post(&mut routemap, account_post_id_ssh_pubkey);
-    //  person_route
-    //      .route("/:id/_ssh_pubkeys/:tag")
-    //      .mapped_get(&mut routemap, account_get_id_ssh_pubkey_tag)
-    //      .mapped_delete(&mut routemap, account_delete_id_ssh_pubkey_tag);
+    //  person_route.route("/:id/_ssh_pubkeys", get(account_get_id_ssh_pubkeys), post(account_post_id_ssh_pubkey));
+    //  person_route.route("/:id/_ssh_pubkeys/:tag", get(account_get_id_ssh_pubkey_tag), delete(account_delete_id_ssh_pubkey_tag));
 
-    //  person_route
-    //      .route("/:id/_radius")
-    //      .mapped_get(&mut routemap, account_get_id_radius)
-    //      .mapped_post(&mut routemap, account_post_id_radius_regenerate)
-    //      .mapped_delete(&mut routemap, account_delete_id_radius);
+    //  person_route.route("/:id/_radius", get(account_get_id_radius), post(account_post_id_radius_regenerate), delete(account_delete_id_radius));
 
-    //  person_route
-    //      .route("/:id/_unix")
-    //      .mapped_post(&mut routemap, account_post_id_unix);
-    //  person_route
-    //      .route("/:id/_unix/_credential")
-    //      .mapped_put(&mut routemap, account_put_id_unix_credential)
-    //      .mapped_delete(&mut routemap, account_delete_id_unix_credential);
+    //  person_route.route("/:id/_unix", post(account_post_id_unix));
+    //  person_route.route("/:id/_unix/_credential", put(account_put_id_unix_credential), delete(account_delete_id_unix_credential));
 
     //  // Service accounts
 
-    let service_account_route = Router::new().with_state(state.clone());
-    //  service_account_route
-    //      .route("/")
-    //      .mapped_get(&mut routemap, service_account_get)
-    //      .mapped_post(&mut routemap, service_account_post);
-    //  service_account_route
-    //      .route("/:id")
-    //      .mapped_get(&mut routemap, service_account_id_get)
-    //      .mapped_patch(&mut routemap, account_id_patch)
-    //      .mapped_delete(&mut routemap, service_account_id_delete);
-    //  service_account_route
-    //      .route("/:id/_attr/:attr")
-    //      .mapped_get(&mut routemap, account_id_get_attr)
-    //      .mapped_put(&mut routemap, account_id_put_attr)
-    //      .mapped_post(&mut routemap, account_id_post_attr)
-    //      .mapped_delete(&mut routemap, account_id_delete_attr);
-
-    //  // service_account_route
-    //  //     .route("/:id/_lock")
-    //  //     .mapped_get(&mut routemap, do_nothing);
-
-    //  service_account_route
-    //      .route("/:id/_into_person")
-    //      .mapped_post(&mut routemap, service_account_into_person);
-
-    //  service_account_route
-    //      .route("/:id/_api_token")
-    //      .mapped_post(&mut routemap, service_account_api_token_post)
-    //      .mapped_get(&mut routemap, service_account_api_token_get);
-    //  service_account_route
-    //      .route("/:id/_api_token/:token_id")
-    //      .mapped_delete(&mut routemap, service_account_api_token_delete);
-
-    //  // service_account_route
-    //  //     .route("/:id/_credential")
-    //  //     .mapped_get(&mut routemap, do_nothing);
-    //  service_account_route
-    //      .route("/:id/_credential/_generate")
-    //      .mapped_get(&mut routemap, service_account_credential_generate);
-    //  service_account_route
-    //      .route("/:id/_credential/_status")
-    //      .mapped_get(&mut routemap, account_get_id_credential_status);
-    //  // service_account_route
-    //  //     .route("/:id/_credential/:cid/_lock")
-    //  //     .mapped_get(&mut routemap, do_nothing);
-
-    //  service_account_route
-    //      .route("/:id/_ssh_pubkeys")
-    //      .mapped_get(&mut routemap, account_get_id_ssh_pubkeys)
-    //      .mapped_post(&mut routemap, account_post_id_ssh_pubkey);
-    //  service_account_route
-    //      .route("/:id/_ssh_pubkeys/:tag")
-    //      .mapped_get(&mut routemap, account_get_id_ssh_pubkey_tag)
-    //      .mapped_delete(&mut routemap, account_delete_id_ssh_pubkey_tag);
-
-    //  service_account_route
-    //      .route("/:id/_unix")
-    //      .mapped_post(&mut routemap, account_post_id_unix);
+    let service_account_route = Router::new()
+        .route("/", get(v1::service_account_get))
+        // , post(service_account_post));
+        //  service_account_route.route("/:id", get(service_account_id_get), patch(account_id_patch), delete(service_account_id_delete));
+        //  service_account_route.route("/:id/_attr/:attr", get(account_id_get_attr),
+        // put(account_id_put_attr),
+        // post(account_id_post_attr),
+        // delete(account_id_delete_attr));
+        //  // service_account_route.route("/:id/_lock", get(do_nothing));
+        //  service_account_route.route("/:id/_into_person", post(service_account_into_person));
+        //  service_account_route.route("/:id/_api_token", post(service_account_api_token_post),
+        // get(service_account_api_token_get));
+        //  service_account_route.route("/:id/_api_token/:token_id", delete(service_account_api_token_delete));
+        //  // service_account_route.route("/:id/_credential", get(do_nothing));
+        //  service_account_route.route("/:id/_credential/_generate", get(service_account_credential_generate));
+        //  service_account_route.route("/:id/_credential/_status"
+        // , get(account_get_id_credential_status));
+        //  // service_account_route.route("/:id/_credential/:cid/_lock", get(do_nothing));
+        //  service_account_route.route("/:id/_ssh_pubkeys", get(account_get_id_ssh_pubkeys)
+        // , post(account_post_id_ssh_pubkey));
+        //  service_account_route.route("/:id/_ssh_pubkeys/:tag", get(account_get_id_ssh_pubkey_tag)
+        // , delete(account_delete_id_ssh_pubkey_tag));
+        //  service_account_route.route("/:id/_unix", post(account_post_id_unix));
+        .with_state(state.clone());
     let app = app.nest("/v1/service_account", service_account_route);
 
     //  // Shared account features only - mainly this is for unix-like
     //  // features.
-    let account_route = Router::new().with_state(state.clone());
+    let account_route = Router::new()
+        //  .route("/:id/_unix/_auth", post(v1::account_post_id_unix_auth));
+        //  .route("/:id/_ssh_pubkeys", get(v1::account_get_id_ssh_pubkeys));
+        //  .route("/:id/_ssh_pubkeys/:tag", get(v1::account_get_id_ssh_pubkey_tag));
+        //  .route("/:id/_user_auth_token", get(v1::account_get_id_user_auth_token));
+        //  .route("/:id/_user_auth_token/:token_id", delete(v1::account_user_auth_token_delete));
+        .with_state(state.clone());
     let app = app.nest("/v1/account", account_route);
-    //  account_route
-    //      .route("/:id/_unix/_auth")
-    //      .mapped_post(&mut routemap, account_post_id_unix_auth);
-    //  account_route
-    //      .route("/:id/_ssh_pubkeys")
-    //      .mapped_get(&mut routemap, account_get_id_ssh_pubkeys);
-    //  account_route
-    //      .route("/:id/_ssh_pubkeys/:tag")
-    //      .mapped_get(&mut routemap, account_get_id_ssh_pubkey_tag);
-    //  account_route
-    //      .route("/:id/_user_auth_token")
-    //      .mapped_get(&mut routemap, account_get_id_user_auth_token);
-    //  account_route
-    //      .route("/:id/_user_auth_token/:token_id")
-    //      .mapped_delete(&mut routemap, account_user_auth_token_delete);
 
     //  // Credential updates, don't require the account id.
-    let cred_route = Router::new().with_state(state.clone());
+    let cred_route = Router::new()
+        //  .route("/_exchange_intent", post(v1::credential_update_exchange_intent))
+        //  .route("/_status", post(v1::credential_update_status))
+        //  .route("/_update", post(v1::credential_update_update))
+        //  .route("/_cancel", post(v1::credential_update_cancel))
+        //  .route("/_commit", post(v1::credential_update_commit))
+        .with_state(state.clone());
     let app = app.nest("/v1/credential", cred_route);
-    //  cred_route
-    //      .route("/_exchange_intent")
-    //      .mapped_post(&mut routemap, credential_update_exchange_intent);
 
-    //  cred_route
-    //      .route("/_status")
-    //      .mapped_post(&mut routemap, credential_update_status);
-
-    //  cred_route
-    //      .route("/_update")
-    //      .mapped_post(&mut routemap, credential_update_update);
-
-    //  cred_route
-    //      .route("/_commit")
-    //      .mapped_post(&mut routemap, credential_update_commit);
-
-    //  cred_route
-    //      .route("/_cancel")
-    //      .mapped_post(&mut routemap, credential_update_cancel);
-
-    let group_route = Router::new().with_state(state.clone());
+    let group_route = Router::new()
+        .route("/:id/_unix", post(v1::group_post_id_unix))
+        .with_state(state.clone());
     let app = app.nest("/v1/group", group_route);
-    //  group_route
-    //      .route("/")
-    //      .mapped_get(&mut routemap, group_get)
-    //      .mapped_post(&mut routemap, group_post);
-    //  group_route
-    //      .route("/:id")
-    //      .mapped_get(&mut routemap, group_id_get)
-    //      .mapped_delete(&mut routemap, group_id_delete);
-    //  group_route
-    //      .route("/:id/_attr/:attr")
-    //      .mapped_delete(&mut routemap, group_id_delete_attr)
-    //      .mapped_get(&mut routemap, group_id_get_attr)
-    //      .mapped_put(&mut routemap, group_id_put_attr)
-    //      .mapped_post(&mut routemap, group_id_post_attr);
-    //  group_route
-    //      .route("/:id/_unix")
-    //      .mapped_post(&mut routemap, group_post_id_unix);
+    //  group_route.route("/", get(group_get), post(group_post));
+    //  group_route.route("/:id", get(group_id_get), delete(group_id_delete));
+    //  group_route.route("/:id/_attr/:attr", delete(group_id_delete_attr), get(group_id_get_attr), put(group_id_put_attr), post(group_id_post_attr));
 
-    let domain_route = Router::new().with_state(state.clone());
+    let domain_route = Router::new()
+        .route("/", get(v1::domain_get))
+        .route("/_attr/:attr", get(v1::domain_get_attr))
+        // .route("/_attr/:attr", put(domain_put_attr))
+        .route("/_attr/:attr", delete(v1::domain_delete_attr))
+        .with_state(state.clone());
     let app = app.nest("/v1/domain", domain_route);
-    //  domain_route.route("/").mapped_get(&mut routemap, domain_get);
-    //  domain_route
-    //      .route("/_attr/:attr")
-    //      .mapped_get(&mut routemap, domain_get_attr)
-    //      .mapped_put(&mut routemap, domain_put_attr)
-    //      .mapped_delete(&mut routemap, domain_delete_attr);
 
-    let system_route = Router::new().with_state(state.clone());
+    let system_route = Router::new()
+        // .route("/", get(v1::system_get))
+        .route("/_attr/:attr", get(v1::system_get_attr))
+        .route("/_attr/:attr", post(v1::system_post_attr))
+        .route("/_attr/:attr", delete(v1::system_delete_attr))
+        .with_state(state.clone());
     let app = app.nest("/v1/system", system_route);
-    //  system_route.route("/").mapped_get(&mut routemap, system_get);
-    //  system_route
-    //      .route("/_attr/:attr")
-    //      .mapped_get(&mut routemap, system_get_attr)
-    //      .mapped_post(&mut routemap, system_post_attr)
-    //      .mapped_delete(&mut routemap, system_delete_attr);
 
-    let recycle_route = Router::new().with_state(state.clone());
+    let recycle_route = Router::new()
+        .route("/", get(v1::recycle_bin_get))
+        .route("/:id", get(v1::recycle_bin_id_get))
+        .route("/:id/_revive", post(v1::recycle_bin_revive_id_post))
+        .with_state(state.clone());
     let app = app.nest("/v1/recycle_bin", recycle_route);
-    //  recycle_route
-    //      .route("/")
-    //      .mapped_get(&mut routemap, recycle_bin_get);
-    //  recycle_route
-    //      .route("/:id")
-    //      .mapped_get(&mut routemap, recycle_bin_id_get);
-    //  recycle_route
-    //      .route("/:id/_revive")
-    //      .mapped_post(&mut routemap, recycle_bin_revive_id_post);
 
-    let accessprof_route = Router::new().with_state(state.clone());
+    let accessprof_route = Router::new()
+        .route("/", get(do_nothing))
+        .route("/:id", get(do_nothing))
+        .route("/:id/_attr/:attr", get(do_nothing))
+        .with_state(state.clone());
     let app = app.nest("/v1/access_profile", accessprof_route);
-    //  // accessprof_route
-    //  //     .route("/")
-    //  //     .mapped_get(&mut routemap, do_nothing);
-    //  // accessprof_route
-    //  //     .route("/:id")
-    //  //     .mapped_get(&mut routemap, do_nothing);
-    //  // accessprof_route
-    //  //     .route("/:id/_attr/:attr")
-    //  //     .mapped_get(&mut routemap, do_nothing);
 
     //  routemap.push_self("/v1/routemap".to_string(), http_types::Method::Get);
-    //  appserver.route("/v1/routemap").nest({
-    //      let mut route_api = tide::with_state(routemap);
-    //      route_api.route("/").get(do_routemap);
-    //      route_api
+    //  appserver.route("/v1/routemap").nest({let mut route_api = tide::with_state(routemap);route_api.route("/").get(do_routemap);route_api
     //  });
-    //  // routemap_route.route("/").mapped_get(&mut routemap, do_routemap);
+    //  // routemap_route.route("/", get(do_routemap));
+
     //  // ===  End routes
 
     let app = app
@@ -529,10 +397,13 @@ pub async fn create_https_server(
         ))
         .layer(session_layer)
         .layer(axum::middleware::from_fn(middleware::version_middleware))
-        .layer(axum::middleware::from_fn_with_state(state.clone(), middleware::kopid_middleware))
-        .layer(TraceLayer::new_for_http())
-
-        .with_state(state);
+        .layer(axum::middleware::from_fn(middleware::kopid_end))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            middleware::kopid_start,
+        ))
+        .with_state(state)
+        .layer(TraceLayer::new_for_http());
 
     // let opt_tls_params = Some(tlsconfig.clone());
 
@@ -669,4 +540,41 @@ fn test_javscriptfile() {
         jsf.as_tag(),
         r#"<script src="/pkg/wasmloader.js" integrity="sha384-1234567890"></script>"#
     );
+}
+
+pub async fn do_nothing() -> impl IntoResponse {
+    "Not implemented"
+}
+
+pub fn to_axum_response<T: Serialize>(v: Result<T, OperationError>) -> Response<Body> {
+    match v {
+        Ok(iv) => {
+            let body = serde_json::to_string(&iv).unwrap();
+            Response::builder().body(Body::from(body)).unwrap()
+        }
+        Err(e) => {
+            (match &e {
+                OperationError::NotAuthenticated | OperationError::SessionExpired => {
+                    // https://datatracker.ietf.org/doc/html/rfc7235#section-4.1
+                    Response::builder()
+                        .status(http::StatusCode::UNAUTHORIZED)
+                        .header("WWW-Authenticate", "Bearer")
+                }
+                OperationError::SystemProtectedObject | OperationError::AccessDenied => {
+                    Response::builder().status(http::StatusCode::FORBIDDEN)
+                }
+                OperationError::NoMatchingEntries => {
+                    Response::builder().status(http::StatusCode::NOT_FOUND)
+                }
+                OperationError::PasswordQuality(_)
+                | OperationError::EmptyRequest
+                | OperationError::SchemaViolation(_) => {
+                    Response::builder().status(http::StatusCode::BAD_REQUEST)
+                }
+                _ => Response::builder().status(http::StatusCode::INTERNAL_SERVER_ERROR),
+            })
+            .body(body::Body::empty())
+            .unwrap()
+        }
+    }
 }
