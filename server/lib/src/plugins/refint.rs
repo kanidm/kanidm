@@ -783,7 +783,7 @@ mod tests {
     #[qs_test]
     async fn test_delete_oauth2_rs_remove_sessions(server: &QueryServer) {
         let curtime = duration_from_epoch_now();
-        let curtime_odt = OffsetDateTime::unix_epoch() + curtime;
+        let curtime_odt = OffsetDateTime::UNIX_EPOCH + curtime;
 
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "test_password").unwrap();

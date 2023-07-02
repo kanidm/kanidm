@@ -460,7 +460,12 @@ impl Credential {
         policy: &CryptoPolicy,
         cleartext: &str,
     ) -> Result<Self, OperationError> {
-        Password::new(policy, cleartext).map(Self::new_from_password)
+        Password::new(policy, cleartext)
+            .map_err(|e| {
+                error!(crypto_err = ?e);
+                e.into()
+            })
+            .map(Self::new_from_password)
     }
 
     /// Create a new credential that contains a CredentialType::GeneratedPassword
@@ -468,7 +473,12 @@ impl Credential {
         policy: &CryptoPolicy,
         cleartext: &str,
     ) -> Result<Self, OperationError> {
-        Password::new(policy, cleartext).map(Self::new_from_generatedpassword)
+        Password::new(policy, cleartext)
+            .map_err(|e| {
+                error!(crypto_err = ?e);
+                e.into()
+            })
+            .map(Self::new_from_generatedpassword)
     }
 
     /// Update the state of the Password on this credential, if a password is present. If possible
@@ -478,7 +488,12 @@ impl Credential {
         policy: &CryptoPolicy,
         cleartext: &str,
     ) -> Result<Self, OperationError> {
-        Password::new(policy, cleartext).map(|pw| self.update_password(pw))
+        Password::new(policy, cleartext)
+            .map_err(|e| {
+                error!(crypto_err = ?e);
+                e.into()
+            })
+            .map(|pw| self.update_password(pw))
     }
 
     /// Extend this credential with another alternate webauthn credential. This is especially
@@ -634,7 +649,12 @@ impl Credential {
 
     #[cfg(test)]
     pub fn verify_password(&self, cleartext: &str) -> Result<bool, OperationError> {
-        self.password_ref().and_then(|pw| pw.verify(cleartext))
+        self.password_ref().and_then(|pw| {
+            pw.verify(cleartext).map_err(|e| {
+                error!(crypto_err = ?e);
+                e.into()
+            })
+        })
     }
 
     /// Extract this credential into it's Serialisable Database form, ready for persistence.

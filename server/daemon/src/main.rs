@@ -17,18 +17,19 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 use std::fs::{metadata, File};
 // This works on both unix and windows.
 use fs2::FileExt;
+use kanidm_proto::messages::ConsoleOutputMode;
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{Args, Parser, Subcommand};
-use kanidmd_core::config::{Configuration, ServerConfig};
+use kanidmd_core::config::{Configuration, LogLevel, ServerConfig};
 use kanidmd_core::{
-    backup_server_core, create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
-    dbscan_list_index_analysis_core, dbscan_list_index_core, dbscan_list_indexes_core,
-    domain_rename_core, recover_account_core, reindex_server_core, restore_server_core,
-    vacuum_server_core, verify_server_core,
+    backup_server_core, cert_generate_core, create_server_core, dbscan_get_id2entry_core,
+    dbscan_list_id2entry_core, dbscan_list_index_analysis_core, dbscan_list_index_core,
+    dbscan_list_indexes_core, domain_rename_core, recover_account_core, reindex_server_core,
+    restore_server_core, vacuum_server_core, verify_server_core,
 };
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
@@ -44,6 +45,7 @@ impl KanidmdOpt {
     fn commonopt(&self) -> &CommonOpt {
         match self {
             KanidmdOpt::Server(sopt)
+            | KanidmdOpt::CertGenerate(sopt)
             | KanidmdOpt::ConfigTest(sopt)
             | KanidmdOpt::DbScan {
                 commands: DbScanOpt::ListIndexes(sopt),
@@ -97,21 +99,78 @@ fn get_user_details_windows() {
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> ExitCode {
+    // Read CLI args, determine what the user has asked us to do.
+    let opt = KanidmdParser::parse();
+
+    let mut config_error: Vec<String> = Vec::new();
+    let mut config = Configuration::new();
+    // Check the permissions are OK.
+    let cfg_path = &opt.commands.commonopt().config_path; // TODO: this needs to be pulling from the default or something?
+    if format!("{}", cfg_path.display()) == "".to_string() {
+        config_error.push(format!("Refusing to run - config file path is empty"));
+    }
+    if !cfg_path.exists() {
+        config_error.push(format!(
+            "Refusing to run - config file {} does not exist",
+            cfg_path.to_str().unwrap_or("invalid file path")
+        ));
+    }
+
+    // Read our config
+    let sconfig: Option<ServerConfig> =
+        match ServerConfig::new(&(opt.commands.commonopt().config_path)) {
+            Ok(c) => Some(c),
+            Err(e) => {
+                format!("Config Parse failure {:?}", e);
+                None
+            }
+        };
+
+    // if they specified it in the environment then that overrides everything
+    let log_filter = match EnvFilter::try_from_default_env() {
+        Ok(val) => val,
+        Err(_e) => {
+            // we couldn't get it from the env, so we'll try the config file!
+            match sconfig.as_ref() {
+                Some(val) => {
+                    let tmp = val.log_level.clone();
+                    tmp.unwrap_or_default()
+                }
+                None => LogLevel::Info,
+            }
+            .into()
+        }
+    };
+
+    // TODO: only send to stderr when we're not in a TTY
     tracing_forest::worker_task()
         .set_global(true)
         .set_tag(sketching::event_tagger)
         // Fall back to stderr
         .map_sender(|sender| sender.or_stderr())
-        .build_on(|subscriber| subscriber
-            .with(EnvFilter::try_from_default_env()
-                .or_else(|_| EnvFilter::try_new("info"))
-                .expect("Failed to init envfilter")
-            )
-        )
+        .build_on(|subscriber|{
+            let sub = subscriber.with(log_filter);
+            // this does NOT work, it just adds a layer.
+            // if std::io::stdout().is_terminal() {
+            //     println!("Stdout is a terminal");
+            //     sub.with(sketching::tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
+            // } else {
+            //     println!("Stdout is not a terminal");
+            //     sub.with(sketching::tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
+            // }
+            sub
+        })
         .on(async {
             // Get information on the windows username
             #[cfg(target_family = "windows")]
             get_user_details_windows();
+
+            if !config_error.is_empty() {
+                for e in config_error {
+                    error!("{}", e);
+                }
+                return ExitCode::FAILURE
+            }
 
             // Get info about who we are.
             #[cfg(target_family = "unix")]
@@ -135,20 +194,17 @@ async fn main() -> ExitCode {
                 (cuid, ceuid)
             };
 
-            // Read cli args, determine if we should backup/restore
-            let opt = KanidmdParser::parse();
-
             // print the app version and bail
             if let KanidmdOpt::Version(_) = &opt.commands {
                 kanidm_proto::utils::show_version("kanidmd");
                 return ExitCode::SUCCESS
             };
 
-            let mut config = Configuration::new();
-            // Check the permissions are OK.
+            let sconfig = sconfig.expect("Somehow you got an empty ServerConfig after error checking?");
+
+
             #[cfg(target_family = "unix")]
             {
-                let cfg_path = &opt.commands.commonopt().config_path;
                 let cfg_meta = match metadata(cfg_path) {
                     Ok(m) => m,
                     Err(e) => {
@@ -179,14 +235,6 @@ async fn main() -> ExitCode {
                 }
             }
 
-            // Read our config
-            let sconfig = match ServerConfig::new(&(opt.commands.commonopt().config_path)) {
-                Ok(c) => c,
-                Err(e) => {
-                    error!("Config Parse failure {:?}", e);
-                    return ExitCode::FAILURE
-                }
-            };
             // Check the permissions of the files from the configuration.
 
             let db_path = PathBuf::from(sconfig.db_path.as_str());
@@ -237,24 +285,30 @@ async fn main() -> ExitCode {
             config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());
             config.update_trust_x_forward_for(sconfig.trust_x_forward_for);
 
-            // Okay - Lets now create our lock and go.
-            let klock_path = format!("{}.klock" ,sconfig.db_path.as_str());
-            let flock = match File::create(&klock_path) {
-                Ok(flock) => flock,
-                Err(e) => {
-                    error!("ERROR: Refusing to start - unable to create kanidm exclusive lock at {} - {:?}", klock_path, e);
-                    return ExitCode::FAILURE
-                }
-            };
+            match &opt.commands  {
+                // we aren't going to touch the DB so we can carry on
+                KanidmdOpt::HealthCheck(_) => (),
+                _ => {
+                    // Okay - Lets now create our lock and go.
+                    let klock_path = format!("{}.klock" ,sconfig.db_path.as_str());
+                    let flock = match File::create(&klock_path) {
+                        Ok(flock) => flock,
+                        Err(e) => {
+                            error!("ERROR: Refusing to start - unable to create kanidm exclusive lock at {} - {:?}", klock_path, e);
+                            return ExitCode::FAILURE
+                        }
+                    };
 
-            match flock.try_lock_exclusive() {
-                Ok(()) => debug!("Acquired kanidm exclusive lock"),
-                Err(e) => {
-                    error!("ERROR: Refusing to start - unable to lock kanidm exclusive lock at {} - {:?}", klock_path, e);
-                    error!("Is another kanidm process running?");
-                    return ExitCode::FAILURE
+                    match flock.try_lock_exclusive() {
+                        Ok(()) => debug!("Acquired kanidm exclusive lock"),
+                        Err(e) => {
+                            error!("ERROR: Refusing to start - unable to lock kanidm exclusive lock at {} - {:?}", klock_path, e);
+                            error!("Is another kanidm process running?");
+                            return ExitCode::FAILURE
+                        }
+                    };
                 }
-            };
+            }
 
             /*
             // Apply any cli overrides, normally debug level.
@@ -381,8 +435,11 @@ async fn main() -> ExitCode {
                         }
                         info!("Stopped 🛑 ");
                     }
-
-
+                }
+                KanidmdOpt::CertGenerate(_sopt) => {
+                    info!("Running in certificate generate mode ...");
+                    config.update_config_for_server_mode(&sconfig);
+                    cert_generate_core(&config);
                 }
                 KanidmdOpt::Database {
                     commands: DbCommands::Backup(bopt),
@@ -473,36 +530,50 @@ async fn main() -> ExitCode {
 
                     debug!("{sopt:?}");
 
-                    let healthcheck_url = format!("https://{}/status", config.address);
+
+                    let healthcheck_url = match &sopt.check_origin {
+                        true => format!("{}/status", config.origin),
+                        false => format!("https://{}/status", config.address),
+                    };
+
                     debug!("Checking {healthcheck_url}");
 
 
 
-                    let client = reqwest::ClientBuilder::new()
-                        .danger_accept_invalid_certs(sopt.no_verify_tls)
-                        .danger_accept_invalid_hostnames(sopt.no_verify_tls)
+                    let mut client = reqwest::ClientBuilder::new()
+                        .danger_accept_invalid_certs(!sopt.verify_tls)
+                        .danger_accept_invalid_hostnames(!sopt.verify_tls)
                         .https_only(true);
-                    // TODO: work out how to pull the CA from the chain
-                    // client = match config.tls_config {
-                    //     Some(tls_config) => {
-                    //         eprintln!("{:?}", tls_config);
-                    //         let mut buf = Vec::new();
-                    //         File::open(tls_config.chain)
-                    //             .unwrap()
-                    //             .read_to_end(&mut buf)
-                    //             .unwrap();
-                    //         eprintln!("buf: {:?}", buf);
-                    //         match reqwest::Certificate::from_pem(&buf){
-                    //             Ok(cert) => client.add_root_certificate(cert),
-                    //             Err(err) => {
-                    //                 error!("Failed to read TLS chain: {err:?}");
-                    //                 client
-                    //             }
-                    //         }
 
-                    //     },
-                    //     None => client,
-                    // };
+
+                    client = match &sconfig.tls_chain {
+                        None => client,
+                        Some(ca_cert) => {
+                            debug!("Trying to load {}", ca_cert);
+                            // if the ca_cert file exists, then we'll use it
+                            let ca_cert_path = PathBuf::from(ca_cert);
+                            match ca_cert_path.exists() {
+                                true => {
+                                    let ca_contents = std::fs::read_to_string(ca_cert_path.clone()).expect(&format!("Failed to read {}!", ca_cert));
+                                    let content = ca_contents
+                                        .split("-----END CERTIFICATE-----")
+                                        .into_iter()
+                                        .filter_map(|c| if c.trim().is_empty() { None } else { Some(c.trim().to_string())})
+                                        .collect::<Vec<String>>();
+                                    let content = content.last().expect(&format!("Failed to pull the last chunk of {} as a valid certificate!", ca_cert));
+                                    let content = format!("{}-----END CERTIFICATE-----", content);
+
+                                    let ca_cert_parsed = reqwest::Certificate::from_pem(content.as_bytes())
+                                    .expect(&format!("Failed to parse {} as a valid certificate!\n{}", ca_cert, content));
+                                    client.add_root_certificate(ca_cert_parsed)
+                                },
+                                false => {
+                                    warn!("Couldn't find ca cert {} but carrying on...", ca_cert);
+                                    client
+                                }
+                            }
+                        }
+                    };
 
                     let client = client
                         .build()
@@ -526,7 +597,16 @@ async fn main() -> ExitCode {
                         }
                     };
                     debug!("Request: {req:?}");
-                    info!("OK")
+                    let output_mode: ConsoleOutputMode = sopt.commonopts.output_mode.to_owned().into();
+                    match output_mode {
+                        ConsoleOutputMode::JSON => {
+                            println!("{{\"result\":\"OK\"}}")
+                        },
+                        ConsoleOutputMode::Text => {
+                            info!("OK")
+                        },
+                    }
+
                 }
                 KanidmdOpt::Version(_) => {}
             }

@@ -14,7 +14,25 @@ pub struct DebugOpt {
     pub debug: bool,
 }
 
-#[derive(Debug, Args)]
+#[derive(Debug, Clone)]
+/// The CLI output mode, either text or json, falls back to text if you ask for something other than text/json
+pub enum OutputMode {
+    Text,
+    Json,
+}
+
+impl std::str::FromStr for OutputMode {
+    type Err = String;
+    fn from_str(s: &str) -> Result<OutputMode, std::string::String> {
+        match s.to_lowercase().as_str() {
+            "text" => Ok(OutputMode::Text),
+            "json" => Ok(OutputMode::Json),
+            _ => Ok(OutputMode::Text),
+        }
+    }
+}
+
+#[derive(Debug, Args, Clone)]
 pub struct CommonOpt {
     /// Enable debbuging of the kanidm tool
     #[clap(short, long, env = "KANIDM_DEBUG")]
@@ -29,14 +47,14 @@ pub struct CommonOpt {
     #[clap(parse(from_os_str), short = 'C', long = "ca", env = "KANIDM_CA_PATH")]
     pub ca_path: Option<PathBuf>,
     /// Log format (still in very early development)
-    #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value="text")]
-    output_mode: String,
+    #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value = "text")]
+    output_mode: OutputMode,
 }
 
 #[derive(Debug, Args)]
 pub struct GroupNamedMembers {
     name: String,
-    #[clap(required=true,min_values=1)]
+    #[clap(required = true, min_values = 1)]
     members: Vec<String>,
     #[clap(flatten)]
     copt: CommonOpt,
@@ -119,9 +137,12 @@ pub struct AccountNamedExpireDateTimeOpt {
     aopts: AccountCommonOpt,
     #[clap(flatten)]
     copt: CommonOpt,
-    #[clap(name = "datetime")]
-    /// An rfc3339 time of the format "YYYY-MM-DDTHH:MM:SS+TZ", "2020-09-25T11:22:02+10:00"
-    /// or the word "never", "clear" to remove account expiry.
+    #[clap(name = "datetime", verbatim_doc_comment)]
+    /// This accepts multiple options:
+    /// - An RFC3339 time of the format "YYYY-MM-DDTHH:MM:SS+TZ", "2020-09-25T11:22:02+10:00"
+    /// - One of "any", "clear" or "never" to remove account expiry.
+    /// - "epoch" to set the expiry to the UNIX epoch
+    /// - "now" to expire immediately (this will affect authentication with Kanidm, but external systems may not be aware of the change until next time it's validated, typically ~15 minutes)
     datetime: String,
 }
 
@@ -192,7 +213,15 @@ pub enum AccountCredential {
     /// Create a reset token that can be given to another person so they can
     /// recover or reset their account credentials.
     #[clap(name = "create-reset-token")]
-    CreateResetToken(AccountNamedOpt),
+    CreateResetToken {
+        #[clap(flatten)]
+        aopts: AccountCommonOpt,
+        #[clap(flatten)]
+        copt: CommonOpt,
+        /// Optionally set how many seconds the reset token should be valid for.
+        #[clap(long = "ttl")]
+        ttl: Option<u32>,
+    },
 }
 
 /// RADIUS secret management
@@ -503,7 +532,7 @@ pub enum RecycleOpt {
 pub struct LoginOpt {
     #[clap(flatten)]
     copt: CommonOpt,
-    #[clap(short, long, env="KANIDM_PASSWORD", hide=true)]
+    #[clap(short, long, env = "KANIDM_PASSWORD", hide = true)]
     /// Supply a password to the login option
     password: Option<String>,
 }
@@ -711,7 +740,6 @@ pub struct OptSetDomainDisplayName {
     new_display_name: String,
 }
 
-
 #[derive(Debug, Subcommand)]
 pub enum PwBadlistOpt {
     #[clap[name = "show"]]
@@ -724,7 +752,7 @@ pub enum PwBadlistOpt {
     Upload {
         #[clap(flatten)]
         copt: CommonOpt,
-        #[clap(parse(from_os_str),required=true,min_values=1)]
+        #[clap(parse(from_os_str), required = true, min_values = 1)]
         paths: Vec<PathBuf>,
         /// Perform a dry run and display the list that would have been uploaded instead.
         #[clap(short = 'n', long)]
@@ -736,9 +764,9 @@ pub enum PwBadlistOpt {
     Remove {
         #[clap(flatten)]
         copt: CommonOpt,
-        #[clap(parse(from_os_str), required=true, min_values=1)]
+        #[clap(parse(from_os_str), required = true, min_values = 1)]
         paths: Vec<PathBuf>,
-    }
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -863,7 +891,7 @@ pub enum SystemOpt {
     Synch {
         #[clap(subcommand)]
         commands: SynchOpt,
-    }
+    },
 }
 
 #[derive(Debug, Subcommand)]

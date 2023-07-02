@@ -3,9 +3,7 @@ use kanidm_proto::v1::{
     CUIntentToken, CUSessionToken, CUStatus, CredentialDetail, CredentialDetailType,
 };
 use uuid::Uuid;
-use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestInit, RequestMode, Response};
+use wasm_bindgen::{JsValue, UnwrapThrowExt};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -15,7 +13,7 @@ use super::passkeyremove::PasskeyRemoveModalApp;
 use super::pwmodal::PwModalApp;
 use super::totpmodal::TotpModalApp;
 use super::totpremove::TotpRemoveComp;
-use crate::error::*;
+use crate::{do_request, error::*, RequestMethod};
 use crate::{models, utils};
 
 // use std::rc::Rc;
@@ -370,9 +368,7 @@ impl CredentialResetApp {
 
                       <p>{ "❌ MFA Disabled" }</p>
                       <p>
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticTotpCreate">
-                          { "Add TOTP" }
-                        </button>
+                        <TotpModalApp token={ token.clone() } cb={ cb.clone() }/>
                       </p>
 
                       <p>
@@ -413,9 +409,7 @@ impl CredentialResetApp {
                       </>
 
                       <p>
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticTotpCreate">
-                          { "Add TOTP" }
-                        </button>
+                        <TotpModalApp token={ token.clone() } cb={ cb.clone() }/>
                       </p>
 
                       <p>
@@ -506,9 +500,7 @@ impl CredentialResetApp {
 
                     { passkey_html }
 
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticPasskeyCreate">
-                      { "Add Passkey" }
-                    </button>
+                    <PasskeyModalApp token={ token.clone() } cb={ cb.clone() } />
 
                     <hr class="my-4" />
 
@@ -543,11 +535,8 @@ impl CredentialResetApp {
               </div>
             </main>
 
-            <PasskeyModalApp token={ token.clone() } cb={ cb.clone() } />
 
             <PwModalApp token={ token.clone() } cb={ cb.clone() } />
-
-            <TotpModalApp token={ token.clone() } cb={ cb.clone() }/>
 
             <DeleteApp token= { token.clone() } cb={ cb.clone() }/>
 
@@ -586,37 +575,23 @@ impl CredentialResetApp {
     }
 
     async fn exchange_intent_token(token: String) -> Result<Msg, FetchError> {
-        let intentreq_jsvalue = serde_json::to_string(&CUIntentToken { token })
+        let req_jsvalue = serde_json::to_string(&CUIntentToken { token })
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise intent request");
 
-        let mut opts = RequestInit::new();
-        opts.method("POST");
-        opts.mode(RequestMode::SameOrigin);
-
-        opts.body(Some(&intentreq_jsvalue));
-
-        let request = Request::new_with_str_and_init("/v1/credential/_exchange_intent", &opts)?;
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
-        let headers = resp.headers();
+        let (kopid, status, value, _) = do_request(
+            "/v1/credential/_exchange_intent",
+            RequestMethod::POST,
+            Some(req_jsvalue),
+        )
+        .await?;
 
         if status == 200 {
-            let jsval = JsFuture::from(resp.json()?).await?;
             let (token, status): (CUSessionToken, CUStatus) =
-                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
+                serde_wasm_bindgen::from_value(value).expect_throw("Invalid response type");
             Ok(Msg::BeginSession { token, status })
         } else {
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             Ok(Msg::Error { emsg, kopid })
         }
     }
@@ -626,30 +601,13 @@ impl CredentialResetApp {
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise session token");
 
-        let mut opts = RequestInit::new();
-        opts.method("POST");
-        opts.mode(RequestMode::SameOrigin);
-
-        opts.body(Some(&req_jsvalue));
-
-        let request = Request::new_with_str_and_init(url, &opts)?;
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
-        let headers = resp.headers();
+        let (kopid, status, value, _) =
+            do_request(url, RequestMethod::POST, Some(req_jsvalue)).await?;
 
         if status == 200 {
             Ok(Msg::Success)
         } else {
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             Ok(Msg::Error { emsg, kopid })
         }
     }

@@ -3,13 +3,14 @@ use std::collections::{BTreeMap, BTreeSet};
 use compact_jwt::JwsSigner;
 use dyn_clone::DynClone;
 use hashbrown::HashSet;
-use kanidm_proto::v1::Filter as ProtoFilter;
-use kanidm_proto::v1::UiHint;
 use smolset::SmolSet;
 use time::OffsetDateTime;
 // use std::fmt::Debug;
 use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
 use webauthn_rs::prelude::Passkey as PasskeyV4;
+
+use kanidm_proto::v1::Filter as ProtoFilter;
+use kanidm_proto::v1::UiHint;
 
 use crate::be::dbvalue::DbValueSetV2;
 use crate::credential::{totp::Totp, Credential};
@@ -17,32 +18,7 @@ use crate::prelude::*;
 use crate::repl::{cid::Cid, proto::ReplAttrV1};
 use crate::schema::SchemaAttribute;
 use crate::value::{Address, ApiToken, IntentTokenState, Oauth2Session, Session};
-
-mod address;
-mod binary;
-mod bool;
-mod cid;
-mod cred;
-mod datetime;
-mod iname;
-mod index;
-mod iutf8;
-mod json;
-mod jws;
-mod nsuniqueid;
-mod oauth;
-mod restricted;
-mod secret;
-mod session;
-mod spn;
-mod ssh;
-mod syntax;
-mod totp;
-mod uihint;
-mod uint32;
-mod url;
-mod utf8;
-mod uuid;
+use crate::valueset::auditlogstring::ValueSetAuditLogString;
 
 pub use self::address::{ValueSetAddress, ValueSetEmailAddress};
 pub use self::binary::{ValueSetPrivateBinary, ValueSetPublicBinary};
@@ -69,6 +45,33 @@ pub use self::uint32::ValueSetUint32;
 pub use self::url::ValueSetUrl;
 pub use self::utf8::ValueSetUtf8;
 pub use self::uuid::{ValueSetRefer, ValueSetUuid};
+
+mod address;
+mod auditlogstring;
+mod binary;
+mod bool;
+mod cid;
+mod cred;
+mod datetime;
+mod iname;
+mod index;
+mod iutf8;
+mod json;
+mod jws;
+mod nsuniqueid;
+mod oauth;
+mod restricted;
+mod secret;
+mod session;
+mod spn;
+mod ssh;
+mod syntax;
+mod totp;
+mod uihint;
+mod uint32;
+mod url;
+mod utf8;
+mod uuid;
 
 pub type ValueSet = Box<dyn ValueSetT + Send + Sync + 'static>;
 
@@ -357,6 +360,11 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
+    fn to_cid_single(&self) -> Option<Cid> {
+        error!("to_cid_single should not be called on {:?}", self.syntax());
+        None
+    }
+
     fn to_refer_single(&self) -> Option<Uuid> {
         error!(
             "to_refer_single should not be called on {:?}",
@@ -527,6 +535,33 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         debug_assert!(false);
         None
     }
+    fn as_audit_log_string(&self) -> Option<&SmolSet<[(Cid, String); 8]>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn repl_merge_valueset(
+        &self,
+        _older: &ValueSet,
+        // schema_attr: &SchemaAttribute
+    ) -> Option<ValueSet> {
+        // Self is the "latest" content. Older contains the earlier
+        // state of the attribute.
+        //
+        // In most cases we don't actually need a merge strategy. We just need the
+        // newer state of the attribute.
+        //
+        // However when we have a merge strategy that is required we return
+        // Some(new_state) if and only if merges were applied that need to be added
+        // to the change state.
+        //
+        // If no merge was required, we just return None.
+        //
+        // Examples where we need merging is session states. This has an internal
+        // attribute state machine that works similarly to tombstones to ensure that
+        // after a certain period that attributes are cleaned up.
+        None
+    }
 }
 
 impl PartialEq for ValueSet {
@@ -579,6 +614,7 @@ pub fn from_result_value_iter(
         Value::IntentToken(u, s) => ValueSetIntentToken::new(u, s),
         Value::EmailAddress(a, _) => ValueSetEmailAddress::new(a),
         Value::UiHint(u) => ValueSetUiHint::new(u),
+        Value::AuditLogString(c, s) => ValueSetAuditLogString::new((c, s)),
         Value::PhoneNumber(_, _)
         | Value::Passkey(_, _, _)
         | Value::DeviceKey(_, _, _)
@@ -645,6 +681,7 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::Oauth2Session(u, m) => ValueSetOauth2Session::new(u, m),
         Value::UiHint(u) => ValueSetUiHint::new(u),
         Value::TotpSecret(l, t) => ValueSetTotpSecret::new(l, t),
+        Value::AuditLogString(c, s) => ValueSetAuditLogString::new((c, s)),
         Value::PhoneNumber(_, _) => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -694,6 +731,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::JwsKeyRs256(set) => ValueSetJwsKeyEs256::from_dbvs2(&set),
         DbValueSetV2::UiHint(set) => ValueSetUiHint::from_dbvs2(set),
         DbValueSetV2::TotpSecret(set) => ValueSetTotpSecret::from_dbvs2(set),
+        DbValueSetV2::AuditLogString(set) => ValueSetAuditLogString::from_dbvs2(set),
         DbValueSetV2::PhoneNumber(_, _) | DbValueSetV2::TrustedDeviceEnrollment(_) => {
             debug_assert!(false);
             Err(OperationError::InvalidValueState)
@@ -740,5 +778,6 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::Session { set } => ValueSetSession::from_repl_v1(set),
         ReplAttrV1::ApiToken { set } => ValueSetApiToken::from_repl_v1(set),
         ReplAttrV1::TotpSecret { set } => ValueSetTotpSecret::from_repl_v1(set),
+        ReplAttrV1::AuditLogString { set } => ValueSetAuditLogString::from_repl_v1(set),
     }
 }

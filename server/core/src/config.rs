@@ -13,6 +13,7 @@ use std::str::FromStr;
 
 use kanidm_proto::messages::ConsoleOutputMode;
 use serde::{Deserialize, Serialize};
+use sketching::tracing_subscriber::EnvFilter;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct IntegrationTestConfig {
@@ -59,6 +60,7 @@ pub struct ServerConfig {
     pub origin: String,
     #[serde(default)]
     pub role: ServerRole,
+    pub log_level: Option<LogLevel>,
 }
 
 impl ServerConfig {
@@ -75,7 +77,7 @@ impl ServerConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Default, Eq, PartialEq)]
 pub enum ServerRole {
     #[default]
     WriteReplica,
@@ -106,6 +108,50 @@ impl FromStr for ServerRole {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
+pub enum LogLevel {
+    #[default]
+    #[serde(rename = "info")]
+    Info,
+    #[serde(rename = "debug")]
+    Debug,
+    #[serde(rename = "trace")]
+    Trace,
+}
+
+impl FromStr for LogLevel {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "info" => Ok(LogLevel::Info),
+            "debug" => Ok(LogLevel::Debug),
+            "trace" => Ok(LogLevel::Trace),
+            _ => Err("Must be one of info, debug, trace"),
+        }
+    }
+}
+
+impl ToString for LogLevel {
+    fn to_string(&self) -> String {
+        match self {
+            LogLevel::Info => "info".to_string(),
+            LogLevel::Debug => "debug".to_string(),
+            LogLevel::Trace => "trace".to_string(),
+        }
+    }
+}
+
+impl Into<EnvFilter> for LogLevel {
+    fn into(self) -> EnvFilter {
+        match self {
+            LogLevel::Info => EnvFilter::new("info"),
+            LogLevel::Debug => EnvFilter::new("debug"),
+            LogLevel::Trace => EnvFilter::new("trace"),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Configuration {
     pub address: String,
@@ -125,6 +171,7 @@ pub struct Configuration {
     pub origin: String,
     pub role: ServerRole,
     pub output_mode: ConsoleOutputMode,
+    pub log_level: LogLevel,
 }
 
 impl fmt::Display for Configuration {
@@ -159,6 +206,7 @@ impl fmt::Display for Configuration {
                 )
             })
             .and_then(|_| write!(f, "console output format: {:?} ", self.output_mode))
+            .and_then(|_| write!(f, "log_level: {}", self.log_level.clone().to_string()))
     }
 }
 
@@ -188,6 +236,7 @@ impl Configuration {
             origin: "https://idm.example.com".to_string(),
             role: ServerRole::WriteReplica,
             output_mode: ConsoleOutputMode::default(),
+            log_level: Default::default(),
         }
     }
 
@@ -207,6 +256,11 @@ impl Configuration {
         }
     }
 
+    pub fn update_log_level(&mut self, level: &Option<LogLevel>) {
+        let level = level.clone();
+        self.log_level = level.unwrap_or_default();
+    }
+
     // Startup config action, used in kanidmd server etc
     pub fn update_config_for_server_mode(&mut self, sconfig: &ServerConfig) {
         #[cfg(debug_assertions)]
@@ -215,6 +269,7 @@ impl Configuration {
         self.update_bind(&sconfig.bindaddress);
         self.update_ldapbind(&sconfig.ldapbindaddress);
         self.update_online_backup(&sconfig.online_backup);
+        self.update_log_level(&sconfig.log_level);
     }
 
     pub fn update_trust_x_forward_for(&mut self, t: Option<bool>) {

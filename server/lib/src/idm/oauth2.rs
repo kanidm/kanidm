@@ -515,7 +515,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 ..
             } => {
                 // Only submit a revocation if the token is not yet expired.
-                let odt_ct = OffsetDateTime::unix_epoch() + ct;
+                let odt_ct = OffsetDateTime::UNIX_EPOCH + ct;
                 if expiry <= odt_ct {
                     security_info!(?uuid, "access token has expired, returning inactive");
                     return Ok(());
@@ -763,7 +763,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
 
         // Check that the UAT we are issuing for still is valid.
-        let odt_ct = OffsetDateTime::unix_epoch() + ct;
+        let odt_ct = OffsetDateTime::UNIX_EPOCH + ct;
         if let Some(expiry) = code_xchg.uat.expiry {
             if expiry <= odt_ct {
                 security_info!(
@@ -830,7 +830,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 nbf: _,
             } => {
                 // Get the current time in odt
-                let odt_ct = OffsetDateTime::unix_epoch() + ct;
+                let odt_ct = OffsetDateTime::UNIX_EPOCH + ct;
                 if expiry <= odt_ct {
                     security_info!(?uuid, "refresh token has expired, ");
                     return Err(Oauth2Error::InvalidToken);
@@ -936,7 +936,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         session_id: Uuid,
         nonce: Option<String>,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
-        let odt_ct = OffsetDateTime::unix_epoch() + ct;
+        let odt_ct = OffsetDateTime::UNIX_EPOCH + ct;
         let iat = ct.as_secs() as i64;
 
         // TODO: Configurable from the oauth2rs configuration?
@@ -1530,7 +1530,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 auth_time: _,
             } => {
                 // Has this token expired?
-                let odt_ct = OffsetDateTime::unix_epoch() + ct;
+                let odt_ct = OffsetDateTime::UNIX_EPOCH + ct;
                 if expiry <= odt_ct {
                     security_info!(?uuid, "access token has expired, returning inactive");
                     return Ok(AccessTokenIntrospectResponse::inactive());
@@ -1635,7 +1635,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 auth_time: _,
             } => {
                 // Has this token expired?
-                let odt_ct = OffsetDateTime::unix_epoch() + ct;
+                let odt_ct = OffsetDateTime::UNIX_EPOCH + ct;
                 if expiry <= odt_ct {
                     security_info!(?uuid, "access token has expired, returning inactive");
                     return Err(Oauth2Error::InvalidToken);
@@ -2043,7 +2043,7 @@ mod tests {
             crate::value::Session {
                 label: "label".to_string(),
                 expiry,
-                issued_at: time::OffsetDateTime::unix_epoch() + ct,
+                issued_at: time::OffsetDateTime::UNIX_EPOCH + ct,
                 issued_by: IdentityId::Internal,
                 cred_id,
                 scope: SessionScope::ReadWrite,
@@ -2244,7 +2244,7 @@ mod tests {
                 == Oauth2Error::InvalidClientId
         );
 
-        //  * mis match origin in the redirect.
+        //  * mismatched origin in the redirect.
         let auth_req = AuthorisationRequest {
             response_type: "code".to_string(),
             client_id: "test_resource_server".to_string(),
@@ -2428,7 +2428,7 @@ mod tests {
         //
         // This lets us check a variety of time based cases.
         uat.expiry = Some(
-            time::OffsetDateTime::unix_epoch()
+            time::OffsetDateTime::UNIX_EPOCH
                 + Duration::from_secs(TEST_CURRENT_TIME + UAT_EXPIRE - 1),
         );
 

@@ -2,13 +2,13 @@
 name = "pam_kanidm"
 links = "pam"
 
-version.workspace = true
-authors.workspace = true
-rust-version.workspace = true
-edition.workspace = true
-license.workspace = true
-homepage.workspace = true
-repository.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+rust-version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
 
 [lib]
 name = "pam_kanidm"
@@ -16,8 +16,8 @@ crate-type = [ "cdylib" ]
 path =  "src/lib.rs"
 
 [dependencies]
-kanidm_unix_int.workspace = true
-libc.workspace = true
+kanidm_unix_int = { workspace = true }
+libc = { workspace = true }
 
 [build-dependencies]
-pkg-config.workspace = true
+pkg-config = { workspace = true }

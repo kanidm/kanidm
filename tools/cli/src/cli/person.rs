@@ -12,6 +12,7 @@ use kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus, Totp
 use kanidm_proto::v1::{CredentialDetail, CredentialDetailType};
 use qrcode::render::unicode;
 use qrcode::QrCode;
+use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -370,13 +371,14 @@ impl PersonOpt {
 
                     if let Some(t) = vf {
                         // Convert the time to local timezone.
-                        let t = OffsetDateTime::parse(&t[0], time::Format::Rfc3339)
+                        let t = OffsetDateTime::parse(&t[0], &Rfc3339)
                             .map(|odt| {
                                 odt.to_offset(
-                                    time::UtcOffset::try_current_local_offset()
+                                    time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
                                         .unwrap_or(time::UtcOffset::UTC),
                                 )
-                                .format(time::Format::Rfc3339)
+                                .format(&Rfc3339)
+                                .unwrap_or(odt.to_string())
                             })
                             .unwrap_or_else(|_| "invalid timestamp".to_string());
 
@@ -386,13 +388,14 @@ impl PersonOpt {
                     }
 
                     if let Some(t) = ex {
-                        let t = OffsetDateTime::parse(&t[0], time::Format::Rfc3339)
+                        let t = OffsetDateTime::parse(&t[0], &Rfc3339)
                             .map(|odt| {
                                 odt.to_offset(
-                                    time::UtcOffset::try_current_local_offset()
+                                    time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
                                         .unwrap_or(time::UtcOffset::UTC),
                                 )
-                                .format(time::Format::Rfc3339)
+                                .format(&Rfc3339)
+                                .unwrap_or(odt.to_string())
                             })
                             .unwrap_or_else(|_| "invalid timestamp".to_string());
                         println!("expire: {}", t);
@@ -414,10 +417,50 @@ impl PersonOpt {
                             Err(e) => error!("Error -> {:?}", e),
                             _ => println!("Success"),
                         }
-                    } else {
-                        if let Err(e) =
-                            OffsetDateTime::parse(ano.datetime.as_str(), time::Format::Rfc3339)
+                    } else if matches!(ano.datetime.as_str(), "now") {
+                        // set the expiry to *now*
+                        let now = match OffsetDateTime::now_utc().format(&Rfc3339) {
+                            Ok(s) => s,
+                            Err(e) => {
+                                error!(err = ?e, "Unable to format current time to rfc3339");
+                                return;
+                            }
+                        };
+                        debug!("Setting expiry to {}", now);
+                        match client
+                            .idm_person_account_set_attr(
+                                ano.aopts.account_id.as_str(),
+                                "account_expire",
+                                &[&now],
+                            )
+                            .await
                         {
+                            Err(e) => error!("Error setting expiry to 'now' -> {:?}", e),
+                            _ => println!("Success"),
+                        }
+                    } else if matches!(ano.datetime.as_str(), "epoch") {
+                        // set the expiry to the epoch
+                        let epoch_str = match OffsetDateTime::UNIX_EPOCH.format(&Rfc3339) {
+                            Ok(s) => s,
+                            Err(e) => {
+                                error!(err = ?e, "Unable to format unix epoch to rfc3339");
+                                return;
+                            }
+                        };
+                        debug!("Setting expiry to {}", epoch_str);
+                        match client
+                            .idm_person_account_set_attr(
+                                ano.aopts.account_id.as_str(),
+                                "account_expire",
+                                &[&epoch_str],
+                            )
+                            .await
+                        {
+                            Err(e) => error!("Error setting expiry to 'epoch' -> {:?}", e),
+                            _ => println!("Success"),
+                        }
+                    } else {
+                        if let Err(e) = OffsetDateTime::parse(ano.datetime.as_str(), &Rfc3339) {
                             error!("Error -> {:?}", e);
                             return;
                         }
@@ -446,14 +489,16 @@ impl PersonOpt {
                             )
                             .await
                         {
-                            Err(e) => error!("Error -> {:?}", e),
+                            Err(e) => error!(
+                                "Error setting begin-from to '{}' -> {:?}",
+                                ano.datetime.as_str(),
+                                e
+                            ),
                             _ => println!("Success"),
                         }
                     } else {
                         // Attempt to parse and set
-                        if let Err(e) =
-                            OffsetDateTime::parse(ano.datetime.as_str(), time::Format::Rfc3339)
-                        {
+                        if let Err(e) = OffsetDateTime::parse(ano.datetime.as_str(), &Rfc3339) {
                             error!("Error -> {:?}", e);
                             return;
                         }
@@ -466,7 +511,11 @@ impl PersonOpt {
                             )
                             .await
                         {
-                            Err(e) => error!("Error -> {:?}", e),
+                            Err(e) => error!(
+                                "Error setting begin-from to '{}' -> {:?}",
+                                ano.datetime.as_str(),
+                                e
+                            ),
                             _ => println!("Success"),
                         }
                     }
@@ -480,7 +529,7 @@ impl AccountCredential {
     pub fn debug(&self) -> bool {
         match self {
             AccountCredential::Status(aopt) => aopt.copt.debug,
-            AccountCredential::CreateResetToken(aopt) => aopt.copt.debug,
+            AccountCredential::CreateResetToken { copt, .. } => copt.debug,
             AccountCredential::UseResetToken(aopt) => aopt.copt.debug,
             AccountCredential::Update(aopt) => aopt.copt.debug,
         }
@@ -543,12 +592,12 @@ impl AccountCredential {
                     }
                 }
             }
-            AccountCredential::CreateResetToken(aopt) => {
-                let client = aopt.copt.to_client(OpType::Write).await;
+            AccountCredential::CreateResetToken { aopts, copt, ttl } => {
+                let client = copt.to_client(OpType::Write).await;
 
                 // What's the client url?
                 match client
-                    .idm_person_account_credential_update_intent(aopt.aopts.account_id.as_str())
+                    .idm_person_account_credential_update_intent(aopts.account_id.as_str(), *ttl)
                     .await
                 {
                     Ok(cuintent_token) => {
@@ -565,7 +614,7 @@ impl AccountCredential {
 
                         debug!(
                             "Successfully created credential reset token for {}: {}",
-                            aopt.aopts.account_id, cuintent_token.token
+                            aopts.account_id, cuintent_token.token
                         );
                         println!(
                             "The person can use one of the following to allow the credential reset"

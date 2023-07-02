@@ -92,7 +92,7 @@ state must be resolved in a manner consistent to schema of the system.
 
 An additional complexity is that both servers must be able to resolve this
 conflict in isolation, without further communication. All servers must arrive
-at the same result, necesitating a set of conflict management rules that must
+at the same result, necessitating a set of conflict management rules that must
 be the same to all members of the replication topology.
 
 As a result, almost all facets of replication are designed around the possible
@@ -385,7 +385,7 @@ server of the change. A psudeo example of this is:
 Summarised, this shows that on our server, our changelog has changes from A for time range
 T4 to T8, B T6 to T16, and C T0 to T7.
 
-Individiually, a RUV does not allow much, but now we can compare RUVs to another server. Lets
+Individually, a RUV does not allow much, but now we can compare RUVs to another server. Lets
 assume a second server exists with the RUV of:
 
 ::

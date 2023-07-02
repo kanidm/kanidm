@@ -27,8 +27,9 @@ use webauthn_rs::prelude::{Webauthn, WebauthnBuilder};
 
 use super::event::ReadBackupCodeEvent;
 use super::ldap::{LdapBoundToken, LdapSession};
-use crate::credential::softlock::CredSoftLock;
+use crate::credential::{softlock::CredSoftLock, Credential};
 use crate::idm::account::Account;
+use crate::idm::audit::AuditEvent;
 use crate::idm::authsession::AuthSession;
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
 use crate::idm::delayed::{
@@ -39,9 +40,9 @@ use crate::idm::delayed::{
 use crate::idm::event::PasswordChangeEvent;
 use crate::idm::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::event::{
-    CredentialStatusEvent, GeneratePasswordEvent, LdapAuthEvent, LdapTokenAuthEvent,
-    RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, UnixGroupTokenEvent,
-    UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
+    CredentialStatusEvent, LdapAuthEvent, LdapTokenAuthEvent, RadiusAuthTokenEvent,
+    RegenerateRadiusSecretEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
+    UnixUserTokenEvent,
 };
 use crate::idm::oauth2::{
     Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
@@ -82,6 +83,7 @@ pub struct IdmServer {
     /// The configured crypto policy for the IDM server. Later this could be transactional and loaded from the db similar to access. But today it's just to allow dynamic pbkdf2rounds
     crypto_policy: CryptoPolicy,
     async_tx: Sender<DelayedAction>,
+    audit_tx: Sender<AuditEvent>,
     /// [Webauthn] verifier/config
     webauthn: Webauthn,
     pw_badlist_cache: Arc<CowCell<HashSet<String>>>,
@@ -100,6 +102,7 @@ pub struct IdmServerAuthTransaction<'a> {
     pub(crate) sid: Sid,
     // For flagging eventual actions.
     pub(crate) async_tx: Sender<DelayedAction>,
+    pub(crate) audit_tx: Sender<AuditEvent>,
     pub(crate) webauthn: &'a Webauthn,
     pub(crate) pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
     pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
@@ -120,7 +123,6 @@ pub struct IdmServerProxyReadTransaction<'a> {
     pub qs_read: QueryServerReadTransaction<'a>,
     pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
     pub(crate) oauth2rs: Oauth2ResourceServersReadTransaction,
-    // pub(crate) async_tx: Sender<DelayedAction>,
 }
 
 pub struct IdmServerProxyWriteTransaction<'a> {
@@ -141,21 +143,20 @@ pub struct IdmServerDelayed {
     pub(crate) async_rx: Receiver<DelayedAction>,
 }
 
+pub struct IdmServerAudit {
+    pub(crate) audit_rx: Receiver<AuditEvent>,
+}
+
 impl IdmServer {
-    // TODO: Make number of authsessions configurable!!!
     pub async fn new(
         qs: QueryServer,
         origin: &str,
-    ) -> Result<(IdmServer, IdmServerDelayed), OperationError> {
+    ) -> Result<(IdmServer, IdmServerDelayed, IdmServerAudit), OperationError> {
         // This is calculated back from:
-        //  500 auths / thread -> 0.002 sec per op
-        //      we can then spend up to ~0.001s hashing
-        //      that means an attacker could possibly have
-        //      1000 attempts/sec on a compromised pw.
-        // overtime, we could increase this as auth parallelism
-        // improves.
-        let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(1));
+        //  100 password auths / thread -> 0.010 sec per op
+        let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(10));
         let (async_tx, async_rx) = unbounded();
+        let (audit_tx, audit_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
         let (
@@ -249,12 +250,14 @@ impl IdmServer {
                 qs,
                 crypto_policy,
                 async_tx,
+                audit_tx,
                 webauthn,
                 pw_badlist_cache: Arc::new(CowCell::new(pw_badlist_set)),
                 domain_keys,
                 oauth2rs: Arc::new(oauth2rs),
             },
             IdmServerDelayed { async_rx },
+            IdmServerAudit { audit_rx },
         ))
     }
 
@@ -277,6 +280,7 @@ impl IdmServer {
             qs_read,
             sid,
             async_tx: self.async_tx.clone(),
+            audit_tx: self.audit_tx.clone(),
             webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.read(),
             domain_keys: self.domain_keys.read(),
@@ -339,30 +343,44 @@ impl IdmServer {
     }
 }
 
-impl IdmServerDelayed {
-    // I think we can just make this async in the future?
+impl IdmServerAudit {
     #[cfg(test)]
     pub(crate) fn check_is_empty_or_panic(&mut self) {
-        use core::task::{Context, Poll};
-        use futures::task as futures_task;
+        use tokio::sync::mpsc::error::TryRecvError;
 
-        let waker = futures_task::noop_waker();
-        let mut cx = Context::from_waker(&waker);
-        match self.async_rx.poll_recv(&mut cx) {
-            Poll::Pending | Poll::Ready(None) => {}
-            Poll::Ready(Some(m)) => {
+        match self.audit_rx.try_recv() {
+            Err(TryRecvError::Empty) => {}
+            Err(TryRecvError::Disconnected) => {
+                panic!("Task queue disconnected");
+            }
+            Ok(m) => {
                 trace!(?m);
-                panic!("Task queue not empty")
+                panic!("Task queue not empty");
             }
         }
     }
 
-    /*
-    #[cfg(test)]
-    pub(crate) fn blocking_recv(&mut self) -> Option<DelayedAction> {
-        self.async_rx.blocking_recv()
+    pub fn audit_rx(&mut self) -> &mut Receiver<AuditEvent> {
+        &mut self.audit_rx
     }
-    */
+}
+
+impl IdmServerDelayed {
+    #[cfg(test)]
+    pub(crate) fn check_is_empty_or_panic(&mut self) {
+        use tokio::sync::mpsc::error::TryRecvError;
+
+        match self.async_rx.try_recv() {
+            Err(TryRecvError::Empty) => {}
+            Err(TryRecvError::Disconnected) => {
+                panic!("Task queue disconnected");
+            }
+            Ok(m) => {
+                trace!(?m);
+                panic!("Task queue not empty");
+            }
+        }
+    }
 
     #[cfg(test)]
     pub(crate) fn try_recv(&mut self) -> Result<DelayedAction, OperationError> {
@@ -471,7 +489,7 @@ pub trait IdmServerTransaction<'a> {
                 .map(|t: Jws<UserAuthToken>| t.into_inner())?;
 
             if let Some(exp) = uat.expiry {
-                if time::OffsetDateTime::unix_epoch() + ct >= exp {
+                if time::OffsetDateTime::UNIX_EPOCH + ct >= exp {
                     security_info!("Session expired");
                     Err(OperationError::SessionExpired)
                 } else {
@@ -525,7 +543,7 @@ pub trait IdmServerTransaction<'a> {
                 .map(|t: Jws<ApiToken>| t.into_inner())?;
 
             if let Some(expiry) = apit.expiry {
-                if time::OffsetDateTime::unix_epoch() + ct >= expiry {
+                if time::OffsetDateTime::UNIX_EPOCH + ct >= expiry {
                     security_info!("Session expired");
                     return Err(OperationError::SessionExpired);
                 }
@@ -562,7 +580,7 @@ pub trait IdmServerTransaction<'a> {
             })?;
 
         if let Some(exp) = uat.expiry {
-            if time::OffsetDateTime::unix_epoch() + ct >= exp {
+            if time::OffsetDateTime::UNIX_EPOCH + ct >= exp {
                 security_info!("Session expired");
                 Err(OperationError::SessionExpired)
             } else {
@@ -665,7 +683,7 @@ pub trait IdmServerTransaction<'a> {
             UatPurpose::ReadWrite {
                 expiry: Some(expiry),
             } => {
-                let cot = time::OffsetDateTime::unix_epoch() + ct;
+                let cot = time::OffsetDateTime::UNIX_EPOCH + ct;
                 if cot < expiry {
                     AccessScope::ReadWrite
                 } else {
@@ -909,6 +927,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         &mut self,
         ae: &AuthEvent,
         ct: Duration,
+        source: Source,
     ) -> Result<AuthResult, OperationError> {
         // Match on the auth event, to see what we need to do.
         match &ae.step {
@@ -983,7 +1002,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         });
 
                 let (auth_session, state) =
-                    AuthSession::new(account, init.issue, self.webauthn, ct);
+                    AuthSession::new(account, init.issue, self.webauthn, ct, source);
 
                 match auth_session {
                     Some(auth_session) => {
@@ -1106,6 +1125,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             &creds.cred,
                             ct,
                             &self.async_tx,
+                            &self.audit_tx,
                             self.webauthn,
                             pw_badlist_cache,
                             &self.domain_keys.uat_jwt_signer,
@@ -1297,57 +1317,63 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             slock
                         }
                     };
-                    Some(slock_ref)
+                    Ok(slock_ref)
                 }
-                None => None,
+                None => Err(false),
             };
 
-            let maybe_slock = if let Some(s) = maybe_slock_ref.as_ref() {
-                Some(s.lock().await)
-            } else {
-                None
+            let maybe_slock = match maybe_slock_ref.as_ref() {
+                Ok(s) => Ok(s.lock().await),
+                Err(cred_state) => Err(cred_state),
             };
 
-            let maybe_valid = if let Some(mut slock) = maybe_slock {
-                // Apply the current time.
-                slock.apply_time_step(ct);
-                // Now check the results
-                if slock.is_valid() {
-                    Some(slock)
-                } else {
-                    None
+            let maybe_valid = match maybe_slock {
+                Ok(mut slock) => {
+                    // Apply the current time.
+                    slock.apply_time_step(ct);
+                    // Now check the results
+                    if slock.is_valid() {
+                        Ok(slock)
+                    } else {
+                        Err(true)
+                    }
                 }
-            } else {
-                None
+                Err(cred_state) => Err(*cred_state),
             };
 
-            if let Some(mut slock) = maybe_valid {
-                if account
-                    .verify_unix_credential(lae.cleartext.as_str(), &self.async_tx, ct)?
-                    .is_some()
-                {
-                    let session_id = Uuid::new_v4();
-                    security_info!(
-                        "Starting session {} for {} {}",
-                        session_id,
-                        account.spn,
-                        account.uuid
-                    );
+            match maybe_valid {
+                Ok(mut slock) => {
+                    if account
+                        .verify_unix_credential(lae.cleartext.as_str(), &self.async_tx, ct)?
+                        .is_some()
+                    {
+                        let session_id = Uuid::new_v4();
+                        security_info!(
+                            "Starting session {} for {} {}",
+                            session_id,
+                            account.spn,
+                            account.uuid
+                        );
 
-                    Ok(Some(LdapBoundToken {
-                        spn: account.spn,
-                        session_id,
-                        effective_session: LdapSession::UnixBind(account.uuid),
-                    }))
-                } else {
-                    // PW failure, update softlock.
-                    slock.record_failure(ct);
+                        Ok(Some(LdapBoundToken {
+                            spn: account.spn,
+                            session_id,
+                            effective_session: LdapSession::UnixBind(account.uuid),
+                        }))
+                    } else {
+                        // PW failure, update softlock.
+                        slock.record_failure(ct);
+                        Ok(None)
+                    }
+                }
+                Err(true) => {
+                    security_info!("Account is softlocked.");
                     Ok(None)
                 }
-            } else {
-                // Account is slocked!
-                security_info!("Account is softlocked.");
-                Ok(None)
+                Err(false) => {
+                    security_info!("Account does not have a configured posix password.");
+                    Ok(None)
+                }
             }
         }
     }
@@ -1478,6 +1504,10 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
 }
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
+    pub(crate) fn crypto_policy(&self) -> &CryptoPolicy {
+        self.crypto_policy
+    }
+
     pub fn get_origin(&self) -> &Url {
         #[allow(clippy::unwrap_used)]
         self.webauthn.get_allowed_origins().get(0).unwrap()
@@ -1716,18 +1746,23 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             e
         })?;
 
-        let account = self.target_to_account(target)?;
-
         let cleartext = cleartext
             .map(|s| s.to_string())
             .unwrap_or_else(password_from_random);
 
-        let modlist = account
-            .gen_generatedpassword_recover_mod(&cleartext, self.crypto_policy)
+        let ncred = Credential::new_generatedpassword_only(self.crypto_policy, &cleartext)
             .map_err(|e| {
-                admin_error!("Failed to generate password mod {:?}", e);
+                admin_error!("Unable to generate password mod {:?}", e);
                 e
             })?;
+        let vcred = Value::new_credential("primary", ncred);
+        // We need to remove other credentials too.
+        let modlist = ModifyList::new_list(vec![
+            m_purge("passkeys"),
+            m_purge("primary_credential"),
+            Modify::Present("primary_credential".into(), vcred),
+        ]);
+
         trace!(?modlist, "processing change");
 
         self.qs_write
@@ -1743,116 +1778,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         Ok(cleartext)
     }
-
-    pub fn generate_account_password(
-        &mut self,
-        gpe: &GeneratePasswordEvent,
-    ) -> Result<String, OperationError> {
-        let account = self.target_to_account(gpe.target)?;
-        // Ask if tis all good - this step checks pwpolicy and such
-
-        // Generate a new random, long pw.
-        // Because this is generated, we can bypass policy checks!
-        let cleartext = password_from_random();
-
-        // check a password badlist - even if generated, we still don't want to
-        // reuse something that has been disclosed.
-
-        // it returns a modify
-        let modlist = account
-            .gen_generatedpassword_recover_mod(cleartext.as_str(), self.crypto_policy)
-            .map_err(|e| {
-                admin_error!("Unable to generate password mod {:?}", e);
-                e
-            })?;
-
-        trace!(?modlist, "processing change");
-        // given the new credential generate a modify
-        // We use impersonate here to get the event from ae
-        self.qs_write
-            .impersonate_modify(
-                // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(gpe.target))),
-                // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(gpe.target))),
-                &modlist,
-                // Provide the event to impersonate
-                &gpe.ident,
-            )
-            .map(|_| cleartext)
-            .map_err(|e| {
-                admin_error!("Failed to generate account password {:?}", e);
-                e
-            })
-    }
-
-    /*
-    /// Generate a new set of backup code and remove the old ones.
-    pub(crate) fn generate_backup_code(
-        &mut self,
-        gbe: &GenerateBackupCodeEvent,
-    ) -> Result<Vec<String>, OperationError> {
-        let account = self.target_to_account(&gbe.target)?;
-
-        // Generate a new set of backup code.
-        let s = backup_code_from_random();
-
-        // it returns a modify
-        let modlist = account
-            .gen_backup_code_mod(BackupCodes::new(s.clone()))
-            .map_err(|e| {
-                admin_error!("Unable to generate backup code mod {:?}", e);
-                e
-            })?;
-
-        trace!(?modlist, "processing change");
-        // given the new credential generate a modify
-        // We use impersonate here to get the event from ae
-        self.qs_write
-            .impersonate_modify(
-                // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(gbe.target))),
-                // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(gbe.target))),
-                &modlist,
-                // Provide the event to impersonate
-                &gbe.ident,
-            )
-            .map(|_| s.into_iter().collect())
-            .map_err(|e| {
-                admin_error!("Failed to generate backup code {:?}", e);
-                e
-            })
-    }
-
-    pub(crate) fn remove_backup_code(
-        &mut self,
-        rte: &RemoveBackupCodeEvent,
-    ) -> Result<SetCredentialResponse, OperationError> {
-        trace!(target = ?rte.target, "Attempting to remove backup code");
-
-        let account = self.target_to_account(&rte.target)?;
-        let modlist = account.gen_backup_code_remove_mod().map_err(|e| {
-            admin_error!("Failed to gen backup code remove mod {:?}", e);
-            e
-        })?;
-        // Perform the mod
-        self.qs_write
-            .impersonate_modify(
-                // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(account.uuid))),
-                // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::Uuid(account.uuid))),
-                &modlist,
-                &rte.ident,
-            )
-            .map_err(|e| {
-                admin_error!("remove_backup_code {:?}", e);
-                e
-            })
-            .map(|_| SetCredentialResponse::Success)
-    }
-    */
 
     pub fn regenerate_radius_secret(
         &mut self,
@@ -2145,6 +2070,7 @@ mod tests {
 
     use crate::credential::{Credential, Password};
     use crate::idm::account::DestroySessionTokenEvent;
+    use crate::idm::audit::AuditEvent;
     use crate::idm::delayed::{AuthSessionRecord, DelayedAction};
     use crate::idm::event::{AuthEvent, AuthResult};
     use crate::idm::event::{
@@ -2170,7 +2096,11 @@ mod tests {
         let anon_init = AuthEvent::anonymous_init();
         // Expect success
         let r1 = idms_auth
-            .auth(&anon_init, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_init,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         /* Some weird lifetime things happen here ... */
 
@@ -2208,7 +2138,11 @@ mod tests {
         let anon_begin = AuthEvent::begin_mech(sid, AuthMech::Anonymous);
 
         let r2 = idms_auth
-            .auth(&anon_begin, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_begin,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -2246,7 +2180,11 @@ mod tests {
 
         // Expect success
         let r2 = idms_auth
-            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -2290,7 +2228,11 @@ mod tests {
 
             // Expect failure
             let r2 = idms_auth
-                .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+                .auth(
+                    &anon_step,
+                    Duration::from_secs(TEST_CURRENT_TIME),
+                    Source::Internal,
+                )
                 .await;
             debug!("r2 ==> {:?}", r2);
 
@@ -2334,7 +2276,7 @@ mod tests {
         let mut idms_auth = idms.auth().await;
         let admin_init = AuthEvent::named_init(name);
 
-        let r1 = idms_auth.auth(&admin_init, ct).await;
+        let r1 = idms_auth.auth(&admin_init, ct, Source::Internal).await;
         let ar = r1.unwrap();
         let AuthResult { sessionid, state } = ar;
 
@@ -2343,7 +2285,7 @@ mod tests {
         // Now push that we want the Password Mech.
         let admin_begin = AuthEvent::begin_mech(sessionid, AuthMech::Password);
 
-        let r2 = idms_auth.auth(&admin_begin, ct).await;
+        let r2 = idms_auth.auth(&admin_begin, ct, Source::Internal).await;
         let ar = r2.unwrap();
         let AuthResult { sessionid, state } = ar;
 
@@ -2369,7 +2311,11 @@ mod tests {
 
         // Expect success
         let r2 = idms_auth
-            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -2437,7 +2383,11 @@ mod tests {
 
         // Expect success
         let r2 = idms_auth
-            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -2472,8 +2422,12 @@ mod tests {
         idms_auth.commit().expect("Must not fail");
     }
 
-    #[idm_test]
-    async fn test_idm_simple_password_invalid(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+    #[idm_test(audit)]
+    async fn test_idm_simple_password_invalid(
+        idms: &IdmServer,
+        _idms_delayed: &IdmServerDelayed,
+        idms_audit: &mut IdmServerAudit,
+    ) {
         init_admin_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
@@ -2484,7 +2438,11 @@ mod tests {
 
         // Expect success
         let r2 = idms_auth
-            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -2510,6 +2468,12 @@ mod tests {
                 panic!();
             }
         };
+
+        // There should be a queued audit event
+        match idms_audit.audit_rx().try_recv() {
+            Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+            _ => assert!(false),
+        }
 
         idms_auth.commit().expect("Must not fail");
     }
@@ -2933,7 +2897,9 @@ mod tests {
 
         let mut idms_auth = idms.auth().await;
         let admin_init = AuthEvent::named_init("admin");
-        let r1 = idms_auth.auth(&admin_init, time_low).await;
+        let r1 = idms_auth
+            .auth(&admin_init, time_low, Source::Internal)
+            .await;
 
         let ar = r1.unwrap();
         let AuthResult {
@@ -2953,7 +2919,9 @@ mod tests {
         // And here!
         let mut idms_auth = idms.auth().await;
         let admin_init = AuthEvent::named_init("admin");
-        let r1 = idms_auth.auth(&admin_init, time_high).await;
+        let r1 = idms_auth
+            .auth(&admin_init, time_high, Source::Internal)
+            .await;
 
         let ar = r1.unwrap();
         let AuthResult {
@@ -3082,8 +3050,12 @@ mod tests {
         }
     }
 
-    #[idm_test]
-    async fn test_idm_account_softlocking(idms: &IdmServer, idms_delayed: &mut IdmServerDelayed) {
+    #[idm_test(audit)]
+    async fn test_idm_account_softlocking(
+        idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
+        idms_audit: &mut IdmServerAudit,
+    ) {
         init_admin_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
@@ -3095,7 +3067,11 @@ mod tests {
         let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
 
         let r2 = idms_auth
-            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -3120,6 +3096,13 @@ mod tests {
                 panic!();
             }
         };
+
+        // There should be a queued audit event
+        match idms_audit.audit_rx().try_recv() {
+            Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+            _ => assert!(false),
+        }
+
         idms_auth.commit().expect("Must not fail");
 
         // Auth init, softlock present, count == 1, same time (so before unlock_at)
@@ -3129,7 +3112,11 @@ mod tests {
         let admin_init = AuthEvent::named_init("admin");
 
         let r1 = idms_auth
-            .auth(&admin_init, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &admin_init,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         let ar = r1.unwrap();
         let AuthResult { sessionid, state } = ar;
@@ -3139,7 +3126,11 @@ mod tests {
         let admin_begin = AuthEvent::begin_mech(sessionid, AuthMech::Password);
 
         let r2 = idms_auth
-            .auth(&admin_begin, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &admin_begin,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         let ar = r2.unwrap();
         let AuthResult {
@@ -3172,7 +3163,11 @@ mod tests {
 
         // Expect success
         let r2 = idms_auth
-            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME + 2))
+            .auth(
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME + 2),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -3214,10 +3209,11 @@ mod tests {
         // Tested in the softlock state machine.
     }
 
-    #[idm_test]
+    #[idm_test(audit)]
     async fn test_idm_account_softlocking_interleaved(
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
+        idms_audit: &mut IdmServerAudit,
     ) {
         init_admin_w_password(idms, TEST_PASSWORD)
             .await
@@ -3235,7 +3231,11 @@ mod tests {
         let anon_step = AuthEvent::cred_step_password(sid_later, TEST_PASSWORD_INC);
 
         let r2 = idms_auth
-            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -3260,6 +3260,12 @@ mod tests {
                 panic!();
             }
         };
+
+        match idms_audit.audit_rx().try_recv() {
+            Ok(AuditEvent::AuthenticationDenied { .. }) => {}
+            _ => assert!(false),
+        }
+
         idms_auth.commit().expect("Must not fail");
 
         // Now check that sid_early is denied due to softlock.
@@ -3268,7 +3274,11 @@ mod tests {
 
         // Expect success
         let r2 = idms_auth
-            .auth(&anon_step, Duration::from_secs(TEST_CURRENT_TIME))
+            .auth(
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                Source::Internal,
+            )
             .await;
         debug!("r2 ==> {:?}", r2);
         match r2 {
@@ -3417,8 +3427,8 @@ mod tests {
             session_id: session_a,
             cred_id,
             label: "Test Session A".to_string(),
-            expiry: Some(OffsetDateTime::unix_epoch() + expiry_a),
-            issued_at: OffsetDateTime::unix_epoch() + ct,
+            expiry: Some(OffsetDateTime::UNIX_EPOCH + expiry_a),
+            issued_at: OffsetDateTime::UNIX_EPOCH + ct,
             issued_by: IdentityId::User(UUID_ADMIN),
             scope: SessionScope::ReadOnly,
         });
@@ -3452,8 +3462,8 @@ mod tests {
             session_id: session_b,
             cred_id,
             label: "Test Session B".to_string(),
-            expiry: Some(OffsetDateTime::unix_epoch() + expiry_b),
-            issued_at: OffsetDateTime::unix_epoch() + ct,
+            expiry: Some(OffsetDateTime::UNIX_EPOCH + expiry_b),
+            issued_at: OffsetDateTime::UNIX_EPOCH + ct,
             issued_by: IdentityId::User(UUID_ADMIN),
             scope: SessionScope::ReadOnly,
         });

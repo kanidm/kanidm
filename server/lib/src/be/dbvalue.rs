@@ -11,6 +11,7 @@ use webauthn_rs::prelude::{
 use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
 
 // Re-export this as though it was here.
+use crate::repl::cid::Cid;
 pub use kanidm_lib_crypto::DbPasswordV1;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -608,6 +609,8 @@ pub enum DbValueSetV2 {
     TotpSecret(Vec<(String, DbTotpV1)>),
     #[serde(rename = "AT")]
     ApiToken(Vec<DbValueApiToken>),
+    #[serde(rename = "SA")]
+    AuditLogString(Vec<(Cid, String)>),
 }
 
 impl DbValueSetV2 {
@@ -650,6 +653,7 @@ impl DbValueSetV2 {
             DbValueSetV2::JwsKeyRs256(set) => set.len(),
             DbValueSetV2::UiHint(set) => set.len(),
             DbValueSetV2::TotpSecret(set) => set.len(),
+            DbValueSetV2::AuditLogString(set) => set.len(),
         }
     }
 

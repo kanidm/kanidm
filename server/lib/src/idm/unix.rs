@@ -179,7 +179,7 @@ impl UnixUserAccount {
     }
 
     pub fn is_within_valid_time(&self, ct: Duration) -> bool {
-        let cot = OffsetDateTime::unix_epoch() + ct;
+        let cot = OffsetDateTime::UNIX_EPOCH + ct;
 
         let vmin = if let Some(vft) = &self.valid_from {
             // If current time greater than start time window
@@ -234,7 +234,11 @@ impl UnixUserAccount {
         match &self.cred {
             Some(cred) => {
                 cred.password_ref().and_then(|pw| {
-                    if pw.verify(cleartext)? {
+                    let valid = pw.verify(cleartext).map_err(|e| {
+                        error!(crypto_err = ?e);
+                        e.into()
+                    })?;
+                    if valid {
                         security_info!("Successful unix cred handling");
                         if pw.requires_upgrade() {
                             async_tx
@@ -270,7 +274,12 @@ impl UnixUserAccount {
 
     pub(crate) fn check_existing_pw(&self, cleartext: &str) -> Result<bool, OperationError> {
         match &self.cred {
-            Some(cred) => cred.password_ref().and_then(|pw| pw.verify(cleartext)),
+            Some(cred) => cred.password_ref().and_then(|pw| {
+                pw.verify(cleartext).map_err(|e| {
+                    error!(crypto_err = ?e);
+                    e.into()
+                })
+            }),
             None => Err(OperationError::InvalidState),
         }
     }

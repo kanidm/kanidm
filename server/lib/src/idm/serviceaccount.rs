@@ -5,10 +5,13 @@ use compact_jwt::{Jws, JwsSigner};
 use kanidm_proto::v1::ApiToken as ProtoApiToken;
 use time::OffsetDateTime;
 
+use crate::credential::Credential;
 use crate::event::SearchEvent;
 use crate::idm::account::Account;
+use crate::idm::event::GeneratePasswordEvent;
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
 use crate::prelude::*;
+use crate::utils::password_from_random;
 use crate::value::ApiToken;
 
 // Need to add KID to es256 der for lookups ✅
@@ -117,7 +120,7 @@ impl ServiceAccount {
             true
         } else {
             let grace = apit.issued_at + GRACE_WINDOW;
-            let current = time::OffsetDateTime::unix_epoch() + ct;
+            let current = time::OffsetDateTime::UNIX_EPOCH + ct;
             trace!(%grace, %current);
             if current >= grace {
                 security_info!(
@@ -160,7 +163,7 @@ impl GenerateApiTokenEvent {
             ident: Identity::from_internal(),
             target,
             label: label.to_string(),
-            expiry: expiry.map(|ct| time::OffsetDateTime::unix_epoch() + ct),
+            expiry: expiry.map(|ct| time::OffsetDateTime::UNIX_EPOCH + ct),
             read_write: false,
         }
     }
@@ -202,7 +205,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })?;
 
         let session_id = Uuid::new_v4();
-        let issued_at = time::OffsetDateTime::unix_epoch() + ct;
+        let issued_at = time::OffsetDateTime::UNIX_EPOCH + ct;
 
         // Normalise to UTC in case it was provided as something else.
         let expiry = gte.expiry.map(|odt| odt.to_offset(time::UtcOffset::UTC));
@@ -302,6 +305,46 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             )
             .map_err(|e| {
                 admin_error!("Failed to destroy api token {:?}", e);
+                e
+            })
+    }
+
+    pub fn generate_service_account_password(
+        &mut self,
+        gpe: &GeneratePasswordEvent,
+    ) -> Result<String, OperationError> {
+        // Generate a new random, long pw.
+        // Because this is generated, we can bypass policy checks!
+        let cleartext = password_from_random();
+        let ncred = Credential::new_generatedpassword_only(self.crypto_policy(), &cleartext)
+            .map_err(|e| {
+                admin_error!("Unable to generate password mod {:?}", e);
+                e
+            })?;
+        let vcred = Value::new_credential("primary", ncred);
+        // We need to remove other credentials too.
+        let modlist = ModifyList::new_list(vec![
+            m_purge("passkeys"),
+            m_purge("primary_credential"),
+            Modify::Present("primary_credential".into(), vcred),
+        ]);
+
+        trace!(?modlist, "processing change");
+        // given the new credential generate a modify
+        // We use impersonate here to get the event from ae
+        self.qs_write
+            .impersonate_modify(
+                // Filter as executed
+                &filter!(f_eq("uuid", PartialValue::Uuid(gpe.target))),
+                // Filter as intended (acp)
+                &filter_all!(f_eq("uuid", PartialValue::Uuid(gpe.target))),
+                &modlist,
+                // Provide the event to impersonate
+                &gpe.ident,
+            )
+            .map(|_| cleartext)
+            .map_err(|e| {
+                admin_error!("Failed to generate account password {:?}", e);
                 e
             })
     }

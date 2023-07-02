@@ -8,3 +8,5 @@
 # use_etc_skel = false
 # uid_attr_map = "spn"
 # gid_attr_map = "spn"
+# allow_local_account_override = ["admin"]
+

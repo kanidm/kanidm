@@ -63,7 +63,7 @@ fn create_filter_entry<'a>(
         }
         IdentType::User(_) => {}
     };
-    info!(event = %ident, "Access check for create event");
+    debug!(event = %ident, "Access check for create event");
 
     match ident.access_scope() {
         AccessScope::ReadOnly | AccessScope::Synchronise => {
@@ -126,7 +126,7 @@ fn create_filter_entry<'a>(
                 security_access!("{:?} !⊆ {:?}", create_classes, allowed_classes);
                 return false;
             }
-            security_access!("passed");
+            debug!("passed");
 
             true
         } else {

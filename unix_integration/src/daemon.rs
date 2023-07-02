@@ -28,18 +28,24 @@ use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_unix_common::cache::CacheLayer;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
+use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd};
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
 
 use libc::umask;
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
 use sketching::tracing_forest::{self};
+use tokio::fs::File;
+use tokio::io::AsyncReadExt; // for read_to_end()
 use tokio::net::{UnixListener, UnixStream};
+use tokio::sync::broadcast;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
 use tokio::time;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
+
+use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, notify::Watcher};
 
 //=== the codec
 
@@ -52,6 +58,7 @@ impl Decoder for ClientCodec {
     type Item = ClientRequest;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        trace!("Attempting to decode request ...");
         match serde_json::from_slice::<ClientRequest>(src) {
             Ok(msg) => {
                 // Clear the buffer for the next message.
@@ -67,7 +74,7 @@ impl Encoder<ClientResponse> for ClientCodec {
     type Error = io::Error;
 
     fn encode(&mut self, msg: ClientResponse, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        debug!("Attempting to send response -> {:?} ...", msg);
+        trace!("Attempting to send response -> {:?} ...", msg);
         let data = serde_json::to_vec(&msg).map_err(|e| {
             error!("socket encoding error -> {:?}", e);
             io::Error::new(io::ErrorKind::Other, "JSON encode error")
@@ -188,9 +195,9 @@ async fn handle_client(
     task_channel_tx: &Sender<AsyncTaskRequest>,
 ) -> Result<(), Box<dyn Error>> {
     debug!("Accepted connection");
-
     let mut reqs = Framed::new(sock, ClientCodec::new());
 
+    trace!("Waiting for requests ...");
     while let Some(Ok(req)) = reqs.next().await {
         let resp = match req {
             ClientRequest::SshKey(account_id) => {
@@ -361,6 +368,29 @@ async fn handle_client(
 
     // Disconnect them
     debug!("Disconnecting client ...");
+    Ok(())
+}
+
+async fn process_etc_passwd_group(cachelayer: &CacheLayer) -> Result<(), Box<dyn Error>> {
+    let mut file = File::open("/etc/passwd").await?;
+    let mut contents = vec![];
+    file.read_to_end(&mut contents).await?;
+
+    let users = parse_etc_passwd(contents.as_slice()).map_err(|()| "Invalid passwd content")?;
+
+    let mut file = File::open("/etc/group").await?;
+    let mut contents = vec![];
+    file.read_to_end(&mut contents).await?;
+
+    let groups = parse_etc_group(contents.as_slice()).map_err(|()| "Invalid group content")?;
+
+    let id_iter = users
+        .iter()
+        .map(|user| (user.name.clone(), user.uid))
+        .chain(groups.iter().map(|group| (group.name.clone(), group.gid)));
+
+    cachelayer.reload_nxset(id_iter).await;
+
     Ok(())
 }
 
@@ -543,7 +573,6 @@ async fn main() -> ExitCode {
             rm_if_exist(cfg.task_sock_path.as_str());
 
 
-
             // Check the db path will be okay.
             if !cfg.db_path.is_empty() {
                 let db_path = PathBuf::from(cfg.db_path.as_str());
@@ -632,7 +661,6 @@ async fn main() -> ExitCode {
                 }
             };
 
-
             let cl_inner = match CacheLayer::new(
                 cfg.db_path.as_str(), // The sqlite db path
                 cfg.cache_timeout,
@@ -644,6 +672,8 @@ async fn main() -> ExitCode {
                 cfg.home_alias,
                 cfg.uid_attr_map,
                 cfg.gid_attr_map,
+                cfg.allow_local_account_override.clone(),
+                &cfg.tpm_policy,
             )
             .await
             {
@@ -656,6 +686,129 @@ async fn main() -> ExitCode {
 
             let cachelayer = Arc::new(cl_inner);
 
+            // Setup the root-only socket. Take away all other access bits.
+            let before = unsafe { umask(0o0077) };
+            let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
+                Ok(l) => l,
+                Err(_e) => {
+                    error!("Failed to bind UNIX socket {}", cfg.sock_path.as_str());
+                    return ExitCode::FAILURE
+                }
+            };
+            // Undo umask changes.
+            let _ = unsafe { umask(before) };
+
+            // Pre-process /etc/passwd and /etc/group for nxset
+            if let Err(_) = process_etc_passwd_group(&cachelayer).await {
+                error!("Failed to process system id providers");
+                return ExitCode::FAILURE
+            }
+
+            // Setup the tasks socket first.
+            let (task_channel_tx, mut task_channel_rx) = channel(16);
+            let task_channel_tx = Arc::new(task_channel_tx);
+
+            let task_channel_tx_cln = task_channel_tx.clone();
+
+            // Start to build the worker tasks
+            let (broadcast_tx, mut broadcast_rx) = broadcast::channel(4);
+            let mut c_broadcast_rx = broadcast_tx.subscribe();
+            let mut d_broadcast_rx = broadcast_tx.subscribe();
+
+            let task_b = tokio::spawn(async move {
+                loop {
+                    tokio::select! {
+                        _ = c_broadcast_rx.recv() => {
+                            break;
+                        }
+                        accept_res = task_listener.accept() => {
+                            match accept_res {
+                                Ok((socket, _addr)) => {
+                                    // Did it come from root?
+                                    if let Ok(ucred) = socket.peer_cred() {
+                                        if ucred.uid() == 0 {
+                                            // all good!
+                                        } else {
+                                            // move along.
+                                            debug!("Task handler not running as root, ignoring ...");
+                                            continue;
+                                        }
+                                    } else {
+                                        // move along.
+                                        debug!("Task handler not running as root, ignoring ...");
+                                        continue;
+                                    };
+                                    debug!("A task handler has connected.");
+                                    // It did? Great, now we can wait and spin on that one
+                                    // client.
+
+                                    tokio::select! {
+                                        _ = d_broadcast_rx.recv() => {
+                                            break;
+                                        }
+                                        // We have to check for signals here else this tasks waits forever.
+                                        Err(e) = handle_task_client(socket, &task_channel_tx, &mut task_channel_rx) => {
+                                            error!("Task client error occurred; error = {:?}", e);
+                                        }
+                                    }
+                                    // If they DC we go back to accept.
+                                }
+                                Err(err) => {
+                                    error!("Task Accept error -> {:?}", err);
+                                }
+                            }
+                        }
+                    }
+                    // done
+                }
+                info!("Stopped task connector");
+            });
+
+            // TODO: Setup a task that handles pre-fetching here.
+
+            let (inotify_tx, mut inotify_rx) = channel(4);
+
+            let watcher =
+            match new_debouncer(Duration::from_secs(2), None, move |_event| {
+                let _ = inotify_tx.try_send(true);
+            })
+                .and_then(|mut debouncer| {
+                    debouncer.watcher().watch(Path::new("/etc/passwd"), RecursiveMode::NonRecursive)
+                        .map(|()| debouncer)
+                })
+                .and_then(|mut debouncer| debouncer.watcher().watch(Path::new("/etc/group"), RecursiveMode::NonRecursive)
+                        .map(|()| debouncer)
+                )
+
+            {
+                Ok(watcher) => {
+                    watcher
+                }
+                Err(e) => {
+                    error!("Failed to setup inotify {:?}",  e);
+                    return ExitCode::FAILURE
+                }
+            };
+
+            let mut c_broadcast_rx = broadcast_tx.subscribe();
+
+            let inotify_cachelayer = cachelayer.clone();
+            let task_c = tokio::spawn(async move {
+                loop {
+                    tokio::select! {
+                        _ = c_broadcast_rx.recv() => {
+                            break;
+                        }
+                        _ = inotify_rx.recv() => {
+                            if let Err(_) = process_etc_passwd_group(&inotify_cachelayer).await {
+                                error!("Failed to process system id providers");
+                            }
+                        }
+                    }
+                }
+                info!("Stopped inotify watcher");
+            });
+
             // Set the umask while we open the path for most clients.
             let before = unsafe { umask(0) };
             let listener = match UnixListener::bind(cfg.sock_path.as_str()) {
@@ -665,85 +818,90 @@ async fn main() -> ExitCode {
                     return ExitCode::FAILURE
                 }
             };
-            // Setup the root-only socket. Take away all others.
-            let _ = unsafe { umask(0o0077) };
-            let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
-                Ok(l) => l,
-                Err(_e) => {
-                    error!("Failed to bind UNIX socket {}", cfg.sock_path.as_str());
-                    return ExitCode::FAILURE
-                }
-            };
-
-            // Undo it.
+            // Undo umask changes.
             let _ = unsafe { umask(before) };
 
-            let (task_channel_tx, mut task_channel_rx) = channel(16);
-            let task_channel_tx = Arc::new(task_channel_tx);
-
-            let task_channel_tx_cln = task_channel_tx.clone();
-
-            tokio::spawn(async move {
-                loop {
-                    match task_listener.accept().await {
-                        Ok((socket, _addr)) => {
-                            // Did it come from root?
-                            if let Ok(ucred) = socket.peer_cred() {
-                                if ucred.uid() == 0 {
-                                    // all good!
-                                } else {
-                                    // move along.
-                                    debug!("Task handler not running as root, ignoring ...");
-                                    continue;
-                                }
-                            } else {
-                                // move along.
-                                debug!("Task handler not running as root, ignoring ...");
-                                continue;
-                            };
-                            debug!("A task handler has connected.");
-                            // It did? Great, now we can wait and spin on that one
-                            // client.
-                            if let Err(e) =
-                                handle_task_client(socket, &task_channel_tx, &mut task_channel_rx).await
-                            {
-                                error!("Task client error occurred; error = {:?}", e);
-                            }
-                            // If they DC we go back to accept.
-                        }
-                        Err(err) => {
-                            error!("Task Accept error -> {:?}", err);
-                        }
-                    }
-                    // done
-                }
-            });
-
-            // TODO: Setup a task that handles pre-fetching here.
-
-            let server = async move {
+            let task_a = tokio::spawn(async move {
                 loop {
                     let tc_tx = task_channel_tx_cln.clone();
-                    match listener.accept().await {
-                        Ok((socket, _addr)) => {
-                            let cachelayer_ref = cachelayer.clone();
-                            tokio::spawn(async move {
-                                if let Err(e) = handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
-                                {
-                                    error!("handle_client error occurred; error = {:?}", e);
-                                }
-                            });
+
+                    tokio::select! {
+                        _ = broadcast_rx.recv() => {
+                            break;
                         }
-                        Err(err) => {
-                            error!("Error while handling connection -> {:?}", err);
+                        accept_res = listener.accept() => {
+                            match accept_res {
+                                Ok((socket, _addr)) => {
+                                    let cachelayer_ref = cachelayer.clone();
+                                    tokio::spawn(async move {
+                                        if let Err(e) = handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
+                                        {
+                                            error!("handle_client error occurred; error = {:?}", e);
+                                        }
+                                    });
+                                }
+                                Err(err) => {
+                                    error!("Error while handling connection -> {:?}", err);
+                                }
+                            }
                         }
                     }
+
                 }
-            };
+                info!("Stopped resolver");
+            });
 
             info!("Server started ...");
 
-            server.await;
+            loop {
+                tokio::select! {
+                    Ok(()) = tokio::signal::ctrl_c() => {
+                        break
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::terminate();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        break
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::alarm();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::hangup();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+                }
+            }
+            info!("Signal received, sending down signal to tasks");
+            // Send a broadcast that we are done.
+            if let Err(e) = broadcast_tx.send(true) {
+                error!("Unable to shutdown workers {:?}", e);
+            }
+
+            drop(watcher);
+
+            let _ = task_a.await;
+            let _ = task_b.await;
+            let _ = task_c.await;
+
             ExitCode::SUCCESS
     })
     .await

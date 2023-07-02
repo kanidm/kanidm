@@ -16,21 +16,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Install dependencies
-        run: |
-          sudo apt-get update &&
-          sudo apt-get install -y \
-            libpam0g-dev \
-            libudev-dev \
-            libssl-dev \
-            libsqlite3-dev \
-            pkg-config
+      # - name: Check arch
+      #   run: |
+      #     uname -a
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3
         with:
           version: "v0.4.2"
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
       - name: Install wasm-pack
         run: cargo install wasm-pack
+      - name: Install dependencies
+        run: |
+          scripts/install_ubuntu_dependencies.sh
       # https://github.com/browser-actions/setup-chrome
       - name: Install Chrome Headless
         uses: browser-actions/setup-chrome@latest
@@ -44,5 +43,7 @@ jobs:
 
       # docs here:
       # https://rustwasm.github.io/docs/wasm-bindgen/wasm-bindgen-test/browsers.html
-      - run: wasm-pack test --headless --chrome
+      - run: make webui
+      - name: "Run wasm-pack test"
+        run: make webui/test
         continue-on-error: true

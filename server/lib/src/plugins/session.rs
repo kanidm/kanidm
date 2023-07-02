@@ -11,6 +11,7 @@ use crate::event::ModifyEvent;
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use std::collections::BTreeSet;
+use std::sync::Arc;
 use time::OffsetDateTime;
 
 pub struct SessionConsistency {}
@@ -23,6 +24,7 @@ impl Plugin for SessionConsistency {
     #[instrument(level = "debug", name = "session_consistency", skip_all)]
     fn pre_modify(
         qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -32,6 +34,7 @@ impl Plugin for SessionConsistency {
     #[instrument(level = "debug", name = "session_consistency", skip_all)]
     fn pre_batch_modify(
         qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
@@ -45,7 +48,7 @@ impl SessionConsistency {
         cand: &mut [Entry<EntryInvalid, T>],
     ) -> Result<(), OperationError> {
         let curtime = qs.get_curtime();
-        let curtime_odt = OffsetDateTime::unix_epoch() + curtime;
+        let curtime_odt = OffsetDateTime::UNIX_EPOCH + curtime;
 
         // We need to assert a number of properties. We must do these *in order*.
         cand.iter_mut().try_for_each(|entry| {
@@ -161,14 +164,14 @@ mod tests {
     #[qs_test]
     async fn test_session_consistency_expire_old_sessions(server: &QueryServer) {
         let curtime = duration_from_epoch_now();
-        let curtime_odt = OffsetDateTime::unix_epoch() + curtime;
+        let curtime_odt = OffsetDateTime::UNIX_EPOCH + curtime;
 
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "test_password").unwrap();
         let cred_id = cred.uuid;
 
         let exp_curtime = curtime + Duration::from_secs(60);
-        let exp_curtime_odt = OffsetDateTime::unix_epoch() + exp_curtime;
+        let exp_curtime_odt = OffsetDateTime::UNIX_EPOCH + exp_curtime;
 
         // Create a user
         let mut server_txn = server.write(curtime).await;
@@ -254,7 +257,7 @@ mod tests {
     #[qs_test]
     async fn test_session_consistency_oauth2_expiry_cleanup(server: &QueryServer) {
         let curtime = duration_from_epoch_now();
-        let curtime_odt = OffsetDateTime::unix_epoch() + curtime;
+        let curtime_odt = OffsetDateTime::UNIX_EPOCH + curtime;
 
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "test_password").unwrap();
@@ -262,7 +265,7 @@ mod tests {
 
         // Set exp to gracewindow.
         let exp_curtime = curtime + GRACE_WINDOW;
-        let exp_curtime_odt = OffsetDateTime::unix_epoch() + exp_curtime;
+        let exp_curtime_odt = OffsetDateTime::UNIX_EPOCH + exp_curtime;
 
         // Create a user
         let mut server_txn = server.write(curtime).await;
@@ -395,7 +398,7 @@ mod tests {
     #[qs_test]
     async fn test_session_consistency_oauth2_removed_by_parent(server: &QueryServer) {
         let curtime = duration_from_epoch_now();
-        let curtime_odt = OffsetDateTime::unix_epoch() + curtime;
+        let curtime_odt = OffsetDateTime::UNIX_EPOCH + curtime;
         let exp_curtime = curtime + GRACE_WINDOW;
 
         let p = CryptoPolicy::minimum();
@@ -529,11 +532,11 @@ mod tests {
     #[qs_test]
     async fn test_session_consistency_oauth2_grace_window_past(server: &QueryServer) {
         let curtime = duration_from_epoch_now();
-        let curtime_odt = OffsetDateTime::unix_epoch() + curtime;
+        let curtime_odt = OffsetDateTime::UNIX_EPOCH + curtime;
 
         // Set exp to gracewindow.
         let exp_curtime = curtime + GRACE_WINDOW;
-        // let exp_curtime_odt = OffsetDateTime::unix_epoch() + exp_curtime;
+        // let exp_curtime_odt = OffsetDateTime::UNIX_EPOCH + exp_curtime;
 
         // Create a user
         let mut server_txn = server.write(curtime).await;
@@ -631,7 +634,7 @@ mod tests {
     #[qs_test]
     async fn test_session_consistency_expire_when_cred_removed(server: &QueryServer) {
         let curtime = duration_from_epoch_now();
-        let curtime_odt = OffsetDateTime::unix_epoch() + curtime;
+        let curtime_odt = OffsetDateTime::UNIX_EPOCH + curtime;
 
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "test_password").unwrap();

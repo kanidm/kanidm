@@ -1,18 +1,28 @@
+use std::env;
 use std::str::FromStr;
 
+use async_recursion::async_recursion;
 use compact_jwt::{Jws, JwsUnverified};
 use dialoguer::theme::ColorfulTheme;
-use dialoguer::Select;
+use dialoguer::{Confirm, Select};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME};
 use kanidm_proto::v1::UserAuthToken;
 
 use crate::session::read_tokens;
-use crate::CommonOpt;
+use crate::{CommonOpt, LoginOpt, ReauthOpt};
 
+#[derive(Clone)]
 pub enum OpType {
     Read,
     Write,
+}
+
+#[derive(Debug)]
+pub enum ToClientError {
+    NeedLogin(String),
+    NeedReauth(String),
+    Other,
 }
 
 impl CommonOpt {
@@ -73,14 +83,14 @@ impl CommonOpt {
         })
     }
 
-    pub async fn to_client(&self, optype: OpType) -> KanidmClient {
+    async fn try_to_client(&self, optype: OpType) -> Result<KanidmClient, ToClientError> {
         let client = self.to_unauth_client();
         // Read the token file.
         let tokens = match read_tokens() {
             Ok(t) => t,
             Err(_e) => {
                 error!("Error retrieving authentication token store");
-                std::process::exit(1);
+                return Err(ToClientError::Other);
             }
         };
 
@@ -88,18 +98,45 @@ impl CommonOpt {
             error!(
                 "No valid authentication tokens found. Please login with the 'login' subcommand."
             );
-            std::process::exit(1);
+            return Err(ToClientError::Other);
         }
 
         // If we have a username, use that to select tokens
-        let token = match &self.username {
-            Some(username) => {
+        let (spn, token) = match &self.username {
+            Some(filter_username) => {
+                let possible_token = if filter_username.contains('@') {
+                    // If there is an @, it's an spn so just get the token directly.
+                    tokens
+                        .get(filter_username)
+                        .map(|t| (filter_username.clone(), t.clone()))
+                } else {
+                    let filter_username = format!("{}@", filter_username);
+                    // First, filter for tokens that match.
+                    let mut token_refs: Vec<_> = tokens
+                        .iter()
+                        .filter(|(t, _)| t.starts_with(&filter_username))
+                        .map(|(k, v)| (k.clone(), v.clone()))
+                        .collect();
+
+                    match token_refs.len() {
+                        0 => None,
+                        1 => token_refs.pop(),
+                        _ => {
+                            error!("Multiple authentication tokens found for {}. Please specify the full spn to proceed", filter_username);
+                            return Err(ToClientError::Other);
+                        }
+                    }
+                };
+
                 // Is it in the store?
-                match tokens.get(username) {
-                    Some(t) => t.clone(),
+                match possible_token {
+                    Some(t) => t,
                     None => {
-                        error!("No valid authentication tokens found for {}.", username);
-                        std::process::exit(1);
+                        error!(
+                            "No valid authentication tokens found for {}.",
+                            filter_username
+                        );
+                        return Err(ToClientError::NeedLogin(filter_username.clone()));
                     }
                 }
             }
@@ -109,12 +146,12 @@ impl CommonOpt {
                     let (f_uname, f_token) = tokens.iter().next().expect("Memory Corruption");
                     // else pick the first token
                     debug!("Using cached token for name {}", f_uname);
-                    f_token.clone()
+                    (f_uname.clone(), f_token.clone())
                 } else {
                     // Unable to automatically select the user because multiple tokens exist
                     // so we'll prompt the user to select one
-                    match prompt_for_username_get_token() {
-                        Ok(value) => value,
+                    match prompt_for_username_get_values() {
+                        Ok(tuple) => tuple,
                         Err(msg) => {
                             error!("{}", msg);
                             std::process::exit(1);
@@ -128,7 +165,7 @@ impl CommonOpt {
             Ok(jwtu) => jwtu,
             Err(e) => {
                 error!("Unable to parse token - {:?}", e);
-                std::process::exit(1);
+                return Err(ToClientError::Other);
             }
         };
 
@@ -145,7 +182,7 @@ impl CommonOpt {
                             "Session has expired for {} - you may need to login again.",
                             uat.spn
                         );
-                        std::process::exit(1);
+                        return Err(ToClientError::NeedLogin(spn));
                     }
                 }
 
@@ -158,7 +195,7 @@ impl CommonOpt {
                                 "Privileges have expired for {} - you need to re-authenticate again.",
                                 uat.spn
                             );
-                            std::process::exit(1);
+                            return Err(ToClientError::NeedReauth(spn));
                         }
                     }
                 }
@@ -166,14 +203,69 @@ impl CommonOpt {
             Err(e) => {
                 error!("Unable to read token for requested user - you may need to login again.");
                 debug!(?e, "JWT Error");
-                std::process::exit(1);
+                return Err(ToClientError::NeedLogin(spn));
             }
         };
 
         // Set it into the client
         client.set_token(token).await;
 
-        client
+        Ok(client)
+    }
+
+    #[async_recursion]
+    pub async fn to_client(&self, optype: OpType) -> KanidmClient {
+        match self.try_to_client(optype.clone()).await {
+            Ok(c) => c,
+            Err(e) => {
+                match e {
+                    ToClientError::NeedLogin(username) => {
+                        if !Confirm::new()
+                            .with_prompt("Would you like to login again?")
+                            .default(true)
+                            .interact()
+                            .expect("Failed to interact with interactive session")
+                        {
+                            std::process::exit(1);
+                        }
+                        let mut copt = self.clone();
+                        copt.username = Some(username);
+                        let login_opt = LoginOpt {
+                            copt,
+                            password: env::var("KANIDM_PASSWORD").ok(),
+                        };
+                        login_opt.exec().await;
+                        // we still use `to_client` instead of `try_to_client` because we may need to prompt user to re-auth again.
+                        // since reauth_opt will call `to_client`, this function is recursive anyway.
+                        // we use copt since it's username is updated.
+                        return login_opt.copt.to_client(optype).await;
+                    }
+                    ToClientError::NeedReauth(username) => {
+                        if !Confirm::new()
+                            .with_prompt("Would you like to re-authenticate?")
+                            .default(true)
+                            .interact()
+                            .expect("Failed to interact with interactive session")
+                        {
+                            std::process::exit(1);
+                        }
+                        let mut copt = self.clone();
+                        copt.username = Some(username);
+                        let reauth_opt = ReauthOpt { copt };
+                        // calls `to_client` recursively
+                        // but should not goes into `NeedLogin` branch again
+                        reauth_opt.exec().await;
+                        if let Ok(c) = reauth_opt.copt.try_to_client(optype).await {
+                            return c;
+                        }
+                    }
+                    ToClientError::Other => {
+                        std::process::exit(1);
+                    }
+                }
+                std::process::exit(1);
+            }
+        }
     }
 }
 

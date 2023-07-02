@@ -21,12 +21,11 @@ pub struct Config {
 
 #[derive(Debug, Deserialize, Default, Clone)]
 pub struct EntryConfig {
-    // uuid: Uuid,
-
     // Default false
     #[serde(default)]
     pub exclude: bool,
-    // map_uuid: Option<Uuid>,
-    // map_external_id: Option<String>,
-    // map_name: Option<String>,
+
+    pub map_uuid: Option<Uuid>,
+    pub map_name: Option<String>,
+    pub map_gidnumber: Option<u32>,
 }

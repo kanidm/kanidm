@@ -6,6 +6,7 @@ mod v1;
 mod v1_scim;
 
 use std::fs::canonicalize;
+use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -51,14 +52,40 @@ impl JavaScriptFile {
     /// returns a `<script>` HTML tag
     fn as_tag(self) -> String {
         let typeattr = match self.filetype {
-            Some(val) => format!("type=\"{}\" ", val),
+            Some(val) => {
+                format!(" type=\"{}\"", val.as_str())
+            }
             _ => String::from(""),
         };
         format!(
-            r#"<script src="/pkg/{}" integrity="{}" {}></script>"#,
-            self.filepath, self.hash, typeattr,
+            r#"<script src="/pkg/{}" integrity="{}"{}></script>"#,
+            self.filepath, &self.hash, &typeattr,
         )
     }
+}
+
+#[test]
+fn test_javscriptfile() {
+    // make sure it outputs what we think it does
+    use JavaScriptFile;
+    let jsf = JavaScriptFile {
+        filepath: "wasmloader.js",
+        hash: "sha384-1234567890".to_string(),
+        filetype: Some("module".to_string()),
+    };
+    assert_eq!(
+        jsf.as_tag(),
+        r#"<script src="/pkg/wasmloader.js" integrity="sha384-1234567890" type="module"></script>"#
+    );
+    let jsf = JavaScriptFile {
+        filepath: "wasmloader.js",
+        hash: "sha384-1234567890".to_string(),
+        filetype: None,
+    };
+    assert_eq!(
+        jsf.as_tag(),
+        r#"<script src="/pkg/wasmloader.js" integrity="sha384-1234567890"></script>"#
+    );
 }
 
 #[derive(Clone)]
@@ -71,6 +98,7 @@ pub struct AppState {
     pub jws_validator: std::sync::Arc<JwsValidator>,
     /// The SHA384 hashes of javascript files we're going to serve to users
     pub js_files: Vec<JavaScriptFile>,
+    pub(crate) trust_x_forward_for: bool,
 }
 
 pub trait RequestExtensions {
@@ -85,6 +113,8 @@ pub trait RequestExtensions {
     fn get_url_param_uuid(&self, param: &str) -> Result<Uuid, tide::Error>;
 
     fn new_eventid(&self) -> (Uuid, String);
+
+    fn get_remote_addr(&self) -> Option<IpAddr>;
 }
 
 impl RequestExtensions for tide::Request<AppState> {
@@ -144,10 +174,19 @@ impl RequestExtensions for tide::Request<AppState> {
     }
 
     fn get_url_param(&self, param: &str) -> Result<String, tide::Error> {
-        self.param(param).map(str::to_string).map_err(|e| {
-            error!(?e);
-            tide::Error::from_str(tide::StatusCode::ImATeapot, "teapot")
-        })
+        self.param(param)
+            .map_err(|e| {
+                error!(?e);
+                tide::Error::from_str(tide::StatusCode::ImATeapot, "teapot")
+            })
+            .and_then(|data| {
+                urlencoding::decode(data)
+                    .map(|s| s.into_owned())
+                    .map_err(|e| {
+                        error!(?e);
+                        tide::Error::from_str(tide::StatusCode::ImATeapot, "teapot")
+                    })
+            })
     }
 
     fn get_url_param_uuid(&self, param: &str) -> Result<Uuid, tide::Error> {
@@ -168,6 +207,27 @@ impl RequestExtensions for tide::Request<AppState> {
         let eventid = sketching::tracing_forest::id();
         let hv = eventid.as_hyphenated().to_string();
         (eventid, hv)
+    }
+
+    /// Returns the remote address of the client, based on if you've got trust_x_forward_for set in config.
+    fn get_remote_addr(&self) -> Option<IpAddr> {
+        if self.state().trust_x_forward_for {
+            // xff headers don't have a port, but if we're going direct you might get one
+            let res = self.remote().and_then(|ip| {
+                ip.parse::<IpAddr>()
+                    .ok()
+                    .or_else(|| ip.parse::<SocketAddr>().map(|s_ad| s_ad.ip()).ok())
+            });
+            debug!("Trusting XFF, using remote src_ip={:?}", res);
+            res
+        } else {
+            let res = self
+                .peer_addr()
+                .map(|addr| addr.parse::<SocketAddr>().unwrap())
+                .map(|s_ad: SocketAddr| s_ad.ip());
+            debug!("Not trusting XFF, using peer_addr src_ip={:?}", res);
+            res
+        }
     }
 }
 
@@ -318,8 +378,7 @@ pub fn generate_integrity_hash(filename: String) -> Result<String, String> {
 
 pub async fn create_https_server(
     address: String,
-    domain: String,
-    // opt_tls_params: Option<SslAcceptorBuilder>,
+    domain: &String,
     opt_tls_params: Option<&TlsConfiguration>,
     role: ServerRole,
     trust_x_forward_for: bool,
@@ -378,6 +437,7 @@ pub async fn create_https_server(
         jws_signer,
         jws_validator,
         js_files: js_files.to_owned(),
+        trust_x_forward_for,
     });
 
     // Add the logging subsystem.

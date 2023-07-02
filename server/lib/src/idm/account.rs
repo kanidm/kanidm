@@ -204,10 +204,10 @@ impl Account {
         // the nanoseconds, but if we haven't done a serialise on the server our db cache has the
         // ns value which breaks some checks.
         let ct = ct - Duration::from_nanos(ct.subsec_nanos() as u64);
-        let issued_at = OffsetDateTime::unix_epoch() + ct;
+        let issued_at = OffsetDateTime::UNIX_EPOCH + ct;
 
         let expiry =
-            Some(OffsetDateTime::unix_epoch() + ct + Duration::from_secs(AUTH_SESSION_EXPIRY));
+            Some(OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(AUTH_SESSION_EXPIRY));
 
         let (purpose, expiry) = match scope {
             // Issue an invalid/expired session.
@@ -229,7 +229,7 @@ impl Account {
             {
                 (
                     UatPurpose::ReadWrite { expiry: None },
-                    Some(OffsetDateTime::unix_epoch() + ct + Duration::from_secs(86400)),
+                    Some(OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(86400)),
                 )
             }
         };
@@ -259,7 +259,7 @@ impl Account {
         scope: SessionScope,
         ct: Duration,
     ) -> Option<UserAuthToken> {
-        let issued_at = OffsetDateTime::unix_epoch() + ct;
+        let issued_at = OffsetDateTime::UNIX_EPOCH + ct;
 
         let (purpose, expiry) = match scope {
             SessionScope::Synchronise | SessionScope::ReadOnly | SessionScope::ReadWrite => {
@@ -273,7 +273,7 @@ impl Account {
             // Return a ReadWrite session with an inner expiry for the privileges
             {
                 let expiry = Some(
-                    OffsetDateTime::unix_epoch() + ct + Duration::from_secs(AUTH_PRIVILEGE_EXPIRY),
+                    OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(AUTH_PRIVILEGE_EXPIRY),
                 );
                 (
                     UatPurpose::ReadWrite { expiry },
@@ -305,7 +305,7 @@ impl Account {
         valid_from: Option<&OffsetDateTime>,
         expire: Option<&OffsetDateTime>,
     ) -> bool {
-        let cot = OffsetDateTime::unix_epoch() + ct;
+        let cot = OffsetDateTime::UNIX_EPOCH + ct;
 
         let vmin = if let Some(vft) = valid_from {
             // If current time greater than start time window
@@ -369,16 +369,6 @@ impl Account {
 
     pub fn is_anonymous(&self) -> bool {
         self.uuid == UUID_ANONYMOUS
-    }
-
-    pub(crate) fn gen_generatedpassword_recover_mod(
-        &self,
-        cleartext: &str,
-        crypto_policy: &CryptoPolicy,
-    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        let ncred = Credential::new_generatedpassword_only(crypto_policy, cleartext)?;
-        let vcred = Value::new_credential("primary", ncred);
-        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
     }
 
     pub(crate) fn gen_password_mod(
@@ -468,7 +458,14 @@ impl Account {
         self.primary
             .as_ref()
             .ok_or(OperationError::InvalidState)
-            .and_then(|cred| cred.password_ref().and_then(|pw| pw.verify(cleartext)))
+            .and_then(|cred| {
+                cred.password_ref().and_then(|pw| {
+                    pw.verify(cleartext).map_err(|e| {
+                        error!(crypto_err = ?e);
+                        e.into()
+                    })
+                })
+            })
     }
 
     pub(crate) fn regenerate_radius_secret_mod(
@@ -527,7 +524,7 @@ impl Account {
         // of the token. This is already done for us as noted above.
 
         if uat.uuid == UUID_ANONYMOUS {
-            security_info!("Anonymous sessions do not have session records, session is valid.");
+            security_debug!("Anonymous sessions do not have session records, session is valid.");
             true
         } else {
             // Get the sessions.
@@ -547,7 +544,7 @@ impl Account {
                 }
             } else {
                 let grace = uat.issued_at + GRACE_WINDOW;
-                let current = time::OffsetDateTime::unix_epoch() + ct;
+                let current = time::OffsetDateTime::UNIX_EPOCH + ct;
                 trace!(%grace, %current);
                 if current >= grace {
                     security_info!(

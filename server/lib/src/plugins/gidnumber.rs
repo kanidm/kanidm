@@ -2,6 +2,7 @@
 // support.
 
 use std::iter::once;
+use std::sync::Arc;
 
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
@@ -74,6 +75,7 @@ impl Plugin for GidNumber {
     #[instrument(level = "debug", name = "gidnumber_pre_modify", skip_all)]
     fn pre_modify(
         _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -83,6 +85,7 @@ impl Plugin for GidNumber {
     #[instrument(level = "debug", name = "gidnumber_pre_batch_modify", skip_all)]
     fn pre_batch_modify(
         _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {

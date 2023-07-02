@@ -262,6 +262,24 @@ In the virtual host, to protect a location:
 </Location>
 ```
 
+### Miniflux
+
+Miniflux is a feedreader that supports OAuth 2.0 and OpenID connect. It automatically appends the
+`.well-known` parts to the discovery endpoint. The application name in the redirect URL needs to
+match the `OAUTH2_PROVIDER` name.
+
+```
+OAUTH2_PROVIDER = "kanidm";
+OAUTH2_CLIENT_ID = "miniflux";
+OAUTH2_CLIENT_SECRET = "<oauth2_rs_basic_secret>";
+OAUTH2_REDIRECT_URL = "https://feeds.example.com/oauth2/kanidm/callback";
+OAUTH2_OIDC_DISCOVERY_ENDPOINT = "https://idm.example.com/oauth2/openid/<oauth2_rs_name>";
+```
+
+Currently Miniflux [does not support PKCE](https://github.com/miniflux/v2/issues/1910) and Kanidm
+will prevent logins until you [disable PKCE](#extended-options-for-legacy-clients) for the resource
+server.
+
 ### Nextcloud
 
 Install the module [from the nextcloud market place](https://apps.nextcloud.com/apps/user_oidc) - it

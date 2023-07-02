@@ -1,5 +1,6 @@
 IMAGE_BASE ?= kanidm
 IMAGE_VERSION ?= devel
+IMAGE_EXT_VERSION ?= 1.1.0-beta.13-dev
 CONTAINER_TOOL_ARGS ?=
 IMAGE_ARCH ?= "linux/amd64,linux/arm64"
 CONTAINER_BUILD_ARGS ?=
@@ -17,10 +18,12 @@ help:
 .PHONY: buildx/kanidmd
 buildx/kanidmd: ## Build multiarch kanidm server images and push to docker hub
 buildx/kanidmd:
+	@echo $(IMAGE_EXT_VERSION)
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f server/Dockerfile \
 		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
+		-t $(IMAGE_BASE)/server:$(IMAGE_EXT_VERSION) \
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
@@ -33,6 +36,7 @@ buildx/kanidm_tools:
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f tools/Dockerfile \
 		-t $(IMAGE_BASE)/tools:$(IMAGE_VERSION) \
+		-t $(IMAGE_BASE)/tools:$(IMAGE_EXT_VERSION) \
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
@@ -45,7 +49,8 @@ buildx/radiusd:
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f rlm_python/Dockerfile \
 		--progress $(BUILDKIT_PROGRESS) \
-		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
+		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) \
+		-t $(IMAGE_BASE)/radius:$(IMAGE_EXT_VERSION) .
 
 .PHONY: buildx
 buildx: buildx/kanidmd buildx/kanidm_tools buildx/radiusd
@@ -53,7 +58,9 @@ buildx: buildx/kanidmd buildx/kanidm_tools buildx/radiusd
 .PHONY: build/kanidmd
 build/kanidmd:	## Build the kanidmd docker image locally
 build/kanidmd:
-	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f server/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
+	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f server/Dockerfile \
+		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
+		--platform $(IMAGE_ARCH) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
 		$(CONTAINER_BUILD_ARGS) .
@@ -62,6 +69,7 @@ build/kanidmd:
 build/radiusd:	## Build the radiusd docker image locally
 build/radiusd:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) \
+		--platform $(IMAGE_ARCH) \
 		-f rlm_python/Dockerfile \
 		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
 
@@ -109,12 +117,12 @@ install-tools:
 codespell: ## spell-check things.
 codespell:
 	codespell -c \
-	-L 'crate,unexpect,Pres,pres,ACI,aci,te,ue,aNULL' \
+	-L 'crate,unexpect,Pres,pres,ACI,aci,te,ue,unx,aNULL' \
 	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache,./pykanidm/poetry.lock' \
 	--skip='./book/book/*' \
 	--skip='./docs/*,./.git' \
 	--skip='./rlm_python/mods-available/eap' \
-	--skip='./server/web_ui/src/external,./server/web_ui/pkg/external' \
+	--skip='./server/web_ui/static/external,./server/web_ui/pkg/external' \
 	--skip='./server/lib/src/constants/system_config.rs,./pykanidm/site,./server/lib/src/constants/*.json'
 
 .PHONY: test/pykanidm/pytest
@@ -247,3 +255,7 @@ cert/clean:
 .PHONY: webui
 webui: ## Build the WASM web frontend
 	cd server/web_ui && ./build_wasm_release.sh
+
+.PHONY: webui/test
+webui/test: ## Run wasm-pack test
+	cd server/web_ui && wasm-pack test --headless --chrome

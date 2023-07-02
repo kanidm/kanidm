@@ -451,6 +451,19 @@ async fn test_server_rest_sshkey_lifecycle(rsclient: KanidmClient) {
     let skn = rsclient.idm_account_get_ssh_pubkey("admin", "k2").await;
     assert!(skn.is_ok());
     assert!(skn.unwrap() == Some("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBx4TpJYQjd0YI5lQIHqblIsCIK5NKVFURYS/eM3o6/Z william@amethyst".to_string()));
+
+    // Add a key and delete with a space in the name.
+    let r5 = rsclient
+            .idm_service_account_post_ssh_pubkey("admin", "Yk 5 Nfc", "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBENubZikrb8hu+HeVRdZ0pp/VAk2qv4JDbuJhvD0yNdWDL2e3cBbERiDeNPkWx58Q4rVnxkbV1fa8E2waRtT91wAAAAEc3NoOg== william@maxixe").await;
+    assert!(r5.is_ok());
+
+    let r6 = rsclient
+        .idm_service_account_delete_ssh_pubkey("admin", "Yk 5 Nfc")
+        .await;
+    assert!(r6.is_ok());
+
+    let sk5 = rsclient.idm_account_get_ssh_pubkeys("admin").await.unwrap();
+    assert!(sk5.len() == 1);
 }
 
 #[kanidmd_testkit::test]
@@ -925,7 +938,7 @@ async fn test_server_credential_update_session_pw(rsclient: KanidmClient) {
 
     // Create an intent token for them
     let intent_token = rsclient
-        .idm_person_account_credential_update_intent("demo_account")
+        .idm_person_account_credential_update_intent("demo_account", Some(0))
         .await
         .unwrap();
 
@@ -983,7 +996,7 @@ async fn test_server_credential_update_session_totp_pw(rsclient: KanidmClient) {
         .unwrap();
 
     let intent_token = rsclient
-        .idm_person_account_credential_update_intent("demo_account")
+        .idm_person_account_credential_update_intent("demo_account", Some(999999))
         .await
         .unwrap();
 
@@ -1112,7 +1125,7 @@ async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> WebauthnAuthenti
 
     // Create an intent token for them
     let intent_token = rsclient
-        .idm_person_account_credential_update_intent("demo_account")
+        .idm_person_account_credential_update_intent("demo_account", Some(1234))
         .await
         .unwrap();
 
@@ -1276,7 +1289,7 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
     {
         // Create an intent token for them
         let intent_token = rsclient
-            .idm_person_account_credential_update_intent("demo_account")
+            .idm_person_account_credential_update_intent("demo_account", None)
             .await
             .unwrap();
 

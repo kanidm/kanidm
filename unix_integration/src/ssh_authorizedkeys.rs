@@ -17,7 +17,6 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::Parser;
-use futures::executor::block_on;
 use kanidm_unix_common::client::call_daemon;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
@@ -25,7 +24,7 @@ use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
 include!("./opt/ssh_authorizedkeys.rs");
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
     let opt = SshAuthorizedOpt::parse();
     if opt.debug {
@@ -66,7 +65,7 @@ async fn main() -> ExitCode {
     }
     let req = ClientRequest::SshKey(opt.account_id);
 
-    match block_on(call_daemon(cfg.sock_path.as_str(), req)) {
+    match call_daemon(cfg.sock_path.as_str(), req).await {
         Ok(r) => match r {
             ClientResponse::SshKeys(sk) => sk.iter().for_each(|k| {
                 println!("{}", k);

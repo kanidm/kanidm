@@ -424,11 +424,10 @@ impl std::fmt::Debug for DbEntry {
             DbEntryVers::V2(dbe_v2) => {
                 write!(f, "v2 - {{ ")?;
                 for (k, vs) in dbe_v2.attrs.iter() {
-                    write!(f, "{k} - [")?;
-                    write!(f, "{vs:?}, ")?;
-                    write!(f, "], ")?;
+                    write!(f, "\n{k:>16} - ")?;
+                    write!(f, "{vs:?}")?;
                 }
-                write!(f, "}}")
+                write!(f, "\n        }}")
             }
         }
     }

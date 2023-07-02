@@ -171,6 +171,41 @@ pub const JSON_SCHEMA_ATTR_LEGALNAME: &str = r#"{
       ]
     }
 }"#;
+
+pub const JSON_SCHEMA_ATTR_NAME_HISTORY: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The history of names that a person has had"
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "true"
+      ],
+      "sync_allowed": [
+        "true"
+      ],
+      "attributename": [
+        "name_history"
+      ],
+      "syntax": [
+        "AUDIT_LOG_STRING"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000133"
+      ]
+    }
+}"#;
+
 pub const JSON_SCHEMA_ATTR_RADIUS_SECRET: &str = r#"{
     "attrs": {
       "class": [
@@ -1578,7 +1613,8 @@ pub const JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
         "oauth2_consent_scope_map",
         "user_auth_token_session",
         "oauth2_session",
-        "description"
+        "description",
+        "name_history"
       ],
       "systemmust": [
         "displayname",

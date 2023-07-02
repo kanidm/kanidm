@@ -3,23 +3,23 @@ name = "kanidm_client"
 description = "Kanidm Client Library"
 documentation = "https://docs.rs/kanidm_client/latest/kanidm_client/"
 
-version.workspace = true
-authors.workspace = true
-rust-version.workspace = true
-edition.workspace = true
-license.workspace = true
-homepage.workspace = true
-repository.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+rust-version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
 
 [dependencies]
-tracing.workspace = true
+tracing = { workspace = true }
 reqwest = { workspace = true, default-features = false }
-kanidm_proto.workspace = true
+kanidm_proto = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
+serde_json = { workspace = true }
 time = { workspace = true, features = ["serde", "std"] }
 tokio = { workspace = true, features = ["rt", "net", "time", "macros", "sync", "signal"] }
-toml.workspace = true
+toml = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
 url = { workspace = true, features = ["serde"] }
 webauthn-rs-proto = { workspace = true, features = ["wasm"] }

@@ -1065,6 +1065,15 @@ pub async fn do_nothing(_req: tide::Request<AppState>) -> tide::Result {
 }
 
 pub async fn reauth(mut req: tide::Request<AppState>) -> tide::Result {
+    // check that we can get the remote IP address first, since this doesn't touch the backend at all
+    let ip_addr = req.get_remote_addr().ok_or_else(|| {
+        error!("Unable to get remote addr for auth event, refusing to proceed");
+        tide::Error::from_str(
+            tide::StatusCode::InternalServerError,
+            "unable to validate peer address",
+        )
+    })?;
+
     let uat = req.get_current_uat();
     let (eventid, hvalue) = req.new_eventid();
 
@@ -1077,13 +1086,21 @@ pub async fn reauth(mut req: tide::Request<AppState>) -> tide::Result {
         .state()
         // This may change in the future ...
         .qe_r_ref
-        .handle_reauth(uat, obj, eventid)
+        .handle_reauth(uat, obj, eventid, ip_addr)
         .await;
 
     auth_session_state_management(req, inter, hvalue)
 }
 
 pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
+    // check that we can get the remote IP address first, since this doesn't touch the backend at all
+    let ip_addr = req.get_remote_addr().ok_or_else(|| {
+        error!("Unable to get remote addr for auth event, refusing to proceed");
+        tide::Error::from_str(
+            tide::StatusCode::InternalServerError,
+            "unable to validate peer address",
+        )
+    })?;
     // First, deal with some state management.
     // Do anything here first that's needed like getting the session details
     // out of the req cookie.
@@ -1103,7 +1120,7 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
         .state()
         // This may change in the future ...
         .qe_r_ref
-        .handle_auth(maybe_sessionid, obj, eventid)
+        .handle_auth(maybe_sessionid, obj, eventid, ip_addr)
         .await;
 
     auth_session_state_management(req, inter, hvalue)

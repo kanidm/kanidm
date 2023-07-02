@@ -79,7 +79,7 @@ fn search_filter_entry<'a>(
         }
         IdentType::User(_) => {}
     };
-    info!(event = %ident, "Access check for search (filter) event");
+    debug!(event = %ident, "Access check for search (filter) event");
 
     match ident.access_scope() {
         AccessScope::Synchronise => {
@@ -96,12 +96,12 @@ fn search_filter_entry<'a>(
         .filter_map(|(acs, f_res)| {
             // if it applies
             if entry.entry_match_no_index(f_res) {
-                security_access!(entry = ?entry.get_uuid(), acs = %acs.acp.name, "entry matches acs");
+                security_debug!(entry = ?entry.get_display_id(), acs = %acs.acp.name, "acs applied to entry");
                 // add search_attrs to allowed.
                 Some(acs.attrs.iter().map(|s| s.as_str()))
             } else {
                 // should this be `security_access`?
-                trace!(entry = ?entry.get_uuid(), acs = %acs.acp.name, "entry DOES NOT match acs");
+                security_debug!(entry = ?entry.get_uuid(), acs = %acs.acp.name, "entry DOES NOT match acs");
                 None
             }
         })

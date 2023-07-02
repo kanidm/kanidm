@@ -304,7 +304,7 @@ async fn process_auth_state(
     });
 
     // Add our new one
-    let (username, tonk) = match client.get_token().await {
+    let (spn, tonk) = match client.get_token().await {
         Some(t) => {
             let tonk = match JwsUnverified::from_str(&t).and_then(|jwtu| {
                 jwtu.validate_embeded()
@@ -317,9 +317,9 @@ async fn process_auth_state(
                 }
             };
 
-            let username = tonk.name().to_string();
+            let spn = tonk.spn;
             // Return the un-parsed token
-            (username, t)
+            (spn, t)
         }
         None => {
             error!("Error retrieving client session");
@@ -327,7 +327,7 @@ async fn process_auth_state(
         }
     };
 
-    tokens.insert(username.clone(), tonk);
+    tokens.insert(spn.clone(), tonk);
 
     // write them out.
     if write_tokens(&tokens).is_err() {
@@ -336,7 +336,7 @@ async fn process_auth_state(
     };
 
     // Success!
-    println!("Login Success for {}", username);
+    println!("Login Success for {}", spn);
 }
 
 impl LoginOpt {
@@ -428,7 +428,7 @@ impl LogoutOpt {
     }
 
     pub async fn exec(&self) {
-        let username: String = if self.local_only {
+        let spn: String = if self.local_only {
             // For now we just remove this from the token store.
             let mut _tmp_username = String::new();
             match &self.copt.username {
@@ -474,7 +474,7 @@ impl LogoutOpt {
                 }
             };
 
-            uat.name().to_string()
+            uat.spn
         };
 
         let mut tokens = read_tokens().unwrap_or_else(|_| {
@@ -483,15 +483,15 @@ impl LogoutOpt {
         });
 
         // Remove our old one
-        if tokens.remove(&username).is_some() {
+        if tokens.remove(&spn).is_some() {
             // write them out.
             if let Err(_e) = write_tokens(&tokens) {
                 error!("Error persisting authentication token store");
                 std::process::exit(1);
             };
-            println!("Removed session for {}", username);
+            println!("Removed session for {}", spn);
         } else {
-            println!("No sessions for {}", username);
+            println!("No sessions for {}", spn);
         }
     }
 }

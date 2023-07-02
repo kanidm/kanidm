@@ -9,8 +9,9 @@ use crate::components::alpha_warning_banner;
 use crate::constants::{
     CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_DT, CSS_TABLE,
 };
-use crate::utils::{do_alert_error, do_page_header, init_request};
+use crate::utils::{do_alert_error, do_page_header};
 use crate::views::AdminRoute;
+use crate::{do_request, RequestMethod};
 
 impl From<GetError> for AdminListAccountsMsg {
     fn from(ge: GetError) -> Self {
@@ -93,24 +94,21 @@ pub async fn get_accounts() -> Result<AdminListAccountsMsg, GetError> {
     ];
 
     for (endpoint, object_type) in endpoints {
-        let request = init_request(endpoint);
-        let response = match request.send().await {
-            Ok(value) => value,
+        let (_, _, value, _) = match do_request(endpoint, RequestMethod::GET, None).await {
+            Ok(val) => val,
             Err(error) => {
                 return Err(GetError {
                     err: format!("{:?}", error),
                 })
             }
         };
-        #[allow(clippy::panic)]
-        let data: Vec<Entity> = match response.json().await {
+        // TODO: this kind of thing comes back when you're logged out:  SerdeError(Error("invalid type: string \"sessionexpired\", expected a sequence", line: 1, column: 16))', server/web_ui/src/components/admin_accounts.rs:107:27
+        let data: Vec<Entity> = match serde_wasm_bindgen::from_value(value) {
             Ok(value) => value,
-
-            // TODO: this kind of thing comes back when you're logged out:  SerdeError(Error("invalid type: string \"sessionexpired\", expected a sequence", line: 1, column: 16))', server/web_ui/src/components/admin_accounts.rs:107:27
             Err(error) => {
                 return Err(GetError {
                     err: format!("Failed to grab the account data into JSON: {:?}", error),
-                })
+                });
             }
         };
 
@@ -544,41 +542,59 @@ impl Component for AdminViewServiceAccount {
 
 /// pull the details for a single person by UUID
 pub async fn get_person(uuid: &str) -> Result<AdminViewPersonMsg, GetError> {
-    let request = init_request(format!("/v1/person/{}", uuid).as_str());
-    let response = match request.send().await {
-        Ok(value) => value,
+    let (_, _, value, _) = match do_request(
+        format!("/v1/person/{}", uuid).as_str(),
+        RequestMethod::GET,
+        None,
+    )
+    .await
+    {
+        Ok(val) => val,
         Err(error) => {
             return Err(GetError {
                 err: format!("{:?}", error),
             })
         }
     };
-    #[allow(clippy::panic)]
-    let data: Entity = match response.json().await {
+
+    let data: Entity = match serde_wasm_bindgen::from_value(value) {
         Ok(value) => value,
-        Err(error) => panic!("Failed to grab the person data into JSON: {:?}", error),
+        Err(error) => {
+            return Err(GetError {
+                err: format!("{:?}", error),
+            });
+        }
     };
     Ok(AdminViewPersonMsg::Responded { response: data })
 }
 
 /// pull the details for a single service_account by UUID
 pub async fn get_service_account(uuid: &str) -> Result<AdminViewServiceAccountMsg, GetError> {
-    let request = init_request(format!("/v1/service_account/{}", uuid).as_str());
-    let response = match request.send().await {
+    let (_, _, value, _) = match do_request(
+        format!("/v1/service_account/{}", uuid).as_str(),
+        RequestMethod::GET,
+        None,
+    )
+    .await
+    {
+        Ok(val) => val,
+        Err(error) => {
+            return Err(GetError {
+                err: format!(
+                    "Failed to grab the service_account data into JSON: {:?}",
+                    error
+                ),
+            })
+        }
+    };
+
+    let data: Entity = match serde_wasm_bindgen::from_value(value) {
         Ok(value) => value,
         Err(error) => {
             return Err(GetError {
                 err: format!("{:?}", error),
-            })
+            });
         }
-    };
-    #[allow(clippy::panic)]
-    let data: Entity = match response.json().await {
-        Ok(value) => value,
-        Err(error) => panic!(
-            "Failed to grab the service account data into JSON: {:?}",
-            error
-        ),
     };
     Ok(AdminViewServiceAccountMsg::Responded { response: data })
 }

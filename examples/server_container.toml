@@ -46,10 +46,11 @@ db_path = "/data/kanidm.db"
 tls_chain = "/data/chain.pem"
 tls_key = "/data/key.pem"
 #
-#   The log level of the server. May be default, verbose,
-#   perfbasic, perffull
-#   Defaults to "default"
-# log_level = "default"
+#   The log level of the server. May be one of info, debug, trace
+#
+#   NOTE: this is overridden by environment variables at runtime
+#   Defaults to "info"
+# log_level = "info"
 #
 #   The DNS domain name of the server. This is used in a
 #   number of security-critical contexts
@@ -102,6 +103,10 @@ origin = "https://idm.example.com:8443"
 # schedule = "00 22 * * *"
 #    four times a day at 3 minutes past the hour, every 6th hours
 # schedule = "03 */6 * * *"
+#   We also support non standard cron syntax, with the following format:
+#   sec  min   hour   day of month   month   day of week   year
+#   (it's very similar to the standard cron syntax, it just allows to specify the seconds
+#   at the beginning and the year at the end)
 #   Number of backups to keep (default 7)
 # versions = 7
 #

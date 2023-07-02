@@ -5,6 +5,7 @@
 // which is importart for management of the replication topo and trust
 // relationships.
 use std::iter::once;
+use std::sync::Arc;
 
 use compact_jwt::JwsSigner;
 use kanidm_proto::v1::OperationError;
@@ -43,6 +44,7 @@ impl Plugin for Domain {
     #[instrument(level = "debug", name = "domain_pre_modify", skip_all)]
     fn pre_modify(
         qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -52,6 +54,7 @@ impl Plugin for Domain {
     #[instrument(level = "debug", name = "domain_pre_batch_modify", skip_all)]
     fn pre_batch_modify(
         qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {

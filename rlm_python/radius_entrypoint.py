@@ -79,11 +79,14 @@ def setup_certs(
     if kanidm_config_object.radius_dh_path is not None:
         cert_dh = Path(kanidm_config_object.radius_dh_path).expanduser().resolve()
         if not cert_dh.exists():
-            print(f"Failed to find radiusd dh file ({cert_dh}), quitting!", file=sys.stderr)
-            sys.exit(1)
+            # print(f"Failed to find radiusd dh file ({cert_dh}), quitting!", file=sys.stderr)
+            # sys.exit(1)
+            print(f"Generating dh params in {cert_dh}")
+            subprocess.check_call(["openssl", "dhparam", "-out", cert_dh, "2048"])
         if cert_dh != CERT_DH_DEST:
             print(f"Copying {cert_dh} to {CERT_DH_DEST}")
             shutil.copyfile(cert_dh, CERT_DH_DEST)
+
 
     server_key = Path(kanidm_config_object.radius_key_path).expanduser().resolve()
     if not server_key.exists() or not server_key.is_file():

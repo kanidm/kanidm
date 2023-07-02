@@ -1,14 +1,13 @@
 use gloo::console;
 use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus};
 use kanidm_proto::webauthn::{CreationChallengeResponse, RegisterPublicKeyCredential};
-use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
+use wasm_bindgen::{JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestInit, RequestMode, Response};
 use yew::prelude::*;
 
 use super::reset::{EventBusMsg, ModalProps};
-use crate::error::*;
 use crate::utils;
+use crate::{do_request, error::*, RequestMethod};
 
 pub struct PasskeyModalApp {
     state: State,
@@ -61,30 +60,16 @@ impl PasskeyModalApp {
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise pw curequest");
 
-        let mut opts = RequestInit::new();
-        opts.method("POST");
-        opts.mode(RequestMode::SameOrigin);
-
-        opts.body(Some(&req_jsvalue));
-
-        let request = Request::new_with_str_and_init("/v1/credential/_update", &opts)?;
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
-        let headers = resp.headers();
-
-        let kopid = headers.get("x-kanidm-opid").ok().flatten();
+        let (kopid, status, value, _) = do_request(
+            "/v1/credential/_update",
+            RequestMethod::POST,
+            Some(req_jsvalue),
+        )
+        .await?;
 
         if status == 200 {
-            let jsval = JsFuture::from(resp.json()?).await?;
             let status: CUStatus =
-                serde_wasm_bindgen::from_value(jsval).expect_throw("Invalid response type");
+                serde_wasm_bindgen::from_value(value).expect_throw("Invalid response type");
 
             cb.emit(EventBusMsg::UpdateStatus {
                 status: status.clone(),
@@ -102,8 +87,7 @@ impl PasskeyModalApp {
                 CURegState::None => Msg::Success,
             })
         } else {
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             Ok(Msg::Error { emsg, kopid })
         }
     }
@@ -260,21 +244,7 @@ impl Component for PasskeyModalApp {
         let label_val = self.label_val.clone();
 
         let passkey_state = match &self.state {
-            State::Init => {
-                html! {
-                    <button id="passkey-generate" type="button" class="btn btn-secondary"
-                        onclick={
-                            ctx.link()
-                                .callback(move |_| {
-                                    Msg::Generate
-                                })
-                        }
-                    >
-                    // TODO: start the session once the modal is popped up
-                    { "Start Creating a New Passkey" }</button>
-                }
-            }
-            State::Submitting | State::FetchingChallenge => {
+            State::Init | State::Submitting | State::FetchingChallenge => {
                 html! {
                       <div class="spinner-border text-dark" role="status">
                         <span class="visually-hidden">{ "Loading..." }</span>
@@ -291,7 +261,7 @@ impl Component for PasskeyModalApp {
                                     Msg::CredentialCreate
                                 })
                         }
-                    >{ "Do it!" }</button>
+                    >{ "Begin Passkey Enrollment" }</button>
                 }
             }
             State::CredentialReady(_) => {
@@ -363,6 +333,20 @@ impl Component for PasskeyModalApp {
         };
 
         html! {
+          <>
+            <button type="button"
+                class="btn btn-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#staticPasskeyCreate"
+                onclick={
+                    ctx.link()
+                        .callback(move |_| {
+                            Msg::Generate
+                        })
+                }
+            >
+              { "Add Passkey" }
+            </button>
             <div class="modal fade" id="staticPasskeyCreate" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticPasskeyLabel" aria-hidden="true">
               <div class="modal-dialog">
                 <div class="modal-content">
@@ -391,6 +375,7 @@ impl Component for PasskeyModalApp {
                 </div>
               </div>
             </div>
+          </>
         }
     }
 }
