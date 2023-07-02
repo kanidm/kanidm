@@ -10,15 +10,14 @@ pub mod v1_scim;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::ServerRole;
-use axum::body;
 use axum::extract::State;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::*;
+use axum::{body, Extension};
 use axum::{middleware::from_fn_with_state, Router};
 use axum_macros::FromRef;
 use axum_sessions::{async_session, SameSite, SessionLayer};
 use compact_jwt::JwsSigner;
-use http::{HeaderMap, HeaderValue};
 use hyper::Body;
 use kanidm_proto::v1::OperationError;
 use kanidmd_lib::status::{StatusActor, StatusRequestEvent};
@@ -28,9 +27,10 @@ use std::{net::SocketAddr, str::FromStr};
 use tokio::sync::broadcast;
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
-use uuid::Uuid;
 
 use crate::CoreAction;
+
+use self::middleware::KOpId;
 
 #[derive(Clone, FromRef)]
 pub struct ServerState {
@@ -46,35 +46,6 @@ pub struct ServerState {
 }
 
 impl ServerState {
-    pub fn new_eventid(&self) -> (Uuid, String) {
-        let eventid = sketching::tracing_forest::id();
-        let hv = eventid.as_hyphenated().to_string();
-        (eventid, hv)
-    }
-
-    pub fn header_kopid(&self, headers: &mut HeaderMap, hv: String) {
-        headers.insert("X-KANIDM-OPID", HeaderValue::from_str(&hv).unwrap());
-    }
-
-    fn get_current_uat(&self, headers: HeaderMap) -> Option<String> {
-        // Contact the QS to get it to validate wtf is up.
-        // let kref = &self.state().bundy_handle;
-        // self.session().get::<UserAuthToken>("uat")
-        headers
-            .get("Authorization")
-            .and_then(|hv| {
-                // Get the first header value.
-                hv.to_str().ok()
-            })
-            .and_then(|h| {
-                // Turn it to a &str, and then check the prefix
-                h.strip_prefix("Bearer ")
-            })
-            .map(|s| s.to_string())
-        // TODO: session thingies
-        // .or_else(|| self.session().get::<String>("bearer"))
-    }
-
     // fn get_current_auth_session_id(&self, session_id_header: String) -> Option<Uuid> {
     //     // We see if there is a signed header copy first.
     //     let kref = &self.jws_validator;
@@ -154,10 +125,11 @@ pub async fn create_https_server(
         })
         .unwrap();
 
+    // TODO this whole session store is kinda cursed and doesn't work the way we need, I think?
     let store = async_session::CookieStore::new();
     // let secret = b"..."; // MUST be at least 64 bytes!
     let secret = format!("{:?}", cookie_key);
-    let secret = secret.as_bytes(); // TODO lol the cookie/session secret needs to be longer?
+    let secret = secret.as_bytes(); // TODO the cookie/session secret needs to be longer?
     let session_layer = SessionLayer::new(store, secret)
         .with_cookie_name("kanidm-session")
         .with_session_ttl(None)
@@ -197,33 +169,35 @@ pub async fn create_https_server(
         ServerRole::WriteReplicaNoUI => Router::new(),
     };
 
-    // TODO: version middleware
-
     //  // == oauth endpoints.
+    // TODO: turn this from a nest into a merge because state things are bad in nested routes
     let app = app.nest("/oauth2", oauth2::oauth2_route_setup(state.clone()));
-    let app = app.merge(v1_scim::scim_route_setup());
-
     //  // == scim endpoints.
-    //  scim_route_setup(&mut appserver, &mut routemap);
-
-    let raw_route = Router::new()
-        .route("/create", post(v1::create))
-        .route("/modify", post(v1::modify))
-        .route("/delete", post(v1::delete))
-        .route("/search", post(v1::search))
-        .with_state(state.clone());
-
-    let schema_route = Router::new()
-        .route("/", get(v1::schema_get))
-        //  .route("/attributetype", get(v1::schema_attributetype_get))
-        // .route("/attributetype", post(do_nothing))
-        .route("/attributetype/:id", get(v1::schema_attributetype_get_id))
-        // .route("/attributetype/:id", put(do_nothing).patch(do_nothing))
-        //  .route("/classtype", get(schema_classtype_get).post(do_nothing))
-        //  .route("/classtype/:id", get(schema_classtype_get_id).put(do_nothing).patch(do_nothing));
-        .with_state(state.clone());
-
-    let self_route = Router::new()
+    let app = app
+        .merge(v1_scim::scim_route_setup())
+        .route("/v1/raw/create", post(v1::create))
+        .route("/v1/raw/modify", post(v1::modify))
+        .route("/v1/raw/delete", post(v1::delete))
+        .route("/v1/raw/search", post(v1::search))
+        .route("/v1/schema/", get(v1::schema_get))
+        .route(
+            "/v1/schema/attributetype",
+            get(v1::schema_attributetype_get),
+        )
+        // .route("/v1/schema/attributetype", post(do_nothing))
+        .route(
+            "/v1/schema/attributetype/:id",
+            get(v1::schema_attributetype_get_id),
+        )
+        // .route("/v1/schema/attributetype/:id", put(do_nothing).patch(do_nothing))
+        .route(
+            "/v1/schema/classtype",
+            get(v1::schema_classtype_get), // .post(do_nothing)
+        )
+        .route(
+            "/v1/schema/classtype/:id",
+            get(v1::schema_classtype_get_id), // .put(do_nothing).patch(do_nothing)
+        )
         .route("/v1/self/", get(v1::whoami))
         .route("/v1/self/_uat", get(v1::whoami_uat))
         .route("/v1/self/_attr/:attr", get(do_nothing))
@@ -237,51 +211,71 @@ pub async fn create_https_server(
         .route("/v1/self/_radius/_config/:token/apple", get(do_nothing))
         // Applinks are the list of apps this account can access.
         .route("/v1/self/_applinks", get(v1::applinks_get))
-        .with_state(state.clone());
-    let app = app.merge(self_route);
-
-    let person_route = Router::new()
-        .route("/", get(v1::person_get))
-        .route("/", post(v1::person_post))
-        .route("/:id", get(v1::person_id_get))
-        // .route("/:id",  patch(v1::account_id_patch))
-        .route("/:id", delete(v1::person_account_id_delete))
-        .route("/:id/_attr/:attr", get(v1::account_id_get_attr))
-        .route("/:id/_attr/:attr", put(v1::account_id_put_attr))
-        .route("/:id/_attr/:attr", post(v1::account_id_post_attr))
-        .route("/:id/_attr/:attr", delete(v1::account_id_delete_attr))
-        //  // person_route.route("/:id/_lock", get(do_nothing));
-        //  // person_route.route("/:id/_credential", get(do_nothing));
+        // Person routes
+        .route("/v1/person/", get(v1::person_get))
+        .route("/v1/person/", post(v1::person_post))
         .route(
-            "/:id/_credential/_status",
+            "/v1/person/:id",
+            get(v1::person_id_get)
+                .patch(v1::account_id_patch)
+                .delete(v1::person_account_id_delete),
+        )
+        .route(
+            "/v1/person/:id/_attr/:attr",
+            get(v1::account_id_get_attr)
+                .put(v1::account_id_put_attr)
+                .post(v1::account_id_post_attr)
+                .delete(v1::account_id_delete_attr),
+        )
+        //  .route("/v1/person/:id/_lock", get(do_nothing))
+        //  .route("/v1/person/:id/_credential", get(do_nothing))
+        .route(
+            "/v1/person/:id/_credential/_status",
             get(v1::account_get_id_credential_status),
         )
-        //  // person_route.route("/:id/_credential/:cid/_lock", get(do_nothing));
-        //  person_route.route("/:id/_credential/_update", get(account_get_id_credential_update));
-        //  person_route.route("/:id/_credential/_update_intent", get(account_get_id_credential_update_intent));
-        //  person_route.route("/:id/_credential/_update_intent/:ttl", get(account_get_id_credential_update_intent));
-        //  person_route.route("/:id/_ssh_pubkeys", get(account_get_id_ssh_pubkeys), post(account_post_id_ssh_pubkey));
-        //  person_route.route("/:id/_ssh_pubkeys/:tag", get(account_get_id_ssh_pubkey_tag), delete(account_delete_id_ssh_pubkey_tag));
+        //  .route("/v1/person/:id/_credential/:cid/_lock", get(do_nothing))
         .route(
-            "/:id/_radius",
+            "/v1/person/:id/_credential/_update",
+            get(v1::account_get_id_credential_update),
+        )
+        .route(
+            "/v1/person/:id/_credential/_update_intent",
+            get(v1::account_get_id_credential_update_intent),
+        )
+        .route(
+            "/v1/person/:id/_credential/_update_intent/:ttl",
+            get(v1::account_get_id_credential_update_intent),
+        )
+        .route(
+            "/v1/person/:id/_ssh_pubkeys",
+            get(v1::account_get_id_ssh_pubkeys).post(v1::account_post_id_ssh_pubkey),
+        )
+        .route(
+            "/v1/person/:id/_ssh_pubkeys/:tag",
+            get(v1::account_get_id_ssh_pubkey_tag).delete(v1::account_delete_id_ssh_pubkey_tag),
+        )
+        .route(
+            "/v1/person/:id/_radius",
             get(v1::account_get_id_radius)
                 .post(v1::account_post_id_radius_regenerate)
                 .delete(v1::account_delete_id_radius),
         )
-        .route("/:id/_radius/_token", get(v1::account_get_id_radius_token)) // TODO: make this cacheable
-        .route("/:id/_unix", post(v1::account_post_id_unix))
         .route(
-            "/:id/_unix/_credential",
+            "/v1/person/:id/_radius/_token",
+            get(v1::account_get_id_radius_token),
+        ) // TODO: make this cacheable
+        .route("/v1/person/:id/_unix", post(v1::account_post_id_unix))
+        .route(
+            "/v1/person/:id/_unix/_credential",
             put(v1::account_put_id_unix_credential).delete(v1::account_delete_id_unix_credential),
-        )
-        .with_state(state.clone());
+        );
 
-    let app = app.nest("/v1/person", person_route);
     //  // Service accounts
-
     let service_account_route = Router::new()
-        .route("/", get(v1::service_account_get))
-        // , post(service_account_post));
+        .route(
+            "/",
+            get(v1::service_account_get).post(v1::service_account_post),
+        )
         .route(
             "/:id",
             get(v1::service_account_id_get).delete(v1::service_account_id_delete),
@@ -294,23 +288,39 @@ pub async fn create_https_server(
                 .delete(v1::account_id_delete_attr),
         )
         //  // service_account_route.route("/:id/_lock", get(do_nothing));
-        //  service_account_route.route("/:id/_into_person", post(service_account_into_person));
-        //  service_account_route.route("/:id/_api_token", post(service_account_api_token_post),
-        // get(service_account_api_token_get));
-        //  service_account_route.route("/:id/_api_token/:token_id", delete(service_account_api_token_delete));
-        //  // service_account_route.route("/:id/_credential", get(do_nothing));
-        //  service_account_route.route("/:id/_credential/_generate", get(service_account_credential_generate));
-        //  service_account_route.route("/:id/_credential/_status"
-        // , get(account_get_id_credential_status));
-        //  // service_account_route.route("/:id/_credential/:cid/_lock", get(do_nothing));
-        //  service_account_route.route("/:id/_ssh_pubkeys", get(account_get_id_ssh_pubkeys)
-        // , post(account_post_id_ssh_pubkey));
-        //  service_account_route.route("/:id/_ssh_pubkeys/:tag", get(account_get_id_ssh_pubkey_tag)
-        // , delete(account_delete_id_ssh_pubkey_tag));
-        //  service_account_route.route("/:id/_unix", post(account_post_id_unix));
+        .route("/:id/_into_person", post(v1::service_account_into_person))
+        .route(
+            "/:id/_api_token",
+            post(v1::service_account_api_token_post).get(v1::service_account_api_token_get),
+        )
+        .route(
+            "/:id/_api_token/:token_id",
+            delete(v1::service_account_api_token_delete),
+        )
+        .route("/:id/_credential", get(do_nothing))
+        .route(
+            "/:id/_credential/_generate",
+            get(v1::service_account_credential_generate),
+        )
+        .route(
+            "/:id/_credential/_status",
+            get(v1::account_get_id_credential_status),
+        )
+        .route("/:id/_credential/:cid/_lock", get(do_nothing))
+        .route(
+            "/:id/_ssh_pubkeys",
+            get(v1::account_get_id_ssh_pubkeys).post(v1::account_post_id_ssh_pubkey),
+        )
+        .route(
+            "/:id/_ssh_pubkeys/:tag",
+            get(v1::account_get_id_ssh_pubkey_tag).delete(v1::account_delete_id_ssh_pubkey_tag),
+        )
+        .route("/:id/_unix", post(v1::account_post_id_unix))
         .with_state(state.clone());
+
     let app = app.nest("/v1/service_account", service_account_route);
 
+    // TODO: openapi/routemap returns
     //  routemap.push_self("/v1/routemap".to_string(), http_types::Method::Get);
     //  appserver.route("/v1/routemap").nest({let mut route_api = tide::with_state(routemap);route_api.route("/").get(do_routemap);route_api
     //  });
@@ -318,16 +328,26 @@ pub async fn create_https_server(
 
     //  // ===  End routes
 
-    let app = app.nest("/v1/schema", schema_route);
-    let app = app.nest("/v1/raw", raw_route);
+    // let app = app.nest("/v1/schema", schema_route);
+    // let app = app.nest("/v1/raw", raw_route);
     let app = app
         // Shared account features only - mainly this is for unix-like features.
         .route(
             "/v1/account/:id/_unix/_auth",
             post(v1::account_post_id_unix_auth),
         )
-        //  .route("/v1/account/:id/_ssh_pubkeys", get(v1::account_get_id_ssh_pubkeys));
-        //  .route("/v1/account/:id/_ssh_pubkeys/:tag", get(v1::account_get_id_ssh_pubkey_tag));
+        .route(
+            "/v1/account/:id/_unix/_token",
+            post(v1::account_get_id_unix_token), // TODO: make this cacheable
+        )
+        .route(
+            "/v1/account/:id/_ssh_pubkeys",
+            get(v1::account_get_id_ssh_pubkeys),
+        )
+        .route(
+            "/v1/account/:id/_ssh_pubkeys/:tag",
+            get(v1::account_get_id_ssh_pubkey_tag),
+        )
         .route(
             "/v1/account/:id/_user_auth_token",
             get(v1::account_get_id_user_auth_token),
@@ -349,12 +369,19 @@ pub async fn create_https_server(
         .route(
             "/v1/domain/_attr/:attr",
             get(v1::domain_get_attr)
-                // .put(domain_put_attr)
+                .put(v1::domain_put_attr)
                 .delete(v1::domain_delete_attr),
         )
         .route("/v1/group/:id/_unix", post(v1::group_post_id_unix))
-        //  .route("/v1/group/", get(v1::group_get).post(v1::group_post))
-        //  .route("/v1/group/:id", get(v1::group_id_get).delete(v1::group_id_delete))
+        .route(
+            "/v1/group/:id/_unix/_token",
+            get(v1::group_get_id_unix_token),
+        )
+        .route("/v1/group/", get(v1::group_get).post(v1::group_post))
+        .route(
+            "/v1/group/:id",
+            get(v1::group_id_get).delete(v1::group_id_delete),
+        )
         .route(
             "/v1/group/:id/_attr/:attr",
             delete(v1::group_id_delete_attr)
@@ -363,7 +390,7 @@ pub async fn create_https_server(
                 .post(v1::group_id_post_attr),
         )
         .with_state(state.clone())
-        // .route("/v1/system/", get(v1::system_get))
+        .route("/v1/system/", get(v1::system_get))
         .route(
             "/v1/system/_attr/:attr",
             get(v1::system_get_attr)
@@ -384,7 +411,6 @@ pub async fn create_https_server(
         .route("/v1/logout", get(v1::logout))
         .route("/v1/reauth", post(v1::reauth))
         .route("/status", get(status))
-        // .nest("/v1", crate::https::v1::new(state.clone()))
         .route_layer(from_fn_with_state(
             state.clone(),
             crate::https::csp_headers::cspheaders_layer,
@@ -437,22 +463,20 @@ pub async fn create_https_server(
         opentelemetry::global::shutdown_tracer_provider();
         info!("Stopped WebAcceptorActor");
     }))
-
-    // Ok(handle)
 }
 
 /// Status endpoint used for healthchecks
-pub async fn status(State(state): State<ServerState>) -> impl IntoResponse {
-    // We ignore the body in this req
-    let (eventid, hvalue) = state.new_eventid();
+pub async fn status(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
     let r = state
         .status_ref
-        .handle_request(StatusRequestEvent { eventid })
+        .handle_request(StatusRequestEvent {
+            eventid: kopid.eventid,
+        })
         .await;
-    let mut res = Response::new(format!("{}", r));
-    let headers = res.headers_mut();
-    state.header_kopid(headers, hvalue);
-    res
+    Response::new(format!("{}", r))
 }
 
 /// Generates the integrity hash for a file based on a filename

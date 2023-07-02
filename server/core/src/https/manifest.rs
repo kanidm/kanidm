@@ -1,8 +1,10 @@
 use axum::extract::State;
 use axum::response::{IntoResponse, Response};
+use axum::Extension;
 use http::HeaderValue;
 use serde::{Deserialize, Serialize};
 
+use super::middleware::KOpId;
 ///! Builds a Progressive Web App Manifest page.
 // Thanks to the webmanifest crate for a lot of this code
 use super::ServerState;
@@ -149,9 +151,11 @@ pub fn manifest_data(host_req: Option<&str>, domain_display_name: String) -> Man
 }
 
 /// Generates a manifest.json file for progressive web app usage
-pub async fn manifest(State(state): State<ServerState>) -> impl IntoResponse {
-    let (eventid, _) = state.new_eventid();
-    let domain_display_name = state.qe_r_ref.get_domain_display_name(eventid).await;
+pub async fn manifest(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let domain_display_name = state.qe_r_ref.get_domain_display_name(kopid.eventid).await;
     // TODO: fix the None here to make it the request host
     let manifest_string =
         serde_json::to_string_pretty(&manifest_data(None, domain_display_name)).unwrap();

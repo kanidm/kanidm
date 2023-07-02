@@ -1,5 +1,4 @@
 use axum::{
-    extract::State,
     http::{self, Request},
     middleware::Next,
     response::Response,
@@ -8,18 +7,13 @@ use axum::{
 use http::{HeaderMap, HeaderValue};
 use uuid::Uuid;
 
-use super::ServerState;
-
 pub mod compression;
 
-// TODO: version middleware
 // the version middleware injects
-
 const KANIDM_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// Injects a header into the response with "X-KANIDM-VERSION" matching the version of the package.
 pub async fn version_middleware<B>(request: Request<B>, next: Next<B>) -> Response {
-    // do something with `request`...
-
     let mut response = next.run(request).await;
     let headers = response.headers_mut();
     headers.insert(
@@ -40,18 +34,31 @@ pub struct KOpId {
 
 /// This runs at the start of the request, adding an extension with the OperationID
 pub async fn kopid_start<B>(
-    State(state): State<ServerState>,
     headers: HeaderMap,
     mut request: Request<B>,
     next: Next<B>,
 ) -> Response {
     // generate the event ID
-    let (eventid, value) = state.new_eventid();
+    let eventid = sketching::tracing_forest::id();
+    let value = eventid.as_hyphenated().to_string();
+
+    let uat = headers
+        .get("Authorization")
+        .and_then(|hv| {
+            // Get the first header value.
+            hv.to_str().ok()
+        })
+        .and_then(|h| {
+            // Turn it to a &str, and then check the prefix
+            h.strip_prefix("Bearer ")
+        })
+        .map(|s| s.to_string());
+
     // insert the extension so we can pull it out later
     request.extensions_mut().insert(KOpId {
         eventid,
         value,
-        uat: state.get_current_uat(headers),
+        uat,
     });
     next.run(request).await
 }

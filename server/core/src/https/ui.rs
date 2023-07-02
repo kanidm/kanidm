@@ -1,16 +1,18 @@
 use axum::extract::State;
 use axum::http::{HeaderValue, Request};
 use axum::response::Response;
+use axum::Extension;
 use hyper::Body;
 
+use super::middleware::KOpId;
 use super::ServerState;
 
 pub async fn ui_handler(
     State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
     mut _req: Request<Body>,
 ) -> Response<String> {
-    let (eventid, hvalue) = state.new_eventid();
-    let domain_display_name = state.qe_r_ref.get_domain_display_name(eventid).await;
+    let domain_display_name = state.qe_r_ref.get_domain_display_name(kopid.eventid).await;
 
     // this feels icky but I felt that adding a trait on Vec<JavaScriptFile> which generated the string was going a bit far
     let jsfiles: Vec<String> = state
@@ -62,12 +64,10 @@ pub async fn ui_handler(
     );
 
     let mut res = Response::new(body);
-    let mut headers = res.headers_mut();
-    headers.insert(
+    res.headers_mut().insert(
         "Content-Type",
         HeaderValue::from_str("text/html;charset=utf-8").unwrap(),
     );
-    state.header_kopid(&mut headers, hvalue);
 
     res
 }
