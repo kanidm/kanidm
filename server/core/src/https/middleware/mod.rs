@@ -34,6 +34,7 @@ pub struct KOpId {
 
 /// This runs at the start of the request, adding an extension with the OperationID
 pub async fn kopid_start<B>(
+    // TODO: try and make this into a TypedHeader
     headers: HeaderMap,
     mut request: Request<B>,
     next: Next<B>,
