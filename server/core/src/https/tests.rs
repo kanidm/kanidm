@@ -654,7 +654,7 @@ async fn test_routes() {
             "PUT" => reqwest::Method::PUT,
             _ => todo!("{}", method),
         };
-        let url = format!("https://kanidm.yaleman.org{}", path.replace('"', ""));
+        let url = format!("https://localhost:8443{}", path.replace('"', ""));
         if path.contains(':') {
             println!("Can't do this because it has an attribute: {}", path);
             continue;
