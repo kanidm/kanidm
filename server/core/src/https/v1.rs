@@ -7,7 +7,8 @@ use axum::extract::{ConnectInfo, Path, Query, State};
 use axum::headers::{CacheControl, HeaderMapExt};
 use axum::response::{IntoResponse, Response};
 
-use axum::{Extension, Json};
+use axum::routing::{delete, get, post, put};
+use axum::{Extension, Json, Router};
 use axum_macros::debug_handler;
 use axum_sessions::extractors::WritableSession;
 use compact_jwt::Jws;
@@ -53,7 +54,7 @@ pub async fn create(
     to_axum_response(res)
 }
 
-pub async fn modify(
+pub async fn v1_modify(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(msg): Json<ModifyRequest>,
@@ -65,7 +66,7 @@ pub async fn modify(
     to_axum_response(res)
 }
 
-pub async fn delete(
+pub async fn v1_delete(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Json(msg): Json<DeleteRequest>,
@@ -1232,6 +1233,7 @@ pub async fn auth(
 
     // TODO
     let maybe_sessionid = state.get_current_auth_session_id(headers, &session);
+    debug!("Session ID: {:?}", maybe_sessionid);
     // We probably need to know if we allocate the cookie, that this is a
     // new session, and in that case, anything *except* authrequest init is
     // invalid.
@@ -1240,9 +1242,12 @@ pub async fn auth(
         .handle_auth(maybe_sessionid, obj, kopid.eventid, ip_addr)
         .await;
 
+    debug!("Auth result: {:?}", inter);
+
     auth_session_state_management(state, inter, session)
 }
 
+#[instrument(skip(state))]
 fn auth_session_state_management(
     state: ServerState,
     inter: Result<AuthResult, OperationError>,
@@ -1364,4 +1369,217 @@ pub async fn auth_valid(
         .handle_auth_valid(kopid.uat, kopid.eventid)
         .await;
     to_axum_response(res)
+}
+
+#[instrument(skip(state))]
+pub fn router(state: ServerState) -> Router<ServerState> {
+    Router::new()
+        .route("/raw/create", post(create))
+        .route("/raw/modify", post(v1_modify))
+        .route("/raw/delete", post(v1_delete))
+        .route("/raw/search", post(search))
+        .route("/schema", get(schema_get))
+        .route(
+            "/schema/attributetype",
+            get(schema_attributetype_get), // post(do_nothing)
+        )
+        .route(
+            "/schema/attributetype/:id",
+            get(schema_attributetype_get_id),
+        )
+        // .route("/schema/attributetype/:id", put(do_nothing).patch(do_nothing))
+        .route(
+            "/schema/classtype",
+            get(schema_classtype_get), // .post(do_nothing)
+        )
+        .route(
+            "/schema/classtype/:id",
+            get(schema_classtype_get_id), // .put(do_nothing).patch(do_nothing)
+        )
+        .route("/self", get(whoami))
+        .route("/self/_uat", get(whoami_uat))
+        // .route("/self/_attr/:attr", get(do_nothing))
+        // .route("/self/_credential", get(do_nothing))
+        // .route("/self/_credential/:cid/_lock", get(do_nothing))
+        // .route("/self/_radius", get(do_nothing))
+        // .route("/self/_radius", delete(do_nothing))
+        // .route("/self/_radius", post(do_nothing))
+        // .route("/self/_radius/_config", post(do_nothing))
+        // .route("/self/_radius/_config/:token", get(do_nothing))
+        // .route("/self/_radius/_config/:token/apple", get(do_nothing))
+        // Applinks are the list of apps this account can access.
+        .route("/self/_applinks", get(applinks_get))
+        // Person routes
+        .route("/person", get(person_get))
+        .route("/person", post(person_post))
+        .route(
+            "/person/:id",
+            get(person_id_get)
+                .patch(account_id_patch)
+                .delete(person_account_id_delete),
+        )
+        .route(
+            "/person/:id/_attr/:attr",
+            get(account_id_get_attr)
+                .put(account_id_put_attr)
+                .post(account_id_post_attr)
+                .delete(account_id_delete_attr),
+        )
+        //  .route("/person/:id/_lock", get(do_nothing))
+        //  .route("/person/:id/_credential", get(do_nothing))
+        .route(
+            "/person/:id/_credential/_status",
+            get(account_get_id_credential_status),
+        )
+        //  .route("/person/:id/_credential/:cid/_lock", get(do_nothing))
+        .route(
+            "/person/:id/_credential/_update",
+            get(account_get_id_credential_update),
+        )
+        .route(
+            "/person/:id/_credential/_update_intent",
+            get(account_get_id_credential_update_intent),
+        )
+        .route(
+            "/person/:id/_credential/_update_intent/:ttl",
+            get(account_get_id_credential_update_intent),
+        )
+        .route(
+            "/person/:id/_ssh_pubkeys",
+            get(account_get_id_ssh_pubkeys).post(account_post_id_ssh_pubkey),
+        )
+        .route(
+            "/person/:id/_ssh_pubkeys/:tag",
+            get(account_get_id_ssh_pubkey_tag).delete(account_delete_id_ssh_pubkey_tag),
+        )
+        .route(
+            "/person/:id/_radius",
+            get(account_get_id_radius)
+                .post(account_post_id_radius_regenerate)
+                .delete(account_delete_id_radius),
+        )
+        .route(
+            "/person/:id/_radius/_token",
+            get(account_get_id_radius_token),
+        ) // TODO: make this cacheable
+        .route("/person/:id/_unix", post(account_post_id_unix))
+        .route(
+            "/person/:id/_unix/_credential",
+            put(account_put_id_unix_credential).delete(account_delete_id_unix_credential),
+        )
+        // Service accounts
+        .route(
+            "/service_account/",
+            get(service_account_get).post(service_account_post),
+        )
+        .route(
+            "/service_account/:id",
+            get(service_account_id_get).delete(service_account_id_delete),
+        )
+        .route(
+            "/service_account/:id/_attr/:attr",
+            get(account_id_get_attr)
+                .put(account_id_put_attr)
+                .post(account_id_post_attr)
+                .delete(account_id_delete_attr),
+        )
+        //  .route("/service_account/:id/_lock", get(do_nothing));
+        .route(
+            "/service_account/:id/_into_person",
+            post(service_account_into_person),
+        )
+        .route(
+            "/service_account/:id/_api_token",
+            post(service_account_api_token_post).get(service_account_api_token_get),
+        )
+        .route(
+            "/service_account/:id/_api_token/:token_id",
+            delete(service_account_api_token_delete),
+        )
+        // .route("/service_account/:id/_credential", get(do_nothing))
+        .route(
+            "/service_account/:id/_credential/_generate",
+            get(service_account_credential_generate),
+        )
+        .route(
+            "/service_account/:id/_credential/_status",
+            get(account_get_id_credential_status),
+        )
+        // .route(
+        //     "/service_account/:id/_credential/:cid/_lock",
+        //     // get(do_nothing),
+        // )
+        .route(
+            "/service_account/:id/_ssh_pubkeys",
+            get(account_get_id_ssh_pubkeys).post(account_post_id_ssh_pubkey),
+        )
+        .route(
+            "/service_account/:id/_ssh_pubkeys/:tag",
+            get(account_get_id_ssh_pubkey_tag).delete(account_delete_id_ssh_pubkey_tag),
+        )
+        .route("/service_account/:id/_unix", post(account_post_id_unix))
+        .route("/account/:id/_unix/_auth", post(account_post_id_unix_auth))
+        .route(
+            "/account/:id/_unix/_token",
+            post(account_get_id_unix_token).get(account_get_id_unix_token), // TODO: make this cacheable
+        )
+        .route("/account/:id/_ssh_pubkeys", get(account_get_id_ssh_pubkeys))
+        .route(
+            "/account/:id/_ssh_pubkeys/:tag",
+            get(account_get_id_ssh_pubkey_tag),
+        )
+        .route(
+            "/account/:id/_user_auth_token",
+            get(account_get_id_user_auth_token),
+        )
+        .route(
+            "/account/:id/_user_auth_token/:token_id",
+            delete(account_user_auth_token_delete),
+        )
+        .route(
+            "/credential/_exchange_intent",
+            post(credential_update_exchange_intent),
+        )
+        .route("/credential/_status", post(credential_update_status))
+        .route("/credential/_update", post(credential_update_update))
+        .route("/credential/_commit", post(credential_update_commit))
+        .route("/credential/_cancel", post(credential_update_cancel))
+        // domain-things
+        .route("/domain", get(domain_get))
+        .route(
+            "/domain/_attr/:attr",
+            get(domain_get_attr)
+                .put(domain_put_attr)
+                .delete(domain_delete_attr),
+        )
+        .route("/group/:id/_unix/_token", get(group_get_id_unix_token))
+        .route("/group/:id/_unix", post(group_post_id_unix))
+        .route("/group", get(group_get).post(group_post))
+        .route("/group/:id", get(group_id_get).delete(group_id_delete))
+        .route(
+            "/group/:id/_attr/:attr",
+            delete(group_id_delete_attr)
+                .get(group_id_get_attr)
+                .put(group_id_put_attr)
+                .post(group_id_post_attr),
+        )
+        .with_state(state.clone())
+        .route("/system", get(system_get))
+        .route(
+            "/system/_attr/:attr",
+            get(system_get_attr)
+                .post(system_post_attr)
+                .delete(system_delete_attr),
+        )
+        .route("/recycle_bin", get(recycle_bin_get))
+        .route("/recycle_bin/:id", get(recycle_bin_id_get))
+        .route("/recycle_bin/:id/_revive", post(recycle_bin_revive_id_post))
+        // .route("/access_profile", get(do_nothing))
+        // .route("/access_profile/:id", get(do_nothing))
+        // .route("/access_profile/:id/_attr/:attr", get(do_nothing))
+        .route("/auth", post(auth))
+        .route("/auth/valid", get(auth_valid))
+        .route("/logout", get(logout))
+        .route("/reauth", post(reauth))
+        .with_state(state)
 }

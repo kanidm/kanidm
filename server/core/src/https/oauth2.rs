@@ -655,9 +655,7 @@ pub async fn oauth2_token_introspect_post(
     Extension(kopid): Extension<KOpId>,
     Form(intr_req): Form<AccessTokenIntrospectRequest>,
 ) -> impl IntoResponse {
-
-    let client_authz = match kopid.uat
-    {
+    let client_authz = match kopid.uat {
         Some(val) => val,
         None => {
             error!("Bearer Authentication Not Provided");
@@ -710,9 +708,7 @@ pub async fn oauth2_token_revoke_post(
     Extension(kopid): Extension<KOpId>,
     Form(intr_req): Form<TokenRevokeRequest>,
 ) -> impl IntoResponse {
-
-    let client_authz = match kopid.uat
-    {
+    let client_authz = match kopid.uat {
         Some(val) => val,
         None => {
             return Response::builder()

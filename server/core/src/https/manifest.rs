@@ -151,7 +151,7 @@ pub fn manifest_data(host_req: Option<&str>, domain_display_name: String) -> Man
 }
 
 /// Generates a manifest.json file for progressive web app usage
-pub async fn manifest(
+pub(crate) async fn manifest(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {

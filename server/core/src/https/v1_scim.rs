@@ -170,8 +170,6 @@ async fn scim_sink_get() -> impl IntoResponse {
 }
 
 pub fn scim_route_setup() -> Router<ServerState> {
-    // let mut scim_process = appserver.at("/scim/v1");
-
     Router::new()
         // https://datatracker.ietf.org/doc/html/rfc7644#section-3.2
         //
@@ -241,8 +239,8 @@ pub fn scim_route_setup() -> Router<ServerState> {
         //
         //                            POST                   Send a sync update
         //
-        .route("/scim/v1/Sync", post(scim_sync_post).get(scim_sync_get))
-        .route("/scim/v1/Sink", get(scim_sink_get))
+        .route("/v1/Sync", post(scim_sync_post).get(scim_sync_get))
+        .route("/v1/Sink", get(scim_sink_get))
         // let mut sync_account_route = appserver.at("/v1/sync_account");
         .route(
             "/v1/sync_account/",

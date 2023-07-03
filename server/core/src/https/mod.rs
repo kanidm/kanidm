@@ -1,4 +1,5 @@
 mod csp_headers;
+mod generic;
 mod manifest;
 mod middleware;
 mod oauth2;
@@ -11,23 +12,21 @@ use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::ServerRole;
 use axum::extract::connect_info::{IntoMakeServiceWithConnectInfo, ResponseFuture};
-use axum::extract::State;
 use axum::middleware::from_fn;
-use axum::response::{IntoResponse, Redirect, Response};
+use axum::response::Response;
 use axum::routing::*;
-use axum::{body, Extension};
-use axum::{middleware::from_fn_with_state, Router};
+use axum::Router;
 use axum_macros::FromRef;
 use axum_sessions::extractors::WritableSession;
 use axum_sessions::{async_session, SameSite, SessionLayer};
 use compact_jwt::{Jws, JwsSigner, JwsUnverified};
-use http::header::CONTENT_TYPE;
+use generic::*;
 use http::HeaderMap;
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrIncoming, AddrStream, Http};
 use hyper::Body;
 use kanidm_proto::v1::OperationError;
-use kanidmd_lib::status::{StatusActor, StatusRequestEvent};
+use kanidmd_lib::status::StatusActor;
 use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod};
 use tokio_openssl::SslStream;
 
@@ -46,7 +45,6 @@ use uuid::Uuid;
 
 use crate::CoreAction;
 
-use self::middleware::KOpId;
 use self::v1::SessionId;
 
 #[derive(Clone, FromRef)]
@@ -169,22 +167,11 @@ pub async fn create_https_server(
 
     let static_routes = match role {
         ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
-            let pkg_path = PathBuf::from(env!("KANIDM_WEB_UI_PKG_PATH"));
-            if !pkg_path.exists() {
-                eprintln!(
-                    "Couldn't find Web UI package path: ({}), quitting.",
-                    env!("KANIDM_WEB_UI_PKG_PATH")
-                );
-                std::process::exit(1);
-            }
             Router::new()
-                .route("/", get(|| async { Redirect::temporary("/ui/login") }))
-                .route("/ui", get(crate::https::ui::ui_handler))
-                .route("/ui/", get(crate::https::ui::ui_handler))
-                .route("/ui/*ui", get(crate::https::ui::ui_handler))
+                .route("/", get(crate::https::ui::ui_handler))
+                .route("/*ui", get(crate::https::ui::ui_handler))
                 .route("/manifest.webmanifest", get(manifest::manifest))
                 .layer(from_fn(csp_headers::strip_csp_headers))
-                .nest_service("/pkg", ServeDir::new(pkg_path))
                 .layer(middleware::compression::new()) // TODO: this needs to be configured properly
         }
         ServerRole::WriteReplicaNoUI => Router::new(),
@@ -194,261 +181,31 @@ pub async fn create_https_server(
     // TODO: turn this from a nest into a merge because state things are bad in nested routes
     let app = Router::new()
         .nest("/oauth2", oauth2::oauth2_route_setup(state.clone()))
-        .route("/robots.txt", get(robots_txt));
-    //  // == scim endpoints.
-    let v1_router = Router::new()
-        .merge(v1_scim::scim_route_setup())
-        .route("/v1/raw/create", post(v1::create))
-        .route("/v1/raw/modify", post(v1::modify))
-        .route("/v1/raw/delete", post(v1::delete))
-        .route("/v1/raw/search", post(v1::search))
-        .route("/v1/schema", get(v1::schema_get))
-        .route(
-            "/v1/schema/attributetype",
-            get(v1::schema_attributetype_get),
-        )
-        // .route("/v1/schema/attributetype", post(do_nothing))
-        .route(
-            "/v1/schema/attributetype/:id",
-            get(v1::schema_attributetype_get_id),
-        )
-        // .route("/v1/schema/attributetype/:id", put(do_nothing).patch(do_nothing))
-        .route(
-            "/v1/schema/classtype",
-            get(v1::schema_classtype_get), // .post(do_nothing)
-        )
-        .route(
-            "/v1/schema/classtype/:id",
-            get(v1::schema_classtype_get_id), // .put(do_nothing).patch(do_nothing)
-        )
-        .route("/v1/self", get(v1::whoami))
-        .route("/v1/self/_uat", get(v1::whoami_uat))
-        .route("/v1/self/_attr/:attr", get(do_nothing))
-        .route("/v1/self/_credential", get(do_nothing))
-        .route("/v1/self/_credential/:cid/_lock", get(do_nothing))
-        .route("/v1/self/_radius", get(do_nothing))
-        .route("/v1/self/_radius", delete(do_nothing))
-        .route("/v1/self/_radius", post(do_nothing))
-        .route("/v1/self/_radius/_config", post(do_nothing))
-        .route("/v1/self/_radius/_config/:token", get(do_nothing))
-        .route("/v1/self/_radius/_config/:token/apple", get(do_nothing))
-        // Applinks are the list of apps this account can access.
-        .route("/v1/self/_applinks", get(v1::applinks_get))
-        // Person routes
-        .route("/v1/person", get(v1::person_get))
-        .route("/v1/person", post(v1::person_post))
-        .route(
-            "/v1/person/:id",
-            get(v1::person_id_get)
-                .patch(v1::account_id_patch)
-                .delete(v1::person_account_id_delete),
-        )
-        .route(
-            "/v1/person/:id/_attr/:attr",
-            get(v1::account_id_get_attr)
-                .put(v1::account_id_put_attr)
-                .post(v1::account_id_post_attr)
-                .delete(v1::account_id_delete_attr),
-        )
-        //  .route("/v1/person/:id/_lock", get(do_nothing))
-        //  .route("/v1/person/:id/_credential", get(do_nothing))
-        .route(
-            "/v1/person/:id/_credential/_status",
-            get(v1::account_get_id_credential_status),
-        )
-        //  .route("/v1/person/:id/_credential/:cid/_lock", get(do_nothing))
-        .route(
-            "/v1/person/:id/_credential/_update",
-            get(v1::account_get_id_credential_update),
-        )
-        .route(
-            "/v1/person/:id/_credential/_update_intent",
-            get(v1::account_get_id_credential_update_intent),
-        )
-        .route(
-            "/v1/person/:id/_credential/_update_intent/:ttl",
-            get(v1::account_get_id_credential_update_intent),
-        )
-        .route(
-            "/v1/person/:id/_ssh_pubkeys",
-            get(v1::account_get_id_ssh_pubkeys).post(v1::account_post_id_ssh_pubkey),
-        )
-        .route(
-            "/v1/person/:id/_ssh_pubkeys/:tag",
-            get(v1::account_get_id_ssh_pubkey_tag).delete(v1::account_delete_id_ssh_pubkey_tag),
-        )
-        .route(
-            "/v1/person/:id/_radius",
-            get(v1::account_get_id_radius)
-                .post(v1::account_post_id_radius_regenerate)
-                .delete(v1::account_delete_id_radius),
-        )
-        .route(
-            "/v1/person/:id/_radius/_token",
-            get(v1::account_get_id_radius_token),
-        ) // TODO: make this cacheable
-        .route("/v1/person/:id/_unix", post(v1::account_post_id_unix))
-        .route(
-            "/v1/person/:id/_unix/_credential",
-            put(v1::account_put_id_unix_credential).delete(v1::account_delete_id_unix_credential),
-        )
-        // Service accounts
-        .route(
-            "/v1/service_account/",
-            get(v1::service_account_get).post(v1::service_account_post),
-        )
-        .route(
-            "/v1/service_account/:id",
-            get(v1::service_account_id_get).delete(v1::service_account_id_delete),
-        )
-        .route(
-            "/v1/service_account/:id/_attr/:attr",
-            get(v1::account_id_get_attr)
-                .put(v1::account_id_put_attr)
-                .post(v1::account_id_post_attr)
-                .delete(v1::account_id_delete_attr),
-        )
-        //  .route("/v1/service_account/:id/_lock", get(do_nothing));
-        .route(
-            "/v1/service_account/:id/_into_person",
-            post(v1::service_account_into_person),
-        )
-        .route(
-            "/v1/service_account/:id/_api_token",
-            post(v1::service_account_api_token_post).get(v1::service_account_api_token_get),
-        )
-        .route(
-            "/v1/service_account/:id/_api_token/:token_id",
-            delete(v1::service_account_api_token_delete),
-        )
-        .route("/v1/service_account/:id/_credential", get(do_nothing))
-        .route(
-            "/v1/service_account/:id/_credential/_generate",
-            get(v1::service_account_credential_generate),
-        )
-        .route(
-            "/v1/service_account/:id/_credential/_status",
-            get(v1::account_get_id_credential_status),
-        )
-        .route(
-            "/v1/service_account/:id/_credential/:cid/_lock",
-            get(do_nothing),
-        )
-        .route(
-            "/v1/service_account/:id/_ssh_pubkeys",
-            get(v1::account_get_id_ssh_pubkeys).post(v1::account_post_id_ssh_pubkey),
-        )
-        .route(
-            "/v1/service_account/:id/_ssh_pubkeys/:tag",
-            get(v1::account_get_id_ssh_pubkey_tag).delete(v1::account_delete_id_ssh_pubkey_tag),
-        )
-        .route(
-            "/v1/service_account/:id/_unix",
-            post(v1::account_post_id_unix),
-        )
-        .route(
-            "/v1/account/:id/_unix/_auth",
-            post(v1::account_post_id_unix_auth),
-        )
-        .route(
-            "/v1/account/:id/_unix/_token",
-            post(v1::account_get_id_unix_token).get(v1::account_get_id_unix_token), // TODO: make this cacheable
-        )
-        .route(
-            "/v1/account/:id/_ssh_pubkeys",
-            get(v1::account_get_id_ssh_pubkeys),
-        )
-        .route(
-            "/v1/account/:id/_ssh_pubkeys/:tag",
-            get(v1::account_get_id_ssh_pubkey_tag),
-        )
-        .route(
-            "/v1/account/:id/_user_auth_token",
-            get(v1::account_get_id_user_auth_token),
-        )
-        .route(
-            "/v1/account/:id/_user_auth_token/:token_id",
-            delete(v1::account_user_auth_token_delete),
-        )
-        .route(
-            "/v1/credential/_exchange_intent",
-            post(v1::credential_update_exchange_intent),
-        )
-        .route("/v1/credential/_status", post(v1::credential_update_status))
-        .route("/v1/credential/_update", post(v1::credential_update_update))
-        .route("/v1/credential/_commit", post(v1::credential_update_commit))
-        .route("/v1/credential/_cancel", post(v1::credential_update_cancel))
-        // domain-things
-        .route("/v1/domain", get(v1::domain_get))
-        .route(
-            "/v1/domain/_attr/:attr",
-            get(v1::domain_get_attr)
-                .put(v1::domain_put_attr)
-                .delete(v1::domain_delete_attr),
-        )
-        .route(
-            "/v1/group/:id/_unix/_token",
-            get(v1::group_get_id_unix_token),
-        )
-        .route("/v1/group/:id/_unix", post(v1::group_post_id_unix))
-        .route("/v1/group", get(v1::group_get).post(v1::group_post))
-        .route(
-            "/v1/group/:id",
-            get(v1::group_id_get).delete(v1::group_id_delete),
-        )
-        .route(
-            "/v1/group/:id/_attr/:attr",
-            delete(v1::group_id_delete_attr)
-                .get(v1::group_id_get_attr)
-                .put(v1::group_id_put_attr)
-                .post(v1::group_id_post_attr),
-        )
-        .with_state(state.clone())
-        .route("/v1/system", get(v1::system_get))
-        .route(
-            "/v1/system/_attr/:attr",
-            get(v1::system_get_attr)
-                .post(v1::system_post_attr)
-                .delete(v1::system_delete_attr),
-        )
-        .route("/v1/recycle_bin", get(v1::recycle_bin_get))
-        .route("/v1/recycle_bin/:id", get(v1::recycle_bin_id_get))
-        .route(
-            "/v1/recycle_bin/:id/_revive",
-            post(v1::recycle_bin_revive_id_post),
-        )
-        .route("/v1/access_profile", get(do_nothing))
-        .route("/v1/access_profile/:id", get(do_nothing))
-        .route("/v1/access_profile/:id/_attr/:attr", get(do_nothing))
-        .route("/v1/auth/valid", get(v1::auth_valid))
-        .route("/v1/auth", post(v1::auth))
-        .route("/v1/logout", get(v1::logout))
-        .route("/v1/reauth", post(v1::reauth))
-        .with_state(state.clone());
+        .route("/robots.txt", get(robots_txt))
+        .nest("/v1", v1::router(state.clone()))
+        .nest("/scim", v1_scim::scim_route_setup());
 
-    let app = app.merge(v1_router);
+    let pkg_path = PathBuf::from(env!("KANIDM_WEB_UI_PKG_PATH"));
+    if !pkg_path.exists() {
+        eprintln!(
+            "Couldn't find Web UI package path: ({}), quitting.",
+            env!("KANIDM_WEB_UI_PKG_PATH")
+        );
+        std::process::exit(1);
+    }
 
-    // TODO: openapi/routemap returns
-    //  routemap.push_self("/v1/routemap".to_string(), http_types::Method::Get);
-    //  appserver.route("/v1/routemap").nest({let mut route_api = tide::with_state(routemap);route_api.route("/").get(do_routemap);route_api
-    //  });
-    //  // routemap_route.route("/", get(do_routemap));
-
-    //  // ===  End routes
-
-    // let app = app.nest("/v1/schema", schema_route);
-    // let app = app.nest("/v1/raw", raw_route);
     let app = app
         // Shared account features only - mainly this is for unix-like features.
         .route("/status", get(status))
+        .nest_service("/pkg", ServeDir::new(pkg_path))
         .layer(from_fn(crate::https::csp_headers::cspheaders_layer))
         .merge(static_routes)
         .layer(session_layer)
         .layer(from_fn(middleware::version_middleware))
         .layer(from_fn(middleware::kopid_end))
+        .with_state(state)
         .layer(from_fn(middleware::kopid_start))
         .layer(TraceLayer::new_for_http())
-        .with_state(state)
         // the connect_info bit here lets us pick up the remote address of the client
         .into_make_service_with_connect_info::<SocketAddr>();
 
@@ -465,7 +222,7 @@ pub async fn create_https_server(
             res = match tlsconfig {
                 Some(tls_param) => {
 
-                    let mut tls_builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls_server()).unwrap();
+                    let mut tls_builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls()).unwrap();
 
                     tls_builder
                         .set_certificate_file(
@@ -521,7 +278,7 @@ async fn server_loop(
         }
     })
 }
-#[instrument(name = "handle-connection", skip(acceptor))]
+#[instrument(name = "handle-connection", skip(acceptor, stream, svc, protocol))]
 /// This handles an individual connection.
 async fn handle_conn(
     acceptor: SslAcceptor,
@@ -530,37 +287,17 @@ async fn handle_conn(
     protocol: Arc<Http>,
 ) -> Result<(), hyper::Error> {
     let mut tls_stream = SslStream::new(Ssl::new(acceptor.context()).unwrap(), stream).unwrap();
-    SslStream::accept(Pin::new(&mut tls_stream)).await.unwrap();
-    protocol
-        .serve_connection(tls_stream, svc.await.unwrap())
-        .await
-}
-
-/// Status endpoint used for healthchecks
-pub async fn status(
-    State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
-    let r = state
-        .status_ref
-        .handle_request(StatusRequestEvent {
-            eventid: kopid.eventid,
-        })
-        .await;
-    Response::new(format!("{}", r))
-}
-
-async fn robots_txt() -> impl IntoResponse {
-    Response::builder()
-        .header(CONTENT_TYPE, "text/plain;charset=utf-8")
-        .body(
-            r#"
-User-agent: *
-Disallow: /
-"#
-            .to_string(),
-        )
-        .expect("Failed to build robots.txt response!")
+    match SslStream::accept(Pin::new(&mut tls_stream)).await {
+        Ok(_) => {
+            protocol
+                .serve_connection(tls_stream, svc.await.unwrap())
+                .await
+        }
+        Err(_error) => {
+            // error!("Failed to handle connection: {:?}", error);
+            Ok(())
+        }
+    }
 }
 
 /// Generates the integrity hash for a file based on a filename
@@ -603,7 +340,6 @@ impl JavaScriptFile {
     // pub fn as_csp_hash(self) -> String {
     //     self.hash
     // }
-
     /// returns a `<script>` HTML tag
     pub fn as_tag(&self) -> String {
         let typeattr = match &self.filetype {
@@ -619,10 +355,10 @@ impl JavaScriptFile {
     }
 }
 
-/// Silly placeholder response for unimplemented routes
-pub async fn do_nothing() -> impl IntoResponse {
-    "Not implemented"
-}
+// /// Silly placeholder response for unimplemented routes
+// pub async fn do_nothing() -> impl IntoResponse {
+//     "Not implemented"
+// }
 
 /// Convert any kind of Result<T, OperationError> into an axum response with a stable type
 /// by JSON-encoding the body.
@@ -637,7 +373,7 @@ pub fn to_axum_response<T: Serialize>(v: Result<T, OperationError>) -> Response<
             Response::builder().body(Body::from(body)).unwrap()
         }
         Err(e) => {
-            (match &e {
+            let res = match &e {
                 OperationError::NotAuthenticated | OperationError::SessionExpired => {
                     // https://datatracker.ietf.org/doc/html/rfc7235#section-4.1
                     Response::builder()
@@ -656,9 +392,11 @@ pub fn to_axum_response<T: Serialize>(v: Result<T, OperationError>) -> Response<
                     Response::builder().status(http::StatusCode::BAD_REQUEST)
                 }
                 _ => Response::builder().status(http::StatusCode::INTERNAL_SERVER_ERROR),
-            })
-            .body(body::Body::empty())
-            .unwrap()
+            };
+            match serde_json::to_string(&e) {
+                Ok(val) => res.body(Body::from(val)).unwrap(),
+                Err(_) => res.body(Body::empty()).unwrap(),
+            }
         }
     }
 }
