@@ -11,7 +11,7 @@ mod v1_scim;
 
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
-use crate::config::{ServerRole, TlsConfiguration, Configuration};
+use crate::config::{Configuration, ServerRole, TlsConfiguration};
 use axum::extract::connect_info::{IntoMakeServiceWithConnectInfo, ResponseFuture};
 use axum::middleware::from_fn;
 use axum::response::Response;
@@ -137,11 +137,9 @@ pub async fn create_https_server(
     qe_r_ref: &'static QueryServerReadV1,
     mut rx: broadcast::Receiver<CoreAction>,
 ) -> Result<tokio::task::JoinHandle<()>, ()> {
-    let jws_validator = jws_signer
-        .get_validator()
-        .map_err(|e| {
-            error!(?e, "Failed to get jws validator");
-        })?;
+    let jws_validator = jws_signer.get_validator().map_err(|e| {
+        error!(?e, "Failed to get jws validator");
+    })?;
 
     // TODO this whole session store is kinda cursed and doesn't work the way we need, I think?
     let store = async_session::CookieStore::new();
@@ -209,7 +207,10 @@ pub async fn create_https_server(
         .into_make_service_with_connect_info::<SocketAddr>();
 
     let addr = SocketAddr::from_str(&config.address).map_err(|err| {
-        error!("Failed to parse address ({:?}) from config: {:?}", config.address, err);
+        error!(
+            "Failed to parse address ({:?}) from config: {:?}",
+            config.address, err
+        );
         ()
     })?;
 
@@ -320,7 +321,6 @@ async fn handle_conn(
     }
 }
 
-
 // /// Silly placeholder response for unimplemented routes
 // pub async fn do_nothing() -> impl IntoResponse {
 //     "Not implemented"
@@ -328,11 +328,12 @@ async fn handle_conn(
 
 /// Convert any kind of Result<T, OperationError> into an axum response with a stable type
 /// by JSON-encoding the body.
-#[instrument(name="to_axum_response", level="debug")]
-pub fn to_axum_response<T: Serialize + core::fmt::Debug>(v: Result<T, OperationError>) -> Response<Body> {
+#[instrument(name = "to_axum_response", level = "debug")]
+pub fn to_axum_response<T: Serialize + core::fmt::Debug>(
+    v: Result<T, OperationError>,
+) -> Response<Body> {
     match v {
         Ok(iv) => {
-
             let body = match serde_json::to_string(&iv) {
                 Ok(val) => val,
                 Err(err) => {
@@ -371,7 +372,9 @@ pub fn to_axum_response<T: Serialize + core::fmt::Debug>(v: Result<T, OperationE
                     .body(Body::from(val))
                     .expect("Failed to build response!"),
                 #[allow(clippy::expect_used)]
-                Err(_) => res.body(Body::from(format!("{:?}", e))).expect("Failed to build response!"),
+                Err(_) => res
+                    .body(Body::from(format!("{:?}", e)))
+                    .expect("Failed to build response!"),
             }
         }
     }

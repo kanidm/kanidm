@@ -67,7 +67,7 @@ pub async fn oauth2_id_get(
     to_axum_response(res)
 }
 
-#[instrument(level="info", skip(state))]
+#[instrument(level = "info", skip(state))]
 pub async fn oauth2_id_get_basic_secret(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -804,6 +804,5 @@ pub fn oauth2_route_setup(state: ServerState) -> Router<ServerState> {
                 .patch(oauth2_id_patch)
                 .delete(oauth2_id_delete),
         )
-
         .with_state(state)
 }

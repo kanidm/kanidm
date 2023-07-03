@@ -1526,7 +1526,7 @@ impl KanidmClient {
     }
 
     // == new credential update session code.
-    #[instrument(level="debug", skip(self))]
+    #[instrument(level = "debug", skip(self))]
     pub async fn idm_person_account_credential_update_intent(
         &self,
         id: &str,

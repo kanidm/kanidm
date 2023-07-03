@@ -37,7 +37,6 @@ impl KOpId {
         let res = self.eventid.clone();
         res.as_hyphenated().to_string()
     }
-
 }
 
 /// This runs at the start of the request, adding an extension with `KOpId` which has useful things inside it.

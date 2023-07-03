@@ -629,7 +629,7 @@ pub async fn account_get_id_credential_update(
     to_axum_response(res)
 }
 
-#[instrument(level="trace", skip(state,kopid))]
+#[instrument(level = "trace", skip(state, kopid))]
 pub async fn account_get_id_credential_update_intent_ttl(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -638,12 +638,17 @@ pub async fn account_get_id_credential_update_intent_ttl(
 ) -> impl IntoResponse {
     let res = state
         .qe_w_ref
-        .handle_idmcredentialupdateintent(kopid.uat, id, Some(Duration::from_secs(ttl)), kopid.eventid)
+        .handle_idmcredentialupdateintent(
+            kopid.uat,
+            id,
+            Some(Duration::from_secs(ttl)),
+            kopid.eventid,
+        )
         .await;
     to_axum_response(res)
 }
 
-#[instrument(level="trace", skip(state,kopid))]
+#[instrument(level = "trace", skip(state, kopid))]
 pub async fn account_get_id_credential_update_intent(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1386,16 +1391,21 @@ pub async fn auth_valid(
 #[instrument(skip(state))]
 pub fn router(state: ServerState) -> Router<ServerState> {
     Router::new()
-        .route("/oauth2/:rs_name/_basic_secret", get(super::oauth2::oauth2_id_get_basic_secret))
+        .route(
+            "/oauth2/:rs_name/_basic_secret",
+            get(super::oauth2::oauth2_id_get_basic_secret),
+        )
         .route("/oauth2/_basic", post(super::oauth2::oauth2_basic_post))
         .route(
             "/oauth2/:rs_name/_scopemap/:group",
-            post(super::oauth2::oauth2_id_scopemap_post).delete(super::oauth2::oauth2_id_scopemap_delete),
+            post(super::oauth2::oauth2_id_scopemap_post)
+                .delete(super::oauth2::oauth2_id_scopemap_delete),
         )
         .route(
             "/oauth2/:rs_name/_sup_scopemap/:group",
-            post(super::oauth2::oauth2_id_sup_scopemap_post).delete(super::oauth2::oauth2_id_sup_scopemap_delete))
-
+            post(super::oauth2::oauth2_id_sup_scopemap_post)
+                .delete(super::oauth2::oauth2_id_sup_scopemap_delete),
+        )
         .route("/raw/create", post(create))
         .route("/raw/modify", post(v1_modify))
         .route("/raw/delete", post(v1_delete))
