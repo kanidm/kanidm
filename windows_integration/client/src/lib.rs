@@ -53,9 +53,8 @@ pub async unsafe extern "system" fn SpLsaModeInitialize(
 
     let package_version = match package_version_str.parse::<u32>() {
         Ok(ver) => ver,
-        Err(e) => {
+        Err(_) => {
             event!(Level::ERROR, "Failed to parse version string as int");
-            event!(Level::DEBUG, "ParseIntError {}", e);
             1 // Just return 1 as the version number as we can't determine the correct version
         }
     };
