@@ -83,6 +83,7 @@ lazy_static! {
         ("acp_search_attr", Value::new_iutf8("gidnumber")),
         ("acp_search_attr", Value::new_iutf8("loginshell")),
         ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("sync_parent_uuid")),
         ("acp_search_attr", Value::new_iutf8("account_expire")),
         ("acp_search_attr", Value::new_iutf8("account_valid_from")),
         ("acp_search_attr", Value::new_iutf8("primary_credential")),

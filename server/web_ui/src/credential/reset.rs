@@ -1,6 +1,6 @@
 use gloo::console;
 use kanidm_proto::v1::{
-    CUIntentToken, CUSessionToken, CUStatus, CredentialDetail, CredentialDetailType,
+    CUIntentToken, CUSessionToken, CUStatus, CredentialDetail, CredentialDetailType, CUExtPortal
 };
 use uuid::Uuid;
 use wasm_bindgen::{JsValue, UnwrapThrowExt};
@@ -343,16 +343,36 @@ impl CredentialResetApp {
     fn view_main(&self, ctx: &Context<Self>, token: &CUSessionToken, status: &CUStatus) -> Html {
         remove_body_form_classes!();
 
-        let displayname = status.displayname.clone();
-        let spn = status.spn.clone();
+        let CUStatus {
+            spn,
+            displayname,
+            ext_cred_portal,
+            mfaregstate: _,
+            can_commit,
+            primary,
+            primary_can_edit: _,
+            passkeys,
+            passkeys_can_edit: _,
+        } = status;
+
+        let displayname = displayname.clone();
+        let spn = spn.clone();
+
         let cb = self.cb.clone();
 
-        let can_commit = status.can_commit;
+
+        let ext_cred_portal_html = match ext_cred_portal {
+            CUExtPortal::None => html! { <></> },
+            CUExtPortal::Hidden => html! {
+                <><p>{ "Hidden" }</p></>
+            },
+            CUExtPortal::Some(url) => html! {
+                <><p>{ url.as_str() }</p></>
+            },
+        };
 
         // match on primary, get type_.
-        // FUTURE: Need to work out based on policy if this is shown!
-
-        let pw_html = match &status.primary {
+        let pw_html = match primary {
             Some(CredentialDetail {
                 uuid: _,
                 type_: CredentialDetailType::Password,
@@ -456,14 +476,14 @@ impl CredentialResetApp {
             }
         };
 
-        let passkey_html = if status.passkeys.is_empty() {
+        let passkey_html = if passkeys.is_empty() {
             html! {
                 <p>{ "No Passkeys Registered" }</p>
             }
         } else {
             html! {
                 <>
-                { for status.passkeys.iter()
+                { for passkeys.iter()
                     .map(|detail|
                         PasskeyRemoveModalApp::render_button(&detail.tag, detail.uuid)
                     )
@@ -474,7 +494,7 @@ impl CredentialResetApp {
 
         let passkey_modals_html = html! {
             <>
-                { for status.passkeys.iter()
+                { for passkeys.iter()
                     .map(|detail|
                         html! { <PasskeyRemoveModalApp token={ token.clone() } tag={ detail.tag.clone() } uuid={ detail.uuid } cb={ cb.clone() } /> }
                     )
@@ -494,6 +514,7 @@ impl CredentialResetApp {
 
               <div class="row g-3">
                   <form class="needs-validation" novalidate=true>
+                    { ext_cred_portal_html }
                     <hr class="my-4" />
                     <h4>{"Passkeys"}</h4>
                     <p>{ "Strong cryptographic authenticators with self contained multi-factor authentication." }</p>

@@ -225,7 +225,6 @@ impl ViewsApp {
         let current_user_uat = uat.clone();
 
         let ui_hint_experimental = uat.ui_hints.contains(&UiHint::ExperimentalFeatures);
-        let credential_update = uat.ui_hints.contains(&UiHint::CredentialUpdate);
 
         // WARN set dash-body against body here?
         html! {
@@ -249,14 +248,12 @@ impl ViewsApp {
                       </Link<ViewRoute>>
                     </li>
 
-                    if credential_update {
-                      <li class="mb-1">
+                    <li class="mb-1">
                         <Link<ViewRoute> classes="nav-link" to={ViewRoute::Profile}>
                           <span data-feather="file"></span>
                           { "Profile" }
                         </Link<ViewRoute>>
-                      </li>
-                    }
+                    </li>
 
                     if ui_hint_experimental {
                       <li class="mb-1">

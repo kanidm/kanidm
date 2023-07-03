@@ -47,6 +47,8 @@ macro_rules! try_from_entry {
                 "Missing attribute: displayname".to_string(),
             ))?;
 
+        let sync_parent_uuid = $value.get_ava_single_refer("sync_parent_uuid");
+
         let primary = $value
             .get_ava_single_credential("primary_credential")
             .map(|v| v.clone());
@@ -98,6 +100,7 @@ macro_rules! try_from_entry {
             .copied()
             .collect();
 
+        // For now disable cred updates on sync accounts too.
         if $value.attribute_equality("class", &PVCLASS_PERSON) {
             ui_hints.insert(UiHint::CredentialUpdate);
         }
@@ -113,6 +116,7 @@ macro_rules! try_from_entry {
         Ok(Account {
             uuid,
             name,
+            sync_parent_uuid,
             displayname,
             groups,
             primary,
@@ -141,6 +145,7 @@ pub struct Account {
     pub name: String,
     pub displayname: String,
     pub uuid: Uuid,
+    pub sync_parent_uuid: Option<Uuid>,
     // We want to allow this so that in the future we can populate this into oauth2 tokens
     #[allow(dead_code)]
     pub groups: Vec<Group>,
