@@ -86,8 +86,16 @@ pub async unsafe extern "system" fn ApInitialisePackage(
         }
     };
 
+    let alloc_lsa_heap = match &dt_ref.AllocateLsaHeap {
+        Some(func) => func,
+        None => {
+            event!(Level::ERROR, "AP: Failed to get LSA heap allocation function");
+            return STATUS_UNSUCCESSFUL;
+        }
+    };
+
     let alloc_package_name =
-        match unsafe { allocate_mem_lsa(package_name_win, &dt_ref.AllocateLsaHeap) } {
+        match unsafe { allocate_mem_lsa(package_name_win, alloc_lsa_heap) } {
             Ok(ptr) => ptr,
             Err(e) => match e {
                 MemoryAllocationError::NoAllocFunc => {
@@ -272,23 +280,31 @@ pub async unsafe extern "system" fn ApLogonUser(
     }};
 
     // Allocate to LSA heap space
-    let substatus_lsa = match unsafe { allocate_mem_lsa(0i32, &secpkg_dispatch_table.AllocateLsaHeap) } {
+    let alloc_lsa_heap = match &secpkg_dispatch_table.AllocateLsaHeap {
+        Some(func) => func,
+        None => {
+            event!(Level::ERROR, "AP: Failed to get LSA heap allocation function");
+            return STATUS_UNSUCCESSFUL;
+        }
+    };
+
+    let substatus_lsa = match unsafe { allocate_mem_lsa(0i32, alloc_lsa_heap) } {
         Ok(ptr) => ptr,
         Err(_) => return error_then_return("AP: Failed to allocate substatus"),
     };
-    let token_information_type_lsa = match unsafe { allocate_mem_lsa(LsaTokenInformationV2, &secpkg_dispatch_table.AllocateLsaHeap)} {
+    let token_information_type_lsa = match unsafe { allocate_mem_lsa(LsaTokenInformationV2, alloc_lsa_heap)} {
         Ok(ptr) => ptr,
         Err(_) => return error_then_return("AP: Failed to allocate token information type"),
     };
-    let token_information_lsa = match unsafe { allocate_mem_lsa(token_information_v2, &secpkg_dispatch_table.AllocateLsaHeap) } {
+    let token_information_lsa = match unsafe { allocate_mem_lsa(token_information_v2, alloc_lsa_heap) } {
         Ok(ptr) => ptr,
         Err(_) => return error_then_return("AP: Failed to allocate the token information"),
     };
-    let authenticating_authority_lsa = match unsafe { allocate_mem_lsa(rust_to_unicode(kanidm_client.get_url().to_string()), &secpkg_dispatch_table.AllocateLsaHeap)} {
+    let authenticating_authority_lsa = match unsafe { allocate_mem_lsa(rust_to_unicode(kanidm_client.get_url().to_string()), alloc_lsa_heap)} {
         Ok(ptr) => ptr,
         Err(_) => return error_then_return("AP: Failed to allocate the authenticating authority"),
     };
-    let account_name_lsa = match unsafe { allocate_mem_lsa(provided_credentials.username, &secpkg_dispatch_table.AllocateLsaHeap)} {
+    let account_name_lsa = match unsafe { allocate_mem_lsa(provided_credentials.username, alloc_lsa_heap)} {
         Ok(ptr) => ptr,
         Err(_) => return error_then_return("AP: Failed to allocate the authenticating authority"),
     };
@@ -368,8 +384,17 @@ pub async unsafe extern "system" fn ApCallPackage(
             })
         }
     };
+
+    let alloc_client_heap = match &dispatch_table.AllocateClientBuffer {
+        Some(func) => func,
+        None => {
+            event!(Level::ERROR, "AP: Failed to get LSA heap allocation function");
+            return STATUS_UNSUCCESSFUL;
+        }
+    };
+
     let response_ptr = match unsafe {
-        allocate_mem_client(response, &dispatch_table.AllocateClientBuffer, client_req)
+        allocate_mem_client(response, alloc_client_heap, client_req)
     } {
         Ok(ptr) => ptr,
         Err(_) => {

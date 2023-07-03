@@ -2,25 +2,19 @@ use std::ffi::c_void;
 use std::mem::size_of;
 use std::ptr::null_mut;
 
-use windows::Win32::Foundation::STATUS_SUCCESS;
-use windows::Win32::Security::Authentication::Identity::{
-    PLSA_ALLOCATE_CLIENT_BUFFER, PLSA_ALLOCATE_LSA_HEAP,
-};
+use windows::Win32::Foundation::{STATUS_SUCCESS, NTSTATUS};
+
+pub type AllocateMemInLsaFn = unsafe extern "system" fn(length: u32) -> *mut ::core::ffi::c_void;
+pub type AllocateMemInClientFn = unsafe extern "system" fn(client_request: *const *const ::core::ffi::c_void, length_required: u32, client_base_address: *mut *mut ::core::ffi::c_void) -> NTSTATUS;
 
 pub enum MemoryAllocationError {
-    NoAllocFunc,
     AllocFuncFailed,
 }
 
 pub unsafe fn allocate_mem_lsa<T>(
     to_alloc: T,
-    alloc_func_opt: &PLSA_ALLOCATE_LSA_HEAP,
+    alloc_func: &AllocateMemInLsaFn,
 ) -> Result<*mut T, MemoryAllocationError> {
-    let alloc_func = match alloc_func_opt {
-        Some(af) => af,
-        None => return Err(MemoryAllocationError::NoAllocFunc),
-    };
-
     let size = size_of::<T>();
     let mem_ptr = unsafe { alloc_func(size as u32) };
 
@@ -39,21 +33,16 @@ pub unsafe fn allocate_mem_lsa<T>(
 
 pub unsafe fn allocate_mem_client<T>(
     to_alloc: T,
-    alloc_func_opt: &PLSA_ALLOCATE_CLIENT_BUFFER,
+    alloc_func: &AllocateMemInClientFn,
     client_req: *const *const c_void,
 ) -> Result<*mut T, MemoryAllocationError> {
     let size = size_of::<T>();
-    let alloc_func = match alloc_func_opt {
-        Some(af) => af,
-        None => return Err(MemoryAllocationError::NoAllocFunc),
-    };
 
     let mem_ptr: *mut *mut c_void = null_mut();
 
-    match unsafe { alloc_func(client_req, size as u32, mem_ptr) } {
-        STATUS_SUCCESS => (),
-        _ => return Err(MemoryAllocationError::AllocFuncFailed),
-    };
+    if unsafe { alloc_func(client_req, size as u32, mem_ptr) } != STATUS_SUCCESS {
+        return Err(MemoryAllocationError::AllocFuncFailed);
+    }
 
     if mem_ptr.is_null() {
         return Err(MemoryAllocationError::AllocFuncFailed);
