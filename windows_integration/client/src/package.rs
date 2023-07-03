@@ -98,10 +98,6 @@ pub async unsafe extern "system" fn ApInitialisePackage(
         match unsafe { allocate_mem_lsa(package_name_win, alloc_lsa_heap) } {
             Ok(ptr) => ptr,
             Err(e) => match e {
-                MemoryAllocationError::NoAllocFunc => {
-                    event!(Level::ERROR, "Missing lsa allocation function");
-                    return STATUS_UNSUCCESSFUL;
-                }
                 MemoryAllocationError::AllocFuncFailed => {
                     event!(Level::ERROR, "Failed to allocate package name");
                     return STATUS_UNSUCCESSFUL;
