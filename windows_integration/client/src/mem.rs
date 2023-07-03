@@ -16,12 +16,12 @@ pub unsafe fn allocate_mem_lsa<T>(
     to_alloc: T,
     alloc_func_opt: &PLSA_ALLOCATE_LSA_HEAP,
 ) -> Result<*mut T, MemoryAllocationError> {
-    let size = size_of::<T>();
     let alloc_func = match alloc_func_opt {
         Some(af) => af,
         None => return Err(MemoryAllocationError::NoAllocFunc),
     };
 
+    let size = size_of::<T>();
     let mem_ptr = unsafe { alloc_func(size as u32) };
 
     if mem_ptr.is_null() {
