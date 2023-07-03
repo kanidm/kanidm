@@ -35,5 +35,6 @@ async fn test_https_middleware_headers(rsclient: KanidmClient) {
         "csp headers: {:#?}",
         response.headers().get("content-security-policy")
     );
+    eprintln!("### Static content don't needs CSP headers");
     assert_eq!(response.headers().get("content-security-policy"), None);
 }

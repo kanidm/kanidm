@@ -591,17 +591,12 @@ pub async fn oauth2_openid_discovery_get(
 
 pub async fn oauth2_openid_userinfo_get(
     State(state): State<ServerState>,
-    headers: HeaderMap,
     Path(client_id): Path<String>,
     Extension(kopid): Extension<KOpId>,
 ) -> Response<Body> {
     // The token we want to inspect is in the authorisation header.
-    let client_authz = match headers
-        .get("authorization")
-        .and_then(|hv| hv.to_str().ok())
-        .and_then(|h| h.strip_prefix("Bearer "))
-        .map(str::to_string)
-    {
+
+    let client_authz = match kopid.uat {
         Some(val) => val,
         None => {
             error!("Bearer Authentication Not Provided");
@@ -653,20 +648,15 @@ pub async fn oauth2_openid_publickey_get(
     to_axum_response(res)
 }
 
+/// This is called directly by the resource server, where we then issue
+/// information about this token to the caller.
 pub async fn oauth2_token_introspect_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    headers: HeaderMap, // TODO: turn this into an auth/bearer header?
     Form(intr_req): Form<AccessTokenIntrospectRequest>,
 ) -> impl IntoResponse {
-    // This is called directly by the resource server, where we then issue
-    // information about this token to the caller.
 
-    let client_authz = match headers
-        .get("authorization")
-        .and_then(|hv| hv.to_str().ok())
-        .and_then(|h| h.strip_prefix("Bearer "))
-        .map(str::to_string)
+    let client_authz = match kopid.uat
     {
         Some(val) => val,
         None => {
@@ -677,17 +667,6 @@ pub async fn oauth2_token_introspect_post(
                 .unwrap();
         }
     };
-
-    // Get the introspection request, could we accept json or form? Prob needs content type here.
-    // let intr_req: AccessTokenIntrospectRequest = req.body_form().await.map_err(|e| {
-    //     // TODO: #1787 test this
-    //     request_error!("{:?}", e);
-    //     tide::Error::from_str(
-    //         tide::StatusCode::BadRequest,
-    //         "Invalid Oauth2 AccessTokenIntrospectRequest",
-    //     )
-    // })?;
-
     request_trace!("Introspect Request - {:?}", intr_req);
 
     let res = state
@@ -724,26 +703,15 @@ pub async fn oauth2_token_introspect_post(
     }
 }
 
+/// This is called directly by the resource server, where we then revoke
+/// the token identified by this request.
 pub async fn oauth2_token_revoke_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    headers: HeaderMap,
     Form(intr_req): Form<TokenRevokeRequest>,
 ) -> impl IntoResponse {
-    // This is called directly by the resource server, where we then revoke
-    // the token identified by this request.
 
-    let client_authz = match headers
-        .get("Authorization")
-        .and_then(|hv| {
-            // Get the first header value.
-            hv.to_str().ok()
-        })
-        .and_then(|h| {
-            // Turn it to a &str, and then check the prefix
-            h.strip_prefix("Bearer ")
-        })
-        .map(|s| s.to_string())
+    let client_authz = match kopid.uat
     {
         Some(val) => val,
         None => {
@@ -753,16 +721,6 @@ pub async fn oauth2_token_revoke_post(
                 .unwrap()
         }
     };
-
-    // TODO: #1787 test this to support token auth
-    // Get the introspection request, could we accept json or form? Prob needs content type here.
-    // let intr_req: TokenRevokeRequest = req.body_form().await.map_err(|e| {
-    //     request_error!("{:?}", e);
-    //     tide::Error::from_str(
-    //         tide::StatusCode::BadRequest,
-    //         "Invalid Oauth2 TokenRevokeRequest",
-    //     )
-    // })?;
 
     request_trace!("Revoke Request - {:?}", intr_req);
 

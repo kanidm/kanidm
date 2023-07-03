@@ -14,6 +14,7 @@ async fn test_v1_person_patch(rsclient: KanidmClient) {
 
     let response = match client
         .patch(format!("{}/v1/person/foo", &addr))
+        .header("Content-Type", "application/json")
         .body(post_body)
         .send()
         .await

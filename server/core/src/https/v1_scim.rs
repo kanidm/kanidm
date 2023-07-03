@@ -129,10 +129,7 @@ async fn scim_sync_get(
     to_axum_response(res)
 }
 
-async fn scim_sink_get(// State(state): State<ServerState>,
-    // Extension(kopid): Extension<KOpId>,
-    // AuthBearer(bearer): AuthBearer,
-) -> impl IntoResponse {
+async fn scim_sink_get() -> impl IntoResponse {
     // let mut res = tide::Response::new(200);
     Response::builder()
         .header("Content-Type", "text/html;charset=utf-8")

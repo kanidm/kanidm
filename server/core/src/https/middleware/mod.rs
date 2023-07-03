@@ -32,9 +32,9 @@ pub struct KOpId {
     pub uat: Option<String>,
 }
 
-/// This runs at the start of the request, adding an extension with the OperationID
+/// This runs at the start of the request, adding an extension with `KOpId` which has useful things inside it.
 pub async fn kopid_start<B>(
-    // TODO: try and make this into a TypedHeader
+    // TODO: try and make this into a TypedHeader - can't make it optional until at least axum 0.7.x - <https://github.com/tokio-rs/axum/issues/1781>
     headers: HeaderMap,
     mut request: Request<B>,
     next: Next<B>,

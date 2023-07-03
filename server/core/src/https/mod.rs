@@ -12,6 +12,7 @@ use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::ServerRole;
 use axum::extract::connect_info::{IntoMakeServiceWithConnectInfo, ResponseFuture};
 use axum::extract::State;
+use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::*;
 use axum::{body, Extension};
@@ -20,6 +21,7 @@ use axum_macros::FromRef;
 use axum_sessions::extractors::WritableSession;
 use axum_sessions::{async_session, SameSite, SessionLayer};
 use compact_jwt::{Jws, JwsSigner, JwsUnverified};
+use http::header::CONTENT_TYPE;
 use http::HeaderMap;
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrIncoming, AddrStream, Http};
@@ -165,7 +167,7 @@ pub async fn create_https_server(
         js_files: get_js_files(role.clone()),
     };
 
-    let app = match role {
+    let static_routes = match role {
         ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
             let pkg_path = PathBuf::from(env!("KANIDM_WEB_UI_PKG_PATH"));
             if !pkg_path.exists() {
@@ -181,7 +183,7 @@ pub async fn create_https_server(
                 .route("/ui/", get(crate::https::ui::ui_handler))
                 .route("/ui/*ui", get(crate::https::ui::ui_handler))
                 .route("/manifest.webmanifest", get(manifest::manifest))
-                .route("/robots.txt", get(|| async { todo!() }))
+                .layer(from_fn(csp_headers::strip_csp_headers))
                 .nest_service("/pkg", ServeDir::new(pkg_path))
                 .layer(middleware::compression::new()) // TODO: this needs to be configured properly
         }
@@ -190,9 +192,11 @@ pub async fn create_https_server(
 
     //  // == oauth endpoints.
     // TODO: turn this from a nest into a merge because state things are bad in nested routes
-    let app = app.nest("/oauth2", oauth2::oauth2_route_setup(state.clone()));
+    let app = Router::new()
+        .nest("/oauth2", oauth2::oauth2_route_setup(state.clone()))
+        .route("/robots.txt", get(robots_txt));
     //  // == scim endpoints.
-    let app = app
+    let v1_router = Router::new()
         .merge(v1_scim::scim_route_setup())
         .route("/v1/raw/create", post(v1::create))
         .route("/v1/raw/modify", post(v1::modify))
@@ -287,70 +291,61 @@ pub async fn create_https_server(
         .route(
             "/v1/person/:id/_unix/_credential",
             put(v1::account_put_id_unix_credential).delete(v1::account_delete_id_unix_credential),
-        );
-
-    //  // Service accounts
-    let service_account_route = Router::new()
+        )
+        // Service accounts
         .route(
-            "/",
+            "/v1/service_account/",
             get(v1::service_account_get).post(v1::service_account_post),
         )
         .route(
-            "/:id",
+            "/v1/service_account/:id",
             get(v1::service_account_id_get).delete(v1::service_account_id_delete),
         )
         .route(
-            "/:id/_attr/:attr",
+            "/v1/service_account/:id/_attr/:attr",
             get(v1::account_id_get_attr)
                 .put(v1::account_id_put_attr)
                 .post(v1::account_id_post_attr)
                 .delete(v1::account_id_delete_attr),
         )
-        //  // service_account_route.route("/:id/_lock", get(do_nothing));
-        .route("/:id/_into_person", post(v1::service_account_into_person))
+        //  .route("/v1/service_account/:id/_lock", get(do_nothing));
         .route(
-            "/:id/_api_token",
+            "/v1/service_account/:id/_into_person",
+            post(v1::service_account_into_person),
+        )
+        .route(
+            "/v1/service_account/:id/_api_token",
             post(v1::service_account_api_token_post).get(v1::service_account_api_token_get),
         )
         .route(
-            "/:id/_api_token/:token_id",
+            "/v1/service_account/:id/_api_token/:token_id",
             delete(v1::service_account_api_token_delete),
         )
-        .route("/:id/_credential", get(do_nothing))
+        .route("/v1/service_account/:id/_credential", get(do_nothing))
         .route(
-            "/:id/_credential/_generate",
+            "/v1/service_account/:id/_credential/_generate",
             get(v1::service_account_credential_generate),
         )
         .route(
-            "/:id/_credential/_status",
+            "/v1/service_account/:id/_credential/_status",
             get(v1::account_get_id_credential_status),
         )
-        .route("/:id/_credential/:cid/_lock", get(do_nothing))
         .route(
-            "/:id/_ssh_pubkeys",
+            "/v1/service_account/:id/_credential/:cid/_lock",
+            get(do_nothing),
+        )
+        .route(
+            "/v1/service_account/:id/_ssh_pubkeys",
             get(v1::account_get_id_ssh_pubkeys).post(v1::account_post_id_ssh_pubkey),
         )
         .route(
-            "/:id/_ssh_pubkeys/:tag",
+            "/v1/service_account/:id/_ssh_pubkeys/:tag",
             get(v1::account_get_id_ssh_pubkey_tag).delete(v1::account_delete_id_ssh_pubkey_tag),
         )
-        .route("/:id/_unix", post(v1::account_post_id_unix))
-        .with_state(state.clone());
-
-    let app = app.nest("/v1/service_account", service_account_route);
-
-    // TODO: openapi/routemap returns
-    //  routemap.push_self("/v1/routemap".to_string(), http_types::Method::Get);
-    //  appserver.route("/v1/routemap").nest({let mut route_api = tide::with_state(routemap);route_api.route("/").get(do_routemap);route_api
-    //  });
-    //  // routemap_route.route("/", get(do_routemap));
-
-    //  // ===  End routes
-
-    // let app = app.nest("/v1/schema", schema_route);
-    // let app = app.nest("/v1/raw", raw_route);
-    let app = app
-        // Shared account features only - mainly this is for unix-like features.
+        .route(
+            "/v1/service_account/:id/_unix",
+            post(v1::account_post_id_unix),
+        )
         .route(
             "/v1/account/:id/_unix/_auth",
             post(v1::account_post_id_unix_auth),
@@ -429,18 +424,29 @@ pub async fn create_https_server(
         .route("/v1/auth", post(v1::auth))
         .route("/v1/logout", get(v1::logout))
         .route("/v1/reauth", post(v1::reauth))
+        .with_state(state.clone());
+
+    let app = app.merge(v1_router);
+
+    // TODO: openapi/routemap returns
+    //  routemap.push_self("/v1/routemap".to_string(), http_types::Method::Get);
+    //  appserver.route("/v1/routemap").nest({let mut route_api = tide::with_state(routemap);route_api.route("/").get(do_routemap);route_api
+    //  });
+    //  // routemap_route.route("/", get(do_routemap));
+
+    //  // ===  End routes
+
+    // let app = app.nest("/v1/schema", schema_route);
+    // let app = app.nest("/v1/raw", raw_route);
+    let app = app
+        // Shared account features only - mainly this is for unix-like features.
         .route("/status", get(status))
-        .route_layer(from_fn_with_state(
-            state.clone(),
-            crate::https::csp_headers::cspheaders_layer,
-        ))
+        .layer(from_fn(crate::https::csp_headers::cspheaders_layer))
+        .merge(static_routes)
         .layer(session_layer)
-        .layer(axum::middleware::from_fn(middleware::version_middleware))
-        .layer(axum::middleware::from_fn(middleware::kopid_end))
-        .layer(axum::middleware::from_fn_with_state(
-            state.clone(),
-            middleware::kopid_start,
-        ))
+        .layer(from_fn(middleware::version_middleware))
+        .layer(from_fn(middleware::kopid_end))
+        .layer(from_fn(middleware::kopid_start))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
         // the connect_info bit here lets us pick up the remote address of the client
@@ -544,6 +550,19 @@ pub async fn status(
     Response::new(format!("{}", r))
 }
 
+async fn robots_txt() -> impl IntoResponse {
+    Response::builder()
+        .header(CONTENT_TYPE, "text/plain;charset=utf-8")
+        .body(
+            r#"
+User-agent: *
+Disallow: /
+"#
+            .to_string(),
+        )
+        .expect("Failed to build robots.txt response!")
+}
+
 /// Generates the integrity hash for a file based on a filename
 pub fn generate_integrity_hash(filename: String) -> Result<String, String> {
     let wasm_filepath = PathBuf::from(filename);
@@ -586,8 +605,8 @@ impl JavaScriptFile {
     // }
 
     /// returns a `<script>` HTML tag
-    pub fn as_tag(self) -> String {
-        let typeattr = match self.filetype {
+    pub fn as_tag(&self) -> String {
+        let typeattr = match &self.filetype {
             Some(val) => {
                 format!(" type=\"{}\"", val.as_str())
             }
@@ -610,7 +629,11 @@ pub async fn do_nothing() -> impl IntoResponse {
 pub fn to_axum_response<T: Serialize>(v: Result<T, OperationError>) -> Response<Body> {
     match v {
         Ok(iv) => {
-            let body = serde_json::to_string(&iv).unwrap();
+            let body = match serde_json::to_string(&iv) {
+                Ok(val) => val,
+                Err(_) => todo!("Handle JSON serialization of body"),
+            };
+            #[allow(clippy::unwrap_used)]
             Response::builder().body(Body::from(body)).unwrap()
         }
         Err(e) => {
