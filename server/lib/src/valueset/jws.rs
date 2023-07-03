@@ -90,8 +90,11 @@ impl ValueSetT for ValueSetJwsKeyEs256 {
         }
     }
 
-    fn contains(&self, _pv: &PartialValue) -> bool {
-        false
+    fn contains(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::Iutf8(kid) => self.set.iter().any(|k| k.get_kid() == kid),
+            _ => false,
+        }
     }
 
     fn substring(&self, _pv: &PartialValue) -> bool {

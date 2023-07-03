@@ -498,6 +498,7 @@ impl ValueSetT for ValueSetSession {
         Ok(Box::new(ValueSetApiToken { map }))
     }
 
+    #[allow(clippy::todo)]
     fn repl_merge_valueset(&self, _older: &ValueSet) -> Option<ValueSet> {
         todo!();
     }
@@ -872,6 +873,7 @@ impl ValueSetT for ValueSetOauth2Session {
         Some(Box::new(self.map.values().map(|m| &m.rs_uuid).copied()))
     }
 
+    #[allow(clippy::todo)]
     fn repl_merge_valueset(&self, _older: &ValueSet) -> Option<ValueSet> {
         todo!();
     }
