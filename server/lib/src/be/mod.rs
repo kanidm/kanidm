@@ -166,9 +166,8 @@ unsafe impl<'a> Send for BackendReadTransaction<'a> {}
 
 pub struct BackendWriteTransaction<'a> {
     idlayer: IdlArcSqliteWriteTransaction<'a>,
-    idxmeta: CowCellReadTxn<IdxMeta>,
-    ruv: ReplicationUpdateVectorWriteTransaction<'a>,
     idxmeta_wr: CowCellWriteTxn<'a, IdxMeta>,
+    ruv: ReplicationUpdateVectorWriteTransaction<'a>,
 }
 
 impl IdRawEntry {
@@ -968,7 +967,7 @@ impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
     }
 
     fn get_idxmeta_ref(&self) -> &IdxMeta {
-        &self.idxmeta
+        &self.idxmeta_wr
     }
 }
 
@@ -1483,7 +1482,7 @@ impl<'a> BackendWriteTransaction<'a> {
         // this we discard the lifetime on idxmeta, because we know that it will
         // remain constant for the life of the operation.
 
-        let idxmeta = unsafe { &(*(&self.idxmeta.idxkeys as *const _)) };
+        let idxmeta = unsafe { &(*(&self.idxmeta_wr.idxkeys as *const _)) };
 
         let idx_diff = Entry::idx_diff(idxmeta, pre, post);
 
@@ -1535,7 +1534,7 @@ impl<'a> BackendWriteTransaction<'a> {
         let idx_table_set: HashSet<_> = idx_table_list.into_iter().collect();
 
         let missing: Vec<_> = self
-            .idxmeta
+            .idxmeta_wr
             .idxkeys
             .keys()
             .filter_map(|ikey| {
@@ -1567,7 +1566,7 @@ impl<'a> BackendWriteTransaction<'a> {
         trace!("Creating index -> uuid2rdn");
         self.idlayer.create_uuid2rdn()?;
 
-        self.idxmeta
+        self.idxmeta_wr
             .idxkeys
             .keys()
             .try_for_each(|ikey| self.idlayer.create_idx(&ikey.attr, ikey.itype))
@@ -1766,9 +1765,8 @@ impl<'a> BackendWriteTransaction<'a> {
     pub fn commit(self) -> Result<(), OperationError> {
         let BackendWriteTransaction {
             idlayer,
-            idxmeta: _,
-            ruv,
             idxmeta_wr,
+            ruv,
         } = self;
 
         idlayer.commit().map(|()| {
@@ -1952,9 +1950,8 @@ impl Backend {
     pub fn write(&self) -> BackendWriteTransaction {
         BackendWriteTransaction {
             idlayer: self.idlayer.write(),
-            idxmeta: self.idxmeta.read(),
-            ruv: self.ruv.write(),
             idxmeta_wr: self.idxmeta.write(),
+            ruv: self.ruv.write(),
         }
     }
 
