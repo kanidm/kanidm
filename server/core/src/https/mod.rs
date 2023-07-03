@@ -10,6 +10,7 @@ mod v1_scim;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::ServerRole;
+use axum::extract::connect_info::{IntoMakeServiceWithConnectInfo, ResponseFuture};
 use axum::extract::State;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::*;
@@ -20,11 +21,21 @@ use axum_sessions::extractors::WritableSession;
 use axum_sessions::{async_session, SameSite, SessionLayer};
 use compact_jwt::{Jws, JwsSigner, JwsUnverified};
 use http::HeaderMap;
+use hyper::server::accept::Accept;
+use hyper::server::conn::{AddrIncoming, AddrStream, Http};
 use hyper::Body;
 use kanidm_proto::v1::OperationError;
 use kanidmd_lib::status::{StatusActor, StatusRequestEvent};
+use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod};
+use tokio_openssl::SslStream;
+
+use futures_util::future::poll_fn;
 use serde::Serialize;
+use tokio::net::TcpListener;
+
 use std::path::PathBuf;
+use std::pin::Pin;
+use std::sync::Arc;
 use std::{net::SocketAddr, str::FromStr};
 use tokio::sync::broadcast;
 use tower_http::services::ServeDir;
@@ -167,7 +178,7 @@ pub async fn create_https_server(
             Router::new()
                 .route("/", get(|| async { Redirect::temporary("/ui/login") }))
                 .route("/ui", get(crate::https::ui::ui_handler))
-                .route("/ui", get(crate::https::ui::ui_handler))
+                .route("/ui/", get(crate::https::ui::ui_handler))
                 .route("/ui/*ui", get(crate::https::ui::ui_handler))
                 .route("/manifest.webmanifest", get(manifest::manifest))
                 .route("/robots.txt", get(|| async { todo!() }))
@@ -431,7 +442,9 @@ pub async fn create_https_server(
             middleware::kopid_start,
         ))
         .layer(TraceLayer::new_for_http())
-        .with_state(state);
+        .with_state(state)
+        // the connect_info bit here lets us pick up the remote address of the client
+        .into_make_service_with_connect_info::<SocketAddr>();
 
     let addr = SocketAddr::from_str(&address).unwrap();
     info!("Starting the web server...");
@@ -445,21 +458,30 @@ pub async fn create_https_server(
             }
             res = match tlsconfig {
                 Some(tls_param) => {
-                    let config = axum_server::tls_openssl::OpenSSLConfig::from_pem_file(
-                        tls_param.chain.clone(),
-                        tls_param.key.clone(),
-                    )
-                    .map_err(|e| {
-                        error!("Failed to build TLS Listener for web server: {:?}", e);
-                    }).unwrap();
 
-                    tokio::spawn(
-                        axum_server::bind_openssl(addr, config)
-                        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
-                    )
+                    let mut tls_builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls()).unwrap();
+
+                    tls_builder
+                        .set_certificate_file(
+                            tls_param.chain.clone(),
+                            SslFiletype::PEM,
+                        ).unwrap();
+                    tls_builder.set_private_key_file(
+                            tls_param.key.clone(),
+                            SslFiletype::PEM,
+                        )
+                        .unwrap();
+                    tls_builder.check_private_key().unwrap();
+
+                    let acceptor = tls_builder.build();
+                    let listener = TcpListener::bind(addr).await.unwrap();
+                    let listener = hyper::server::conn::AddrIncoming::from_listener(listener).unwrap();
+
+                    let protocol = Arc::new(Http::new());
+                    server_loop(listener, acceptor, protocol, app).await
                 },
                 None => {
-                    tokio::spawn(axum_server::bind(addr).serve(app.into_make_service_with_connect_info::<SocketAddr>()))
+                    tokio::spawn(axum_server::bind(addr).serve(app))
                 }
             } => {
                 if let Err(err) = res {
@@ -471,6 +493,41 @@ pub async fn create_https_server(
         opentelemetry::global::shutdown_tracer_provider();
         info!("Stopped WebAcceptorActor");
     }))
+}
+
+async fn server_loop(
+    listener: AddrIncoming,
+    acceptor: SslAcceptor,
+    protocol: Arc<Http>,
+    app: IntoMakeServiceWithConnectInfo<Router, SocketAddr>,
+) -> tokio::task::JoinHandle<Result<(), std::io::Error>> {
+    let mut listener = listener;
+    let mut app = app;
+    tokio::spawn(async move {
+        loop {
+            let stream = poll_fn(|cx| Pin::new(&mut listener).poll_accept(cx))
+                .await
+                .unwrap()
+                .unwrap();
+            let acceptor = acceptor.clone();
+            let svc = tower::MakeService::make_service(&mut app, &stream);
+            tokio::spawn(handle_conn(acceptor, stream, svc, protocol.clone()));
+        }
+    })
+}
+#[instrument(name = "handle-connection", skip(acceptor))]
+/// This handles an individual connection.
+async fn handle_conn(
+    acceptor: SslAcceptor,
+    stream: AddrStream,
+    svc: ResponseFuture<Router, SocketAddr>,
+    protocol: Arc<Http>,
+) -> Result<(), hyper::Error> {
+    let mut tls_stream = SslStream::new(Ssl::new(acceptor.context()).unwrap(), stream).unwrap();
+    SslStream::accept(Pin::new(&mut tls_stream)).await.unwrap();
+    protocol
+        .serve_connection(tls_stream, svc.await.unwrap())
+        .await
 }
 
 /// Status endpoint used for healthchecks
