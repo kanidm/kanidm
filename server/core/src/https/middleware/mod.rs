@@ -24,12 +24,20 @@ pub async fn version_middleware<B>(request: Request<B>, next: Next<B>) -> Respon
     response
 }
 
-#[derive(Clone)]
-/// For holding onto the event ID
+#[derive(Clone, Debug)]
+/// For holding onto the event ID and other handy request-based things
 pub struct KOpId {
     pub eventid: Uuid,
-    pub value: String,
     pub uat: Option<String>,
+}
+
+impl KOpId {
+    /// Return the event ID as a string
+    pub fn eventid_value(&self) -> String {
+        let res = self.eventid.clone();
+        res.as_hyphenated().to_string()
+    }
+
 }
 
 /// This runs at the start of the request, adding an extension with `KOpId` which has useful things inside it.
@@ -41,7 +49,7 @@ pub async fn kopid_start<B>(
 ) -> Response {
     // generate the event ID
     let eventid = sketching::tracing_forest::id();
-    let value = eventid.as_hyphenated().to_string();
+    // let value = eventid.as_hyphenated().to_string();
 
     let uat = headers
         .get("Authorization")
@@ -58,7 +66,7 @@ pub async fn kopid_start<B>(
     // insert the extension so we can pull it out later
     request.extensions_mut().insert(KOpId {
         eventid,
-        value,
+        // eventid_value: value,
         uat,
     });
     next.run(request).await
@@ -77,7 +85,7 @@ pub async fn kopid_end<B>(
 
     response.headers_mut().insert(
         "X-KANIDM-OPID",
-        HeaderValue::from_str(&kopid.value).unwrap(),
+        HeaderValue::from_str(&kopid.eventid_value()).unwrap(),
     );
 
     response
