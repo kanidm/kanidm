@@ -629,17 +629,31 @@ pub async fn account_get_id_credential_update(
     to_axum_response(res)
 }
 
+#[instrument(level="trace", skip(state,kopid))]
+pub async fn account_get_id_credential_update_intent_ttl(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(id): Path<String>,
+    Query(ttl): Query<u64>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_w_ref
+        .handle_idmcredentialupdateintent(kopid.uat, id, Some(Duration::from_secs(ttl)), kopid.eventid)
+        .await;
+    to_axum_response(res)
+}
+
+#[instrument(level="trace", skip(state,kopid))]
 pub async fn account_get_id_credential_update_intent(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(id): Path<String>,
-    Query(ttl): Query<Option<u64>>,
 ) -> impl IntoResponse {
-    let ttl = ttl.map(Duration::from_secs);
     let res = state
         .qe_w_ref
-        .handle_idmcredentialupdateintent(kopid.uat, id, ttl, kopid.eventid)
+        .handle_idmcredentialupdateintent(kopid.uat, id, None, kopid.eventid)
         .await;
+    // panic!("res: {:?}", res);
     to_axum_response(res)
 }
 
@@ -1030,7 +1044,7 @@ pub async fn domain_get_attr(
     Path(attr): Path<String>,
 ) -> impl IntoResponse {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
-    json_rest_event_get_attr(state, &STR_UUID_DOMAIN_INFO, attr, filter, kopid).await
+    json_rest_event_get_attr(state, STR_UUID_DOMAIN_INFO, attr, filter, kopid).await
 }
 
 pub async fn domain_put_attr(
@@ -1202,7 +1216,7 @@ pub async fn reauth(
     // This may change in the future ...
     let inter = state
         .qe_r_ref
-        .handle_reauth(kopid.uat.clone(), obj, kopid.eventid.clone(), addr.ip())
+        .handle_reauth(kopid.uat, obj, kopid.eventid, addr.ip())
         .await;
     debug!("REAuth result: {:?}", inter);
     auth_session_state_management(state, inter, session)
@@ -1232,7 +1246,7 @@ pub async fn auth(
     // out of the req cookie.
 
     // TODO
-    let maybe_sessionid = state.get_current_auth_session_id(headers, &session);
+    let maybe_sessionid = state.get_current_auth_session_id(&headers, &session);
     debug!("Session ID: {:?}", maybe_sessionid);
     // We probably need to know if we allocate the cookie, that this is a
     // new session, and in that case, anything *except* authrequest init is
@@ -1275,7 +1289,6 @@ fn auth_session_state_management(
                         })
                         .and_then(|_| {
                             let kref = &state.jws_signer;
-
                             let jws = Jws::new(SessionId { sessionid });
                             // Get the header token ready.
                             jws.sign(kref)
@@ -1334,7 +1347,6 @@ fn auth_session_state_management(
                 }
                 AuthState::Denied(reason) => {
                     debug!("🧩 -> AuthState::Denied");
-
                     // Remove the auth-session-id
                     msession.remove("auth-session-id");
                     Ok(ProtoAuthState::Denied(reason))
@@ -1374,6 +1386,16 @@ pub async fn auth_valid(
 #[instrument(skip(state))]
 pub fn router(state: ServerState) -> Router<ServerState> {
     Router::new()
+        .route("/oauth2/:rs_name/_basic_secret", get(super::oauth2::oauth2_id_get_basic_secret))
+        .route("/oauth2/_basic", post(super::oauth2::oauth2_basic_post))
+        .route(
+            "/oauth2/:rs_name/_scopemap/:group",
+            post(super::oauth2::oauth2_id_scopemap_post).delete(super::oauth2::oauth2_id_scopemap_delete),
+        )
+        .route(
+            "/oauth2/:rs_name/_sup_scopemap/:group",
+            post(super::oauth2::oauth2_id_sup_scopemap_post).delete(super::oauth2::oauth2_id_sup_scopemap_delete))
+
         .route("/raw/create", post(create))
         .route("/raw/modify", post(v1_modify))
         .route("/raw/delete", post(v1_delete))
@@ -1437,11 +1459,11 @@ pub fn router(state: ServerState) -> Router<ServerState> {
             get(account_get_id_credential_update),
         )
         .route(
-            "/person/:id/_credential/_update_intent",
-            get(account_get_id_credential_update_intent),
+            "/person/:id/_credential/_update_intent/:ttl",
+            get(account_get_id_credential_update_intent_ttl),
         )
         .route(
-            "/person/:id/_credential/_update_intent/:ttl",
+            "/person/:id/_credential/_update_intent",
             get(account_get_id_credential_update_intent),
         )
         .route(

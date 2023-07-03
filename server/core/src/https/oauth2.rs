@@ -67,13 +67,13 @@ pub async fn oauth2_id_get(
     to_axum_response(res)
 }
 
+#[instrument(level="info", skip(state))]
 pub async fn oauth2_id_get_basic_secret(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     Path(rs_name): Path<String>,
 ) -> impl IntoResponse {
     let filter = oauth2_id(&rs_name);
-
     let res = state
         .qe_r_ref
         .handle_oauth2_basic_secret_read(kopid.uat, filter, kopid.eventid)
@@ -257,7 +257,7 @@ async fn oauth2_authorise(
 ) -> impl IntoResponse {
     let res: Result<AuthoriseResponse, Oauth2Error> = state
         .qe_r_ref
-        .handle_oauth2_authorise(kopid.uat, auth_req, kopid.eventid)
+        .handle_oauth2_authorise(kopid.uat.clone(), auth_req, kopid.eventid)
         .await;
 
     match res {
@@ -340,7 +340,7 @@ async fn oauth2_authorise(
         Err(e) => {
             admin_error!(
                 "Unable to authorise - Error ID: {} error: {}",
-                &kopid.value,
+                &kopid.eventid_value(),
                 &e.to_string()
             );
             Response::builder()
@@ -744,6 +744,7 @@ pub async fn oauth2_token_revoke_post(
                 error_description: None,
                 error_uri: None,
             };
+            #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::BAD_REQUEST)
                 .body(Body::from(serde_json::to_string(&err).unwrap()))
@@ -774,7 +775,6 @@ pub fn oauth2_route_setup(state: ServerState) -> Router<ServerState> {
 
     Router::new() //= appserver.at("/oauth2");
         .route("/", get(oauth2_get))
-        .route("/_basic", post(oauth2_basic_post))
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
@@ -804,14 +804,6 @@ pub fn oauth2_route_setup(state: ServerState) -> Router<ServerState> {
                 .patch(oauth2_id_patch)
                 .delete(oauth2_id_delete),
         )
-        .route("/:rs_name/_basic_secret", get(oauth2_id_get_basic_secret))
-        .route(
-            "/:rs_name/_scopemap/:group",
-            post(oauth2_id_scopemap_post).delete(oauth2_id_scopemap_delete),
-        )
-        .route(
-            "/:rs_name/_sup_scopemap/:group",
-            post(oauth2_id_sup_scopemap_post).delete(oauth2_id_sup_scopemap_delete),
-        )
+
         .with_state(state)
 }

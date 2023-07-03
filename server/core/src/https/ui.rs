@@ -25,45 +25,46 @@ pub async fn ui_handler(
 
     let body = format!(
         r#"
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="utf-8"/>
-        <meta name="theme-color" content="white" />
-        <meta name="viewport" content="width=device-width" />
-        <title>{}</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="theme-color" content="white" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{}</title>
 
-        <link rel="icon" href="/pkg/img/favicon.png" />
-        <link rel="manifest" href="/manifest.webmanifest" />
-        <link rel="apple-touch-icon" href="/pkg/img/logo-256.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/pkg/img/logo-180.png" />
-        <link rel="apple-touch-icon" sizes="192x192" href="/pkg/img/logo-192.png" />
-        <link rel="apple-touch-icon" sizes="512x512" href="/pkg/img/logo-square.svg" />
-        <link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
-        <link rel="stylesheet" href="/pkg/style.css"/>
+    <link rel="icon" href="/pkg/img/favicon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/pkg/img/logo-256.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/pkg/img/logo-180.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/pkg/img/logo-192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/pkg/img/logo-square.svg" />
+    <link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
+    <link rel="stylesheet" href="/pkg/style.css"/>
 
-        {}
+    {}
 
-    </head>
-    <body class="flex-column d-flex h-100">
-        <main class="flex-shrink-0 form-signin">
-        <center>
-            <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
-            <h3>Kanidm is loading, please wait... </h3>
-        </center>
-        </main>
-        <footer class="footer mt-auto py-3 bg-light text-end">
-            <div class="container">
-                <span class="text-muted">Powered by <a href="https://kanidm.com">Kanidm</a></span>
-            </div>
-        </footer>
-    </body>
-    </html>"#,
+</head>
+<body class="flex-column d-flex h-100">
+    <main class="flex-shrink-0 form-signin">
+    <center>
+        <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+        <h3>Kanidm is loading, please wait... </h3>
+    </center>
+    </main>
+    <footer class="footer mt-auto py-3 bg-light text-end">
+        <div class="container">
+            <span class="text-muted">Powered by <a href="https://kanidm.com">Kanidm</a></span>
+        </div>
+    </footer>
+</body>
+</html>"#,
         domain_display_name.as_str(),
         jstags,
     );
 
     let mut res = Response::new(body);
+    #[allow(clippy::unwrap_used)]
     res.headers_mut().insert(
         "Content-Type",
         HeaderValue::from_str("text/html;charset=utf-8").unwrap(),

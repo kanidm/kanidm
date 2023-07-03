@@ -96,7 +96,7 @@ echo "Adding ${TEST_USER_NAME} to ${TEST_GROUP}"
 ${KANIDM} group add-members "${TEST_GROUP}" "${TEST_USER_NAME}" -D idm_admin
 
 echo "Enable experimental UI for admin idm_admin ${TEST_USER_NAME}"
-${KANIDM} group add-members  idm_ui_enable_experimental_features admin idm_admin "${TEST_USER_NAME}"
+${KANIDM} group add-members  idm_ui_enable_experimental_features admin idm_admin "${TEST_USER_NAME}" -D idm_admin
 
 # create oauth2 rp
 echo "Creating the OAuth2 RP"

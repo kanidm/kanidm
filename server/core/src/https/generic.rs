@@ -22,11 +22,11 @@ pub async fn status(
 }
 
 pub async fn robots_txt() -> impl IntoResponse {
+    #[allow(clippy::expect_used)]
     Response::builder()
         .header(CONTENT_TYPE, "text/plain;charset=utf-8")
         .body(
-            r#"
-User-agent: *
+            r#"User-agent: *
 Disallow: /
 "#
             .to_string(),

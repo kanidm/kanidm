@@ -15,13 +15,13 @@ use kanidm_proto::messages::ConsoleOutputMode;
 use serde::{Deserialize, Serialize};
 use sketching::tracing_subscriber::EnvFilter;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct IntegrationTestConfig {
     pub admin_user: String,
     pub admin_password: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OnlineBackup {
     pub path: String,
     #[serde(default = "default_online_backup_schedule")]
@@ -152,7 +152,7 @@ impl Into<EnvFilter> for LogLevel {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Configuration {
     pub address: String,
     pub ldapaddress: Option<String>,
