@@ -10,7 +10,7 @@ mod v1_scim;
 
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
-use crate::config::ServerRole;
+use crate::config::{ServerRole, TlsConfiguration};
 use axum::extract::connect_info::{IntoMakeServiceWithConnectInfo, ResponseFuture};
 use axum::middleware::from_fn;
 use axum::response::Response;
@@ -23,7 +23,7 @@ use compact_jwt::{Jws, JwsSigner, JwsUnverified};
 use generic::*;
 use http::HeaderMap;
 use hyper::server::accept::Accept;
-use hyper::server::conn::{AddrIncoming, AddrStream, Http};
+use hyper::server::conn::{AddrStream, Http};
 use hyper::Body;
 use kanidm_proto::v1::OperationError;
 use kanidmd_lib::status::StatusActor;
@@ -221,27 +221,7 @@ pub async fn create_https_server(
             }
             res = match tlsconfig {
                 Some(tls_param) => {
-
-                    let mut tls_builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls()).unwrap();
-
-                    tls_builder
-                        .set_certificate_file(
-                            tls_param.chain.clone(),
-                            SslFiletype::PEM,
-                        ).unwrap();
-                    tls_builder.set_private_key_file(
-                            tls_param.key.clone(),
-                            SslFiletype::PEM,
-                        )
-                        .unwrap();
-                    tls_builder.check_private_key().unwrap();
-
-                    let acceptor = tls_builder.build();
-                    let listener = TcpListener::bind(addr).await.unwrap();
-                    let listener = hyper::server::conn::AddrIncoming::from_listener(listener).unwrap();
-
-                    let protocol = Arc::new(Http::new());
-                    server_loop(listener, acceptor, protocol, app).await
+                    server_loop(tls_param, addr, app).await
                 },
                 None => {
                     tokio::spawn(axum_server::bind(addr).serve(app))
@@ -259,22 +239,34 @@ pub async fn create_https_server(
 }
 
 async fn server_loop(
-    listener: AddrIncoming,
-    acceptor: SslAcceptor,
-    protocol: Arc<Http>,
+    tls_param: TlsConfiguration,
+    addr: SocketAddr,
     app: IntoMakeServiceWithConnectInfo<Router, SocketAddr>,
 ) -> tokio::task::JoinHandle<Result<(), std::io::Error>> {
-    let mut listener = listener;
+    let mut tls_builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls()).unwrap();
     let mut app = app;
+
+    tls_builder
+        .set_certificate_file(tls_param.chain.clone(), SslFiletype::PEM)
+        .unwrap();
+    tls_builder
+        .set_private_key_file(tls_param.key.clone(), SslFiletype::PEM)
+        .unwrap();
+    tls_builder.check_private_key().unwrap();
+
+    let acceptor = tls_builder.build();
+    let listener = TcpListener::bind(addr).await.unwrap();
+    let mut listener = hyper::server::conn::AddrIncoming::from_listener(listener).unwrap();
+
+    let protocol = Arc::new(Http::new());
+
     tokio::spawn(async move {
         loop {
-            let stream = poll_fn(|cx| Pin::new(&mut listener).poll_accept(cx))
-                .await
-                .unwrap()
-                .unwrap();
-            let acceptor = acceptor.clone();
-            let svc = tower::MakeService::make_service(&mut app, &stream);
-            tokio::spawn(handle_conn(acceptor, stream, svc, protocol.clone()));
+            if let Some(Ok(stream)) = poll_fn(|cx| Pin::new(&mut listener).poll_accept(cx)).await {
+                let acceptor = acceptor.clone();
+                let svc = tower::MakeService::make_service(&mut app, &stream);
+                tokio::spawn(handle_conn(acceptor, stream, svc, protocol.clone()));
+            }
         }
     })
 }
@@ -286,15 +278,24 @@ async fn handle_conn(
     svc: ResponseFuture<Router, SocketAddr>,
     protocol: Arc<Http>,
 ) -> Result<(), hyper::Error> {
-    let mut tls_stream = SslStream::new(Ssl::new(acceptor.context()).unwrap(), stream).unwrap();
+    #[allow(clippy::expect_used)]
+    let mut tls_stream = SslStream::new(
+        #[allow(clippy::expect_used)]
+        // because if this fails well, then we're going to bail!
+        Ssl::new(acceptor.context()).expect("Failed to build SSL session"),
+        stream,
+    )
+    .expect("Failed to build TLS stream");
     match SslStream::accept(Pin::new(&mut tls_stream)).await {
         Ok(_) => {
+            // because if this fails well, then we're going to bail!
+            #[allow(clippy::expect_used)]
             protocol
-                .serve_connection(tls_stream, svc.await.unwrap())
+                .serve_connection(tls_stream, svc.await.expect("Failed to build response"))
                 .await
         }
-        Err(_error) => {
-            // error!("Failed to handle connection: {:?}", error);
+        Err(error) => {
+            trace!("Failed to handle connection: {:?}", error);
             Ok(())
         }
     }
@@ -318,8 +319,9 @@ pub fn generate_integrity_hash(filename: String) -> Result<String, String> {
                     ));
                 }
             };
-            let shasum =
-                openssl::hash::hash(openssl::hash::MessageDigest::sha384(), &filecontents).unwrap();
+            #[allow(clippy::expect_used)]
+            let shasum = openssl::hash::hash(openssl::hash::MessageDigest::sha384(), &filecontents)
+                .expect("Failed to build hash of file");
             Ok(format!("sha384-{}", openssl::base64::encode_block(&shasum)))
         }
     }
@@ -365,10 +367,8 @@ impl JavaScriptFile {
 pub fn to_axum_response<T: Serialize>(v: Result<T, OperationError>) -> Response<Body> {
     match v {
         Ok(iv) => {
-            let body = match serde_json::to_string(&iv) {
-                Ok(val) => val,
-                Err(_) => todo!("Handle JSON serialization of body"),
-            };
+            #[allow(clippy::expect_used)]
+            let body = serde_json::to_string(&iv).expect("Failed to deserialize body");
             #[allow(clippy::unwrap_used)]
             Response::builder().body(Body::from(body)).unwrap()
         }
@@ -394,8 +394,12 @@ pub fn to_axum_response<T: Serialize>(v: Result<T, OperationError>) -> Response<
                 _ => Response::builder().status(http::StatusCode::INTERNAL_SERVER_ERROR),
             };
             match serde_json::to_string(&e) {
-                Ok(val) => res.body(Body::from(val)).unwrap(),
-                Err(_) => res.body(Body::empty()).unwrap(),
+                #[allow(clippy::expect_used)]
+                Ok(val) => res
+                    .body(Body::from(val))
+                    .expect("Failed to build response!"),
+                #[allow(clippy::expect_used)]
+                Err(_) => res.body(Body::empty()).expect("Failed to build response!"),
             }
         }
     }

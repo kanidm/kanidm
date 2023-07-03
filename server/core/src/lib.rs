@@ -912,23 +912,6 @@ pub async fn create_server_core(
         admin_info!("this config rocks! 🪨 ");
         None
     } else {
-        // let tide_address = config.address.clone().replace(":8443",":18443");
-        // ⚠️  only start the sockets and listeners in non-config-test modes.
-        // let h: tokio::task::JoinHandle<()> = self::tide::create_https_server(
-        //     tide_address,
-        //     &config.domain,
-        //     config.tls_config.as_ref(),
-        //     config.role,
-        //     config.trust_x_forward_for,
-        //     &cookie_key,
-        //     jws_signer,
-        //     status_ref,
-        //     server_write_ref,
-        //     server_read_ref,
-        //     broadcast_tx.subscribe(),
-        // )
-        // .await?;
-
         let h: tokio::task::JoinHandle<()> = match https::create_https_server(
             config.address,
             config.domain,
