@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ffi::c_void;
 use std::mem::size_of;
 use std::ptr::{null, null_mut};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
 
 use kanidm_client::{ClientError, KanidmClient, KanidmClientBuilder};
 use kanidm_proto::v1::UnixUserToken;
@@ -13,25 +13,22 @@ use kanidm_windows::{
 use once_cell::sync::Lazy;
 use tracing::{event, span, Level};
 
-use windows::core::{PSTR, PWSTR};
+use windows::core::PSTR;
 use windows::Win32::Foundation::{
-    BOOL, BOOLEAN, FALSE, HANDLE, LUID, NTSTATUS, PSID, STATUS_SUCCESS, STATUS_UNSUCCESSFUL, TRUE,
+    BOOLEAN, FALSE, HANDLE, LUID, NTSTATUS, STATUS_SUCCESS, STATUS_UNSUCCESSFUL, TRUE,
     UNICODE_STRING,
 };
 use windows::Win32::Security::Authentication::Identity::{
-    LsaTokenInformationV3, SecNameFlat, LSA_DISPATCH_TABLE, LSA_SECPKG_FUNCTION_TABLE,
-    LSA_TOKEN_INFORMATION_TYPE, LSA_TOKEN_INFORMATION_V1, LSA_TOKEN_INFORMATION_V3,
-    SECPKG_NAME_TYPE, SECPKG_PARAMETERS, SECURITY_LOGON_TYPE, LsaTokenInformationV2,
+    LsaTokenInformationV2, SecNameFlat, LSA_DISPATCH_TABLE, LSA_SECPKG_FUNCTION_TABLE,
+    LSA_TOKEN_INFORMATION_TYPE, LSA_TOKEN_INFORMATION_V1, SECPKG_PARAMETERS, SECURITY_LOGON_TYPE,
 };
 use windows::Win32::Security::Credentials::{STATUS_LOGON_FAILURE, STATUS_NO_SUCH_USER};
 use windows::Win32::Security::{
-    AllocateLocallyUniqueId, GetTokenInformation, SecurityImpersonation, TokenUser, ACL,
-    LUID_AND_ATTRIBUTES, SID_AND_ATTRIBUTES, TOKEN_DEFAULT_DACL, TOKEN_DEVICE_CLAIMS, TOKEN_GROUPS,
-    TOKEN_OWNER, TOKEN_PRIMARY_GROUP, TOKEN_PRIVILEGES, TOKEN_PRIVILEGES_ATTRIBUTES, TOKEN_SOURCE,
-    TOKEN_USER, TOKEN_USER_CLAIMS, TokenGroups, TokenPrimaryGroup, TokenPrivileges, TokenOwner, TokenDefaultDacl,
+    AllocateLocallyUniqueId, GetTokenInformation, TokenDefaultDacl, TokenGroups, TokenOwner,
+    TokenPrimaryGroup, TokenPrivileges, TokenUser, TOKEN_DEFAULT_DACL, TOKEN_GROUPS, TOKEN_OWNER,
+    TOKEN_PRIMARY_GROUP, TOKEN_PRIVILEGES, TOKEN_USER,
 };
 use windows::Win32::System::Kernel::STRING;
-use windows::Win32::System::SystemInformation::GetLocalTime;
 
 use crate::convert::{rust_to_unicode, unicode_to_rust};
 use crate::mem::{allocate_mem_client, allocate_mem_lsa, MemoryAllocationError};
@@ -89,21 +86,23 @@ pub async unsafe extern "system" fn ApInitialisePackage(
     let alloc_lsa_heap = match &dt_ref.AllocateLsaHeap {
         Some(func) => func,
         None => {
-            event!(Level::ERROR, "AP: Failed to get LSA heap allocation function");
+            event!(
+                Level::ERROR,
+                "AP: Failed to get LSA heap allocation function"
+            );
             return STATUS_UNSUCCESSFUL;
         }
     };
 
-    let alloc_package_name =
-        match unsafe { allocate_mem_lsa(package_name_win, alloc_lsa_heap) } {
-            Ok(ptr) => ptr,
-            Err(e) => match e {
-                MemoryAllocationError::AllocFuncFailed => {
-                    event!(Level::ERROR, "Failed to allocate package name");
-                    return STATUS_UNSUCCESSFUL;
-                }
-            },
-        };
+    let alloc_package_name = match unsafe { allocate_mem_lsa(package_name_win, alloc_lsa_heap) } {
+        Ok(ptr) => ptr,
+        Err(e) => match e {
+            MemoryAllocationError::AllocFuncFailed => {
+                event!(Level::ERROR, "Failed to allocate package name");
+                return STATUS_UNSUCCESSFUL;
+            }
+        },
+    };
 
     unsafe {
         *out_package_name = alloc_package_name;
@@ -241,14 +240,28 @@ pub async unsafe extern "system" fn ApLogonUser(
         return error_then_return("AP: Failed to get groups token");
     }
 
-    if unsafe { GetTokenInformation(user_handle, TokenPrimaryGroup, Some(primary_group_token), 0, null_mut()) }
-        == FALSE
+    if unsafe {
+        GetTokenInformation(
+            user_handle,
+            TokenPrimaryGroup,
+            Some(primary_group_token),
+            0,
+            null_mut(),
+        )
+    } == FALSE
     {
         return error_then_return("AP: Failed to get primary group token");
     }
 
-    if unsafe { GetTokenInformation(user_handle, TokenPrivileges, Some(privileges_token), 0, null_mut()) }
-        == FALSE
+    if unsafe {
+        GetTokenInformation(
+            user_handle,
+            TokenPrivileges,
+            Some(privileges_token),
+            0,
+            null_mut(),
+        )
+    } == FALSE
     {
         return error_then_return("AP: Failed to get privileges token");
     }
@@ -259,27 +272,39 @@ pub async unsafe extern "system" fn ApLogonUser(
         return error_then_return("AP: Failed to get owner token");
     }
 
-    if unsafe { GetTokenInformation(user_handle, TokenDefaultDacl, Some(default_dacl_token), 0, null_mut()) }
-        == FALSE
+    if unsafe {
+        GetTokenInformation(
+            user_handle,
+            TokenDefaultDacl,
+            Some(default_dacl_token),
+            0,
+            null_mut(),
+        )
+    } == FALSE
     {
         return error_then_return("AP: Failed to get default DACL token");
     }
 
-    let token_information_v2 = unsafe { LSA_TOKEN_INFORMATION_V1 {
-        ExpirationTime: expiry_time,
-        User: user_token.cast::<TOKEN_USER>().read(),
-        Groups: groups_token.cast::<TOKEN_GROUPS>(),
-        PrimaryGroup: primary_group_token.cast::<TOKEN_PRIMARY_GROUP>().read(),
-        Privileges: privileges_token.cast::<TOKEN_PRIVILEGES>(),
-        Owner: owner_token.cast::<TOKEN_OWNER>().read(),
-        DefaultDacl: default_dacl_token.cast::<TOKEN_DEFAULT_DACL>().read(),
-    }};
+    let token_information_v2 = unsafe {
+        LSA_TOKEN_INFORMATION_V1 {
+            ExpirationTime: expiry_time,
+            User: user_token.cast::<TOKEN_USER>().read(),
+            Groups: groups_token.cast::<TOKEN_GROUPS>(),
+            PrimaryGroup: primary_group_token.cast::<TOKEN_PRIMARY_GROUP>().read(),
+            Privileges: privileges_token.cast::<TOKEN_PRIVILEGES>(),
+            Owner: owner_token.cast::<TOKEN_OWNER>().read(),
+            DefaultDacl: default_dacl_token.cast::<TOKEN_DEFAULT_DACL>().read(),
+        }
+    };
 
     // Allocate to LSA heap space
     let alloc_lsa_heap = match &secpkg_dispatch_table.AllocateLsaHeap {
         Some(func) => func,
         None => {
-            event!(Level::ERROR, "AP: Failed to get LSA heap allocation function");
+            event!(
+                Level::ERROR,
+                "AP: Failed to get LSA heap allocation function"
+            );
             return STATUS_UNSUCCESSFUL;
         }
     };
@@ -288,19 +313,28 @@ pub async unsafe extern "system" fn ApLogonUser(
         Ok(ptr) => ptr,
         Err(_) => return error_then_return("AP: Failed to allocate substatus"),
     };
-    let token_information_type_lsa = match unsafe { allocate_mem_lsa(LsaTokenInformationV2, alloc_lsa_heap)} {
-        Ok(ptr) => ptr,
-        Err(_) => return error_then_return("AP: Failed to allocate token information type"),
-    };
-    let token_information_lsa = match unsafe { allocate_mem_lsa(token_information_v2, alloc_lsa_heap) } {
-        Ok(ptr) => ptr,
-        Err(_) => return error_then_return("AP: Failed to allocate the token information"),
-    };
-    let authenticating_authority_lsa = match unsafe { allocate_mem_lsa(rust_to_unicode(kanidm_client.get_url().to_string()), alloc_lsa_heap)} {
+    let token_information_type_lsa =
+        match unsafe { allocate_mem_lsa(LsaTokenInformationV2, alloc_lsa_heap) } {
+            Ok(ptr) => ptr,
+            Err(_) => return error_then_return("AP: Failed to allocate token information type"),
+        };
+    let token_information_lsa =
+        match unsafe { allocate_mem_lsa(token_information_v2, alloc_lsa_heap) } {
+            Ok(ptr) => ptr,
+            Err(_) => return error_then_return("AP: Failed to allocate the token information"),
+        };
+    let authenticating_authority_lsa = match unsafe {
+        allocate_mem_lsa(
+            rust_to_unicode(kanidm_client.get_url().to_string()),
+            alloc_lsa_heap,
+        )
+    } {
         Ok(ptr) => ptr,
         Err(_) => return error_then_return("AP: Failed to allocate the authenticating authority"),
     };
-    let account_name_lsa = match unsafe { allocate_mem_lsa(provided_credentials.username, alloc_lsa_heap)} {
+    let account_name_lsa = match unsafe {
+        allocate_mem_lsa(provided_credentials.username, alloc_lsa_heap)
+    } {
         Ok(ptr) => ptr,
         Err(_) => return error_then_return("AP: Failed to allocate the authenticating authority"),
     };
@@ -384,14 +418,16 @@ pub async unsafe extern "system" fn ApCallPackage(
     let alloc_client_heap = match &dispatch_table.AllocateClientBuffer {
         Some(func) => func,
         None => {
-            event!(Level::ERROR, "AP: Failed to get LSA heap allocation function");
+            event!(
+                Level::ERROR,
+                "AP: Failed to get LSA heap allocation function"
+            );
             return STATUS_UNSUCCESSFUL;
         }
     };
 
-    let response_ptr = match unsafe {
-        allocate_mem_client(response, alloc_client_heap, client_req)
-    } {
+    let response_ptr = match unsafe { allocate_mem_client(response, alloc_client_heap, client_req) }
+    {
         Ok(ptr) => ptr,
         Err(_) => {
             span!(Level::ERROR, "Failed to allocate response");

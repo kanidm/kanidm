@@ -1,4 +1,4 @@
-use windows::Win32::Foundation::{LUID, UNICODE_STRING};
+use windows::Win32::Foundation::{LUID};
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct LogonId {
