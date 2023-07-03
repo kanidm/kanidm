@@ -46,7 +46,7 @@ pub(crate) static mut KANIDM_CLIENT: Lazy<KanidmClient> = Lazy::new(|| {
 });
 static mut AP_DISPATCH_TABLE: Option<LSA_DISPATCH_TABLE> = None;
 static mut AP_PACKAGE_ID: u32 = 0;
-static mut AP_LOGON_IDS: Lazy<HashMap<LogonId, UnixUserToken>> = Lazy::new(HashMap::new);
+pub(crate) static mut AP_LOGON_IDS: Lazy<HashMap<LogonId, UnixUserToken>> = Lazy::new(HashMap::new);
 static mut SP_PACKAGE_ID: usize = 0;
 static mut SP_SECPKG_PARAMS: Option<SECPKG_PARAMETERS> = None;
 static mut SP_FUNC_TABLE: Option<LSA_SECPKG_FUNCTION_TABLE> = None;
