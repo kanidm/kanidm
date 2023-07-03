@@ -1,9 +1,12 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
+use once_cell::sync::Lazy;
 use tracing::{event, Level};
 
 use windows::Win32::Foundation::{NTSTATUS, STATUS_SUCCESS};
 use windows::Win32::Security::Authentication::Identity::SECPKG_FUNCTION_TABLE;
+
+use crate::package::{KANIDM_CLIENT, AP_LOGON_IDS};
 
 pub(crate) mod mem;
 pub mod package;
@@ -110,6 +113,14 @@ pub async unsafe extern "system" fn SpLsaModeInitialize(
         *pctables = 1u32;
         **pptables = function_table;
     }
+
+    // Because Lazy only inits on first access, this may cause issues in the package
+    // therefore we access these global vars to ensure initialisation
+    event!(Level::INFO, "Initialising kanidm client");
+    Lazy::get(unsafe { &KANIDM_CLIENT });
+
+    event!(Level::INFO, "Initialising login session hashmap");
+    Lazy::get(unsafe { &AP_LOGON_IDS });
 
     STATUS_SUCCESS
 }
