@@ -69,7 +69,6 @@ pub async unsafe extern "system" fn ApInitialisePackage(
     _: *const STRING,
     out_package_name: *mut *mut STRING,
 ) -> NTSTATUS {
-    let apips = span!(Level::INFO, "Initialising Kanidm Authentication Package").entered();
     let mut package_name = env!("CARGO_PKG_NAME").to_owned();
     let package_name_win = STRING {
         Buffer: PSTR(package_name.as_mut_ptr()),
@@ -108,7 +107,6 @@ pub async unsafe extern "system" fn ApInitialisePackage(
         AP_PACKAGE_ID = package_id;
     }
 
-    apips.exit();
     STATUS_SUCCESS
 }
 
