@@ -1427,8 +1427,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         *self.phase = phase
     }
 
-    #[instrument(level = "info", skip_all)]
-    pub fn commit(mut self) -> Result<(), OperationError> {
+    pub(crate) fn reload(&mut self) -> Result<(), OperationError> {
         // This could be faster if we cache the set of classes changed
         // in an operation so we can check if we need to do the reload or not
         //
@@ -1452,6 +1451,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if self.changed_domain {
             self.reload_domain_info()?;
         }
+
+        Ok(())
+    }
+
+    #[instrument(level = "info", skip_all)]
+    pub fn commit(mut self) -> Result<(), OperationError> {
+        self.reload()?;
 
         // Now destructure the transaction ready to reset it.
         let QueryServerWriteTransaction {
