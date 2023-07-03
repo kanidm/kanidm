@@ -69,6 +69,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //    /- entries that need to be created as conflicts.
         //    |                /- entries that survive and need update to the db in place.
         //    v                v
+
+        #[allow(clippy::todo)]
         let (conflict_create, conflict_update): (
             Vec<EntrySealedNew>,
             Vec<(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)>,
@@ -217,6 +219,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 error!("This server's content must be refreshed to proceed. If you have configured automatic refresh, this will occur shortly.");
                 Ok(ConsumerState::RefreshRequired)
             }
+            #[allow(clippy::todo)]
             ReplIncrementalContext::UnwillingToSupply => {
                 todo!();
             }

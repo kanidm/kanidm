@@ -33,7 +33,7 @@ extern "C" {
         pamh: *const PamHandle,
         module_data_name: *const c_char,
         data: *mut PamDataT,
-        cleanup: extern "C" fn(
+        cleanup: unsafe extern "C" fn(
             pamh: *const PamHandle,
             data: *mut PamDataT,
             error_status: PamResultCode,
@@ -56,12 +56,13 @@ extern "C" {
     ) -> PamResultCode;
 }
 
-pub extern "C" fn cleanup<T>(_: *const PamHandle, c_data: *mut PamDataT, _: PamResultCode) {
-    unsafe {
-        let c_data = Box::from_raw(c_data);
-        let data: Box<T> = mem::transmute(c_data);
-        mem::drop(data);
-    }
+/// # Safety
+///
+/// We're doing what we can for this one, but it's FFI.
+pub unsafe extern "C" fn cleanup<T>(_: *const PamHandle, c_data: *mut PamDataT, _: PamResultCode) {
+    let c_data = Box::from_raw(c_data);
+    let data: Box<T> = mem::transmute(c_data);
+    mem::drop(data);
 }
 
 pub type PamResult<T> = Result<T, PamResultCode>;

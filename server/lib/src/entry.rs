@@ -735,6 +735,7 @@ impl Entry<EntryIncremental, EntryNew> {
 
                             match (self.attrs.get(attr_name), db_ent.attrs.get(attr_name)) {
                                 (Some(vs_left), Some(vs_right)) if take_left => {
+                                    #[allow(clippy::todo)]
                                     if let Some(_attr_state) = vs_left.repl_merge_valueset(vs_right)
                                     {
                                         todo!();
@@ -744,6 +745,7 @@ impl Entry<EntryIncremental, EntryNew> {
                                     }
                                 }
                                 (Some(vs_left), Some(vs_right)) => {
+                                    #[allow(clippy::todo)]
                                     if let Some(_attr_state) = vs_right.repl_merge_valueset(vs_left)
                                     {
                                         todo!();
@@ -907,6 +909,7 @@ impl Entry<EntryIncremental, EntryCommitted> {
             attrs: self.attrs,
         };
 
+        #[allow(clippy::todo)]
         if let Err(e) = ne.validate(schema) {
             warn!(uuid = ?self.valid.uuid, err = ?e, "Entry failed schema check, moving to a conflict state");
             ne.add_ava_int("class", Value::new_class("conflict"));
