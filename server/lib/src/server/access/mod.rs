@@ -2677,4 +2677,86 @@ mod tests {
         // Check the deny case.
         test_acp_search!(&se_b, vec![], r_set, ex_b);
     }
+
+    #[test]
+    fn test_access_sync_account_dyn_search() {
+        sketching::test_init();
+        // Test that an account that has been synchronised from external
+        // sources is able to read the sync providers credential portal
+        // url.
+
+        let sync_uuid = Uuid::new_v4();
+        let portal_url = Url::parse("https://localhost/portal").unwrap();
+
+        let ev1 = unsafe {
+            entry_init!(
+                ("class", CLASS_OBJECT.clone()),
+                ("class", CLASS_SYNC_ACCOUNT.clone()),
+                ("uuid", Value::Uuid(sync_uuid)),
+                ("name", Value::new_iname("test_sync_account")),
+                ("sync_credential_portal", Value::Url(portal_url.clone()))
+            )
+            .into_sealed_committed()
+        };
+
+        let ev1_reduced = unsafe {
+            entry_init!(
+                ("class", CLASS_OBJECT.clone()),
+                ("class", CLASS_SYNC_ACCOUNT.clone()),
+                ("uuid", Value::Uuid(sync_uuid)),
+                ("sync_credential_portal", Value::Url(portal_url.clone()))
+            )
+            .into_sealed_committed()
+        };
+
+        let ev2 = unsafe {
+            entry_init!(
+                ("class", CLASS_OBJECT.clone()),
+                ("class", CLASS_SYNC_ACCOUNT.clone()),
+                ("uuid", Value::Uuid(Uuid::new_v4())),
+                ("name", Value::new_iname("test_sync_account")),
+                ("sync_credential_portal", Value::Url(portal_url.clone()))
+            )
+            .into_sealed_committed()
+        };
+
+        let sync_test_account: Arc<EntrySealedCommitted> = Arc::new(unsafe {
+            entry_init!(
+                ("class", CLASS_OBJECT.clone()),
+                ("class", CLASS_ACCOUNT.clone()),
+                ("class", CLASS_SYNC_OBJECT.clone()),
+                ("name", Value::new_iname("test_account_1")),
+                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1)),
+                ("memberof", Value::Refer(UUID_TEST_GROUP_1)),
+                ("sync_parent_uuid", Value::Refer(sync_uuid))
+            )
+            .into_sealed_committed()
+        });
+
+        // Check the authorised search event, and that it reduces correctly.
+        let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2)];
+
+        let se_a = unsafe {
+            SearchEvent::new_impersonate_entry(
+                sync_test_account,
+                filter_all!(f_pres("sync_credential_portal")),
+            )
+        };
+        let ex_a = vec![Arc::new(ev1)];
+        let ex_a_reduced = vec![ev1_reduced];
+
+        test_acp_search!(&se_a, vec![], r_set.clone(), ex_a);
+        test_acp_search_reduce!(&se_a, vec![], r_set.clone(), ex_a_reduced);
+
+        // Test a non-synced account aka the deny case
+        let se_b = unsafe {
+            SearchEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_2.clone(),
+                filter_all!(f_pres("sync_credential_portal")),
+            )
+        };
+        let ex_b = vec![];
+
+        test_acp_search!(&se_b, vec![], r_set, ex_b);
+    }
 }

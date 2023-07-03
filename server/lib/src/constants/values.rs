@@ -55,6 +55,7 @@ lazy_static! {
     pub static ref CLASS_PERSON: Value = Value::new_class("person");
     pub static ref CLASS_RECYCLED: Value = Value::new_class("recycled");
     pub static ref CLASS_SERVICE_ACCOUNT: Value = Value::new_class("service_account");
+    pub static ref CLASS_SYNC_ACCOUNT: Value = Value::new_class("sync_account");
     pub static ref CLASS_SYNC_OBJECT: Value = Value::new_class("sync_object");
     pub static ref CLASS_SYSTEM: Value = Value::new_class("system");
     pub static ref CLASS_SYSTEM_CONFIG: Value = Value::new_class("system_config");
