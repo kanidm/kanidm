@@ -459,7 +459,7 @@ pub async fn create_https_server(
             res = match tlsconfig {
                 Some(tls_param) => {
 
-                    let mut tls_builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls()).unwrap();
+                    let mut tls_builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls_server()).unwrap();
 
                     tls_builder
                         .set_certificate_file(
