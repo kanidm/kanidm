@@ -2,7 +2,7 @@ use tracing::{event, Level};
 use windows::{Win32::Foundation::UNICODE_STRING, core::PWSTR};
 
 pub fn unicode_to_rust(string: UNICODE_STRING) -> Option<String> {
-	return match unsafe { string.Buffer.to_string() } {
+	match unsafe { string.Buffer.to_string() } {
 		Ok(string) => Some(string),
 		Err(_) => {
 			event!(Level::WARN, "Failed to convert windows unicode string to rust string");

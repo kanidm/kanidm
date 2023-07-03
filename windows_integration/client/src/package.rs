@@ -168,7 +168,7 @@ pub async unsafe extern "system" fn ApLogonUser(
     let upn_name_win_ptr = &upn_name_win as *const UNICODE_STRING;
 
     match kanidm_client
-        .idm_account_unix_cred_verify(&*username, &*password)
+        .idm_account_unix_cred_verify(&username, &password)
         .await
     {
         Ok(_) => event!(Level::INFO, "AP: Successfully logged on {}", username),
@@ -178,7 +178,7 @@ pub async unsafe extern "system" fn ApLogonUser(
         }
         Err(_) => {
             let msg = format!("AP: Failed to authenticate user {}", username);
-            return error_then_return(&*msg);
+            return error_then_return(&msg);
         }
     };
 
