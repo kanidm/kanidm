@@ -1796,6 +1796,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     }
 }
 
+// TODO: this can be handled by the auth header parsers in axum
 fn parse_basic_authz(client_authz: &str) -> Result<(String, String), Oauth2Error> {
     // Check the client_authz
     let authz = general_purpose::STANDARD

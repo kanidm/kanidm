@@ -326,6 +326,7 @@ async fn oauth2_authorise(
             Response::builder()
                 .status(StatusCode::UNAUTHORIZED)
                 .header("WWW-Authenticate", HeaderValue::from_str("Bearer").unwrap())
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::empty())
                 .unwrap()
         }
@@ -334,6 +335,7 @@ async fn oauth2_authorise(
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::FORBIDDEN)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::empty())
                 .unwrap()
         }
@@ -356,6 +358,7 @@ async fn oauth2_authorise(
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::BAD_REQUEST)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::empty())
                 .unwrap()
         }
@@ -437,71 +440,76 @@ async fn oauth2_authorise_permit(
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::empty())
                 .unwrap()
         }
     }
 }
 
-// // When this is called, this indicates the user has REJECTED the intent to proceed.
-// pub async fn oauth2_authorise_reject_post(State(state): State<ServerState>) -> impl IntoResponse {
-//     let consent_req: String = req.body_json().await?;
-//     oauth2_authorise_reject(req, consent_req).await
-// }
+// When this is called, this indicates the user has REJECTED the intent to proceed.
+pub async fn oauth2_authorise_reject_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Form(consent_req): Form<ConsentRequestData>,
+) -> impl IntoResponse {
+    oauth2_authorise_reject(state, consent_req.token, kopid).await
+}
 
-// pub async fn oauth2_authorise_reject_get(State(state): State<ServerState>) -> impl IntoResponse {
-//     debug!("Request Query - {:?}", req.url().query());
-
-//     let consent_req: ConsentRequestData = req.query().map_err(|e| {
-//         error!("{:?}", e);
-//         tide::Error::from_str(
-//             tide::StatusCode::BadRequest,
-//             "Invalid Oauth2 Consent Reject",
-//         )
-//     })?;
-
-//     oauth2_authorise_reject(req, consent_req.token).await
-// }
+pub async fn oauth2_authorise_reject_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Query(consent_req): Query<ConsentRequestData>,
+) -> impl IntoResponse {
+    oauth2_authorise_reject(state, consent_req.token, kopid).await
+}
 
 // // https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2.1
 // // If the user willingly rejects the authorisation, we must redirect
 // // with an error.
-// async fn oauth2_authorise_reject(
-//     State(state): State<ServerState>,headers: HeaderMap,
-//     consent_req: String,
-// ) -> impl IntoResponse {
-//     // Need to go back to the redir_uri
-//     // For this, we'll need to lookup where to go.
+async fn oauth2_authorise_reject(
+    state: ServerState,
+    consent_req: String,
+    kopid: KOpId,
+) -> impl IntoResponse {
+    // Need to go back to the redir_uri
+    // For this, we'll need to lookup where to go.
 
-//     let res = state
-//         .qe_r_ref
-//         .handle_oauth2_authorise_reject(uat, consent_req, eventid)
-//         .await;
+    let res = state
+        .qe_r_ref
+        .handle_oauth2_authorise_reject(kopid.uat, consent_req, kopid.eventid)
+        .await;
 
-//     let mut res = match res {
-//         Ok(mut redirect_uri) => {
-//             let mut res = tide::Response::new(302);
-//             redirect_uri
-//                 .query_pairs_mut()
-//                 .clear()
-//                 .append_pair("error", "access_denied")
-//                 .append_pair("error_description", "authorisation rejected");
-//             res.insert_header("Location", redirect_uri.as_str());
-//             // I think the client server needs this
-//             // res.insert_header("Access-Control-Allow-Origin", redirect_uri.origin().ascii_serialization());
-//             res
-//         }
-//         Err(_e) => {
-//             // If an error happens in our reject flow, I think
-//             // that we should NOT redirect to the calling application
-//             // and we need to handle that locally somehow.
-//             // This needs to be better!
-//             tide::Response::new(500)
-//         }
-//     };
-//     res.insert_header("X-KANIDM-OPID", hvalue);
-//     res
-// }
+    match res {
+        Ok(mut redirect_uri) => {
+            redirect_uri
+                .query_pairs_mut()
+                .clear()
+                .append_pair("error", "access_denied")
+                .append_pair("error_description", "authorisation rejected");
+            Response::builder()
+                .header(LOCATION, redirect_uri.as_str())
+                .header(
+                    ACCESS_CONTROL_ALLOW_ORIGIN,
+                    redirect_uri.origin().ascii_serialization(),
+                )
+                .body(Body::empty())
+                .unwrap()
+            // I think the client server needs this
+        }
+        Err(_e) => {
+            // If an error happens in our reject flow, I think
+            // that we should NOT redirect to the calling application
+            // and we need to handle that locally somehow.
+            // This needs to be better!
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::empty())
+                .unwrap()
+        }
+    }
+}
 
 pub async fn oauth2_token_post(
     State(state): State<ServerState>,
@@ -526,6 +534,7 @@ pub async fn oauth2_token_post(
             #[allow(clippy::unwrap_used)]
             return Response::builder()
                 .status(StatusCode::UNAUTHORIZED)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::from("Invalid Basic Authorisation"))
                 .unwrap();
         }
@@ -546,6 +555,7 @@ pub async fn oauth2_token_post(
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::OK)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::from(serde_json::to_string(&atr).unwrap()))
                 .unwrap()
         }
@@ -554,6 +564,7 @@ pub async fn oauth2_token_post(
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::UNAUTHORIZED)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::empty())
                 .unwrap()
         }
@@ -565,14 +576,18 @@ pub async fn oauth2_token_post(
                 error_uri: None,
             };
 
-            #[allow(clippy::unwrap_used)]
-            let body = serde_json::to_string(&err)
-                .map_err(|e| format!("{:?}", e))
-                .unwrap();
+            let body = match serde_json::to_string(&err) {
+                Ok(val) => val,
+                Err(e) => {
+                    admin_warn!("Failed to serialize error response: original_error=\"{:?}\" serialization_error=\"{:?}\"", err, e);
+                    format!("{:?}", err)
+                }
+            };
 
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::BAD_REQUEST)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::from(body))
                 .unwrap()
         }
@@ -608,6 +623,7 @@ pub async fn oauth2_openid_userinfo_get(
             #[allow(clippy::unwrap_used)]
             return Response::builder()
                 .status(StatusCode::UNAUTHORIZED)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::from("Invalid Bearer Authorisation"))
                 .unwrap();
         }
@@ -625,6 +641,7 @@ pub async fn oauth2_openid_userinfo_get(
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::OK)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::from(body))
                 .unwrap()
         }
@@ -643,6 +660,7 @@ pub async fn oauth2_openid_userinfo_get(
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::BAD_REQUEST)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::from(body))
                 .unwrap()
             // https://datatracker.ietf.org/doc/html/rfc6750#section-6.2
@@ -676,7 +694,7 @@ pub async fn oauth2_token_introspect_post(
             error!("Bearer Authentication Not Provided, trying basic");
             match headers.get(AUTHORIZATION) {
                 Some(val) => {
-                    // TODO THIS IS HILARIOUSLY TERRIBLE
+                    // LOL THIS IS HILARIOUSLY TERRIBLE BUT WE PARSE THE RAW OK
                     #[allow(clippy::unwrap_used)]
                     val.to_str()
                         .unwrap()
@@ -688,6 +706,7 @@ pub async fn oauth2_token_introspect_post(
                     #[allow(clippy::unwrap_used)]
                     return Response::builder()
                         .status(StatusCode::UNAUTHORIZED)
+                        .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                         .body(Body::from("Invalid Bearer Authorisation"))
                         .unwrap();
                 }
@@ -703,14 +722,24 @@ pub async fn oauth2_token_introspect_post(
 
     match res {
         Ok(atr) => {
+            let body = match serde_json::to_string(&atr) {
+                Ok(val) => val,
+                Err(e) => {
+                    admin_warn!("Failed to serialize introspect response: original_data=\"{:?}\" serialization_error=\"{:?}\"", atr, e);
+                    format!("{:?}", atr)
+                }
+            };
             #[allow(clippy::unwrap_used)]
-            let body = serde_json::to_string(&atr).unwrap();
-            Response::new(Body::from(body))
+            Response::builder()
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::from(body))
+                .unwrap()
         }
         Err(Oauth2Error::AuthenticationRequired) => {
             // This will trigger our ui to auth and retry.
             #[allow(clippy::unwrap_used)]
             Response::builder()
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .status(StatusCode::UNAUTHORIZED)
                 .body(Body::empty())
                 .unwrap()
@@ -732,6 +761,7 @@ pub async fn oauth2_token_introspect_post(
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::BAD_REQUEST)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::from(body))
                 .unwrap()
         }
@@ -745,6 +775,7 @@ pub async fn oauth2_token_revoke_post(
     Extension(kopid): Extension<KOpId>,
     Form(intr_req): Form<TokenRevokeRequest>,
 ) -> impl IntoResponse {
+    // TODO: we should handle the session-based auth bit here I think maybe possibly there's no tests
     let client_authz = match kopid.uat {
         Some(val) => val,
         None =>
@@ -752,6 +783,7 @@ pub async fn oauth2_token_revoke_post(
             #[allow(clippy::unwrap_used)]
             return Response::builder()
                 .status(StatusCode::UNAUTHORIZED)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::empty())
                 .unwrap()
         }
@@ -770,6 +802,7 @@ pub async fn oauth2_token_revoke_post(
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::OK)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::empty())
                 .unwrap()
         }
@@ -778,6 +811,7 @@ pub async fn oauth2_token_revoke_post(
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::UNAUTHORIZED)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::empty())
                 .unwrap()
         }
@@ -791,6 +825,7 @@ pub async fn oauth2_token_revoke_post(
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::BAD_REQUEST)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::from(serde_json::to_string(&err).unwrap()))
                 .unwrap()
         }
@@ -833,7 +868,10 @@ pub fn oauth2_route_setup(state: ServerState) -> Router<ServerState> {
         )
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-        // .route("/authorise/reject", post(oauth2_authorise_reject_post).get(oauth2_authorise_reject_get))
+        .route(
+            "/authorise/reject",
+            post(oauth2_authorise_reject_post).get(oauth2_authorise_reject_get),
+        )
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route("/token", post(oauth2_token_post))
