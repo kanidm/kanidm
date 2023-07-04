@@ -14,10 +14,8 @@ Make sure to configure the powershell environment variables that are explained b
 - KanidmConfigPath - The path of the config to copy - Default: `.\authlib_client.toml`
 
 ## Configuration
-In order to get the client to work, all parts must be configured.
-
-## SSP/AP
-To configure the SSP/AP follow the steps below:
-* Create & open a file at `C:\Program Files\kanidm\authlib_client.toml`
-* Copy the skeleton template at `examples/authlib_client.toml`
-* Change the uri to point towards your kanidm server
+To configure the SSP/AP the following fields must be defined it its config
+- uri - URL of your kanidm instance
+- verify_ca - Whether the SSP/AP should verify the certificate authority, set to true unless you're testing against a development server
+- verify_hostnames - Whether the SSP/AP should verify the hostnames, set to true unless you're testing against a development server
+- ca_path - The path to the certificate authority
