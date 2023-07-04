@@ -47,6 +47,7 @@ pub async unsafe extern "system" fn SpLsaModeInitialize(
     );
     event!(Level::INFO, "Client Version v{}", env!("CARGO_PKG_VERSION"));
 
+    event!(Level::DEBUG, "Beginning version determination for Local Security Authority");
     let package_version_str = format!(
         "{}{:0>3}{:0>3}",
         env!("CARGO_PKG_VERSION_MAJOR"),
@@ -61,7 +62,9 @@ pub async unsafe extern "system" fn SpLsaModeInitialize(
             1 // Just return 1 as the version number as we can't determine the correct version
         }
     };
+    event!(Level::DEBUG, "Finished version determination. Version is determined as {}", package_version);
 
+    event!(Level::DEBUG, "Creating security package function table and assigning return variables");
     let function_table = SECPKG_FUNCTION_TABLE {
         InitializePackage: Some(package::ApInitialisePackage),
         LogonUserA: Some(package::ApLogonUser),
@@ -113,14 +116,17 @@ pub async unsafe extern "system" fn SpLsaModeInitialize(
         *pctables = 1u32;
         **pptables = function_table;
     }
+    event!(Level::DEBUG, "Finished creating table and assigning variables");
 
     // Because Lazy only inits on first access, this may cause issues in the package
     // therefore we access these global vars to ensure initialisation
+    event!(Level::DEBUG, "Beginning initialisation of required global state");
     event!(Level::INFO, "Initialising kanidm client");
     Lazy::get(unsafe { &KANIDM_CLIENT });
 
     event!(Level::INFO, "Initialising login session hashmap");
     Lazy::get(unsafe { &AP_LOGON_IDS });
+    event!(Level::DEBUG, "Finished initialisation of required global state");
 
     STATUS_SUCCESS
 }

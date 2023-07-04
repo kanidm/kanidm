@@ -66,12 +66,7 @@ pub async unsafe extern "system" fn ApInitialisePackage(
     _: *const STRING,
     out_package_name: *mut *mut STRING,
 ) -> NTSTATUS {
-    let mut package_name = env!("CARGO_PKG_NAME").to_owned();
-    let package_name_win = STRING {
-        Buffer: PSTR(package_name.as_mut_ptr()),
-        Length: package_name.len() as u16,
-        MaximumLength: package_name.len() as u16,
-    };
+    event!(Level::DEBUG, "Getting reference to dispatch table from parameter");
     let dt_ref = match unsafe { dispatch_table.as_ref() } {
         Some(dt) => dt,
         None => {
@@ -83,6 +78,7 @@ pub async unsafe extern "system" fn ApInitialisePackage(
         }
     };
 
+    event!(Level::DEBUG, "Getting reference to the heap allocation function for the LSA");
     let alloc_lsa_heap = match &dt_ref.AllocateLsaHeap {
         Some(func) => func,
         None => {
@@ -94,6 +90,13 @@ pub async unsafe extern "system" fn ApInitialisePackage(
         }
     };
 
+    event!(Level::DEBUG, "Beginning creation of package name to return to LSA");
+    let mut package_name = env!("CARGO_PKG_NAME").to_owned();
+    let package_name_win = STRING {
+        Buffer: PSTR(package_name.as_mut_ptr()),
+        Length: package_name.len() as u16,
+        MaximumLength: package_name.len() as u16,
+    };
     let alloc_package_name = match unsafe { allocate_mem_lsa(package_name_win, alloc_lsa_heap) } {
         Ok(ptr) => ptr,
         Err(e) => match e {
@@ -103,7 +106,9 @@ pub async unsafe extern "system" fn ApInitialisePackage(
             }
         },
     };
+    event!(Level::DEBUG, "Finished creation of package name");
 
+    event!(Level::DEBUG, "Returning package name to LSA and setting the dispatch table and package id as global variables");
     unsafe {
         *out_package_name = alloc_package_name;
         AP_DISPATCH_TABLE = Some(dt_ref.to_owned());
@@ -134,12 +139,15 @@ pub async unsafe extern "system" fn ApLogonUser(
     event!(Level::INFO, "AP: Starting logon process for unknown user");
 
     // * Get needed global vars
+    event!(Level::DEBUG, "Getting reference to the security package function table");
     let secpkg_dispatch_table = match unsafe { SP_FUNC_TABLE } {
         Some(tbl) => tbl,
         None => {
             return error_then_return("AP: Failed to obtain reference to the LSA dispatch table")
         }
     };
+
+    event!(Level::DEBUG, "Getting reference to the kanidm client");
     let kanidm_client = match Lazy::get(unsafe { &KANIDM_CLIENT }) {
         Some(client) => client,
         None => {
@@ -147,12 +155,14 @@ pub async unsafe extern "system" fn ApLogonUser(
         }
     };
 
+    event!(Level::DEBUG, "Casting and checking for null in the provided authentication information");
     let authentication_information = authentication_information.cast::<AuthenticationInformation>();
 
     if authentication_information.is_null() {
         return error_then_return("AP: Authentication information provided is null");
     }
 
+    event!(Level::DEBUG, "Reading authentication information for username and password");
     let provided_credentials = unsafe { authentication_information.read() };
     let username = match unicode_to_rust(provided_credentials.username) {
         Some(str) => str,
@@ -163,10 +173,12 @@ pub async unsafe extern "system" fn ApLogonUser(
         None => return STATUS_UNSUCCESSFUL,
     };
 
+    event!(Level::DEBUG, "Converting username into user principal name style");
     let upn_name = format!("{}@{}", username, kanidm_client.get_url());
     let upn_name_win = rust_to_unicode(upn_name);
     let upn_name_win_ptr = &upn_name_win as *const UNICODE_STRING;
 
+    event!(Level::DEBUG, "Beginning verification of account credentials");
     match kanidm_client
         .idm_account_unix_cred_verify(&username, &password)
         .await
@@ -181,15 +193,20 @@ pub async unsafe extern "system" fn ApLogonUser(
             return error_then_return(&msg);
         }
     };
+    event!(Level::DEBUG, "Successfully verified account credentials");
 
     // Logon ID
+    event!(Level::DEBUG, "Beginning allocation of locally unique login identification");
     let logon_id_new: *mut LUID = null_mut();
 
     if let TRUE = unsafe { AllocateLocallyUniqueId(logon_id_new) } {
         return error_then_return("AP: Failed to allocate logon id");
     }
+    event!(Level::DEBUG, "Successfully allocated login identification");
 
     // Expiry Time
+    event!(Level::DEBUG, "Beginning creation of token information for the client");
+    event!(Level::DEBUG, "Creating expiry time of the token information");
     let current_time = match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
         Ok(time) => time,
         Err(_) => return error_then_return("AP: Failed to get the current time"),
@@ -197,11 +214,13 @@ pub async unsafe extern "system" fn ApLogonUser(
     let expiry_time = current_time.as_secs() as i64 + (24 * 60 * 60);
 
     // User Handle
+    event!(Level::DEBUG, "Getting reference to OpenSamUser from the LSA's dispatch table");
     let open_sam_user = match secpkg_dispatch_table.OpenSamUser {
         Some(func) => func,
         None => return error_then_return("AP: Failed to get reference to LSA OpenSamUser"),
     };
 
+    event!(Level::DEBUG, "Getting user handle from provided authentication information");
     let user_handle_ptr: *mut *mut c_void = null_mut();
     let sam_return_value = unsafe {
         open_sam_user(
@@ -221,6 +240,7 @@ pub async unsafe extern "system" fn ApLogonUser(
     }
 
     // Token Information
+    event!(Level::DEBUG, "Beginning to get information needed for the token information");
     let user_token: *mut c_void = null_mut();
     let groups_token: *mut c_void = null_mut();
     let primary_group_token: *mut c_void = null_mut();
@@ -228,18 +248,21 @@ pub async unsafe extern "system" fn ApLogonUser(
     let owner_token: *mut c_void = null_mut();
     let default_dacl_token: *mut c_void = null_mut();
 
+    event!(Level::DEBUG, "Getting the user token for {}", username);
     if unsafe { GetTokenInformation(user_handle, TokenUser, Some(user_token), 0, null_mut()) }
         == FALSE
     {
         return error_then_return("AP: Failed to get user token");
     }
 
+    event!(Level::DEBUG, "Getting the groups token for {}", username);
     if unsafe { GetTokenInformation(user_handle, TokenGroups, Some(groups_token), 0, null_mut()) }
         == FALSE
     {
         return error_then_return("AP: Failed to get groups token");
     }
 
+    event!(Level::DEBUG, "Getting the primary group token for {}", username);
     if unsafe {
         GetTokenInformation(
             user_handle,
@@ -253,6 +276,7 @@ pub async unsafe extern "system" fn ApLogonUser(
         return error_then_return("AP: Failed to get primary group token");
     }
 
+    event!(Level::DEBUG, "Getting the privileges token for {}", username);
     if unsafe {
         GetTokenInformation(
             user_handle,
@@ -266,12 +290,14 @@ pub async unsafe extern "system" fn ApLogonUser(
         return error_then_return("AP: Failed to get privileges token");
     }
 
+    event!(Level::DEBUG, "Getting the owner token for {}", username);
     if unsafe { GetTokenInformation(user_handle, TokenOwner, Some(owner_token), 0, null_mut()) }
         == FALSE
     {
         return error_then_return("AP: Failed to get owner token");
     }
 
+    event!(Level::DEBUG, "Getting the default discretionary access control list token for {}", username);
     if unsafe {
         GetTokenInformation(
             user_handle,
@@ -284,7 +310,9 @@ pub async unsafe extern "system" fn ApLogonUser(
     {
         return error_then_return("AP: Failed to get default DACL token");
     }
+    event!(Level::DEBUG, "Finished getting information for the token information");
 
+    event!(Level::DEBUG, "Creating token information for {}", username);
     let token_information_v2 = unsafe {
         LSA_TOKEN_INFORMATION_V1 {
             ExpirationTime: expiry_time,
@@ -298,6 +326,7 @@ pub async unsafe extern "system" fn ApLogonUser(
     };
 
     // Allocate to LSA heap space
+    event!(Level::DEBUG, "Getting reference to the heap allocation function for the LSA");
     let alloc_lsa_heap = match &secpkg_dispatch_table.AllocateLsaHeap {
         Some(func) => func,
         None => {
@@ -309,20 +338,27 @@ pub async unsafe extern "system" fn ApLogonUser(
         }
     };
 
+    event!(Level::DEBUG, "Allocating the substatus to the LSA");
     let substatus_lsa = match unsafe { allocate_mem_lsa(0i32, alloc_lsa_heap) } {
         Ok(ptr) => ptr,
         Err(_) => return error_then_return("AP: Failed to allocate substatus"),
     };
+
+    event!(Level::DEBUG, "Allocating the token information type to the LSA");
     let token_information_type_lsa =
         match unsafe { allocate_mem_lsa(LsaTokenInformationV2, alloc_lsa_heap) } {
             Ok(ptr) => ptr,
             Err(_) => return error_then_return("AP: Failed to allocate token information type"),
         };
+
+    event!(Level::DEBUG, "Allocating the token information to the LSA");
     let token_information_lsa =
         match unsafe { allocate_mem_lsa(token_information_v2, alloc_lsa_heap) } {
             Ok(ptr) => ptr,
             Err(_) => return error_then_return("AP: Failed to allocate the token information"),
         };
+
+    event!(Level::DEBUG, "Allocating the authenticating authority to the LSA");
     let authenticating_authority_lsa = match unsafe {
         allocate_mem_lsa(
             rust_to_unicode(kanidm_client.get_url().to_string()),
@@ -332,6 +368,8 @@ pub async unsafe extern "system" fn ApLogonUser(
         Ok(ptr) => ptr,
         Err(_) => return error_then_return("AP: Failed to allocate the authenticating authority"),
     };
+
+    event!(Level::DEBUG, "Allocating the account name to the LSA");
     let account_name_lsa = match unsafe {
         allocate_mem_lsa(provided_credentials.username, alloc_lsa_heap)
     } {
@@ -339,6 +377,7 @@ pub async unsafe extern "system" fn ApLogonUser(
         Err(_) => return error_then_return("AP: Failed to allocate the authenticating authority"),
     };
 
+    event!(Level::DEBUG, "Assigning return values for the LSA");
     unsafe {
         let token_information = token_information.cast::<*mut LSA_TOKEN_INFORMATION_V1>();
 
@@ -365,6 +404,7 @@ pub async unsafe extern "system" fn ApCallPackage(
     out_return_buf_len: *mut u32,
     out_status: *mut i32, // NTSTATUS
 ) -> NTSTATUS {
+    event!(Level::DEBUG, "Getting reference to the LSA dispatch table");
     let dispatch_table = match unsafe { AP_DISPATCH_TABLE.as_ref() } {
         Some(dt) => dt,
         None => {
@@ -376,6 +416,7 @@ pub async unsafe extern "system" fn ApCallPackage(
         }
     };
 
+    event!(Level::DEBUG, "Getting reference to the kanidm client");
     let client = match Lazy::get(unsafe { &KANIDM_CLIENT }) {
         Some(client) => client,
         None => {
@@ -384,14 +425,17 @@ pub async unsafe extern "system" fn ApCallPackage(
         }
     };
 
+    event!(Level::DEBUG, "Getting reference to the client request");
     let request_ptr = submit_buf.cast::<AuthPkgRequest>();
     let request = match unsafe { request_ptr.as_ref() } {
         Some(req) => req,
         None => return STATUS_UNSUCCESSFUL,
     };
 
+    event!(Level::DEBUG, "Beginning response to the client");
     let response = match request {
         AuthPkgRequest::AuthenticateAccount(auth_request) => {
+            event!(Level::DEBUG, "Beginning authentication response for the client");
             let logon_result = client
                 .idm_account_unix_cred_verify(&auth_request.id, &auth_request.password)
                 .await;
@@ -415,6 +459,7 @@ pub async unsafe extern "system" fn ApCallPackage(
         }
     };
 
+    event!(Level::DEBUG, "Getting reference to the client heap allocation function");
     let alloc_client_heap = match &dispatch_table.AllocateClientBuffer {
         Some(func) => func,
         None => {
@@ -426,6 +471,7 @@ pub async unsafe extern "system" fn ApCallPackage(
         }
     };
 
+    event!(Level::DEBUG, "Allocating the response to the client");
     let response_ptr = match unsafe { allocate_mem_client(response, alloc_client_heap, client_req) }
     {
         Ok(ptr) => ptr,
@@ -435,6 +481,7 @@ pub async unsafe extern "system" fn ApCallPackage(
         }
     };
 
+    event!(Level::DEBUG, "Assigning the return information for the client");
     let out_return_buf_ptr = out_return_buf.cast::<*mut AuthPkgResponse>();
 
     unsafe {
@@ -450,6 +497,7 @@ pub async unsafe extern "system" fn ApCallPackage(
 #[no_mangle]
 #[allow(non_snake_case)]
 pub async unsafe extern "system" fn ApLogonTerminated(luid: *const LUID) {
+    event!(Level::DEBUG, "Removing logon id from the stored ids");
     unsafe {
         AP_LOGON_IDS.remove(&(*luid).into());
     }
@@ -463,6 +511,7 @@ pub async unsafe extern "system" fn SpInitialise(
     params_ptr: *const SECPKG_PARAMETERS,
     func_table_ptr: *const LSA_SECPKG_FUNCTION_TABLE,
 ) -> NTSTATUS {
+    event!(Level::DEBUG, "Getting reference to the security package parameters");
     let params = match unsafe { params_ptr.as_ref() } {
         Some(params) => params.to_owned(),
         None => {
@@ -470,6 +519,8 @@ pub async unsafe extern "system" fn SpInitialise(
             return STATUS_UNSUCCESSFUL;
         }
     };
+
+    event!(Level::DEBUG, "Getting reference to the security package function table");
     let func_table = match unsafe { func_table_ptr.as_ref() } {
         Some(func_table) => func_table.to_owned(),
         None => {
@@ -481,6 +532,7 @@ pub async unsafe extern "system" fn SpInitialise(
         }
     };
 
+    event!(Level::DEBUG, "Assigning parameters to the global state");
     unsafe {
         SP_PACKAGE_ID = package_id;
         SP_SECPKG_PARAMS = Some(params);
