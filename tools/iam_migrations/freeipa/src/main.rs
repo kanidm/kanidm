@@ -690,6 +690,7 @@ fn ipa_to_scim_entry(
     debug!("{:#?}", sync_entry);
 
     // check the sync_entry state?
+    #[allow(clippy::unimplemented)]
     if sync_entry.state != LdapSyncStateValue::Add {
         unimplemented!();
     }

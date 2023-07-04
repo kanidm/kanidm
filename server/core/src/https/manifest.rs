@@ -1,3 +1,5 @@
+//! Builds a Progressive Web App Manifest page.
+
 use axum::extract::State;
 use axum::response::{IntoResponse, Response};
 use axum::Extension;
@@ -5,7 +7,6 @@ use http::HeaderValue;
 use serde::{Deserialize, Serialize};
 
 use super::middleware::KOpId;
-///! Builds a Progressive Web App Manifest page.
 // Thanks to the webmanifest crate for a lot of this code
 use super::ServerState;
 

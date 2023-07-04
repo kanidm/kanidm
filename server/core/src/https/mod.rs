@@ -262,7 +262,6 @@ pub async fn create_https_server(
             "Failed to parse address ({:?}) from config: {:?}",
             config.address, err
         );
-        ()
     })?;
 
     info!("Starting the web server...");

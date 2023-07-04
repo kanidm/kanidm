@@ -487,6 +487,7 @@ async fn oauth2_authorise_reject(
                 .clear()
                 .append_pair("error", "access_denied")
                 .append_pair("error_description", "authorisation rejected");
+            #[allow(clippy::unwrap_used)]
             Response::builder()
                 .header(LOCATION, redirect_uri.as_str())
                 .header(
@@ -502,6 +503,7 @@ async fn oauth2_authorise_reject(
             // that we should NOT redirect to the calling application
             // and we need to handle that locally somehow.
             // This needs to be better!
+            #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
