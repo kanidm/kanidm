@@ -922,7 +922,7 @@ impl KanidmClient {
             .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
-    #[instrument]
+    #[instrument(level="debug")]
     pub async fn auth_step_init(&self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
         let auth_init = AuthRequest {
             step: AuthStep::Init2 {
@@ -1085,7 +1085,7 @@ impl KanidmClient {
         }
     }
 
-    #[instrument]
+    #[instrument(level="debug")]
     pub async fn auth_simple_password(
         &self,
         ident: &str,
