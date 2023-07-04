@@ -1,4 +1,4 @@
-$kani_dir = "C:\Program Files\kanidm"
+$kani_dir = "$env:ProgramFiles\kanidm"
 
 if (-not ([Security.Principal.WindowsIdentity]::GetCurrent().Groups -contains 'S-1-5-32-544')) {
 	Write-Output "This script must be run as an administrator"
