@@ -28,6 +28,8 @@ pub(crate) static mut PROGRAM_DIR: Option<String> = None;
 pub(crate) const REGISTRY_KEY: &str = "SOFTWARE\\kanidm";
 pub(crate) const REGISTRY_KEY_INSTALL_LOCATION: &str = "InstallLocation";
 
+pub(crate) const IDM_GROUP_FOR_LOCAL_ADMIN: &str = "windows_admin";
+
 // Naming Scheme for Tracing spans
 // The current naming scheme for these consist of the initials of function names followed by an s
 // For example: logon_user -> lus

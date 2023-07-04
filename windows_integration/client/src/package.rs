@@ -13,7 +13,8 @@ use kanidm_windows::{
 use once_cell::sync::Lazy;
 use tracing::{event, span, Level};
 
-use windows::core::PSTR;
+use windows::Win32::NetworkManagement::NetManagement::{NetUserAdd, USER_INFO_1, USER_PRIV_USER, USER_PRIV_ADMIN, USER_ACCOUNT_FLAGS};
+use windows::core::{PSTR, PCWSTR, PWSTR};
 use windows::Win32::Foundation::{
     BOOLEAN, FALSE, HANDLE, LUID, NTSTATUS, STATUS_SUCCESS, STATUS_UNSUCCESSFUL, TRUE,
     UNICODE_STRING,
@@ -33,7 +34,7 @@ use windows::Win32::System::Kernel::STRING;
 use crate::convert::{rust_to_unicode, unicode_to_rust};
 use crate::mem::{allocate_mem_client, allocate_mem_lsa, MemoryAllocationError};
 use crate::structs::LogonId;
-use crate::PROGRAM_DIR;
+use crate::{PROGRAM_DIR, IDM_GROUP_FOR_LOCAL_ADMIN};
 
 // ! This will most definitely crash the LSA if something fails
 // TODO: Fix this
@@ -186,11 +187,20 @@ pub async unsafe extern "system" fn ApLogonUser(
     let upn_name_win_ptr = &upn_name_win as *const UNICODE_STRING;
 
     event!(Level::DEBUG, "Beginning verification of account credentials");
-    match kanidm_client
+    let user_token = match kanidm_client
         .idm_account_unix_cred_verify(&username, &password)
         .await
     {
-        Ok(_) => event!(Level::INFO, "AP: Successfully logged on {}", username),
+        Ok(token) => match token {
+            Some(token) => {
+                event!(Level::INFO, "AP: Successfully logged on {}", username);
+                token
+            }
+            None => {
+                let msg = format!("AP: Failed to get token for {}", username);
+                return error_then_return(&msg);
+            }
+        }
         Err(ClientError::AuthenticationFailed) => {
             event!(Level::INFO, "AP: {} failed credential check", username);
             return STATUS_LOGON_FAILURE;
@@ -240,11 +250,64 @@ pub async unsafe extern "system" fn ApLogonUser(
         )
     };
 
-    let user_handle = unsafe { user_handle_ptr.cast::<*mut HANDLE>().read().read() };
-
     if sam_return_value == STATUS_NO_SUCH_USER {
-        // TODO: Create new user
+        let mut username_vec: Vec<u16> = username.encode_utf16().collect();
+        username_vec.push(0);
+
+        let mut password_vec: Vec<u16> = password.encode_utf16().collect();
+        password_vec.push(0);
+
+        let mut user_privilege = USER_PRIV_USER;
+
+        for group in user_token.groups.into_iter() {
+            if group.name == IDM_GROUP_FOR_LOCAL_ADMIN {
+                user_privilege = USER_PRIV_ADMIN;
+            }
+        }
+
+        let home_directory = format!("{}\\Users\\{}", env!("SystemDrive"), username);
+        let mut home_directory_vec: Vec<u16> = home_directory.encode_utf16().collect();
+        home_directory_vec.push(0);
+
+        let user_info = USER_INFO_1 { 
+            usri1_name: PWSTR(username_vec.as_mut_ptr()),
+            usri1_password: PWSTR(password_vec.as_mut_ptr()),
+            usri1_password_age: 0,
+            usri1_priv: user_privilege,
+            usri1_home_dir: PWSTR(home_directory_vec.as_mut_ptr()),
+            usri1_comment: PWSTR::null(),
+            usri1_flags: USER_ACCOUNT_FLAGS::default(),
+            usri1_script_path: PWSTR::null()
+        };
+        let user_info_ptr: *const USER_INFO_1 = &user_info;
+
+        // This is just to deal with however the hell this supposed to work
+        let u8_ptr = user_info_ptr.cast::<u8>();
+
+        if 0 != unsafe { NetUserAdd(PCWSTR::null(), 1, u8_ptr, Some(null_mut())) } {
+            event!(Level::ERROR, "AP: Failed to create new local user for {}", username);
+            return STATUS_UNSUCCESSFUL;
+        };
+
+        if STATUS_SUCCESS != unsafe {
+            open_sam_user(
+                upn_name_win_ptr,
+                SecNameFlat,
+                null(),
+                BOOLEAN(0),
+                0,
+                user_handle_ptr,
+            )
+        } {
+            event!(Level::ERROR, "AP: Failed to get handle to newly created user");
+            return STATUS_UNSUCCESSFUL;
+        }
+    } else if sam_return_value != STATUS_SUCCESS {
+        event!(Level::ERROR, "AP: Failed to get handle of user {}", username);
+        return STATUS_UNSUCCESSFUL
     }
+
+    let user_handle = unsafe { user_handle_ptr.cast::<*mut HANDLE>().read().read() };
 
     // Token Information
     event!(Level::DEBUG, "Beginning to get information needed for the token information");
