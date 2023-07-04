@@ -36,7 +36,12 @@ use crate::structs::LogonId;
 use crate::PROGRAM_DIR;
 
 pub(crate) static mut KANIDM_CLIENT: Lazy<KanidmClient> = Lazy::new(|| {
-    let config_path = format!("{}/authlib_client.toml", PROGRAM_DIR);
+    let program_dir = match unsafe { &PROGRAM_DIR } {
+        Some(dir) => dir,
+        None => std::process::exit(1),
+    };
+
+    let config_path = format!("{}/authlib_client.toml", program_dir);
 
     KanidmClientBuilder::new()
         .read_options_from_optional_config(config_path)

@@ -13,7 +13,7 @@ pub mod package;
 pub(crate) mod structs;
 pub(crate) mod convert;
 
-pub(crate) const PROGRAM_DIR: &str = "C:\\Program Files\\kanidm";
+pub(crate) static mut PROGRAM_DIR: Option<String> = None;
 
 // Naming Scheme for Tracing spans
 // The current naming scheme for these consist of the initials of function names followed by an s
@@ -34,7 +34,13 @@ pub async unsafe extern "system" fn SpLsaModeInitialize(
     pptables: *mut *mut SECPKG_FUNCTION_TABLE,
     pctables: *mut u32,
 ) -> NTSTATUS {
-    let file_appender = tracing_appender::rolling::daily(PROGRAM_DIR, "authlib.log");
+    let program_dir = format!("{}/kanidm", env!("ProgramFiles"));
+
+    unsafe {
+        PROGRAM_DIR = Some(program_dir.clone());
+    }
+
+    let file_appender = tracing_appender::rolling::daily(program_dir, "authlib.log");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
     tracing_subscriber::fmt().with_writer(non_blocking).init();
