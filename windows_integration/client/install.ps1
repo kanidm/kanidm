@@ -19,3 +19,10 @@ Copy-Item .\authlib_client.toml -Destination $kani_dir
 
 # Register DLL
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Lsa" -Name "Security Packages" -Value "C:\Program Files\kanidm\kanidm_windows_client"
+
+# Registry program path
+if (-not (Test-Path -Path "HKLM:\Software\kandim")) {
+	New-Item -Path "HKLM:\Software" -Name "kanidm"
+}
+
+New-ItemProperty -Path "HKLM:\Software\kanidm" -Name "InstallLocation" -Value $kani_dir -Force
