@@ -4,7 +4,9 @@ use std::collections::HashSet;
 use kanidm_client::KanidmClient;
 use kanidm_proto::v1::{Filter, Modify, ModifyList};
 
-use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
+use kanidmd_testkit::{
+    ADMIN_TEST_PASSWORD, ADMIN_TEST_USER, NOT_ADMIN_TEST_PASSWORD, NOT_ADMIN_TEST_USERNAME,
+};
 
 static USER_READABLE_ATTRS: [&str; 9] = [
     "name",
@@ -195,13 +197,13 @@ async fn login_account(rsclient: &KanidmClient, id: &str) {
         .unwrap();
 
     rsclient
-        .idm_person_account_primary_credential_set_password(id, "eicieY7ahchaoCh0eeTa")
+        .idm_person_account_primary_credential_set_password(id, NOT_ADMIN_TEST_PASSWORD)
         .await
         .unwrap();
 
     let _ = rsclient.logout();
     let res = rsclient
-        .auth_simple_password(id, "eicieY7ahchaoCh0eeTa")
+        .auth_simple_password(id, NOT_ADMIN_TEST_PASSWORD)
         .await;
 
     // Setup privs
@@ -209,7 +211,7 @@ async fn login_account(rsclient: &KanidmClient, id: &str) {
     assert!(res.is_ok());
 
     let res = rsclient
-        .reauth_simple_password("eicieY7ahchaoCh0eeTa")
+        .reauth_simple_password(NOT_ADMIN_TEST_PASSWORD)
         .await;
     println!("{} priv granted for", id);
     assert!(res.is_ok());
@@ -886,3 +888,55 @@ async fn test_status_endpoint(rsclient: KanidmClient) {
 // TODO: #1787 system_get
 // TODO: #1787 system_get_attr
 // TODO: #1787 system_delete_attr
+
+/// TODO: #!787 test cookie auth for a user
+#[kanidmd_testkit::test]
+async fn test_cookie_auth(rsclient: KanidmClient) {
+    // login as admin
+    rsclient
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
+        .await
+        .unwrap();
+    // add admin to idm_admins so admin can do admin things
+    rsclient
+        .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
+        .await
+        .unwrap();
+
+    create_user_with_all_attrs(&rsclient, NOT_ADMIN_TEST_USERNAME, None).await;
+
+    // setup a
+
+    login_account(&rsclient, NOT_ADMIN_TEST_USERNAME).await;
+
+    // rsclient.logout().await.unwrap();
+
+    // rsclient
+    //     .auth_simple_password(NOT_ADMIN_TEST_USERNAME, NOT_ADMIN_TEST_PASSWORD)
+    //     .await
+    //     .unwrap();
+    let token = rsclient.get_token().await.unwrap();
+    eprintln!("token: {:?}", token);
+
+    let url = rsclient.get_url();
+    let mut cookie_header = reqwest::header::HeaderMap::new();
+    cookie_header.insert(
+        "Cookie",
+        reqwest::header::HeaderValue::from_str(&format!("kanidm-session={}", token)).unwrap(),
+    );
+    let client = reqwest::ClientBuilder::new()
+        .default_headers(cookie_header)
+        .danger_accept_invalid_certs(true)
+        .cookie_store(true)
+        .build()
+        .unwrap();
+    eprintln!("#############################################");
+    eprintln!("sending the valid request");
+    eprintln!("#############################################");
+    eprintln!("Client: {:?}", client);
+    eprintln!("#############################################");
+
+    let response = client.get(format!("{}/v1/auth/valid", &url)).send().await;
+
+    eprintln!("Response: {:?}", response);
+}

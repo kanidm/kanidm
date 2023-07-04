@@ -780,6 +780,7 @@ impl KanidmClient {
             .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
+    #[instrument(level = "debug", skip(self))]
     async fn perform_get_request<T: DeserializeOwned>(&self, dest: &str) -> Result<T, ClientError> {
         let dest = format!("{}{}", self.get_url(), dest);
         let response = self.client.get(dest.as_str());
@@ -1795,6 +1796,7 @@ impl KanidmClient {
     }
 
     // ==== Oauth2 resource server configuration
+    #[instrument(level = "debug")]
     pub async fn idm_oauth2_rs_list(&self) -> Result<Vec<Entry>, ClientError> {
         self.perform_get_request("/v1/oauth2").await
     }

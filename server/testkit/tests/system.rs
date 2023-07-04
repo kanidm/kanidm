@@ -10,11 +10,9 @@ async fn test_v1_system_post_attr(rsclient: KanidmClient) {
         .build()
         .unwrap();
 
-    let post_body = serde_json::json!({"filter": "self"}).to_string();
-
     let response = match client
         .post(format!("{}/v1/system/_attr/domain_name", &addr))
-        .body(post_body)
+        .json(&serde_json::json!({"filter": "self"}))
         .send()
         .await
     {

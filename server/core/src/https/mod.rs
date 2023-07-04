@@ -64,6 +64,16 @@ pub struct ServerState {
 }
 
 impl ServerState {
+    fn reinflate_uuid_from_bytes(&self, input: &str) -> Option<Uuid> {
+        match JwsUnverified::from_str(input) {
+            Ok(val) => val
+                .validate(&self.jws_validator)
+                .map(|jws: Jws<SessionId>| jws.into_inner().sessionid)
+                .ok(),
+            Err(_) => None,
+        }
+    }
+
     fn get_current_auth_session_id(
         &self,
         headers: &HeaderMap,
@@ -76,16 +86,7 @@ impl ServerState {
                 // Get the first header value.
                 hv.to_str().ok()
             })
-            .and_then(|h| {
-                // Take the token str and attempt to decrypt
-                // Attempt to re-inflate a uuid from bytes.
-                JwsUnverified::from_str(h).ok()
-            })
-            .and_then(|jwsu| {
-                jwsu.validate(&self.jws_validator)
-                    .map(|jws: Jws<SessionId>| jws.into_inner().sessionid)
-                    .ok()
-            })
+            .map(|s| self.reinflate_uuid_from_bytes(s).unwrap())
             // If not there, get from the cookie instead.
             .or_else(|| session.get::<Uuid>("auth-session-id"))
     }
@@ -180,28 +181,31 @@ pub async fn create_https_server(
         .nest("/oauth2", oauth2::oauth2_route_setup(state.clone()))
         .route("/robots.txt", get(robots_txt))
         .nest("/v1", v1::router(state.clone()))
-        .nest("/scim", v1_scim::scim_route_setup());
-
-    let pkg_path = PathBuf::from(env!("KANIDM_WEB_UI_PKG_PATH"));
-    if !pkg_path.exists() {
-        eprintln!(
-            "Couldn't find Web UI package path: ({}), quitting.",
-            env!("KANIDM_WEB_UI_PKG_PATH")
-        );
-        std::process::exit(1);
-    }
+        // Shared account features only - mainly this is for unix-like features.
+        .route("/status", get(status));
+    let app = match config.role {
+        ServerRole::WriteReplicaNoUI => app,
+        ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
+            let pkg_path = PathBuf::from(env!("KANIDM_WEB_UI_PKG_PATH"));
+            if !pkg_path.exists() {
+                eprintln!(
+                    "Couldn't find Web UI package path: ({}), quitting.",
+                    env!("KANIDM_WEB_UI_PKG_PATH")
+                );
+                std::process::exit(1);
+            }
+            app.nest_service("/pkg", ServeDir::new(pkg_path))
+        }
+    };
 
     let app = app
-        // Shared account features only - mainly this is for unix-like features.
-        .route("/status", get(status))
-        .nest_service("/pkg", ServeDir::new(pkg_path))
         .layer(from_fn(crate::https::csp_headers::cspheaders_layer))
         .merge(static_routes)
-        .layer(session_layer)
         .layer(from_fn(middleware::version_middleware))
         .layer(from_fn(middleware::kopid_end))
-        .with_state(state)
         .layer(from_fn(middleware::kopid_start))
+        .layer(session_layer)
+        .with_state(state)
         .layer(TraceLayer::new_for_http())
         // the connect_info bit here lets us pick up the remote address of the client
         .into_make_service_with_connect_info::<SocketAddr>();
@@ -290,7 +294,7 @@ async fn server_loop(
         }
     }
 }
-#[instrument(name = "handle-connection", skip(acceptor, stream, svc, protocol))]
+#[instrument(name = "handle-connection", level = "debug", skip_all)]
 /// This handles an individual connection.
 async fn handle_conn(
     acceptor: SslAcceptor,
@@ -314,8 +318,8 @@ async fn handle_conn(
                 .serve_connection(tls_stream, svc.await.expect("Failed to build response"))
                 .await
         }
-        Err(error) => {
-            error!("Failed to handle connection: {:?}", error);
+        Err(_error) => {
+            // trace!("Failed to handle connection: {:?}", error);
             Ok(())
         }
     }
@@ -341,6 +345,7 @@ pub fn to_axum_response<T: Serialize + core::fmt::Debug>(
                     format!("{:?}", iv)
                 }
             };
+            trace!("Response Body: {:?}", body);
             #[allow(clippy::unwrap_used)]
             Response::builder().body(Body::from(body)).unwrap()
         }

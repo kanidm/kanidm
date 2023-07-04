@@ -5,12 +5,13 @@ use std::str::FromStr;
 
 use axum::extract::{ConnectInfo, Path, Query, State};
 use axum::headers::{CacheControl, HeaderMapExt};
+use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
 
 use axum::routing::{delete, get, post, put};
 use axum::{Extension, Json, Router};
 use axum_macros::debug_handler;
-use axum_sessions::extractors::WritableSession;
+use axum_sessions::extractors::{ReadableSession, WritableSession};
 use compact_jwt::Jws;
 use http::{HeaderMap, HeaderValue};
 use hyper::Body;
@@ -30,6 +31,7 @@ use uuid::Uuid;
 
 use crate::https::to_axum_response;
 
+use super::middleware::caching::dont_cache_me;
 use super::middleware::KOpId;
 use super::ServerState;
 
@@ -103,11 +105,13 @@ pub async fn whoami(
 pub async fn whoami_uat(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    session: ReadableSession,
 ) -> impl IntoResponse {
-    let res = state
-        .qe_r_ref
-        .handle_whoami_uat(kopid.uat, kopid.eventid)
-        .await;
+    let uat = match kopid.uat {
+        Some(val) => Some(val),
+        None => session.get("bearer"),
+    };
+    let res = state.qe_r_ref.handle_whoami_uat(uat, kopid.eventid).await;
     to_axum_response(res)
 }
 
@@ -128,6 +132,7 @@ pub async fn logout(
 
 // // =============== REST generics ========================
 
+#[instrument(level = "trace", skip(state, kopid))]
 pub async fn json_rest_event_get(
     state: ServerState,
     attrs: Option<Vec<String>>,
@@ -138,6 +143,7 @@ pub async fn json_rest_event_get(
         .qe_r_ref
         .handle_internalsearch(kopid.uat, filter, attrs, kopid.eventid)
         .await;
+
     to_axum_response(res)
 }
 
@@ -584,10 +590,9 @@ pub async fn account_id_delete_attr(
     State(state): State<ServerState>,
     Path((id, attr)): Path<(String, String)>,
     Extension(kopid): Extension<KOpId>,
-    Json(values): Json<Option<Vec<String>>>,
 ) -> impl IntoResponse {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_delete_id_attr(state, id, attr, filter, values, kopid).await
+    json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid).await
 }
 
 pub async fn account_id_put_attr(
@@ -710,11 +715,21 @@ pub async fn credential_update_status(
     to_axum_response(res)
 }
 
+// #[derive(Deserialize, Debug, Clone)]
+// struct CUBody {
+//     pub session_token: CUSessionToken,
+//     pub scr: CURequest,
+// }
+#[instrument(level = "debug", skip(state, kopid))]
 pub async fn credential_update_update(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    Json((scr, session_token)): Json<(CURequest, CUSessionToken)>,
+    Json(cubody): Json<Vec<serde_json::Value>>,
 ) -> impl IntoResponse {
+    let scr: CURequest = serde_json::from_value(cubody[0].clone()).unwrap();
+    let session_token = serde_json::from_value(cubody[1].clone()).unwrap();
+    debug!("session_token: {:?}", session_token);
+    debug!("scr: {:?}", scr);
     let res = state
         .qe_r_ref
         .handle_idmcredentialupdate(session_token, scr, kopid.eventid)
@@ -859,6 +874,7 @@ pub async fn account_get_id_radius_token(
         .handle_internalradiustokenread(kopid.uat, id, kopid.eventid)
         .await;
     let mut res = to_axum_response(res);
+    debug!("Response: {:?}", res);
     let cache_header = CacheControl::new()
         .with_max_age(Duration::from_secs(300))
         .with_private();
@@ -985,9 +1001,10 @@ pub async fn group_id_delete_attr(
     Path((id, attr)): Path<(String, String)>,
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    Json(values): Json<Option<Vec<String>>>,
+    values: Option<Json<Vec<String>>>,
 ) -> impl IntoResponse {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
+    let values = values.map(|v| v.0);
     json_rest_event_delete_id_attr(state, id, attr, filter, values, kopid).await
 }
 
@@ -1187,10 +1204,15 @@ pub async fn recycle_bin_revive_id_post(
 pub async fn applinks_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    session: ReadableSession,
 ) -> impl IntoResponse {
+    let uat = match kopid.uat {
+        Some(val) => Some(val),
+        None => session.get("bearer"),
+    };
     let res = state
         .qe_r_ref
-        .handle_list_applinks(kopid.uat, kopid.eventid)
+        .handle_list_applinks(uat, kopid.eventid)
         .await;
     to_axum_response(res)
 }
@@ -1377,20 +1399,31 @@ fn auth_session_state_management(
     }
 }
 
+// #[instrument(skip(state),level="debug")]
 pub async fn auth_valid(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    session: ReadableSession,
 ) -> impl IntoResponse {
-    let res = state
-        .qe_r_ref
-        .handle_auth_valid(kopid.uat, kopid.eventid)
-        .await;
+    let uat = match kopid.uat {
+        Some(val) => Some(val),
+        None => session.get("bearer"),
+    };
+    error!("Sending token: {:?}", uat);
+    let res = state.qe_r_ref.handle_auth_valid(uat, kopid.eventid).await;
     to_axum_response(res)
 }
 
 #[instrument(skip(state))]
 pub fn router(state: ServerState) -> Router<ServerState> {
     Router::new()
+        .route("/oauth2", get(super::oauth2::oauth2_get))
+        .route(
+            "/oauth2/:rs_name",
+            get(super::oauth2::oauth2_id_get)
+                .patch(super::oauth2::oauth2_id_patch)
+                .delete(super::oauth2::oauth2_id_delete),
+        )
         .route(
             "/oauth2/:rs_name/_basic_secret",
             get(super::oauth2::oauth2_id_get_basic_secret),
@@ -1501,6 +1534,10 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         )
         // Service accounts
         .route(
+            "/service_account",
+            get(service_account_get).post(service_account_post),
+        )
+        .route(
             "/service_account/",
             get(service_account_get).post(service_account_post),
         )
@@ -1554,6 +1591,10 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         .route(
             "/account/:id/_unix/_token",
             post(account_get_id_unix_token).get(account_get_id_unix_token), // TODO: make this cacheable
+        )
+        .route(
+            "/account/:id/_radius/_token",
+            post(account_get_id_radius_token).get(account_get_id_radius_token), // TODO: make this cacheable
         )
         .route("/account/:id/_ssh_pubkeys", get(account_get_id_ssh_pubkeys))
         .route(
@@ -1613,5 +1654,7 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         .route("/auth/valid", get(auth_valid))
         .route("/logout", get(logout))
         .route("/reauth", post(reauth))
+        .merge(super::v1_scim::scim_route_setup())
         .with_state(state)
+        .layer(from_fn(dont_cache_me))
 }

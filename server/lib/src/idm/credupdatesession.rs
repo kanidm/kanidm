@@ -1141,6 +1141,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         Ok(status)
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn check_password_quality(
         &self,
         cleartext: &str,
@@ -1284,6 +1285,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         }
     }
 
+    #[instrument(level = "trace", skip(cust, self))]
     pub fn credential_primary_set_password(
         &self,
         cust: &CredentialUpdateSessionToken,

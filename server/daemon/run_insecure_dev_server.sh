@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # This script based on the developer readme and allows you to run a test server.
 
 if [ -z "$KANI_CARGO_OPTS" ]; then

@@ -2,9 +2,11 @@ use super::middleware::KOpId;
 use super::v1::{json_rest_event_get, json_rest_event_post};
 use super::{to_axum_response, ServerState};
 use axum::extract::{Path, Query, State};
+use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Form, Json, Router};
+use http::header::AUTHORIZATION;
 use http::{HeaderMap, HeaderValue, StatusCode};
 use hyper::Body;
 use kanidm_proto::oauth2::AuthorisationResponse;
@@ -16,9 +18,12 @@ use kanidmd_lib::idm::oauth2::{
 use kanidmd_lib::prelude::f_eq;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
+use serde::{Deserialize, Serialize};
 // use serde::{Deserialize, Serialize};
 
 // // == Oauth2 Configuration Endpoints ==
+
+/// List all the OAuth2 Resource Servers
 pub async fn oauth2_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -366,14 +371,14 @@ pub async fn oauth2_authorise_permit_post(
     res
 }
 
-// #[derive(Serialize, Deserialize, Debug)]
-// pub struct ConsentRequestData {
-//     token: String,
-// }
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ConsentRequestData {
+    token: String,
+}
 
 pub async fn oauth2_authorise_permit_get(
     State(state): State<ServerState>,
-    Query(token): Query<String>,
+    Query(token): Query<ConsentRequestData>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
     // When this is called, this indicates consent to proceed from the user.
@@ -386,7 +391,7 @@ pub async fn oauth2_authorise_permit_get(
     //     )
     // })?;
 
-    oauth2_authorise_permit(state, token, kopid).await
+    oauth2_authorise_permit(state, token.token, kopid).await
 }
 
 async fn oauth2_authorise_permit(
@@ -653,16 +658,30 @@ pub async fn oauth2_openid_publickey_get(
 pub async fn oauth2_token_introspect_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    headers: HeaderMap,
     Form(intr_req): Form<AccessTokenIntrospectRequest>,
 ) -> impl IntoResponse {
     let client_authz = match kopid.uat {
         Some(val) => val,
         None => {
-            error!("Bearer Authentication Not Provided");
-            return Response::builder()
-                .status(StatusCode::UNAUTHORIZED)
-                .body(Body::from("Invalid Bearer Authorisation"))
-                .unwrap();
+            error!("Bearer Authentication Not Provided, trying basic");
+            match headers.get(AUTHORIZATION) {
+                Some(val) => {
+                    // TODO THIS IS HILARIOUSLY TERRIBLE
+                    val.to_str()
+                        .unwrap()
+                        .to_string()
+                        .strip_prefix("Basic ")
+                        .unwrap()
+                        .to_string()
+                }
+                None => {
+                    return Response::builder()
+                        .status(StatusCode::UNAUTHORIZED)
+                        .body(Body::from("Invalid Bearer Authorisation"))
+                        .unwrap();
+                }
+            }
         }
     };
     request_trace!("Introspect Request - {:?}", intr_req);
@@ -798,11 +817,6 @@ pub fn oauth2_route_setup(state: ServerState) -> Router<ServerState> {
         .route("/token/introspect", post(oauth2_token_introspect_post))
         .route("/token/revoke", post(oauth2_token_revoke_post))
         .nest("/openid", openid_router)
-        .route(
-            "/:rs_name",
-            get(oauth2_id_get)
-                .patch(oauth2_id_patch)
-                .delete(oauth2_id_delete),
-        )
         .with_state(state)
+        .layer(from_fn(super::middleware::caching::dont_cache_me))
 }

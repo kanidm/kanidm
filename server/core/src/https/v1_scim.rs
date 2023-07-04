@@ -239,27 +239,31 @@ pub fn scim_route_setup() -> Router<ServerState> {
         //
         //                            POST                   Send a sync update
         //
-        .route("/v1/Sync", post(scim_sync_post).get(scim_sync_get))
-        .route("/v1/Sink", get(scim_sink_get))
-        // let mut sync_account_route = appserver.at("/v1/sync_account");
+        .route("/Sync", post(scim_sync_post).get(scim_sync_get))
+        .route("/Sink", get(scim_sink_get))
+        // let mut sync_account_route = appserver.at("/sync_account");
         .route(
-            "/v1/sync_account/",
+            "/sync_account",
             get(sync_account_get).post(sync_account_post),
         )
         .route(
-            "/v1/sync_account/:id",
+            "/sync_account/",
+            get(sync_account_get).post(sync_account_post),
+        )
+        .route(
+            "/sync_account/:id",
             get(sync_account_id_get).patch(sync_account_id_patch),
         )
         .route(
-            "/v1/sync_account/:id/_finalise",
+            "/sync_account/:id/_finalise",
             get(sync_account_id_get_finalise),
         )
         .route(
-            "/v1/sync_account/:id/_terminate",
+            "/sync_account/:id/_terminate",
             get(sync_account_id_get_terminate),
         )
         .route(
-            "/v1/sync_account/:id/_sync_token",
+            "/sync_account/:id/_sync_token",
             // .get(&mut sync_account_token_get)
             post(sync_account_token_post).delete(sync_account_token_delete),
         )

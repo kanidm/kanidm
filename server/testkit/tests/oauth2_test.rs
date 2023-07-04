@@ -9,6 +9,7 @@ use kanidm_proto::oauth2::{
     AccessTokenResponse, AuthorisationResponse, GrantTypeReq, OidcDiscoveryResponse,
 };
 use oauth2_ext::PkceCodeChallenge;
+use reqwest::StatusCode;
 use url::Url;
 
 use kanidm_client::KanidmClient;
@@ -400,23 +401,23 @@ async fn test_oauth2_token_post_bad_bodies(rsclient: KanidmClient) {
     // test for a bad-body request on token
     let response = client
         .post(format!("{}/oauth2/token", url))
-        .body(serde_json::json!({}).to_string())
+        .form(&serde_json::json!({}))
         // .bearer_auth(atr.access_token.clone())
         .send()
         .await
         .expect("Failed to send token request.");
     println!("{:?}", response);
-    assert!(response.status() == reqwest::StatusCode::BAD_REQUEST);
+    assert!(response.status() == StatusCode::UNPROCESSABLE_ENTITY);
 
     // test for a bad-auth request
     let response = client
         .post(format!("{}/oauth2/token/introspect", url))
-        .body(serde_json::json!({}).to_string())
+        .form(&serde_json::json!({ "token": "lol" }))
         .send()
         .await
         .expect("Failed to send token introspection request.");
     println!("{:?}", response);
-    assert!(response.status() == 401);
+    assert!(response.status() == StatusCode::UNAUTHORIZED);
 }
 
 #[kanidmd_testkit::test]
@@ -436,13 +437,36 @@ async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
     // test for a bad-body request on token
     let response = client
         .post(format!("{}/oauth2/token/revoke", url))
-        .body(serde_json::json!({}).to_string())
+        .form(&serde_json::json!({}))
         .bearer_auth("lolol")
         .send()
         .await
         .expect("Failed to send token request.");
     println!("{:?}", response);
-    assert!(response.status() == 401);
+    assert!(response.status() == StatusCode::UNPROCESSABLE_ENTITY);
+
+    // test for a invalid format request on token
+    let response = client
+        .post(format!("{}/oauth2/token/revoke", url))
+        .json("")
+        .bearer_auth("lolol")
+        .send()
+        .await
+        .expect("Failed to send token request.");
+    println!("{:?}", response);
+
+    assert!(response.status() == StatusCode::UNSUPPORTED_MEDIA_TYPE);
+
+    // test for a bad-body request on token
+    let response = client
+        .post(format!("{}/oauth2/token/revoke", url))
+        .form(&serde_json::json!({}))
+        .bearer_auth("Basic lolol")
+        .send()
+        .await
+        .expect("Failed to send token request.");
+    println!("{:?}", response);
+    assert!(response.status() == StatusCode::UNPROCESSABLE_ENTITY);
 
     // test for a bad-body request on token
     let response = client
@@ -453,5 +477,5 @@ async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
         .await
         .expect("Failed to send token request.");
     println!("{:?}", response);
-    assert!(response.status() == 401);
+    assert!(response.status() == StatusCode::UNSUPPORTED_MEDIA_TYPE);
 }
