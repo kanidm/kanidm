@@ -34,24 +34,9 @@ use windows::Win32::System::Kernel::STRING;
 use crate::convert::{rust_to_unicode, unicode_to_rust};
 use crate::mem::{allocate_mem_client, allocate_mem_lsa, MemoryAllocationError};
 use crate::structs::LogonId;
-use crate::{PROGRAM_DIR, IDM_GROUP_FOR_LOCAL_ADMIN};
+use crate::{IDM_GROUP_FOR_LOCAL_ADMIN};
 
-// ! This will most definitely crash the LSA if something fails
-// TODO: Fix this
-pub(crate) static mut KANIDM_CLIENT: Lazy<KanidmClient> = Lazy::new(|| {
-    let program_dir = match unsafe { &PROGRAM_DIR } {
-        Some(dir) => dir,
-        None => std::process::exit(1),
-    };
-
-    let config_path = format!("{}/authlib_client.toml", program_dir);
-
-    KanidmClientBuilder::new()
-        .read_options_from_optional_config(config_path)
-        .unwrap_or_else(|_| std::process::exit(1))
-        .build()
-        .unwrap_or_else(|_| std::process::exit(1))
-});
+pub(crate) static mut KANIDM_CLIENT: Option<KanidmClient> = None;
 static mut AP_DISPATCH_TABLE: Option<LSA_DISPATCH_TABLE> = None;
 static mut AP_PACKAGE_ID: u32 = 0;
 pub(crate) static mut AP_LOGON_IDS: Lazy<HashMap<LogonId, UnixUserToken>> = Lazy::new(HashMap::new);
@@ -156,7 +141,7 @@ pub async unsafe extern "system" fn ApLogonUser(
     };
 
     event!(Level::DEBUG, "Getting reference to the kanidm client");
-    let kanidm_client = match Lazy::get(unsafe { &KANIDM_CLIENT }) {
+    let kanidm_client = match unsafe { &KANIDM_CLIENT } {
         Some(client) => client,
         None => {
             return error_then_return("AP: Failed to obtain reference to the kanidm client");
@@ -487,7 +472,7 @@ pub async unsafe extern "system" fn ApCallPackage(
     };
 
     event!(Level::DEBUG, "Getting reference to the kanidm client");
-    let client = match Lazy::get(unsafe { &KANIDM_CLIENT }) {
+    let client = match unsafe { &KANIDM_CLIENT } {
         Some(client) => client,
         None => {
             event!(Level::ERROR, "Failed to get a reference to kanidm client");

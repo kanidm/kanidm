@@ -2,6 +2,7 @@
 
 use std::ptr::{null_mut};
 
+use kanidm_client::KanidmClientBuilder;
 use once_cell::sync::Lazy;
 use tracing::{event, Level};
 
@@ -88,7 +89,7 @@ pub async unsafe extern "system" fn SpLsaModeInitialize(
         PROGRAM_DIR = Some(program_dir.clone());
     }
 
-    let file_appender = tracing_appender::rolling::daily(program_dir, "authlib.log");
+    let file_appender = tracing_appender::rolling::daily(program_dir.clone(), "authlib.log");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
     tracing_subscriber::fmt().with_writer(non_blocking).init();
@@ -192,7 +193,29 @@ pub async unsafe extern "system" fn SpLsaModeInitialize(
         "Beginning initialisation of required global state"
     );
     event!(Level::INFO, "Initialising kanidm client");
-    Lazy::get(unsafe { &KANIDM_CLIENT });
+    let config_path = format!("{}/authlib_client.toml", program_dir);
+
+    let mut client_builder = KanidmClientBuilder::new();
+
+    client_builder = match client_builder.read_options_from_optional_config(config_path) {
+        Ok(cb) => cb,
+        Err(_) => {
+            event!(Level::ERROR, "Failed to read options from configuration");
+            return STATUS_UNSUCCESSFUL;
+        }
+    };
+
+    let client = match client_builder.build() {
+        Ok(client) => client,
+        Err(_) => {
+            event!(Level::ERROR, "Failed to build the kanidm client");
+            return STATUS_UNSUCCESSFUL;
+        }
+    };
+
+    unsafe {
+        KANIDM_CLIENT = Some(client);
+    }
 
     event!(Level::INFO, "Initialising login session hashmap");
     Lazy::get(unsafe { &AP_LOGON_IDS });
