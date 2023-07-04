@@ -5,6 +5,10 @@ use std::ptr::{null_mut};
 use kanidm_client::KanidmClientBuilder;
 use once_cell::sync::Lazy;
 use tracing::{event, Level};
+use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
+use uuid::{Uuid, uuid};
+use win_etw_tracing::TracelogSubscriber;
+use win_etw_provider::GUID;
 
 use windows::Win32::System::Kernel::STRING;
 use windows::core::PCSTR;
@@ -30,6 +34,9 @@ pub(crate) const REGISTRY_KEY: &str = "SOFTWARE\\kanidm";
 pub(crate) const REGISTRY_KEY_INSTALL_LOCATION: &str = "InstallLocation";
 
 pub(crate) const IDM_GROUP_FOR_LOCAL_ADMIN: &str = "windows_admin";
+
+pub(crate) const KANIDM_EVENTLOG_NAME: &str = "KanidmSSPAP";
+pub(crate) const KANIDM_EVENTLOG_GUID: Uuid = uuid!("23ea1e19-d478-412b-bfe1-4bbff1917f4b");
 
 // Naming Scheme for Tracing spans
 // The current naming scheme for these consist of the initials of function names followed by an s
@@ -89,10 +96,13 @@ pub async unsafe extern "system" fn SpLsaModeInitialize(
         PROGRAM_DIR = Some(program_dir.clone());
     }
 
-    let file_appender = tracing_appender::rolling::daily(program_dir.clone(), "authlib.log");
-    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+    let guid = GUID::from(KANIDM_EVENTLOG_GUID);
+    let etw_subscriber = match TracelogSubscriber::new(guid, KANIDM_EVENTLOG_NAME) {
+        Ok(etw) => etw,
+        Err(_) => return STATUS_UNSUCCESSFUL,
+    };
 
-    tracing_subscriber::fmt().with_writer(non_blocking).init();
+    tracing_subscriber::registry().with(etw_subscriber);
 
     event!(Level::INFO, "Initialising Kanidm Windows client");
     event!(

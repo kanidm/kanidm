@@ -25,6 +25,9 @@ tracing.workspace = true
 tracing-appender = "0.2"
 tracing-subscriber.workspace = true
 kanidm_windows = { path = "../public" }
+win_etw_tracing = "0.1.0"
+win_etw_provider = { version = "0.1.8", features = ["uuid"] }
+uuid = "1.4.0"
 
 [dependencies.windows]
 version = "0.48"
