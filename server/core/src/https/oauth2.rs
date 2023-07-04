@@ -334,7 +334,7 @@ async fn oauth2_authorise(
         }
         Err(Oauth2Error::AccessDenied) => {
             // If scopes are not available for this account.
-            let res = tide::Response::new(tide::StatusCode::Forbidden);
+            let mut res = tide::Response::new(tide::StatusCode::Forbidden);
             res.insert_header("Access-Control-Allow-Origin", "*");
             Ok(res)
         }
@@ -354,8 +354,9 @@ async fn oauth2_authorise(
                 &hvalue,
                 &e.to_string()
             );
+            let mut res = tide::Response::new(tide::StatusCode::BadRequest);
             res.insert_header("Access-Control-Allow-Origin", "*");
-            Ok(tide::Response::new(tide::StatusCode::BadRequest))
+            Ok(res)
         }
     }
     .map(|mut res| {
@@ -441,8 +442,9 @@ async fn oauth2_authorise_permit(
             // Turns out this instinct was correct:
             //  https://www.proofpoint.com/us/blog/cloud-security/microsoft-and-github-oauth-implementation-vulnerabilities-lead-redirection
             // Possible to use this with a malicious client configuration to phish / spam.
+            let mut res = tide::Response::new(tide::StatusCode::InternalServerError);
             res.insert_header("Access-Control-Allow-Origin", "*");
-            tide::Response::new(tide::StatusCode::InternalServerError)
+            res
         }
     };
     res.insert_header("X-KANIDM-OPID", hvalue);
@@ -508,8 +510,9 @@ async fn oauth2_authorise_reject(
             // that we should NOT redirect to the calling application
             // and we need to handle that locally somehow.
             // This needs to be better!
+            let mut res = tide::Response::new(500);
             res.insert_header("Access-Control-Allow-Origin", "*");
-            tide::Response::new(500)
+            res
         }
     };
     res.insert_header("X-KANIDM-OPID", hvalue);
@@ -548,8 +551,6 @@ pub async fn oauth2_token_post(mut req: tide::Request<AppState>) -> tide::Result
         .handle_oauth2_token_exchange(client_authz, tok_req, eventid)
         .await;
 
-    res.insert_header("Access-Control-Allow-Origin", "*");
-
     match res {
         Ok(atr) => {
             let mut res = tide::Response::new(200);
@@ -578,6 +579,7 @@ pub async fn oauth2_token_post(mut req: tide::Request<AppState>) -> tide::Result
     }
     .map(|mut res| {
         res.insert_header("X-KANIDM-OPID", hvalue);
+        res.insert_header("Access-Control-Allow-Origin", "*");
         res
     })
 }
@@ -592,8 +594,6 @@ pub async fn oauth2_openid_discovery_get(req: tide::Request<AppState>) -> tide::
         .qe_r_ref
         .handle_oauth2_openid_discovery(client_id, eventid)
         .await;
-
-    res.insert_header("Access-Control-Allow-Origin", "*");
 
     to_tide_response(res, hvalue)
 }
@@ -622,8 +622,6 @@ pub async fn oauth2_openid_userinfo_get(req: tide::Request<AppState>) -> tide::R
         .handle_oauth2_openid_userinfo(client_id, client_authz, eventid)
         .await;
 
-    res.insert_header("Access-Control-Allow-Origin", "*");
-
     match res {
         Ok(uir) => {
             let mut res = tide::Response::new(200);
@@ -649,6 +647,7 @@ pub async fn oauth2_openid_userinfo_get(req: tide::Request<AppState>) -> tide::R
     }
     .map(|mut res| {
         res.insert_header("X-KANIDM-OPID", hvalue);
+        res.insert_header("Access-Control-Allow-Origin", "*");
         res
     })
 }
@@ -662,8 +661,6 @@ pub async fn oauth2_openid_publickey_get(req: tide::Request<AppState>) -> tide::
         .qe_r_ref
         .handle_oauth2_openid_publickey(client_id, eventid)
         .await;
-
-    res.insert_header("Access-Control-Allow-Origin", "*");
 
     to_tide_response(res, hvalue)
 }
@@ -703,8 +700,6 @@ pub async fn oauth2_token_introspect_post(mut req: tide::Request<AppState>) -> t
         .handle_oauth2_token_introspect(client_authz, intr_req, eventid)
         .await;
 
-    res.insert_header("Access-Control-Allow-Origin", "*");
-
     match res {
         Ok(atr) => {
             let mut res = tide::Response::new(200);
@@ -734,6 +729,7 @@ pub async fn oauth2_token_introspect_post(mut req: tide::Request<AppState>) -> t
     }
     .map(|mut res| {
         res.insert_header("X-KANIDM-OPID", hvalue);
+        res.insert_header("Access-Control-Allow-Origin", "*");
         res
     })
 }
@@ -773,8 +769,6 @@ pub async fn oauth2_token_revoke_post(mut req: tide::Request<AppState>) -> tide:
         .handle_oauth2_token_revoke(client_authz, intr_req, eventid)
         .await;
 
-    res.insert_header("Access-Control-Allow-Origin", "*");
-
     match res {
         Ok(()) => Ok(tide::Response::new(200)),
         Err(Oauth2Error::AuthenticationRequired) => {
@@ -798,6 +792,7 @@ pub async fn oauth2_token_revoke_post(mut req: tide::Request<AppState>) -> tide:
     }
     .map(|mut res| {
         res.insert_header("X-KANIDM-OPID", hvalue);
+        res.insert_header("Access-Control-Allow-Origin", "*");
         res
     })
 }
