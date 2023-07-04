@@ -34,7 +34,7 @@ pub async fn sync_account_id_get(
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("sync_account")));
-    json_rest_event_get_id(state, id, filter, None, kopid).await // TODO: #1787 - check that we can set a None attrs
+    json_rest_event_get_id(state, id, filter, None, kopid).await
 }
 
 pub async fn sync_account_id_patch(

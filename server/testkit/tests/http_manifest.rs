@@ -19,7 +19,4 @@ async fn test_https_manifest(rsclient: KanidmClient) {
         "csp headers: {:#?}",
         response.headers().get("content-security-policy")
     );
-    // TODO: #1787 - CSP headers for the manifest
-    // assert_ne!(response.headers().get("content-security-policy"), None);
-    eprintln!("{}", response.text().await.unwrap());
 }

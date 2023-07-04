@@ -1,5 +1,3 @@
-//TODO: #1787 return this test and fix the headers
-
 use kanidm_client::KanidmClient;
 
 #[kanidmd_testkit::test]

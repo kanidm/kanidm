@@ -609,7 +609,6 @@ pub async fn oauth2_openid_userinfo_get(req: tide::Request<AppState>) -> tide::R
         .and_then(|h| h.as_str().strip_prefix("Bearer "))
         .map(str::to_string)
         .ok_or_else(|| {
-            // TODO #1787 test bearer auth
             error!("Bearer Authentication Not Provided");
             tide::Error::from_str(
                 tide::StatusCode::Unauthorized,
@@ -686,7 +685,6 @@ pub async fn oauth2_token_introspect_post(mut req: tide::Request<AppState>) -> t
 
     // Get the introspection request, could we accept json or form? Prob needs content type here.
     let intr_req: AccessTokenIntrospectRequest = req.body_form().await.map_err(|e| {
-        // TODO: #1787 test this
         request_error!("{:?}", e);
         tide::Error::from_str(
             tide::StatusCode::BadRequest,
@@ -754,7 +752,6 @@ pub async fn oauth2_token_revoke_post(mut req: tide::Request<AppState>) -> tide:
             )
         })?;
 
-    // TODO: #1787 test this to support token auth
     // Get the introspection request, could we accept json or form? Prob needs content type here.
     let intr_req: TokenRevokeRequest = req.body_form().await.map_err(|e| {
         request_error!("{:?}", e);

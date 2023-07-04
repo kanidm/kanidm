@@ -3,7 +3,6 @@ use kanidm_client::KanidmClient;
 /// This literally tests that the thing exists and responds in a way we expect, probably worth testing it better...
 #[kanidmd_testkit::test]
 async fn test_v1_self_applinks(rsclient: KanidmClient) {
-    // TODO: #1787 applinks_get GET /v1/self/_applinks
     // We need to do manual reqwests here.
     let addr = rsclient.get_url();
     let client = reqwest::ClientBuilder::new()
@@ -30,7 +29,6 @@ async fn test_v1_self_applinks(rsclient: KanidmClient) {
     let body = response.text().await.unwrap();
     eprintln!("{}", body);
 }
-// TODO: #1787 service_account_id_delete
 
 /// This literally tests that the thing exists and responds in a way we expect, probably worth testing it better...
 #[kanidmd_testkit::test]

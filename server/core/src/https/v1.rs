@@ -1059,7 +1059,6 @@ pub async fn group_post_id_unix(
     to_axum_response(res)
 }
 
-// TODO: #1787 this should be a cacheable endpoint
 pub async fn group_get_id_unix_token(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
