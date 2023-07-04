@@ -29,8 +29,8 @@ Copy-Item $kani_cfg -Destination $kani_dir
 $prev_sp = Get-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Lsa" -Name "Security Packages"
 $prev_ap = Get-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Lsa" -Name "Authentication Packages"
 
-$new_sp = "$prev_sp\n$kani_dir\\$kani_dll_name"
-$new_ap = "$prev_ap\n$kani_dir\\$kani_dll_name"
+$new_sp = "$prev_sp`0$kani_dir\$kani_dll_name"
+$new_ap = "$prev_ap`0$kani_dir\$kani_dll_name"
 
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Lsa" -Name "Security Packages" -Value $new_sp
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Lsa" -Name "Authentication Packages" -Value $new_ap
