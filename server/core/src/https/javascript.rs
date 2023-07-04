@@ -21,7 +21,7 @@ pub fn generate_integrity_hash(filename: String) -> Result<String, String> {
             #[allow(clippy::expect_used)]
             let shasum = openssl::hash::hash(openssl::hash::MessageDigest::sha384(), &filecontents)
                 .expect("Failed to build hash of file");
-            Ok(format!("sha384-{}", openssl::base64::encode_block(&shasum)))
+            Ok(openssl::base64::encode_block(&shasum))
         }
     }
 }
@@ -50,7 +50,7 @@ impl JavaScriptFile {
             _ => String::from(""),
         };
         format!(
-            r#"<script src="/pkg/{}" integrity="{}"{}></script>"#,
+            r#"<script src="/pkg/{}" integrity="sha384-{}"{}></script>"#,
             self.filepath, &self.hash, &typeattr,
         )
     }

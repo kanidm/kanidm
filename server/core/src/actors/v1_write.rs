@@ -290,16 +290,12 @@ impl QueryServerWriteV1 {
                 e
             })?;
 
-        let mdf = ModifyEvent::from_internal_parts(
-            ident,
-            &modlist,
-            &filter,
-            &mut idms_prox_write.qs_write,
-        )
-        .map_err(|e| {
-            admin_error!(err = ?e, "Failed to begin modify");
-            e
-        })?;
+        let mdf =
+            ModifyEvent::from_internal_parts(ident, &modlist, &filter, &idms_prox_write.qs_write)
+                .map_err(|e| {
+                admin_error!(err = ?e, "Failed to begin modify");
+                e
+            })?;
 
         trace!(?mdf, "Begin modify event");
 

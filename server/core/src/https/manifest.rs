@@ -158,11 +158,14 @@ pub(crate) async fn manifest(
     let domain_display_name = state.qe_r_ref.get_domain_display_name(kopid.eventid).await;
     // TODO: fix the None here to make it the request host
     let manifest_string =
-        serde_json::to_string_pretty(&manifest_data(None, domain_display_name)).unwrap();
+        match serde_json::to_string_pretty(&manifest_data(None, domain_display_name)) {
+            Ok(val) => val,
+            Err(_) => String::from(""),
+        };
     let mut res = Response::new(manifest_string);
 
-    let headers = res.headers_mut();
-    headers.insert(
+    #[allow(clippy::unwrap_used)]
+    res.headers_mut().insert(
         "Content-Type",
         HeaderValue::from_str(MIME_TYPE_MANIFEST).unwrap(),
     );

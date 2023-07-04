@@ -383,30 +383,35 @@ async fn main() -> ExitCode {
                                             }
                                             Some(()) = async move {
                                                 let sigterm = tokio::signal::unix::SignalKind::terminate();
+            #[allow(clippy::unwrap_used)]
                                                 tokio::signal::unix::signal(sigterm).unwrap().recv().await
                                             } => {
                                                 break
                                             }
                                             Some(()) = async move {
                                                 let sigterm = tokio::signal::unix::SignalKind::alarm();
+            #[allow(clippy::unwrap_used)]
                                                 tokio::signal::unix::signal(sigterm).unwrap().recv().await
                                             } => {
                                                 // Ignore
                                             }
                                             Some(()) = async move {
                                                 let sigterm = tokio::signal::unix::SignalKind::hangup();
+            #[allow(clippy::unwrap_used)]
                                                 tokio::signal::unix::signal(sigterm).unwrap().recv().await
                                             } => {
                                                 // Ignore
                                             }
                                             Some(()) = async move {
                                                 let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+            #[allow(clippy::unwrap_used)]
                                                 tokio::signal::unix::signal(sigterm).unwrap().recv().await
                                             } => {
                                                 // Ignore
                                             }
                                             Some(()) = async move {
                                                 let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+            #[allow(clippy::unwrap_used)]
                                                 tokio::signal::unix::signal(sigterm).unwrap().recv().await
                                             } => {
                                                 // Ignore
@@ -557,7 +562,6 @@ async fn main() -> ExitCode {
                                     let ca_contents = std::fs::read_to_string(ca_cert_path.clone()).expect(&format!("Failed to read {}!", ca_cert));
                                     let content = ca_contents
                                         .split("-----END CERTIFICATE-----")
-                                        .into_iter()
                                         .filter_map(|c| if c.trim().is_empty() { None } else { Some(c.trim().to_string())})
                                         .collect::<Vec<String>>();
                                     let content = content.last().expect(&format!("Failed to pull the last chunk of {} as a valid certificate!", ca_cert));
@@ -574,7 +578,7 @@ async fn main() -> ExitCode {
                             }
                         }
                     };
-
+                    #[allow(clippy::unwrap_used)]
                     let client = client
                         .build()
                         .unwrap();

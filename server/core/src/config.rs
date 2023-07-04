@@ -64,16 +64,22 @@ pub struct ServerConfig {
 }
 
 impl ServerConfig {
-    pub fn new<P: AsRef<Path>>(config_path: P) -> Result<Self, ()> {
+    pub fn new<P: AsRef<Path>>(config_path: P) -> Result<Self, &'static str> {
         let mut f = File::open(config_path).map_err(|e| {
             eprintln!("Unable to open config file [{:?}] 🥺", e);
+            "you aren't going to read this anyway"
         })?;
 
         let mut contents = String::new();
-        f.read_to_string(&mut contents)
-            .map_err(|e| eprintln!("unable to read contents {:?}", e))?;
+        f.read_to_string(&mut contents).map_err(|e| {
+            eprintln!("unable to read contents {:?}", e);
+            "or this"
+        })?;
 
-        toml::from_str(contents.as_str()).map_err(|e| eprintln!("unable to parse config {:?}", e))
+        toml::from_str(contents.as_str()).map_err(|e| {
+            eprintln!("unable to parse config {:?}", e);
+            "and definitely not this"
+        })
     }
 }
 
@@ -142,9 +148,9 @@ impl ToString for LogLevel {
     }
 }
 
-impl Into<EnvFilter> for LogLevel {
-    fn into(self) -> EnvFilter {
-        match self {
+impl From<LogLevel> for EnvFilter {
+    fn from(value: LogLevel) -> Self {
+        match value {
             LogLevel::Info => EnvFilter::new("info"),
             LogLevel::Debug => EnvFilter::new("debug"),
             LogLevel::Trace => EnvFilter::new("trace"),

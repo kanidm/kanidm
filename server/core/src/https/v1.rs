@@ -13,7 +13,7 @@ use axum::{Extension, Json, Router};
 use axum_macros::debug_handler;
 use axum_sessions::extractors::{ReadableSession, WritableSession};
 use compact_jwt::Jws;
-use http::{HeaderMap, HeaderValue};
+use http::{HeaderMap, HeaderValue, StatusCode};
 use hyper::Body;
 use kanidm_proto::v1::{
     AccountUnixExtend, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
@@ -726,8 +726,28 @@ pub async fn credential_update_update(
     Extension(kopid): Extension<KOpId>,
     Json(cubody): Json<Vec<serde_json::Value>>,
 ) -> impl IntoResponse {
-    let scr: CURequest = serde_json::from_value(cubody[0].clone()).unwrap();
-    let session_token = serde_json::from_value(cubody[1].clone()).unwrap();
+    let scr: CURequest = match serde_json::from_value(cubody[0].clone()) {
+        Ok(val) => val,
+        Err(err) => {
+            error!("Failed to deserialize CURequest: {:?}", err);
+            #[allow(clippy::unwrap_used)]
+            return Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::empty())
+                .unwrap();
+        }
+    };
+    let session_token = match serde_json::from_value(cubody[1].clone()) {
+        Ok(val) => val,
+        Err(err) => {
+            error!("Failed to deserialize session token: {:?}", err);
+            #[allow(clippy::unwrap_used)]
+            return Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::empty())
+                .unwrap();
+        }
+    };
     debug!("session_token: {:?}", session_token);
     debug!("scr: {:?}", scr);
     let res = state
@@ -1389,9 +1409,10 @@ fn auth_session_state_management(
     // if the sessionid was injected into our cookie, set it in the header too.
     match auth_session_id_tok {
         Some(tok) => {
+            #[allow(clippy::unwrap_used)]
             res.headers_mut().insert(
                 "X-KANIDM-AUTH-SESSION-ID",
-                HeaderValue::from_str(&tok).unwrap(), // TODO: is this the right value?
+                HeaderValue::from_str(&tok).unwrap(),
             );
             res
         }

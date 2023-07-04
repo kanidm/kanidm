@@ -1,4 +1,3 @@
-mod csp_headers;
 mod generic;
 mod javascript;
 mod manifest;
@@ -13,16 +12,17 @@ use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::{Configuration, ServerRole, TlsConfiguration};
 use axum::extract::connect_info::{IntoMakeServiceWithConnectInfo, ResponseFuture};
-use axum::middleware::from_fn;
+use axum::middleware::{from_fn, from_fn_with_state};
 use axum::response::Response;
 use axum::routing::*;
 use axum::Router;
+use axum_csp::{CspDirectiveType, CspValue};
 use axum_macros::FromRef;
 use axum_sessions::extractors::WritableSession;
 use axum_sessions::{async_session, SameSite, SessionLayer};
 use compact_jwt::{Jws, JwsSigner, JwsUnverified};
 use generic::*;
-use http::HeaderMap;
+use http::{HeaderMap, HeaderValue};
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrStream, Http};
 use hyper::Body;
@@ -61,6 +61,7 @@ pub struct ServerState {
     // /// The SHA384 hashes of javascript files we're going to serve to users
     pub js_files: Vec<JavaScriptFile>,
     // pub(crate) trust_x_forward_for: bool,
+    pub csp_header: HeaderValue,
 }
 
 impl ServerState {
@@ -86,7 +87,7 @@ impl ServerState {
                 // Get the first header value.
                 hv.to_str().ok()
             })
-            .map(|s| self.reinflate_uuid_from_bytes(s).unwrap())
+            .and_then(|s| Some(self.reinflate_uuid_from_bytes(s)).unwrap_or(None))
             // If not there, get from the cookie instead.
             .or_else(|| session.get::<Uuid>("auth-session-id"))
     }
@@ -99,6 +100,7 @@ pub fn get_js_files(role: ServerRole) -> Vec<JavaScriptFile> {
         // let's set up the list of js module hashes
         {
             let filepath = "wasmloader.js";
+            #[allow(clippy::unwrap_used)]
             js_files.push(JavaScriptFile {
                 filepath,
                 hash: generate_integrity_hash(format!(
@@ -113,6 +115,7 @@ pub fn get_js_files(role: ServerRole) -> Vec<JavaScriptFile> {
         // let's set up the list of non-module hashes
         {
             let filepath = "external/bootstrap.bundle.min.js";
+            #[allow(clippy::unwrap_used)]
             js_files.push(JavaScriptFile {
                 filepath,
                 hash: generate_integrity_hash(format!(
@@ -142,6 +145,46 @@ pub async fn create_https_server(
         error!(?e, "Failed to get jws validator");
     })?;
 
+    let js_files = get_js_files(config.role);
+    // set up the CSP headers
+    // script-src 'self'
+    //      'sha384-Zao7ExRXVZOJobzS/uMp0P1jtJz3TTqJU4nYXkdmsjpiVD+/wcwCyX7FGqRIqvIz'
+    //      'sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM'
+    //      'unsafe-eval';
+    let js_directives = js_files
+        .clone()
+        .into_iter()
+        .map(|f| f.hash)
+        .collect::<Vec<String>>();
+    let mut js_directives: Vec<CspValue> = js_directives
+        .into_iter()
+        .map(|value| CspValue::Sha384 { value })
+        .collect();
+    js_directives.extend(vec![CspValue::UnsafeEval, CspValue::SelfSite]);
+
+    let csp_header = axum_csp::CspSetBuilder::new()
+        // default-src 'self';
+        .add(CspDirectiveType::DefaultSrc, vec![CspValue::SelfSite])
+        // form-action https: 'self';
+        .add(
+            CspDirectiveType::FormAction,
+            vec![CspValue::SelfSite, CspValue::SchemeHttps],
+        )
+        // base-uri 'self';
+        .add(
+            CspDirectiveType::BaseUri,
+            vec![CspValue::SelfSite, CspValue::SchemeHttps],
+        )
+        // worker-src 'none';
+        .add(CspDirectiveType::WorkerSource, vec![CspValue::None])
+        // frame-ancestors 'none'
+        .add(CspDirectiveType::FrameAncestors, vec![CspValue::None])
+        .add(CspDirectiveType::ScriptSource, js_directives)
+        .add(
+            CspDirectiveType::ImgSrc,
+            vec![CspValue::SelfSite, CspValue::SchemeData],
+        );
+
     // TODO this whole session store is kinda cursed and doesn't work the way we need, I think?
     let store = async_session::CookieStore::new();
     // let secret = b"..."; // MUST be at least 64 bytes!
@@ -160,7 +203,8 @@ pub async fn create_https_server(
         qe_r_ref,
         jws_signer,
         jws_validator,
-        js_files: get_js_files(config.role),
+        js_files,
+        csp_header: csp_header.finish(),
     };
 
     let static_routes = match config.role {
@@ -169,7 +213,7 @@ pub async fn create_https_server(
                 .route("/", get(crate::https::ui::ui_handler))
                 .route("/*ui", get(crate::https::ui::ui_handler))
                 .route("/manifest.webmanifest", get(manifest::manifest))
-                .layer(from_fn(csp_headers::strip_csp_headers))
+                .layer(from_fn(middleware::csp_headers::strip_csp_headers))
                 .layer(middleware::compression::new()) // TODO: this needs to be configured properly
         }
         ServerRole::WriteReplicaNoUI => Router::new(),
@@ -199,8 +243,11 @@ pub async fn create_https_server(
     };
 
     let app = app
-        .layer(from_fn(crate::https::csp_headers::cspheaders_layer))
         .merge(static_routes)
+        .layer(from_fn_with_state(
+            state.clone(),
+            middleware::csp_headers::cspheaders_layer,
+        ))
         .layer(from_fn(middleware::version_middleware))
         .layer(from_fn(middleware::kopid_end))
         .layer(from_fn(middleware::kopid_start))
@@ -294,7 +341,7 @@ async fn server_loop(
         }
     }
 }
-#[instrument(name = "handle-connection", level = "debug", skip_all)]
+// #[instrument(name = "handle-connection", level = "debug", skip_all)]
 /// This handles an individual connection.
 async fn handle_conn(
     acceptor: SslAcceptor,

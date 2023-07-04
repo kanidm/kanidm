@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 pub(crate) mod caching;
 pub(crate) mod compression;
+pub(crate) mod csp_headers;
 
 // the version middleware injects
 const KANIDM_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -18,6 +19,7 @@ const KANIDM_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub async fn version_middleware<B>(request: Request<B>, next: Next<B>) -> Response {
     let mut response = next.run(request).await;
     let headers = response.headers_mut();
+    #[allow(clippy::unwrap_used)]
     headers.insert(
         "X-KANIDM-VERSION",
         HeaderValue::from_str(KANIDM_VERSION).unwrap(),
@@ -36,7 +38,7 @@ pub struct KOpId {
 impl KOpId {
     /// Return the event ID as a string
     pub fn eventid_value(&self) -> String {
-        let res = self.eventid.clone();
+        let res = self.eventid;
         res.as_hyphenated().to_string()
     }
 }
@@ -88,7 +90,6 @@ pub async fn kopid_start<B>(
 
 /// This runs at the start of the request, adding an extension with the OperationID
 pub async fn kopid_end<B>(
-    // State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     request: Request<B>,
     next: Next<B>,
@@ -97,6 +98,7 @@ pub async fn kopid_end<B>(
     // insert the extension so we can pull it out later
     let mut response = next.run(request).await;
 
+    #[allow(clippy::unwrap_used)]
     response.headers_mut().insert(
         "X-KANIDM-OPID",
         HeaderValue::from_str(&kopid.eventid_value()).unwrap(),

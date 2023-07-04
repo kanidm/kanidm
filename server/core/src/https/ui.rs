@@ -15,12 +15,7 @@ pub async fn ui_handler(
     let domain_display_name = state.qe_r_ref.get_domain_display_name(kopid.eventid).await;
 
     // this feels icky but I felt that adding a trait on Vec<JavaScriptFile> which generated the string was going a bit far
-    let jsfiles: Vec<String> = state
-        .js_files
-        .clone()
-        .into_iter()
-        .map(|j| j.as_tag())
-        .collect();
+    let jsfiles: Vec<String> = state.js_files.into_iter().map(|j| j.as_tag()).collect();
     let jstags = jsfiles.join(" ");
 
     let body = format!(

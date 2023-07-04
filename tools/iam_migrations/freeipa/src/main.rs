@@ -188,30 +188,35 @@ async fn driver_main(opt: Opt) {
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::terminate();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         break
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::alarm();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::hangup();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
@@ -732,7 +737,7 @@ fn ipa_to_scim_entry(
             error!("Missing required attribute cn");
         })?;
 
-        let gidnumber = if let Some(number) = entry_config.map_gidnumber.clone() {
+        let gidnumber = if let Some(number) = entry_config.map_gidnumber {
             Some(number)
         } else {
             entry

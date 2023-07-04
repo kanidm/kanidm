@@ -4,7 +4,7 @@ fn test_javscriptfile() {
     use crate::https::JavaScriptFile;
     let jsf = JavaScriptFile {
         filepath: "wasmloader.js",
-        hash: "sha384-1234567890".to_string(),
+        hash: "1234567890".to_string(),
         filetype: Some("module".to_string()),
     };
     assert_eq!(
@@ -13,7 +13,7 @@ fn test_javscriptfile() {
     );
     let jsf = JavaScriptFile {
         filepath: "wasmloader.js",
-        hash: "sha384-1234567890".to_string(),
+        hash: "1234567890".to_string(),
         filetype: None,
     };
     assert_eq!(

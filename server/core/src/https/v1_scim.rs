@@ -1,7 +1,7 @@
 use super::middleware::KOpId;
 use super::{to_axum_response, ServerState};
 use axum::extract::{Path, State};
-use axum::response::{IntoResponse, Response};
+use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
 use axum_auth::AuthBearer;
@@ -131,10 +131,7 @@ async fn scim_sync_get(
 
 async fn scim_sink_get() -> impl IntoResponse {
     // let mut res = tide::Response::new(200);
-    Response::builder()
-        .header("Content-Type", "text/html;charset=utf-8")
-        .body(
-            r#"
+    r#"
     <!DOCTYPE html>
     <html lang="en">
         <head>
@@ -164,9 +161,6 @@ async fn scim_sink_get() -> impl IntoResponse {
             </pre>
         </body>
     </html>"#
-                .to_string(),
-        )
-        .unwrap()
 }
 
 pub fn scim_route_setup() -> Router<ServerState> {
