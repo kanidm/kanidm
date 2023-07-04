@@ -1,11 +1,12 @@
 use axum::{
+    headers::{authorization::Bearer, Authorization},
     http::{self, Request},
     middleware::Next,
     response::Response,
-    Extension,
+    Extension, TypedHeader,
 };
 use axum_sessions::SessionHandle;
-use http::{HeaderMap, HeaderValue};
+use http::HeaderValue;
 use uuid::Uuid;
 
 pub(crate) mod caching;
@@ -45,9 +46,7 @@ impl KOpId {
 
 /// This runs at the start of the request, adding an extension with `KOpId` which has useful things inside it.
 pub async fn kopid_start<B>(
-    // TODO: try and make this into a TypedHeader - can't make it optional until at least axum 0.7.x - <https://github.com/tokio-rs/axum/issues/1781>
-    // TODO: #1787: try this https://github.com/cuberoot74088/kanidm/commit/583d7634e8d38db3ba8e980f9d4d5b64c85df849
-    headers: HeaderMap,
+    auth: Option<TypedHeader<Authorization<Bearer>>>,
     mut request: Request<B>,
     next: Next<B>,
 ) -> Response {
@@ -55,20 +54,10 @@ pub async fn kopid_start<B>(
     let eventid = sketching::tracing_forest::id();
 
     // get the bearer token from the headers or the session
-    let uat = match headers
-        .get("Authorization")
-        .and_then(|hv| {
-            // Get the first header value.
-            hv.to_str().ok()
-        })
-        .and_then(|h| {
-            // Turn it to a &str, and then check the prefix
-            h.strip_prefix("Bearer ")
-        })
-        .map(|s| s.to_string())
-    {
-        Some(val) => Some(val),
+    let uat = match auth {
+        Some(bearer) => Some(bearer.token().to_string()),
         None => {
+            // no headers, let's try the cookies
             match request.extensions().get::<SessionHandle>() {
                 Some(sess) => {
                     // we have a session!
@@ -80,11 +69,7 @@ pub async fn kopid_start<B>(
     };
 
     // insert the extension so we can pull it out later
-    request.extensions_mut().insert(KOpId {
-        eventid,
-        // eventid_value: value,
-        uat,
-    });
+    request.extensions_mut().insert(KOpId { eventid, uat });
     next.run(request).await
 }
 
