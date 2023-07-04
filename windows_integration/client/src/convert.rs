@@ -27,3 +27,24 @@ pub fn rust_to_unicode(string: String) -> UNICODE_STRING {
 	}
 }
 
+pub fn win_string_to_rust(string: STRING) -> Option<String> {
+    // ! https://github.com/microsoft/windows-rs/issues/2566
+    if string.Length == string.MaximumLength {
+        return None;
+    }
+
+    let rust_string = unsafe { string.Buffer.to_string() };
+
+    match rust_string {
+        Ok(str) => Some(str),
+        Err(_) => None,
+    }
+}
+
+pub fn rust_to_win_string(mut string: String) -> STRING {
+    STRING {
+        Buffer: PSTR(string.as_mut_ptr()),
+        Length: (string.len() - 1) as u16,
+        MaximumLength: string.len() as u16,
+    }
+}
