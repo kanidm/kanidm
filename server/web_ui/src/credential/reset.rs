@@ -1,6 +1,7 @@
 use gloo::console;
 use kanidm_proto::v1::{
-    CUIntentToken, CUSessionToken, CUStatus, CredentialDetail, CredentialDetailType, CUExtPortal
+    CUExtPortal, CUIntentToken, CUSessionToken, CUStatus, CredentialDetail, CredentialDetailType,
+    PasskeyDetail,
 };
 use uuid::Uuid;
 use wasm_bindgen::{JsValue, UnwrapThrowExt};
@@ -350,157 +351,35 @@ impl CredentialResetApp {
             mfaregstate: _,
             can_commit,
             primary,
-            primary_can_edit: _,
+            primary_can_edit,
             passkeys,
-            passkeys_can_edit: _,
+            passkeys_can_edit,
         } = status;
 
         let displayname = displayname.clone();
         let spn = spn.clone();
-
         let cb = self.cb.clone();
-
 
         let ext_cred_portal_html = match ext_cred_portal {
             CUExtPortal::None => html! { <></> },
             CUExtPortal::Hidden => html! {
-                <><p>{ "Hidden" }</p></>
-            },
-            CUExtPortal::Some(url) => html! {
-                <><p>{ url.as_str() }</p></>
-            },
-        };
-
-        // match on primary, get type_.
-        let pw_html = match primary {
-            Some(CredentialDetail {
-                uuid: _,
-                type_: CredentialDetailType::Password,
-            }) => {
-                html! {
-                    <>
-                      <p>{ "✅ Password Set" }</p>
-                      <p>
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticPassword">
-                          { "Change Password" }
-                        </button>
-                      </p>
-
-                      <p>{ "❌ MFA Disabled" }</p>
-                      <p>
-                        <TotpModalApp token={ token.clone() } cb={ cb.clone() }/>
-                      </p>
-
-                      <p>
-                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
-                          { "Delete this Insecure Password" }
-                        </button>
-                      </p>
-                    </>
-                }
-            }
-            Some(CredentialDetail {
-                uuid: _,
-                type_:
-                    CredentialDetailType::PasswordMfa(
-                        // Used for what TOTP the user has.
-                        totp_set,
-                        // Being deprecated.
-                        _security_key_labels,
-                        // Need to wire in backup codes.
-                        _backup_codes_remaining,
-                    ),
-            }) => {
-                html! {
-                    <>
-                      <p>{ "✅ Password Set" }</p>
-                      <p>
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticPassword">
-                          { "Change Password" }
-                        </button>
-                      </p>
-
-                      <p>{ "✅ MFA Enabled" }</p>
-
-                      <>
-                      { for totp_set.iter()
-                          .map(|detail| html! { <TotpRemoveComp token={ token.clone() } label={ detail.clone() } cb={ cb.clone() } /> })
-                      }
-                      </>
-
-                      <p>
-                        <TotpModalApp token={ token.clone() } cb={ cb.clone() }/>
-                      </p>
-
-                      <p>
-                        <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
-                          { "Delete this Legacy MFA Credential" }
-                        </button>
-                      </p>
-
-                    </>
-                }
-            }
-            Some(CredentialDetail {
-                uuid: _,
-                type_: CredentialDetailType::GeneratedPassword,
-            }) => {
-                html! {
-                  <>
-                    <p>{ "Generated Password" }</p>
-                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
-                      { "Delete this Password" }
-                    </button>
-                  </>
-                }
-            }
-            Some(CredentialDetail {
-                uuid: _,
-                type_: CredentialDetailType::Passkey(_),
-            }) => {
-                html! {
-                  <>
-                    <p>{ "Webauthn Only - Will migrate to Passkeys in a future update" }</p>
-                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
-                      { "Delete this Credential" }
-                    </button>
-                  </>
-                }
-            }
-            None => {
-                html! {
-                    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#staticPassword">
-                      { "Add Password" }
-                    </button>
-                }
-            }
-        };
-
-        let passkey_html = if passkeys.is_empty() {
-            html! {
-                <p>{ "No Passkeys Registered" }</p>
-            }
-        } else {
-            html! {
                 <>
-                { for passkeys.iter()
-                    .map(|detail|
-                        PasskeyRemoveModalApp::render_button(&detail.tag, detail.uuid)
-                    )
-                }
+                  <p>{ "This account is externally managed. Some features may not be available." }</p>
                 </>
+            },
+            CUExtPortal::Some(url) => {
+                let url_str = url.as_str().to_string();
+                html! {
+                    <>
+                      <p>{ "This account is externally managed. Some features may not be available." }</p>
+                      <a href={ url_str } >{ "Visit the external account portal" }</a>
+                    </>
+                }
             }
         };
 
-        let passkey_modals_html = html! {
-            <>
-                { for passkeys.iter()
-                    .map(|detail|
-                        html! { <PasskeyRemoveModalApp token={ token.clone() } tag={ detail.tag.clone() } uuid={ detail.uuid } cb={ cb.clone() } /> }
-                    )
-                }
-            </>
-        };
+        let pw_html = self.view_primary(token, primary, *primary_can_edit);
+        let passkey_html = self.view_passkeys(token, passkeys, *passkeys_can_edit);
 
         html! {
         <>
@@ -514,20 +393,16 @@ impl CredentialResetApp {
 
               <div class="row g-3">
                   <form class="needs-validation" novalidate=true>
-                    { ext_cred_portal_html }
                     <hr class="my-4" />
-                    <h4>{"Passkeys"}</h4>
-                    <p>{ "Strong cryptographic authenticators with self contained multi-factor authentication." }</p>
+
+                    { ext_cred_portal_html }
+
+                    <hr class="my-4" />
 
                     { passkey_html }
 
-                    <PasskeyModalApp token={ token.clone() } cb={ cb.clone() } />
-
                     <hr class="my-4" />
 
-                    <h4>{"Password / TOTP"}</h4>
-                    <p>{ "Legacy password paired with other authentication factors." }</p>
-                    <p>{ "It is recommended you avoid setting these if possible, as these can be phished or exploited." }</p>
                     { pw_html }
 
                     <hr class="my-4" />
@@ -556,15 +431,194 @@ impl CredentialResetApp {
               </div>
             </main>
 
-
-            <PwModalApp token={ token.clone() } cb={ cb.clone() } />
-
             <DeleteApp token= { token.clone() } cb={ cb.clone() }/>
-
-            { passkey_modals_html }
 
           </div>
           { crate::utils::do_footer() }
+          </>
+        }
+    }
+
+    fn view_primary(
+        &self,
+        token: &CUSessionToken,
+        primary: &Option<CredentialDetail>,
+        primary_can_edit: bool,
+    ) -> Html {
+        let cb = self.cb.clone();
+
+        // match on primary, get type_.
+        let pw_html_inner = if primary_can_edit {
+            match primary {
+                Some(CredentialDetail {
+                    uuid: _,
+                    type_: CredentialDetailType::Password,
+                }) => {
+                    html! {
+                        <>
+                          <p>{ "✅ Password Set" }</p>
+                          <p>
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticPassword">
+                              { "Change Password" }
+                            </button>
+                          </p>
+
+                          <p>{ "❌ MFA Disabled" }</p>
+                          <p>
+                            <TotpModalApp token={ token.clone() } cb={ cb.clone() }/>
+                          </p>
+
+                          <p>
+                            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
+                              { "Delete this Insecure Password" }
+                            </button>
+                          </p>
+                        </>
+                    }
+                }
+                Some(CredentialDetail {
+                    uuid: _,
+                    type_:
+                        CredentialDetailType::PasswordMfa(
+                            // Used for what TOTP the user has.
+                            totp_set,
+                            // Being deprecated.
+                            _security_key_labels,
+                            // Need to wire in backup codes.
+                            _backup_codes_remaining,
+                        ),
+                }) => {
+                    html! {
+                        <>
+                          <p>{ "✅ Password Set" }</p>
+                          <p>
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticPassword">
+                              { "Change Password" }
+                            </button>
+                          </p>
+
+                          <p>{ "✅ MFA Enabled" }</p>
+
+                          <>
+                          { for totp_set.iter()
+                              .map(|detail| html! { <TotpRemoveComp token={ token.clone() } label={ detail.clone() } cb={ cb.clone() } /> })
+                          }
+                          </>
+
+                          <p>
+                            <TotpModalApp token={ token.clone() } cb={ cb.clone() }/>
+                          </p>
+
+                          <p>
+                            <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
+                              { "Delete this Legacy MFA Credential" }
+                            </button>
+                          </p>
+
+                        </>
+                    }
+                }
+                Some(CredentialDetail {
+                    uuid: _,
+                    type_: CredentialDetailType::GeneratedPassword,
+                }) => {
+                    html! {
+                      <>
+                        <p>{ "Generated Password" }</p>
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
+                          { "Delete this Password" }
+                        </button>
+                      </>
+                    }
+                }
+                Some(CredentialDetail {
+                    uuid: _,
+                    type_: CredentialDetailType::Passkey(_),
+                }) => {
+                    html! {
+                      <>
+                        <p>{ "Webauthn Only - Will migrate to Passkeys in a future update" }</p>
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
+                          { "Delete this Credential" }
+                        </button>
+                      </>
+                    }
+                }
+                None => {
+                    html! {
+                        <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#staticPassword">
+                          { "Add Password" }
+                        </button>
+                    }
+                }
+            }
+        } else {
+            html! {<></>}
+        };
+
+        let pw_warn = if primary_can_edit {
+            html! {
+              <>
+                <p>{ "Legacy password paired with other authentication factors." }</p>
+                <p>{ "It is recommended you avoid setting these if possible, as these can be phished or exploited." }</p>
+              </>
+            }
+        } else {
+            html! { <><p> { "You do not have access to modify the Password or TOTP tokens of this account" }</p></> }
+        };
+
+        html! {
+           <>
+            <h4>{"Password / TOTP"}</h4>
+            { pw_warn }
+            { pw_html_inner }
+
+            <PwModalApp token={ token.clone() } cb={ cb.clone() } />
+           </>
+        }
+    }
+
+    fn view_passkeys(
+        &self,
+        token: &CUSessionToken,
+        passkeys: &Vec<PasskeyDetail>,
+        passkeys_can_edit: bool,
+    ) -> Html {
+        let cb = self.cb.clone();
+
+        let passkey_html_inner = if !passkeys_can_edit {
+            html! { <><p> { "You do not have access to modify the Passkeys of this account" }</p></> }
+        } else if passkeys.is_empty() {
+            html! {
+              <>
+                <p>{ "Strong cryptographic authenticators with self contained multi-factor authentication." }</p>
+                <p>{ "No Passkeys Registered" }</p>
+                <PasskeyModalApp token={ token.clone() } cb={ cb.clone() } />
+              </>
+            }
+        } else {
+            html! {
+                <>
+                <p>{ "Strong cryptographic authenticators with self contained multi-factor authentication." }</p>
+                { for passkeys.iter()
+                    .map(|detail|
+                        PasskeyRemoveModalApp::render_button(&detail.tag, detail.uuid)
+                    )
+                }
+                { for passkeys.iter()
+                    .map(|detail|
+                        html! { <PasskeyRemoveModalApp token={ token.clone() } tag={ detail.tag.clone() } uuid={ detail.uuid } cb={ cb.clone() } /> }
+                    )
+                }
+                <PasskeyModalApp token={ token.clone() } cb={ cb.clone() } />
+                </>
+            }
+        };
+
+        html! {
+          <>
+            <h4>{"Passkeys"}</h4>
+            { passkey_html_inner }
           </>
         }
     }
