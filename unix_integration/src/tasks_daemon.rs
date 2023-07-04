@@ -330,6 +330,7 @@ async fn main() -> ExitCode {
             debug!("Attempting to use {} ...", task_sock_path);
 
             let (broadcast_tx, mut broadcast_rx) = broadcast::channel(4);
+            let mut d_broadcast_rx = broadcast_tx.subscribe();
 
             let server = tokio::spawn(async move {
                 loop {
@@ -345,7 +346,14 @@ async fn main() -> ExitCode {
                                     info!("Found kanidm_unixd, waiting for tasks ...");
                                     // Yep! Now let the main handler do it's job.
                                     // If it returns (dc, etc, then we loop and try again).
-                                    handle_tasks(stream, &cfg).await;
+                                    tokio::select! {
+                                        _ = d_broadcast_rx.recv() => {
+                                            break;
+                                        }
+                                        _ = handle_tasks(stream, &cfg) => {
+                                            continue;
+                                        }
+                                    }
                                 }
                                 Err(e) => {
                                     debug!("\\---> {:?}", e);
