@@ -27,6 +27,7 @@ Copy-Item $kani_cfg -Destination $kani_dir
 
 # Register DLL
 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Lsa" -Name "Security Packages" -Value "$kani_dir\$kani_dll_name"
+Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Lsa" -Name "Authentication Packages" -Value "$kani_dir\$kani_dll_name"
 
 # Registry program path
 if (-not (Test-Path -Path "HKLM:\Software\kandim")) {
