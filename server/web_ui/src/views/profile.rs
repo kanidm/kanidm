@@ -195,6 +195,11 @@ impl Component for ProfileApp {
 
 impl ProfileApp {
     fn view_profile(&self, ctx: &Context<Self>, submit_enabled: bool, uat: UserAuthToken) -> Html {
+        // Get ui hints.
+
+        // Until we do finegrained updates in the cred update, we disable credupdates for some
+        // account classes.
+
         html! {
           <>
             <div>
@@ -205,27 +210,32 @@ impl ProfileApp {
              </button>
             </div>
             <hr/>
-            <div>
-              <p>
-                 <button type="button" class="btn btn-primary"
-                   disabled={ !submit_enabled }
-                   onclick={
-                      ctx.link().callback(|_e| {
-                          Msg::RequestCredentialUpdate
-                      })
-                   }
-                 >
-                   { "Password and Authentication Settings" }
-                 </button>
-              </p>
-            </div>
-            <hr/>
-            <div>
-              <p>
-                <CreateResetCode uat={ uat.clone() } enabled={ submit_enabled } />
-              </p>
-            </div>
-            <hr/>
+
+              if uat.ui_hints.contains(&UiHint::CredentialUpdate) {
+                <div>
+                  <p>
+                     <button type="button" class="btn btn-primary"
+                       disabled={ !submit_enabled }
+                       onclick={
+                          ctx.link().callback(|_e| {
+                              Msg::RequestCredentialUpdate
+                          })
+                       }
+                     >
+                       { "Password and Authentication Settings" }
+                     </button>
+                  </p>
+                </div>
+                <hr/>
+
+                <div>
+                  <p>
+                    <CreateResetCode uat={ uat.clone() } enabled={ submit_enabled } />
+                  </p>
+                </div>
+                <hr/>
+              }
+
               if uat.ui_hints.contains(&UiHint::PosixAccount) {
                 <div>
                     <p>
@@ -233,6 +243,7 @@ impl ProfileApp {
                     </p>
                 </div>
               }
+
           </>
         }
     }

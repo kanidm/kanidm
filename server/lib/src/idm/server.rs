@@ -12,6 +12,7 @@ use concread::hashmap::HashMap;
 use concread::CowCell;
 use fernet::Fernet;
 use hashbrown::HashSet;
+use kanidm_proto::internal::ScimSyncToken;
 use kanidm_proto::v1::{
     ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, UatPurpose,
     UnixGroupToken, UnixUserToken, UserAuthToken,
@@ -49,7 +50,7 @@ use crate::idm::oauth2::{
     Oauth2ResourceServersWriteTransaction,
 };
 use crate::idm::radius::RadiusAccount;
-use crate::idm::scim::{ScimSyncToken, SyncAccount};
+use crate::idm::scim::SyncAccount;
 use crate::idm::serviceaccount::ServiceAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;

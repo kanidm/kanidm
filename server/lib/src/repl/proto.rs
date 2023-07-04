@@ -150,12 +150,24 @@ pub enum ReplIntentTokenV1 {
     Valid {
         token_id: String,
         max_ttl: Duration,
+        #[serde(default)]
+        ext_cred_portal_can_view: bool,
+        #[serde(default)]
+        primary_can_edit: bool,
+        #[serde(default)]
+        passkeys_can_edit: bool,
     },
     InProgress {
         token_id: String,
         max_ttl: Duration,
         session_id: Uuid,
         session_ttl: Duration,
+        #[serde(default)]
+        ext_cred_portal_can_view: bool,
+        #[serde(default)]
+        primary_can_edit: bool,
+        #[serde(default)]
+        passkeys_can_edit: bool,
     },
     Consumed {
         token_id: String,

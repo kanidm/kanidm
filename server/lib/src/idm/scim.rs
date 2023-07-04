@@ -3,9 +3,9 @@ use std::time::Duration;
 use base64urlsafedata::Base64UrlSafeData;
 
 use compact_jwt::{Jws, JwsSigner};
+use kanidm_proto::internal::ScimSyncToken;
 use kanidm_proto::scim_v1::*;
 use kanidm_proto::v1::ApiTokenPurpose;
-use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::credential::totp::{Totp, TotpAlgo, TotpDigits};
@@ -116,17 +116,6 @@ impl GenerateScimSyncTokenEvent {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "lowercase")]
-pub(crate) struct ScimSyncToken {
-    // uuid of the token?
-    pub token_id: Uuid,
-    #[serde(with = "time::serde::timestamp")]
-    pub issued_at: time::OffsetDateTime,
-    #[serde(default)]
-    pub purpose: ApiTokenPurpose,
-}
-
 impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn scim_sync_generate_token(
         &mut self,
@@ -189,7 +178,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .and_then(|_| {
                 // The modify succeeded and was allowed, now sign the token for return.
                 token
-                    .sign(&sync_account.jws_key)
+                    .sign_embed_public_jwk(&sync_account.jws_key)
                     .map(|jws_signed| jws_signed.to_string())
                     .map_err(|e| {
                         admin_error!(err = ?e, "Unable to sign sync token");

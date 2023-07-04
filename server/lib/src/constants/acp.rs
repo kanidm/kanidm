@@ -23,6 +23,7 @@ lazy_static! {
             Value::new_json_filter_s("{\"eq\": [\"class\", \"recycled\"]}")
                 .expect("Invalid JSON filter")
         ),
+        ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("uuid")),
@@ -70,6 +71,7 @@ lazy_static! {
             "acp_targetscope",
             Value::new_json_filter_s("\"self\"").expect("Invalid JSON filter")
         ),
+        ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("spn")),
         ("acp_search_attr", Value::new_iutf8("displayname")),
@@ -81,6 +83,7 @@ lazy_static! {
         ("acp_search_attr", Value::new_iutf8("gidnumber")),
         ("acp_search_attr", Value::new_iutf8("loginshell")),
         ("acp_search_attr", Value::new_iutf8("uuid")),
+        ("acp_search_attr", Value::new_iutf8("sync_parent_uuid")),
         ("acp_search_attr", Value::new_iutf8("account_expire")),
         ("acp_search_attr", Value::new_iutf8("account_valid_from")),
         ("acp_search_attr", Value::new_iutf8("primary_credential")),
@@ -209,10 +212,11 @@ lazy_static! {
         (
             "acp_targetscope",
             Value::new_json_filter_s(
-                "{\"and\": [{\"pres\": \"class\"}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+                "{\"and\": [{\"or\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"class\",\"group\"]}]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
             )
                 .expect("Invalid JSON filter")
         ),
+        ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("spn")),
         ("acp_search_attr", Value::new_iutf8("displayname")),
@@ -248,6 +252,7 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
+        ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("displayname")),
         ("acp_search_attr", Value::new_iutf8("legalname")),
@@ -549,6 +554,7 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
+        ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("uuid")),
         ("acp_search_attr", Value::new_iutf8("spn")),
@@ -772,6 +778,7 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
+        ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("spn")),
         ("acp_search_attr", Value::new_iutf8("uuid")),
@@ -886,6 +893,7 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
+        ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("uuid")),
         ("acp_search_attr", Value::new_iutf8("spn")),
@@ -1231,6 +1239,7 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
+        ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("uuid")),
         ("acp_search_attr", Value::new_iutf8("domain_display_name")),
@@ -1276,6 +1285,7 @@ lazy_static! {
             )
                 .expect("Invalid JSON filter")
         ),
+        ("acp_search_attr", Value::new_iutf8("class")),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("uuid")),
         ("acp_search_attr", Value::new_iutf8("description")),
@@ -1589,19 +1599,23 @@ lazy_static! {
                 .expect("Invalid JSON filter")
         ),
         ("acp_search_attr", Value::new_iutf8("class")),
+        ("acp_search_attr", Value::new_iutf8("uuid")),
         ("acp_search_attr", Value::new_iutf8("name")),
         ("acp_search_attr", Value::new_iutf8("description")),
         ("acp_search_attr", Value::new_iutf8("jws_es256_private_key")),
         ("acp_search_attr", Value::new_iutf8("sync_token_session")),
+        ("acp_search_attr", Value::new_iutf8("sync_credential_portal")),
         ("acp_search_attr", Value::new_iutf8("sync_cookie")),
         ("acp_modify_removedattr", Value::new_iutf8("name")),
         ("acp_modify_removedattr", Value::new_iutf8("description")),
         ("acp_modify_removedattr", Value::new_iutf8("jws_es256_private_key")),
         ("acp_modify_removedattr", Value::new_iutf8("sync_token_session")),
         ("acp_modify_removedattr", Value::new_iutf8("sync_cookie")),
+        ("acp_modify_removedattr", Value::new_iutf8("sync_credential_portal")),
         ("acp_modify_presentattr", Value::new_iutf8("name")),
         ("acp_modify_presentattr", Value::new_iutf8("description")),
         ("acp_modify_presentattr", Value::new_iutf8("sync_token_session")),
+        ("acp_modify_presentattr", Value::new_iutf8("sync_credential_portal")),
         ("acp_create_attr", Value::new_iutf8("class")),
         ("acp_create_attr", Value::new_iutf8("name")),
         ("acp_create_attr", Value::new_iutf8("description")),

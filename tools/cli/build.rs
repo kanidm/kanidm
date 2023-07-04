@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use clap::{CommandFactory, Parser};
 use clap_complete::{generate_to, Shell};
+use url::Url;
 use uuid::Uuid;
 
 include!("src/opt/ssh_authorizedkeys.rs");

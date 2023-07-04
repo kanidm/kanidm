@@ -113,13 +113,22 @@ pub struct Address {
     pub country: String,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct CredUpdateSessionPerms {
+    pub ext_cred_portal_can_view: bool,
+    pub primary_can_edit: bool,
+    pub passkeys_can_edit: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IntentTokenState {
     Valid {
         max_ttl: Duration,
+        perms: CredUpdateSessionPerms,
     },
     InProgress {
         max_ttl: Duration,
+        perms: CredUpdateSessionPerms,
         session_id: Uuid,
         session_ttl: Duration,
     },

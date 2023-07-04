@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::str::FromStr;
+use url::Url;
 
 use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
@@ -309,6 +310,7 @@ pub enum UiHint {
     ExperimentalFeatures = 0,
     PosixAccount = 1,
     CredentialUpdate = 2,
+    SynchronisedAccount = 3,
 }
 
 impl fmt::Display for UiHint {
@@ -317,6 +319,7 @@ impl fmt::Display for UiHint {
             UiHint::PosixAccount => write!(f, "PosixAccount"),
             UiHint::CredentialUpdate => write!(f, "CredentialUpdate"),
             UiHint::ExperimentalFeatures => write!(f, "ExperimentalFeatures"),
+            UiHint::SynchronisedAccount => write!(f, "SynchronisedAccount"),
         }
     }
 }
@@ -329,6 +332,7 @@ impl FromStr for UiHint {
             "CredentialUpdate" => Ok(UiHint::CredentialUpdate),
             "PosixAccount" => Ok(UiHint::PosixAccount),
             "ExperimentalFeatures" => Ok(UiHint::ExperimentalFeatures),
+            "SynchronisedAccount" => Ok(UiHint::SynchronisedAccount),
             _ => Err(()),
         }
     }
@@ -408,7 +412,6 @@ pub struct UserAuthToken {
     pub displayname: String,
     pub spn: String,
     pub mail_primary: Option<String>,
-    // pub groups: Vec<Group>,
     pub ui_hints: BTreeSet<UiHint>,
 }
 
@@ -431,11 +434,6 @@ impl fmt::Display for UserAuthToken {
                 writeln!(f, "purpose: read write (expiry: none)")?
             }
         }
-        /*
-        for group in &self.groups {
-            writeln!(f, "group: {:?}", group.spn)?;
-        }
-        */
         Ok(())
     }
 }
@@ -1148,13 +1146,26 @@ pub enum CURegState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum CUExtPortal {
+    None,
+    Hidden,
+    Some(Url),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CUStatus {
+    // Display values
     pub spn: String,
     pub displayname: String,
+    pub ext_cred_portal: CUExtPortal,
+    // Internal State Tracking
+    pub mfaregstate: CURegState,
+    // Display hints + The credential details.
     pub can_commit: bool,
     pub primary: Option<CredentialDetail>,
+    pub primary_can_edit: bool,
     pub passkeys: Vec<PasskeyDetail>,
-    pub mfaregstate: CURegState,
+    pub passkeys_can_edit: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]

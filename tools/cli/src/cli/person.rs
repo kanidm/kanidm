@@ -8,7 +8,9 @@ use kanidm_client::ClientError::Http as ClientErrorHttp;
 use kanidm_client::KanidmClient;
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use kanidm_proto::v1::OperationError::PasswordQuality;
-use kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus, TotpSecret};
+use kanidm_proto::v1::{
+    CUExtPortal, CUIntentToken, CURegState, CUSessionToken, CUStatus, TotpSecret,
+};
 use kanidm_proto::v1::{CredentialDetail, CredentialDetailType};
 use qrcode::render::unicode;
 use qrcode::QrCode;
@@ -934,29 +936,54 @@ fn display_status(status: CUStatus) {
     let CUStatus {
         spn,
         displayname,
+        ext_cred_portal,
+        mfaregstate: _,
         can_commit,
         primary,
-        mfaregstate: _,
+        primary_can_edit,
         passkeys,
+        passkeys_can_edit,
     } = status;
 
     println!("spn: {}", spn);
     println!("Name: {}", displayname);
-    if let Some(cred_detail) = &primary {
-        println!("Primary Credential:");
-        print!("{}", cred_detail);
-    } else {
-        println!("Primary Credential:");
-        println!("  not set");
-    }
-    println!("Passkeys:");
-    if passkeys.is_empty() {
-        println!("  not set");
-    } else {
-        for pk in passkeys {
-            println!("  {} ({})", pk.tag, pk.uuid);
+
+    match ext_cred_portal {
+        CUExtPortal::None => {}
+        CUExtPortal::Hidden => {
+            println!("Externally Managed: Contact your admin to update your account details.");
         }
-    }
+        CUExtPortal::Some(url) => {
+            println!(
+                "Externally Managed: Visit {} to update your account details.",
+                url.as_str()
+            );
+        }
+    };
+
+    println!("Primary Credential:");
+    if primary_can_edit {
+        if let Some(cred_detail) = &primary {
+            print!("{}", cred_detail);
+        } else {
+            println!("  not set");
+        }
+    } else {
+        println!("  unable to modify");
+    };
+
+    println!("Passkeys:");
+    if passkeys_can_edit {
+        if passkeys.is_empty() {
+            println!("  not set");
+        } else {
+            for pk in passkeys {
+                println!("  {} ({})", pk.tag, pk.uuid);
+            }
+        }
+    } else {
+        println!("  unable to modify");
+    };
 
     // We may need to be able to display if there are dangling
     // curegstates, but the cli ui statemachine can match the

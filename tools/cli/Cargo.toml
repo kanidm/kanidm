@@ -55,6 +55,7 @@ zxcvbn = { workspace=true }
 clap = { workspace = true, features = ["derive"] }
 clap_complete = { workspace=true }
 uuid = { workspace=true }
+url = { workspace = true }
 
 [target."cfg(target_os = \"windows\")".dependencies.webauthn-authenticator-rs]
 workspace = true

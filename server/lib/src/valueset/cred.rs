@@ -12,7 +12,8 @@ use crate::repl::proto::{
     ReplAttrV1, ReplCredV1, ReplDeviceKeyV4V1, ReplIntentTokenV1, ReplPasskeyV4V1,
 };
 use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, IntentTokenState, ValueSet};
+use crate::value::{CredUpdateSessionPerms, IntentTokenState};
+use crate::valueset::{DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetCredential {
@@ -215,17 +216,35 @@ impl ValueSetIntentToken {
             .into_iter()
             .map(|(s, dits)| {
                 let ts = match dits {
-                    DbValueIntentTokenStateV1::Valid { max_ttl } => {
-                        IntentTokenState::Valid { max_ttl }
-                    }
+                    DbValueIntentTokenStateV1::Valid {
+                        max_ttl,
+                        ext_cred_portal_can_view,
+                        primary_can_edit,
+                        passkeys_can_edit,
+                    } => IntentTokenState::Valid {
+                        max_ttl,
+                        perms: CredUpdateSessionPerms {
+                            ext_cred_portal_can_view,
+                            primary_can_edit,
+                            passkeys_can_edit,
+                        },
+                    },
                     DbValueIntentTokenStateV1::InProgress {
                         max_ttl,
                         session_id,
                         session_ttl,
+                        ext_cred_portal_can_view,
+                        primary_can_edit,
+                        passkeys_can_edit,
                     } => IntentTokenState::InProgress {
                         max_ttl,
                         session_id,
                         session_ttl,
+                        perms: CredUpdateSessionPerms {
+                            ext_cred_portal_can_view,
+                            primary_can_edit,
+                            passkeys_can_edit,
+                        },
                     },
                     DbValueIntentTokenStateV1::Consumed { max_ttl } => {
                         IntentTokenState::Consumed { max_ttl }
@@ -241,21 +260,42 @@ impl ValueSetIntentToken {
         let map = data
             .iter()
             .map(|dits| match dits {
-                ReplIntentTokenV1::Valid { token_id, max_ttl } => (
+                ReplIntentTokenV1::Valid {
+                    token_id,
+                    max_ttl,
+                    ext_cred_portal_can_view,
+                    primary_can_edit,
+                    passkeys_can_edit,
+                } => (
                     token_id.clone(),
-                    IntentTokenState::Valid { max_ttl: *max_ttl },
+                    IntentTokenState::Valid {
+                        max_ttl: *max_ttl,
+                        perms: CredUpdateSessionPerms {
+                            ext_cred_portal_can_view: *ext_cred_portal_can_view,
+                            primary_can_edit: *primary_can_edit,
+                            passkeys_can_edit: *passkeys_can_edit,
+                        },
+                    },
                 ),
                 ReplIntentTokenV1::InProgress {
                     token_id,
                     max_ttl,
                     session_id,
                     session_ttl,
+                    ext_cred_portal_can_view,
+                    primary_can_edit,
+                    passkeys_can_edit,
                 } => (
                     token_id.clone(),
                     IntentTokenState::InProgress {
                         max_ttl: *max_ttl,
                         session_id: *session_id,
                         session_ttl: *session_ttl,
+                        perms: CredUpdateSessionPerms {
+                            ext_cred_portal_can_view: *ext_cred_portal_can_view,
+                            primary_can_edit: *primary_can_edit,
+                            passkeys_can_edit: *passkeys_can_edit,
+                        },
                     },
                 ),
                 ReplIntentTokenV1::Consumed { token_id, max_ttl } => (
@@ -350,17 +390,37 @@ impl ValueSetT for ValueSetIntentToken {
                     (
                         u.clone(),
                         match s {
-                            IntentTokenState::Valid { max_ttl } => {
-                                DbValueIntentTokenStateV1::Valid { max_ttl: *max_ttl }
-                            }
+                            IntentTokenState::Valid {
+                                max_ttl,
+                                perms:
+                                    CredUpdateSessionPerms {
+                                        ext_cred_portal_can_view,
+                                        primary_can_edit,
+                                        passkeys_can_edit,
+                                    },
+                            } => DbValueIntentTokenStateV1::Valid {
+                                max_ttl: *max_ttl,
+                                ext_cred_portal_can_view: *ext_cred_portal_can_view,
+                                primary_can_edit: *primary_can_edit,
+                                passkeys_can_edit: *passkeys_can_edit,
+                            },
                             IntentTokenState::InProgress {
                                 max_ttl,
                                 session_id,
                                 session_ttl,
+                                perms:
+                                    CredUpdateSessionPerms {
+                                        ext_cred_portal_can_view,
+                                        primary_can_edit,
+                                        passkeys_can_edit,
+                                    },
                             } => DbValueIntentTokenStateV1::InProgress {
                                 max_ttl: *max_ttl,
                                 session_id: *session_id,
                                 session_ttl: *session_ttl,
+                                ext_cred_portal_can_view: *ext_cred_portal_can_view,
+                                primary_can_edit: *primary_can_edit,
+                                passkeys_can_edit: *passkeys_can_edit,
                             },
                             IntentTokenState::Consumed { max_ttl } => {
                                 DbValueIntentTokenStateV1::Consumed { max_ttl: *max_ttl }
@@ -378,19 +438,39 @@ impl ValueSetT for ValueSetIntentToken {
                 .map
                 .iter()
                 .map(|(u, s)| match s {
-                    IntentTokenState::Valid { max_ttl } => ReplIntentTokenV1::Valid {
+                    IntentTokenState::Valid {
+                        max_ttl,
+                        perms:
+                            CredUpdateSessionPerms {
+                                ext_cred_portal_can_view,
+                                primary_can_edit,
+                                passkeys_can_edit,
+                            },
+                    } => ReplIntentTokenV1::Valid {
                         token_id: u.clone(),
                         max_ttl: *max_ttl,
+                        ext_cred_portal_can_view: *ext_cred_portal_can_view,
+                        primary_can_edit: *primary_can_edit,
+                        passkeys_can_edit: *passkeys_can_edit,
                     },
                     IntentTokenState::InProgress {
                         max_ttl,
                         session_id,
                         session_ttl,
+                        perms:
+                            CredUpdateSessionPerms {
+                                ext_cred_portal_can_view,
+                                primary_can_edit,
+                                passkeys_can_edit,
+                            },
                     } => ReplIntentTokenV1::InProgress {
                         token_id: u.clone(),
                         max_ttl: *max_ttl,
                         session_id: *session_id,
                         session_ttl: *session_ttl,
+                        ext_cred_portal_can_view: *ext_cred_portal_can_view,
+                        primary_can_edit: *primary_can_edit,
+                        passkeys_can_edit: *passkeys_can_edit,
                     },
                     IntentTokenState::Consumed { max_ttl } => ReplIntentTokenV1::Consumed {
                         token_id: u.clone(),

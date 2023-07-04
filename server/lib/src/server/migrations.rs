@@ -417,6 +417,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn initialise_schema_idm(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_idm -> start ...");
+
+        let idm_schema_attrs = [E_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL.clone()];
+
+        let r: Result<(), _> = idm_schema_attrs
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry));
+
+        if !r.is_ok() {
+            error!(res = ?r, "initialise_schema_idm -> Error");
+        }
+        debug_assert!(r.is_ok());
+
         // List of IDM schemas to init.
         let idm_schema: Vec<&str> = vec![
             JSON_SCHEMA_ATTR_DISPLAYNAME,
@@ -487,11 +499,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .try_for_each(|e_str| self.internal_migrate_or_create_str(e_str));
 
         if r.is_ok() {
-            admin_debug!("initialise_schema_idm -> Ok!");
+            debug!("initialise_schema_idm -> Ok!");
         } else {
-            admin_error!(res = ?r, "initialise_schema_idm -> Error");
+            error!(res = ?r, "initialise_schema_idm -> Error");
         }
-        debug_assert!(r.is_ok()); // why return a result if we assert it's `Ok`?
+        debug_assert!(r.is_ok());
 
         r
     }

@@ -1,5 +1,9 @@
+use compact_jwt::JwsUnverified;
 use kanidm_client::KanidmClient;
+use kanidm_proto::internal::ScimSyncToken;
 use kanidmd_testkit::ADMIN_TEST_PASSWORD;
+use std::str::FromStr;
+use url::Url;
 
 #[kanidmd_testkit::test]
 async fn test_sync_account_lifecycle(rsclient: KanidmClient) {
@@ -23,21 +27,64 @@ async fn test_sync_account_lifecycle(rsclient: KanidmClient) {
         .idm_sync_account_get("ipa_sync_account")
         .await
         .unwrap();
-    assert!(a.is_some());
+
     println!("{:?}", a);
+    let sync_entry = a.expect("No sync account was created?!");
+
+    // Shouldn't have a cred portal.
+    assert!(!sync_entry.attrs.contains_key("sync_credential_portal"));
+
+    let url = Url::parse("https://sink.ipa.example.com/reset").unwrap();
+
+    // Set our credential portal.
+    rsclient
+        .idm_sync_account_set_credential_portal("ipa_sync_account", Some(&url))
+        .await
+        .unwrap();
+
+    let a = rsclient
+        .idm_sync_account_get("ipa_sync_account")
+        .await
+        .unwrap();
+
+    let sync_entry = a.expect("No sync account present?");
+    // Should have a cred portal.
+
+    let url_a = sync_entry
+        .attrs
+        .get("sync_credential_portal")
+        .and_then(|x| x.get(0));
+
+    assert_eq!(
+        url_a.map(|s| s.as_str()),
+        Some("https://sink.ipa.example.com/reset")
+    );
+
+    // Also check we can get it direct
+    let url_b = rsclient
+        .idm_sync_account_get_credential_portal("ipa_sync_account")
+        .await
+        .unwrap();
+
+    assert_eq!(url_b, Some(url));
 
     // Get a token
+    let token = rsclient
+        .idm_sync_account_generate_token("ipa_sync_account", "token_label")
+        .await
+        .expect("Failed to generate token");
 
-    // List sessions?
+    let token_unverified = JwsUnverified::from_str(&token).expect("Failed to parse apitoken");
 
-    // Reset Sign Key
-    // Get New token
+    let token: ScimSyncToken = token_unverified
+        .validate_embeded()
+        .map(|j| j.into_inner())
+        .expect("Embedded jwk not found");
 
-    // Get sync state
+    println!("{:?}", token);
 
-    // Delete session
-
-    // Sync state fails.
-
-    // Delete account
+    rsclient
+        .idm_sync_account_destroy_token("ipa_sync_account")
+        .await
+        .expect("Failed to destroy token");
 }
