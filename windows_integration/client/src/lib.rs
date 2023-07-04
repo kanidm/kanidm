@@ -1,7 +1,6 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use std::ffi::c_void;
-use std::ptr::{null, null_mut};
+use std::ptr::{null_mut};
 
 use once_cell::sync::Lazy;
 use tracing::{event, Level};
@@ -9,11 +8,11 @@ use tracing::{event, Level};
 use windows::Win32::System::Kernel::STRING;
 use windows::core::PCSTR;
 use windows::Win32::Foundation::{
-    ERROR_MORE_DATA, ERROR_SUCCESS, NTSTATUS, STATUS_SUCCESS, STATUS_UNSUCCESSFUL,
+    ERROR_SUCCESS, NTSTATUS, STATUS_SUCCESS, STATUS_UNSUCCESSFUL,
 };
 use windows::Win32::Security::Authentication::Identity::SECPKG_FUNCTION_TABLE;
 use windows::Win32::System::Registry::{
-    RegGetValueA, HKEY_LOCAL_MACHINE, REG_VALUE_TYPE, RRF_RT_REG_SZ,
+    RegGetValueA, HKEY_LOCAL_MACHINE, RRF_RT_REG_SZ,
 };
 
 use crate::convert::win_string_to_rust;
