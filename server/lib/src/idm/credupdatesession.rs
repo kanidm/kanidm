@@ -6,8 +6,8 @@ use std::time::Duration;
 
 use hashbrown::HashSet;
 use kanidm_proto::v1::{
-    CURegState, CUStatus, CredentialDetail, PasskeyDetail, PasswordFeedback, TotpSecret,
-    CUExtPortal
+    CUExtPortal, CURegState, CUStatus, CredentialDetail, PasskeyDetail, PasswordFeedback,
+    TotpSecret,
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -991,16 +991,21 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Apply to the account!
         trace!(?modlist, "processing change");
 
-        self.qs_write
-            .internal_modify(
-                // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(session.account.uuid))),
-                &modlist,
-            )
-            .map_err(|e| {
-                request_error!(error = ?e);
-                e
-            })
+        if modlist.is_empty() {
+            trace!("no changes to apply");
+            Ok(())
+        } else {
+            self.qs_write
+                .internal_modify(
+                    // Filter as executed
+                    &filter!(f_eq("uuid", PartialValue::Uuid(session.account.uuid))),
+                    &modlist,
+                )
+                .map_err(|e| {
+                    request_error!(error = ?e);
+                    e
+                })
+        }
     }
 
     pub fn cancel_credential_update(
@@ -1367,6 +1372,11 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
+        if !session.primary_can_edit {
+            error!("Session does not have permission to modify primary credential");
+            return Err(OperationError::AccessDenied);
+        };
+
         // Are we in a totp reg state?
         match &session.mfaregstate {
             MfaRegState::TotpInit(totp_token)
@@ -1725,7 +1735,9 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 mod tests {
     use std::time::Duration;
 
-    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, CredentialDetailType};
+    use kanidm_proto::v1::{
+        AuthAllowed, AuthIssueSession, AuthMech, CUExtPortal, CredentialDetailType,
+    };
     use uuid::uuid;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::WebauthnAuthenticator;
@@ -2713,6 +2725,152 @@ mod tests {
                 .await
                 .is_none()
         );
+    }
+
+    #[idm_test]
+    async fn test_idm_credential_update_access_denied(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        // Test that if access is denied for a synced account, that the actual action to update
+        // the credentials is always denied.
+
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let sync_uuid = Uuid::new_v4();
+
+        let e1 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("sync_account")),
+            ("name", Value::new_iname("test_scim_sync")),
+            ("uuid", Value::Uuid(sync_uuid)),
+            ("description", Value::new_utf8s("A test sync agreement"))
+        );
+
+        let e2 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("sync_object")),
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("person")),
+            ("sync_parent_uuid", Value::Refer(sync_uuid)),
+            ("name", Value::new_iname("testperson")),
+            ("uuid", Value::Uuid(TESTPERSON_UUID)),
+            ("description", Value::new_utf8s("testperson")),
+            ("displayname", Value::new_utf8s("testperson"))
+        );
+
+        let ce = CreateEvent::new_internal(vec![e1, e2]);
+        let cr = idms_prox_write.qs_write.create(&ce);
+        assert!(cr.is_ok());
+
+        let testperson = idms_prox_write
+            .qs_write
+            .internal_search_uuid(TESTPERSON_UUID)
+            .expect("failed");
+
+        let cur = idms_prox_write.init_credential_update(
+            &InitCredentialUpdateEvent::new_impersonate_entry(testperson),
+            ct,
+        );
+
+        idms_prox_write.commit().expect("Failed to commit txn");
+
+        let (cust, custatus) = cur.expect("Failed to start update");
+
+        trace!(?custatus);
+
+        // Destructure to force us to update this test if we change this
+        // structure at all.
+        let CredentialUpdateSessionStatus {
+            spn: _,
+            displayname: _,
+            ext_cred_portal,
+            mfaregstate: _,
+            can_commit: _,
+            primary: _,
+            primary_can_edit,
+            passkeys: _,
+            passkeys_can_edit,
+        } = custatus;
+
+        assert!(matches!(ext_cred_portal, CUExtPortal::Hidden));
+        assert!(!primary_can_edit);
+        assert!(!passkeys_can_edit);
+
+        let cutxn = idms.cred_update_transaction().await;
+
+        // let origin = cutxn.get_origin().clone();
+
+        // Test that any of the primary or passkey update methods fail with access denied.
+
+        // credential_primary_set_password
+        let err = cutxn
+            .credential_primary_set_password(&cust, ct, "password")
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_primary_init_totp
+        let err = cutxn.credential_primary_init_totp(&cust, ct).unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_primary_check_totp
+        let err = cutxn
+            .credential_primary_check_totp(&cust, ct, 0, "totp")
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_primary_accept_sha1_totp
+        let err = cutxn
+            .credential_primary_accept_sha1_totp(&cust, ct)
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_primary_remove_totp
+        let err = cutxn
+            .credential_primary_remove_totp(&cust, ct, "totp")
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_primary_init_backup_codes
+        let err = cutxn
+            .credential_primary_init_backup_codes(&cust, ct)
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_primary_remove_backup_codes
+        let err = cutxn
+            .credential_primary_remove_backup_codes(&cust, ct)
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_primary_delete
+        let err = cutxn.credential_primary_delete(&cust, ct).unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_passkey_init
+        let err = cutxn.credential_passkey_init(&cust, ct).unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_passkey_finish
+        //   Can't test because we need a public key response.
+
+        // credential_passkey_remove
+        let err = cutxn
+            .credential_passkey_remove(&cust, ct, Uuid::new_v4())
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        let c_status = cutxn
+            .credential_update_status(&cust, ct)
+            .expect("Failed to get the current session status.");
+        trace!(?c_status);
+        assert!(c_status.primary.is_none());
+        assert!(c_status.passkeys.is_empty());
+
+        drop(cutxn);
+        commit_session(idms, ct, cust).await;
     }
 
     // W_ policy, assert can't remove MFA if it's enforced.

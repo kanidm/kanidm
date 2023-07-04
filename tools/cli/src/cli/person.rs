@@ -8,7 +8,9 @@ use kanidm_client::ClientError::Http as ClientErrorHttp;
 use kanidm_client::KanidmClient;
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use kanidm_proto::v1::OperationError::PasswordQuality;
-use kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus, TotpSecret, CUExtPortal};
+use kanidm_proto::v1::{
+    CUExtPortal, CUIntentToken, CURegState, CUSessionToken, CUStatus, TotpSecret,
+};
 use kanidm_proto::v1::{CredentialDetail, CredentialDetailType};
 use qrcode::render::unicode;
 use qrcode::QrCode;
@@ -952,7 +954,10 @@ fn display_status(status: CUStatus) {
             println!("Externally Managed: Contact your admin to update your account details.");
         }
         CUExtPortal::Some(url) => {
-            println!("Externally Managed: Visit {} to update your account details.", url.as_str());
+            println!(
+                "Externally Managed: Visit {} to update your account details.",
+                url.as_str()
+            );
         }
     };
 

@@ -1166,7 +1166,6 @@ pub struct CUStatus {
     pub primary_can_edit: bool,
     pub passkeys: Vec<PasskeyDetail>,
     pub passkeys_can_edit: bool,
-
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
