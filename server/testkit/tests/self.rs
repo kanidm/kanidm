@@ -10,11 +10,8 @@ async fn test_v1_self_applinks(rsclient: KanidmClient) {
         .build()
         .unwrap();
 
-    // let post_body = serde_json::json!({"attrs": { "email" : "crab@example.com"}}).to_string();
-
     let response = match client
         .get(format!("{}/v1/self/_applinks", &addr))
-        // .body(post_body)
         .send()
         .await
     {
