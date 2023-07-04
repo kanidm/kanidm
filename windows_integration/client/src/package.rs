@@ -35,6 +35,8 @@ use crate::mem::{allocate_mem_client, allocate_mem_lsa, MemoryAllocationError};
 use crate::structs::LogonId;
 use crate::PROGRAM_DIR;
 
+// ! This will most definitely crash the LSA if something fails
+// TODO: Fix this
 pub(crate) static mut KANIDM_CLIENT: Lazy<KanidmClient> = Lazy::new(|| {
     let program_dir = match unsafe { &PROGRAM_DIR } {
         Some(dir) => dir,
