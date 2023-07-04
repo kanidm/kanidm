@@ -313,7 +313,7 @@ async fn main() -> ExitCode {
             /*
             // Apply any cli overrides, normally debug level.
             if opt.commands.commonopt().debug.as_ref() {
-                // ::std::env::set_var("RUST_LOG", "tide=info,kanidm=info,webauthn=debug");
+                // ::std::env::set_var("RUST_LOG", ",kanidm=info,webauthn=debug");
             }
             */
 

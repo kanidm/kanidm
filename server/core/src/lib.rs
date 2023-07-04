@@ -31,7 +31,6 @@ mod crypto;
 mod https; // new axum hotness
 mod interval;
 mod ldaps;
-// pub mod tide; // old tide busted
 
 use std::path::Path;
 use std::sync::Arc;

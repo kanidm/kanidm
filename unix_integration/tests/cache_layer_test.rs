@@ -73,7 +73,7 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
     create_server_core(config, false)
         .await
         .expect("failed to start server core");
-    // We have to yield now to guarantee that the tide elements are setup.
+    // We have to yield now to guarantee that the elements are setup.
     task::yield_now().await;
 
     // Setup the client, and the address we selected.

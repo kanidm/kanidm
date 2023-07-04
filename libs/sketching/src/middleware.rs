@@ -14,7 +14,7 @@ impl TreeMiddleware {
         }
     }
 
-    #[instrument(name = "tide-request", skip(self, req, next))]
+    #[instrument(name = "web-request", skip(self, req, next))]
     async fn log<'a, State: Clone + Send + Sync + 'static>(
         &'a self,
         mut req: Request<State>,

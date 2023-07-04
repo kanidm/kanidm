@@ -130,7 +130,6 @@ async fn scim_sync_get(
 }
 
 async fn scim_sink_get() -> impl IntoResponse {
-    // let mut res = tide::Response::new(200);
     r#"
     <!DOCTYPE html>
     <html lang="en">

@@ -71,14 +71,12 @@ pub async fn setup_async_test() -> (KanidmClient, CoreHandle) {
     config.role = ServerRole::WriteReplica;
     config.domain = "localhost".to_string();
     config.origin = addr.clone();
-    // config.log_level = Some(LogLevel::Verbose as u32);
-    // config.log_level = Some(LogLevel::FullTrace as u32);
     config.threads = 1;
 
     let core_handle = create_server_core(config, false)
         .await
         .expect("failed to start server core");
-    // We have to yield now to guarantee that the tide elements are setup.
+    // We have to yield now to guarantee that the elements are setup.
     task::yield_now().await;
 
     let rsclient = KanidmClientBuilder::new()

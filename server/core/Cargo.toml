@@ -39,9 +39,6 @@ reqwest = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 sketching = { workspace = true }
-tide = { workspace = true }
-tide-compress = { workspace = true }
-tide-openssl = { workspace = true }
 time = { workspace = true, features = ["serde", "std","local-offset"] }
 tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
 tokio-openssl = { workspace = true }

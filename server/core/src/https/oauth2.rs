@@ -296,7 +296,6 @@ async fn oauth2_authorise(
         })) => {
             // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.11
             // We could consider changing this to 303?
-            // let mut res = tide::Response::new(302);
             #[allow(clippy::unwrap_used)]
             let body =
                 Body::from(serde_json::to_string(&AuthorisationResponse::Permitted).unwrap());
@@ -410,7 +409,6 @@ async fn oauth2_authorise_permit(
         }) => {
             // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.11
             // We could consider changing this to 303?
-            // let mut res = tide::Response::new(302);
             redirect_uri
                 .query_pairs_mut()
                 .clear()
@@ -532,15 +530,6 @@ pub async fn oauth2_token_post(
                 .unwrap();
         }
     };
-
-    // Get the accessToken Request
-    // let tok_req: AccessTokenRequest = req.body_form().await.map_err(|e| {
-    //     error!("atr parse error - {:?}", e);
-    //     tide::Error::from_str(
-    //         tide::StatusCode::BadRequest,
-    //         "Invalid Oauth2 AccessTokenRequest",
-    //     )
-    // })?;
 
     // Do we change the method/path we take here based on the type of requested
     // grant? Should we cease the delayed/async session update here and just opt

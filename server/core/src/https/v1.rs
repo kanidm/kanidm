@@ -1236,11 +1236,9 @@ pub async fn applinks_get(
     to_axum_response(res)
 }
 
-// pub async fn do_routemap(state: tide::Request<RouteMap>) -> impl IntoResponse {
-//     let mut res = tide::Response::new(200);
-
-//     res.set_body(state.do_map());
-//     Ok(res)
+// TODO: routemap things
+// pub async fn do_routemap(State(state): State<RouteMap>) -> impl IntoResponse {
+//     Json(state.do_map())
 // }
 
 pub async fn reauth(
