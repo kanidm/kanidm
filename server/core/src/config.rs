@@ -15,13 +15,13 @@ use kanidm_proto::messages::ConsoleOutputMode;
 use serde::{Deserialize, Serialize};
 use sketching::tracing_subscriber::EnvFilter;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct IntegrationTestConfig {
     pub admin_user: String,
     pub admin_password: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OnlineBackup {
     pub path: String,
     #[serde(default = "default_online_backup_schedule")]
@@ -38,7 +38,7 @@ fn default_online_backup_versions() -> usize {
     7
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TlsConfiguration {
     pub chain: String,
     pub key: String,
@@ -64,16 +64,22 @@ pub struct ServerConfig {
 }
 
 impl ServerConfig {
-    pub fn new<P: AsRef<Path>>(config_path: P) -> Result<Self, ()> {
+    pub fn new<P: AsRef<Path>>(config_path: P) -> Result<Self, std::io::Error> {
         let mut f = File::open(config_path).map_err(|e| {
             eprintln!("Unable to open config file [{:?}] 🥺", e);
+            e
         })?;
 
         let mut contents = String::new();
-        f.read_to_string(&mut contents)
-            .map_err(|e| eprintln!("unable to read contents {:?}", e))?;
+        f.read_to_string(&mut contents).map_err(|e| {
+            eprintln!("unable to read contents {:?}", e);
+            e
+        })?;
 
-        toml::from_str(contents.as_str()).map_err(|e| eprintln!("unable to parse config {:?}", e))
+        toml::from_str(contents.as_str()).map_err(|e| {
+            eprintln!("unable to parse config {:?}", e);
+            std::io::Error::new(std::io::ErrorKind::Other, e)
+        })
     }
 }
 
@@ -142,9 +148,9 @@ impl ToString for LogLevel {
     }
 }
 
-impl Into<EnvFilter> for LogLevel {
-    fn into(self) -> EnvFilter {
-        match self {
+impl From<LogLevel> for EnvFilter {
+    fn from(value: LogLevel) -> Self {
+        match value {
             LogLevel::Info => EnvFilter::new("info"),
             LogLevel::Debug => EnvFilter::new("debug"),
             LogLevel::Trace => EnvFilter::new("trace"),
@@ -152,7 +158,7 @@ impl Into<EnvFilter> for LogLevel {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Configuration {
     pub address: String,
     pub ldapaddress: Option<String>,

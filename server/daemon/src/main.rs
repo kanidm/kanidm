@@ -106,8 +106,8 @@ async fn main() -> ExitCode {
     let mut config = Configuration::new();
     // Check the permissions are OK.
     let cfg_path = &opt.commands.commonopt().config_path; // TODO: this needs to be pulling from the default or something?
-    if format!("{}", cfg_path.display()) == "".to_string() {
-        config_error.push(format!("Refusing to run - config file path is empty"));
+    if cfg_path.display().to_string().is_empty() {
+        config_error.push("Refusing to run - config file path is empty".to_string());
     }
     if !cfg_path.exists() {
         config_error.push(format!(
@@ -149,7 +149,7 @@ async fn main() -> ExitCode {
         // Fall back to stderr
         .map_sender(|sender| sender.or_stderr())
         .build_on(|subscriber|{
-            let sub = subscriber.with(log_filter);
+            subscriber.with(log_filter)
             // this does NOT work, it just adds a layer.
             // if std::io::stdout().is_terminal() {
             //     println!("Stdout is a terminal");
@@ -158,7 +158,6 @@ async fn main() -> ExitCode {
             //     println!("Stdout is not a terminal");
             //     sub.with(sketching::tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
             // }
-            sub
         })
         .on(async {
             // Get information on the windows username
@@ -200,7 +199,13 @@ async fn main() -> ExitCode {
                 return ExitCode::SUCCESS
             };
 
-            let sconfig = sconfig.expect("Somehow you got an empty ServerConfig after error checking?");
+            let sconfig = match sconfig {
+                Some(val) => val,
+                None => {
+                    error!("Somehow you got an empty ServerConfig after error checking?");
+                    return ExitCode::FAILURE
+                }
+            };
 
 
             #[cfg(target_family = "unix")]
@@ -313,7 +318,7 @@ async fn main() -> ExitCode {
             /*
             // Apply any cli overrides, normally debug level.
             if opt.commands.commonopt().debug.as_ref() {
-                // ::std::env::set_var("RUST_LOG", "tide=info,kanidm=info,webauthn=debug");
+                // ::std::env::set_var("RUST_LOG", ",kanidm=info,webauthn=debug");
             }
             */
 
@@ -383,30 +388,35 @@ async fn main() -> ExitCode {
                                             }
                                             Some(()) = async move {
                                                 let sigterm = tokio::signal::unix::SignalKind::terminate();
+            #[allow(clippy::unwrap_used)]
                                                 tokio::signal::unix::signal(sigterm).unwrap().recv().await
                                             } => {
                                                 break
                                             }
                                             Some(()) = async move {
                                                 let sigterm = tokio::signal::unix::SignalKind::alarm();
+            #[allow(clippy::unwrap_used)]
                                                 tokio::signal::unix::signal(sigterm).unwrap().recv().await
                                             } => {
                                                 // Ignore
                                             }
                                             Some(()) = async move {
                                                 let sigterm = tokio::signal::unix::SignalKind::hangup();
+            #[allow(clippy::unwrap_used)]
                                                 tokio::signal::unix::signal(sigterm).unwrap().recv().await
                                             } => {
                                                 // Ignore
                                             }
                                             Some(()) = async move {
                                                 let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+            #[allow(clippy::unwrap_used)]
                                                 tokio::signal::unix::signal(sigterm).unwrap().recv().await
                                             } => {
                                                 // Ignore
                                             }
                                             Some(()) = async move {
                                                 let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+            #[allow(clippy::unwrap_used)]
                                                 tokio::signal::unix::signal(sigterm).unwrap().recv().await
                                             } => {
                                                 // Ignore
@@ -554,17 +564,33 @@ async fn main() -> ExitCode {
                             let ca_cert_path = PathBuf::from(ca_cert);
                             match ca_cert_path.exists() {
                                 true => {
-                                    let ca_contents = std::fs::read_to_string(ca_cert_path.clone()).expect(&format!("Failed to read {}!", ca_cert));
+                                    let ca_contents = match std::fs::read_to_string(ca_cert_path.clone()) {
+                                        Ok(val) => val,
+                                        Err(e) => {
+                                            error!("Failed to read {:?} from filesystem: {:?}", ca_cert_path, e);
+                                            return ExitCode::FAILURE
+                                        }
+                                    };
                                     let content = ca_contents
                                         .split("-----END CERTIFICATE-----")
-                                        .into_iter()
                                         .filter_map(|c| if c.trim().is_empty() { None } else { Some(c.trim().to_string())})
                                         .collect::<Vec<String>>();
-                                    let content = content.last().expect(&format!("Failed to pull the last chunk of {} as a valid certificate!", ca_cert));
+                                    let content = match content.last() {
+                                        Some(val) => val,
+                                        None => {
+                                            error!("Failed to parse {:?} as valid certificate", ca_cert_path);
+                                            return ExitCode::FAILURE
+                                        }
+                                    };
                                     let content = format!("{}-----END CERTIFICATE-----", content);
 
-                                    let ca_cert_parsed = reqwest::Certificate::from_pem(content.as_bytes())
-                                    .expect(&format!("Failed to parse {} as a valid certificate!\n{}", ca_cert, content));
+                                    let ca_cert_parsed = match reqwest::Certificate::from_pem(content.as_bytes()) {
+                                        Ok(val) => val,
+                                        Err(e) =>{
+                                            error!("Failed to parse {} as a valid certificate!\nError: {:?}", ca_cert, e);
+                                        return ExitCode::FAILURE
+                                        }
+                                    };
                                     client.add_root_certificate(ca_cert_parsed)
                                 },
                                 false => {
@@ -574,7 +600,7 @@ async fn main() -> ExitCode {
                             }
                         }
                     };
-
+                    #[allow(clippy::unwrap_used)]
                     let client = client
                         .build()
                         .unwrap();

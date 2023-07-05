@@ -6,6 +6,7 @@ use std::path::Path;
 
 #[cfg(all(target_family = "unix", feature = "selinux"))]
 use crate::selinux_util;
+use crate::unix_passwd::UnixIntegrationError;
 
 use serde::Deserialize;
 
@@ -191,7 +192,7 @@ impl KanidmUnixdConfig {
     pub fn read_options_from_optional_config<P: AsRef<Path> + std::fmt::Debug>(
         self,
         config_path: P,
-    ) -> Result<Self, ()> {
+    ) -> Result<Self, UnixIntegrationError> {
         debug!("Attempting to load configuration from {:#?}", &config_path);
         let mut f = match File::open(&config_path) {
             Ok(f) => {
@@ -224,11 +225,15 @@ impl KanidmUnixdConfig {
         };
 
         let mut contents = String::new();
-        f.read_to_string(&mut contents)
-            .map_err(|e| eprintln!("{:?}", e))?;
+        f.read_to_string(&mut contents).map_err(|e| {
+            error!("{:?}", e);
+            UnixIntegrationError
+        })?;
 
-        let config: ConfigInt =
-            toml::from_str(contents.as_str()).map_err(|e| eprintln!("{:?}", e))?;
+        let config: ConfigInt = toml::from_str(contents.as_str()).map_err(|e| {
+            error!("{:?}", e);
+            UnixIntegrationError
+        })?;
 
         // Now map the values into our config.
         Ok(KanidmUnixdConfig {

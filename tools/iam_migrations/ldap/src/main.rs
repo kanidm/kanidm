@@ -178,30 +178,35 @@ async fn driver_main(opt: Opt) {
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::terminate();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         break
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::alarm();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::hangup();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
@@ -372,7 +377,7 @@ async fn run_sync(
                 }
             };
 
-            let entries = match process_ldap_sync_result(entries, &sync_config).await {
+            let entries = match process_ldap_sync_result(entries, sync_config).await {
                 Ok(ssr) => ssr,
                 Err(()) => {
                     error!("Failed to process IPA entries to SCIM");
@@ -454,6 +459,7 @@ fn ldap_to_scim_entry(
     debug!("{:#?}", sync_entry);
 
     // check the sync_entry state?
+    #[allow(clippy::unimplemented)]
     if sync_entry.state != LdapSyncStateValue::Add {
         unimplemented!();
     }
@@ -505,7 +511,7 @@ fn ldap_to_scim_entry(
                 );
             })?;
 
-        let gidnumber = if let Some(number) = entry_config.map_gidnumber.clone() {
+        let gidnumber = if let Some(number) = entry_config.map_gidnumber {
             Some(number)
         } else {
             entry

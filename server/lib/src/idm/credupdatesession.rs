@@ -440,7 +440,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // At lease *one* must be modifiable OR visible.
         if !(primary_can_edit || passkeys_can_edit || ext_cred_portal_can_view) {
             error!("Unable to proceed with credential update intent - at least one type of credential must be modifiable or visible.");
-            return Err(OperationError::NotAuthorised);
+            Err(OperationError::NotAuthorised)
         } else {
             security_info!(%primary_can_edit, %passkeys_can_edit, %ext_cred_portal_can_view, "Proceeding");
             Ok((
@@ -459,7 +459,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         sessionid: Uuid,
         intent_token_id: Option<String>,
         account: Account,
-        perms: &CredUpdateSessionPerms,
+        perms: CredUpdateSessionPerms,
         ct: Duration,
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
         let ext_cred_portal_can_view = perms.ext_cred_portal_can_view;
@@ -809,7 +809,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // ==========
         // Okay, good to exchange.
 
-        self.create_credupdate_session(session_id, Some(intent_id), account, &perms, current_time)
+        self.create_credupdate_session(session_id, Some(intent_id), account, perms, current_time)
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -826,7 +826,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let sessionid = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
 
         // Build the cred update session.
-        self.create_credupdate_session(sessionid, None, account, &perms, ct)
+        self.create_credupdate_session(sessionid, None, account, perms, ct)
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -1141,6 +1141,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         Ok(status)
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn check_password_quality(
         &self,
         cleartext: &str,
@@ -1284,6 +1285,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         }
     }
 
+    #[instrument(level = "trace", skip(cust, self))]
     pub fn credential_primary_set_password(
         &self,
         cust: &CredentialUpdateSessionToken,

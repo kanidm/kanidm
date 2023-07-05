@@ -376,13 +376,13 @@ async fn process_etc_passwd_group(cachelayer: &CacheLayer) -> Result<(), Box<dyn
     let mut contents = vec![];
     file.read_to_end(&mut contents).await?;
 
-    let users = parse_etc_passwd(contents.as_slice()).map_err(|()| "Invalid passwd content")?;
+    let users = parse_etc_passwd(contents.as_slice()).map_err(|_| "Invalid passwd content")?;
 
     let mut file = File::open("/etc/group").await?;
     let mut contents = vec![];
     file.read_to_end(&mut contents).await?;
 
-    let groups = parse_etc_group(contents.as_slice()).map_err(|()| "Invalid group content")?;
+    let groups = parse_etc_group(contents.as_slice()).map_err(|_| "Invalid group content")?;
 
     let id_iter = users
         .iter()
@@ -451,6 +451,7 @@ async fn main() -> ExitCode {
         std::env::set_var("RUST_LOG", "debug");
     }
 
+    #[allow(clippy::expect_used)]
     tracing_forest::worker_task()
         .set_global(true)
         // Fall back to stderr
@@ -699,7 +700,7 @@ async fn main() -> ExitCode {
             let _ = unsafe { umask(before) };
 
             // Pre-process /etc/passwd and /etc/group for nxset
-            if let Err(_) = process_etc_passwd_group(&cachelayer).await {
+            if process_etc_passwd_group(&cachelayer).await.is_err() {
                 error!("Failed to process system id providers");
                 return ExitCode::FAILURE
             }
@@ -800,7 +801,7 @@ async fn main() -> ExitCode {
                             break;
                         }
                         _ = inotify_rx.recv() => {
-                            if let Err(_) = process_etc_passwd_group(&inotify_cachelayer).await {
+                            if process_etc_passwd_group(&inotify_cachelayer).await.is_err() {
                                 error!("Failed to process system id providers");
                             }
                         }
@@ -860,30 +861,35 @@ async fn main() -> ExitCode {
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::terminate();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         break
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::alarm();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::hangup();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore

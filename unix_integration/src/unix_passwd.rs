@@ -16,15 +16,15 @@ pub struct EtcUser {
     pub shell: String,
 }
 
-pub fn parse_etc_passwd(bytes: &[u8]) -> Result<Vec<EtcUser>, ()> {
+pub fn parse_etc_passwd(bytes: &[u8]) -> Result<Vec<EtcUser>, UnixIntegrationError> {
     use csv::ReaderBuilder;
     let mut rdr = ReaderBuilder::new()
         .has_headers(false)
         .delimiter(b':')
         .from_reader(bytes);
     rdr.deserialize()
-        .map(|result| result.map_err(|_e| ()))
-        .collect::<Result<Vec<EtcUser>, ()>>()
+        .map(|result| result.map_err(|_e| UnixIntegrationError))
+        .collect::<Result<Vec<EtcUser>, UnixIntegrationError>>()
 }
 
 fn members<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
@@ -60,15 +60,18 @@ pub struct EtcGroup {
     pub members: Vec<String>,
 }
 
-pub fn parse_etc_group(bytes: &[u8]) -> Result<Vec<EtcGroup>, ()> {
+#[derive(Debug)]
+pub struct UnixIntegrationError;
+
+pub fn parse_etc_group(bytes: &[u8]) -> Result<Vec<EtcGroup>, UnixIntegrationError> {
     use csv::ReaderBuilder;
     let mut rdr = ReaderBuilder::new()
         .has_headers(false)
         .delimiter(b':')
         .from_reader(bytes);
     rdr.deserialize()
-        .map(|result| result.map_err(|_e| ()))
-        .collect::<Result<Vec<EtcGroup>, ()>>()
+        .map(|result| result.map_err(|_e| UnixIntegrationError))
+        .collect::<Result<Vec<EtcGroup>, UnixIntegrationError>>()
 }
 
 #[cfg(test)]

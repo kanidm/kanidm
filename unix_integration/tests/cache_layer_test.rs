@@ -15,6 +15,7 @@ use kanidm_unix_common::unix_config::TpmPolicy;
 use kanidmd_core::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidmd_core::create_server_core;
 use tokio::task;
+use tracing::log::debug;
 
 static PORT_ALLOC: AtomicU16 = AtomicU16::new(28080);
 const ADMIN_TEST_USER: &str = "admin";
@@ -72,7 +73,7 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
     create_server_core(config, false)
         .await
         .expect("failed to start server core");
-    // We have to yield now to guarantee that the tide elements are setup.
+    // We have to yield now to guarantee that the elements are setup.
     task::yield_now().await;
 
     // Setup the client, and the address we selected.
@@ -126,6 +127,7 @@ async fn test_fixture(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;
+    debug!("auth_simple_password res: {:?}", res);
     assert!(res.is_ok());
     // Not recommended in production!
     rsclient
@@ -664,10 +666,13 @@ async fn test_cache_nxcache() {
     assert!(gt.is_none());
 
     // Should all now be nxed
-    assert!(cachelayer
-        .check_nxcache(&Id::Name("oracle".to_string()))
-        .await
-        .is_some());
+    assert!(
+        cachelayer
+            .check_nxcache(&Id::Name("oracle".to_string()))
+            .await
+            .is_some(),
+        "'oracle' Wasn't in the nxcache!"
+    );
     assert!(cachelayer.check_nxcache(&Id::Gid(2000)).await.is_some());
     assert!(cachelayer
         .check_nxcache(&Id::Name("oracle_group".to_string()))

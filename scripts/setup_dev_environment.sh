@@ -96,7 +96,7 @@ echo "Adding ${TEST_USER_NAME} to ${TEST_GROUP}"
 ${KANIDM} group add-members "${TEST_GROUP}" "${TEST_USER_NAME}" -D idm_admin
 
 echo "Enable experimental UI for admin idm_admin ${TEST_USER_NAME}"
-${KANIDM} group add-members  idm_ui_enable_experimental_features admin idm_admin "${TEST_USER_NAME}"
+${KANIDM} group add-members  idm_ui_enable_experimental_features admin idm_admin "${TEST_USER_NAME}" -D idm_admin
 
 # create oauth2 rp
 echo "Creating the OAuth2 RP"
@@ -108,6 +108,8 @@ echo "Creating the OAuth2 RP Supplemental Scope Map"
 ${KANIDM} system oauth2 update-sup-scope-map "${OAUTH2_RP_ID}" "${TEST_GROUP}" admin -D admin
 echo "Creating the OAuth2 RP Secondary Supplemental Crab-baite Scope Map.... wait, no that's not a thing."
 
+echo "Checking the OAuth2 RP Exists"
+${KANIDM} system oauth2 list -D admin | rg -A10 "${OAUTH2_RP_ID}"
 
 # config auth2
 echo "Pulling secret for the OAuth2 RP"

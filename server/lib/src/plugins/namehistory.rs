@@ -63,7 +63,7 @@ impl NameHistory {
     }
 
     fn handle_name_creation(
-        cands: &mut Vec<EntryInvalidNew>,
+        cands: &mut [EntryInvalidNew],
         cid: &Cid,
     ) -> Result<(), OperationError> {
         for cand in cands.iter_mut() {

@@ -212,6 +212,7 @@ impl QueryServerReadV1 {
                 time::OffsetDateTime::now_utc()
             }
         };
+        #[allow(clippy::unwrap_used)]
         let timestamp = now.format(&Rfc3339).unwrap();
         let dest_file = format!("{}/backup-{}.json", outpath, timestamp);
 

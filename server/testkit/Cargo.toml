@@ -23,7 +23,7 @@ kanidmd_lib = { workspace = true }
 
 
 url = { workspace = true, features = ["serde"] }
-reqwest = { workspace = true, default-features = false }
+reqwest = { workspace = true, default-features = false, features=["cookies"] }
 sketching = { workspace = true }
 testkit-macros = { workspace = true }
 tracing = { workspace = true, features = ["attributes"] }

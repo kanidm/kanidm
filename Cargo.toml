@@ -42,6 +42,8 @@ repository = "https://github.com/kanidm/kanidm/"
 argon2 = { version = "0.5.0", features = ["alloc"] }
 async-recursion = "1.0.4"
 async-trait = "^0.1.68"
+axum = {version = "0.6.18", features = ["json", "http2", "macros", "tracing", "headers", "original-uri", "query", "form", "http2"]}
+axum-csp = { version = "0.0.5" }
 base32 = "^0.4.0"
 base64 = "^0.21.0"
 base64urlsafedata = "0.1.3"
@@ -67,20 +69,19 @@ futures = "^0.3.28"
 futures-concurrency = "^3.1.0"
 futures-util = { version = "^0.3.21", features = ["sink"] }
 gloo = "^0.8.1"
-gloo-net = "0.3.0"
 hashbrown = { version = "0.14.0", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
 http-types = "^2.12.0"
+hyper = { version = "0.14.27", features = ["full"] }
+hyper-tls = "0.5.0"
 idlset = "^0.2.4"
 # idlset = { path = "../idlset" }
 js-sys = "^0.3.63"
 kanidmd_core = { path = "./server/core" }
-kanidmd_idm = { path = "./server/idm" }
 kanidmd_lib = { path = "./server/lib" }
 kanidmd_lib_macros = { path = "./server/lib-macros" }
 kanidm_lib_crypto = { path = "./libs/crypto" }
 kanidm_lib_file_permissions = { path = "./libs/file_permissions" }
-kanidmd_testkit = { path = "./server/testkit" }
 kanidm_client = { path = "./libs/client", version = "1.1.0-alpha.11" }
 kanidm_proto = { path = "./proto", version = "1.1.0-alpha.11" }
 kanidm_unix_int = { path = "./unix_integration" }
@@ -113,7 +114,7 @@ qrcode = "^0.12.0"
 quote = "1"
 rand = "^0.8.5"
 regex = "1.8.4"
-reqwest = { version = "0.11.18", default-features = false, features=["cookies", "json", "gzip", "native-tls"] }
+reqwest = { version = "0.11.18", default-features = false, features=["cookies", "json", "gzip", "native-tls", "native-tls-alpn"] }
 rpassword = "^7.2.0"
 rusqlite = "^0.28.0"
 
@@ -133,10 +134,6 @@ smolset = "^1.3.1"
 sshkeys = "^0.3.1"
 syn = { version = "2.0.23", features = ["full"] }
 testkit-macros = { path = "./server/testkit-macros" }
-tide = "^0.16.0"
-# Including brotli *very* slow, so don't do that. Including the "default" feature pulls a mime-type list from the internet on build, which isn't used.
-tide-compress = { version="0.10.6", default-features = false, features = [ "gzip", "regex-check" ] }
-tide-openssl = "^0.1.1"
 time = { version = "^0.3.21", features = ["formatting", "local-offset"] }
 
 tikv-jemallocator = "0.5"
@@ -182,12 +179,5 @@ yew-router = "^0.17.0"
 zxcvbn = "^2.2.2"
 
 nonempty = "0.8.1"
-
-# enshrinken the WASMs
-[profile.release.package.kanidmd_web_ui]
-# optimization over all codebase ( better optimization, slower build )
-codegen-units = 1
-# optimization for size ( more aggressive )
-opt-level = 'z'
 # link time optimization using using whole-program analysis
 # lto = true

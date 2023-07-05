@@ -7,13 +7,18 @@ CONTAINER_BUILD_ARGS ?=
 MARKDOWN_FORMAT_ARGS ?= --options-line-width=100
 CONTAINER_TOOL ?= docker
 BUILDKIT_PROGRESS ?= plain
-
+TESTS ?=
 BOOK_VERSION ?= master
 
 .DEFAULT: help
 .PHONY: help
 help:
 	@grep -E -h '\s##\s' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: run
+run: ## Run the test/dev server
+run:
+	cd server/daemon && ./run_insecure_dev_server.sh
 
 .PHONY: buildx/kanidmd
 buildx/kanidmd: ## Build multiarch kanidm server images and push to docker hub
@@ -259,3 +264,27 @@ webui: ## Build the WASM web frontend
 .PHONY: webui/test
 webui/test: ## Run wasm-pack test
 	cd server/web_ui && wasm-pack test --headless --chrome
+
+.PHONY: rust/coverage
+coverage/test: ## Run coverage tests
+coverage/test:
+	LLVM_PROFILE_FILE="$(PWD)/target/profile/coverage-%p-%m.profraw" RUSTFLAGS="-C instrument-coverage" cargo test $(TESTS)
+
+.PHONY: coverage/grcov
+coverage/grcov: ## Run grcov
+coverage/grcov:
+	rm -rf ./target/coverage/html
+	grcov . --binary-path ./target/debug/deps/ \
+		-s . \
+		-t html \
+		--branch \
+		--ignore-not-existing \
+		--ignore '../*' \
+		--ignore "/*" \
+		--ignore "target/*" \
+		-o target/coverage/html
+
+.PHONY: coverage
+coverage: ## Run all the coverage tests
+coverage: coverage/test coverage/grcov
+	echo "Coverage report is in ./target/coverage/html/index.html"

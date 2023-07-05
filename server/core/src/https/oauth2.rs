@@ -1,194 +1,184 @@
+use super::middleware::KOpId;
+use super::v1::{json_rest_event_get, json_rest_event_post};
+use super::{to_axum_response, ServerState};
+use axum::extract::{Path, Query, State};
+use axum::middleware::from_fn;
+use axum::response::{IntoResponse, Response};
+use axum::routing::{get, post};
+use axum::{Extension, Form, Json, Router};
+use http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, AUTHORIZATION, LOCATION};
+use http::{HeaderMap, HeaderValue, StatusCode};
+use hyper::Body;
 use kanidm_proto::oauth2::AuthorisationResponse;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess,
     AuthoriseResponse, ErrorResponse, Oauth2Error, TokenRevokeRequest,
 };
+use kanidmd_lib::prelude::f_eq;
 use kanidmd_lib::prelude::*;
+use kanidmd_lib::value::PartialValue;
 use serde::{Deserialize, Serialize};
-
-use super::routemaps::{RouteMap, RouteMaps};
-use super::v1::{json_rest_event_get, json_rest_event_post};
-use super::{to_tide_response, AppState, RequestExtensions};
 
 // == Oauth2 Configuration Endpoints ==
 
-pub async fn oauth2_get(req: tide::Request<AppState>) -> tide::Result {
+/// List all the OAuth2 Resource Servers
+pub async fn oauth2_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
     let filter = filter_all!(f_eq(
         "class",
         PartialValue::new_class("oauth2_resource_server")
     ));
-    json_rest_event_get(req, filter, None).await
+    json_rest_event_get(state, None, filter, kopid).await
 }
 
-pub async fn oauth2_basic_post(req: tide::Request<AppState>) -> tide::Result {
+pub async fn oauth2_basic_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Json(obj): Json<ProtoEntry>,
+) -> impl IntoResponse {
     let classes = vec![
         "oauth2_resource_server".to_string(),
         "oauth2_resource_server_basic".to_string(),
         "object".to_string(),
     ];
-    json_rest_event_post(req, classes).await
+    json_rest_event_post(state, classes, obj, kopid).await
 }
 
-fn oauth2_id(id: &str) -> Filter<FilterInvalid> {
+fn oauth2_id(rs_name: &str) -> Filter<FilterInvalid> {
     filter_all!(f_and!([
         f_eq("class", PartialValue::new_class("oauth2_resource_server")),
-        f_eq("oauth2_rs_name", PartialValue::new_iname(id))
+        f_eq("oauth2_rs_name", PartialValue::new_iname(rs_name))
     ]))
 }
 
-pub async fn oauth2_id_get(req: tide::Request<AppState>) -> tide::Result {
-    // Get a specific config
-    let uat = req.get_current_uat();
-    let id = req.get_url_param("rs_name")?;
+pub async fn oauth2_id_get(
+    State(state): State<ServerState>,
+    Path(rs_name): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
 
-    let filter = oauth2_id(&id);
+    let filter = oauth2_id(&rs_name);
 
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
+    let res = state
         .qe_r_ref
-        .handle_internalsearch(uat, filter, None, eventid)
+        .handle_internalsearch(kopid.uat, filter, None, kopid.eventid)
         .await
         .map(|mut r| r.pop());
-    to_tide_response(res, hvalue)
+    to_axum_response(res)
 }
 
-pub async fn oauth2_id_get_basic_secret(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-
-    let id = req.get_url_param("rs_name")?;
-    let filter = oauth2_id(&id);
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
+#[instrument(level = "info", skip(state))]
+pub async fn oauth2_id_get_basic_secret(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(rs_name): Path<String>,
+) -> impl IntoResponse {
+    let filter = oauth2_id(&rs_name);
+    let res = state
         .qe_r_ref
-        .handle_oauth2_basic_secret_read(uat, filter, eventid)
+        .handle_oauth2_basic_secret_read(kopid.uat, filter, kopid.eventid)
         .await;
-
-    to_tide_response(res, hvalue)
+    to_axum_response(res)
 }
 
-pub async fn oauth2_id_patch(mut req: tide::Request<AppState>) -> tide::Result {
-    // Update a value / attrs
-    let uat = req.get_current_uat();
-    let id = req.get_url_param("rs_name")?;
+pub async fn oauth2_id_patch(
+    State(state): State<ServerState>,
+    Path(rs_name): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    Json(obj): Json<ProtoEntry>,
+) -> impl IntoResponse {
+    let filter = oauth2_id(&rs_name);
 
-    let obj: ProtoEntry = req.body_json().await?;
-
-    let filter = oauth2_id(&id);
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
+    let res = state
         .qe_w_ref
-        .handle_internalpatch(uat, filter, obj, eventid)
+        .handle_internalpatch(kopid.uat, filter, obj, kopid.eventid)
         .await;
-    to_tide_response(res, hvalue)
+    to_axum_response(res)
 }
 
-pub async fn oauth2_id_scopemap_post(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
-    let group = req.get_url_param("group")?;
-
-    let scopes: Vec<String> = req.body_json().await?;
-
-    let filter = oauth2_id(&id);
-
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
+pub async fn oauth2_id_scopemap_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path((rs_name, group)): Path<(String, String)>,
+    Json(scopes): Json<Vec<String>>,
+) -> impl IntoResponse {
+    let filter = oauth2_id(&rs_name);
+    let res = state
         .qe_w_ref
-        .handle_oauth2_scopemap_update(uat, group, scopes, filter, eventid)
+        .handle_oauth2_scopemap_update(kopid.uat, group, scopes, filter, kopid.eventid)
         .await;
-    to_tide_response(res, hvalue)
+    to_axum_response(res)
 }
 
-pub async fn oauth2_id_scopemap_delete(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
-    let group = req.get_url_param("group")?;
-
-    let filter = oauth2_id(&id);
-
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
+pub async fn oauth2_id_scopemap_delete(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path((rs_name, group)): Path<(String, String)>,
+) -> impl IntoResponse {
+    let filter = oauth2_id(&rs_name);
+    let res = state
         .qe_w_ref
-        .handle_oauth2_scopemap_delete(uat, group, filter, eventid)
+        .handle_oauth2_scopemap_delete(kopid.uat, group, filter, kopid.eventid)
         .await;
-    to_tide_response(res, hvalue)
+    to_axum_response(res)
 }
 
-pub async fn oauth2_id_sup_scopemap_post(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
-    let group = req.get_url_param("group")?;
-
-    let scopes: Vec<String> = req.body_json().await?;
-
-    let filter = oauth2_id(&id);
-
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
+pub async fn oauth2_id_sup_scopemap_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path((rs_name, group)): Path<(String, String)>,
+    Json(scopes): Json<Vec<String>>,
+) -> impl IntoResponse {
+    let filter = oauth2_id(&rs_name);
+    let res = state
         .qe_w_ref
-        .handle_oauth2_sup_scopemap_update(uat, group, scopes, filter, eventid)
+        .handle_oauth2_sup_scopemap_update(kopid.uat, group, scopes, filter, kopid.eventid)
         .await;
-    to_tide_response(res, hvalue)
+    to_axum_response(res)
 }
 
-pub async fn oauth2_id_sup_scopemap_delete(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
-    let group = req.get_url_param("group")?;
-
-    let filter = oauth2_id(&id);
-
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
+pub async fn oauth2_id_sup_scopemap_delete(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path((rs_name, group)): Path<(String, String)>,
+) -> impl IntoResponse {
+    let filter = oauth2_id(&rs_name);
+    let res = state
         .qe_w_ref
-        .handle_oauth2_sup_scopemap_delete(uat, group, filter, eventid)
+        .handle_oauth2_sup_scopemap_delete(kopid.uat, group, filter, kopid.eventid)
         .await;
-    to_tide_response(res, hvalue)
+    to_axum_response(res)
 }
 
-pub async fn oauth2_id_delete(req: tide::Request<AppState>) -> tide::Result {
-    // Delete this
-    let uat = req.get_current_uat();
-    let id = req.get_url_param("rs_name")?;
-
-    let filter = oauth2_id(&id);
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
+pub async fn oauth2_id_delete(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(rs_name): Path<String>,
+) -> impl IntoResponse {
+    let filter = oauth2_id(&rs_name);
+    let res = state
         .qe_w_ref
-        .handle_internaldelete(uat, filter, eventid)
+        .handle_internaldelete(kopid.uat, filter, kopid.eventid)
         .await;
-    to_tide_response(res, hvalue)
+    to_axum_response(res)
 }
 
 // == OAUTH2 PROTOCOL FLOW HANDLERS ==
-
+//
 // oauth2 (partial)
 // https://tools.ietf.org/html/rfc6749
 // oauth2 pkce
 // https://tools.ietf.org/html/rfc7636
-
+//
 // TODO
 // oauth2 token introspection
 // https://tools.ietf.org/html/rfc7662
 // oauth2 bearer token
 // https://tools.ietf.org/html/rfc6750
-
+//
 // From https://datatracker.ietf.org/doc/html/rfc6749#section-4.1
 //
 //       +----------+
@@ -237,45 +227,40 @@ pub async fn oauth2_id_delete(req: tide::Request<AppState>) -> tide::Result {
 //  valid Kanidm instance in the topology can handle these request.
 //
 
-pub async fn oauth2_authorise_post(mut req: tide::Request<AppState>) -> tide::Result {
-    let auth_req: AuthorisationRequest = req.body_json().await?;
-    oauth2_authorise(req, auth_req).await.map(|mut res| {
-        if res.status() == 302 {
-            // in post, we need the redirect not to be issued, so we mask 302 to 200
-            res.set_status(200);
-        }
-        res
-    })
+
+
+pub async fn oauth2_authorise_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Json(auth_req): Json<AuthorisationRequest>,
+) -> impl IntoResponse {
+    let mut res = oauth2_authorise(state, auth_req, kopid)
+        .await
+        .into_response();
+    if res.status() == StatusCode::FOUND {
+        // in post, we need the redirect not to be issued, so we mask 302 to 200
+        *res.status_mut() = StatusCode::OK;
+    }
+    res
 }
 
-pub async fn oauth2_authorise_get(req: tide::Request<AppState>) -> tide::Result {
+pub async fn oauth2_authorise_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Query(auth_req): Query<AuthorisationRequest>,
+) -> impl IntoResponse {
     // Start the oauth2 authorisation flow to present to the user.
-    debug!("Request Query - {:?}", req.url().query());
-    // Get the authorisation request.
-    let auth_req: AuthorisationRequest = req.query().map_err(|e| {
-        error!("{:?}", e);
-        tide::Error::from_str(
-            tide::StatusCode::BadRequest,
-            "Invalid Oauth2 AuthorisationRequest",
-        )
-    })?;
-
-    oauth2_authorise(req, auth_req).await
+    oauth2_authorise(state, auth_req, kopid).await
 }
 
 async fn oauth2_authorise(
-    req: tide::Request<AppState>,
+    state: ServerState,
     auth_req: AuthorisationRequest,
-) -> tide::Result {
-    let uat = req.get_current_uat();
-    let (eventid, hvalue) = req.new_eventid();
-
-    // let mut redir_url = auth_req.redirect_uri.clone();
-
-    let res = req
-        .state()
+    kopid: KOpId,
+) -> impl IntoResponse {
+    let res: Result<AuthoriseResponse, Oauth2Error> = state
         .qe_r_ref
-        .handle_oauth2_authorise(uat, auth_req, eventid)
+        .handle_oauth2_authorise(kopid.uat.clone(), auth_req, kopid.eventid)
         .await;
 
     match res {
@@ -287,18 +272,20 @@ async fn oauth2_authorise(
         }) => {
             // Render a redirect to the consent page for the user to interact with
             // to authorise this session-id
-            let mut res = tide::Response::new(200);
             // This is json so later we can expand it with better detail.
-            tide::Body::from_json(&AuthorisationResponse::ConsentRequested {
+            #[allow(clippy::unwrap_used)]
+            let body = serde_json::to_string(&AuthorisationResponse::ConsentRequested {
                 client_name,
                 scopes,
                 pii_scopes,
                 consent_token,
             })
-            .map(|b| {
-                res.set_body(b);
-                res
-            })
+            .unwrap();
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::OK)
+                .body(body.into())
+                .unwrap()
         }
         Ok(AuthoriseResponse::Permitted(AuthorisePermitSuccess {
             mut redirect_uri,
@@ -307,36 +294,48 @@ async fn oauth2_authorise(
         })) => {
             // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.11
             // We could consider changing this to 303?
-            let mut res = tide::Response::new(302);
+            #[allow(clippy::unwrap_used)]
+            let body =
+                Body::from(serde_json::to_string(&AuthorisationResponse::Permitted).unwrap());
 
             redirect_uri
                 .query_pairs_mut()
                 .clear()
                 .append_pair("state", &state)
                 .append_pair("code", &code);
-            res.insert_header("Location", redirect_uri.as_str());
-            // I think the client server needs this
-            res.insert_header(
-                "Access-Control-Allow-Origin",
-                redirect_uri.origin().ascii_serialization(),
-            );
-            tide::Body::from_json(&AuthorisationResponse::Permitted).map(|b| {
-                res.set_body(b);
-                res
-            })
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::FOUND)
+                .header(
+                    LOCATION,
+                    HeaderValue::from_str(redirect_uri.as_str()).unwrap(),
+                )
+                // I think the client server needs this
+                .header(
+                    ACCESS_CONTROL_ALLOW_ORIGIN,
+                    HeaderValue::from_str(&redirect_uri.origin().ascii_serialization()).unwrap(),
+                )
+                .body(body)
+                .unwrap()
         }
         Err(Oauth2Error::AuthenticationRequired) => {
             // This will trigger our ui to auth and retry.
-            let mut res = tide::Response::new(tide::StatusCode::Unauthorized);
-            res.insert_header("WWW-Authenticate", "Bearer");
-            res.insert_header("Access-Control-Allow-Origin", "*");
-            Ok(res)
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::UNAUTHORIZED)
+                .header("WWW-Authenticate", HeaderValue::from_str("Bearer").unwrap())
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::empty())
+                .unwrap()
         }
         Err(Oauth2Error::AccessDenied) => {
             // If scopes are not available for this account.
-            let mut res = tide::Response::new(tide::StatusCode::Forbidden);
-            res.insert_header("Access-Control-Allow-Origin", "*");
-            Ok(res)
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::FORBIDDEN)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::empty())
+                .unwrap()
         }
         /*
         RFC - If the request fails due to a missing, invalid, or mismatching
@@ -351,67 +350,59 @@ async fn oauth2_authorise(
         Err(e) => {
             admin_error!(
                 "Unable to authorise - Error ID: {} error: {}",
-                &hvalue,
+                &kopid.eventid_value(),
                 &e.to_string()
             );
-            let mut res = tide::Response::new(tide::StatusCode::BadRequest);
-            res.insert_header("Access-Control-Allow-Origin", "*");
-            Ok(res)
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::empty())
+                .unwrap()
         }
     }
-    .map(|mut res| {
-        res.insert_header("X-KANIDM-OPID", hvalue);
-        res
-    })
 }
 
-pub async fn oauth2_authorise_permit_post(mut req: tide::Request<AppState>) -> tide::Result {
-    let consent_req: String = req.body_json().await?;
-    oauth2_authorise_permit(req, consent_req)
+pub async fn oauth2_authorise_permit_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Json(consent_req): Json<String>,
+) -> impl IntoResponse {
+    let mut res = oauth2_authorise_permit(state, consent_req, kopid)
         .await
-        .map(|mut res| {
-            if res.status() == 302 {
-                // in post, we need the redirect not to be issued, so we mask 302 to 200
-                res.set_status(200);
-            }
-            res
-        })
+        .into_response();
+    if res.status() == StatusCode::FOUND {
+        // in post, we need the redirect not to be issued, so we mask 302 to 200
+        *res.status_mut() = StatusCode::OK;
+    }
+    res
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct ConsentRequestData {
+pub struct ConsentRequestData {
     token: String,
 }
 
-pub async fn oauth2_authorise_permit_get(req: tide::Request<AppState>) -> tide::Result {
+pub async fn oauth2_authorise_permit_get(
+    State(state): State<ServerState>,
+    Query(token): Query<ConsentRequestData>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
     // When this is called, this indicates consent to proceed from the user.
-    debug!("Request Query - {:?}", req.url().query());
-
-    let consent_req: ConsentRequestData = req.query().map_err(|e| {
-        error!("{:?}", e);
-        tide::Error::from_str(
-            tide::StatusCode::BadRequest,
-            "Invalid Oauth2 Consent Permit",
-        )
-    })?;
-
-    oauth2_authorise_permit(req, consent_req.token).await
+    oauth2_authorise_permit(state, token.token, kopid).await
 }
 
 async fn oauth2_authorise_permit(
-    req: tide::Request<AppState>,
+    state: ServerState,
     consent_req: String,
-) -> tide::Result {
-    let uat = req.get_current_uat();
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
+    kopid: KOpId,
+) -> impl IntoResponse {
+    let res = state
         .qe_w_ref
-        .handle_oauth2_authorise_permit(uat, consent_req, eventid)
+        .handle_oauth2_authorise_permit(kopid.uat, consent_req, kopid.eventid)
         .await;
 
-    let mut res = match res {
+    match res {
         Ok(AuthorisePermitSuccess {
             mut redirect_uri,
             state,
@@ -419,19 +410,21 @@ async fn oauth2_authorise_permit(
         }) => {
             // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.11
             // We could consider changing this to 303?
-            let mut res = tide::Response::new(302);
             redirect_uri
                 .query_pairs_mut()
                 .clear()
                 .append_pair("state", &state)
                 .append_pair("code", &code);
-            res.insert_header("Location", redirect_uri.as_str());
-            // I think the client server needs this
-            res.insert_header(
-                "Access-Control-Allow-Origin",
-                redirect_uri.origin().ascii_serialization(),
-            );
-            res
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::FOUND)
+                .header("Location", redirect_uri.as_str())
+                .header(
+                    "Access-Control-Allow-Origin",
+                    redirect_uri.origin().ascii_serialization(),
+                )
+                .body(Body::empty())
+                .unwrap()
         }
         Err(_e) => {
             // If an error happens in our consent flow, I think
@@ -442,125 +435,138 @@ async fn oauth2_authorise_permit(
             // Turns out this instinct was correct:
             //  https://www.proofpoint.com/us/blog/cloud-security/microsoft-and-github-oauth-implementation-vulnerabilities-lead-redirection
             // Possible to use this with a malicious client configuration to phish / spam.
-            let mut res = tide::Response::new(tide::StatusCode::InternalServerError);
-            res.insert_header("Access-Control-Allow-Origin", "*");
-            res
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::empty())
+                .unwrap()
         }
-    };
-    res.insert_header("X-KANIDM-OPID", hvalue);
-    Ok(res)
+    }
 }
 
 // When this is called, this indicates the user has REJECTED the intent to proceed.
-pub async fn oauth2_authorise_reject_post(mut req: tide::Request<AppState>) -> tide::Result {
-    let consent_req: String = req.body_json().await?;
-    oauth2_authorise_reject(req, consent_req).await
+pub async fn oauth2_authorise_reject_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Form(consent_req): Form<ConsentRequestData>,
+) -> impl IntoResponse {
+    oauth2_authorise_reject(state, consent_req.token, kopid).await
 }
 
-pub async fn oauth2_authorise_reject_get(req: tide::Request<AppState>) -> tide::Result {
-    debug!("Request Query - {:?}", req.url().query());
-
-    let consent_req: ConsentRequestData = req.query().map_err(|e| {
-        error!("{:?}", e);
-        tide::Error::from_str(
-            tide::StatusCode::BadRequest,
-            "Invalid Oauth2 Consent Reject",
-        )
-    })?;
-
-    oauth2_authorise_reject(req, consent_req.token).await
+pub async fn oauth2_authorise_reject_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Query(consent_req): Query<ConsentRequestData>,
+) -> impl IntoResponse {
+    oauth2_authorise_reject(state, consent_req.token, kopid).await
 }
 
-// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2.1
-// If the user willingly rejects the authorisation, we must redirect
-// with an error.
+// // https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2.1
+// // If the user willingly rejects the authorisation, we must redirect
+// // with an error.
 async fn oauth2_authorise_reject(
-    req: tide::Request<AppState>,
+    state: ServerState,
     consent_req: String,
-) -> tide::Result {
+    kopid: KOpId,
+) -> impl IntoResponse {
     // Need to go back to the redir_uri
     // For this, we'll need to lookup where to go.
-    let uat = req.get_current_uat();
-    let (eventid, hvalue) = req.new_eventid();
 
-    let res = req
-        .state()
+    let res = state
         .qe_r_ref
-        .handle_oauth2_authorise_reject(uat, consent_req, eventid)
+        .handle_oauth2_authorise_reject(kopid.uat, consent_req, kopid.eventid)
         .await;
 
-    let mut res = match res {
+    match res {
         Ok(mut redirect_uri) => {
-            let mut res = tide::Response::new(302);
             redirect_uri
                 .query_pairs_mut()
                 .clear()
                 .append_pair("error", "access_denied")
                 .append_pair("error_description", "authorisation rejected");
-            res.insert_header("Location", redirect_uri.as_str());
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .header(LOCATION, redirect_uri.as_str())
+                .header(
+                    ACCESS_CONTROL_ALLOW_ORIGIN,
+                    redirect_uri.origin().ascii_serialization(),
+                )
+                .body(Body::empty())
+                .unwrap()
             // I think the client server needs this
-            res.insert_header(
-                "Access-Control-Allow-Origin",
-                redirect_uri.origin().ascii_serialization(),
-            );
-            res
         }
         Err(_e) => {
             // If an error happens in our reject flow, I think
             // that we should NOT redirect to the calling application
             // and we need to handle that locally somehow.
             // This needs to be better!
-            let mut res = tide::Response::new(500);
-            res.insert_header("Access-Control-Allow-Origin", "*");
-            res
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::empty())
+                .unwrap()
         }
-    };
-    res.insert_header("X-KANIDM-OPID", hvalue);
-    Ok(res)
+    }
 }
 
-pub async fn oauth2_token_post(mut req: tide::Request<AppState>) -> tide::Result {
+pub async fn oauth2_token_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    headers: HeaderMap, // TOOD: make this a typed basic auth header
+    Form(tok_req): Form<AccessTokenRequest>,
+) -> impl IntoResponse {
     // This is called directly by the resource server, where we then issue
     // the token to the caller.
-    let (eventid, hvalue) = req.new_eventid();
 
     // Get the authz header (if present). In the future depending on the
     // type of exchanges we support, this could become an Option type.
-    let client_authz = req
-        .header("authorization")
-        .and_then(|hv| hv.get(0))
-        .and_then(|h| h.as_str().strip_prefix("Basic "))
-        .map(str::to_string);
-
-    // Get the accessToken Request
-    let tok_req: AccessTokenRequest = req.body_form().await.map_err(|e| {
-        error!("atr parse error - {:?}", e);
-        tide::Error::from_str(
-            tide::StatusCode::BadRequest,
-            "Invalid Oauth2 AccessTokenRequest",
-        )
-    })?;
+    let client_authz = match headers
+        .get("authorization")
+        .and_then(|hv| hv.to_str().ok())
+        .and_then(|h| h.split(' ').last())
+        .map(str::to_string)
+    {
+        Some(val) => val,
+        None => {
+            error!("Basic Authentication Not Provided");
+            #[allow(clippy::unwrap_used)]
+            return Response::builder()
+                .status(StatusCode::UNAUTHORIZED)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::from("Invalid Basic Authorisation"))
+                .unwrap();
+        }
+    };
 
     // Do we change the method/path we take here based on the type of requested
     // grant? Should we cease the delayed/async session update here and just opt
     // for a wr txn?
 
-    let res = req
-        .state()
+    let res = state
         .qe_w_ref
-        .handle_oauth2_token_exchange(client_authz, tok_req, eventid)
+        .handle_oauth2_token_exchange(Some(client_authz), tok_req, kopid.eventid)
         .await;
 
     match res {
-        Ok(atr) => {
-            let mut res = tide::Response::new(200);
-            tide::Body::from_json(&atr).map(|b| {
-                res.set_body(b);
-                res
-            })
+        Ok(atr) =>
+        {
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::from(serde_json::to_string(&atr).unwrap()))
+                .unwrap()
         }
-        Err(Oauth2Error::AuthenticationRequired) => {
-            Ok(tide::Response::new(tide::StatusCode::Unauthorized))
+        Err(Oauth2Error::AuthenticationRequired) =>
+        {
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::UNAUTHORIZED)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::empty())
+                .unwrap()
         }
         Err(e) => {
             // https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
@@ -570,147 +576,173 @@ pub async fn oauth2_token_post(mut req: tide::Request<AppState>) -> tide::Result
                 error_uri: None,
             };
 
-            let mut res = tide::Response::new(400);
-            tide::Body::from_json(&err).map(|b| {
-                res.set_body(b);
-                res
-            })
+            let body = match serde_json::to_string(&err) {
+                Ok(val) => val,
+                Err(e) => {
+                    admin_warn!("Failed to serialize error response: original_error=\"{:?}\" serialization_error=\"{:?}\"", err, e);
+                    format!("{:?}", err)
+                }
+            };
+
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::from(body))
+                .unwrap()
         }
     }
-    .map(|mut res| {
-        res.insert_header("X-KANIDM-OPID", hvalue);
-        res.insert_header("Access-Control-Allow-Origin", "*");
-        res
-    })
 }
 
-// For future openid integration
-pub async fn oauth2_openid_discovery_get(req: tide::Request<AppState>) -> tide::Result {
-    let (eventid, hvalue) = req.new_eventid();
-    let client_id = req.get_url_param("client_id")?;
+// // For future openid integration
+pub async fn oauth2_openid_discovery_get(
+    State(state): State<ServerState>,
+    Path(client_id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    // let client_id = req.get_url_param("client_id")?;
 
-    let res = req
-        .state()
+    let res = state
         .qe_r_ref
-        .handle_oauth2_openid_discovery(client_id, eventid)
+        .handle_oauth2_openid_discovery(client_id, kopid.eventid)
         .await;
-
-    to_tide_response(res, hvalue)
+    to_axum_response(res)
 }
 
-pub async fn oauth2_openid_userinfo_get(req: tide::Request<AppState>) -> tide::Result {
-    let (eventid, hvalue) = req.new_eventid();
-    let client_id = req.get_url_param("client_id")?;
+pub async fn oauth2_openid_userinfo_get(
+    State(state): State<ServerState>,
+    Path(client_id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> Response<Body> {
+    // The token we want to inspect is in the authorisation header.
 
-    // The token we want to inspect is in the authorisatioz header.
-    let client_authz = req
-        .header("authorization")
-        .and_then(|hv| hv.get(0))
-        .and_then(|h| h.as_str().strip_prefix("Bearer "))
-        .map(str::to_string)
-        .ok_or_else(|| {
+    let client_authz = match kopid.uat {
+        Some(val) => val,
+        None => {
             error!("Bearer Authentication Not Provided");
-            tide::Error::from_str(
-                tide::StatusCode::Unauthorized,
-                "Invalid Bearer Authorisation",
-            )
-        })?;
+            #[allow(clippy::unwrap_used)]
+            return Response::builder()
+                .status(StatusCode::UNAUTHORIZED)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::from("Invalid Bearer Authorisation"))
+                .unwrap();
+        }
+    };
 
-    let res = req
-        .state()
+    let res = state
         .qe_r_ref
-        .handle_oauth2_openid_userinfo(client_id, client_authz, eventid)
+        .handle_oauth2_openid_userinfo(client_id, client_authz, kopid.eventid)
         .await;
 
     match res {
         Ok(uir) => {
-            let mut res = tide::Response::new(200);
-            tide::Body::from_json(&uir).map(|b| {
-                res.set_body(b);
-                res
-            })
+            #[allow(clippy::unwrap_used)]
+            let body = serde_json::to_string(&uir).unwrap();
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::from(body))
+                .unwrap()
         }
         Err(e) => {
-            // https://datatracker.ietf.org/doc/html/rfc6750#section-6.2
             let err = ErrorResponse {
                 error: e.to_string(),
                 error_description: None,
                 error_uri: None,
             };
-
-            let mut res = tide::Response::new(400);
-            tide::Body::from_json(&err).map(|b| {
-                res.set_body(b);
-                res
-            })
+            let body = match serde_json::to_string(&err) {
+                Ok(val) => val,
+                Err(e) => {
+                    format!("{:?}", e)
+                }
+            };
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::from(body))
+                .unwrap()
+            // https://datatracker.ietf.org/doc/html/rfc6750#section-6.2
         }
     }
-    .map(|mut res| {
-        res.insert_header("X-KANIDM-OPID", hvalue);
-        res.insert_header("Access-Control-Allow-Origin", "*");
-        res
-    })
 }
 
-pub async fn oauth2_openid_publickey_get(req: tide::Request<AppState>) -> tide::Result {
-    let (eventid, hvalue) = req.new_eventid();
-    let client_id = req.get_url_param("client_id")?;
-
-    let res = req
-        .state()
+pub async fn oauth2_openid_publickey_get(
+    State(state): State<ServerState>,
+    Path(client_id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let res = state
         .qe_r_ref
-        .handle_oauth2_openid_publickey(client_id, eventid)
+        .handle_oauth2_openid_publickey(client_id, kopid.eventid)
         .await;
-
-    to_tide_response(res, hvalue)
+    to_axum_response(res)
 }
 
-pub async fn oauth2_token_introspect_post(mut req: tide::Request<AppState>) -> tide::Result {
-    // This is called directly by the resource server, where we then issue
-    // information about this token to the caller.
-    let (eventid, hvalue) = req.new_eventid();
-
-    let client_authz = req
-        .header("authorization")
-        .and_then(|hv| hv.get(0))
-        .and_then(|h| h.as_str().strip_prefix("Basic "))
-        .map(str::to_string)
-        .ok_or_else(|| {
-            error!("Basic Authentication Not Provided");
-            tide::Error::from_str(
-                tide::StatusCode::Unauthorized,
-                "Invalid Basic Authorisation",
-            )
-        })?;
-
-    // Get the introspection request, could we accept json or form? Prob needs content type here.
-    let intr_req: AccessTokenIntrospectRequest = req.body_form().await.map_err(|e| {
-        request_error!("{:?}", e);
-        tide::Error::from_str(
-            tide::StatusCode::BadRequest,
-            "Invalid Oauth2 AccessTokenIntrospectRequest",
-        )
-    })?;
-
+/// This is called directly by the resource server, where we then issue
+/// information about this token to the caller.
+pub async fn oauth2_token_introspect_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    headers: HeaderMap,
+    Form(intr_req): Form<AccessTokenIntrospectRequest>,
+) -> impl IntoResponse {
+    let client_authz = match kopid.uat {
+        Some(val) => val,
+        None => {
+            error!("Bearer Authentication Not Provided, trying basic");
+            match headers.get(AUTHORIZATION) {
+                Some(val) => {
+                    // LOL THIS IS HILARIOUSLY TERRIBLE BUT WE PARSE THE RAW OK
+                    #[allow(clippy::unwrap_used)]
+                    val.to_str()
+                        .unwrap()
+                        .strip_prefix("Basic ")
+                        .unwrap()
+                        .to_string()
+                }
+                None => {
+                    #[allow(clippy::unwrap_used)]
+                    return Response::builder()
+                        .status(StatusCode::UNAUTHORIZED)
+                        .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                        .body(Body::from("Invalid Bearer Authorisation"))
+                        .unwrap();
+                }
+            }
+        }
+    };
     request_trace!("Introspect Request - {:?}", intr_req);
 
-    let res = req
-        .state()
+    let res = state
         .qe_r_ref
-        .handle_oauth2_token_introspect(client_authz, intr_req, eventid)
+        .handle_oauth2_token_introspect(client_authz, intr_req, kopid.eventid)
         .await;
 
     match res {
         Ok(atr) => {
-            let mut res = tide::Response::new(200);
-            tide::Body::from_json(&atr).map(|b| {
-                res.set_body(b);
-                res
-            })
+            let body = match serde_json::to_string(&atr) {
+                Ok(val) => val,
+                Err(e) => {
+                    admin_warn!("Failed to serialize introspect response: original_data=\"{:?}\" serialization_error=\"{:?}\"", atr, e);
+                    format!("{:?}", atr)
+                }
+            };
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::from(body))
+                .unwrap()
         }
         Err(Oauth2Error::AuthenticationRequired) => {
             // This will trigger our ui to auth and retry.
-            Ok(tide::Response::new(tide::StatusCode::Unauthorized))
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .status(StatusCode::UNAUTHORIZED)
+                .body(Body::empty())
+                .unwrap()
         }
         Err(e) => {
             // https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
@@ -720,60 +752,68 @@ pub async fn oauth2_token_introspect_post(mut req: tide::Request<AppState>) -> t
                 error_uri: None,
             };
 
-            let mut res = tide::Response::new(400);
-            tide::Body::from_json(&err).map(|b| {
-                res.set_body(b);
-                res
-            })
+            let body = match serde_json::to_string(&err) {
+                Ok(val) => val,
+                Err(e) => {
+                    format!("{:?}", e)
+                }
+            };
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::from(body))
+                .unwrap()
         }
     }
-    .map(|mut res| {
-        res.insert_header("X-KANIDM-OPID", hvalue);
-        res.insert_header("Access-Control-Allow-Origin", "*");
-        res
-    })
 }
 
-pub async fn oauth2_token_revoke_post(mut req: tide::Request<AppState>) -> tide::Result {
-    // This is called directly by the resource server, where we then revoke
-    // the token identified by this request.
-    let (eventid, hvalue) = req.new_eventid();
-
-    let client_authz = req
-        .header("authorization")
-        .and_then(|hv| hv.get(0))
-        .and_then(|h| h.as_str().strip_prefix("Basic "))
-        .map(str::to_string)
-        .ok_or_else(|| {
-            error!("Basic Authentication Not Provided");
-            tide::Error::from_str(
-                tide::StatusCode::Unauthorized,
-                "Invalid Basic Authorisation",
-            )
-        })?;
-
-    // Get the introspection request, could we accept json or form? Prob needs content type here.
-    let intr_req: TokenRevokeRequest = req.body_form().await.map_err(|e| {
-        request_error!("{:?}", e);
-        tide::Error::from_str(
-            tide::StatusCode::BadRequest,
-            "Invalid Oauth2 TokenRevokeRequest",
-        )
-    })?;
+/// This is called directly by the resource server, where we then revoke
+/// the token identified by this request.
+pub async fn oauth2_token_revoke_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Form(intr_req): Form<TokenRevokeRequest>,
+) -> impl IntoResponse {
+    // TODO: we should handle the session-based auth bit here I think maybe possibly there's no tests
+    let client_authz = match kopid.uat {
+        Some(val) => val,
+        None =>
+        {
+            #[allow(clippy::unwrap_used)]
+            return Response::builder()
+                .status(StatusCode::UNAUTHORIZED)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::empty())
+                .unwrap()
+        }
+    };
 
     request_trace!("Revoke Request - {:?}", intr_req);
 
-    let res = req
-        .state()
+    let res = state
         .qe_w_ref
-        .handle_oauth2_token_revoke(client_authz, intr_req, eventid)
+        .handle_oauth2_token_revoke(client_authz, intr_req, kopid.eventid)
         .await;
 
     match res {
-        Ok(()) => Ok(tide::Response::new(200)),
+        Ok(()) =>
+        {
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::empty())
+                .unwrap()
+        }
         Err(Oauth2Error::AuthenticationRequired) => {
             // This will trigger our ui to auth and retry.
-            Ok(tide::Response::new(tide::StatusCode::Unauthorized))
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::UNAUTHORIZED)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::empty())
+                .unwrap()
         }
         Err(e) => {
             // https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
@@ -782,76 +822,64 @@ pub async fn oauth2_token_revoke_post(mut req: tide::Request<AppState>) -> tide:
                 error_description: None,
                 error_uri: None,
             };
-
-            let mut res = tide::Response::new(400);
-            tide::Body::from_json(&err).map(|b| {
-                res.set_body(b);
-                res
-            })
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::from(serde_json::to_string(&err).unwrap()))
+                .unwrap()
         }
     }
-    .map(|mut res| {
-        res.insert_header("X-KANIDM-OPID", hvalue);
-        res.insert_header("Access-Control-Allow-Origin", "*");
-        res
-    })
 }
 
-pub fn oauth2_route_setup(appserver: &mut tide::Route<'_, AppState>, routemap: &mut RouteMap) {
-    let mut oauth2_process = appserver.at("/oauth2");
-    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-    oauth2_process
-        .at("/authorise")
-        .mapped_post(routemap, oauth2_authorise_post)
-        .mapped_get(routemap, oauth2_authorise_get);
+pub fn oauth2_route_setup(state: ServerState) -> Router<ServerState> {
+    // this has all the openid-related routes
+    let openid_router = Router::new() // appserver.at("/oauth2/openid");
+        // // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+        // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+        .route(
+            "/:client_id/.well-known/openid-configuration",
+            get(oauth2_openid_discovery_get),
+        )
+        // // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+        // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+        .route("/:client_id/userinfo", get(oauth2_openid_userinfo_get))
+        // // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+        // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+        .route(
+            "/:client_id/public_key.jwk",
+            get(oauth2_openid_publickey_get),
+        )
+        .with_state(state.clone());
 
-    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-    oauth2_process
-        .at("/authorise/permit")
-        .mapped_post(routemap, oauth2_authorise_permit_post)
-        .mapped_get(routemap, oauth2_authorise_permit_get);
-
-    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-    oauth2_process
-        .at("/authorise/reject")
-        .mapped_post(routemap, oauth2_authorise_reject_post)
-        .mapped_get(routemap, oauth2_authorise_reject_get);
-
-    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-    oauth2_process
-        .at("/token")
-        .mapped_post(routemap, oauth2_token_post);
-
-    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-    oauth2_process
-        .at("/token/introspect")
-        .mapped_post(routemap, oauth2_token_introspect_post);
-    oauth2_process
-        .at("/token/revoke")
-        .mapped_post(routemap, oauth2_token_revoke_post);
-
-    let mut openid_process = appserver.at("/oauth2/openid");
-    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-
-    openid_process
-        .at("/:client_id/.well-known/openid-configuration")
-        .mapped_get(routemap, oauth2_openid_discovery_get);
-    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-
-    openid_process
-        .at("/:client_id/userinfo")
-        .mapped_get(routemap, oauth2_openid_userinfo_get);
-    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-
-    openid_process
-        .at("/:client_id/public_key.jwk")
-        .mapped_get(routemap, oauth2_openid_publickey_get);
+    Router::new() //= appserver.at("/oauth2");
+        .route("/", get(oauth2_get))
+        // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+        // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+        .route(
+            "/authorise",
+            post(oauth2_authorise_post).get(oauth2_authorise_get),
+        )
+        // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+        // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+        .route(
+            "/authorise/permit",
+            post(oauth2_authorise_permit_post).get(oauth2_authorise_permit_get),
+        )
+        // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+        // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+        .route(
+            "/authorise/reject",
+            post(oauth2_authorise_reject_post).get(oauth2_authorise_reject_get),
+        )
+        // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+        // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+        .route("/token", post(oauth2_token_post))
+        // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+        // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+        .route("/token/introspect", post(oauth2_token_introspect_post))
+        .route("/token/revoke", post(oauth2_token_revoke_post))
+        .nest("/openid", openid_router)
+        .with_state(state)
+        .layer(from_fn(super::middleware::caching::dont_cache_me))
 }

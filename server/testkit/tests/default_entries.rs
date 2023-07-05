@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use kanidm_client::KanidmClient;
 use kanidm_proto::v1::{Filter, Modify, ModifyList};
 
-use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
+use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER, NOT_ADMIN_TEST_PASSWORD};
 
 static USER_READABLE_ATTRS: [&str; 9] = [
     "name",
@@ -195,13 +195,13 @@ async fn login_account(rsclient: &KanidmClient, id: &str) {
         .unwrap();
 
     rsclient
-        .idm_person_account_primary_credential_set_password(id, "eicieY7ahchaoCh0eeTa")
+        .idm_person_account_primary_credential_set_password(id, NOT_ADMIN_TEST_PASSWORD)
         .await
         .unwrap();
 
     let _ = rsclient.logout();
     let res = rsclient
-        .auth_simple_password(id, "eicieY7ahchaoCh0eeTa")
+        .auth_simple_password(id, NOT_ADMIN_TEST_PASSWORD)
         .await;
 
     // Setup privs
@@ -209,7 +209,7 @@ async fn login_account(rsclient: &KanidmClient, id: &str) {
     assert!(res.is_ok());
 
     let res = rsclient
-        .reauth_simple_password("eicieY7ahchaoCh0eeTa")
+        .reauth_simple_password(NOT_ADMIN_TEST_PASSWORD)
         .await;
     println!("{} priv granted for", id);
     assert!(res.is_ok());
@@ -757,4 +757,125 @@ async fn test_self_write_mail_priv_people(rsclient: KanidmClient) {
     test_write_attrs(&rsclient, "other", &["mail"], true).await;
     login_account_via_admin(&rsclient, "nonperson").await;
     test_write_attrs(&rsclient, "nonperson", &["mail"], false).await;
+}
+
+#[kanidmd_testkit::test]
+async fn test_https_robots_txt(rsclient: KanidmClient) {
+    // We need to do manual reqwests here.
+    let addr = rsclient.get_url();
+
+    let response = match reqwest::get(format!("{}/robots.txt", &addr)).await {
+        Ok(value) => value,
+        Err(error) => {
+            panic!("Failed to query {:?} : {:#?}", addr, error);
+        }
+    };
+    eprintln!("response: {:#?}", response);
+    assert_eq!(response.status(), 200);
+
+    eprintln!(
+        "csp headers: {:#?}",
+        response.headers().get("content-security-policy")
+    );
+    assert_ne!(response.headers().get("content-security-policy"), None);
+    eprintln!("{}", response.text().await.unwrap());
+}
+
+// TODO: #1787 when the routemap comes back
+// #[kanidmd_testkit::test]
+// async fn test_https_routemap(rsclient: KanidmClient) {
+//     // We need to do manual reqwests here.
+//     let addr = rsclient.get_url();
+
+//     let response = match reqwest::get(format!("{}/v1/routemap", &addr)).await {
+//         Ok(value) => value,
+//         Err(error) => {
+//             panic!("Failed to query {:?} : {:#?}", addr, error);
+//         }
+//     };
+//     eprintln!("response: {:#?}", response);
+//     assert_eq!(response.status(), 200);
+
+//     let body = response.text().await.unwrap();
+//     eprintln!("{}", body);
+//     assert!(body.contains("/scim/v1/Sync"));
+//     assert!(body.contains(r#""path": "/v1/routemap""#));
+// }
+
+/// This literally tests that the thing exists and responds in a way we expect, probably worth testing it better...
+#[kanidmd_testkit::test]
+async fn test_v1_raw_delete(rsclient: KanidmClient) {
+    // We need to do manual reqwests here.
+    let addr = rsclient.get_url();
+    let client = reqwest::ClientBuilder::new()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
+
+    let post_body = serde_json::json!({"filter": "self"}).to_string();
+
+    let response = match client
+        .post(format!("{}/v1/raw/delete", &addr))
+        .header("Content-Type", "application/json")
+        .body(post_body)
+        .send()
+        .await
+    {
+        Ok(value) => value,
+        Err(error) => {
+            panic!("Failed to query {:?} : {:#?}", addr, error);
+        }
+    };
+    eprintln!("response: {:#?}", response);
+    assert_eq!(response.status(), 401);
+
+    let body = response.text().await.unwrap();
+    eprintln!("{}", body);
+}
+
+/// This literally tests that the thing exists and responds in a way we expect, probably worth testing it better...
+#[kanidmd_testkit::test]
+async fn test_v1_raw_logout(rsclient: KanidmClient) {
+    // We need to do manual reqwests here.
+    let addr = rsclient.get_url();
+    let client = reqwest::ClientBuilder::new()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
+
+    let response = match client.get(format!("{}/v1/logout", &addr)).send().await {
+        Ok(value) => value,
+        Err(error) => {
+            panic!("Failed to query {:?} : {:#?}", addr, error);
+        }
+    };
+    eprintln!("response: {:#?}", response);
+    assert_eq!(response.status(), 401);
+
+    let body = response.text().await.unwrap();
+    eprintln!("{}", body);
+}
+
+/// This literally tests that the thing exists and responds in a way we expect, probably worth testing it better...
+#[kanidmd_testkit::test]
+async fn test_status_endpoint(rsclient: KanidmClient) {
+    // We need to do manual reqwests here.
+    let addr = rsclient.get_url();
+    let client = reqwest::ClientBuilder::new()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
+
+    let response = match client.get(format!("{}/status", &addr)).send().await {
+        Ok(value) => value,
+        Err(error) => {
+            panic!("Failed to query {:?} : {:#?}", addr, error);
+        }
+    };
+    eprintln!("response: {:#?}", response);
+    assert_eq!(response.status(), 200);
+
+    let body = response.text().await.unwrap();
+    eprintln!("{}", body);
+    assert!(body.contains("true") == true);
 }

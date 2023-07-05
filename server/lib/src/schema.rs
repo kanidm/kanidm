@@ -1923,7 +1923,7 @@ impl Schema {
         }
     }
 
-    #[cfg(any(test))]
+    #[cfg(test)]
     pub(crate) fn write_blocking(&self) -> SchemaWriteTransaction<'_> {
         self.write()
     }

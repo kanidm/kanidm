@@ -28,7 +28,7 @@ extern crate kanidmd_lib;
 pub mod actors;
 pub mod config;
 mod crypto;
-pub mod https;
+mod https;
 mod interval;
 mod ldaps;
 
@@ -911,26 +911,27 @@ pub async fn create_server_core(
         admin_info!("this config rocks! 🪨 ");
         None
     } else {
-        // ⚠️  only start the sockets and listeners in non-config-test modes.
-        let h = self::https::create_https_server(
-            config.address,
-            &config.domain,
-            config.tls_config.as_ref(),
-            config.role,
-            config.trust_x_forward_for,
-            &cookie_key,
+        let h: tokio::task::JoinHandle<()> = match https::create_https_server(
+            config.clone(),
+            cookie_key,
             jws_signer,
             status_ref,
             server_write_ref,
             server_read_ref,
             broadcast_tx.subscribe(),
         )
-        .await?;
-
+        .await
+        {
+            Ok(h) => h,
+            Err(e) => {
+                error!("Failed to start HTTPS server -> {:?}", e);
+                return Err(());
+            }
+        };
         if config.role != ServerRole::WriteReplicaNoUI {
-            admin_info!("ready to rock! 🪨 UI available at: {}", config.origin);
+            admin_info!("ready to rock! 🪨  UI available at: {}", config.origin);
         } else {
-            admin_info!("ready to rock! 🪨");
+            admin_info!("ready to rock! 🪨 ");
         }
         Some(h)
     };
