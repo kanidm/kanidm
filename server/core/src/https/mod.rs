@@ -341,6 +341,7 @@ async fn server_loop(
         }
     }
 }
+
 // #[instrument(name = "handle-connection", level = "debug", skip_all)]
 /// This handles an individual connection.
 async fn handle_conn(
@@ -348,22 +349,31 @@ async fn handle_conn(
     stream: AddrStream,
     svc: ResponseFuture<Router, SocketAddr>,
     protocol: Arc<Http>,
-) -> Result<(), hyper::Error> {
-    #[allow(clippy::expect_used)]
-    let mut tls_stream = SslStream::new(
-        #[allow(clippy::expect_used)]
-        // because if this fails well, then we're going to bail!
-        Ssl::new(acceptor.context()).expect("Failed to build SSL session"),
-        stream,
-    )
-    .expect("Failed to build TLS stream");
+) -> Result<(), std::io::Error> {
+    let ssl = Ssl::new(acceptor.context()).map_err(|e| {
+        error!("Failed to create TLS context: {:?}", e);
+        std::io::Error::from(ErrorKind::ConnectionAborted)
+    })?;
+
+    let mut tls_stream = SslStream::new(ssl, stream).map_err(|e| {
+        error!("Failed to create TLS stream: {:?}", e);
+        std::io::Error::from(ErrorKind::ConnectionAborted)
+    })?;
+
     match SslStream::accept(Pin::new(&mut tls_stream)).await {
         Ok(_) => {
-            // because if this fails well, then we're going to bail!
-            #[allow(clippy::expect_used)]
+            let svc = svc.await.map_err(|e| {
+                error!("Failed to build HTTP response: {:?}", e);
+                std::io::Error::from(ErrorKind::Other)
+            })?;
+
             protocol
-                .serve_connection(tls_stream, svc.await.expect("Failed to build response"))
+                .serve_connection(tls_stream, svc)
                 .await
+                .map_err(|e| {
+                    error!("Failed to complete connection: {:?}", e);
+                    std::io::Error::from(ErrorKind::ConnectionAborted)
+                })
         }
         Err(_error) => {
             // trace!("Failed to handle connection: {:?}", error);
@@ -371,11 +381,6 @@ async fn handle_conn(
         }
     }
 }
-
-// /// Silly placeholder response for unimplemented routes
-// pub async fn do_nothing() -> impl IntoResponse {
-//     "Not implemented"
-// }
 
 /// Convert any kind of Result<T, OperationError> into an axum response with a stable type
 /// by JSON-encoding the body.

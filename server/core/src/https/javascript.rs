@@ -18,9 +18,13 @@ pub fn generate_integrity_hash(filename: String) -> Result<String, String> {
                     ));
                 }
             };
-            #[allow(clippy::expect_used)]
             let shasum = openssl::hash::hash(openssl::hash::MessageDigest::sha384(), &filecontents)
-                .expect("Failed to build hash of file");
+                .map_err(|_| {
+                    format!(
+                        "Failed to generate SHA384 hash for WASM at {:?}",
+                        wasm_filepath
+                    )
+                })?;
             Ok(openssl::base64::encode_block(&shasum))
         }
     }
@@ -37,10 +41,6 @@ pub struct JavaScriptFile {
 }
 
 impl JavaScriptFile {
-    /// return the hash for use in CSP headers
-    // pub fn as_csp_hash(self) -> String {
-    //     self.hash
-    // }
     /// returns a `<script>` HTML tag
     pub fn as_tag(&self) -> String {
         let typeattr = match &self.filetype {

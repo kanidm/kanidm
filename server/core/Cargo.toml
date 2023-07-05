@@ -27,7 +27,7 @@ futures-util = { workspace = true }
 http = "0.2.9"
 http-types = { workspace = true }
 hyper = { workspace = true }
-hyper-tls = "0.5.0"
+hyper-tls = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidmd_lib = { workspace = true }
 ldap3_proto = { workspace = true }

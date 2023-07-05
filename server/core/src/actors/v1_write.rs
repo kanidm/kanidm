@@ -639,7 +639,7 @@ impl QueryServerWriteV1 {
 
     #[instrument(
         level = "info",
-        skip(self),
+        skip_all,
         fields(uuid = ?eventid),
     )]
     pub async fn handle_idmcredentialupdateintent(
@@ -673,8 +673,7 @@ impl QueryServerWriteV1 {
             )
             .and_then(|tok| idms_prox_write.commit().map(|_| tok))
             .map_err(|e| {
-                error!(
-                    // admin_error!(
+                admin_error!(
                     err = ?e,
                     "Failed to begin init_credential_update_intent",
                 );

@@ -64,21 +64,21 @@ pub struct ServerConfig {
 }
 
 impl ServerConfig {
-    pub fn new<P: AsRef<Path>>(config_path: P) -> Result<Self, &'static str> {
+    pub fn new<P: AsRef<Path>>(config_path: P) -> Result<Self, std::io::Error> {
         let mut f = File::open(config_path).map_err(|e| {
             eprintln!("Unable to open config file [{:?}] 🥺", e);
-            "you aren't going to read this anyway"
+            e
         })?;
 
         let mut contents = String::new();
         f.read_to_string(&mut contents).map_err(|e| {
             eprintln!("unable to read contents {:?}", e);
-            "or this"
+            e
         })?;
 
         toml::from_str(contents.as_str()).map_err(|e| {
             eprintln!("unable to parse config {:?}", e);
-            "and definitely not this"
+            std::io::Error::new(std::io::ErrorKind::Other, e)
         })
     }
 }
