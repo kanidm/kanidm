@@ -1672,7 +1672,6 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         .route("/auth/valid", get(auth_valid))
         .route("/logout", get(logout))
         .route("/reauth", post(reauth))
-        .merge(super::v1_scim::scim_route_setup())
         .with_state(state)
         .layer(from_fn(dont_cache_me))
 }

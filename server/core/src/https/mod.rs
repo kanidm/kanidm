@@ -223,6 +223,7 @@ pub async fn create_https_server(
     // TODO: turn this from a nest into a merge because state things are bad in nested routes
     let app = Router::new()
         .nest("/oauth2", oauth2::oauth2_route_setup(state.clone()))
+        .nest("/scim", v1_scim::scim_route_setup())
         .route("/robots.txt", get(robots_txt))
         .nest("/v1", v1::router(state.clone()))
         // Shared account features only - mainly this is for unix-like features.
