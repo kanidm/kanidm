@@ -19,9 +19,8 @@ use kanidmd_lib::prelude::f_eq;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 use serde::{Deserialize, Serialize};
-// use serde::{Deserialize, Serialize};
 
-// // == Oauth2 Configuration Endpoints ==
+// == Oauth2 Configuration Endpoints ==
 
 /// List all the OAuth2 Resource Servers
 pub async fn oauth2_get(
@@ -60,7 +59,6 @@ pub async fn oauth2_id_get(
     Path(rs_name): Path<String>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    // Get a specific config
 
     let filter = oauth2_id(&rs_name);
 
@@ -83,7 +81,6 @@ pub async fn oauth2_id_get_basic_secret(
         .qe_r_ref
         .handle_oauth2_basic_secret_read(kopid.uat, filter, kopid.eventid)
         .await;
-
     to_axum_response(res)
 }
 
@@ -149,7 +146,6 @@ pub async fn oauth2_id_sup_scopemap_delete(
     Path((rs_name, group)): Path<(String, String)>,
 ) -> impl IntoResponse {
     let filter = oauth2_id(&rs_name);
-
     let res = state
         .qe_w_ref
         .handle_oauth2_sup_scopemap_delete(kopid.uat, group, filter, kopid.eventid)
@@ -170,66 +166,68 @@ pub async fn oauth2_id_delete(
     to_axum_response(res)
 }
 
-// // == OAUTH2 PROTOCOL FLOW HANDLERS ==
+// == OAUTH2 PROTOCOL FLOW HANDLERS ==
+//
+// oauth2 (partial)
+// https://tools.ietf.org/html/rfc6749
+// oauth2 pkce
+// https://tools.ietf.org/html/rfc7636
+//
+// TODO
+// oauth2 token introspection
+// https://tools.ietf.org/html/rfc7662
+// oauth2 bearer token
+// https://tools.ietf.org/html/rfc6750
+//
+// From https://datatracker.ietf.org/doc/html/rfc6749#section-4.1
+//
+//       +----------+
+//       | Resource |
+//       |   Owner  |
+//       |          |
+//       +----------+
+//            ^
+//            |
+//           (B)
+//       +----|-----+          Client Identifier      +---------------+
+//       |         -+----(A)-- & Redirection URI ---->|               |
+//       |  User-   |                                 | Authorization |
+//       |  Agent  -+----(B)-- User authenticates --->|     Server    |
+//       |          |                                 |               |
+//       |         -+----(C)-- Authorization Code ---<|               |
+//       +-|----|---+                                 +---------------+
+//         |    |                                         ^      v
+//        (A)  (C)                                        |      |
+//         |    |                                         |      |
+//         ^    v                                         |      |
+//       +---------+                                      |      |
+//       |         |>---(D)-- Authorization Code ---------'      |
+//       |  Client |          & Redirection URI                  |
+//       |         |                                             |
+//       |         |<---(E)----- Access Token -------------------'
+//       +---------+       (w/ Optional Refresh Token)
+//
+//     Note: The lines illustrating steps (A), (B), and (C) are broken into
+//     two parts as they pass through the user-agent.
+//
+//  In this diagram, kanidm is the authorisation server. Each step is handled by:
+//
+//  * Client Identifier  A)  oauth2_authorise_get
+//  * User authenticates B)  normal kanidm auth flow
+//  * Authorization Code C)  oauth2_authorise_permit_get
+//                           oauth2_authorise_reject_get
+//  * Authorization Code / Access Token
+//                     D/E)  oauth2_token_post
+//
+//  These functions appear stateless, but the state is managed through encrypted
+//  tokens transmitted in the responses of this flow. This is because in a HA setup
+//  we can not guarantee that the User-Agent or the Resource Server (client) will
+//  access the same Kanidm instance, and we can not rely on replication in these
+//  cases. As a result, we must have our state in localised tokens so that any
+//  valid Kanidm instance in the topology can handle these request.
+//
 
-// // oauth2 (partial)
-// // https://tools.ietf.org/html/rfc6749
-// // oauth2 pkce
-// // https://tools.ietf.org/html/rfc7636
 
-// // TODO
-// // oauth2 token introspection
-// // https://tools.ietf.org/html/rfc7662
-// // oauth2 bearer token
-// // https://tools.ietf.org/html/rfc6750
-
-// // From https://datatracker.ietf.org/doc/html/rfc6749#section-4.1
-// //
-// //       +----------+
-// //       | Resource |
-// //       |   Owner  |
-// //       |          |
-// //       +----------+
-// //            ^
-// //            |
-// //           (B)
-// //       +----|-----+          Client Identifier      +---------------+
-// //       |         -+----(A)-- & Redirection URI ---->|               |
-// //       |  User-   |                                 | Authorization |
-// //       |  Agent  -+----(B)-- User authenticates --->|     Server    |
-// //       |          |                                 |               |
-// //       |         -+----(C)-- Authorization Code ---<|               |
-// //       +-|----|---+                                 +---------------+
-// //         |    |                                         ^      v
-// //        (A)  (C)                                        |      |
-// //         |    |                                         |      |
-// //         ^    v                                         |      |
-// //       +---------+                                      |      |
-// //       |         |>---(D)-- Authorization Code ---------'      |
-// //       |  Client |          & Redirection URI                  |
-// //       |         |                                             |
-// //       |         |<---(E)----- Access Token -------------------'
-// //       +---------+       (w/ Optional Refresh Token)
-// //
-// //     Note: The lines illustrating steps (A), (B), and (C) are broken into
-// //     two parts as they pass through the user-agent.
-// //
-// //  In this diagram, kanidm is the authorisation server. Each step is handled by:
-// //
-// //  * Client Identifier  A)  oauth2_authorise_get
-// //  * User authenticates B)  normal kanidm auth flow
-// //  * Authorization Code C)  oauth2_authorise_permit_get
-// //                           oauth2_authorise_reject_get
-// //  * Authorization Code / Access Token
-// //                     D/E)  oauth2_token_post
-// //
-// //  These functions appear stateless, but the state is managed through encrypted
-// //  tokens transmitted in the responses of this flow. This is because in a HA setup
-// //  we can not guarantee that the User-Agent or the Resource Server (client) will
-// //  access the same Kanidm instance, and we can not rely on replication in these
-// //  cases. As a result, we must have our state in localised tokens so that any
-// //  valid Kanidm instance in the topology can handle these request.
-// //
 
 pub async fn oauth2_authorise_post(
     State(state): State<ServerState>,
