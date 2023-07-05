@@ -2,9 +2,9 @@ use compact_jwt::JwsUnverified;
 use kanidm_client::KanidmClient;
 use kanidm_proto::internal::ScimSyncToken;
 use kanidmd_testkit::ADMIN_TEST_PASSWORD;
+use reqwest::header::HeaderValue;
 use std::str::FromStr;
 use url::Url;
-use reqwest::header::HeaderValue;
 
 #[kanidmd_testkit::test]
 async fn test_sync_account_lifecycle(rsclient: KanidmClient) {

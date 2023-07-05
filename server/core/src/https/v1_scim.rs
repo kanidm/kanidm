@@ -9,7 +9,10 @@ use kanidm_proto::scim_v1::ScimSyncRequest;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
 
-use super::v1::{json_rest_event_get, json_rest_event_get_id, json_rest_event_post};
+use super::v1::{
+    json_rest_event_get, json_rest_event_get_id, json_rest_event_get_id_attr, json_rest_event_post,
+    json_rest_event_put_id_attr,
+};
 
 pub async fn sync_account_get(
     State(state): State<ServerState>,
@@ -129,6 +132,25 @@ async fn scim_sync_get(
     to_axum_response(res)
 }
 
+pub async fn sync_account_id_get_attr(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path((id, attr)): Path<(String, String)>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("sync_account")));
+    json_rest_event_get_id_attr(state, id, attr, filter, kopid).await
+}
+
+pub async fn sync_account_id_put_attr(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path((id, attr)): Path<(String, String)>,
+    Json(values): Json<Vec<String>>,
+) -> impl IntoResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("sync_account")));
+    json_rest_event_put_id_attr(state, id, attr, filter, values, kopid).await
+}
+
 async fn scim_sink_get() -> impl IntoResponse {
     r#"
     <!DOCTYPE html>
@@ -232,32 +254,6 @@ pub fn scim_route_setup() -> Router<ServerState> {
         //
         //                            POST                   Send a sync update
         //
-        .route("/Sync", post(scim_sync_post).get(scim_sync_get))
-        .route("/Sink", get(scim_sink_get))
-        // let mut sync_account_route = appserver.at("/sync_account");
-        .route(
-            "/sync_account",
-            get(sync_account_get).post(sync_account_post),
-        )
-        .route(
-            "/sync_account/",
-            get(sync_account_get).post(sync_account_post),
-        )
-        .route(
-            "/sync_account/:id",
-            get(sync_account_id_get).patch(sync_account_id_patch),
-        )
-        .route(
-            "/sync_account/:id/_finalise",
-            get(sync_account_id_get_finalise),
-        )
-        .route(
-            "/sync_account/:id/_terminate",
-            get(sync_account_id_get_terminate),
-        )
-        .route(
-            "/sync_account/:id/_sync_token",
-            // .get(&mut sync_account_token_get)
-            post(sync_account_token_post).delete(sync_account_token_delete),
-        )
+        .route("/v1/Sync", post(scim_sync_post).get(scim_sync_get))
+        .route("/v1/Sink", get(scim_sink_get))
 }

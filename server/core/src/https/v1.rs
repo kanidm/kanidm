@@ -33,6 +33,7 @@ use crate::https::to_axum_response;
 
 use super::middleware::caching::dont_cache_me;
 use super::middleware::KOpId;
+use super::v1_scim::*;
 use super::ServerState;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -1672,6 +1673,35 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         .route("/auth/valid", get(auth_valid))
         .route("/logout", get(logout))
         .route("/reauth", post(reauth))
+        .route(
+            "/sync_account",
+            get(sync_account_get).post(sync_account_post),
+        )
+        .route(
+            "/sync_account/",
+            get(sync_account_get).post(sync_account_post),
+        )
+        .route(
+            "/sync_account/:id",
+            get(sync_account_id_get).patch(sync_account_id_patch),
+        )
+        .route(
+            "/sync_account/:id/_attr/:attr",
+            get(sync_account_id_get_attr).put(sync_account_id_put_attr),
+        )
+        .route(
+            "/sync_account/:id/_finalise",
+            get(sync_account_id_get_finalise),
+        )
+        .route(
+            "/sync_account/:id/_terminate",
+            get(sync_account_id_get_terminate),
+        )
+        .route(
+            "/sync_account/:id/_sync_token",
+            // .get(&mut sync_account_token_get)
+            post(sync_account_token_post).delete(sync_account_token_delete),
+        )
         .with_state(state)
         .layer(from_fn(dont_cache_me))
 }
