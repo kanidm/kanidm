@@ -8,7 +8,7 @@
 //! the entry point for all client traffic which is then directed to the
 //! various `actors`.
 
-// #![deny(warnings)]
+#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
 #![deny(clippy::unimplemented)]
@@ -28,7 +28,7 @@ extern crate kanidmd_lib;
 pub mod actors;
 pub mod config;
 mod crypto;
-mod https; // new axum hotness
+mod https;
 mod interval;
 mod ldaps;
 

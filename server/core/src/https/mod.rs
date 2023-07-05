@@ -58,7 +58,7 @@ pub struct ServerState {
     // Store the token management parts.
     pub jws_signer: compact_jwt::JwsSigner,
     pub jws_validator: compact_jwt::JwsValidator,
-    // /// The SHA384 hashes of javascript files we're going to serve to users
+    // The SHA384 hashes of javascript files we're going to serve to users
     pub js_files: Vec<JavaScriptFile>,
     // pub(crate) trust_x_forward_for: bool,
     pub csp_header: HeaderValue,
