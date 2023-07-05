@@ -38,3 +38,7 @@ if (-not (Test-Path -Path "HKLM:\Software\kandim")) {
 }
 
 New-ItemProperty -Path "HKLM:\Software\kanidm" -Name "InstallLocation" -Value $kani_dir -Force
+
+# Enable LSA audit mode
+New-Item -Path "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Image File Execution Options" -Value "lsass.exe"
+New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\lsass.exe" -Name "AuditLevel" -Value 8
