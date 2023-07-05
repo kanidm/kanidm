@@ -6,7 +6,6 @@ use tracing_forest::util::*;
 use tracing_forest::Tag;
 
 pub mod macros;
-pub mod middleware;
 
 pub use {tracing, tracing_forest, tracing_subscriber};
 
