@@ -13,7 +13,7 @@ use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::{Configuration, ServerRole, TlsConfiguration};
 use axum::extract::connect_info::{IntoMakeServiceWithConnectInfo, ResponseFuture};
 use axum::middleware::{from_fn, from_fn_with_state};
-use axum::response::Response;
+use axum::response::{Redirect, Response};
 use axum::routing::*;
 use axum::Router;
 use axum_csp::{CspDirectiveType, CspValue};
@@ -185,9 +185,7 @@ pub async fn create_https_server(
             vec![CspValue::SelfSite, CspValue::SchemeData],
         );
 
-    // TODO this whole session store is kinda cursed and doesn't work the way we need, I think?
     let store = async_session::CookieStore::new();
-    // let secret = b"..."; // MUST be at least 64 bytes!
     let secret = format!("{:?}", cookie_key);
     let secret = secret.as_bytes(); // TODO the cookie/session secret needs to be longer?
     let session_layer = SessionLayer::new(store, secret)
@@ -210,10 +208,12 @@ pub async fn create_https_server(
     let static_routes = match config.role {
         ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
             Router::new()
-                .route("/", get(crate::https::ui::ui_handler))
-                .route("/*ui", get(crate::https::ui::ui_handler))
+                // direct users to the login page
+                .route("/", get(|| async { Redirect::temporary("/ui/login") }))
+                .route("/ui/", get(crate::https::ui::ui_handler))
+                // matches /ui/* but adds a path var `key` if you really wanted to capture it later.
+                .route("/ui/*key", get(crate::https::ui::ui_handler))
                 .route("/manifest.webmanifest", get(manifest::manifest))
-                .layer(from_fn(middleware::csp_headers::strip_csp_headers))
                 .layer(middleware::compression::new()) // TODO: this needs to be configured properly
         }
         ServerRole::WriteReplicaNoUI => Router::new(),

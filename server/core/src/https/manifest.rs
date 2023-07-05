@@ -165,11 +165,8 @@ pub(crate) async fn manifest(
         };
     let mut res = Response::new(manifest_string);
 
-    #[allow(clippy::unwrap_used)]
-    res.headers_mut().insert(
-        "Content-Type",
-        HeaderValue::from_str(MIME_TYPE_MANIFEST).unwrap(),
-    );
+    res.headers_mut()
+        .insert("Content-Type", HeaderValue::from_static(MIME_TYPE_MANIFEST));
 
     res
 }

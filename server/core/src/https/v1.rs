@@ -1418,7 +1418,6 @@ fn auth_session_state_management(
     }
 }
 
-// #[instrument(skip(state),level="debug")]
 pub async fn auth_valid(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1428,7 +1427,6 @@ pub async fn auth_valid(
         Some(val) => Some(val),
         None => session.get("bearer"),
     };
-    error!("Sending token: {:?}", uat);
     let res = state.qe_r_ref.handle_auth_valid(uat, kopid.eventid).await;
     to_axum_response(res)
 }
@@ -1465,32 +1463,40 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         .route("/schema", get(schema_get))
         .route(
             "/schema/attributetype",
-            get(schema_attributetype_get), // post(do_nothing)
+            get(schema_attributetype_get), // post(|| async { "TODO" })
         )
         .route(
             "/schema/attributetype/:id",
             get(schema_attributetype_get_id),
         )
-        // .route("/schema/attributetype/:id", put(do_nothing).patch(do_nothing))
+        // .route("/schema/attributetype/:id", put(|| async { "TODO" }).patch(|| async { "TODO" }))
         .route(
             "/schema/classtype",
-            get(schema_classtype_get), // .post(do_nothing)
+            get(schema_classtype_get), // .post(|| async { "TODO" })
         )
         .route(
             "/schema/classtype/:id",
-            get(schema_classtype_get_id), // .put(do_nothing).patch(do_nothing)
+            get(schema_classtype_get_id)
+                .put(|| async { "TODO" })
+                .patch(|| async { "TODO" }),
         )
         .route("/self", get(whoami))
         .route("/self/_uat", get(whoami_uat))
-        // .route("/self/_attr/:attr", get(do_nothing))
-        // .route("/self/_credential", get(do_nothing))
-        // .route("/self/_credential/:cid/_lock", get(do_nothing))
-        // .route("/self/_radius", get(do_nothing))
-        // .route("/self/_radius", delete(do_nothing))
-        // .route("/self/_radius", post(do_nothing))
-        // .route("/self/_radius/_config", post(do_nothing))
-        // .route("/self/_radius/_config/:token", get(do_nothing))
-        // .route("/self/_radius/_config/:token/apple", get(do_nothing))
+        .route("/self/_attr/:attr", get(|| async { "TODO" }))
+        .route("/self/_credential", get(|| async { "TODO" }))
+        .route("/self/_credential/:cid/_lock", get(|| async { "TODO" }))
+        .route(
+            "/self/_radius",
+            get(|| async { "TODO" })
+                .delete(|| async { "TODO" })
+                .post(|| async { "TODO" }),
+        )
+        .route("/self/_radius/_config", post(|| async { "TODO" }))
+        .route("/self/_radius/_config/:token", get(|| async { "TODO" }))
+        .route(
+            "/self/_radius/_config/:token/apple",
+            get(|| async { "TODO" }),
+        )
         // Applinks are the list of apps this account can access.
         .route("/self/_applinks", get(applinks_get))
         // Person routes
@@ -1509,13 +1515,16 @@ pub fn router(state: ServerState) -> Router<ServerState> {
                 .post(account_id_post_attr)
                 .delete(account_id_delete_attr),
         )
-        //  .route("/person/:id/_lock", get(do_nothing))
-        //  .route("/person/:id/_credential", get(do_nothing))
+        .route("/person/:id/_lock", get(|| async { "TODO" }))
+        .route("/person/:id/_credential", get(|| async { "TODO" }))
         .route(
             "/person/:id/_credential/_status",
             get(account_get_id_credential_status),
         )
-        //  .route("/person/:id/_credential/:cid/_lock", get(do_nothing))
+        .route(
+            "/person/:id/_credential/:cid/_lock",
+            get(|| async { "TODO" }),
+        )
         .route(
             "/person/:id/_credential/_update",
             get(account_get_id_credential_update),
@@ -1571,7 +1580,7 @@ pub fn router(state: ServerState) -> Router<ServerState> {
                 .post(account_id_post_attr)
                 .delete(account_id_delete_attr),
         )
-        //  .route("/service_account/:id/_lock", get(do_nothing));
+        .route("/service_account/:id/_lock", get(|| async { "TODO" }))
         .route(
             "/service_account/:id/_into_person",
             post(service_account_into_person),
@@ -1584,7 +1593,7 @@ pub fn router(state: ServerState) -> Router<ServerState> {
             "/service_account/:id/_api_token/:token_id",
             delete(service_account_api_token_delete),
         )
-        // .route("/service_account/:id/_credential", get(do_nothing))
+        .route("/service_account/:id/_credential", get(|| async { "TODO" }))
         .route(
             "/service_account/:id/_credential/_generate",
             get(service_account_credential_generate),
@@ -1593,10 +1602,10 @@ pub fn router(state: ServerState) -> Router<ServerState> {
             "/service_account/:id/_credential/_status",
             get(account_get_id_credential_status),
         )
-        // .route(
-        //     "/service_account/:id/_credential/:cid/_lock",
-        //     // get(do_nothing),
-        // )
+        .route(
+            "/service_account/:id/_credential/:cid/_lock",
+            get(|| async { "TODO" }),
+        )
         .route(
             "/service_account/:id/_ssh_pubkeys",
             get(account_get_id_ssh_pubkeys).post(account_post_id_ssh_pubkey),
@@ -1666,9 +1675,9 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         .route("/recycle_bin", get(recycle_bin_get))
         .route("/recycle_bin/:id", get(recycle_bin_id_get))
         .route("/recycle_bin/:id/_revive", post(recycle_bin_revive_id_post))
-        // .route("/access_profile", get(do_nothing))
-        // .route("/access_profile/:id", get(do_nothing))
-        // .route("/access_profile/:id/_attr/:attr", get(do_nothing))
+        .route("/access_profile", get(|| async { "TODO" }))
+        .route("/access_profile/:id", get(|| async { "TODO" }))
+        .route("/access_profile/:id/_attr/:attr", get(|| async { "TODO" }))
         .route("/auth", post(auth))
         .route("/auth/valid", get(auth_valid))
         .route("/logout", get(logout))

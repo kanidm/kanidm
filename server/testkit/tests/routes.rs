@@ -627,13 +627,13 @@ async fn test_routes(rsclient: KanidmClient) {
       {
         "path": "/v1/access_profile/:id/_attr/:attr",
         "method": "GET"
-      },
-      {
-        "path": "/v1/routemap",
-        "method": "GET"
       }
-    ]
-  "#;
+      ]
+      "#;
+    // ,{
+    //   "path": "/v1/routemap",
+    //   "method": "GET"
+    // }
     let routelist: Vec<serde_json::Value> = serde_json::from_str(routemap).unwrap();
     let client = reqwest::ClientBuilder::new()
         .danger_accept_invalid_certs(true)

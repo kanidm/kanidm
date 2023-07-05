@@ -1,8 +1,7 @@
 use axum::extract::State;
-use axum::http::{HeaderValue, Request};
+use axum::http::HeaderValue;
 use axum::response::Response;
 use axum::Extension;
-use hyper::Body;
 
 use super::middleware::KOpId;
 use super::ServerState;
@@ -10,7 +9,6 @@ use super::ServerState;
 pub async fn ui_handler(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    mut _req: Request<Body>,
 ) -> Response<String> {
     let domain_display_name = state.qe_r_ref.get_domain_display_name(kopid.eventid).await;
 
@@ -59,11 +57,9 @@ pub async fn ui_handler(
     );
 
     let mut res = Response::new(body);
-    #[allow(clippy::unwrap_used)]
     res.headers_mut().insert(
         "Content-Type",
-        HeaderValue::from_str("text/html;charset=utf-8").unwrap(),
+        HeaderValue::from_static("text/html;charset=utf-8"),
     );
-
     res
 }

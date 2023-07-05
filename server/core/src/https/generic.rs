@@ -22,14 +22,12 @@ pub async fn status(
 }
 
 pub async fn robots_txt() -> impl IntoResponse {
-    #[allow(clippy::expect_used)]
-    Response::builder()
-        .header(CONTENT_TYPE, "text/plain;charset=utf-8")
-        .body(
+    (
+        [(CONTENT_TYPE, "text/plain;charset=utf-8")],
+        axum::response::Html(
             r#"User-agent: *
-Disallow: /
-"#
-            .to_string(),
-        )
-        .expect("Failed to build robots.txt response!")
+        Disallow: /
+"#,
+        ),
+    )
 }

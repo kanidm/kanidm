@@ -424,7 +424,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .into_iter()
             .try_for_each(|entry| self.internal_migrate_or_create(entry));
 
-        if !r.is_ok() {
+        if r.is_err() {
             error!(res = ?r, "initialise_schema_idm -> Error");
         }
         debug_assert!(r.is_ok());

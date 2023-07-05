@@ -20,11 +20,7 @@ const KANIDM_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub async fn version_middleware<B>(request: Request<B>, next: Next<B>) -> Response {
     let mut response = next.run(request).await;
     let headers = response.headers_mut();
-    #[allow(clippy::unwrap_used)]
-    headers.insert(
-        "X-KANIDM-VERSION",
-        HeaderValue::from_str(KANIDM_VERSION).unwrap(),
-    );
+    headers.insert("X-KANIDM-VERSION", HeaderValue::from_static(KANIDM_VERSION));
 
     response
 }
