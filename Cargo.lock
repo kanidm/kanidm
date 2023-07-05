@@ -2794,7 +2794,6 @@ name = "kanidmd_lib"
 version = "1.1.0-beta.13-dev"
 dependencies = [
  "async-trait",
- "axum-csp",
  "base64 0.21.2",
  "base64urlsafedata",
  "compact_jwt",
