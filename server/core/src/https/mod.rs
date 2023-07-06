@@ -221,15 +221,13 @@ pub async fn create_https_server(
         ServerRole::WriteReplicaNoUI => Router::new(),
     };
 
-    //  // == oauth endpoints.
-    // TODO: turn this from a nest into a merge because state things are bad in nested routes
     let app = Router::new()
+        .route("/robots.txt", get(robots_txt))
+        .route("/status", get(status))
         .nest("/oauth2", oauth2::oauth2_route_setup(state.clone()))
         .nest("/scim", v1_scim::scim_route_setup())
-        .route("/robots.txt", get(robots_txt))
-        .nest("/v1", v1::router(state.clone()))
-        // Shared account features only - mainly this is for unix-like features.
-        .route("/status", get(status));
+        .nest("/v1", v1::router(state.clone()));
+
     let app = match config.role {
         ServerRole::WriteReplicaNoUI => app,
         ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
@@ -252,11 +250,14 @@ pub async fn create_https_server(
             middleware::csp_headers::cspheaders_layer,
         ))
         .layer(from_fn(middleware::version_middleware))
-        .layer(from_fn(middleware::kopid_end))
-        .layer(from_fn(middleware::kopid_start))
         .layer(session_layer)
-        .with_state(state)
         .layer(TraceLayer::new_for_http())
+        // This must be the LAST middleware.
+        // This is because the last middleware here is the first to be entered and the last
+        // to be exited, and this middleware sets up ids' and other bits for for logging
+        // coherence to be maintained.
+        .layer(from_fn(middleware::kopid_middleware))
+        .with_state(state)
         // the connect_info bit here lets us pick up the remote address of the client
         .into_make_service_with_connect_info::<SocketAddr>();
 
@@ -303,7 +304,7 @@ async fn server_loop(
     let mut tls_builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls())?;
     let mut app = app;
     tls_builder
-        .set_certificate_file(tls_param.chain.clone(), SslFiletype::PEM)
+        .set_certificate_chain_file(tls_param.chain.clone())
         .map_err(|err| {
             std::io::Error::new(
                 ErrorKind::Other,

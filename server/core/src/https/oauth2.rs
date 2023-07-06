@@ -346,8 +346,8 @@ async fn oauth2_authorise(
         // we do NOT redirect in an error condition, and just render the error ourselves.
         Err(e) => {
             admin_error!(
-                "Unable to authorise - Error ID: {} error: {}",
-                &kopid.eventid_value(),
+                "Unable to authorise - Error ID: {:?} error: {}",
+                kopid.eventid,
                 &e.to_string()
             );
             #[allow(clippy::unwrap_used)]

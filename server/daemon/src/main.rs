@@ -126,21 +126,15 @@ async fn main() -> ExitCode {
             }
         };
 
-    // if they specified it in the environment then that overrides everything
-    let log_filter = match EnvFilter::try_from_default_env() {
-        Ok(val) => val,
-        Err(_e) => {
-            // we couldn't get it from the env, so we'll try the config file!
-            match sconfig.as_ref() {
-                Some(val) => {
-                    let tmp = val.log_level.clone();
-                    tmp.unwrap_or_default()
-                }
-                None => LogLevel::Info,
-            }
-            .into()
+    // We only allow config file for log level now.
+    let log_filter: EnvFilter = match sconfig.as_ref() {
+        Some(val) => {
+            let tmp = val.log_level.clone();
+            tmp.unwrap_or_default()
         }
-    };
+        None => LogLevel::Info,
+    }
+    .into();
 
     // TODO: only send to stderr when we're not in a TTY
     tracing_forest::worker_task()
