@@ -254,6 +254,6 @@ pub fn scim_route_setup() -> Router<ServerState> {
         //
         //                            POST                   Send a sync update
         //
-        .route("/v1/Sync", post(scim_sync_post).get(scim_sync_get))
-        .route("/v1/Sink", get(scim_sink_get))
+        .route("/scim/v1/Sync", post(scim_sync_post).get(scim_sync_get))
+        .route("/scim/v1/Sink", get(scim_sink_get))
 }

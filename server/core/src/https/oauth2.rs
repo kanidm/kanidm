@@ -831,52 +831,58 @@ pub async fn oauth2_token_revoke_post(
 
 pub fn oauth2_route_setup(state: ServerState) -> Router<ServerState> {
     // this has all the openid-related routes
-    let openid_router = Router::new() // appserver.at("/oauth2/openid");
+    let openid_router = Router::new()
         // // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
-            "/:client_id/.well-known/openid-configuration",
+            "/oauth2/openid/:client_id/.well-known/openid-configuration",
             get(oauth2_openid_discovery_get),
         )
         // // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-        .route("/:client_id/userinfo", get(oauth2_openid_userinfo_get))
+        .route(
+            "/oauth2/openid/:client_id/userinfo",
+            get(oauth2_openid_userinfo_get),
+        )
         // // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
-            "/:client_id/public_key.jwk",
+            "/oauth2/openid/:client_id/public_key.jwk",
             get(oauth2_openid_publickey_get),
         )
         .with_state(state.clone());
 
-    Router::new() //= appserver.at("/oauth2");
-        .route("/", get(oauth2_get))
+    Router::new()
+        .route("/oauth2", get(oauth2_get))
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
-            "/authorise",
+            "/oauth2/authorise",
             post(oauth2_authorise_post).get(oauth2_authorise_get),
         )
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
-            "/authorise/permit",
+            "/oauth2/authorise/permit",
             post(oauth2_authorise_permit_post).get(oauth2_authorise_permit_get),
         )
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
-            "/authorise/reject",
+            "/oauth2/authorise/reject",
             post(oauth2_authorise_reject_post).get(oauth2_authorise_reject_get),
         )
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-        .route("/token", post(oauth2_token_post))
+        .route("/oauth2/token", post(oauth2_token_post))
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-        .route("/token/introspect", post(oauth2_token_introspect_post))
-        .route("/token/revoke", post(oauth2_token_revoke_post))
-        .nest("/openid", openid_router)
+        .route(
+            "/oauth2/token/introspect",
+            post(oauth2_token_introspect_post),
+        )
+        .route("/oauth2/token/revoke", post(oauth2_token_revoke_post))
+        .merge(openid_router)
         .with_state(state)
         .layer(from_fn(super::middleware::caching::dont_cache_me))
 }

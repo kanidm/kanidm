@@ -224,9 +224,9 @@ pub async fn create_https_server(
     let app = Router::new()
         .route("/robots.txt", get(robots_txt))
         .route("/status", get(status))
-        .nest("/oauth2", oauth2::oauth2_route_setup(state.clone()))
-        .nest("/scim", v1_scim::scim_route_setup())
-        .nest("/v1", v1::router(state.clone()));
+        .merge(oauth2::oauth2_route_setup(state.clone()))
+        .merge(v1_scim::scim_route_setup())
+        .merge(v1::router(state.clone()));
 
     let app = match config.role {
         ServerRole::WriteReplicaNoUI => app,
