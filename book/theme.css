@@ -6,6 +6,6 @@
 
 @media (prefers-color-scheme: light) {
 	.dark-mode-only {
-		display: hidden;
+		display: none;
 	}
 }
