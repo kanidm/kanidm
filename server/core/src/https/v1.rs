@@ -1,9 +1,8 @@
-use std::net::SocketAddr;
 #[allow(unused_imports)]
 // //! The V1 API things!
 use std::str::FromStr;
 
-use axum::extract::{ConnectInfo, Path, Query, State};
+use axum::extract::{Path, Query, State};
 use axum::headers::{CacheControl, HeaderMapExt};
 use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
@@ -29,6 +28,7 @@ use kanidmd_lib::value::PartialValue;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::https::extractors::TrustedClientIp;
 use crate::https::to_axum_response;
 
 use super::middleware::caching::dont_cache_me;
@@ -1244,24 +1244,15 @@ pub async fn applinks_get(
 
 pub async fn reauth(
     State(state): State<ServerState>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>, // TODO: test x-ff-headers
+    TrustedClientIp(ip_addr): TrustedClientIp,
     Extension(kopid): Extension<KOpId>,
     session: WritableSession,
     Json(obj): Json<AuthIssueSession>,
 ) -> impl IntoResponse {
-    // TODO: xff things check that we can get the remote IP address first, since this doesn't touch the backend at all
-    // let ip_addr = req.get_remote_addr().ok_or_else(|| {
-    //     error!("Unable to get remote addr for auth event, refusing to proceed");
-    //     tide::Error::from_str(
-    //         tide::StatusCode::InternalServerError,
-    //         "unable to validate peer address",
-    //     )
-    // })?;
-
     // This may change in the future ...
     let inter = state
         .qe_r_ref
-        .handle_reauth(kopid.uat, obj, kopid.eventid, addr.ip())
+        .handle_reauth(kopid.uat, obj, kopid.eventid, ip_addr)
         .await;
     debug!("REAuth result: {:?}", inter);
     auth_session_state_management(state, inter, session)
@@ -1269,23 +1260,12 @@ pub async fn reauth(
 
 pub async fn auth(
     State(state): State<ServerState>,
+    TrustedClientIp(ip_addr): TrustedClientIp,
     session: WritableSession,
     headers: HeaderMap,
     Extension(kopid): Extension<KOpId>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(obj): Json<AuthRequest>,
 ) -> impl IntoResponse {
-    // TODO: check this trusts the x-ff-header
-    let ip_addr = addr.ip();
-    // check that we can get the remote IP address first, since this doesn't touch the backend at all
-    // let ip_addr = req.get_remote_addr().ok_or_else(|| {
-    //     error!("Unable to get remote addr for auth event, refusing to proceed");
-    //     tide::Error::from_str(
-    //         tide::StatusCode::InternalServerError,
-    //         "unable to validate peer address",
-    //     )
-    // })?;
-
     // First, deal with some state management.
     // Do anything here first that's needed like getting the session details
     // out of the req cookie.

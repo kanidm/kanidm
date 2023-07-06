@@ -1,3 +1,4 @@
+mod extractors;
 mod generic;
 mod javascript;
 mod manifest;
@@ -60,7 +61,7 @@ pub struct ServerState {
     pub jws_validator: compact_jwt::JwsValidator,
     // The SHA384 hashes of javascript files we're going to serve to users
     pub js_files: Vec<JavaScriptFile>,
-    // pub(crate) trust_x_forward_for: bool,
+    pub(crate) trust_x_forward_for: bool,
     pub csp_header: HeaderValue,
 }
 
@@ -133,7 +134,6 @@ pub fn get_js_files(role: ServerRole) -> Vec<JavaScriptFile> {
 
 pub async fn create_https_server(
     config: Configuration,
-    // trust_x_forward_for: bool, // TODO: #1787 make XFF headers work
     cookie_key: [u8; 64],
     jws_signer: JwsSigner,
     status_ref: &'static StatusActor,
@@ -194,6 +194,8 @@ pub async fn create_https_server(
         .with_same_site_policy(SameSite::Strict)
         .with_secure(true);
 
+    let trust_x_forward_for = config.trust_x_forward_for;
+
     let state = ServerState {
         status_ref,
         qe_w_ref,
@@ -201,6 +203,7 @@ pub async fn create_https_server(
         jws_signer,
         jws_validator,
         js_files,
+        trust_x_forward_for,
         csp_header: csp_header.finish(),
     };
 
