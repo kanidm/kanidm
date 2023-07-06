@@ -504,9 +504,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_CLASS_POSIXACCOUNT,
             JSON_SCHEMA_CLASS_POSIXGROUP,
             JSON_SCHEMA_CLASS_SYSTEM_CONFIG,
-            JSON_SCHEMA_CLASS_OAUTH2_RS,
-            JSON_SCHEMA_CLASS_OAUTH2_RS_BASIC,
             JSON_SCHEMA_CLASS_SYNC_ACCOUNT,
+            JSON_SCHEMA_CLASS_OAUTH2_RS,
             JSON_SCHEMA_ATTR_PRIVATE_COOKIE_KEY,
         ];
 
@@ -515,12 +514,27 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Each item individually logs it's result
             .try_for_each(|e_str| self.internal_migrate_or_create_str(e_str));
 
-        if r.is_ok() {
-            debug!("initialise_schema_idm -> Ok!");
-        } else {
+        if r.is_err() {
+            error!(res = ?r, "initialise_schema_idm -> Error");
+        }
+
+        debug_assert!(r.is_ok());
+
+        let idm_schema_classes = [
+            E_SCHEMA_CLASS_OAUTH2_RS_BASIC.clone(),
+            E_SCHEMA_CLASS_OAUTH2_RS_PUBLIC.clone(),
+        ];
+
+        let r: Result<(), _> = idm_schema_classes
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry));
+
+        if r.is_err() {
             error!(res = ?r, "initialise_schema_idm -> Error");
         }
         debug_assert!(r.is_ok());
+
+        debug!("initialise_schema_idm -> Ok!");
 
         r
     }

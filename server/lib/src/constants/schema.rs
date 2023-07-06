@@ -1867,7 +1867,6 @@ pub const JSON_SCHEMA_CLASS_OAUTH2_RS: &str = r#"
         "description",
         "oauth2_rs_scope_map",
         "oauth2_rs_sup_scope_map",
-        "oauth2_allow_insecure_client_disable_pkce",
         "rs256_private_key_der",
         "oauth2_jwt_legacy_crypto_enable",
         "oauth2_prefer_short_username",
@@ -1887,27 +1886,32 @@ pub const JSON_SCHEMA_CLASS_OAUTH2_RS: &str = r#"
   }
 "#;
 
-pub const JSON_SCHEMA_CLASS_OAUTH2_RS_BASIC: &str = r#"
-  {
-    "attrs": {
-      "class": [
-        "object",
-        "system",
-        "classtype"
-      ],
-      "description": [
-        "The class representing a configured Oauth2 Resource Server authenticated with http basic"
-      ],
-      "classname": [
-        "oauth2_resource_server_basic"
-      ],
-      "systemmay": [],
-      "systemmust": [
-        "oauth2_rs_basic_secret"
-      ],
-      "uuid": [
-        "00000000-0000-0000-0000-ffff00000086"
-      ]
-    }
-  }
-"#;
+lazy_static! {
+    pub static ref E_SCHEMA_CLASS_OAUTH2_RS_BASIC: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_SYSTEM.clone()),
+        ("class", CLASS_CLASSTYPE.clone()),
+        (
+            "description",
+            Value::new_utf8s(
+        "The class representing a configured Oauth2 Resource Server authenticated with http basic authentication"),
+        ),
+        ("classname", Value::new_iutf8("oauth2_resource_server_basic")),
+        ("systemmay", Value::new_iutf8("oauth2_allow_insecure_client_disable_pkce")),
+        ("systemmust", Value::new_iutf8("oauth2_rs_basic_secret")),
+        ("uuid", Value::Uuid(UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC))
+    );
+
+    pub static ref E_SCHEMA_CLASS_OAUTH2_RS_PUBLIC: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_SYSTEM.clone()),
+        ("class", CLASS_CLASSTYPE.clone()),
+        (
+            "description",
+            Value::new_utf8s(
+        "The class representing a configured Oauth2 Resource Server with public clients and pkce verification"),
+        ),
+        ("classname", Value::new_iutf8("oauth2_resource_server_public")),
+        ("uuid", Value::Uuid(UUID_SCHEMA_CLASS_OAUTH2_RS_PUBLIC))
+    );
+}
