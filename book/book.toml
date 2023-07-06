@@ -12,5 +12,6 @@ title = "Kanidm Administration"
 [output.html]
 edit-url-template = "https://github.com/kanidm/kanidm/edit/master/book/{path}"
 git-repository-url = "https://github.com/kanidm/kanidm"
+additional-css = ["theme.css"]
 
 [preprocessor.template]
