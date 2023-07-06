@@ -511,7 +511,7 @@ async fn oauth2_authorise_reject(
 pub async fn oauth2_token_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    headers: HeaderMap, // TOOD: make this a typed basic auth header
+    headers: HeaderMap, // TODO: make this a typed basic auth header
     Form(tok_req): Form<AccessTokenRequest>,
 ) -> impl IntoResponse {
     // This is called directly by the resource server, where we then issue

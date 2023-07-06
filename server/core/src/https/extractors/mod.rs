@@ -23,7 +23,7 @@ impl FromRequestParts<ServerState> for TrustedClientIp {
     ) -> Result<Self, Self::Rejection> {
         if state.trust_x_forward_for {
             if let Some(x_forward_for) = parts.headers.get(X_FORWARDED_FOR) {
-                // X forward for may be comma seperate.
+                // X forward for may be comma separate.
                 let first = x_forward_for
                     .to_str()
                     .map(|s|
