@@ -1,6 +1,4 @@
-#[allow(unused_imports)]
-// //! The V1 API things!
-use std::str::FromStr;
+//! The V1 API things!
 
 use axum::extract::{Path, Query, State};
 use axum::headers::{CacheControl, HeaderMapExt};
@@ -1270,7 +1268,6 @@ pub async fn auth(
     // Do anything here first that's needed like getting the session details
     // out of the req cookie.
 
-    // TODO
     let maybe_sessionid = state.get_current_auth_session_id(&headers, &session);
     debug!("Session ID: {:?}", maybe_sessionid);
     // We probably need to know if we allocate the cookie, that this is a
