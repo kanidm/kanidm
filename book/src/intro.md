@@ -36,7 +36,8 @@ they require.
 Kanidm acts as a central authority of accounts in your organisation and allows each account to
 associate many devices and credentials with different privileges. An example of how this looks:
 
-<img src="images/KanidmUseCases.png" alt="Kanidm Use Case Diagram" />
+<img src="images/KanidmUseCases-Light.png" alt="Kanidm Use Case Diagram" class="light-mode-only" />
+<img src="images/KanidmUseCases-Dark.png" alt="Kanidm Use Case Diagram" class="dark-mode-only" />
 
 A key design goal is that you authenticate with your device in some manner, and then your device
 will continue to authenticate you in the future. Each of these different types of credentials, from
