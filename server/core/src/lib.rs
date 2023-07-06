@@ -762,7 +762,7 @@ pub async fn create_server_core(
         }
     };
 
-    let cookie_key: [u8; 32] = idms.get_cookie_key();
+    let cookie_key: [u8; 64] = idms.get_cookie_key();
 
     // Any pre-start tasks here.
     match &config.integration_test_config {

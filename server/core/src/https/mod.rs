@@ -1,3 +1,4 @@
+mod extractors;
 mod generic;
 mod javascript;
 mod manifest;
@@ -60,7 +61,7 @@ pub struct ServerState {
     pub jws_validator: compact_jwt::JwsValidator,
     // The SHA384 hashes of javascript files we're going to serve to users
     pub js_files: Vec<JavaScriptFile>,
-    // pub(crate) trust_x_forward_for: bool,
+    pub(crate) trust_x_forward_for: bool,
     pub csp_header: HeaderValue,
 }
 
@@ -133,8 +134,7 @@ pub fn get_js_files(role: ServerRole) -> Vec<JavaScriptFile> {
 
 pub async fn create_https_server(
     config: Configuration,
-    // trust_x_forward_for: bool, // TODO: #1787 make XFF headers work
-    cookie_key: [u8; 32],
+    cookie_key: [u8; 64],
     jws_signer: JwsSigner,
     status_ref: &'static StatusActor,
     qe_w_ref: &'static QueryServerWriteV1,
@@ -186,14 +186,15 @@ pub async fn create_https_server(
         );
 
     let store = async_session::CookieStore::new();
-    let secret = format!("{:?}", cookie_key);
-    let secret = secret.as_bytes(); // TODO the cookie/session secret needs to be longer?
-    let session_layer = SessionLayer::new(store, secret)
+
+    let session_layer = SessionLayer::new(store, &cookie_key)
         .with_cookie_name("kanidm-session")
         .with_session_ttl(None)
         .with_cookie_domain(config.domain)
         .with_same_site_policy(SameSite::Strict)
         .with_secure(true);
+
+    let trust_x_forward_for = config.trust_x_forward_for;
 
     let state = ServerState {
         status_ref,
@@ -202,6 +203,7 @@ pub async fn create_https_server(
         jws_signer,
         jws_validator,
         js_files,
+        trust_x_forward_for,
         csp_header: csp_header.finish(),
     };
 
@@ -219,15 +221,13 @@ pub async fn create_https_server(
         ServerRole::WriteReplicaNoUI => Router::new(),
     };
 
-    //  // == oauth endpoints.
-    // TODO: turn this from a nest into a merge because state things are bad in nested routes
     let app = Router::new()
-        .nest("/oauth2", oauth2::oauth2_route_setup(state.clone()))
-        .nest("/scim", v1_scim::scim_route_setup())
         .route("/robots.txt", get(robots_txt))
-        .nest("/v1", v1::router(state.clone()))
-        // Shared account features only - mainly this is for unix-like features.
-        .route("/status", get(status));
+        .route("/status", get(status))
+        .merge(oauth2::oauth2_route_setup(state.clone()))
+        .merge(v1_scim::scim_route_setup())
+        .merge(v1::router(state.clone()));
+
     let app = match config.role {
         ServerRole::WriteReplicaNoUI => app,
         ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
@@ -250,11 +250,14 @@ pub async fn create_https_server(
             middleware::csp_headers::cspheaders_layer,
         ))
         .layer(from_fn(middleware::version_middleware))
-        .layer(from_fn(middleware::kopid_end))
-        .layer(from_fn(middleware::kopid_start))
         .layer(session_layer)
-        .with_state(state)
         .layer(TraceLayer::new_for_http())
+        // This must be the LAST middleware.
+        // This is because the last middleware here is the first to be entered and the last
+        // to be exited, and this middleware sets up ids' and other bits for for logging
+        // coherence to be maintained.
+        .layer(from_fn(middleware::kopid_middleware))
+        .with_state(state)
         // the connect_info bit here lets us pick up the remote address of the client
         .into_make_service_with_connect_info::<SocketAddr>();
 
@@ -301,7 +304,7 @@ async fn server_loop(
     let mut tls_builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls())?;
     let mut app = app;
     tls_builder
-        .set_certificate_file(tls_param.chain.clone(), SslFiletype::PEM)
+        .set_certificate_chain_file(tls_param.chain.clone())
         .map_err(|err| {
             std::io::Error::new(
                 ErrorKind::Other,

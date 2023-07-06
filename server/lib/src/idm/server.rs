@@ -66,7 +66,7 @@ pub struct DomainKeys {
     pub(crate) uat_jwt_signer: JwsSigner,
     pub(crate) uat_jwt_validator: JwsValidator,
     pub(crate) token_enc_key: Fernet,
-    pub(crate) cookie_key: [u8; 32],
+    pub(crate) cookie_key: [u8; 64],
 }
 
 pub struct IdmServer {
@@ -262,7 +262,7 @@ impl IdmServer {
         ))
     }
 
-    pub fn get_cookie_key(&self) -> [u8; 32] {
+    pub fn get_cookie_key(&self) -> [u8; 64] {
         self.domain_keys.read().cookie_key
     }
 

@@ -129,7 +129,7 @@ impl Domain {
 
                 if !e.attribute_pres("private_cookie_key") {
                     security_info!("regenerating domain cookie key");
-                    let mut key = [0; 32];
+                    let mut key = [0; 64];
                     let mut rng = StdRng::from_entropy();
                     rng.fill(&mut key);
                     let v = Value::new_privatebinary(&key);
