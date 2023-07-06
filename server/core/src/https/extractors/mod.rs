@@ -9,6 +9,7 @@ use std::net::{IpAddr, SocketAddr};
 
 use crate::https::ServerState;
 
+#[allow(clippy::declare_interior_mutable_const)]
 const X_FORWARDED_FOR: HeaderName = HeaderName::from_static("x-forwarded-for");
 
 pub struct TrustedClientIp(pub IpAddr);
@@ -17,6 +18,7 @@ pub struct TrustedClientIp(pub IpAddr);
 impl FromRequestParts<ServerState> for TrustedClientIp {
     type Rejection = (StatusCode, &'static str);
 
+    #[instrument(level = "debug", skip(state))]
     async fn from_request_parts(
         parts: &mut Parts,
         state: &ServerState,
@@ -28,9 +30,7 @@ impl FromRequestParts<ServerState> for TrustedClientIp {
                     .to_str()
                     .map(|s|
                         // Split on an optional comma, return the first result.
-                        s.split_once(',')
-                            .map(|r| r.0)
-                            .unwrap_or(s))
+                        s.split(',').next().unwrap_or(s))
                     .map_err(|_| {
                         (
                             StatusCode::BAD_REQUEST,
@@ -45,10 +45,19 @@ impl FromRequestParts<ServerState> for TrustedClientIp {
                     )
                 })
             } else {
-                Err((
-                    StatusCode::BAD_REQUEST,
-                    "client ipaddr can not be determined",
-                ))
+                let ConnectInfo(addr) =
+                    parts
+                        .extract::<ConnectInfo<SocketAddr>>()
+                        .await
+                        .map_err(|_| {
+                            error!("Connect info contains invalid IP address");
+                            (
+                                StatusCode::BAD_REQUEST,
+                                "connect info contains invalid IP address",
+                            )
+                        })?;
+
+                Ok(TrustedClientIp(addr.ip()))
             }
         } else {
             let ConnectInfo(addr) =
@@ -56,9 +65,10 @@ impl FromRequestParts<ServerState> for TrustedClientIp {
                     .extract::<ConnectInfo<SocketAddr>>()
                     .await
                     .map_err(|_| {
+                        error!("Connect info contains invalid IP address");
                         (
                             StatusCode::BAD_REQUEST,
-                            "connect info contains invalid ip addr",
+                            "connect info contains invalid IP address",
                         )
                     })?;
 
