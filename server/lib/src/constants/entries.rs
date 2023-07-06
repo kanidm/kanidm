@@ -585,7 +585,7 @@ lazy_static! {
             "description",
             Value::new_utf8s("System (local) info and metadata object.")
         ),
-        ("version", Value::Uint32(12))
+        ("version", Value::Uint32(13))
     );
 }
 

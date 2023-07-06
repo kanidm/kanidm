@@ -59,7 +59,6 @@ pub async fn oauth2_id_get(
     Path(rs_name): Path<String>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-
     let filter = oauth2_id(&rs_name);
 
     let res = state
@@ -226,8 +225,6 @@ pub async fn oauth2_id_delete(
 //  cases. As a result, we must have our state in localised tokens so that any
 //  valid Kanidm instance in the topology can handle these request.
 //
-
-
 
 pub async fn oauth2_authorise_post(
     State(state): State<ServerState>,

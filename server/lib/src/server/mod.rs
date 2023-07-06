@@ -763,12 +763,12 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
-    fn get_domain_cookie_key(&mut self) -> Result<[u8; 32], OperationError> {
+    fn get_domain_cookie_key(&mut self) -> Result<[u8; 64], OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
             .and_then(|e| {
                 e.get_ava_single_private_binary("private_cookie_key")
                     .and_then(|s| {
-                        let mut x = [0; 32];
+                        let mut x = [0; 64];
                         if s.len() == x.len() {
                             x.copy_from_slice(s);
                             Some(x)

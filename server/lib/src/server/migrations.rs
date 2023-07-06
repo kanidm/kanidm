@@ -99,6 +99,10 @@ impl QueryServer {
             if system_info_version < 12 {
                 write_txn.migrate_11_to_12()?;
             }
+
+            if system_info_version < 13 {
+                write_txn.migrate_12_to_13()?;
+            }
         }
 
         write_txn.reload()?;
@@ -389,6 +393,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Apply the batch mod.
         self.internal_apply_writable(mod_candidates)
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn migrate_12_to_13(&mut self) -> Result<(), OperationError> {
+        admin_warn!("starting 12 to 13 migration.");
+        let filter = filter!(f_and!([
+            f_eq("class", PVCLASS_DOMAIN_INFO.clone()),
+            f_eq("uuid", PVUUID_DOMAIN_INFO.clone()),
+        ]));
+        // Delete the existing cookie key to trigger a regeneration.
+        let modlist = ModifyList::new_purge("private_cookie_key");
+        self.internal_modify(&filter, &modlist)
+        // Complete
     }
 
     #[instrument(level = "debug", skip_all)]

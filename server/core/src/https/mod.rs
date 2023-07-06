@@ -134,7 +134,7 @@ pub fn get_js_files(role: ServerRole) -> Vec<JavaScriptFile> {
 pub async fn create_https_server(
     config: Configuration,
     // trust_x_forward_for: bool, // TODO: #1787 make XFF headers work
-    cookie_key: [u8; 32],
+    cookie_key: [u8; 64],
     jws_signer: JwsSigner,
     status_ref: &'static StatusActor,
     qe_w_ref: &'static QueryServerWriteV1,
@@ -186,9 +186,8 @@ pub async fn create_https_server(
         );
 
     let store = async_session::CookieStore::new();
-    let secret = format!("{:?}", cookie_key);
-    let secret = secret.as_bytes(); // TODO the cookie/session secret needs to be longer?
-    let session_layer = SessionLayer::new(store, secret)
+
+    let session_layer = SessionLayer::new(store, &cookie_key)
         .with_cookie_name("kanidm-session")
         .with_session_ttl(None)
         .with_cookie_domain(config.domain)
