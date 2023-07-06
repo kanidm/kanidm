@@ -62,7 +62,7 @@ fn delete_filter_entry<'a>(
         }
         IdentType::User(_) => {}
     };
-    info!(event = %ident, "Access check for delete event");
+    debug!(event = %ident, "Access check for delete event");
 
     match ident.access_scope() {
         AccessScope::ReadOnly | AccessScope::Synchronise => {
@@ -82,7 +82,7 @@ fn delete_filter_entry<'a>(
                 "entry matches acs"
             );
             // It matches, so we can delete this!
-            security_access!("passed");
+            debug!("passed");
             true
         } else {
             trace!(
@@ -101,7 +101,7 @@ fn delete_filter_entry<'a>(
     }
 }
 
-fn protected_filter_entry<'a>(ident: &Identity, entry: &'a Arc<EntrySealedCommitted>) -> IResult {
+fn protected_filter_entry(ident: &Identity, entry: &Arc<EntrySealedCommitted>) -> IResult {
     match &ident.origin {
         IdentType::Internal => {
             trace!("Internal operation, protected rules do not apply.");

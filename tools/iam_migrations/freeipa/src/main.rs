@@ -49,8 +49,8 @@ use uuid::Uuid;
 
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::scim_v1::{
-    ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest, ScimSyncState,
-    ScimTotp,
+    MultiValueAttr, ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
+    ScimSyncRetentionMode, ScimSyncState, ScimTotp,
 };
 use kanidmd_lib::utils::file_permissions_readonly;
 
@@ -188,30 +188,35 @@ async fn driver_main(opt: Opt) {
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::terminate();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         break
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::alarm();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::hangup();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
                     }
                     Some(()) = async move {
                         let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                        #[allow(clippy::unwrap_used)]
                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                     } => {
                         // Ignore
@@ -413,7 +418,7 @@ async fn run_sync(
                 return Err(SyncError::Preprocess);
             }
 
-            if !present_uuids.is_empty() {
+            if present_uuids.is_some() {
                 error!("Unsure how to handle presentUuids > 0");
                 return Err(SyncError::Preprocess);
             }
@@ -445,11 +450,17 @@ async fn run_sync(
                 }
             };
 
+            let retain = if let Some(delete_uuids) = delete_uuids {
+                ScimSyncRetentionMode::Delete(delete_uuids)
+            } else {
+                ScimSyncRetentionMode::Ignore
+            };
+
             ScimSyncRequest {
                 from_state: scim_sync_status,
                 to_state,
                 entries,
-                delete_uuids,
+                retain,
             }
         }
         LdapSyncRepl::RefreshRequired => {
@@ -459,7 +470,7 @@ async fn run_sync(
                 from_state: scim_sync_status,
                 to_state,
                 entries: Vec::new(),
-                delete_uuids: Vec::new(),
+                retain: ScimSyncRetentionMode::Ignore,
             }
         }
     };
@@ -679,6 +690,7 @@ fn ipa_to_scim_entry(
     debug!("{:#?}", sync_entry);
 
     // check the sync_entry state?
+    #[allow(clippy::unimplemented)]
     if sync_entry.state != LdapSyncStateValue::Add {
         unimplemented!();
     }
@@ -702,11 +714,19 @@ fn ipa_to_scim_entry(
             mut entry,
         } = sync_entry;
 
-        let id = entry_uuid;
+        let id = if let Some(map_uuid) = &entry_config.map_uuid {
+            *map_uuid
+        } else {
+            entry_uuid
+        };
 
-        let user_name = entry.remove_ava_single("uid").ok_or_else(|| {
-            error!("Missing required attribute uid");
-        })?;
+        let user_name = if let Some(name) = entry_config.map_name.clone() {
+            name
+        } else {
+            entry.remove_ava_single("uid").ok_or_else(|| {
+                error!("Missing required attribute uid");
+            })?
+        };
 
         // ⚠️  hardcoded skip on admin here!!!
         if user_name == "admin" {
@@ -718,14 +738,18 @@ fn ipa_to_scim_entry(
             error!("Missing required attribute cn");
         })?;
 
-        let gidnumber = entry
-            .remove_ava_single("gidnumber")
-            .map(|gid| {
-                u32::from_str(&gid).map_err(|_| {
-                    error!("Invalid gidnumber");
+        let gidnumber = if let Some(number) = entry_config.map_gidnumber {
+            Some(number)
+        } else {
+            entry
+                .remove_ava_single("gidnumber")
+                .map(|gid| {
+                    u32::from_str(&gid).map_err(|_| {
+                        error!("Invalid gidnumber");
+                    })
                 })
-            })
-            .transpose()?;
+                .transpose()?
+        };
 
         let password_import = entry
             .remove_ava_single("ipanthash")
@@ -734,6 +758,21 @@ fn ipa_to_scim_entry(
             // The reason we don't do this by default is there are multiple
             // pw hash formats in 389-ds we don't support!
             .or_else(|| entry.remove_ava_single("userpassword"));
+
+        let mail: Vec<_> = entry
+            .remove_ava("mail")
+            .map(|set| {
+                set.into_iter()
+                    .map(|addr| MultiValueAttr {
+                        type_: None,
+                        primary: None,
+                        display: None,
+                        ref_: None,
+                        value: addr,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
 
         let totp_import = if !totp.is_empty() {
             if password_import.is_some() {
@@ -763,6 +802,7 @@ fn ipa_to_scim_entry(
                 password_import,
                 totp_import,
                 login_shell,
+                mail,
             }
             .into(),
         ))

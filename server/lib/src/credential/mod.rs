@@ -369,7 +369,7 @@ impl TryFrom<DbCred> for Credential {
 }
 
 impl Credential {
-    pub fn try_from_repl_v1(rc: &ReplCredV1) -> Result<(String, Self), ()> {
+    pub fn try_from_repl_v1(rc: &ReplCredV1) -> Result<(String, Self), OperationError> {
         match rc {
             ReplCredV1::TmpWn { tag, set } => {
                 let m_uuid: Option<Uuid> = set.get(0).map(|v| v.uuid);
@@ -382,7 +382,7 @@ impl Credential {
 
                 match (m_uuid, type_.is_valid()) {
                     (Some(uuid), true) => Ok((tag.clone(), Credential { type_, uuid })),
-                    _ => Err(()),
+                    _ => Err(OperationError::InvalidValueState),
                 }
             }
             ReplCredV1::Password {
@@ -390,12 +390,13 @@ impl Credential {
                 password,
                 uuid,
             } => {
-                let v_password = Password::try_from(password)?;
+                let v_password =
+                    Password::try_from(password).map_err(|()| OperationError::InvalidValueState)?;
                 let type_ = CredentialType::Password(v_password);
                 if type_.is_valid() {
                     Ok((tag.clone(), Credential { type_, uuid: *uuid }))
                 } else {
-                    Err(())
+                    Err(OperationError::InvalidValueState)
                 }
             }
             ReplCredV1::GenPassword {
@@ -403,12 +404,13 @@ impl Credential {
                 password,
                 uuid,
             } => {
-                let v_password = Password::try_from(password)?;
+                let v_password =
+                    Password::try_from(password).map_err(|()| OperationError::InvalidValueState)?;
                 let type_ = CredentialType::GeneratedPassword(v_password);
                 if type_.is_valid() {
                     Ok((tag.clone(), Credential { type_, uuid: *uuid }))
                 } else {
-                    Err(())
+                    Err(OperationError::InvalidValueState)
                 }
             }
             ReplCredV1::PasswordMfa {
@@ -419,15 +421,20 @@ impl Credential {
                 webauthn,
                 uuid,
             } => {
-                let v_password = Password::try_from(password)?;
+                let v_password =
+                    Password::try_from(password).map_err(|()| OperationError::InvalidValueState)?;
 
                 let v_totp = totp
                     .iter()
                     .map(|(l, dbt)| Totp::try_from(dbt).map(|t| (l.clone(), t)))
-                    .collect::<Result<Map<_, _>, _>>()?;
+                    .collect::<Result<Map<_, _>, _>>()
+                    .map_err(|()| OperationError::InvalidValueState)?;
 
                 let v_backup_code = match backup_code {
-                    Some(rbc) => Some(BackupCodes::try_from(rbc)?),
+                    Some(rbc) => Some(
+                        BackupCodes::try_from(rbc)
+                            .map_err(|()| OperationError::InvalidValueState)?,
+                    ),
                     None => None,
                 };
 
@@ -442,7 +449,7 @@ impl Credential {
                 if type_.is_valid() {
                     Ok((tag.clone(), Credential { type_, uuid: *uuid }))
                 } else {
-                    Err(())
+                    Err(OperationError::InvalidValueState)
                 }
             }
         }
@@ -453,7 +460,12 @@ impl Credential {
         policy: &CryptoPolicy,
         cleartext: &str,
     ) -> Result<Self, OperationError> {
-        Password::new(policy, cleartext).map(Self::new_from_password)
+        Password::new(policy, cleartext)
+            .map_err(|e| {
+                error!(crypto_err = ?e);
+                e.into()
+            })
+            .map(Self::new_from_password)
     }
 
     /// Create a new credential that contains a CredentialType::GeneratedPassword
@@ -461,7 +473,12 @@ impl Credential {
         policy: &CryptoPolicy,
         cleartext: &str,
     ) -> Result<Self, OperationError> {
-        Password::new(policy, cleartext).map(Self::new_from_generatedpassword)
+        Password::new(policy, cleartext)
+            .map_err(|e| {
+                error!(crypto_err = ?e);
+                e.into()
+            })
+            .map(Self::new_from_generatedpassword)
     }
 
     /// Update the state of the Password on this credential, if a password is present. If possible
@@ -471,7 +488,12 @@ impl Credential {
         policy: &CryptoPolicy,
         cleartext: &str,
     ) -> Result<Self, OperationError> {
-        Password::new(policy, cleartext).map(|pw| self.update_password(pw))
+        Password::new(policy, cleartext)
+            .map_err(|e| {
+                error!(crypto_err = ?e);
+                e.into()
+            })
+            .map(|pw| self.update_password(pw))
     }
 
     /// Extend this credential with another alternate webauthn credential. This is especially
@@ -627,7 +649,12 @@ impl Credential {
 
     #[cfg(test)]
     pub fn verify_password(&self, cleartext: &str) -> Result<bool, OperationError> {
-        self.password_ref().and_then(|pw| pw.verify(cleartext))
+        self.password_ref().and_then(|pw| {
+            pw.verify(cleartext).map_err(|e| {
+                error!(crypto_err = ?e);
+                e.into()
+            })
+        })
     }
 
     /// Extract this credential into it's Serialisable Database form, ready for persistence.

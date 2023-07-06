@@ -19,6 +19,7 @@ pub(crate) mod dyngroup;
 mod gidnumber;
 mod jwskeygen;
 mod memberof;
+mod namehistory;
 mod protected;
 mod refint;
 mod session;
@@ -61,6 +62,7 @@ trait Plugin {
 
     fn pre_modify(
         _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         _cand: &mut Vec<EntryInvalidCommitted>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -81,6 +83,7 @@ trait Plugin {
 
     fn pre_batch_modify(
         _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         _cand: &mut Vec<EntryInvalidCommitted>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
@@ -146,6 +149,33 @@ trait Plugin {
         Err(OperationError::InvalidState)
     }
 
+    fn pre_repl_incremental(
+        _qs: &mut QueryServerWriteTransaction,
+        _cand: &mut [(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)],
+    ) -> Result<(), OperationError> {
+        admin_error!(
+            "plugin {} has an unimplemented pre_repl_incremental!",
+            Self::id()
+        );
+        // debug_assert!(false);
+        // Err(OperationError::InvalidState)
+        Ok(())
+    }
+
+    fn post_repl_incremental(
+        _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
+        _cand: &[EntrySealedCommitted],
+    ) -> Result<(), OperationError> {
+        admin_error!(
+            "plugin {} has an unimplemented post_repl_incremental!",
+            Self::id()
+        );
+        // debug_assert!(false);
+        // Err(OperationError::InvalidState)
+        Ok(())
+    }
+
     fn verify(_qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         admin_error!("plugin {} has an unimplemented verify!", Self::id());
         vec![Err(ConsistencyError::Unknown)]
@@ -178,6 +208,7 @@ impl Plugins {
             .and_then(|_| gidnumber::GidNumber::pre_create_transform(qs, cand, ce))
             .and_then(|_| domain::Domain::pre_create_transform(qs, cand, ce))
             .and_then(|_| spn::Spn::pre_create_transform(qs, cand, ce))
+            .and_then(|_| namehistory::NameHistory::pre_create_transform(qs, cand, ce))
             // Should always be last
             .and_then(|_| attrunique::AttrUnique::pre_create_transform(qs, cand, ce))
     }
@@ -204,19 +235,21 @@ impl Plugins {
     #[instrument(level = "debug", name = "plugins::run_pre_modify", skip_all)]
     pub fn run_pre_modify(
         qs: &mut QueryServerWriteTransaction,
+        pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        protected::Protected::pre_modify(qs, cand, me)
-            .and_then(|_| base::Base::pre_modify(qs, cand, me))
-            .and_then(|_| cred_import::CredImport::pre_modify(qs, cand, me))
-            .and_then(|_| jwskeygen::JwsKeygen::pre_modify(qs, cand, me))
-            .and_then(|_| gidnumber::GidNumber::pre_modify(qs, cand, me))
-            .and_then(|_| domain::Domain::pre_modify(qs, cand, me))
-            .and_then(|_| spn::Spn::pre_modify(qs, cand, me))
-            .and_then(|_| session::SessionConsistency::pre_modify(qs, cand, me))
+        protected::Protected::pre_modify(qs, pre_cand, cand, me)
+            .and_then(|_| base::Base::pre_modify(qs, pre_cand, cand, me))
+            .and_then(|_| cred_import::CredImport::pre_modify(qs, pre_cand, cand, me))
+            .and_then(|_| jwskeygen::JwsKeygen::pre_modify(qs, pre_cand, cand, me))
+            .and_then(|_| gidnumber::GidNumber::pre_modify(qs, pre_cand, cand, me))
+            .and_then(|_| domain::Domain::pre_modify(qs, pre_cand, cand, me))
+            .and_then(|_| spn::Spn::pre_modify(qs, pre_cand, cand, me))
+            .and_then(|_| session::SessionConsistency::pre_modify(qs, pre_cand, cand, me))
+            .and_then(|_| namehistory::NameHistory::pre_modify(qs, pre_cand, cand, me))
             // attr unique should always be last
-            .and_then(|_| attrunique::AttrUnique::pre_modify(qs, cand, me))
+            .and_then(|_| attrunique::AttrUnique::pre_modify(qs, pre_cand, cand, me))
     }
 
     #[instrument(level = "debug", name = "plugins::run_post_modify", skip_all)]
@@ -234,19 +267,21 @@ impl Plugins {
     #[instrument(level = "debug", name = "plugins::run_pre_batch_modify", skip_all)]
     pub fn run_pre_batch_modify(
         qs: &mut QueryServerWriteTransaction,
+        pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        protected::Protected::pre_batch_modify(qs, cand, me)
-            .and_then(|_| base::Base::pre_batch_modify(qs, cand, me))
-            .and_then(|_| cred_import::CredImport::pre_batch_modify(qs, cand, me))
-            .and_then(|_| jwskeygen::JwsKeygen::pre_batch_modify(qs, cand, me))
-            .and_then(|_| gidnumber::GidNumber::pre_batch_modify(qs, cand, me))
-            .and_then(|_| domain::Domain::pre_batch_modify(qs, cand, me))
-            .and_then(|_| spn::Spn::pre_batch_modify(qs, cand, me))
-            .and_then(|_| session::SessionConsistency::pre_batch_modify(qs, cand, me))
+        protected::Protected::pre_batch_modify(qs, pre_cand, cand, me)
+            .and_then(|_| base::Base::pre_batch_modify(qs, pre_cand, cand, me))
+            .and_then(|_| cred_import::CredImport::pre_batch_modify(qs, pre_cand, cand, me))
+            .and_then(|_| jwskeygen::JwsKeygen::pre_batch_modify(qs, pre_cand, cand, me))
+            .and_then(|_| gidnumber::GidNumber::pre_batch_modify(qs, pre_cand, cand, me))
+            .and_then(|_| domain::Domain::pre_batch_modify(qs, pre_cand, cand, me))
+            .and_then(|_| spn::Spn::pre_batch_modify(qs, pre_cand, cand, me))
+            .and_then(|_| session::SessionConsistency::pre_batch_modify(qs, pre_cand, cand, me))
+            .and_then(|_| namehistory::NameHistory::pre_batch_modify(qs, pre_cand, cand, me))
             // attr unique should always be last
-            .and_then(|_| attrunique::AttrUnique::pre_batch_modify(qs, cand, me))
+            .and_then(|_| attrunique::AttrUnique::pre_batch_modify(qs, pre_cand, cand, me))
     }
 
     #[instrument(level = "debug", name = "plugins::run_post_batch_modify", skip_all)]
@@ -295,6 +330,30 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         refint::ReferentialIntegrity::post_repl_refresh(qs, cand)
             .and_then(|_| memberof::MemberOf::post_repl_refresh(qs, cand))
+    }
+
+    #[instrument(level = "debug", name = "plugins::run_pre_repl_incremental", skip_all)]
+    pub fn run_pre_repl_incremental(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &mut [(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)],
+    ) -> Result<(), OperationError> {
+        // Cleanup sessions on incoming replication? May not actually
+        // be needed ...
+        // session::SessionConsistency::pre_repl_incremental(qs, cand)?;
+        // attr unique should always be last
+        attrunique::AttrUnique::pre_repl_incremental(qs, cand)
+    }
+
+    #[instrument(level = "debug", name = "plugins::run_post_repl_incremental", skip_all)]
+    pub fn run_post_repl_incremental(
+        qs: &mut QueryServerWriteTransaction,
+        pre_cand: &[Arc<EntrySealedCommitted>],
+        cand: &[EntrySealedCommitted],
+    ) -> Result<(), OperationError> {
+        domain::Domain::post_repl_incremental(qs, pre_cand, cand)?;
+        spn::Spn::post_repl_incremental(qs, pre_cand, cand)?;
+        refint::ReferentialIntegrity::post_repl_incremental(qs, pre_cand, cand)?;
+        memberof::MemberOf::post_repl_incremental(qs, pre_cand, cand)
     }
 
     #[instrument(level = "debug", name = "plugins::run_verify", skip_all)]

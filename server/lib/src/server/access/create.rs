@@ -63,7 +63,7 @@ fn create_filter_entry<'a>(
         }
         IdentType::User(_) => {}
     };
-    info!(event = %ident, "Access check for create event");
+    debug!(event = %ident, "Access check for create event");
 
     match ident.access_scope() {
         AccessScope::ReadOnly | AccessScope::Synchronise => {
@@ -126,7 +126,7 @@ fn create_filter_entry<'a>(
                 security_access!("{:?} !⊆ {:?}", create_classes, allowed_classes);
                 return false;
             }
-            security_access!("passed");
+            debug!("passed");
 
             true
         } else {
@@ -143,7 +143,7 @@ fn create_filter_entry<'a>(
     }
 }
 
-fn protected_filter_entry<'a>(ident: &Identity, entry: &'a Entry<EntryInit, EntryNew>) -> IResult {
+fn protected_filter_entry(ident: &Identity, entry: &Entry<EntryInit, EntryNew>) -> IResult {
     match &ident.origin {
         IdentType::Internal => {
             trace!("Internal operation, protected rules do not apply.");

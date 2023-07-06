@@ -1,13 +1,14 @@
 use std::convert::TryFrom;
 use std::fs;
+use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use kanidm_proto::internal::AppLink;
 use kanidm_proto::v1::{
-    ApiToken, AuthRequest, BackupCodesView, CURequest, CUSessionToken, CUStatus, CredentialStatus,
-    Entry as ProtoEntry, OperationError, RadiusAuthToken, SearchRequest, SearchResponse, UatStatus,
-    UnixGroupToken, UnixUserToken, UserAuthToken, WhoamiResponse,
+    ApiToken, AuthIssueSession, AuthRequest, BackupCodesView, CURequest, CUSessionToken, CUStatus,
+    CredentialStatus, Entry as ProtoEntry, OperationError, RadiusAuthToken, SearchRequest,
+    SearchResponse, UatStatus, UnixGroupToken, UnixUserToken, UserAuthToken, WhoamiResponse,
 };
 use ldap3_proto::simple::*;
 use regex::Regex;
@@ -27,9 +28,8 @@ use kanidmd_lib::{
     },
     idm::ldap::{LdapBoundToken, LdapResponseState, LdapServer},
     idm::oauth2::{
-        AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-        AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse,
-        JwkKeySet, Oauth2Error, OidcDiscoveryResponse, OidcToken,
+        AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AuthorisationRequest,
+        AuthoriseResponse, JwkKeySet, Oauth2Error, OidcDiscoveryResponse, OidcToken,
     },
     idm::server::{IdmServer, IdmServerTransaction},
     idm::serviceaccount::ListApiTokenEvent,
@@ -103,7 +103,7 @@ impl QueryServerReadV1 {
     #[instrument(
         level = "info",
         name = "auth",
-        skip(self, sessionid, req, eventid)
+        skip_all,
         fields(uuid = ?eventid)
     )]
     pub async fn handle_auth(
@@ -111,6 +111,7 @@ impl QueryServerReadV1 {
         sessionid: Option<Uuid>,
         req: AuthRequest,
         eventid: Uuid,
+        ip_addr: IpAddr,
     ) -> Result<AuthResult, OperationError> {
         // This is probably the first function that really implements logic
         // "on top" of the db server concept. In this case we check if
@@ -133,14 +134,59 @@ impl QueryServerReadV1 {
         // the session are enforced.
         idm_auth.expire_auth_sessions(ct).await;
 
+        let source = Source::Https(ip_addr);
+
         // Generally things like auth denied are in Ok() msgs
         // so true errors should always trigger a rollback.
         let res = idm_auth
-            .auth(&ae, ct)
+            .auth(&ae, ct, source)
             .await
             .and_then(|r| idm_auth.commit().map(|_| r));
 
         security_info!(?res, "Sending auth result");
+
+        res
+    }
+
+    #[instrument(
+        level = "info",
+        name = "reauth",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_reauth(
+        &self,
+        uat: Option<String>,
+        issue: AuthIssueSession,
+        eventid: Uuid,
+        ip_addr: IpAddr,
+    ) -> Result<AuthResult, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idm_auth = self.idms.auth().await;
+        security_info!("Begin reauth event");
+
+        let ident = idm_auth
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!(?e, "Invalid identity");
+                e
+            })?;
+
+        // Trigger a session clean *before* we take any auth steps.
+        // It's important to do this before to ensure that timeouts on
+        // the session are enforced.
+        idm_auth.expire_auth_sessions(ct).await;
+
+        let source = Source::Https(ip_addr);
+
+        // Generally things like auth denied are in Ok() msgs
+        // so true errors should always trigger a rollback.
+        let res = idm_auth
+            .reauth_init(ident, issue, ct, source)
+            .await
+            .and_then(|r| idm_auth.commit().map(|_| r));
+
+        security_info!(?res, "Sending reauth result");
 
         res
     }
@@ -159,9 +205,15 @@ impl QueryServerReadV1 {
     ) -> Result<(), OperationError> {
         trace!(eventid = ?msg.eventid, "Begin online backup event");
 
-        #[allow(deprecated)]
-        let now = time::OffsetDateTime::now_local();
-        let timestamp = now.format(time::Format::Rfc3339);
+        let now = match time::OffsetDateTime::now_local() {
+            Ok(val) => val,
+            Err(_err) => {
+                admin_warn!("Failed to get local offset, using UTC");
+                time::OffsetDateTime::now_utc()
+            }
+        };
+        #[allow(clippy::unwrap_used)]
+        let timestamp = now.format(&Rfc3339).unwrap();
         let dest_file = format!("{}/backup-{}.json", outpath, timestamp);
 
         if Path::new(&dest_file).exists() {
@@ -1214,34 +1266,6 @@ impl QueryServerReadV1 {
         skip_all,
         fields(uuid = ?eventid)
     )]
-    pub async fn handle_oauth2_authorise_permit(
-        &self,
-        uat: Option<String>,
-        consent_req: String,
-        eventid: Uuid,
-    ) -> Result<AuthorisePermitSuccess, OperationError> {
-        let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
-        let (ident, uat) = idms_prox_read
-            .validate_and_parse_uat(uat.as_deref(), ct)
-            .and_then(|uat| {
-                idms_prox_read
-                    .process_uat_to_identity(&uat, ct)
-                    .map(|ident| (ident, uat))
-            })
-            .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
-                e
-            })?;
-
-        idms_prox_read.check_oauth2_authorise_permit(&ident, &uat, &consent_req, ct)
-    }
-
-    #[instrument(
-        level = "info",
-        skip_all,
-        fields(uuid = ?eventid)
-    )]
     pub async fn handle_oauth2_authorise_reject(
         &self,
         uat: Option<String>,
@@ -1263,23 +1287,6 @@ impl QueryServerReadV1 {
             })?;
 
         idms_prox_read.check_oauth2_authorise_reject(&ident, &uat, &consent_req, ct)
-    }
-
-    #[instrument(
-        level = "info",
-        skip_all,
-        fields(uuid = ?eventid)
-    )]
-    pub async fn handle_oauth2_token_exchange(
-        &self,
-        client_authz: Option<String>,
-        token_req: AccessTokenRequest,
-        eventid: Uuid,
-    ) -> Result<AccessTokenResponse, Oauth2Error> {
-        let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
-        // Now we can send to the idm server for authorisation checking.
-        idms_prox_read.check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
     }
 
     #[instrument(

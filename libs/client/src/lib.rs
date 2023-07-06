@@ -62,6 +62,8 @@ pub enum ClientError {
     JsonDecode(reqwest::Error, String),
     JsonEncode(SerdeJsonError),
     SystemError,
+    ConfigParseIssue(String),
+    CertParseIssue(String),
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -136,7 +138,7 @@ impl KanidmClientBuilder {
         }
     }
 
-    fn parse_certificate(ca_path: &str) -> Result<reqwest::Certificate, ()> {
+    fn parse_certificate(ca_path: &str) -> Result<reqwest::Certificate, ClientError> {
         let mut buf = Vec::new();
         // Is the CA secure?
         #[cfg(target_family = "windows")]
@@ -145,9 +147,14 @@ impl KanidmClientBuilder {
         #[cfg(target_family = "unix")]
         {
             let path = Path::new(ca_path);
-            let ca_meta = read_file_metadata(&path)?;
+            let ca_meta = read_file_metadata(&path).map_err(|e| {
+                error!("{:?}", e);
+                ClientError::ConfigParseIssue(format!("{:?}", e))
+            })?;
 
-            #[cfg(target_family = "unix")]
+            trace!("uid:gid {}:{}", ca_meta.uid(), ca_meta.gid());
+
+            #[cfg(not(debug_assertions))]
             if ca_meta.uid() != 0 || ca_meta.gid() != 0 {
                 warn!(
                     "{} should be owned be root:root to prevent tampering",
@@ -155,25 +162,28 @@ impl KanidmClientBuilder {
                 );
             }
 
-            #[cfg(target_family = "unix")]
-            if ca_meta.mode() != 0o644 {
-                warn!("permissions on {} may not be secure. Should be set to 0644. This could be a security risk ...", ca_path);
+            trace!("mode={:o}", ca_meta.mode());
+            if (ca_meta.mode() & 0o7133) != 0 {
+                warn!("permissions on {} are NOT secure. 0644 is a secure default. Should not be setuid, executable or allow group/other writes.", ca_path);
             }
         }
 
         // TODO #725: Handle these errors better, or at least provide diagnostics - this currently fails silently
         let mut f = File::open(ca_path).map_err(|e| {
-            error!(?e);
+            error!("{:?}", e);
+            ClientError::ConfigParseIssue(format!("{:?}", e))
         })?;
         f.read_to_end(&mut buf).map_err(|e| {
-            error!(?e);
+            error!("{:?}", e);
+            ClientError::ConfigParseIssue(format!("{:?}", e))
         })?;
         reqwest::Certificate::from_pem(&buf).map_err(|e| {
-            error!(?e);
+            error!("{:?}", e);
+            ClientError::CertParseIssue(format!("{:?}", e))
         })
     }
 
-    fn apply_config_options(self, kcc: KanidmClientConfig) -> Result<Self, ()> {
+    fn apply_config_options(self, kcc: KanidmClientConfig) -> Result<Self, ClientError> {
         let KanidmClientBuilder {
             address,
             verify_ca,
@@ -211,7 +221,7 @@ impl KanidmClientBuilder {
     pub fn read_options_from_optional_config<P: AsRef<Path> + std::fmt::Debug>(
         self,
         config_path: P,
-    ) -> Result<Self, ()> {
+    ) -> Result<Self, ClientError> {
         debug!("Attempting to load configuration from {:#?}", &config_path);
 
         // We have to check the .exists case manually, because there are some weird overlayfs
@@ -255,11 +265,15 @@ impl KanidmClientBuilder {
         };
 
         let mut contents = String::new();
-        f.read_to_string(&mut contents)
-            .map_err(|e| error!("{:?}", e))?;
+        f.read_to_string(&mut contents).map_err(|e| {
+            error!("{:?}", e);
+            ClientError::ConfigParseIssue(format!("{:?}", e))
+        })?;
 
-        let config: KanidmClientConfig =
-            toml::from_str(contents.as_str()).map_err(|e| error!("{:?}", e))?;
+        let config: KanidmClientConfig = toml::from_str(contents.as_str()).map_err(|e| {
+            error!("{:?}", e);
+            ClientError::ConfigParseIssue(format!("{:?}", e))
+        })?;
 
         self.apply_config_options(config)
     }
@@ -322,9 +336,12 @@ impl KanidmClientBuilder {
     }
 
     #[allow(clippy::result_unit_err)]
-    pub fn add_root_certificate_filepath(self, ca_path: &str) -> Result<Self, ()> {
+    pub fn add_root_certificate_filepath(self, ca_path: &str) -> Result<Self, ClientError> {
         //Okay we have a ca to add. Let's read it in and setup.
-        let ca = Self::parse_certificate(ca_path)?;
+        let ca = Self::parse_certificate(ca_path).map_err(|e| {
+            error!("{:?}", e);
+            ClientError::CertParseIssue(format!("{:?}", e))
+        })?;
 
         Ok(KanidmClientBuilder {
             address: self.address,
@@ -475,7 +492,11 @@ impl KanidmClient {
             warn!(server_version = ?ver, client_version = ?EXPECT_VERSION, "Mismatched client and server version - features may not work, or other unforeseen errors may occur.")
         }
 
-        debug_assert!(matching);
+        #[cfg(debug_assertions)]
+        if !matching {
+            error!("You're in debug/dev mode, so we're going to quit here.");
+            std::process::exit(1);
+        }
 
         // Check is done once, mark as no longer needing to occur
         *guard = false;
@@ -531,7 +552,7 @@ impl KanidmClient {
         request: R,
     ) -> Result<T, ClientError> {
         let dest = format!("{}{}", self.get_url(), dest);
-
+        trace!("perform_auth_post_request connecting to {}", dest);
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
 
         let response = self
@@ -540,13 +561,15 @@ impl KanidmClient {
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
 
-        /*
-        let response = if let Some(token) = &self.bearer_token {
-            response.bearer_auth(token)
-        } else {
-            response
+        // If we have a bearer token, set it now.
+        let response = {
+            let tguard = self.bearer_token.read().await;
+            if let Some(token) = &(*tguard) {
+                response.bearer_auth(token)
+            } else {
+                response
+            }
         };
-        */
 
         // If we have a session header, set it now.
         let response = {
@@ -757,6 +780,7 @@ impl KanidmClient {
             .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
+    #[instrument(level = "debug", skip(self))]
     async fn perform_get_request<T: DeserializeOwned>(&self, dest: &str) -> Result<T, ClientError> {
         let dest = format!("{}{}", self.get_url(), dest);
         let response = self.client.get(dest.as_str());
@@ -898,9 +922,13 @@ impl KanidmClient {
             .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
+    #[instrument(level = "debug")]
     pub async fn auth_step_init(&self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
         let auth_init = AuthRequest {
-            step: AuthStep::Init(ident.to_string()),
+            step: AuthStep::Init2 {
+                username: ident.to_string(),
+                issue: AuthIssueSession::Token,
+            },
         };
 
         let r: Result<AuthResponse, _> =
@@ -1057,11 +1085,13 @@ impl KanidmClient {
         }
     }
 
+    #[instrument(level = "debug")]
     pub async fn auth_simple_password(
         &self,
         ident: &str,
         password: &str,
     ) -> Result<(), ClientError> {
+        trace!("Init auth step");
         let mechs = match self.auth_step_init(ident).await {
             Ok(s) => s,
             Err(e) => return Err(e),
@@ -1212,6 +1242,100 @@ impl KanidmClient {
     }
 
     pub async fn auth_passkey_complete(
+        &self,
+        pkc: Box<PublicKeyCredential>,
+    ) -> Result<(), ClientError> {
+        let r = self.auth_step_passkey_complete(pkc).await?;
+        match r.state {
+            AuthState::Success(_token) => Ok(()),
+            _ => Err(ClientError::AuthenticationFailed),
+        }
+    }
+
+    pub async fn reauth_begin(&self) -> Result<Vec<AuthAllowed>, ClientError> {
+        let issue = AuthIssueSession::Token;
+        let r: Result<AuthResponse, _> = self.perform_auth_post_request("/v1/reauth", issue).await;
+
+        r.map(|v| {
+            debug!("Authentication Session ID -> {:?}", v.sessionid);
+            v.state
+        })
+        .and_then(|state| match state {
+            AuthState::Continue(allowed) => Ok(allowed),
+            _ => Err(ClientError::AuthenticationFailed),
+        })
+    }
+
+    pub async fn reauth_simple_password(&self, password: &str) -> Result<(), ClientError> {
+        let state = match self.reauth_begin().await {
+            Ok(mut s) => s.pop(),
+            Err(e) => return Err(e),
+        };
+
+        match state {
+            Some(AuthAllowed::Password) => {}
+            _ => {
+                return Err(ClientError::AuthenticationFailed);
+            }
+        };
+
+        let r = self.auth_step_password(password).await?;
+
+        match r.state {
+            AuthState::Success(_) => Ok(()),
+            _ => Err(ClientError::AuthenticationFailed),
+        }
+    }
+
+    pub async fn reauth_password_totp(&self, password: &str, totp: u32) -> Result<(), ClientError> {
+        let state = match self.reauth_begin().await {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+
+        if !state.contains(&AuthAllowed::Totp) {
+            debug!("TOTP step not offered.");
+            return Err(ClientError::AuthenticationFailed);
+        }
+
+        let r = self.auth_step_totp(totp).await?;
+
+        // Should need to continue.
+        match r.state {
+            AuthState::Continue(allowed) => {
+                if !allowed.contains(&AuthAllowed::Password) {
+                    debug!("Password step not offered.");
+                    return Err(ClientError::AuthenticationFailed);
+                }
+            }
+            _ => {
+                debug!("Invalid AuthState presented.");
+                return Err(ClientError::AuthenticationFailed);
+            }
+        };
+
+        let r = self.auth_step_password(password).await?;
+
+        match r.state {
+            AuthState::Success(_token) => Ok(()),
+            _ => Err(ClientError::AuthenticationFailed),
+        }
+    }
+
+    pub async fn reauth_passkey_begin(&self) -> Result<RequestChallengeResponse, ClientError> {
+        let state = match self.reauth_begin().await {
+            Ok(mut s) => s.pop(),
+            Err(e) => return Err(e),
+        };
+
+        // State is now a set of auth continues.
+        match state {
+            Some(AuthAllowed::Passkey(r)) => Ok(r),
+            _ => Err(ClientError::AuthenticationFailed),
+        }
+    }
+
+    pub async fn reauth_passkey_complete(
         &self,
         pkc: Box<PublicKeyCredential>,
     ) -> Result<(), ClientError> {
@@ -1403,12 +1527,23 @@ impl KanidmClient {
     }
 
     // == new credential update session code.
+    #[instrument(level = "debug", skip(self))]
     pub async fn idm_person_account_credential_update_intent(
         &self,
         id: &str,
+        ttl: Option<u32>,
     ) -> Result<CUIntentToken, ClientError> {
-        self.perform_get_request(format!("/v1/person/{}/_credential/_update_intent", id).as_str())
+        if let Some(ttl) = ttl {
+            self.perform_get_request(
+                format!("/v1/person/{}/_credential/_update_intent?ttl={}", id, ttl).as_str(),
+            )
             .await
+        } else {
+            self.perform_get_request(
+                format!("/v1/person/{}/_credential/_update_intent", id).as_str(),
+            )
+            .await
+        }
     }
 
     pub async fn idm_account_credential_update_begin(
@@ -1605,6 +1740,14 @@ impl KanidmClient {
         .await
     }
 
+    pub async fn idm_domain_set_ldap_basedn(&self, new_basedn: &str) -> Result<(), ClientError> {
+        self.perform_put_request(
+            "/v1/domain/_attr/domain_ldap_basedn",
+            vec![new_basedn.to_string()],
+        )
+        .await
+    }
+
     pub async fn idm_domain_get_ssid(&self) -> Result<String, ClientError> {
         self.perform_get_request("/v1/domain/_attr/domain_ssid")
             .await
@@ -1653,6 +1796,7 @@ impl KanidmClient {
     }
 
     // ==== Oauth2 resource server configuration
+    #[instrument(level = "debug")]
     pub async fn idm_oauth2_rs_list(&self) -> Result<Vec<Entry>, ClientError> {
         self.perform_get_request("/v1/oauth2").await
     }

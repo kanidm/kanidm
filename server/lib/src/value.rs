@@ -3,8 +3,6 @@
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
 //! these into a form for the backend that can be persistent into the [`Backend`](crate::be::Backend).
 
-use crate::prelude::*;
-
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::fmt;
@@ -12,15 +10,10 @@ use std::fmt::Formatter;
 use std::str::FromStr;
 use std::time::Duration;
 
-use crate::valueset::uuid_to_proto_string;
 #[cfg(test)]
 use base64::{engine::general_purpose, Engine as _};
 use compact_jwt::JwsSigner;
 use hashbrown::HashSet;
-use kanidm_proto::v1::ApiTokenPurpose;
-use kanidm_proto::v1::Filter as ProtoFilter;
-use kanidm_proto::v1::UatPurposeStatus;
-use kanidm_proto::v1::UiHint;
 use num_enum::TryFromPrimitive;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -30,43 +23,81 @@ use url::Url;
 use uuid::Uuid;
 use webauthn_rs::prelude::{DeviceKey as DeviceKeyV4, Passkey as PasskeyV4};
 
+use kanidm_proto::v1::ApiTokenPurpose;
+use kanidm_proto::v1::Filter as ProtoFilter;
+use kanidm_proto::v1::UatPurposeStatus;
+use kanidm_proto::v1::UiHint;
+
 use crate::be::dbentry::DbIdentSpn;
 use crate::credential::{totp::Totp, Credential};
+use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::server::identity::IdentityId;
+use crate::valueset::uuid_to_proto_string;
 
 lazy_static! {
     pub static ref SPN_RE: Regex = {
         #[allow(clippy::expect_used)]
         Regex::new("(?P<name>[^@]+)@(?P<realm>[^@]+)").expect("Invalid SPN regex found")
     };
+
     pub static ref DISALLOWED_NAMES: HashSet<&'static str> = {
-        let mut m = HashSet::with_capacity(10);
+        // Most of these were removed in favour of the unixd daemon filtering out
+        // local users instead.
+        let mut m = HashSet::with_capacity(2);
         m.insert("root");
-        m.insert("nobody");
-        m.insert("nogroup");
-        m.insert("wheel");
-        m.insert("sshd");
-        m.insert("shadow");
-        m.insert("systemd");
-        m.insert("mail");
-        m.insert("man");
-        m.insert("administrator");
+        m.insert("dn=token");
         m
     };
+
+    /// Only lowercase+numbers, with limited chars.
     pub static ref INAME_RE: Regex = {
         #[allow(clippy::expect_used)]
         Regex::new("^[a-z][a-z0-9-_\\.]+$").expect("Invalid Iname regex found")
-        // Only lowercase+numbers, with limited chars.
     };
+
+    pub static ref EXTRACT_VAL_DN: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new("^(([^=,]+)=)?(?P<val>[^=,]+)").expect("extract val from dn regex")
+        // Regex::new("^(([^=,]+)=)?(?P<val>[^=,]+)(,.*)?$").expect("Invalid Iname regex found")
+    };
+
     pub static ref NSUNIQUEID_RE: Regex = {
         #[allow(clippy::expect_used)]
         Regex::new("^[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}$").expect("Invalid Nsunique regex found")
     };
+
+    /// Must not contain whitespace.
     pub static ref OAUTHSCOPE_RE: Regex = {
         #[allow(clippy::expect_used)]
         Regex::new("^[0-9a-zA-Z_]+$").expect("Invalid oauthscope regex found")
-        // Must not contain whitespace.
+    };
+
+    pub static ref SINGLELINE_RE: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new("[\n\r\t]").expect("Invalid singleline regex found")
+    };
+
+    /// Per https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address
+    /// this regex validates for valid emails.
+    pub static ref VALIDATE_EMAIL_RE: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new(r"^[a-zA-Z0-9.!#$%&'*+=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").expect("Invalid singleline regex found")
+    };
+
+    // Formerly checked with
+    /*
+    pub static ref ESCAPES_RE: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new(r"\x1b\[([\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e])")
+            .expect("Invalid escapes regex found")
+    };
+    */
+
+    pub static ref UNICODE_CONTROL_RE: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new(r"[[:cntrl:]]")
+            .expect("Invalid unicode control regex found")
     };
 }
 
@@ -82,13 +113,22 @@ pub struct Address {
     pub country: String,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct CredUpdateSessionPerms {
+    pub ext_cred_portal_can_view: bool,
+    pub primary_can_edit: bool,
+    pub passkeys_can_edit: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IntentTokenState {
     Valid {
         max_ttl: Duration,
+        perms: CredUpdateSessionPerms,
     },
     InProgress {
         max_ttl: Duration,
+        perms: CredUpdateSessionPerms,
         session_id: Uuid,
         session_ttl: Duration,
     },
@@ -208,6 +248,7 @@ pub enum SyntaxType {
     UiHint = 29,
     TotpSecret = 30,
     ApiToken = 31,
+    AuditLogString = 32,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -249,6 +290,7 @@ impl TryFrom<&str> for SyntaxType {
             "UIHINT" => Ok(SyntaxType::UiHint),
             "TOTPSECRET" => Ok(SyntaxType::TotpSecret),
             "APITOKEN" => Ok(SyntaxType::ApiToken),
+            "AUDIT_LOG_STRING" => Ok(SyntaxType::AuditLogString),
             _ => Err(()),
         }
     }
@@ -289,6 +331,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::UiHint => "UIHINT",
             SyntaxType::TotpSecret => "TOTPSECRET",
             SyntaxType::ApiToken => "APITOKEN",
+            SyntaxType::AuditLogString => "AUDIT_LOG_STRING",
         })
     }
 }
@@ -337,7 +380,6 @@ pub enum PartialValue {
     UiHint(UiHint),
     Passkey(Uuid),
     DeviceKey(Uuid),
-    TrustedDeviceEnrollment(Uuid),
     // The label, if any.
 }
 
@@ -566,11 +608,11 @@ impl PartialValue {
     }
 
     pub fn new_datetime_epoch(ts: Duration) -> Self {
-        PartialValue::DateTime(OffsetDateTime::unix_epoch() + ts)
+        PartialValue::DateTime(OffsetDateTime::UNIX_EPOCH + ts)
     }
 
     pub fn new_datetime_s(s: &str) -> Option<Self> {
-        OffsetDateTime::parse(s, time::Format::Rfc3339)
+        OffsetDateTime::parse(s, &Rfc3339)
             .ok()
             .map(|odt| odt.to_offset(time::UtcOffset::UTC))
             .map(PartialValue::DateTime)
@@ -700,14 +742,15 @@ impl PartialValue {
             PartialValue::Cid(_) => "_".to_string(),
             PartialValue::DateTime(odt) => {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                odt.format(time::Format::Rfc3339)
+                #[allow(clippy::expect_used)]
+                odt.format(&Rfc3339)
+                    .expect("Failed to format timestamp into RFC3339")
             }
             PartialValue::Url(u) => u.to_string(),
             PartialValue::OauthScope(u) => u.to_string(),
             PartialValue::Address(a) => a.to_string(),
             PartialValue::PhoneNumber(a) => a.to_string(),
             PartialValue::IntentToken(u) => u.clone(),
-            PartialValue::TrustedDeviceEnrollment(u) => u.as_hyphenated().to_string(),
             PartialValue::UiHint(u) => (*u as u16).to_string(),
         }
     }
@@ -847,7 +890,6 @@ pub enum Value {
     Passkey(Uuid, String, PasskeyV4),
     DeviceKey(Uuid, String, DeviceKeyV4),
 
-    TrustedDeviceEnrollment(Uuid),
     Session(Uuid, Session),
     ApiToken(Uuid, ApiToken),
     Oauth2Session(Uuid, Oauth2Session),
@@ -857,6 +899,7 @@ pub enum Value {
     UiHint(UiHint),
 
     TotpSecret(String, Totp),
+    AuditLogString(Cid, String),
 }
 
 impl PartialEq for Value {
@@ -1059,6 +1102,10 @@ impl Value {
         bool::from_str(s).map(Value::Bool).ok()
     }
 
+    pub fn new_audit_log_string(e: (Cid, String)) -> Option<Self> {
+        Some(Value::AuditLogString(e.0, e.1))
+    }
+
     #[inline]
     pub fn is_bool(&self) -> bool {
         matches!(self, Value::Bool(_))
@@ -1219,11 +1266,11 @@ impl Value {
     }
 
     pub fn new_datetime_epoch(ts: Duration) -> Self {
-        Value::DateTime(OffsetDateTime::unix_epoch() + ts)
+        Value::DateTime(OffsetDateTime::UNIX_EPOCH + ts)
     }
 
     pub fn new_datetime_s(s: &str) -> Option<Self> {
-        OffsetDateTime::parse(s, time::Format::Rfc3339)
+        OffsetDateTime::parse(s, &Rfc3339)
             .ok()
             .map(|odt| odt.to_offset(time::UtcOffset::UTC))
             .map(Value::DateTime)
@@ -1248,7 +1295,7 @@ impl Value {
     }
 
     pub fn new_email_address_s(s: &str) -> Option<Self> {
-        if validator::validate_email(s) {
+        if VALIDATE_EMAIL_RE.is_match(s) {
             Some(Value::EmailAddress(s.to_string(), false))
         } else {
             None
@@ -1256,7 +1303,7 @@ impl Value {
     }
 
     pub fn new_email_address_primary_s(s: &str) -> Option<Self> {
-        if validator::validate_email(s) {
+        if VALIDATE_EMAIL_RE.is_match(s) {
             Some(Value::EmailAddress(s.to_string(), true))
         } else {
             None
@@ -1546,13 +1593,6 @@ impl Value {
         }
     }
 
-    pub fn to_trusteddeviceenrollment(self) -> Option<(Uuid, ())> {
-        match self {
-            Value::TrustedDeviceEnrollment(u) => Some((u, ())),
-            _ => None,
-        }
-    }
-
     pub fn to_session(self) -> Option<(Uuid, Session)> {
         match self {
             Value::Session(u, s) => Some((u, s)),
@@ -1591,46 +1631,119 @@ impl Value {
         }
     }
 
-    // !!! relocate to value set !!!
     pub(crate) fn validate(&self) -> bool {
         // Validate that extra-data constraints on the type exist and are
         // valid. IE json filter is really a filter, or cred types have supplemental
         // data.
         match &self {
-            Value::Iname(s) => Value::validate_iname(s),
-            /*
-            Value::Cred(_) => match &self.data {
-                Some(v) => matches!(v.as_ref(), DataValue::Cred(_)),
-                None => false,
-            },
-            */
-            Value::SshKey(_, key) => SshPublicKey::from_string(key).is_ok(),
+            // String security is required here
+            Value::Utf8(s)
+            | Value::Iutf8(s)
+            | Value::Cred(s, _)
+            | Value::PublicBinary(s, _)
+            | Value::IntentToken(s, _)
+            | Value::Passkey(_, s, _)
+            | Value::DeviceKey(_, s, _)
+            | Value::TotpSecret(s, _) => {
+                Value::validate_str_escapes(s) && Value::validate_singleline(s)
+            }
+
+            Value::Spn(a, b) => {
+                Value::validate_str_escapes(a)
+                    && Value::validate_str_escapes(b)
+                    && Value::validate_singleline(a)
+                    && Value::validate_singleline(b)
+            }
+
+            Value::Iname(s) => {
+                Value::validate_str_escapes(s)
+                    && Value::validate_iname(s)
+                    && Value::validate_singleline(s)
+            }
+
+            Value::SshKey(s, key) => {
+                SshPublicKey::from_string(key).is_ok()
+                    && Value::validate_str_escapes(s)
+                    && Value::validate_singleline(s)
+            }
+
+            Value::ApiToken(_, at) => {
+                Value::validate_str_escapes(&at.label) && Value::validate_singleline(&at.label)
+            }
+            Value::AuditLogString(_, s) => {
+                Value::validate_str_escapes(s) && Value::validate_singleline(s)
+            }
+            // These have stricter validators so not needed.
             Value::Nsuniqueid(s) => NSUNIQUEID_RE.is_match(s),
             Value::DateTime(odt) => odt.offset() == time::UtcOffset::UTC,
-            Value::EmailAddress(mail, _) => validator::validate_email(mail.as_str()),
-            // PartialValue::Url validated through parsing.
+            Value::EmailAddress(mail, _) => VALIDATE_EMAIL_RE.is_match(mail.as_str()),
             Value::OauthScope(s) => OAUTHSCOPE_RE.is_match(s),
             Value::OauthScopeMap(_, m) => m.iter().all(|s| OAUTHSCOPE_RE.is_match(s)),
-            _ => true,
+
+            Value::PhoneNumber(_, _) => true,
+            Value::Address(_) => true,
+
+            Value::Uuid(_)
+            | Value::Bool(_)
+            | Value::Syntax(_)
+            | Value::Index(_)
+            | Value::Refer(_)
+            | Value::JsonFilt(_)
+            | Value::SecretValue(_)
+            | Value::Uint32(_)
+            | Value::Url(_)
+            | Value::Cid(_)
+            | Value::PrivateBinary(_)
+            | Value::RestrictedString(_)
+            | Value::JwsKeyEs256(_)
+            | Value::Session(_, _)
+            | Value::Oauth2Session(_, _)
+            | Value::JwsKeyRs256(_)
+            | Value::UiHint(_) => true,
         }
     }
 
     pub(crate) fn validate_iname(s: &str) -> bool {
         match Uuid::parse_str(s) {
             // It is a uuid, disallow.
-            Ok(_) => false,
+            Ok(_) => {
+                error!("iname values may not contain uuids");
+                false
+            }
             // Not a uuid, check it against the re.
             Err(_) => {
                 if !INAME_RE.is_match(s) {
-                    warn!("iname values may only contain limited characters - \"{}\" does not pass regex pattern \"{}\"", s, *INAME_RE);
+                    error!("iname values may only contain limited characters - \"{}\" does not pass regex pattern \"{}\"", s, *INAME_RE);
                     false
                 } else if DISALLOWED_NAMES.contains(s) {
-                    warn!("iname value \"{}\" is in denied list", s);
+                    error!("iname value \"{}\" is in denied list", s);
                     false
                 } else {
                     true
                 }
             }
+        }
+    }
+
+    pub(crate) fn validate_singleline(s: &str) -> bool {
+        if !SINGLELINE_RE.is_match(s) {
+            true
+        } else {
+            error!(
+                "value contains invalid whitespace chars forbidden by \"{}\"",
+                *SINGLELINE_RE
+            );
+            false
+        }
+    }
+
+    pub(crate) fn validate_str_escapes(s: &str) -> bool {
+        // Look for and prevent certain types of string escapes and injections.
+        if UNICODE_CONTROL_RE.is_match(s) {
+            error!("value contains invalid unicode control character",);
+            false
+        } else {
+            true
         }
     }
 }
@@ -1828,8 +1941,10 @@ mod tests {
         assert!(Value::new_datetime_s("2020-09-25 01:22:02+00:00").is_none());
 
         // Manually craft
-        let inv1 =
-            Value::DateTime(OffsetDateTime::now_utc().to_offset(time::UtcOffset::east_hours(10)));
+        let inv1 = Value::DateTime(
+            OffsetDateTime::now_utc()
+                .to_offset(time::UtcOffset::from_whole_seconds(36000).unwrap()),
+        );
         assert!(!inv1.validate());
 
         let val3 = Value::DateTime(OffsetDateTime::now_utc());
@@ -1866,5 +1981,22 @@ mod tests {
         assert!(val1.is_some());
         assert!(val2.is_some());
         assert!(val3.is_some());
+    }
+
+    #[test]
+    fn test_singleline() {
+        assert!(Value::validate_singleline("no new lines"));
+
+        assert!(!Value::validate_singleline("contains a \n new line"));
+        assert!(!Value::validate_singleline("contains a \r return feed"));
+        assert!(!Value::validate_singleline("contains a \t tab char"));
+    }
+
+    #[test]
+    fn test_str_escapes() {
+        assert!(Value::validate_str_escapes("safe str"));
+        assert!(Value::validate_str_escapes("🙃 emoji are 👍"));
+
+        assert!(!Value::validate_str_escapes("naughty \x1b[31mred"));
     }
 }

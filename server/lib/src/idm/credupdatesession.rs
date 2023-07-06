@@ -6,7 +6,8 @@ use std::time::Duration;
 
 use hashbrown::HashSet;
 use kanidm_proto::v1::{
-    CURegState, CUStatus, CredentialDetail, PasskeyDetail, PasswordFeedback, TotpSecret,
+    CUExtPortal, CURegState, CUStatus, CredentialDetail, PasskeyDetail, PasswordFeedback,
+    TotpSecret,
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -22,11 +23,11 @@ use crate::idm::server::{IdmServerCredUpdateTransaction, IdmServerProxyWriteTran
 use crate::prelude::*;
 use crate::server::access::Access;
 use crate::utils::{backup_code_from_random, readable_password_from_random, uuid_from_duration};
-use crate::value::IntentTokenState;
+use crate::value::{CredUpdateSessionPerms, IntentTokenState};
 
 const MAXIMUM_CRED_UPDATE_TTL: Duration = Duration::from_secs(900);
 const MAXIMUM_INTENT_TTL: Duration = Duration::from_secs(86400);
-const MINIMUM_INTENT_TTL: Duration = MAXIMUM_CRED_UPDATE_TTL;
+const MINIMUM_INTENT_TTL: Duration = Duration::from_secs(300);
 
 #[derive(Debug)]
 pub enum PasswordQuality {
@@ -84,13 +85,20 @@ pub(crate) struct CredentialUpdateSession {
     intent_token_id: Option<String>,
     // Acc policy
 
+    // Is there an extertal credential portal?
+    ext_cred_portal: CUExtPortal,
+
     // The pw credential as they are being updated
     primary: Option<Credential>,
+    primary_can_edit: bool,
 
     // Passkeys that have been configured.
     passkeys: BTreeMap<Uuid, (String, PasskeyV4)>,
+    passkeys_can_edit: bool,
+
     // Devicekeys
     _devicekeys: BTreeMap<Uuid, (String, DeviceKeyV4)>,
+    _devicekeys_can_edit: bool,
 
     // Internal reg state of any inprogress totp or webauthn credentials.
     mfaregstate: MfaRegState,
@@ -177,12 +185,14 @@ pub struct CredentialUpdateSessionStatus {
     spn: String,
     // The target user's display name
     displayname: String,
-    // ttl: Duration,
-    can_commit: bool,
-    primary: Option<CredentialDetail>,
-    passkeys: Vec<PasskeyDetail>,
+    ext_cred_portal: CUExtPortal,
     // Any info the client needs about mfareg state.
     mfaregstate: MfaRegStateStatus,
+    can_commit: bool,
+    primary: Option<CredentialDetail>,
+    primary_can_edit: bool,
+    passkeys: Vec<PasskeyDetail>,
+    passkeys_can_edit: bool,
 }
 
 impl CredentialUpdateSessionStatus {
@@ -201,11 +211,9 @@ impl CredentialUpdateSessionStatus {
 impl Into<CUStatus> for CredentialUpdateSessionStatus {
     fn into(self) -> CUStatus {
         CUStatus {
-            spn: self.spn.clone(),
-            displayname: self.displayname.clone(),
-            can_commit: self.can_commit,
-            primary: self.primary,
-            passkeys: self.passkeys,
+            spn: self.spn,
+            displayname: self.displayname,
+            ext_cred_portal: self.ext_cred_portal,
             mfaregstate: match self.mfaregstate {
                 MfaRegStateStatus::None => CURegState::None,
                 MfaRegStateStatus::TotpCheck(c) => CURegState::TotpCheck(c),
@@ -216,6 +224,11 @@ impl Into<CUStatus> for CredentialUpdateSessionStatus {
                 }
                 MfaRegStateStatus::Passkey(r) => CURegState::Passkey(r),
             },
+            can_commit: self.can_commit,
+            primary: self.primary,
+            primary_can_edit: self.primary_can_edit,
+            passkeys: self.passkeys,
+            passkeys_can_edit: self.passkeys_can_edit,
         }
     }
 }
@@ -225,8 +238,10 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
         CredentialUpdateSessionStatus {
             spn: session.account.spn.clone(),
             displayname: session.account.displayname.clone(),
+            ext_cred_portal: session.ext_cred_portal.clone(),
             can_commit: session.can_commit(),
             primary: session.primary.as_ref().map(|c| c.into()),
+            primary_can_edit: session.primary_can_edit,
             passkeys: session
                 .passkeys
                 .iter()
@@ -235,6 +250,7 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
                     uuid: *uuid,
                 })
                 .collect(),
+            passkeys_can_edit: session.passkeys_can_edit,
             mfaregstate: match &session.mfaregstate {
                 MfaRegState::None => MfaRegStateStatus::None,
                 MfaRegState::TotpInit(token) => MfaRegStateStatus::TotpCheck(
@@ -309,11 +325,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         target: Uuid,
         ident: &Identity,
-    ) -> Result<Account, OperationError> {
+    ) -> Result<(Account, CredUpdateSessionPerms), OperationError> {
         let entry = self.qs_write.internal_search_uuid(target)?;
 
         security_info!(
-            %entry,
             %target,
             "Initiating Credential Update Session",
         );
@@ -336,8 +351,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 ident,
                 Some(btreeset![
                     AttrString::from("primary_credential"),
-                    AttrString::from("passkeys"),
-                    AttrString::from("devicekeys")
+                    AttrString::from("passkeys")
                 ]),
                 &[entry],
             )?;
@@ -373,16 +387,71 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             Access::Allow(attrs) => attrs.contains("primary_credential"),
         };
 
-        if !eperm_search_primary_cred || !eperm_mod_primary_cred || !eperm_rem_primary_cred {
-            security_info!(
-                "Requestor {} does not have permission to update credentials of {}",
-                ident,
-                account.spn
-            );
-            return Err(OperationError::NotAuthorised);
-        }
+        let primary_can_edit =
+            eperm_search_primary_cred && eperm_mod_primary_cred && eperm_rem_primary_cred;
 
-        Ok(account)
+        let eperm_search_passkeys = match &eperm.search {
+            Access::Denied => false,
+            Access::Grant => true,
+            Access::Allow(attrs) => attrs.contains("passkeys"),
+        };
+
+        let eperm_mod_passkeys = match &eperm.modify_pres {
+            Access::Denied => false,
+            Access::Grant => true,
+            Access::Allow(attrs) => attrs.contains("passkeys"),
+        };
+
+        let eperm_rem_passkeys = match &eperm.modify_rem {
+            Access::Denied => false,
+            Access::Grant => true,
+            Access::Allow(attrs) => attrs.contains("passkeys"),
+        };
+
+        let passkeys_can_edit = eperm_search_passkeys && eperm_mod_passkeys && eperm_rem_passkeys;
+
+        let ext_cred_portal_can_view = if let Some(sync_parent_uuid) = account.sync_parent_uuid {
+            // In theory this is always granted due to how access controls work, but we check anyway.
+            let entry = self.qs_write.internal_search_uuid(sync_parent_uuid)?;
+
+            let effective_perms = self
+                .qs_write
+                .get_accesscontrols()
+                .effective_permission_check(
+                    ident,
+                    Some(btreeset![AttrString::from("sync_credential_portal")]),
+                    &[entry],
+                )?;
+
+            let eperm = effective_perms.get(0).ok_or_else(|| {
+                admin_error!("Effective Permission check returned no results");
+                OperationError::InvalidState
+            })?;
+
+            match &eperm.search {
+                Access::Denied => false,
+                Access::Grant => true,
+                Access::Allow(attrs) => attrs.contains("sync_credential_portal"),
+            }
+        } else {
+            false
+        };
+
+        // At lease *one* must be modifiable OR visible.
+        if !(primary_can_edit || passkeys_can_edit || ext_cred_portal_can_view) {
+            error!("Unable to proceed with credential update intent - at least one type of credential must be modifiable or visible.");
+            Err(OperationError::NotAuthorised)
+        } else {
+            security_info!(%primary_can_edit, %passkeys_can_edit, %ext_cred_portal_can_view, "Proceeding");
+            Ok((
+                account,
+                CredUpdateSessionPerms {
+                    ext_cred_portal_can_view,
+                    passkeys_can_edit,
+                    primary_can_edit,
+                },
+            ))
+        }
     }
 
     fn create_credupdate_session(
@@ -390,12 +459,43 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         sessionid: Uuid,
         intent_token_id: Option<String>,
         account: Account,
+        perms: CredUpdateSessionPerms,
         ct: Duration,
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
+        let ext_cred_portal_can_view = perms.ext_cred_portal_can_view;
+        let primary_can_edit = perms.primary_can_edit;
+        let passkeys_can_edit = perms.passkeys_can_edit;
+
         // - stash the current state of all associated credentials
-        let primary = account.primary.clone();
-        let passkeys = account.passkeys.clone();
-        let devicekeys = account.devicekeys.clone();
+        let primary = if primary_can_edit {
+            account.primary.clone()
+        } else {
+            None
+        };
+
+        let passkeys = if passkeys_can_edit {
+            account.passkeys.clone()
+        } else {
+            BTreeMap::default()
+        };
+
+        // let devicekeys = account.devicekeys.clone();
+        let devicekeys = BTreeMap::default();
+
+        // Get the external credential portal, if any.
+        let ext_cred_portal = match (account.sync_parent_uuid, ext_cred_portal_can_view) {
+            (Some(sync_parent_uuid), true) => {
+                let sync_entry = self.qs_write.internal_search_uuid(sync_parent_uuid)?;
+                sync_entry
+                    .get_ava_single_url("sync_credential_portal")
+                    .cloned()
+                    .map(CUExtPortal::Some)
+                    .unwrap_or(CUExtPortal::Hidden)
+            }
+            (Some(_), false) => CUExtPortal::Hidden,
+            (None, _) => CUExtPortal::None,
+        };
+
         // Stash the issuer for some UI elements
         let issuer = self.qs_write.get_domain_display_name().to_string();
 
@@ -404,9 +504,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             account,
             issuer,
             intent_token_id,
+            ext_cred_portal,
             primary,
+            primary_can_edit,
             passkeys,
+            passkeys_can_edit,
             _devicekeys: devicekeys,
+            _devicekeys_can_edit: false,
             mfaregstate: MfaRegState::None,
         };
 
@@ -444,7 +548,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         event: &InitCredentialUpdateIntentEvent,
         ct: Duration,
     ) -> Result<CredentialUpdateIntentToken, OperationError> {
-        let account = self.validate_init_credential_update(event.target, &event.ident)?;
+        let (account, perms) = self.validate_init_credential_update(event.target, &event.ident)?;
 
         // ==== AUTHORISATION CHECKED ===
 
@@ -479,7 +583,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         //        occurs.
         let mut modlist = ModifyList::new_append(
             "credential_update_intent_token",
-            Value::IntentToken(intent_id.clone(), IntentTokenState::Valid { max_ttl }),
+            Value::IntentToken(
+                intent_id.clone(),
+                IntentTokenState::Valid { max_ttl, perms },
+            ),
         );
 
         // Remove any old credential update intents
@@ -488,9 +595,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .iter()
             .for_each(|(existing_intent_id, state)| {
                 let max_ttl = match state {
-                    IntentTokenState::Valid { max_ttl }
+                    IntentTokenState::Valid { max_ttl, perms: _ }
                     | IntentTokenState::InProgress {
                         max_ttl,
+                        perms: _,
                         session_id: _,
                         session_ttl: _,
                     }
@@ -585,7 +693,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     "Rejecting Update Session - Intent Token does not exist (replication delay?)",
                 );
                 return Err(OperationError::Wait(
-                    OffsetDateTime::unix_epoch() + (current_time + Duration::from_secs(150)),
+                    OffsetDateTime::UNIX_EPOCH + (current_time + Duration::from_secs(150)),
                 ));
             }
         };
@@ -596,7 +704,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Check there is not already a user session in progress with this intent token.
         // Is there a need to revoke intent tokens?
 
-        let max_ttl = match account.credential_update_intent_tokens.get(&intent_id) {
+        let (max_ttl, perms) = match account.credential_update_intent_tokens.get(&intent_id) {
             Some(IntentTokenState::Consumed { max_ttl: _ }) => {
                 security_info!(
                     %entry,
@@ -607,6 +715,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             }
             Some(IntentTokenState::InProgress {
                 max_ttl,
+                perms,
                 session_id,
                 session_ttl,
             }) => {
@@ -617,19 +726,25 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         %account.uuid,
                         "Initiating Credential Update Session - Previous session {} has expired", session_id
                     );
-                    *max_ttl
                 } else {
+                    // The former session has been orphaned while in use. This can be from someone
+                    // ctrl-c during their use of the session or refreshing the page without committing.
+                    //
+                    // we don't try to exclusive lock the token here with the current time as we previously
+                    // did. This is because with async replication, there isn't a guarantee this will actually
+                    // be sent to another server "soon enough" to prevent abuse on the separate server. So
+                    // all this "lock" actually does is annoy legitimate users and not stop abuse. We
+                    // STILL keep the InProgress state though since we check it on commit, so this
+                    // forces the previous orphan session to be immediately invalidated!
                     security_info!(
                         %entry,
                         %account.uuid,
-                        "Rejecting Update Session - Intent Token is in use {}. Try again later", session_id
+                        "Initiating Update Session - Intent Token was in use {} - this will be invalidated.", session_id
                     );
-                    return Err(OperationError::Wait(
-                        OffsetDateTime::unix_epoch() + *session_ttl,
-                    ));
-                }
+                };
+                (*max_ttl, *perms)
             }
-            Some(IntentTokenState::Valid { max_ttl }) => {
+            Some(IntentTokenState::Valid { max_ttl, perms }) => {
                 // Check the TTL
                 if current_time >= *max_ttl {
                     trace!(?current_time, ?max_ttl);
@@ -641,7 +756,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         %account.uuid,
                         "Initiating Credential Update Session",
                     );
-                    *max_ttl
+                    (*max_ttl, *perms)
                 }
             }
             None => {
@@ -673,6 +788,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 intent_id.clone(),
                 IntentTokenState::InProgress {
                     max_ttl,
+                    perms,
                     session_id,
                     session_ttl: current_time + MAXIMUM_CRED_UPDATE_TTL,
                 },
@@ -693,7 +809,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // ==========
         // Okay, good to exchange.
 
-        self.create_credupdate_session(session_id, Some(intent_id), account, current_time)
+        self.create_credupdate_session(session_id, Some(intent_id), account, perms, current_time)
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -702,14 +818,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         event: &InitCredentialUpdateEvent,
         ct: Duration,
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
-        let account = self.validate_init_credential_update(event.target, &event.ident)?;
+        let (account, perms) = self.validate_init_credential_update(event.target, &event.ident)?;
+
         // ==== AUTHORISATION CHECKED ===
         // This is the expiry time, so that our cleanup task can "purge up to now" rather
         // than needing to do calculations.
         let sessionid = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
 
         // Build the cred update session.
-        self.create_credupdate_session(sessionid, None, account, ct)
+        self.create_credupdate_session(sessionid, None, account, perms, ct)
     }
 
     #[instrument(level = "trace", skip(self))]
@@ -809,6 +926,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             let max_ttl = match account.credential_update_intent_tokens.get(intent_token_id) {
                 Some(IntentTokenState::InProgress {
                     max_ttl,
+                    perms: _,
                     session_id,
                     session_ttl: _,
                 }) => {
@@ -820,7 +938,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     }
                 }
                 Some(IntentTokenState::Consumed { max_ttl: _ })
-                | Some(IntentTokenState::Valid { max_ttl: _ })
+                | Some(IntentTokenState::Valid {
+                    max_ttl: _,
+                    perms: _,
+                })
                 | None => {
                     security_info!("Session originated from an intent token, but the intent token has transitioned to an invalid state. Refusing to commit changes.");
                     return Err(OperationError::InvalidState);
@@ -840,43 +961,51 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             ));
         };
 
-        match &session.primary {
-            Some(ncred) => {
-                modlist.push_mod(Modify::Purged(AttrString::from("primary_credential")));
-                let vcred = Value::new_credential("primary", ncred.clone());
-                modlist.push_mod(Modify::Present(
-                    AttrString::from("primary_credential"),
-                    vcred,
-                ));
-            }
-            None => {
-                modlist.push_mod(Modify::Purged(AttrString::from("primary_credential")));
-            }
+        if session.primary_can_edit {
+            match &session.primary {
+                Some(ncred) => {
+                    modlist.push_mod(Modify::Purged(AttrString::from("primary_credential")));
+                    let vcred = Value::new_credential("primary", ncred.clone());
+                    modlist.push_mod(Modify::Present(
+                        AttrString::from("primary_credential"),
+                        vcred,
+                    ));
+                }
+                None => {
+                    modlist.push_mod(Modify::Purged(AttrString::from("primary_credential")));
+                }
+            };
         };
 
-        // Need to update passkeys.
-        modlist.push_mod(Modify::Purged(AttrString::from("passkeys")));
-        // Add all the passkeys. If none, nothing will be added! This handles
-        // the delete case quite cleanly :)
-        session.passkeys.iter().for_each(|(uuid, (tag, pk))| {
-            let v_pk = Value::Passkey(*uuid, tag.clone(), pk.clone());
-            modlist.push_mod(Modify::Present(AttrString::from("passkeys"), v_pk));
-        });
-        // Are any other checks needed?
+        if session.passkeys_can_edit {
+            // Need to update passkeys.
+            modlist.push_mod(Modify::Purged(AttrString::from("passkeys")));
+            // Add all the passkeys. If none, nothing will be added! This handles
+            // the delete case quite cleanly :)
+            session.passkeys.iter().for_each(|(uuid, (tag, pk))| {
+                let v_pk = Value::Passkey(*uuid, tag.clone(), pk.clone());
+                modlist.push_mod(Modify::Present(AttrString::from("passkeys"), v_pk));
+            });
+        };
 
         // Apply to the account!
         trace!(?modlist, "processing change");
 
-        self.qs_write
-            .internal_modify(
-                // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::Uuid(session.account.uuid))),
-                &modlist,
-            )
-            .map_err(|e| {
-                request_error!(error = ?e);
-                e
-            })
+        if modlist.is_empty() {
+            trace!("no changes to apply");
+            Ok(())
+        } else {
+            self.qs_write
+                .internal_modify(
+                    // Filter as executed
+                    &filter!(f_eq("uuid", PartialValue::Uuid(session.account.uuid))),
+                    &modlist,
+                )
+                .map_err(|e| {
+                    request_error!(error = ?e);
+                    e
+                })
+        }
     }
 
     pub fn cancel_credential_update(
@@ -892,9 +1021,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             let entry = self.qs_write.internal_search_uuid(session.account.uuid)?;
             let account = Account::try_from_entry_rw(entry.as_ref(), &mut self.qs_write)?;
 
-            let max_ttl = match account.credential_update_intent_tokens.get(intent_token_id) {
+            let (max_ttl, perms) = match account
+                .credential_update_intent_tokens
+                .get(intent_token_id)
+            {
                 Some(IntentTokenState::InProgress {
                     max_ttl,
+                    perms,
                     session_id,
                     session_ttl: _,
                 }) => {
@@ -902,11 +1035,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         security_info!("Session originated from an intent token, but the intent token has initiated a conflicting second update session. Refusing to commit changes.");
                         return Err(OperationError::InvalidState);
                     } else {
-                        *max_ttl
+                        (*max_ttl, *perms)
                     }
                 }
                 Some(IntentTokenState::Consumed { max_ttl: _ })
-                | Some(IntentTokenState::Valid { max_ttl: _ })
+                | Some(IntentTokenState::Valid {
+                    max_ttl: _,
+                    perms: _,
+                })
                 | None => {
                     security_info!("Session originated from an intent token, but the intent token has transitioned to an invalid state. Refusing to commit changes.");
                     return Err(OperationError::InvalidState);
@@ -919,7 +1055,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             ));
             modlist.push_mod(Modify::Present(
                 AttrString::from("credential_update_intent_token"),
-                Value::IntentToken(intent_token_id.clone(), IntentTokenState::Valid { max_ttl }),
+                Value::IntentToken(
+                    intent_token_id.clone(),
+                    IntentTokenState::Valid { max_ttl, perms },
+                ),
             ));
         };
 
@@ -1002,6 +1141,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         Ok(status)
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn check_password_quality(
         &self,
         cleartext: &str,
@@ -1145,6 +1285,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         }
     }
 
+    #[instrument(level = "trace", skip(cust, self))]
     pub fn credential_primary_set_password(
         &self,
         cust: &CredentialUpdateSessionToken,
@@ -1157,6 +1298,11 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
             OperationError::InvalidState
         })?;
         trace!(?session);
+
+        if !session.primary_can_edit {
+            error!("Session does not have permission to modify primary credential");
+            return Err(OperationError::AccessDenied);
+        };
 
         // Check pw quality (future - acc policy applies).
         self.check_password_quality(pw, session.account.related_inputs().as_slice())
@@ -1194,6 +1340,11 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
+        if !session.primary_can_edit {
+            error!("Session does not have permission to modify primary credential");
+            return Err(OperationError::AccessDenied);
+        };
+
         // Is there something else in progress?
         // Or should this just cancel it ....
         if !matches!(session.mfaregstate, MfaRegState::None) {
@@ -1223,12 +1374,17 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
+        if !session.primary_can_edit {
+            error!("Session does not have permission to modify primary credential");
+            return Err(OperationError::AccessDenied);
+        };
+
         // Are we in a totp reg state?
         match &session.mfaregstate {
             MfaRegState::TotpInit(totp_token)
             | MfaRegState::TotpTryAgain(totp_token)
             | MfaRegState::TotpInvalidSha1(totp_token, _, _) => {
-                if totp_token.verify(totp_chal, &ct) {
+                if totp_token.verify(totp_chal, ct) {
                     // It was valid. Update the credential.
                     let ncred = session
                         .primary
@@ -1250,7 +1406,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
                     // check that just in case.
                     let token_sha1 = totp_token.clone().downgrade_to_legacy();
 
-                    if token_sha1.verify(totp_chal, &ct) {
+                    if token_sha1.verify(totp_chal, ct) {
                         // Greeeaaaaaatttt. It's a broken app. Let's check the user
                         // knows this is broken, before we proceed.
                         session.mfaregstate = MfaRegState::TotpInvalidSha1(
@@ -1281,6 +1437,11 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
             OperationError::InvalidState
         })?;
         trace!(?session);
+
+        if !session.primary_can_edit {
+            error!("Session does not have permission to modify primary credential");
+            return Err(OperationError::AccessDenied);
+        };
 
         // Are we in a totp reg state?
         match &session.mfaregstate {
@@ -1320,6 +1481,11 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
+        if !session.primary_can_edit {
+            error!("Session does not have permission to modify primary credential");
+            return Err(OperationError::AccessDenied);
+        };
+
         if !matches!(session.mfaregstate, MfaRegState::None) {
             admin_info!("Invalid TOTP state, another update is in progress");
             return Err(OperationError::InvalidState);
@@ -1352,6 +1518,11 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
             OperationError::InvalidState
         })?;
         trace!(?session);
+
+        if !session.primary_can_edit {
+            error!("Session does not have permission to modify primary credential");
+            return Err(OperationError::AccessDenied);
+        };
 
         // I think we override/map the status to inject the codes as a once-off state message.
 
@@ -1393,6 +1564,11 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
+        if !session.primary_can_edit {
+            error!("Session does not have permission to modify primary credential");
+            return Err(OperationError::AccessDenied);
+        };
+
         let ncred = session
             .primary
             .as_ref()
@@ -1425,6 +1601,11 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
             OperationError::InvalidState
         })?;
         trace!(?session);
+
+        if !session.passkeys_can_edit {
+            error!("Session does not have permission to modify primary credential");
+            return Err(OperationError::AccessDenied);
+        };
 
         if !matches!(session.mfaregstate, MfaRegState::None) {
             admin_info!("Invalid Passkey Init state, another update is in progress");
@@ -1463,6 +1644,11 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
+        if !session.passkeys_can_edit {
+            error!("Session does not have permission to modify primary credential");
+            return Err(OperationError::AccessDenied);
+        };
+
         match &session.mfaregstate {
             MfaRegState::Passkey(_ccr, pk_reg) => {
                 let passkey = self
@@ -1497,6 +1683,11 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })?;
         trace!(?session);
 
+        if !session.passkeys_can_edit {
+            error!("Session does not have permission to modify primary credential");
+            return Err(OperationError::AccessDenied);
+        };
+
         // No-op if not present
         session.passkeys.remove(&uuid);
 
@@ -1529,6 +1720,12 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
             OperationError::InvalidState
         })?;
         trace!(?session);
+
+        if !session.primary_can_edit {
+            error!("Session does not have permission to modify primary credential");
+            return Err(OperationError::AccessDenied);
+        };
+
         session.primary = None;
         Ok(session.deref().into())
     }
@@ -1540,7 +1737,9 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 mod tests {
     use std::time::Duration;
 
-    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, CredentialDetailType};
+    use kanidm_proto::v1::{
+        AuthAllowed, AuthIssueSession, AuthMech, CUExtPortal, CredentialDetailType,
+    };
     use uuid::uuid;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::WebauthnAuthenticator;
@@ -1658,15 +1857,26 @@ mod tests {
         assert!(matches!(cur, Err(OperationError::SessionExpired)));
 
         // exchange intent token - success
-        let cur = idms_prox_write.exchange_intent_credential_update(intent_tok.clone(), ct);
+        let (cust_a, _c_status) = idms_prox_write
+            .exchange_intent_credential_update(intent_tok.clone(), ct)
+            .unwrap();
 
-        assert!(cur.is_ok());
+        // Session in progress - This will succeed and then block the former success from
+        // committing.
+        let (cust_b, _c_status) = idms_prox_write
+            .exchange_intent_credential_update(intent_tok, ct + Duration::from_secs(1))
+            .unwrap();
 
-        // Already used.
-        let cur = idms_prox_write.exchange_intent_credential_update(intent_tok, ct);
+        let cur = idms_prox_write.commit_credential_update(&cust_a, ct);
 
+        // Fails as the txn was orphaned.
         trace!(?cur);
         assert!(cur.is_err());
+
+        // Success - this was the second use of the token and is valid.
+        let _ = idms_prox_write.commit_credential_update(&cust_b, ct);
+
+        idms_prox_write.commit().expect("Failed to commit txn");
     }
 
     async fn setup_test_session(
@@ -1745,13 +1955,9 @@ mod tests {
 
         let auth_init = AuthEvent::named_init("testperson");
 
-        let r1 = idms_auth.auth(&auth_init, ct).await;
+        let r1 = idms_auth.auth(&auth_init, ct, Source::Internal).await;
         let ar = r1.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         if !matches!(state, AuthState::Choose(_)) {
             debug!("Can't proceed - {:?}", state);
@@ -1760,20 +1966,16 @@ mod tests {
 
         let auth_begin = AuthEvent::begin_mech(sessionid, AuthMech::Password);
 
-        let r2 = idms_auth.auth(&auth_begin, ct).await;
+        let r2 = idms_auth.auth(&auth_begin, ct, Source::Internal).await;
         let ar = r2.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         assert!(matches!(state, AuthState::Continue(_)));
 
         let pw_step = AuthEvent::cred_step_password(sessionid, pw);
 
         // Expect success
-        let r2 = idms_auth.auth(&pw_step, ct).await;
+        let r2 = idms_auth.auth(&pw_step, ct, Source::Internal).await;
         debug!("r2 ==> {:?}", r2);
         idms_auth.commit().expect("Must not fail");
 
@@ -1781,7 +1983,6 @@ mod tests {
             Ok(AuthResult {
                 sessionid: _,
                 state: AuthState::Success(token, AuthIssueSession::Token),
-                delay: _,
             }) => {
                 // Process the auth session
                 let da = idms_delayed.try_recv().expect("invalid");
@@ -1804,13 +2005,9 @@ mod tests {
 
         let auth_init = AuthEvent::named_init("testperson");
 
-        let r1 = idms_auth.auth(&auth_init, ct).await;
+        let r1 = idms_auth.auth(&auth_init, ct, Source::Internal).await;
         let ar = r1.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         if !matches!(state, AuthState::Choose(_)) {
             debug!("Can't proceed - {:?}", state);
@@ -1819,13 +2016,9 @@ mod tests {
 
         let auth_begin = AuthEvent::begin_mech(sessionid, AuthMech::PasswordMfa);
 
-        let r2 = idms_auth.auth(&auth_begin, ct).await;
+        let r2 = idms_auth.auth(&auth_begin, ct, Source::Internal).await;
         let ar = r2.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         assert!(matches!(state, AuthState::Continue(_)));
 
@@ -1834,20 +2027,16 @@ mod tests {
             .expect("Failed to perform totp step");
 
         let totp_step = AuthEvent::cred_step_totp(sessionid, totp);
-        let r2 = idms_auth.auth(&totp_step, ct).await;
+        let r2 = idms_auth.auth(&totp_step, ct, Source::Internal).await;
         let ar = r2.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         assert!(matches!(state, AuthState::Continue(_)));
 
         let pw_step = AuthEvent::cred_step_password(sessionid, pw);
 
         // Expect success
-        let r3 = idms_auth.auth(&pw_step, ct).await;
+        let r3 = idms_auth.auth(&pw_step, ct, Source::Internal).await;
         debug!("r3 ==> {:?}", r3);
         idms_auth.commit().expect("Must not fail");
 
@@ -1855,7 +2044,6 @@ mod tests {
             Ok(AuthResult {
                 sessionid: _,
                 state: AuthState::Success(token, AuthIssueSession::Token),
-                delay: _,
             }) => {
                 // Process the auth session
                 let da = idms_delayed.try_recv().expect("invalid");
@@ -1877,13 +2065,9 @@ mod tests {
 
         let auth_init = AuthEvent::named_init("testperson");
 
-        let r1 = idms_auth.auth(&auth_init, ct).await;
+        let r1 = idms_auth.auth(&auth_init, ct, Source::Internal).await;
         let ar = r1.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         if !matches!(state, AuthState::Choose(_)) {
             debug!("Can't proceed - {:?}", state);
@@ -1892,31 +2076,23 @@ mod tests {
 
         let auth_begin = AuthEvent::begin_mech(sessionid, AuthMech::PasswordMfa);
 
-        let r2 = idms_auth.auth(&auth_begin, ct).await;
+        let r2 = idms_auth.auth(&auth_begin, ct, Source::Internal).await;
         let ar = r2.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         assert!(matches!(state, AuthState::Continue(_)));
 
         let code_step = AuthEvent::cred_step_backup_code(sessionid, code);
-        let r2 = idms_auth.auth(&code_step, ct).await;
+        let r2 = idms_auth.auth(&code_step, ct, Source::Internal).await;
         let ar = r2.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         assert!(matches!(state, AuthState::Continue(_)));
 
         let pw_step = AuthEvent::cred_step_password(sessionid, pw);
 
         // Expect success
-        let r3 = idms_auth.auth(&pw_step, ct).await;
+        let r3 = idms_auth.auth(&pw_step, ct, Source::Internal).await;
         debug!("r3 ==> {:?}", r3);
         idms_auth.commit().expect("Must not fail");
 
@@ -1924,7 +2100,6 @@ mod tests {
             Ok(AuthResult {
                 sessionid: _,
                 state: AuthState::Success(token, AuthIssueSession::Token),
-                delay: _,
             }) => {
                 // There now should be a backup code invalidation present
                 let da = idms_delayed.try_recv().expect("invalid");
@@ -1952,13 +2127,9 @@ mod tests {
 
         let auth_init = AuthEvent::named_init("testperson");
 
-        let r1 = idms_auth.auth(&auth_init, ct).await;
+        let r1 = idms_auth.auth(&auth_init, ct, Source::Internal).await;
         let ar = r1.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         if !matches!(state, AuthState::Choose(_)) {
             debug!("Can't proceed - {:?}", state);
@@ -1967,13 +2138,9 @@ mod tests {
 
         let auth_begin = AuthEvent::begin_mech(sessionid, AuthMech::Passkey);
 
-        let r2 = idms_auth.auth(&auth_begin, ct).await;
+        let r2 = idms_auth.auth(&auth_begin, ct, Source::Internal).await;
         let ar = r2.unwrap();
-        let AuthResult {
-            sessionid,
-            state,
-            delay: _,
-        } = ar;
+        let AuthResult { sessionid, state } = ar;
 
         trace!(?state);
 
@@ -1993,7 +2160,7 @@ mod tests {
 
         let passkey_step = AuthEvent::cred_step_passkey(sessionid, resp);
 
-        let r3 = idms_auth.auth(&passkey_step, ct).await;
+        let r3 = idms_auth.auth(&passkey_step, ct, Source::Internal).await;
         debug!("r3 ==> {:?}", r3);
         idms_auth.commit().expect("Must not fail");
 
@@ -2001,7 +2168,6 @@ mod tests {
             Ok(AuthResult {
                 sessionid: _,
                 state: AuthState::Success(token, AuthIssueSession::Token),
-                delay: _,
             }) => {
                 // Process the webauthn update
                 let da = idms_delayed.try_recv().expect("invalid");
@@ -2561,6 +2727,152 @@ mod tests {
                 .await
                 .is_none()
         );
+    }
+
+    #[idm_test]
+    async fn test_idm_credential_update_access_denied(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        // Test that if access is denied for a synced account, that the actual action to update
+        // the credentials is always denied.
+
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let sync_uuid = Uuid::new_v4();
+
+        let e1 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("sync_account")),
+            ("name", Value::new_iname("test_scim_sync")),
+            ("uuid", Value::Uuid(sync_uuid)),
+            ("description", Value::new_utf8s("A test sync agreement"))
+        );
+
+        let e2 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("sync_object")),
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("person")),
+            ("sync_parent_uuid", Value::Refer(sync_uuid)),
+            ("name", Value::new_iname("testperson")),
+            ("uuid", Value::Uuid(TESTPERSON_UUID)),
+            ("description", Value::new_utf8s("testperson")),
+            ("displayname", Value::new_utf8s("testperson"))
+        );
+
+        let ce = CreateEvent::new_internal(vec![e1, e2]);
+        let cr = idms_prox_write.qs_write.create(&ce);
+        assert!(cr.is_ok());
+
+        let testperson = idms_prox_write
+            .qs_write
+            .internal_search_uuid(TESTPERSON_UUID)
+            .expect("failed");
+
+        let cur = idms_prox_write.init_credential_update(
+            &InitCredentialUpdateEvent::new_impersonate_entry(testperson),
+            ct,
+        );
+
+        idms_prox_write.commit().expect("Failed to commit txn");
+
+        let (cust, custatus) = cur.expect("Failed to start update");
+
+        trace!(?custatus);
+
+        // Destructure to force us to update this test if we change this
+        // structure at all.
+        let CredentialUpdateSessionStatus {
+            spn: _,
+            displayname: _,
+            ext_cred_portal,
+            mfaregstate: _,
+            can_commit: _,
+            primary: _,
+            primary_can_edit,
+            passkeys: _,
+            passkeys_can_edit,
+        } = custatus;
+
+        assert!(matches!(ext_cred_portal, CUExtPortal::Hidden));
+        assert!(!primary_can_edit);
+        assert!(!passkeys_can_edit);
+
+        let cutxn = idms.cred_update_transaction().await;
+
+        // let origin = cutxn.get_origin().clone();
+
+        // Test that any of the primary or passkey update methods fail with access denied.
+
+        // credential_primary_set_password
+        let err = cutxn
+            .credential_primary_set_password(&cust, ct, "password")
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_primary_init_totp
+        let err = cutxn.credential_primary_init_totp(&cust, ct).unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_primary_check_totp
+        let err = cutxn
+            .credential_primary_check_totp(&cust, ct, 0, "totp")
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_primary_accept_sha1_totp
+        let err = cutxn
+            .credential_primary_accept_sha1_totp(&cust, ct)
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_primary_remove_totp
+        let err = cutxn
+            .credential_primary_remove_totp(&cust, ct, "totp")
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_primary_init_backup_codes
+        let err = cutxn
+            .credential_primary_init_backup_codes(&cust, ct)
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_primary_remove_backup_codes
+        let err = cutxn
+            .credential_primary_remove_backup_codes(&cust, ct)
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_primary_delete
+        let err = cutxn.credential_primary_delete(&cust, ct).unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_passkey_init
+        let err = cutxn.credential_passkey_init(&cust, ct).unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_passkey_finish
+        //   Can't test because we need a public key response.
+
+        // credential_passkey_remove
+        let err = cutxn
+            .credential_passkey_remove(&cust, ct, Uuid::new_v4())
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        let c_status = cutxn
+            .credential_update_status(&cust, ct)
+            .expect("Failed to get the current session status.");
+        trace!(?c_status);
+        assert!(c_status.primary.is_none());
+        assert!(c_status.passkeys.is_empty());
+
+        drop(cutxn);
+        commit_session(idms, ct, cust).await;
     }
 
     // W_ policy, assert can't remove MFA if it's enforced.

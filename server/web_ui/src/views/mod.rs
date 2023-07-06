@@ -1,68 +1,60 @@
 use gloo::console;
 use kanidm_proto::v1::{UiHint, UserAuthToken};
 use serde::{Deserialize, Serialize};
-use wasm_bindgen::{JsCast, UnwrapThrowExt};
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestCredentials, RequestInit, RequestMode, Response};
+use wasm_bindgen::UnwrapThrowExt;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::components::{admin_accounts, admin_groups, admin_menu, admin_oauth2};
-use crate::error::*;
 use crate::manager::Route;
-use crate::{models, utils};
+use crate::models;
+use crate::{do_request, error::*, RequestMethod};
 
 mod apps;
-mod components;
 mod profile;
-mod security;
 
 use apps::AppsApp;
 use profile::ProfileApp;
-use security::SecurityApp;
 
 #[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum ViewRoute {
-    #[at("/ui/view/admin/*")]
+    #[at("/ui/admin/*")]
     Admin,
 
-    #[at("/ui/view/apps")]
+    #[at("/ui/apps")]
     Apps,
 
-    #[at("/ui/view/profile")]
+    #[at("/ui/profile")]
     Profile,
 
-    #[at("/ui/view/security")]
-    Security,
-
     #[not_found]
-    #[at("/ui/view/404")]
+    #[at("/ui/404")]
     NotFound,
 }
 
 #[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum AdminRoute {
-    #[at("/ui/view/admin/menu")]
+    #[at("/ui/admin/menu")]
     AdminMenu,
 
-    #[at("/ui/view/admin/groups")]
+    #[at("/ui/admin/groups")]
     AdminListGroups,
-    #[at("/ui/view/admin/accounts")]
+    #[at("/ui/admin/accounts")]
     AdminListAccounts,
-    #[at("/ui/view/admin/oauth2")]
+    #[at("/ui/admin/oauth2")]
     AdminListOAuth2,
 
-    #[at("/ui/view/admin/group/:uuid")]
+    #[at("/ui/admin/group/:uuid")]
     ViewGroup { uuid: String },
-    #[at("/ui/view/admin/person/:uuid")]
+    #[at("/ui/admin/person/:uuid")]
     ViewPerson { uuid: String },
-    #[at("/ui/view/admin/service_account/:uuid")]
+    #[at("/ui/admin/service_account/:uuid")]
     ViewServiceAccount { uuid: String },
-    #[at("/ui/view/admin/oauth2/:rs_name")]
+    #[at("/ui/admin/oauth2/:rs_name")]
     ViewOAuth2RP { rs_name: String },
 
     #[not_found]
-    #[at("/ui/view/admin/404")]
+    #[at("/ui/404")]
     NotFound,
 }
 
@@ -233,7 +225,6 @@ impl ViewsApp {
         let current_user_uat = uat.clone();
 
         let ui_hint_experimental = uat.ui_hints.contains(&UiHint::ExperimentalFeatures);
-        let credential_update = uat.ui_hints.contains(&UiHint::CredentialUpdate);
 
         // WARN set dash-body against body here?
         html! {
@@ -257,23 +248,12 @@ impl ViewsApp {
                       </Link<ViewRoute>>
                     </li>
 
-                    if ui_hint_experimental {
-                      <li class="mb-1">
+                    <li class="mb-1">
                         <Link<ViewRoute> classes="nav-link" to={ViewRoute::Profile}>
                           <span data-feather="file"></span>
                           { "Profile" }
                         </Link<ViewRoute>>
-                      </li>
-                    }
-
-                    if credential_update {
-                      <li class="mb-1">
-                        <Link<ViewRoute> classes="nav-link" to={ViewRoute::Security}>
-                          <span data-feather="file"></span>
-                          { "Security" }
-                        </Link<ViewRoute>>
-                      </li>
-                    }
+                    </li>
 
                     if ui_hint_experimental {
                       <li class="mb-1">
@@ -331,7 +311,6 @@ impl ViewsApp {
                         #[allow(clippy::let_unit_value)]
                         ViewRoute::Apps => html! { <AppsApp /> },
                         ViewRoute::Profile => html! { <ProfileApp current_user_uat={ current_user_uat.clone() } /> },
-                        ViewRoute::Security => html! { <SecurityApp current_user_uat={ current_user_uat.clone() } /> },
                         ViewRoute::NotFound => html! {
                             <Redirect<Route> to={Route::NotFound}/>
                         },
@@ -344,62 +323,25 @@ impl ViewsApp {
     }
 
     async fn check_session_valid() -> Result<ViewsMsg, FetchError> {
-        let mut opts = RequestInit::new();
-        opts.method("GET");
-        opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
-
-        let request = Request::new_with_str_and_init("/v1/auth/valid", &opts)?;
-
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request))
-            .await
-            .map_err(|e| {
-                console::error!(&format!("fetch request failed {:?}", e));
-                e
-            })?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
+        let (kopid, status, value, _) =
+            do_request("/v1/auth/valid", RequestMethod::GET, None).await?;
 
         if status == 200 {
             Ok(ViewsMsg::Verified)
         } else if status == 401 {
             Ok(ViewsMsg::LogoutComplete)
         } else {
-            let headers = resp.headers();
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             Ok(ViewsMsg::Error { emsg, kopid })
         }
     }
 
     async fn fetch_user_data() -> Result<ViewsMsg, FetchError> {
-        let mut opts = RequestInit::new();
-        opts.method("GET");
-        opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
-
-        let request = Request::new_with_str_and_init("/v1/self/_uat", &opts)?;
-
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
+        let (kopid, status, value, _) =
+            do_request("/v1/self/_uat", RequestMethod::GET, None).await?;
 
         if status == 200 {
-            let jsval = JsFuture::from(resp.json()?).await?;
-            let uat: UserAuthToken = serde_wasm_bindgen::from_value(jsval)
+            let uat: UserAuthToken = serde_wasm_bindgen::from_value(value)
                 .map_err(|e| {
                     let e_msg = format!("serde error -> {:?}", e);
                     console::error!(e_msg.as_str());
@@ -408,39 +350,18 @@ impl ViewsApp {
 
             Ok(ViewsMsg::ProfileInfoReceived { uat })
         } else {
-            let headers = resp.headers();
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             Ok(ViewsMsg::Error { emsg, kopid })
         }
     }
 
     async fn fetch_logout() -> Result<ViewsMsg, FetchError> {
-        let mut opts = RequestInit::new();
-        opts.method("GET");
-        opts.mode(RequestMode::SameOrigin);
-        opts.credentials(RequestCredentials::SameOrigin);
-
-        let request = Request::new_with_str_and_init("/v1/logout", &opts)?;
-
-        request
-            .headers()
-            .set("content-type", "application/json")
-            .expect_throw("failed to set header");
-
-        let window = utils::window();
-        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
-        let status = resp.status();
+        let (kopid, status, value, _) = do_request("/v1/logout", RequestMethod::GET, None).await?;
 
         if status == 200 {
             Ok(ViewsMsg::LogoutComplete)
         } else {
-            let headers = resp.headers();
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let text = JsFuture::from(resp.text()?).await?;
-            let emsg = text.as_string().unwrap_or_default();
+            let emsg = value.as_string().unwrap_or_default();
             Ok(ViewsMsg::Error { emsg, kopid })
         }
     }

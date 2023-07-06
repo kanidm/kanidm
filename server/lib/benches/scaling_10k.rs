@@ -30,7 +30,7 @@ pub fn scaling_user_create_single(c: &mut Criterion) {
                         .build()
                         .expect("Failed building the Runtime")
                         .block_on(async {
-                            let (idms, _idms_delayed) =
+                            let (idms, _idms_delayed, _idms_audit) =
                                 kanidmd_lib::testkit::setup_idm_test().await;
 
                             let ct = duration_from_epoch_now();
@@ -77,7 +77,6 @@ pub fn scaling_user_create_batched(c: &mut Criterion) {
                 println!("iters, size -> {iters:?}, {size:?}");
 
                 let data: Vec<_> = (0..size)
-                    .into_iter()
                     .map(|i| {
                         let name = format!("testperson_{i}");
                         entry_init!(
@@ -98,7 +97,7 @@ pub fn scaling_user_create_batched(c: &mut Criterion) {
                         .build()
                         .expect("Failed building the Runtime")
                         .block_on(async {
-                            let (idms, _idms_delayed) =
+                            let (idms, _idms_delayed, _idms_audit) =
                                 kanidmd_lib::testkit::setup_idm_test().await;
 
                             let ct = duration_from_epoch_now();

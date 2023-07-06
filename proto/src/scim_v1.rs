@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use uuid::Uuid;
 
 pub use scim_proto::prelude::{ScimAttr, ScimComplexAttr, ScimEntry, ScimError, ScimSimpleAttr};
+pub use scim_proto::user::MultiValueAttr;
 use scim_proto::*;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -13,14 +14,27 @@ pub enum ScimSyncState {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub enum ScimSyncRetentionMode {
+    /// No actions are to be taken - only update or create entries in the
+    /// entries set.
+    Ignore,
+    /// All entries that have their uuid present in this set are retained.
+    /// Anything not present will be deleted.
+    Retain(Vec<Uuid>),
+    /// Any entry with it's uuid in this set will be deleted. Anything not
+    /// present will be retained.
+    Delete(Vec<Uuid>),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ScimSyncRequest {
     pub from_state: ScimSyncState,
     pub to_state: ScimSyncState,
 
     // How do I want to represent different entities to kani? Split by type? All in one?
     pub entries: Vec<ScimEntry>,
-    // Delete uuids?
-    pub delete_uuids: Vec<Uuid>,
+
+    pub retain: ScimSyncRetentionMode,
 }
 
 impl ScimSyncRequest {
@@ -29,7 +43,7 @@ impl ScimSyncRequest {
             from_state,
             to_state: ScimSyncState::Refresh,
             entries: Vec::default(),
-            delete_uuids: Vec::default(),
+            retain: ScimSyncRetentionMode::Ignore,
         }
     }
 }
@@ -92,6 +106,7 @@ pub struct ScimSyncPerson {
     pub password_import: Option<String>,
     pub totp_import: Vec<ScimTotp>,
     pub login_shell: Option<String>,
+    pub mail: Vec<MultiValueAttr>,
 }
 
 // Need to allow this because clippy is broken and doesn't realise scimentry is out of crate
@@ -108,6 +123,7 @@ impl Into<ScimEntry> for ScimSyncPerson {
             password_import,
             totp_import,
             login_shell,
+            mail,
         } = self;
 
         let schemas = if gidnumber.is_some() {
@@ -131,6 +147,7 @@ impl Into<ScimEntry> for ScimSyncPerson {
         set_option_string!(attrs, "password_import", password_import);
         set_multi_complex!(attrs, "totp_import", totp_import);
         set_option_string!(attrs, "loginshell", login_shell);
+        set_multi_complex!(attrs, "mail", mail);
 
         ScimEntry {
             schemas,

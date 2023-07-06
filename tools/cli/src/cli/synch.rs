@@ -1,3 +1,4 @@
+use crate::common::OpType;
 use crate::SynchOpt;
 use dialoguer::Confirm;
 
@@ -11,24 +12,39 @@ impl SynchOpt {
             | SynchOpt::DestroyToken { copt, .. }
             | SynchOpt::ForceRefresh { copt, .. }
             | SynchOpt::Finalise { copt, .. }
-            | SynchOpt::Terminate { copt, .. } => copt.debug,
+            | SynchOpt::Terminate { copt, .. }
+            | SynchOpt::SetCredentialPortal { copt, .. } => copt.debug,
         }
     }
 
     pub async fn exec(&self) {
         match self {
             SynchOpt::List(copt) => {
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Read).await;
                 match client.idm_sync_account_list().await {
                     Ok(r) => r.iter().for_each(|ent| println!("{}", ent)),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             SynchOpt::Get(nopt) => {
-                let client = nopt.copt.to_client().await;
+                let client = nopt.copt.to_client(OpType::Read).await;
                 match client.idm_sync_account_get(nopt.name.as_str()).await {
                     Ok(Some(e)) => println!("{}", e),
                     Ok(None) => println!("No matching entries"),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
+            SynchOpt::SetCredentialPortal {
+                account_id,
+                copt,
+                url,
+            } => {
+                let client = copt.to_client(OpType::Write).await;
+                match client
+                    .idm_sync_account_set_credential_portal(account_id, url.as_ref())
+                    .await
+                {
+                    Ok(()) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
@@ -37,7 +53,7 @@ impl SynchOpt {
                 copt,
                 description,
             } => {
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Write).await;
                 match client
                     .idm_sync_account_create(account_id, description.as_deref())
                     .await
@@ -51,7 +67,7 @@ impl SynchOpt {
                 label,
                 copt,
             } => {
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Write).await;
                 match client
                     .idm_sync_account_generate_token(account_id, label)
                     .await
@@ -61,14 +77,14 @@ impl SynchOpt {
                 }
             }
             SynchOpt::DestroyToken { account_id, copt } => {
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Write).await;
                 match client.idm_sync_account_destroy_token(account_id).await {
                     Ok(()) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             SynchOpt::ForceRefresh { account_id, copt } => {
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Write).await;
                 match client.idm_sync_account_force_refresh(account_id).await {
                     Ok(()) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
@@ -85,7 +101,7 @@ impl SynchOpt {
                     return;
                 }
 
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Write).await;
                 match client.idm_sync_account_finalise(account_id).await {
                     Ok(()) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
@@ -102,7 +118,7 @@ impl SynchOpt {
                     return;
                 }
 
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Write).await;
                 match client.idm_sync_account_terminate(account_id).await {
                     Ok(()) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),

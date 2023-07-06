@@ -7,6 +7,7 @@ members = [
     "proto",
     "tools/cli",
     "tools/iam_migrations/freeipa",
+    "tools/iam_migrations/ldap",
     "tools/orca",
     "unix_integration",
     "unix_integration/nss_kanidm",
@@ -26,7 +27,7 @@ members = [
 ]
 
 [workspace.package]
-version = "1.1.0-alpha.12-dev"
+version = "1.1.0-beta.13-dev"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
@@ -38,7 +39,11 @@ homepage = "https://github.com/kanidm/kanidm/"
 repository = "https://github.com/kanidm/kanidm/"
 
 [workspace.dependencies]
-async-trait = "^0.1.66"
+argon2 = { version = "0.5.0", features = ["alloc"] }
+async-recursion = "1.0.4"
+async-trait = "^0.1.68"
+axum = {version = "0.6.18", features = ["json", "http2", "macros", "tracing", "headers", "original-uri", "query", "form", "http2"]}
+axum-csp = { version = "0.0.5" }
 base32 = "^0.4.0"
 base64 = "^0.21.0"
 base64urlsafedata = "0.1.3"
@@ -46,7 +51,7 @@ bytes = "^1.3.0"
 clap = { version = "^3.2", features = ["derive"] }
 clap_complete = "^3.2.5"
 # Forced by saffron/cron
-chrono = "^0.4.23"
+chrono = "^0.4.26"
 compact_jwt = { version = "^0.2.3", default-features = false }
 # compact_jwt = { path = "../compact_jwt" }
 concread = "^0.4.1"
@@ -54,114 +59,108 @@ concread = "^0.4.1"
 cron = "0.12.0"
 crossbeam = "0.8.1"
 criterion = "^0.4.0"
-csv = "1.2.0"
-dialoguer = "0.10.3"
+csv = "1.2.2"
+dialoguer = "0.10.4"
 dyn-clone = "^1.0.11"
-fernet = "^0.2.0"
-filetime = "^0.2.20"
-futures = "^0.3.25"
+fernet = "^0.2.1"
+filetime = "^0.2.21"
+fs2 = "^0.4.3"
+futures = "^0.3.28"
 futures-concurrency = "^3.1.0"
 futures-util = { version = "^0.3.21", features = ["sink"] }
-gloo = "^0.8.0"
-gloo-net = "0.2.6"
-hashbrown = { version = "0.12.3", features = ["serde", "inline-more", "ahash"] }
+gloo = "^0.8.1"
+hashbrown = { version = "0.14.0", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
 http-types = "^2.12.0"
+hyper = { version = "0.14.27", features = ["full"] }
+hyper-tls = "0.5.0"
 idlset = "^0.2.4"
 # idlset = { path = "../idlset" }
-js-sys = "^0.3.58"
+js-sys = "^0.3.63"
 kanidmd_core = { path = "./server/core" }
-kanidmd_idm = { path = "./server/idm" }
 kanidmd_lib = { path = "./server/lib" }
 kanidmd_lib_macros = { path = "./server/lib-macros" }
 kanidm_lib_crypto = { path = "./libs/crypto" }
 kanidm_lib_file_permissions = { path = "./libs/file_permissions" }
-kanidmd_testkit = { path = "./server/testkit" }
 kanidm_client = { path = "./libs/client", version = "1.1.0-alpha.11" }
 kanidm_proto = { path = "./proto", version = "1.1.0-alpha.11" }
 kanidm_unix_int = { path = "./unix_integration" }
 last-git-commit = "0.2.0"
 # REMOVE this
 lazy_static = "^1.4.0"
-ldap3_client = "^0.3.1"
-ldap3_proto = "^0.3.1"
+ldap3_client = "^0.3.4"
+ldap3_proto = { version = "^0.3.4", features = ["serde"] }
 
-# ldap3_client = { path = "../ldap3/client", version = "0.3.0" }
-# ldap3_proto = { path = "../ldap3/proto", version = "0.3.0" }
+# ldap3_client = { path = "../ldap3/client", version = "0.3.2" }
+# ldap3_proto = { path = "../ldap3/proto", version = "^0.3.2", features = ["serde"] }
 # ldap3_client = { git = "https://github.com/kanidm/ldap3.git", version = "0.3.0" }
 # ldap3_proto = { git = "https://github.com/kanidm/ldap3.git", version = "0.3.0" }
 
-libc = "^0.2.139"
+libc = "^0.2.147"
 libnss = "^0.4.0"
 libsqlite3-sys = "^0.25.0"
 lru = "^0.8.0"
 mathru = "^0.13.0"
+notify-debouncer-full = { version = "0.1" }
 num_enum = "^0.5.11"
 oauth2_ext = { version = "^4.1.0", package = "oauth2", default-features = false }
 openssl-sys = "^0.9"
-openssl = "^0.10.45"
-paste = "^1.0.11"
-pkg-config = "^0.3.26"
-proc-macro2 = "1.0.51"
+openssl = "^0.10.55"
+paste = "^1.0.12"
+pkg-config = "^0.3.27"
+proc-macro2 = "1.0.63"
 profiles = { path = "./libs/profiles" }
 qrcode = "^0.12.0"
 quote = "1"
-r2d2 = "^0.8.9"
-r2d2_sqlite = "^0.21.0"
 rand = "^0.8.5"
-regex = "1.7.1"
-reqwest = { version = "0.11.14", default-features = false, features=["cookies", "json", "gzip", "native-tls"] }
+regex = "1.8.4"
+reqwest = { version = "0.11.18", default-features = false, features=["cookies", "json", "gzip", "native-tls", "native-tls-alpn"] }
 rpassword = "^7.2.0"
 rusqlite = "^0.28.0"
 
-scim_proto = "^0.1.1"
-# scim_proto = { path = "../scim/proto", version = "0.1.1" }
+scim_proto = "^0.2.1"
+# scim_proto = { path = "../scim/proto", version = "^0.2.1" }
 # scim_proto = { git = "https://github.com/kanidm/scim.git", version = "0.1.1" }
 
-serde = "^1.0.152"
+selinux = "^0.4.1"
+serde = "^1.0.164"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
-serde_json = "^1.0.94"
+serde_json = "^1.0.99"
 serde-wasm-bindgen = "0.4"
 shellexpand = "^2.1.2"
 sketching = { path = "./libs/sketching" }
 smartstring = "^1.0.1"
 smolset = "^1.3.1"
 sshkeys = "^0.3.1"
-syn = { version = "1.0.109", features = ["full"] }
+syn = { version = "2.0.23", features = ["full"] }
 testkit-macros = { path = "./server/testkit-macros" }
-tide = "^0.16.0"
-# Including brotli *very* slow, so don't do that. Including the "default" feature pulls a mime-type list from the internet on build, which isn't used.
-tide-compress = { version="0.10.6", default-features = false, features = [ "gzip", "regex-check" ] }
-tide-openssl = "^0.1.1"
-# Unable to increase version due to removing ability to detect
-# local platform time.
-time = "=0.2.27"
+time = { version = "^0.3.21", features = ["formatting", "local-offset"] }
 
 tikv-jemallocator = "0.5"
 
-tokio = "^1.26.0"
+tokio = "^1.29.1"
 tokio-openssl = "^0.6.3"
-tokio-util = "^0.7.7"
+tokio-util = "^0.7.8"
 
 toml = "^0.5.11"
 touch = "^0.0.1"
 # tracing = { version = "^0.1.37", features = ["max_level_trace", "release_max_level_debug"] }
 tracing = { version = "^0.1.37" }
-tracing-subscriber = { version = "^0.3.16", features = ["env-filter"] }
+tracing-subscriber = { version = "^0.3.17", features = ["env-filter"] }
 
 # tracing-forest = { path = "/Users/william/development/tracing-forest/tracing-forest" }
-tracing-forest = { git = "https://github.com/QnnOkabayashi/tracing-forest.git", rev = "48d78f7294ceee47a22eee5c80964143c4fb3fe1" }
+tracing-forest = { git = "https://github.com/QnnOkabayashi/tracing-forest.git", rev = "77daf8c8abf010b87d45ece2bf656983c6f8cecb" }
 
-url = "^2.3.1"
+tss-esapi = "^7.2.0"
+
+url = "^2.4.0"
 urlencoding = "2.1.2"
 users = "^0.11.0"
-uuid = "^1.3.0"
+uuid = "^1.4.0"
 
-validator = "^0.16.0"
-
-wasm-bindgen = "^0.2.81"
+wasm-bindgen = "^0.2.86"
 wasm-bindgen-futures = "^0.4.30"
-wasm-bindgen-test = "0.3.34"
+wasm-bindgen-test = "0.3.35"
 
 webauthn-authenticator-rs = "0.4.8"
 webauthn-rs = "0.4.8"
@@ -171,19 +170,14 @@ webauthn-rs-proto = "0.4.8"
 # webauthn-rs = { path = "../webauthn-rs/webauthn-rs" }
 # webauthn-rs-core = { path = "../webauthn-rs/webauthn-rs-core" }
 # webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
-web-sys = "^0.3.61"
-whoami = "^1.3.0"
+web-sys = "^0.3.62"
+whoami = "^1.4.1"
 walkdir = "2"
 
 yew = "^0.20.0"
 yew-router = "^0.17.0"
-zxcvbn = "^2.2.1"
+zxcvbn = "^2.2.2"
 
-# enshrinken the WASMs
-[profile.release.package.kanidmd_web_ui]
-# optimization over all codebase ( better optimization, slower build )
-codegen-units = 1
-# optimization for size ( more aggressive )
-opt-level = 'z'
+nonempty = "0.8.1"
 # link time optimization using using whole-program analysis
 # lto = true

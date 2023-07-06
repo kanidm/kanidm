@@ -71,7 +71,7 @@ impl RadiusAccount {
     }
 
     fn is_within_valid_time(&self, ct: Duration) -> bool {
-        let cot = OffsetDateTime::unix_epoch() + ct;
+        let cot = OffsetDateTime::UNIX_EPOCH + ct;
 
         let vmin = if let Some(vft) = &self.valid_from {
             // If current time greater than start time window

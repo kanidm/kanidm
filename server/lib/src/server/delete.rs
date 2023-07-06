@@ -39,12 +39,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Is the candidate set empty?
         if pre_candidates.is_empty() {
-            request_error!(filter = ?de.filter, "delete: no candidates match filter");
+            warn!(filter = ?de.filter, "delete: no candidates match filter");
             return Err(OperationError::NoMatchingEntries);
         };
 
         if pre_candidates.iter().any(|e| e.mask_tombstone().is_none()) {
-            admin_warn!("Refusing to delete entries which may be an attempt to bypass replication state machine.");
+            warn!("Refusing to delete entries which may be an attempt to bypass replication state machine.");
             return Err(OperationError::AccessDenied);
         }
 

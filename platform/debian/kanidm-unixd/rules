@@ -11,6 +11,7 @@ PKGDIR=debian/${PACKAGE}
 BINDIR=${PKGDIR}/usr/sbin/
 LIBDIR=${PKGDIR}/lib/${DEB_HOST_MULTIARCH}
 SHARED_DIR=${PKGDIR}/usr/share/${PACKAGE}
+PAMDIR=${PKGDIR}/usr/share/pam-configs/
 DISTRIBUTOR_ID=$(shell lsb_release -is)
 DISTRIBUTOR_RELEASE=$(shell lsb_release -rs)
 DISTRIBUTOR=$(DISTRIBUTOR_ID)_$(DISTRIBUTOR_RELEASE)
@@ -51,6 +52,7 @@ override_dh_systemd_start:
 
 override_dh_auto_install:
 	mkdir -p ${BINDIR}
+	mkdir -p ${PAMDIR}
 	mkdir -p ${LIBDIR}/security
 	install \
 		-g root -o root \
@@ -66,19 +68,11 @@ override_dh_auto_install:
 		${BINDIR}
 	install \
 		-g root -o root \
-		target/release/kanidm_unixd_status \
+		target/release/kanidm-unix \
 		${BINDIR}
 	install \
 		-g root -o root \
 		target/release/kanidm_unixd_tasks \
-		${BINDIR}
-	install \
-		-g root -o root \
-		target/release/kanidm_cache_clear \
-		${BINDIR}
-	install \
-		-g root -o root \
-		target/release/kanidm_cache_invalidate \
 		${BINDIR}
 	install \
 		-g root -o root \
@@ -88,8 +82,10 @@ override_dh_auto_install:
 		-g root -o root \
 		target/release/libnss_kanidm.so \
 		${LIBDIR}/libnss_kanidm.so.2
-
-
+	install \
+		-g root -o root -m 644 \
+		debian/kanidm.pam \
+		${PAMDIR}/kanidm
 
 override_dh_installexamples:
 	mkdir -p ${SHARED_DIR}

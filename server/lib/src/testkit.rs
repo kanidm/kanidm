@@ -57,7 +57,7 @@ pub async fn setup_pair_test() -> (QueryServer, QueryServer) {
 }
 
 #[allow(clippy::expect_used)]
-pub async fn setup_idm_test() -> (IdmServer, IdmServerDelayed) {
+pub async fn setup_idm_test() -> (IdmServer, IdmServerDelayed, IdmServerAudit) {
     let qs = setup_test().await;
 
     qs.initialise_helper(duration_from_epoch_now())

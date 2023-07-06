@@ -1,6 +1,11 @@
 // Core
 // Schema uuids start at 00000000-0000-0000-0000-ffff00000000
 
+use crate::constants::uuids::*;
+use crate::constants::values::*;
+use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
+use crate::value::{SyntaxType, Value};
+
 // system supplementary
 pub const JSON_SCHEMA_ATTR_DISPLAYNAME: &str = r#"{
     "attrs": {
@@ -171,6 +176,41 @@ pub const JSON_SCHEMA_ATTR_LEGALNAME: &str = r#"{
       ]
     }
 }"#;
+
+pub const JSON_SCHEMA_ATTR_NAME_HISTORY: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The history of names that a person has had"
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "true"
+      ],
+      "sync_allowed": [
+        "true"
+      ],
+      "attributename": [
+        "name_history"
+      ],
+      "syntax": [
+        "AUDIT_LOG_STRING"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000133"
+      ]
+    }
+}"#;
+
 pub const JSON_SCHEMA_ATTR_RADIUS_SECRET: &str = r#"{
     "attrs": {
       "class": [
@@ -231,6 +271,34 @@ pub const JSON_SCHEMA_ATTR_DOMAIN_NAME: &str = r#"{
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000053"
+      ]
+    }
+}"#;
+
+pub const JSON_SCHEMA_ATTR_DOMAIN_LDAP_BASEDN: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The domain's optional ldap basedn. If unset defaults to domain components of domain name."
+      ],
+      "unique": [
+        "true"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "domain_ldap_basedn"
+      ],
+      "syntax": [
+        "UTF8STRING_INSENSITIVE"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000131"
       ]
     }
 }"#;
@@ -1394,6 +1462,23 @@ pub const JSON_SCHEMA_ATTR_GRANT_UI_HINT: &str = r#"{
     }
 }"#;
 
+lazy_static! {
+    pub static ref E_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_SYSTEM.clone()),
+        ("class", CLASS_ATTRIBUTETYPE.clone()),
+        (
+            "description",
+            Value::new_utf8s("The url of an external credential portal for synced accounts to visit to update their credentials.")
+        ),
+        ("unique", Value::Bool(false)),
+        ("multivalue", Value::Bool(false)),
+        ("attributename", Value::new_iutf8("sync_credential_portal")),
+        ("syntax", Value::Syntax(SyntaxType::Url)),
+        ("uuid", Value::Uuid(UUID_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL))
+    );
+}
+
 // === classes ===
 
 pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
@@ -1507,6 +1592,9 @@ pub const JSON_SCHEMA_CLASS_DYNGROUP: &str = r#"
       "systemmust": [
         "dyngroup_filter"
       ],
+      "systemmay": [
+        "dynmember"
+      ],
       "systemsupplements": [
         "group"
       ],
@@ -1547,7 +1635,8 @@ pub const JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
         "oauth2_consent_scope_map",
         "user_auth_token_session",
         "oauth2_session",
-        "description"
+        "description",
+        "name_history"
       ],
       "systemmust": [
         "displayname",
@@ -1618,7 +1707,8 @@ pub const JSON_SCHEMA_CLASS_SYNC_ACCOUNT: &str = r#"
       ],
       "systemmay": [
         "sync_token_session",
-        "sync_cookie"
+        "sync_cookie",
+        "sync_credential_portal"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000114"
@@ -1650,7 +1740,8 @@ pub const JSON_SCHEMA_CLASS_DOMAIN_INFO: &str = r#"
         "domain_info"
       ],
       "systemmay": [
-        "domain_ssid"
+        "domain_ssid",
+        "domain_ldap_basedn"
       ],
       "systemmust": [
         "name",

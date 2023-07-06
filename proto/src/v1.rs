@@ -2,9 +2,11 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::str::FromStr;
+use url::Url;
 
 use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use uuid::Uuid;
 use webauthn_rs_proto::{
     CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
@@ -251,6 +253,8 @@ pub enum OperationError {
     ReplEntryNotChanged,
     ReplInvalidRUVState,
     ReplDomainLevelUnsatisfiable,
+    ReplDomainUuidMismatch,
+    TransactionAlreadyCommitted,
 }
 
 impl PartialEq for OperationError {
@@ -298,30 +302,6 @@ pub struct Application {
 }
 */
 
-#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum AuthType {
-    Anonymous,
-    UnixPassword,
-    Password,
-    GeneratedPassword,
-    PasswordMfa,
-    Passkey,
-}
-
-impl fmt::Display for AuthType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            AuthType::Anonymous => write!(f, "anonymous"),
-            AuthType::UnixPassword => write!(f, "unixpassword"),
-            AuthType::Password => write!(f, "password"),
-            AuthType::GeneratedPassword => write!(f, "generatedpassword"),
-            AuthType::PasswordMfa => write!(f, "passwordmfa"),
-            AuthType::Passkey => write!(f, "passkey"),
-        }
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[serde(rename_all = "lowercase")]
 #[derive(TryFromPrimitive)]
@@ -330,6 +310,7 @@ pub enum UiHint {
     ExperimentalFeatures = 0,
     PosixAccount = 1,
     CredentialUpdate = 2,
+    SynchronisedAccount = 3,
 }
 
 impl fmt::Display for UiHint {
@@ -338,6 +319,7 @@ impl fmt::Display for UiHint {
             UiHint::PosixAccount => write!(f, "PosixAccount"),
             UiHint::CredentialUpdate => write!(f, "CredentialUpdate"),
             UiHint::ExperimentalFeatures => write!(f, "ExperimentalFeatures"),
+            UiHint::SynchronisedAccount => write!(f, "SynchronisedAccount"),
         }
     }
 }
@@ -350,6 +332,7 @@ impl FromStr for UiHint {
             "CredentialUpdate" => Ok(UiHint::CredentialUpdate),
             "PosixAccount" => Ok(UiHint::PosixAccount),
             "ExperimentalFeatures" => Ok(UiHint::ExperimentalFeatures),
+            "SynchronisedAccount" => Ok(UiHint::SynchronisedAccount),
             _ => Err(()),
         }
     }
@@ -418,7 +401,6 @@ pub enum UatPurpose {
 #[serde(rename_all = "lowercase")]
 pub struct UserAuthToken {
     pub session_id: Uuid,
-    pub auth_type: AuthType,
     #[serde(with = "time::serde::timestamp")]
     pub issued_at: time::OffsetDateTime,
     /// If none, there is no expiry, and this is always valid. If there is
@@ -430,7 +412,6 @@ pub struct UserAuthToken {
     pub displayname: String,
     pub spn: String,
     pub mail_primary: Option<String>,
-    // pub groups: Vec<Group>,
     pub ui_hints: BTreeSet<UiHint>,
 }
 
@@ -453,11 +434,6 @@ impl fmt::Display for UserAuthToken {
                 writeln!(f, "purpose: read write (expiry: none)")?
             }
         }
-        /*
-        for group in &self.groups {
-            writeln!(f, "group: {:?}", group.spn)?;
-        }
-        */
         Ok(())
     }
 }
@@ -473,6 +449,15 @@ impl Eq for UserAuthToken {}
 impl UserAuthToken {
     pub fn name(&self) -> &str {
         self.spn.split_once('@').map(|x| x.0).unwrap_or(&self.spn)
+    }
+
+    /// Show if the uat at a current point in time has active read-write
+    /// capabilities.
+    pub fn purpose_readwrite_active(&self, ct: time::OffsetDateTime) -> bool {
+        match self.purpose {
+            UatPurpose::ReadWrite { expiry: Some(exp) } => ct < exp,
+            _ => false,
+        }
     }
 }
 
@@ -508,15 +493,16 @@ impl fmt::Display for ApiToken {
         writeln!(f, "label: {}", self.label)?;
         writeln!(f, "issued at: {}", self.issued_at)?;
         if let Some(expiry) = self.expiry {
-            writeln!(
-                f,
-                "token expiry: {}",
-                expiry
-                    .to_offset(
-                        time::UtcOffset::try_current_local_offset().unwrap_or(time::UtcOffset::UTC),
-                    )
-                    .format(time::Format::Rfc3339)
-            )
+            // if this fails we're in trouble!
+            #[allow(clippy::expect_used)]
+            let expiry_str = expiry
+                .to_offset(
+                    time::UtcOffset::local_offset_at(OffsetDateTime::UNIX_EPOCH)
+                        .unwrap_or(time::UtcOffset::UTC),
+                )
+                .format(&time::format_description::well_known::Rfc3339)
+                .expect("Failed to format timestamp to RFC3339");
+            writeln!(f, "token expiry: {}", expiry_str)
         } else {
             writeln!(f, "token expiry: never")
         }
@@ -1101,19 +1087,6 @@ impl TotpSecret {
     }
 }
 
-/*
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum SetCredentialResponse {
-    Success,
-    Token(String),
-    TotpCheck(Uuid, TotpSecret),
-    TotpInvalidSha1(Uuid),
-    SecurityKeyCreateChallenge(Uuid, CreationChallengeResponse),
-    BackupCodes(Vec<String>),
-}
-*/
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CUIntentToken {
     pub token: String,
@@ -1124,7 +1097,7 @@ pub struct CUSessionToken {
     pub token: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CURequest {
     PrimaryRemove,
@@ -1173,13 +1146,26 @@ pub enum CURegState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum CUExtPortal {
+    None,
+    Hidden,
+    Some(Url),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CUStatus {
+    // Display values
     pub spn: String,
     pub displayname: String,
+    pub ext_cred_portal: CUExtPortal,
+    // Internal State Tracking
+    pub mfaregstate: CURegState,
+    // Display hints + The credential details.
     pub can_commit: bool,
     pub primary: Option<CredentialDetail>,
+    pub primary_can_edit: bool,
     pub passkeys: Vec<PasskeyDetail>,
-    pub mfaregstate: CURegState,
+    pub passkeys_can_edit: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]

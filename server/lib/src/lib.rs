@@ -4,7 +4,9 @@
 #![deny(warnings)]
 #![recursion_limit = "512"]
 #![warn(unused_extern_crates)]
-#![deny(clippy::todo)]
+// TODO: can't use this until we have a better way to handle the 'todo' lint?
+// #![deny(clippy::todo)]
+#![warn(clippy::todo)]
 #![deny(clippy::unimplemented)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
@@ -58,7 +60,8 @@ pub mod prelude {
     pub use sketching::{
         admin_debug, admin_error, admin_info, admin_warn, filter_error, filter_info, filter_trace,
         filter_warn, perf_trace, request_error, request_info, request_trace, request_warn,
-        security_access, security_critical, security_error, security_info, tagged_event, EventTag,
+        security_access, security_critical, security_debug, security_error, security_info,
+        tagged_event, EventTag,
     };
     pub use smartstring::alias::String as AttrString;
     pub use std::time::Duration;
@@ -68,22 +71,25 @@ pub mod prelude {
     pub use crate::be::Limits;
     pub use crate::constants::*;
     pub use crate::entry::{
-        Entry, EntryCommitted, EntryInit, EntryInitNew, EntryInvalid, EntryInvalidCommitted,
-        EntryInvalidNew, EntryNew, EntryReduced, EntryReducedCommitted, EntryRefresh,
-        EntryRefreshNew, EntrySealed, EntrySealedCommitted, EntrySealedNew, EntryTuple, EntryValid,
+        Entry, EntryCommitted, EntryIncrementalCommitted, EntryIncrementalNew, EntryInit,
+        EntryInitNew, EntryInvalid, EntryInvalidCommitted, EntryInvalidNew, EntryNew, EntryReduced,
+        EntryReducedCommitted, EntryRefresh, EntryRefreshNew, EntrySealed, EntrySealedCommitted,
+        EntrySealedNew, EntryTuple, EntryValid,
     };
     pub use crate::event::{CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, SearchEvent};
     pub use crate::filter::{
         f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub, Filter,
         FilterInvalid, FilterValid, FC,
     };
-    pub use crate::idm::server::{IdmServer, IdmServerDelayed};
+    pub use crate::idm::server::{IdmServer, IdmServerAudit, IdmServerDelayed};
     pub use crate::modify::{
         m_assert, m_pres, m_purge, m_remove, Modify, ModifyInvalid, ModifyList, ModifyValid,
     };
     pub use crate::server::access::AccessControlsTransaction;
     pub use crate::server::batch_modify::BatchModifyEvent;
-    pub use crate::server::identity::{AccessScope, IdentType, IdentUser, Identity, IdentityId};
+    pub use crate::server::identity::{
+        AccessScope, IdentType, IdentUser, Identity, IdentityId, Source,
+    };
     pub use crate::server::{
         QueryServer, QueryServerReadTransaction, QueryServerTransaction,
         QueryServerWriteTransaction,
@@ -100,4 +106,6 @@ pub mod prelude {
 
     #[cfg(test)]
     pub use kanidmd_lib_macros::*;
+
+    pub use time::format_description::well_known::Rfc3339;
 }

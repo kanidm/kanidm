@@ -6,12 +6,18 @@ db_path = "/tmp/kanidm/kanidm.db"
 tls_chain = "/tmp/kanidm/chain.pem"
 tls_key = "/tmp/kanidm/key.pem"
 
-# log_level = "perfbasic"
-# log_level = "quiet"
-log_level = "verbose"
+#   The log level of the server. May be one of info, debug, trace
+#
+#   NOTE: this is overridden by environment variables at runtime
+#   Defaults to "info"
+#
+# log_level = "info"
+log_level = "debug"
+# log_level = "trace"
 
 domain = "localhost"
 origin = "https://localhost:8443"
+trust_x_forward_for = true
 
 [online_backup]
 path = "/tmp/kanidm/backups/"

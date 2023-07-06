@@ -20,16 +20,16 @@ use tokio::task;
 
 pub const ADMIN_TEST_USER: &str = "admin";
 pub const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
+
+pub const NOT_ADMIN_TEST_USERNAME: &str = "krab_test_user";
+pub const NOT_ADMIN_TEST_PASSWORD: &str = "eicieY7ahchaoCh0eeTa";
+
 pub static PORT_ALLOC: AtomicU16 = AtomicU16::new(18080);
 
 pub use testkit_macros::test;
 
 pub fn is_free_port(port: u16) -> bool {
-    // TODO: Refactor to use `Result::is_err` in a future PR
-    match TcpStream::connect(("0.0.0.0", port)) {
-        Ok(_) => false,
-        Err(_) => true,
-    }
+    TcpStream::connect(("0.0.0.0", port)).is_err()
 }
 
 // Test external behaviours of the service.
@@ -46,9 +46,10 @@ pub async fn setup_async_test() -> (KanidmClient, CoreHandle) {
             break possible_port;
         }
         counter += 1;
+        #[allow(clippy::panic)]
         if counter >= 5 {
             eprintln!("Unable to allocate port!");
-            assert!(false);
+            panic!();
         }
     };
 
@@ -67,21 +68,25 @@ pub async fn setup_async_test() -> (KanidmClient, CoreHandle) {
     config.role = ServerRole::WriteReplica;
     config.domain = "localhost".to_string();
     config.origin = addr.clone();
-    // config.log_level = Some(LogLevel::Verbose as u32);
-    // config.log_level = Some(LogLevel::FullTrace as u32);
     config.threads = 1;
 
-    let core_handle = create_server_core(config, false)
-        .await
-        .expect("failed to start server core");
-    // We have to yield now to guarantee that the tide elements are setup.
+    let core_handle = match create_server_core(config, false).await {
+        Ok(val) => val,
+        #[allow(clippy::panic)]
+        Err(_) => panic!("failed to start server core"),
+    };
+    // We have to yield now to guarantee that the elements are setup.
     task::yield_now().await;
 
-    let rsclient = KanidmClientBuilder::new()
+    #[allow(clippy::panic)]
+    let rsclient = match KanidmClientBuilder::new()
         .address(addr.clone())
         .no_proxy()
         .build()
-        .expect("Failed to build client");
+    {
+        Ok(val) => val,
+        Err(_) => panic!("failed to build client"),
+    };
 
     tracing::info!("Testkit server setup complete - {}", addr);
 

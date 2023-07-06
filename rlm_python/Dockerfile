@@ -34,7 +34,7 @@ RUN ln -s /etc/raddb/mods-available/python3 /etc/raddb/mods-enabled/python3 && \
 
 
 # Allows the radiusd user to write to the directory
-RUN chown -R $RADIUS_USER. /etc/raddb && \
+RUN chown -R $RADIUS_USER. /etc/raddb/ && \
     chmod 775 /etc/raddb/certs && \
     chmod 640 /etc/raddb/clients.conf
 
@@ -47,7 +47,6 @@ RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/pykanid
 
 COPY rlm_python/radius_entrypoint.py /radius_entrypoint.py
 
-ENV LD_PRELOAD=/usr/lib64/libpython3.so
 ENV KANIDM_CONFIG_FILE="/data/kanidm"
 
 RUN chmod a+r /etc/raddb/certs/ -R

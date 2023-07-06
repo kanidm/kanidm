@@ -13,3 +13,5 @@ pub const DEFAULT_HOME_ALIAS: Option<HomeAttr> = Some(HomeAttr::Spn);
 pub const DEFAULT_USE_ETC_SKEL: bool = false;
 pub const DEFAULT_UID_ATTR_MAP: UidAttr = UidAttr::Spn;
 pub const DEFAULT_GID_ATTR_MAP: UidAttr = UidAttr::Spn;
+pub const DEFAULT_SELINUX: bool = true;
+pub const DEFAULT_TPM_TCTI_NAME: &str = "device:/dev/tpmrm0";

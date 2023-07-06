@@ -8,6 +8,10 @@ use super::ServerPhase;
 impl QueryServer {
     #[instrument(level = "info", name = "system_initialisation", skip_all)]
     pub async fn initialise_helper(&self, ts: Duration) -> Result<(), OperationError> {
+        // We need to perform this in a single transaction pass to prevent tainting
+        // databases during upgrades.
+        let mut write_txn = self.write(ts).await;
+
         // Check our database version - attempt to do an initial indexing
         // based on the in memory configuration
         //
@@ -18,10 +22,7 @@ impl QueryServer {
         // A major reason here to split to multiple transactions is to allow schema
         // reloading to occur, which causes the idxmeta to update, and allows validation
         // of the schema in the subsequent steps as we proceed.
-        let mut reindex_write_1 = self.write(ts).await;
-        reindex_write_1
-            .upgrade_reindex(SYSTEM_INDEX_VERSION)
-            .and_then(|_| reindex_write_1.commit())?;
+        write_txn.upgrade_reindex(SYSTEM_INDEX_VERSION)?;
 
         // Because we init the schema here, and commit, this reloads meaning
         // that the on-disk index meta has been loaded, so our subsequent
@@ -32,32 +33,30 @@ impl QueryServer {
         // the schema to tell us what's indexed), but because we have the in
         // mem schema that defines how schema is structuded, and this is all
         // marked "system", then we won't have an issue here.
-        let mut ts_write_1 = self.write(ts).await;
-        ts_write_1
+        write_txn
             .initialise_schema_core()
-            .and_then(|_| ts_write_1.commit())?;
+            .and_then(|_| write_txn.reload())?;
 
-        let mut ts_write_2 = self.write(ts).await;
-        ts_write_2
+        write_txn
             .initialise_schema_idm()
-            .and_then(|_| ts_write_2.commit())?;
+            .and_then(|_| write_txn.reload())?;
 
         // reindex and set to version + 1, this way when we bump the version
         // we are essetially pushing this version id back up to step write_1
-        let mut reindex_write_2 = self.write(ts).await;
-        reindex_write_2
+        write_txn
             .upgrade_reindex(SYSTEM_INDEX_VERSION + 1)
-            .and_then(|_| reindex_write_2.commit())?;
+            .and_then(|_| write_txn.reload())?;
 
         // Force the schema to reload - this is so that any changes to index slope
-        // analysis are now reflected correctly.
+        // analysis that was performed during the reindex are now reflected correctly
+        // in the in-memory schema cache.
         //
         // A side effect of these reloads is that other plugins or elements that reload
         // on schema change are now setup.
-        let mut slope_reload = self.write(ts).await;
-        slope_reload.set_phase(ServerPhase::SchemaReady);
-        slope_reload.force_schema_reload();
-        slope_reload.commit()?;
+
+        write_txn.set_phase(ServerPhase::SchemaReady);
+        write_txn.force_schema_reload();
+        write_txn.reload()?;
 
         // Now, based on the system version apply migrations. You may ask "should you not
         // be doing migrations before indexes?". And this is a very good question! The issue
@@ -67,11 +66,11 @@ impl QueryServer {
         // the indexing subsystem is schema/value agnostic - the fact the values still let their keys
         // be extracted, means that the pres indexes will be valid even though the entries are pending
         // migration. We must be sure to NOT use EQ/SUB indexes in the migration code however!
-        let mut migrate_txn = self.write(ts).await;
+        //
         // If we are "in the process of being setup" this is 0, and the migrations will have no
         // effect as ... there is nothing to migrate! It allows reset of the version to 0 to force
         // db migrations to take place.
-        let system_info_version = match migrate_txn.internal_search_uuid(UUID_SYSTEM_INFO) {
+        let system_info_version = match write_txn.internal_search_uuid(UUID_SYSTEM_INFO) {
             Ok(e) => Ok(e.get_ava_single_uint32("version").unwrap_or(0)),
             Err(OperationError::NoMatchingEntries) => Ok(0),
             Err(r) => Err(r),
@@ -86,29 +85,28 @@ impl QueryServer {
             }
 
             if system_info_version < 9 {
-                migrate_txn.migrate_8_to_9()?;
+                write_txn.migrate_8_to_9()?;
             }
 
             if system_info_version < 10 {
-                migrate_txn.migrate_9_to_10()?;
+                write_txn.migrate_9_to_10()?;
             }
 
             if system_info_version < 11 {
-                migrate_txn.migrate_10_to_11()?;
+                write_txn.migrate_10_to_11()?;
             }
 
             if system_info_version < 12 {
-                migrate_txn.migrate_11_to_12()?;
+                write_txn.migrate_11_to_12()?;
             }
         }
 
-        migrate_txn.commit()?;
+        write_txn.reload()?;
         // Migrations complete. Init idm will now set the version as needed.
 
-        let mut ts_write_3 = self.write(ts).await;
-        ts_write_3.initialise_idm().and_then(|_| {
-            ts_write_3.set_phase(ServerPhase::Running);
-            ts_write_3.commit()
+        write_txn.initialise_idm().and_then(|_| {
+            write_txn.set_phase(ServerPhase::Running);
+            write_txn.commit()
         })?;
 
         // Here is where in the future we will need to apply domain version increments.
@@ -393,7 +391,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.internal_apply_writable(mod_candidates)
     }
 
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_core -> start ...");
         // Load in all the "core" schema, that we already have in "memory".
@@ -416,13 +414,26 @@ impl<'a> QueryServerWriteTransaction<'a> {
         r
     }
 
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub fn initialise_schema_idm(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_idm -> start ...");
+
+        let idm_schema_attrs = [E_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL.clone()];
+
+        let r: Result<(), _> = idm_schema_attrs
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry));
+
+        if r.is_err() {
+            error!(res = ?r, "initialise_schema_idm -> Error");
+        }
+        debug_assert!(r.is_ok());
+
         // List of IDM schemas to init.
         let idm_schema: Vec<&str> = vec![
             JSON_SCHEMA_ATTR_DISPLAYNAME,
             JSON_SCHEMA_ATTR_LEGALNAME,
+            JSON_SCHEMA_ATTR_NAME_HISTORY,
             JSON_SCHEMA_ATTR_MAIL,
             JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
             JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL,
@@ -465,6 +476,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_SYNC_COOKIE,
             JSON_SCHEMA_ATTR_GRANT_UI_HINT,
             JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING,
+            JSON_SCHEMA_ATTR_DOMAIN_LDAP_BASEDN,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_ORGPERSON,
             JSON_SCHEMA_CLASS_GROUP,
@@ -487,17 +499,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .try_for_each(|e_str| self.internal_migrate_or_create_str(e_str));
 
         if r.is_ok() {
-            admin_debug!("initialise_schema_idm -> Ok!");
+            debug!("initialise_schema_idm -> Ok!");
         } else {
-            admin_error!(res = ?r, "initialise_schema_idm -> Error");
+            error!(res = ?r, "initialise_schema_idm -> Error");
         }
-        debug_assert!(r.is_ok()); // why return a result if we assert it's `Ok`?
+        debug_assert!(r.is_ok());
 
         r
     }
 
     // This function is idempotent
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub fn initialise_idm(&mut self) -> Result<(), OperationError> {
         // First, check the system_info object. This stores some server information
         // and details. It's a pretty const thing. Also check anonymous, important to many
@@ -634,6 +646,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             E_IDM_UI_ENABLE_EXPERIMENTAL_FEATURES.clone(),
             E_IDM_ACCOUNT_MAIL_READ_PRIV.clone(),
             E_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1.clone(),
+            E_IDM_ACCOUNT_SELF_ACP_WRITE_V1.clone(),
         ];
 
         let res: Result<(), _> = idm_entries

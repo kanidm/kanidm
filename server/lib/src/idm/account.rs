@@ -2,8 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
 
 use kanidm_proto::v1::{
-    AuthType, BackupCodesView, CredentialStatus, OperationError, UatPurpose, UatStatus, UiHint,
-    UserAuthToken,
+    BackupCodesView, CredentialStatus, OperationError, UatPurpose, UatStatus, UiHint, UserAuthToken,
 };
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -47,6 +46,8 @@ macro_rules! try_from_entry {
             .ok_or(OperationError::InvalidAccountState(
                 "Missing attribute: displayname".to_string(),
             ))?;
+
+        let sync_parent_uuid = $value.get_ava_single_refer("sync_parent_uuid");
 
         let primary = $value
             .get_ava_single_credential("primary_credential")
@@ -99,8 +100,13 @@ macro_rules! try_from_entry {
             .copied()
             .collect();
 
-        if !$value.attribute_equality("class", &PVCLASS_SYNC_OBJECT) {
+        // For now disable cred updates on sync accounts too.
+        if $value.attribute_equality("class", &PVCLASS_PERSON) {
             ui_hints.insert(UiHint::CredentialUpdate);
+        }
+
+        if $value.attribute_equality("class", &PVCLASS_SYNC_OBJECT) {
+            ui_hints.insert(UiHint::SynchronisedAccount);
         }
 
         if $value.attribute_equality("class", &PVCLASS_POSIXACCOUNT) {
@@ -110,6 +116,7 @@ macro_rules! try_from_entry {
         Ok(Account {
             uuid,
             name,
+            sync_parent_uuid,
             displayname,
             groups,
             primary,
@@ -138,6 +145,7 @@ pub struct Account {
     pub name: String,
     pub displayname: String,
     pub uuid: Uuid,
+    pub sync_parent_uuid: Option<Uuid>,
     // We want to allow this so that in the future we can populate this into oauth2 tokens
     #[allow(dead_code)]
     pub groups: Vec<Group>,
@@ -197,27 +205,97 @@ impl Account {
     pub(crate) fn to_userauthtoken(
         &self,
         session_id: Uuid,
+        scope: SessionScope,
         ct: Duration,
-        auth_type: AuthType,
-        expiry_secs: Option<u64>,
     ) -> Option<UserAuthToken> {
-        // This could consume self?
-        // The cred handler provided is what authenticated this user, so we can use it to
-        // process what the proper claims should be.
-        // Get the claims from the cred_h
-
         // TODO: Apply policy to this expiry time.
-        let expiry = expiry_secs
-            .map(|offset| OffsetDateTime::unix_epoch() + ct + Duration::from_secs(offset));
+        // We have to remove the nanoseconds because when we transmit this / serialise it we drop
+        // the nanoseconds, but if we haven't done a serialise on the server our db cache has the
+        // ns value which breaks some checks.
+        let ct = ct - Duration::from_nanos(ct.subsec_nanos() as u64);
+        let issued_at = OffsetDateTime::UNIX_EPOCH + ct;
 
-        let issued_at = OffsetDateTime::unix_epoch() + ct;
+        let expiry =
+            Some(OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(AUTH_SESSION_EXPIRY));
 
-        // TODO: Apply priv expiry, and what type of token this is (ident, ro, rw).
-        let purpose = UatPurpose::ReadWrite { expiry };
+        let (purpose, expiry) = match scope {
+            // Issue an invalid/expired session.
+            SessionScope::Synchronise => {
+                warn!(
+                    "Should be impossible to issue sync sessions with a uat. Refusing to proceed."
+                );
+                return None;
+            }
+            SessionScope::ReadOnly => (UatPurpose::ReadOnly, expiry),
+            SessionScope::ReadWrite => {
+                // These sessions are always rw, and so have limited life.
+                (UatPurpose::ReadWrite { expiry }, expiry)
+            }
+            SessionScope::PrivilegeCapable =>
+            // Return a rw capable session with the expiry currently invalid.
+            // These sessions COULD live forever since they can re-auth properly.
+            // Today I'm setting this to 24hr though.
+            {
+                (
+                    UatPurpose::ReadWrite { expiry: None },
+                    Some(OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(86400)),
+                )
+            }
+        };
 
         Some(UserAuthToken {
             session_id,
-            auth_type,
+            expiry,
+            issued_at,
+            purpose,
+            uuid: self.uuid,
+            displayname: self.displayname.clone(),
+            spn: self.spn.clone(),
+            mail_primary: self.mail_primary.clone(),
+            ui_hints: self.ui_hints.clone(),
+            // application: None,
+            // groups: self.groups.iter().map(|g| g.to_proto()).collect(),
+        })
+    }
+
+    /// Given the session_id and other metadata, reissue a user authentication token
+    /// that has elevated privileges. In the future we may adapt this to change what
+    /// scopes are granted per-reauth.
+    pub(crate) fn to_reissue_userauthtoken(
+        &self,
+        session_id: Uuid,
+        session_expiry: Option<OffsetDateTime>,
+        scope: SessionScope,
+        ct: Duration,
+    ) -> Option<UserAuthToken> {
+        let issued_at = OffsetDateTime::UNIX_EPOCH + ct;
+
+        let (purpose, expiry) = match scope {
+            SessionScope::Synchronise | SessionScope::ReadOnly | SessionScope::ReadWrite => {
+                warn!(
+                    "Impossible state, should not be re-issuing for session scope {:?}",
+                    scope
+                );
+                return None;
+            }
+            SessionScope::PrivilegeCapable =>
+            // Return a ReadWrite session with an inner expiry for the privileges
+            {
+                let expiry = Some(
+                    OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(AUTH_PRIVILEGE_EXPIRY),
+                );
+                (
+                    UatPurpose::ReadWrite { expiry },
+                    // Needs to come from the actual original session. If we don't do this we have
+                    // to re-update the expiry in the DB. We don't want a re-auth to extend a time
+                    // bound session.
+                    session_expiry,
+                )
+            }
+        };
+
+        Some(UserAuthToken {
+            session_id,
             expiry,
             issued_at,
             purpose,
@@ -236,7 +314,7 @@ impl Account {
         valid_from: Option<&OffsetDateTime>,
         expire: Option<&OffsetDateTime>,
     ) -> bool {
-        let cot = OffsetDateTime::unix_epoch() + ct;
+        let cot = OffsetDateTime::UNIX_EPOCH + ct;
 
         let vmin = if let Some(vft) = valid_from {
             // If current time greater than start time window
@@ -300,16 +378,6 @@ impl Account {
 
     pub fn is_anonymous(&self) -> bool {
         self.uuid == UUID_ANONYMOUS
-    }
-
-    pub(crate) fn gen_generatedpassword_recover_mod(
-        &self,
-        cleartext: &str,
-        crypto_policy: &CryptoPolicy,
-    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        let ncred = Credential::new_generatedpassword_only(crypto_policy, cleartext)?;
-        let vcred = Value::new_credential("primary", ncred);
-        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
     }
 
     pub(crate) fn gen_password_mod(
@@ -399,7 +467,14 @@ impl Account {
         self.primary
             .as_ref()
             .ok_or(OperationError::InvalidState)
-            .and_then(|cred| cred.password_ref().and_then(|pw| pw.verify(cleartext)))
+            .and_then(|cred| {
+                cred.password_ref().and_then(|pw| {
+                    pw.verify(cleartext).map_err(|e| {
+                        error!(crypto_err = ?e);
+                        e.into()
+                    })
+                })
+            })
     }
 
     pub(crate) fn regenerate_radius_secret_mod(
@@ -457,22 +532,28 @@ impl Account {
         // Anonymous does NOT record it's sessions, so we simply check the expiry time
         // of the token. This is already done for us as noted above.
 
-        if uat.auth_type == AuthType::Anonymous {
-            security_info!("Anonymous sessions do not have session records, session is valid.");
+        if uat.uuid == UUID_ANONYMOUS {
+            security_debug!("Anonymous sessions do not have session records, session is valid.");
             true
         } else {
             // Get the sessions.
             let session_present = entry
                 .get_ava_as_session_map("user_auth_token_session")
-                .map(|session_map| session_map.get(&uat.session_id).is_some())
-                .unwrap_or(false);
+                .and_then(|session_map| session_map.get(&uat.session_id));
 
-            if session_present {
+            if let Some(session) = session_present {
                 security_info!("A valid session value exists for this token");
-                true
+
+                if session.expiry == uat.expiry {
+                    true
+                } else {
+                    security_info!("Session and uat expiry are not consistent, rejecting.");
+                    debug!(ses_exp = ?session.expiry, uat_exp = ?uat.expiry);
+                    false
+                }
             } else {
                 let grace = uat.issued_at + GRACE_WINDOW;
-                let current = time::OffsetDateTime::unix_epoch() + ct;
+                let current = time::OffsetDateTime::UNIX_EPOCH + ct;
                 trace!(%grace, %current);
                 if current >= grace {
                     security_info!(
@@ -536,8 +617,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     f_eq("user_auth_token_session", PartialValue::Refer(dte.token_id))
                 ])),
                 &modlist,
-                // Provide the event to impersonate
-                &dte.ident,
+                // Provide the event to impersonate. Notice how we project this with readwrite
+                // capability? This is because without this we'd force re-auths to end
+                // a session and we don't want that! you should always be able to logout!
+                &dte.ident.project_with_scope(AccessScope::ReadWrite),
             )
             .map_err(|e| {
                 admin_error!("Failed to destroy user auth token {:?}", e);
@@ -683,7 +766,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-    use kanidm_proto::v1::{AuthType, UiHint};
+    use kanidm_proto::v1::UiHint;
 
     #[test]
     fn test_idm_account_from_anonymous() {
@@ -719,7 +802,7 @@ mod tests {
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
-            .to_userauthtoken(session_id, ct, AuthType::Passkey, None)
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect("Unable to create uat");
 
         // Check the ui hints are as expected.
@@ -744,7 +827,7 @@ mod tests {
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
-            .to_userauthtoken(session_id, ct, AuthType::Passkey, None)
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect("Unable to create uat");
 
         assert!(uat.ui_hints.len() == 2);
@@ -769,7 +852,7 @@ mod tests {
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
-            .to_userauthtoken(session_id, ct, AuthType::Passkey, None)
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
             .expect("Unable to create uat");
 
         assert!(uat.ui_hints.len() == 3);

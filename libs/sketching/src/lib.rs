@@ -6,7 +6,6 @@ use tracing_forest::util::*;
 use tracing_forest::Tag;
 
 pub mod macros;
-pub mod middleware;
 
 pub use {tracing, tracing_forest, tracing_subscriber};
 
@@ -38,6 +37,7 @@ pub enum EventTag {
     RequestInfo,
     RequestTrace,
     SecurityCritical,
+    SecurityDebug,
     SecurityInfo,
     SecurityAccess,
     SecurityError,
@@ -60,6 +60,7 @@ impl EventTag {
             EventTag::RequestInfo => "request.info",
             EventTag::RequestTrace => "request.trace",
             EventTag::SecurityCritical => "security.critical",
+            EventTag::SecurityDebug => "security.debug",
             EventTag::SecurityInfo => "security.info",
             EventTag::SecurityAccess => "security.access",
             EventTag::SecurityError => "security.error",
@@ -74,10 +75,10 @@ impl EventTag {
     pub fn emoji(self) -> &'static str {
         use EventTag::*;
         match self {
-            AdminDebug => "🐛",
+            AdminDebug | SecurityDebug => "🐛",
             AdminError | FilterError | RequestError | SecurityError => "🚨",
             AdminWarn | FilterWarn | RequestWarn => "⚠️",
-            AdminInfo | FilterInfo | RequestInfo | SecurityInfo => "  ",
+            AdminInfo | FilterInfo | RequestInfo | SecurityInfo => "ℹ️",
             RequestTrace | FilterTrace | PerfTrace => "📍",
             SecurityCritical => "🔐",
             SecurityAccess => "🔓",

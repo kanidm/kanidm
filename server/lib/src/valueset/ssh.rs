@@ -7,6 +7,8 @@ use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
+use sshkeys::PublicKey as SshPublicKey;
+
 #[derive(Debug, Clone)]
 pub struct ValueSetSshKey {
     map: BTreeMap<String, String>,
@@ -102,7 +104,11 @@ impl ValueSetT for ValueSetSshKey {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        true
+        self.map.iter().all(|(s, key)| {
+            SshPublicKey::from_string(key).is_ok()
+                && Value::validate_str_escapes(s)
+                && Value::validate_singleline(s)
+        })
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {

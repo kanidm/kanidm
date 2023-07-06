@@ -224,6 +224,13 @@ pub const UUID_SCHEMA_ATTR_EMAILALTERNATIVE: Uuid = uuid!("00000000-0000-0000-00
 pub const UUID_SCHEMA_ATTR_TOTP_IMPORT: Uuid = uuid!("00000000-0000-0000-0000-ffff00000128");
 pub const UUID_SCHEMA_ATTR_REPLICATED: Uuid = uuid!("00000000-0000-0000-0000-ffff00000129");
 pub const UUID_SCHEMA_ATTR_PRIVATE_COOKIE_KEY: Uuid = uuid!("00000000-0000-0000-0000-ffff00000130");
+pub const _UUID_SCHEMA_ATTR_DOMAIN_LDAP_BASEDN: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000131");
+pub const UUID_SCHEMA_ATTR_DYNMEMBER: Uuid = uuid!("00000000-0000-0000-0000-ffff00000132");
+pub const UUID_SCHEMA_ATTR_NAME_HISTORY: Uuid = uuid!("00000000-0000-0000-0000-ffff00000133");
+
+pub const UUID_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000136");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
@@ -302,6 +309,7 @@ pub const UUID_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1: Uuid =
     uuid!("00000000-0000-0000-0000-ffffff000044");
 pub const UUID_IDM_ACP_ACCOUNT_MAIL_READ_PRIV_V1: Uuid =
     uuid!("00000000-0000-0000-0000-ffffff000045");
+pub const UUID_IDM_ACCOUNT_SELF_ACP_WRITE_V1: Uuid = uuid!("00000000-0000-0000-0000-ffffff000046");
 
 // End of system ranges
 pub const UUID_DOES_NOT_EXIST: Uuid = uuid!("00000000-0000-0000-0000-fffffffffffe");

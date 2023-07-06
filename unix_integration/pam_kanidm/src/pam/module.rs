@@ -5,7 +5,7 @@ use std::{mem, ptr};
 
 use libc::c_char;
 
-use crate::pam::constants::{PamFlag, PamItemType, PamResultCode, PAM_AUTHTOK};
+use crate::pam::constants::{PamFlag, PamItemType, PamResultCode, PAM_AUTHTOK, PAM_RHOST, PAM_TTY};
 
 /// Opaque type, used as a pointer when making pam API calls.
 ///
@@ -33,7 +33,7 @@ extern "C" {
         pamh: *const PamHandle,
         module_data_name: *const c_char,
         data: *mut PamDataT,
-        cleanup: extern "C" fn(
+        cleanup: unsafe extern "C" fn(
             pamh: *const PamHandle,
             data: *mut PamDataT,
             error_status: PamResultCode,
@@ -56,16 +56,19 @@ extern "C" {
     ) -> PamResultCode;
 }
 
-pub extern "C" fn cleanup<T>(_: *const PamHandle, c_data: *mut PamDataT, _: PamResultCode) {
-    unsafe {
-        let c_data = Box::from_raw(c_data);
-        let data: Box<T> = mem::transmute(c_data);
-        mem::drop(data);
-    }
+/// # Safety
+///
+/// We're doing what we can for this one, but it's FFI.
+pub unsafe extern "C" fn cleanup<T>(_: *const PamHandle, c_data: *mut PamDataT, _: PamResultCode) {
+    let c_data = Box::from_raw(c_data);
+    let data: Box<T> = mem::transmute(c_data);
+    mem::drop(data);
 }
 
 pub type PamResult<T> = Result<T, PamResultCode>;
 
+/// # Safety
+///
 /// Type-level mapping for safely retrieving values with `get_item`.
 ///
 /// See `pam_get_item` in
@@ -81,6 +84,8 @@ pub trait PamItem {
 }
 
 impl PamHandle {
+    /// # Safety
+    ///
     /// Gets some value, identified by `key`, that has been set by the module
     /// previously.
     ///
@@ -193,6 +198,44 @@ impl PamHandle {
         let mut ptr: *const PamItemT = ptr::null();
         let (res, item) = unsafe {
             let r = pam_get_item(self, PAM_AUTHTOK, &mut ptr);
+            let t = if PamResultCode::PAM_SUCCESS == r && !ptr.is_null() {
+                let typed_ptr: *const c_char = ptr as *const c_char;
+                Some(CStr::from_ptr(typed_ptr).to_string_lossy().into_owned())
+            } else {
+                None
+            };
+            (r, t)
+        };
+        if PamResultCode::PAM_SUCCESS == res {
+            Ok(item)
+        } else {
+            Err(res)
+        }
+    }
+
+    pub fn get_tty(&self) -> PamResult<Option<String>> {
+        let mut ptr: *const PamItemT = ptr::null();
+        let (res, item) = unsafe {
+            let r = pam_get_item(self, PAM_TTY, &mut ptr);
+            let t = if PamResultCode::PAM_SUCCESS == r && !ptr.is_null() {
+                let typed_ptr: *const c_char = ptr as *const c_char;
+                Some(CStr::from_ptr(typed_ptr).to_string_lossy().into_owned())
+            } else {
+                None
+            };
+            (r, t)
+        };
+        if PamResultCode::PAM_SUCCESS == res {
+            Ok(item)
+        } else {
+            Err(res)
+        }
+    }
+
+    pub fn get_rhost(&self) -> PamResult<Option<String>> {
+        let mut ptr: *const PamItemT = ptr::null();
+        let (res, item) = unsafe {
+            let r = pam_get_item(self, PAM_RHOST, &mut ptr);
             let t = if PamResultCode::PAM_SUCCESS == r && !ptr.is_null() {
                 let typed_ptr: *const c_char = ptr as *const c_char;
                 Some(CStr::from_ptr(typed_ptr).to_string_lossy().into_owned())

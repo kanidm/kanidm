@@ -4,14 +4,29 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use crate::prelude::*;
-
 use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
 use concread::cowcell::*;
 use hashbrown::HashSet;
-use kanidm_proto::v1::{ConsistencyError, UiHint};
 use tokio::sync::{Semaphore, SemaphorePermit};
 use tracing::trace;
+
+use kanidm_proto::v1::{ConsistencyError, UiHint};
+
+use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
+// We use so many, we just import them all ...
+use crate::filter::{Filter, FilterInvalid, FilterValid, FilterValidResolved};
+use crate::plugins::dyngroup::{DynGroup, DynGroupCache};
+use crate::plugins::Plugins;
+use crate::prelude::*;
+use crate::repl::cid::Cid;
+use crate::repl::proto::ReplRuvRange;
+use crate::repl::ruv::ReplicationUpdateVectorTransaction;
+use crate::schema::{
+    Schema, SchemaAttribute, SchemaClass, SchemaReadTransaction, SchemaTransaction,
+    SchemaWriteTransaction,
+};
+use crate::value::EXTRACT_VAL_DN;
+use crate::valueset::uuid_to_proto_string;
 
 use self::access::{
     profiles::{
@@ -20,18 +35,6 @@ use self::access::{
     AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
     AccessControlsWriteTransaction,
 };
-
-use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
-// We use so many, we just import them all ...
-use crate::filter::{Filter, FilterInvalid, FilterValid, FilterValidResolved};
-use crate::plugins::dyngroup::{DynGroup, DynGroupCache};
-use crate::plugins::Plugins;
-use crate::repl::cid::Cid;
-use crate::schema::{
-    Schema, SchemaAttribute, SchemaClass, SchemaReadTransaction, SchemaTransaction,
-    SchemaWriteTransaction,
-};
-use crate::valueset::uuid_to_proto_string;
 
 pub mod access;
 pub mod batch_modify;
@@ -197,7 +200,7 @@ pub trait QueryServerTransaction<'a> {
             trace!(internal_filter = ?se.filter, "search");
         } else {
             security_info!(initiator = %se.ident, "search");
-            admin_info!(external_filter = ?se.filter, "search");
+            admin_debug!(external_filter = ?se.filter, "search");
         }
 
         // This is an important security step because it prevents us from
@@ -265,11 +268,25 @@ pub trait QueryServerTransaction<'a> {
     }
 
     fn name_to_uuid(&mut self, name: &str) -> Result<Uuid, OperationError> {
+        // There are some contexts where we will be passed an rdn or dn. We need
+        // to remove these elements if they exist.
+        //
+        // Why is it okay to ignore the attr and dn here? In Kani spn and name are
+        // always unique and absolutes, so even if the dn/rdn are not expected, there
+        // is only a single correct answer that *can* match these values. This also
+        // hugely simplifies the process of matching when we have app based searches
+        // in future too.
+
+        let work = EXTRACT_VAL_DN
+            .captures(name)
+            .and_then(|caps| caps.name("val"))
+            .map(|v| v.as_str().to_lowercase())
+            .ok_or(OperationError::InvalidValueState)?;
+
         // Is it just a uuid?
-        Uuid::parse_str(name).or_else(|_| {
-            let lname = name.to_lowercase();
+        Uuid::parse_str(&work).or_else(|_| {
             self.get_be_txn()
-                .name2uuid(lname.as_str())?
+                .name2uuid(&work)?
                 .ok_or(OperationError::NoMatchingEntries)
         })
     }
@@ -405,6 +422,27 @@ pub trait QueryServerTransaction<'a> {
         }
     }
 
+    /// Get a single entry by its UUID, even if the entry in question
+    /// is in a masked state (recycled, tombstoned).
+    #[instrument(level = "debug", skip_all)]
+    fn internal_search_all_uuid(
+        &mut self,
+        uuid: Uuid,
+    ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
+        let filter = filter_all!(f_eq("uuid", PartialValue::Uuid(uuid)));
+        let f_valid = filter.validate(self.get_schema()).map_err(|e| {
+            error!(?e, "Filter Validate - SchemaViolation");
+            OperationError::SchemaViolation(e)
+        })?;
+        let se = SearchEvent::new_internal(f_valid);
+
+        let mut vs = self.search(&se)?;
+        match vs.pop() {
+            Some(entry) if vs.is_empty() => Ok(entry),
+            _ => Err(OperationError::NoMatchingEntries),
+        }
+    }
+
     #[instrument(level = "debug", skip_all)]
     fn impersonate_search_ext_uuid(
         &mut self,
@@ -505,6 +543,7 @@ pub trait QueryServerTransaction<'a> {
                         .map(Value::UiHint)
                         .map_err(|()| OperationError::InvalidAttribute("Invalid uihint syntax".to_string())),
                     SyntaxType::TotpSecret => Err(OperationError::InvalidAttribute("TotpSecret Values can not be supplied through modification".to_string())),
+                    SyntaxType::AuditLogString => Err(OperationError::InvalidAttribute("Audit logs are generated and not able to be set.".to_string())),
                 }
             }
             None => {
@@ -611,6 +650,7 @@ pub trait QueryServerTransaction<'a> {
                         .map_err(|()| {
                             OperationError::InvalidAttribute("Invalid uihint syntax".to_string())
                         }),
+                    SyntaxType::AuditLogString => Ok(PartialValue::new_utf8s(value)),
                 }
             }
             None => {
@@ -759,6 +799,42 @@ pub trait QueryServerTransaction<'a> {
 
     fn get_oauth2rs_set(&mut self) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         self.internal_search(filter!(f_eq("class", PVCLASS_OAUTH2_RS.clone(),)))
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    fn consumer_get_state(&mut self) -> Result<ReplRuvRange, OperationError> {
+        // Get the current state of "where we are up to"
+        //
+        // There are two approaches we can use here. We can either store a cookie
+        // related to the supplier we are fetching from, or we can use our RUV state.
+        //
+        // Initially I'm using RUV state, because it lets us select exactly what has
+        // changed, where the cookie approach is more coarse grained. The cookie also
+        // requires some more knowledge about what supplier we are communicating too
+        // where the RUV approach doesn't since the supplier calcs the diff.
+        //
+        // We need the RUV as a state of
+        //
+        // [ s_uuid, cid_min, cid_max ]
+        // [ s_uuid, cid_min, cid_max ]
+        // [ s_uuid, cid_min, cid_max ]
+        // ...
+        //
+        // This way the remote can diff against it's knowledge and work out:
+        //
+        // [ s_uuid, from_cid, to_cid ]
+        // [ s_uuid, from_cid, to_cid ]
+        //
+        // ...
+
+        // Which then the supplier will use to actually retrieve the set of entries.
+        // and the needed attributes we need.
+        let ruv_snapshot = self.get_be_txn().get_ruv();
+
+        // What's the current set of ranges?
+        ruv_snapshot
+            .current_ruv_range()
+            .map(|ranges| ReplRuvRange::V1 { ranges })
     }
 }
 
@@ -963,8 +1039,6 @@ impl QueryServer {
 
         let phase = Arc::new(CowCell::new(ServerPhase::Bootstrap));
 
-        // log_event!(log, "Starting query worker ...");
-
         #[allow(clippy::expect_used)]
         QueryServer {
             phase,
@@ -994,12 +1068,18 @@ impl QueryServer {
 
     pub async fn read(&self) -> QueryServerReadTransaction<'_> {
         // We need to ensure a db conn will be available
-        #[allow(clippy::expect_used)]
-        let db_ticket = self
-            .db_tickets
-            .acquire()
-            .await
-            .expect("unable to acquire db_ticket for qsr");
+        let db_ticket = if cfg!(test) {
+            #[allow(clippy::expect_used)]
+            self.db_tickets
+                .try_acquire()
+                .expect("unable to acquire db_ticket for qsr")
+        } else {
+            #[allow(clippy::expect_used)]
+            self.db_tickets
+                .acquire()
+                .await
+                .expect("unable to acquire db_ticket for qsr")
+        };
 
         QueryServerReadTransaction {
             be_txn: self.be.read(),
@@ -1014,18 +1094,30 @@ impl QueryServer {
     pub async fn write(&self, curtime: Duration) -> QueryServerWriteTransaction<'_> {
         // Guarantee we are the only writer on the thread pool
         #[allow(clippy::expect_used)]
-        let write_ticket = self
-            .write_ticket
-            .acquire()
-            .await
-            .expect("unable to acquire writer_ticket for qsw");
+        let write_ticket = if cfg!(debug_assertions) {
+            self.write_ticket
+                .try_acquire()
+                .expect("unable to acquire writer_ticket for qsw")
+        } else {
+            self.write_ticket
+                .acquire()
+                .await
+                .expect("unable to acquire writer_ticket for qsw")
+        };
+
         // We need to ensure a db conn will be available
-        #[allow(clippy::expect_used)]
-        let db_ticket = self
-            .db_tickets
-            .acquire()
-            .await
-            .expect("unable to acquire db_ticket for qsw");
+        let db_ticket = if cfg!(test) {
+            #[allow(clippy::expect_used)]
+            self.db_tickets
+                .try_acquire()
+                .expect("unable to acquire db_ticket for qsw")
+        } else {
+            #[allow(clippy::expect_used)]
+            self.db_tickets
+                .acquire()
+                .await
+                .expect("unable to acquire db_ticket for qsw")
+        };
 
         let schema_write = self.schema.write();
         let mut be_txn = self.be.write();
@@ -1373,7 +1465,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.changed_schema = true;
     }
 
-    #[instrument(level = "info", skip_all)]
+    #[instrument(level = "debug", skip_all)]
     pub(crate) fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
         self.be_txn.upgrade_reindex(v)
     }
@@ -1394,8 +1486,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         *self.phase = phase
     }
 
-    #[instrument(level = "info", skip_all)]
-    pub fn commit(mut self) -> Result<(), OperationError> {
+    pub(crate) fn reload(&mut self) -> Result<(), OperationError> {
         // This could be faster if we cache the set of classes changed
         // in an operation so we can check if we need to do the reload or not
         //
@@ -1419,6 +1510,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if self.changed_domain {
             self.reload_domain_info()?;
         }
+
+        Ok(())
+    }
+
+    #[instrument(level = "info", skip_all)]
+    pub fn commit(mut self) -> Result<(), OperationError> {
+        self.reload()?;
 
         // Now destructure the transaction ready to reset it.
         let QueryServerWriteTransaction {
@@ -1450,11 +1548,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .and_then(|_| accesscontrols.commit())
             .and_then(|_| be_txn.commit())
     }
+    pub(crate) fn get_txn_cid(&self) -> &Cid {
+        &self.cid
+    }
 }
 
 #[cfg(test)]
 mod tests {
-
     use crate::prelude::*;
 
     #[qs_test]
@@ -1485,6 +1585,12 @@ mod tests {
         // Name is not syntax normalised (but exists)
         let r4 = server_txn.name_to_uuid("tEsTpErSoN1");
         assert!(r4 == Ok(t_uuid));
+        // Name is an rdn
+        let r5 = server_txn.name_to_uuid("name=testperson1");
+        assert!(r5 == Ok(t_uuid));
+        // Name is a dn
+        let r6 = server_txn.name_to_uuid("name=testperson1,o=example");
+        assert!(r6 == Ok(t_uuid));
     }
 
     #[qs_test]

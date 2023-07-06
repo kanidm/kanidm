@@ -1,10 +1,13 @@
 ---
-name: "Build Debian Packages"
+name: "Build Deb Packages"
 
-# yamllint disable-line rule:truthy
-on:
+"on":
   push:
   pull_request:
+
+env:
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,40 +18,47 @@ jobs:
     strategy:
       matrix:
         image:
-         - ubuntu:22.04
-         - ubuntu:20.04
-         - ubuntu:18.04
-         - debian:11
-         - debian:10
+          - ubuntu:22.04
+          - ubuntu:20.04
+          - ubuntu:18.04
+          - debian:11
+          - debian:10
     runs-on: ubuntu-latest
-    container: 
+    container:
       image: ${{ matrix.image }}
       env:
         DEBIAN_FRONTEND: noninteractive
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Update package manager
-        run: apt-get update
+      - name: install curl
+        run: |
+          apt-get update && apt-get install -y curl
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+        with:
+          version: "v0.4.2"
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
       - name: Install dependencies
         run: |
-          apt-get install -y \
-            lsb-release \
-            libpam0g-dev \
-            libudev-dev \
-            libssl-dev \
-            libsqlite3-dev \
-            pkg-config \
-            make \
-            curl \
-            sudo
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          default: true
-      - name: "Doing the package build"
+          scripts/install_ubuntu_dependencies.sh
+      #     apt-get update && \
+      #     apt-get install -y \
+      #       lsb-release \
+      #       libpam0g-dev \
+      #       libudev-dev \
+      #       libssl-dev \
+      #       libsqlite3-dev \
+      #       pkg-config \
+      #       make \
+      #       curl \
+      #       sudo \
+      #       build-essential \
+      #       rsync
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
+      - name: Build packages
         run: |
           make -f platform/debian/Makefile debs/all
       - name: Upload debs
@@ -61,6 +71,7 @@ jobs:
     name: Upload to releases
     needs: build-deb-package
     runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
     steps:
       - name: Download previously built debs
         uses: actions/download-artifact@v3
@@ -76,4 +87,3 @@ jobs:
           prerelease: true
           title: "Ubuntu Packages"
           files: "*.deb"
-        if: ${{ github.ref == 'refs/heads/master' }}

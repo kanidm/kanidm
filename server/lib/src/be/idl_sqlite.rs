@@ -1,13 +1,13 @@
+use std::collections::VecDeque;
 use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::Duration;
 
 // use crate::valueset;
 use hashbrown::HashMap;
 use idlset::v2::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
-use r2d2::Pool;
-use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use uuid::Uuid;
 
@@ -33,6 +33,8 @@ fn serde_json_error(e: serde_json::Error) -> OperationError {
     admin_error!(?e, "Serde JSON Error");
     OperationError::SerdeJsonError
 }
+
+type ConnPool = Arc<Mutex<VecDeque<Connection>>>;
 
 #[repr(u32)]
 #[derive(Debug, Copy, Clone)]
@@ -98,26 +100,26 @@ impl TryFrom<IdRawEntry> for IdSqliteEntry {
 
 #[derive(Clone)]
 pub struct IdlSqlite {
-    pool: Pool<SqliteConnectionManager>,
+    pool: ConnPool,
     db_name: &'static str,
 }
 
 pub struct IdlSqliteReadTransaction {
-    committed: bool,
-    conn: r2d2::PooledConnection<SqliteConnectionManager>,
+    pool: ConnPool,
+    conn: Option<Connection>,
     db_name: &'static str,
 }
 
 pub struct IdlSqliteWriteTransaction {
-    committed: bool,
-    conn: r2d2::PooledConnection<SqliteConnectionManager>,
+    pool: ConnPool,
+    conn: Option<Connection>,
     db_name: &'static str,
 }
 
 pub trait IdlSqliteTransaction {
     fn get_db_name(&self) -> &str;
 
-    fn get_conn(&self) -> &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>;
+    fn get_conn(&self) -> Result<&Connection, OperationError>;
 
     fn get_identry(&self, idl: &IdList) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         self.get_identry_raw(idl)?
@@ -131,7 +133,7 @@ pub trait IdlSqliteTransaction {
         match idl {
             IdList::AllIds => {
                 let mut stmt = self
-                    .get_conn()
+                    .get_conn()?
                     .prepare(&format!(
                         "SELECT id, data FROM {}.id2entry",
                         self.get_db_name()
@@ -156,7 +158,7 @@ pub trait IdlSqliteTransaction {
             }
             IdList::Partial(idli) | IdList::PartialThreshold(idli) | IdList::Indexed(idli) => {
                 let mut stmt = self
-                    .get_conn()
+                    .get_conn()?
                     .prepare(&format!(
                         "SELECT id, data FROM {}.id2entry WHERE id = :idl",
                         self.get_db_name()
@@ -203,7 +205,7 @@ pub trait IdlSqliteTransaction {
 
     fn exists_table(&self, tname: &str) -> Result<bool, OperationError> {
         let mut stmt = self
-            .get_conn()
+            .get_conn()?
             .prepare(&format!(
                 "SELECT COUNT(name) from {}.sqlite_master where name = :tname",
                 self.get_db_name()
@@ -247,7 +249,7 @@ pub trait IdlSqliteTransaction {
             attr
         );
         let mut stmt = self
-            .get_conn()
+            .get_conn()?
             .prepare(query.as_str())
             .map_err(sqlite_error)?;
         let idl_raw: Option<Vec<u8>> = stmt
@@ -274,7 +276,7 @@ pub trait IdlSqliteTransaction {
     fn name2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
         // The table exists - lets now get the actual index itself.
         let mut stmt = self
-            .get_conn()
+            .get_conn()?
             .prepare(&format!(
                 "SELECT uuid FROM {}.idx_name2uuid WHERE name = :name",
                 self.get_db_name()
@@ -294,7 +296,7 @@ pub trait IdlSqliteTransaction {
     fn externalid2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
         // The table exists - lets now get the actual index itself.
         let mut stmt = self
-            .get_conn()
+            .get_conn()?
             .prepare(&format!(
                 "SELECT uuid FROM {}.idx_externalid2uuid WHERE eid = :eid",
                 self.get_db_name()
@@ -315,7 +317,7 @@ pub trait IdlSqliteTransaction {
         let uuids = uuid.as_hyphenated().to_string();
         // The table exists - lets now get the actual index itself.
         let mut stmt = self
-            .get_conn()
+            .get_conn()?
             .prepare(&format!(
                 "SELECT spn FROM {}.idx_uuid2spn WHERE uuid = :uuid",
                 self.get_db_name()
@@ -344,7 +346,7 @@ pub trait IdlSqliteTransaction {
         let uuids = uuid.as_hyphenated().to_string();
         // The table exists - lets now get the actual index itself.
         let mut stmt = self
-            .get_conn()
+            .get_conn()?
             .prepare("SELECT rdn FROM idx_uuid2rdn WHERE uuid = :uuid")
             .map_err(sqlite_error)?;
         let rdn: Option<String> = stmt
@@ -359,7 +361,7 @@ pub trait IdlSqliteTransaction {
     fn get_db_s_uuid(&self) -> Result<Option<Uuid>, OperationError> {
         // Try to get a value.
         let data: Option<Vec<u8>> = self
-            .get_conn()
+            .get_conn()?
             .query_row("SELECT data FROM db_sid WHERE id = 2", [], |row| row.get(0))
             .optional()
             // this whole map call is useless
@@ -390,7 +392,7 @@ pub trait IdlSqliteTransaction {
     fn get_db_d_uuid(&self) -> Result<Option<Uuid>, OperationError> {
         // Try to get a value.
         let data: Option<Vec<u8>> = self
-            .get_conn()
+            .get_conn()?
             .query_row("SELECT data FROM db_did WHERE id = 2", [], |row| row.get(0))
             .optional()
             // this whole map call is useless
@@ -421,7 +423,7 @@ pub trait IdlSqliteTransaction {
     fn get_db_ts_max(&self) -> Result<Option<Duration>, OperationError> {
         // Try to get a value.
         let data: Option<Vec<u8>> = self
-            .get_conn()
+            .get_conn()?
             .query_row("SELECT data FROM db_op_ts WHERE id = 1", [], |row| {
                 row.get(0)
             })
@@ -453,7 +455,7 @@ pub trait IdlSqliteTransaction {
     #[instrument(level = "debug", name = "idl_sqlite::get_allids", skip_all)]
     fn get_allids(&self) -> Result<IDLBitRange, OperationError> {
         let mut stmt = self
-            .get_conn()
+            .get_conn()?
             .prepare("SELECT id FROM id2entry")
             .map_err(sqlite_error)?;
         let res = stmt.query_map([], |row| row.get(0)).map_err(sqlite_error)?;
@@ -476,7 +478,7 @@ pub trait IdlSqliteTransaction {
 
     fn list_idxs(&self) -> Result<Vec<String>, OperationError> {
         let mut stmt = self
-            .get_conn()
+            .get_conn()?
             .prepare("SELECT name from sqlite_master where type='table' and name GLOB 'idx_*'")
             .map_err(sqlite_error)?;
         let idx_table_iter = stmt.query_map([], |row| row.get(0)).map_err(sqlite_error)?;
@@ -513,7 +515,7 @@ pub trait IdlSqliteTransaction {
 
         let query = format!("SELECT key, idl FROM {index_name}");
         let mut stmt = self
-            .get_conn()
+            .get_conn()?
             .prepare(query.as_str())
             .map_err(sqlite_error)?;
 
@@ -539,7 +541,12 @@ pub trait IdlSqliteTransaction {
     // This allow is critical as it resolves a life time issue in stmt.
     #[allow(clippy::let_and_return)]
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
-        let mut stmt = match self.get_conn().prepare("PRAGMA integrity_check;") {
+        let conn = match self.get_conn() {
+            Ok(conn) => conn,
+            Err(_) => return vec![Err(ConsistencyError::SqliteIntegrityFailure)],
+        };
+
+        let mut stmt = match conn.prepare("PRAGMA integrity_check;") {
             Ok(r) => r,
             Err(_) => return vec![Err(ConsistencyError::SqliteIntegrityFailure)],
         };
@@ -567,31 +574,35 @@ impl IdlSqliteTransaction for IdlSqliteReadTransaction {
         self.db_name
     }
 
-    fn get_conn(&self) -> &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager> {
-        &self.conn
+    fn get_conn(&self) -> Result<&Connection, OperationError> {
+        self.conn
+            .as_ref()
+            .ok_or(OperationError::TransactionAlreadyCommitted)
     }
 }
 
 impl Drop for IdlSqliteReadTransaction {
     // Abort - so far this has proven reliable to use drop here.
     fn drop(&mut self) {
-        if !self.committed {
+        let mut dropping = None;
+        std::mem::swap(&mut dropping, &mut self.conn);
+
+        if let Some(conn) = dropping {
             #[allow(clippy::expect_used)]
-            self.conn
-                .execute("ROLLBACK TRANSACTION", [])
-                // We can't do this without expect.
-                // We may need to change how we do transactions to not rely on drop if
-                // it becomes and issue :(
+            conn.execute("ROLLBACK TRANSACTION", [])
                 .expect("Unable to rollback transaction! Can not proceed!!!");
+
+            #[allow(clippy::expect_used)]
+            self.pool
+                .lock()
+                .expect("Unable to access db pool")
+                .push_back(conn);
         }
     }
 }
 
 impl IdlSqliteReadTransaction {
-    pub fn new(
-        conn: r2d2::PooledConnection<SqliteConnectionManager>,
-        db_name: &'static str,
-    ) -> Self {
+    pub fn new(pool: ConnPool, conn: Connection, db_name: &'static str) -> Self {
         // Start the transaction
         //
         // I'm happy for this to be an expect, because this is a huge failure
@@ -603,8 +614,8 @@ impl IdlSqliteReadTransaction {
         conn.execute("BEGIN DEFERRED TRANSACTION", [])
             .expect("Unable to begin transaction!");
         IdlSqliteReadTransaction {
-            committed: false,
-            conn,
+            pool,
+            conn: Some(conn),
             db_name,
         }
     }
@@ -615,56 +626,77 @@ impl IdlSqliteTransaction for IdlSqliteWriteTransaction {
         self.db_name
     }
 
-    fn get_conn(&self) -> &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager> {
-        &self.conn
+    fn get_conn(&self) -> Result<&Connection, OperationError> {
+        self.conn
+            .as_ref()
+            .ok_or(OperationError::TransactionAlreadyCommitted)
     }
 }
 
 impl Drop for IdlSqliteWriteTransaction {
     // Abort
     fn drop(&mut self) {
-        if !self.committed {
+        let mut dropping = None;
+        std::mem::swap(&mut dropping, &mut self.conn);
+
+        if let Some(conn) = dropping {
             #[allow(clippy::expect_used)]
-            self.conn
-                .execute("ROLLBACK TRANSACTION", [])
+            conn.execute("ROLLBACK TRANSACTION", [])
                 .expect("Unable to rollback transaction! Can not proceed!!!");
+
+            #[allow(clippy::expect_used)]
+            self.pool
+                .lock()
+                .expect("Unable to access db pool")
+                .push_back(conn);
         }
     }
 }
 
 impl IdlSqliteWriteTransaction {
-    pub fn new(
-        conn: r2d2::PooledConnection<SqliteConnectionManager>,
-        db_name: &'static str,
-    ) -> Self {
+    pub fn new(pool: ConnPool, conn: Connection, db_name: &'static str) -> Self {
         // Start the transaction
         #[allow(clippy::expect_used)]
         conn.execute("BEGIN EXCLUSIVE TRANSACTION", [])
             .expect("Unable to begin transaction!");
         IdlSqliteWriteTransaction {
-            committed: false,
-            conn,
+            pool,
+            conn: Some(conn),
             db_name,
         }
     }
 
     #[instrument(level = "debug", name = "idl_sqlite::commit", skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
-        assert!(!self.committed);
-        self.committed = true;
+        debug_assert!(self.conn.is_some());
 
-        self.conn
-            .execute("COMMIT TRANSACTION", [])
-            .map(|_| ())
-            .map_err(|e| {
-                admin_error!(?e, "CRITICAL: failed to commit sqlite txn");
-                OperationError::BackendEngine
-            })
+        let mut dropping = None;
+        std::mem::swap(&mut dropping, &mut self.conn);
+
+        if let Some(conn) = dropping {
+            #[allow(clippy::expect_used)]
+            conn.execute("COMMIT TRANSACTION", [])
+                .map(|_| ())
+                .map_err(|e| {
+                    admin_error!(?e, "CRITICAL: failed to commit sqlite txn");
+                    OperationError::BackendEngine
+                })?;
+
+            #[allow(clippy::expect_used)]
+            self.pool
+                .lock()
+                .expect("Unable to access db pool")
+                .push_back(conn);
+
+            Ok(())
+        } else {
+            Err(OperationError::TransactionAlreadyCommitted)
+        }
     }
 
     pub fn get_id2entry_max_id(&self) -> Result<u64, OperationError> {
         let mut stmt = self
-            .conn
+            .get_conn()?
             .prepare(&format!(
                 "SELECT MAX(id) as id_max FROM {}.id2entry",
                 self.get_db_name(),
@@ -686,32 +718,6 @@ impl IdlSqliteWriteTransaction {
         }
     }
 
-    /*
-    pub fn write_identries<'b, I>(
-        &'b self,
-        entries: I,
-    ) -> Result<(), OperationError>
-    where
-        I: Iterator<Item = &'b Entry<EntrySealed, EntryCommitted>>,
-    {
-        lperf_trace_segment!(au, "be::idl_sqlite::write_identries", || {
-            let raw_entries: Result<Vec<_>, _> = entries
-                .map(|e| {
-                    let dbe = e.to_dbentry();
-                    let data =
-                        serde_cbor::to_vec(&dbe).map_err(|_| OperationError::SerdeCborError)?;
-
-                    Ok(IdRawEntry {
-                        id: e.get_id(),
-                        data,
-                    })
-                })
-                .collect();
-            self.write_identries_raw(au, raw_entries?.into_iter())
-        })
-    }
-    */
-
     pub fn write_identry(
         &self,
         entry: &Entry<EntrySealed, EntryCommitted>,
@@ -732,7 +738,7 @@ impl IdlSqliteWriteTransaction {
         I: Iterator<Item = IdRawEntry>,
     {
         let mut stmt = self
-            .conn
+            .get_conn()?
             .prepare(&format!(
                 "INSERT OR REPLACE INTO {}.id2entry (id, data) VALUES(:id, :data)",
                 self.get_db_name()
@@ -752,46 +758,9 @@ impl IdlSqliteWriteTransaction {
         })
     }
 
-    /*
-    pub fn delete_identries<I>(&self, mut idl: I) -> Result<(), OperationError>
-    where
-        I: Iterator<Item = u64>,
-    {
-        lperf_trace_segment!(au, "be::idl_sqlite::delete_identries", || {
-            let mut stmt = self
-                .conn
-                .prepare("DELETE FROM id2entry WHERE id = :id")
-                .map_err(|e| {
-                    ladmin_error!(au, "SQLite Error {:?}", e);
-                    OperationError::SqliteError
-                })?;
-
-            idl.try_for_each(|id| {
-                let iid: i64 = id
-                    .try_into()
-                    .map_err(|_| OperationError::InvalidEntryId)
-                    .and_then(|i| {
-                        if i > 0 {
-                            Ok(i)
-                        } else {
-                            Err(OperationError::InvalidEntryId)
-                        }
-                    })?;
-
-                debug_assert!(iid > 0);
-
-                stmt.execute(&[&iid]).map(|_| ()).map_err(|e| {
-                    ladmin_error!(au, "SQLite Error {:?}", e);
-                    OperationError::SqliteError
-                })
-            })
-        })
-    }
-    */
-
     pub fn delete_identry(&self, id: u64) -> Result<(), OperationError> {
         let mut stmt = self
-            .conn
+            .get_conn()?
             .prepare(&format!(
                 "DELETE FROM {}.id2entry WHERE id = :id",
                 self.get_db_name()
@@ -831,7 +800,7 @@ impl IdlSqliteWriteTransaction {
                 attr
             );
 
-            self.conn
+            self.get_conn()?
                 .prepare(query.as_str())
                 .and_then(|mut stmt| stmt.execute(&[(":key", &idx_key)]))
                 .map_err(sqlite_error)
@@ -847,7 +816,7 @@ impl IdlSqliteWriteTransaction {
                 attr
             );
 
-            self.conn
+            self.get_conn()?
                 .prepare(query.as_str())
                 .and_then(|mut stmt| {
                     stmt.execute(named_params! {
@@ -862,7 +831,7 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub fn create_name2uuid(&self) -> Result<(), OperationError> {
-        self.conn
+        self.get_conn()?
             .execute(
                 &format!("CREATE TABLE IF NOT EXISTS {}.idx_name2uuid (name TEXT PRIMARY KEY, uuid TEXT)", self.get_db_name()),
                 [],
@@ -874,7 +843,7 @@ impl IdlSqliteWriteTransaction {
     pub fn write_name2uuid_add(&self, name: &str, uuid: Uuid) -> Result<(), OperationError> {
         let uuids = uuid.as_hyphenated().to_string();
 
-        self.conn
+        self.get_conn()?
             .prepare(&format!(
                 "INSERT OR REPLACE INTO {}.idx_name2uuid (name, uuid) VALUES(:name, :uuid)",
                 self.get_db_name()
@@ -890,7 +859,7 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub fn write_name2uuid_rem(&self, name: &str) -> Result<(), OperationError> {
-        self.conn
+        self.get_conn()?
             .prepare(&format!(
                 "DELETE FROM {}.idx_name2uuid WHERE name = :name",
                 self.get_db_name()
@@ -901,7 +870,7 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub fn create_externalid2uuid(&self) -> Result<(), OperationError> {
-        self.conn
+        self.get_conn()?
             .execute(
                 &format!("CREATE TABLE IF NOT EXISTS {}.idx_externalid2uuid (eid TEXT PRIMARY KEY, uuid TEXT)", self.get_db_name()),
                 [],
@@ -913,7 +882,7 @@ impl IdlSqliteWriteTransaction {
     pub fn write_externalid2uuid_add(&self, name: &str, uuid: Uuid) -> Result<(), OperationError> {
         let uuids = uuid.as_hyphenated().to_string();
 
-        self.conn
+        self.get_conn()?
             .prepare(&format!(
                 "INSERT OR REPLACE INTO {}.idx_externalid2uuid (eid, uuid) VALUES(:eid, :uuid)",
                 self.get_db_name()
@@ -929,7 +898,7 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub fn write_externalid2uuid_rem(&self, name: &str) -> Result<(), OperationError> {
-        self.conn
+        self.get_conn()?
             .prepare(&format!(
                 "DELETE FROM {}.idx_externalid2uuid WHERE eid = :eid",
                 self.get_db_name()
@@ -940,7 +909,7 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub fn create_uuid2spn(&self) -> Result<(), OperationError> {
-        self.conn
+        self.get_conn()?
             .execute(
                 &format!(
                     "CREATE TABLE IF NOT EXISTS {}.idx_uuid2spn (uuid TEXT PRIMARY KEY, spn BLOB)",
@@ -983,7 +952,7 @@ impl IdlSqliteWriteTransaction {
             Some(k) => {
                 let dbv1: DbIdentSpn = k.to_db_ident_spn();
                 let data = serde_json::to_vec(&dbv1).map_err(serde_json_error)?;
-                self.conn
+                self.get_conn()?
                     .prepare(&format!(
                         "INSERT OR REPLACE INTO {}.idx_uuid2spn (uuid, spn) VALUES(:uuid, :spn)",
                         self.get_db_name()
@@ -998,7 +967,7 @@ impl IdlSqliteWriteTransaction {
                     .map_err(sqlite_error)
             }
             None => self
-                .conn
+                .get_conn()?
                 .prepare(&format!(
                     "DELETE FROM {}.idx_uuid2spn WHERE uuid = :uuid",
                     self.get_db_name()
@@ -1010,7 +979,7 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub fn create_uuid2rdn(&self) -> Result<(), OperationError> {
-        self.conn
+        self.get_conn()?
             .execute(
                 &format!(
                     "CREATE TABLE IF NOT EXISTS {}.idx_uuid2rdn (uuid TEXT PRIMARY KEY, rdn TEXT)",
@@ -1026,7 +995,7 @@ impl IdlSqliteWriteTransaction {
         let uuids = uuid.as_hyphenated().to_string();
         match k {
             Some(k) => self
-                .conn
+                .get_conn()?
                 .prepare(&format!(
                     "INSERT OR REPLACE INTO {}.idx_uuid2rdn (uuid, rdn) VALUES(:uuid, :rdn)",
                     self.get_db_name()
@@ -1035,7 +1004,7 @@ impl IdlSqliteWriteTransaction {
                 .map(|_| ())
                 .map_err(sqlite_error),
             None => self
-                .conn
+                .get_conn()?
                 .prepare(&format!(
                     "DELETE FROM {}.idx_uuid2rdn WHERE uuid = :uuid",
                     self.get_db_name()
@@ -1059,7 +1028,7 @@ impl IdlSqliteWriteTransaction {
         );
         trace!(idx = %idx_stmt, "creating index");
 
-        self.conn
+        self.get_conn()?
             .execute(idx_stmt.as_str(), [])
             .map(|_| ())
             .map_err(sqlite_error)
@@ -1070,7 +1039,7 @@ impl IdlSqliteWriteTransaction {
 
         idx_table_list.iter().try_for_each(|idx_table| {
             trace!(table = ?idx_table, "removing idx_table");
-            self.conn
+            self.get_conn()?
                 .prepare(format!("DROP TABLE {}.{}", self.get_db_name(), idx_table).as_str())
                 .and_then(|mut stmt| stmt.execute([]).map(|_| ()))
                 .map_err(sqlite_error)
@@ -1081,7 +1050,7 @@ impl IdlSqliteWriteTransaction {
         &self,
         slopes: &HashMap<IdxKey, IdxSlope>,
     ) -> Result<(), OperationError> {
-        self.conn
+        self.get_conn()?
             .execute(
                 &format!(
                     "CREATE TABLE IF NOT EXISTS {}.idxslope_analysis (
@@ -1096,7 +1065,7 @@ impl IdlSqliteWriteTransaction {
             .map_err(sqlite_error)?;
 
         // Remove any data if it exists.
-        self.conn
+        self.get_conn()?
             .execute(
                 &format!("DELETE FROM {}.idxslope_analysis", self.get_db_name()),
                 [],
@@ -1106,7 +1075,7 @@ impl IdlSqliteWriteTransaction {
 
         slopes.iter().try_for_each(|(k, v)| {
             let key = format!("idx_{}_{}", k.itype.as_idx_str(), k.attr);
-            self.conn
+            self.get_conn()?
                 .execute(
                     &format!("INSERT OR REPLACE INTO {}.idxslope_analysis (id, slope) VALUES(:id, :slope)", self.get_db_name()),
                     named_params! {
@@ -1138,7 +1107,7 @@ impl IdlSqliteWriteTransaction {
         let key = format!("idx_{}_{}", ikey.itype.as_idx_str(), ikey.attr);
 
         let mut stmt = self
-            .get_conn()
+            .get_conn()?
             .prepare(&format!(
                 "SELECT slope FROM {}.idxslope_analysis WHERE id = :id",
                 self.get_db_name()
@@ -1156,7 +1125,7 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub unsafe fn purge_id2entry(&self) -> Result<(), OperationError> {
-        self.conn
+        self.get_conn()?
             .execute(&format!("DELETE FROM {}.id2entry", self.get_db_name()), [])
             .map(|_| ())
             .map_err(sqlite_error)
@@ -1169,7 +1138,7 @@ impl IdlSqliteWriteTransaction {
             OperationError::SerdeJsonError
         })?;
 
-        self.conn
+        self.get_conn()?
             .execute(
                 &format!(
                     "INSERT OR REPLACE INTO {}.db_sid (id, data) VALUES(:id, :sid)",
@@ -1195,7 +1164,7 @@ impl IdlSqliteWriteTransaction {
             OperationError::SerdeJsonError
         })?;
 
-        self.conn
+        self.get_conn()?
             .execute(
                 &format!(
                     "INSERT OR REPLACE INTO {}.db_did (id, data) VALUES(:id, :did)",
@@ -1221,7 +1190,7 @@ impl IdlSqliteWriteTransaction {
             OperationError::SerdeJsonError
         })?;
 
-        self.conn
+        self.get_conn()?
             .execute(
                 &format!(
                     "INSERT OR REPLACE INTO {}.db_op_ts (id, data) VALUES(:id, :did)",
@@ -1243,7 +1212,9 @@ impl IdlSqliteWriteTransaction {
     // ===== inner helpers =====
     // Some of these are not self due to use in new()
     fn get_db_version_key(&self, key: &str) -> i64 {
-        self.conn
+        #[allow(clippy::expect_used)]
+        self.get_conn()
+            .expect("Unable to access transaction connection")
             .query_row(
                 &format!(
                     "SELECT version FROM {}.db_version WHERE id = :id",
@@ -1258,8 +1229,8 @@ impl IdlSqliteWriteTransaction {
             })
     }
 
-    fn set_db_version_key(&self, key: &str, v: i64) -> Result<(), rusqlite::Error> {
-        self.conn
+    fn set_db_version_key(&self, key: &str, v: i64) -> Result<(), OperationError> {
+        self.get_conn()?
             .execute(
                 &format!(
                     "INSERT OR REPLACE INTO {}.db_version (id, version) VALUES(:id, :dbv_id2entry)",
@@ -1271,6 +1242,11 @@ impl IdlSqliteWriteTransaction {
                 },
             )
             .map(|_| ())
+            .map_err(|e| {
+                admin_error!(immediate = true, ?e, "CRITICAL: rusqlite error");
+                eprintln!("CRITICAL: rusqlite error {e:?}");
+                OperationError::SqliteError
+            })
     }
 
     pub(crate) fn get_db_index_version(&self) -> i64 {
@@ -1278,20 +1254,17 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub(crate) fn set_db_index_version(&self, v: i64) -> Result<(), OperationError> {
-        self.set_db_version_key(DBV_INDEXV, v).map_err(|e| {
-            admin_error!(immediate = true, ?e, "CRITICAL: rusqlite error");
-            eprintln!("CRITICAL: rusqlite error {e:?}");
-            OperationError::SqliteError
-        })
+        self.set_db_version_key(DBV_INDEXV, v)
     }
 
     pub fn setup(&self) -> Result<(), OperationError> {
         // If the db_name is NOT main, we MAY need to create it as we are in
         // a test!
+        trace!(db_name = %self.get_db_name(), "setup");
         if self.get_db_name() != "main" {
             warn!("Using non-default db-name - this database content WILL be lost!");
             // we need to attach the DB!
-            self.conn
+            self.get_conn()?
                 .execute(&format!("ATTACH DATABASE '' AS {}", self.get_db_name()), [])
                 .map_err(sqlite_error)?;
         };
@@ -1308,7 +1281,7 @@ impl IdlSqliteWriteTransaction {
         // rolled back individually, by upgraded in isolation, and more
         //
         // NEVER CHANGE THIS DEFINITION.
-        self.conn
+        self.get_conn()?
             .execute(
                 &format!(
                     "CREATE TABLE IF NOT EXISTS {}.db_version (
@@ -1325,10 +1298,12 @@ impl IdlSqliteWriteTransaction {
         // If the table is empty, populate the versions as 0.
         let mut dbv_id2entry = self.get_db_version_key(DBV_ID2ENTRY);
 
+        trace!(%dbv_id2entry);
+
         // Check db_version here.
         //   * if 0 -> create v1.
         if dbv_id2entry == 0 {
-            self.conn
+            self.get_conn()?
                 .execute(
                     &format!(
                         "CREATE TABLE IF NOT EXISTS {}.id2entry (
@@ -1340,28 +1315,29 @@ impl IdlSqliteWriteTransaction {
                     ),
                     [],
                 )
-                .and_then(|_| {
-                    self.conn.execute(
-                        &format!(
-                            "CREATE TABLE IF NOT EXISTS {}.db_sid (
-                        id INTEGER PRIMARY KEY ASC,
-                        data BLOB NOT NULL
+                .map_err(sqlite_error)?;
+
+            self.get_conn()?
+                .execute(
+                    &format!(
+                        "CREATE TABLE IF NOT EXISTS {}.db_sid (
+                    id INTEGER PRIMARY KEY ASC,
+                    data BLOB NOT NULL
                     )
                     ",
-                            self.get_db_name()
-                        ),
-                        [],
-                    )
-                })
+                        self.get_db_name()
+                    ),
+                    [],
+                )
                 .map_err(sqlite_error)?;
 
             dbv_id2entry = 1;
 
-            admin_info!(entry = %dbv_id2entry, "dbv_id2entry migrated (id2entry, db_sid)");
+            info!(entry = %dbv_id2entry, "dbv_id2entry migrated (id2entry, db_sid)");
         }
         //   * if v1 -> add the domain uuid table
         if dbv_id2entry == 1 {
-            self.conn
+            self.get_conn()?
                 .execute(
                     &format!(
                         "CREATE TABLE IF NOT EXISTS {}.db_did (
@@ -1376,11 +1352,11 @@ impl IdlSqliteWriteTransaction {
                 .map_err(sqlite_error)?;
 
             dbv_id2entry = 2;
-            admin_info!(entry = %dbv_id2entry, "dbv_id2entry migrated (db_did)");
+            info!(entry = %dbv_id2entry, "dbv_id2entry migrated (db_did)");
         }
         //   * if v2 -> add the op max ts table.
         if dbv_id2entry == 2 {
-            self.conn
+            self.get_conn()?
                 .execute(
                     &format!(
                         "CREATE TABLE IF NOT EXISTS {}.db_op_ts (
@@ -1394,7 +1370,7 @@ impl IdlSqliteWriteTransaction {
                 )
                 .map_err(sqlite_error)?;
             dbv_id2entry = 3;
-            admin_info!(entry = %dbv_id2entry, "dbv_id2entry migrated (db_op_ts)");
+            info!(entry = %dbv_id2entry, "dbv_id2entry migrated (db_op_ts)");
         }
         //   * if v3 -> create name2uuid, uuid2spn, uuid2rdn.
         if dbv_id2entry == 3 {
@@ -1402,24 +1378,23 @@ impl IdlSqliteWriteTransaction {
                 .and_then(|_| self.create_uuid2spn())
                 .and_then(|_| self.create_uuid2rdn())?;
             dbv_id2entry = 4;
-            admin_info!(entry = %dbv_id2entry, "dbv_id2entry migrated (name2uuid, uuid2spn, uuid2rdn)");
+            info!(entry = %dbv_id2entry, "dbv_id2entry migrated (name2uuid, uuid2spn, uuid2rdn)");
         }
         //   * if v4 -> migrate v1 to v2 entries.
         if dbv_id2entry == 4 {
             self.migrate_dbentryv1_to_dbentryv2()?;
             dbv_id2entry = 5;
-            admin_info!(entry = %dbv_id2entry, "dbv_id2entry migrated (dbentryv1 -> dbentryv2)");
+            info!(entry = %dbv_id2entry, "dbv_id2entry migrated (dbentryv1 -> dbentryv2)");
         }
         //   * if v5 -> create externalid2uuid
         if dbv_id2entry == 5 {
             self.create_externalid2uuid()?;
             dbv_id2entry = 6;
-            admin_info!(entry = %dbv_id2entry, "dbv_id2entry migrated (externalid2uuid)");
+            info!(entry = %dbv_id2entry, "dbv_id2entry migrated (externalid2uuid)");
         }
         //   * if v6 -> complete.
 
-        self.set_db_version_key(DBV_ID2ENTRY, dbv_id2entry)
-            .map_err(sqlite_error)?;
+        self.set_db_version_key(DBV_ID2ENTRY, dbv_id2entry)?;
 
         // NOTE: Indexing is configured in a different step!
         // Indexing uses a db version flag to represent the version
@@ -1440,7 +1415,31 @@ impl IdlSqlite {
         // Enable WAL mode, which is just faster and better for our needs.
         let mut flags = OpenFlags::default();
         // Open with multi thread flags and locking options.
-        flags.insert(OpenFlags::SQLITE_OPEN_NO_MUTEX);
+
+        if cfg!(test) {
+            flags.insert(OpenFlags::SQLITE_OPEN_NO_MUTEX);
+        };
+
+        let fs_page_size = cfg.fstype as u32;
+        let checkpoint_pages = cfg.fstype.checkpoint_pages();
+
+        // Initial setup routines.
+        {
+            let vconn =
+                Connection::open_with_flags(cfg.path.as_str(), flags).map_err(sqlite_error)?;
+
+            vconn
+                .execute_batch(
+                    format!(
+                        "PRAGMA page_size={fs_page_size};
+                         PRAGMA journal_mode=WAL;
+                         PRAGMA wal_autocheckpoint={checkpoint_pages};
+                         PRAGMA wal_checkpoint(RESTART);"
+                    )
+                    .as_str(),
+                )
+                .map_err(sqlite_error)?;
+        }
 
         // We need to run vacuum in the setup else we hit sqlite lock conditions.
         if vacuum {
@@ -1508,31 +1507,18 @@ impl IdlSqlite {
             // limmediate_warning!(audit, "NOTICE: db vacuum complete\n");
         };
 
-        let fs_page_size = cfg.fstype as u32;
-        let checkpoint_pages = cfg.fstype.checkpoint_pages();
-
-        let manager = SqliteConnectionManager::file(cfg.path.as_str())
-            .with_init(move |c| {
-                c.execute_batch(
-                    format!(
-                        "PRAGMA page_size={fs_page_size};
-                             PRAGMA journal_mode=WAL;
-                             PRAGMA wal_autocheckpoint={checkpoint_pages};
-                             PRAGMA wal_checkpoint(RESTART);"
-                    )
-                    .as_str(),
-                )
+        let pool = (0..cfg.pool_size)
+            .map(|i| {
+                trace!("Opening Connection {}", i);
+                Connection::open_with_flags(cfg.path.as_str(), flags).map_err(sqlite_error)
             })
-            .with_flags(flags);
+            .collect::<Result<VecDeque<Connection>, OperationError>>()
+            .map_err(|e| {
+                error!(err = ?e, "Failed to build connection pool");
+                e
+            })?;
 
-        let builder1 = Pool::builder();
-        let builder2 = builder1.max_size(cfg.pool_size);
-        // Look at max_size and thread_pool here for perf later
-        let pool = builder2.build(manager).map_err(|e| {
-            admin_error!(?e, "r2d2 error");
-            // ladmin_error!(audit, "r2d2 error {:?}", e);
-            OperationError::SqliteError
-        })?;
+        let pool = Arc::new(Mutex::new(pool));
 
         Ok(IdlSqlite {
             pool,
@@ -1542,10 +1528,14 @@ impl IdlSqlite {
 
     pub(crate) fn get_allids_count(&self) -> Result<u64, OperationError> {
         #[allow(clippy::expect_used)]
-        self.pool
-            .try_get()
-            .expect("Unable to get connection from pool!!!")
-            .query_row("select count(id) from id2entry", [], |row| row.get(0))
+        let guard = self.pool.lock().expect("Unable to lock connection pool.");
+        // Get not pop here
+        #[allow(clippy::expect_used)]
+        let conn = guard
+            .get(0)
+            .expect("Unable to retrieve connection from pool.");
+
+        conn.query_row("select count(id) from id2entry", [], |row| row.get(0))
             .map_err(sqlite_error)
     }
 
@@ -1555,18 +1545,34 @@ impl IdlSqlite {
         #[allow(clippy::expect_used)]
         let conn = self
             .pool
-            .try_get()
-            .expect("Unable to get connection from pool!!!");
-        IdlSqliteReadTransaction::new(conn, self.db_name)
+            .lock()
+            .map_err(|e| {
+                error!(err = ?e, "Unable to lock connection pool.");
+            })
+            .ok()
+            .and_then(|mut q| {
+                trace!(?q);
+                q.pop_front()
+            })
+            .expect("Unable to retrieve connection from pool.");
+        IdlSqliteReadTransaction::new(self.pool.clone(), conn, self.db_name)
     }
 
     pub fn write(&self) -> IdlSqliteWriteTransaction {
         #[allow(clippy::expect_used)]
         let conn = self
             .pool
-            .try_get()
-            .expect("Unable to get connection from pool!!!");
-        IdlSqliteWriteTransaction::new(conn, self.db_name)
+            .lock()
+            .map_err(|e| {
+                error!(err = ?e, "Unable to lock connection pool.");
+            })
+            .ok()
+            .and_then(|mut q| {
+                trace!(?q);
+                q.pop_front()
+            })
+            .expect("Unable to retrieve connection from pool.");
+        IdlSqliteWriteTransaction::new(self.pool.clone(), conn, self.db_name)
     }
 }
 

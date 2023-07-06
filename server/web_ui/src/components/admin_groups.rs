@@ -7,8 +7,9 @@ use yew_router::prelude::Link;
 use crate::components::admin_menu::{Entity, EntityType, GetError};
 use crate::components::alpha_warning_banner;
 use crate::constants::{CSS_BREADCRUMB_ITEM, CSS_BREADCRUMB_ITEM_ACTIVE, CSS_CELL, CSS_TABLE};
-use crate::utils::{do_alert_error, do_page_header, init_request};
+use crate::utils::{do_alert_error, do_page_header};
 use crate::views::AdminRoute;
+use crate::{do_request, RequestMethod};
 
 impl From<GetError> for AdminListGroupsMsg {
     fn from(ge: GetError) -> Self {
@@ -70,19 +71,22 @@ pub async fn get_groups() -> Result<AdminListGroupsMsg, GetError> {
     let endpoints = [("/v1/group", EntityType::Group)];
 
     for (endpoint, object_type) in endpoints {
-        let request = init_request(endpoint);
-        let response = match request.send().await {
+        let (_, _, value, _) = match do_request(endpoint, RequestMethod::GET, None).await {
+            Ok(val) => val,
+            Err(error) => {
+                return Err(GetError {
+                    err: format!("Failed to grab the group data into JSON: {:?}", error),
+                })
+            }
+        };
+
+        let data: Vec<Entity> = match serde_wasm_bindgen::from_value(value) {
             Ok(value) => value,
             Err(error) => {
                 return Err(GetError {
                     err: format!("{:?}", error),
-                })
+                });
             }
-        };
-        #[allow(clippy::panic)]
-        let data: Vec<Entity> = match response.json().await {
-            Ok(value) => value,
-            Err(error) => panic!("Failed to grab the group data into JSON: {:?}", error),
         };
 
         for entity in data.iter() {
@@ -360,19 +364,23 @@ impl Component for AdminViewGroup {
 
 /// pull the details for a single group by UUID
 pub async fn get_group(groupid: &str) -> Result<AdminViewGroupMsg, GetError> {
-    let request = init_request(format!("/v1/group/{}", groupid).as_str());
-    let response = match request.send().await {
-        Ok(value) => value,
+    let endpoint = format!("/v1/group/{}", groupid);
+    let (_, _, value, _) = match do_request(&endpoint, RequestMethod::GET, None).await {
+        Ok(val) => val,
         Err(error) => {
             return Err(GetError {
                 err: format!("{:?}", error),
             })
         }
     };
-    #[allow(clippy::panic)]
-    let data: Entity = match response.json().await {
+
+    let data: Entity = match serde_wasm_bindgen::from_value(value) {
         Ok(value) => value,
-        Err(error) => panic!("Failed to grab the group data into JSON: {:?}", error),
+        Err(error) => {
+            return Err(GetError {
+                err: format!("{:?}", error),
+            });
+        }
     };
     Ok(AdminViewGroupMsg::Responded { response: data })
 }

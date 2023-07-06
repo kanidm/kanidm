@@ -1,12 +1,13 @@
 IMAGE_BASE ?= kanidm
 IMAGE_VERSION ?= devel
+IMAGE_EXT_VERSION ?= 1.1.0-beta.13-dev
 CONTAINER_TOOL_ARGS ?=
 IMAGE_ARCH ?= "linux/amd64,linux/arm64"
 CONTAINER_BUILD_ARGS ?=
 MARKDOWN_FORMAT_ARGS ?= --options-line-width=100
 CONTAINER_TOOL ?= docker
 BUILDKIT_PROGRESS ?= plain
-
+TESTS ?=
 BOOK_VERSION ?= master
 
 .DEFAULT: help
@@ -14,13 +15,20 @@ BOOK_VERSION ?= master
 help:
 	@grep -E -h '\s##\s' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
+.PHONY: run
+run: ## Run the test/dev server
+run:
+	cd server/daemon && ./run_insecure_dev_server.sh
+
 .PHONY: buildx/kanidmd
 buildx/kanidmd: ## Build multiarch kanidm server images and push to docker hub
 buildx/kanidmd:
+	@echo $(IMAGE_EXT_VERSION)
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f server/Dockerfile \
 		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
+		-t $(IMAGE_BASE)/server:$(IMAGE_EXT_VERSION) \
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
@@ -33,6 +41,7 @@ buildx/kanidm_tools:
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f tools/Dockerfile \
 		-t $(IMAGE_BASE)/tools:$(IMAGE_VERSION) \
+		-t $(IMAGE_BASE)/tools:$(IMAGE_EXT_VERSION) \
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
@@ -45,7 +54,8 @@ buildx/radiusd:
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f rlm_python/Dockerfile \
 		--progress $(BUILDKIT_PROGRESS) \
-		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
+		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) \
+		-t $(IMAGE_BASE)/radius:$(IMAGE_EXT_VERSION) .
 
 .PHONY: buildx
 buildx: buildx/kanidmd buildx/kanidm_tools buildx/radiusd
@@ -53,7 +63,9 @@ buildx: buildx/kanidmd buildx/kanidm_tools buildx/radiusd
 .PHONY: build/kanidmd
 build/kanidmd:	## Build the kanidmd docker image locally
 build/kanidmd:
-	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f server/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
+	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f server/Dockerfile \
+		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
+		--platform $(IMAGE_ARCH) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
 		$(CONTAINER_BUILD_ARGS) .
@@ -62,6 +74,7 @@ build/kanidmd:
 build/radiusd:	## Build the radiusd docker image locally
 build/radiusd:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) \
+		--platform $(IMAGE_ARCH) \
 		-f rlm_python/Dockerfile \
 		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
 
@@ -106,13 +119,15 @@ install-tools:
 	cargo install --path tools/cli --force
 
 .PHONY: codespell
+codespell: ## spell-check things.
 codespell:
 	codespell -c \
-	-L crate,unexpect,Pres,pres,ACI,aci,te,ue \
-	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache' \
+	-L 'crate,unexpect,Pres,pres,ACI,aci,te,ue,unx,aNULL' \
+	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache,./pykanidm/poetry.lock' \
 	--skip='./book/book/*' \
 	--skip='./docs/*,./.git' \
-	--skip='./server/web_ui/src/external,./server/web_ui/pkg/external' \
+	--skip='./rlm_python/mods-available/eap' \
+	--skip='./server/web_ui/static/external,./server/web_ui/pkg/external' \
 	--skip='./server/lib/src/constants/system_config.rs,./pykanidm/site,./server/lib/src/constants/*.json'
 
 .PHONY: test/pykanidm/pytest
@@ -226,12 +241,10 @@ release/kanidm-unixd: ## Build the Kanidm UNIX tools - ensure you include the en
 release/kanidm-unixd:
 	cargo build -p pam_kanidm --release
 	cargo build -p nss_kanidm --release
-	cargo build --release \
-		--bin kanidm_unixd  \
-		--bin kanidm_unixd_status \
+	cargo build --features unix -p kanidm_unix_int --release \
+		--bin kanidm_unixd \
 		--bin kanidm_unixd_tasks \
-		--bin kanidm_cache_clear \
-		--bin kanidm_cache_invalidate
+		--bin kanidm-unix
 
 # cert things
 
@@ -247,3 +260,31 @@ cert/clean:
 .PHONY: webui
 webui: ## Build the WASM web frontend
 	cd server/web_ui && ./build_wasm_release.sh
+
+.PHONY: webui/test
+webui/test: ## Run wasm-pack test
+	cd server/web_ui && wasm-pack test --headless --chrome
+
+.PHONY: rust/coverage
+coverage/test: ## Run coverage tests
+coverage/test:
+	LLVM_PROFILE_FILE="$(PWD)/target/profile/coverage-%p-%m.profraw" RUSTFLAGS="-C instrument-coverage" cargo test $(TESTS)
+
+.PHONY: coverage/grcov
+coverage/grcov: ## Run grcov
+coverage/grcov:
+	rm -rf ./target/coverage/html
+	grcov . --binary-path ./target/debug/deps/ \
+		-s . \
+		-t html \
+		--branch \
+		--ignore-not-existing \
+		--ignore '../*' \
+		--ignore "/*" \
+		--ignore "target/*" \
+		-o target/coverage/html
+
+.PHONY: coverage
+coverage: ## Run all the coverage tests
+coverage: coverage/test coverage/grcov
+	echo "Coverage report is in ./target/coverage/html/index.html"

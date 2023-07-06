@@ -57,7 +57,7 @@ pub enum Access {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccessEffectivePermission {
-    // I don't think we need this? The ident is implied by the requestor.
+    // I don't think we need this? The ident is implied by the requester.
     // ident: Uuid,
     pub target: Uuid,
     pub delete: bool,
@@ -210,6 +210,7 @@ pub trait AccessControlsTransaction<'a> {
         let related_acp: Vec<(&AccessControlSearch, _)> = self.search_related_acp(&se.ident);
 
         // For each entry.
+        let entries_is_empty = entries.is_empty();
         let allowed_entries: Vec<_> = entries
             .into_iter()
             .filter(|e| {
@@ -218,14 +219,13 @@ pub trait AccessControlsTransaction<'a> {
                     SearchResult::Grant => true,
                     SearchResult::Allow(allowed_attrs) => {
                         // The allow set constrained.
-                        security_access!(
-                            requested = ?requested_attrs,
-                            allowed = ?allowed_attrs,
-                            "attributes",
-                        );
-
                         let decision = requested_attrs.is_subset(&allowed_attrs);
-                        security_access!(?decision, "search attr decision");
+                        security_debug!(
+                            ?decision,
+                            allowed = ?allowed_attrs,
+                            requested = ?requested_attrs,
+                            "search attribute decision",
+                        );
                         decision
                     }
                 }
@@ -233,9 +233,11 @@ pub trait AccessControlsTransaction<'a> {
             .collect();
 
         if allowed_entries.is_empty() {
-            security_access!("denied ❌ - no entries were released");
+            if !entries_is_empty {
+                security_access!("denied ❌ - no entries were released");
+            }
         } else {
-            security_access!("allowed {} entries ✅", allowed_entries.len());
+            debug!("allowed search of {} entries ✅", allowed_entries.len());
         }
 
         Ok(allowed_entries)
@@ -272,6 +274,7 @@ pub trait AccessControlsTransaction<'a> {
         };
 
         // For each entry.
+        let entries_is_empty = entries.is_empty();
         let allowed_entries: Vec<_> = entries
             .into_iter()
             .filter_map(|e| {
@@ -289,16 +292,10 @@ pub trait AccessControlsTransaction<'a> {
                     }
                     SearchResult::Allow(allowed_attrs) => {
                         // The allow set constrained.
-                        security_access!(
+                        debug!(
                             requested = ?requested_attrs,
                             allowed = ?allowed_attrs,
-                            "attributes",
-                        );
-                        // The allow set constrained.
-                        security_access!(
-                            requested = ?requested_attrs,
-                            allowed = ?allowed_attrs,
-                            "attributes",
+                            "reduction",
                         );
 
                         // Reduce requested by allowed.
@@ -321,9 +318,11 @@ pub trait AccessControlsTransaction<'a> {
             .collect();
 
         if allowed_entries.is_empty() {
-            security_access!("reduced to empty set on all entries ❌");
+            if !entries_is_empty {
+                security_access!("reduced to empty set on all entries ❌");
+            }
         } else {
-            security_access!(
+            debug!(
                 "attribute set reduced on {} entries ✅",
                 allowed_entries.len()
             );
@@ -444,9 +443,9 @@ pub trait AccessControlsTransaction<'a> {
             })
             .collect();
 
-        security_access!(?requested_pres, "Requested present set");
-        security_access!(?requested_rem, "Requested remove set");
-        security_access!(?requested_classes, "Requested class set");
+        debug!(?requested_pres, "Requested present set");
+        debug!(?requested_rem, "Requested remove set");
+        debug!(?requested_classes, "Requested class set");
 
         let r = entries.iter().all(|e| {
             match apply_modify_access(&me.ident, related_acp.as_slice(), e) {
@@ -486,9 +485,9 @@ pub trait AccessControlsTransaction<'a> {
         });
 
         if r {
-            security_access!("allowed ✅");
+            debug!("allowed modify of {} entries ✅", entries.len());
         } else {
-            security_access!("denied ❌ - modifications may not proceed");
+            security_access!("denied ❌ - modify may not proceed");
         }
         Ok(r)
     }
@@ -578,9 +577,9 @@ pub trait AccessControlsTransaction<'a> {
                 })
                 .collect();
 
-            security_access!(?requested_pres, "Requested present set");
-            security_access!(?requested_rem, "Requested remove set");
-            security_access!(?requested_classes, "Requested class set");
+            debug!(?requested_pres, "Requested present set");
+            debug!(?requested_rem, "Requested remove set");
+            debug!(?requested_classes, "Requested class set");
 
             match apply_modify_access(&me.ident, related_acp.as_slice(), e) {
                 ModifyResult::Denied => false,
@@ -619,7 +618,7 @@ pub trait AccessControlsTransaction<'a> {
         });
 
         if r {
-            security_access!("allowed ✅");
+            debug!("allowed modify of {} entries ✅", entries.len());
         } else {
             security_access!("denied ❌ - modifications may not proceed");
         }
@@ -672,7 +671,7 @@ pub trait AccessControlsTransaction<'a> {
         });
 
         if r {
-            security_access!("allowed ✅");
+            security_access!("allowed create of {} entries ✅", entries.len());
         } else {
             security_access!("denied ❌ - create may not proceed");
         }
@@ -735,7 +734,7 @@ pub trait AccessControlsTransaction<'a> {
             }
         });
         if r {
-            security_access!("allowed ✅");
+            debug!("allowed delete of {} entries ✅", entries.len());
         } else {
             security_access!("denied ❌ - delete may not proceed");
         }
@@ -2676,6 +2675,88 @@ mod tests {
         test_acp_search_reduce!(&se_a, vec![], r_set.clone(), ex_a_reduced);
 
         // Check the deny case.
+        test_acp_search!(&se_b, vec![], r_set, ex_b);
+    }
+
+    #[test]
+    fn test_access_sync_account_dyn_search() {
+        sketching::test_init();
+        // Test that an account that has been synchronised from external
+        // sources is able to read the sync providers credential portal
+        // url.
+
+        let sync_uuid = Uuid::new_v4();
+        let portal_url = Url::parse("https://localhost/portal").unwrap();
+
+        let ev1 = unsafe {
+            entry_init!(
+                ("class", CLASS_OBJECT.clone()),
+                ("class", CLASS_SYNC_ACCOUNT.clone()),
+                ("uuid", Value::Uuid(sync_uuid)),
+                ("name", Value::new_iname("test_sync_account")),
+                ("sync_credential_portal", Value::Url(portal_url.clone()))
+            )
+            .into_sealed_committed()
+        };
+
+        let ev1_reduced = unsafe {
+            entry_init!(
+                ("class", CLASS_OBJECT.clone()),
+                ("class", CLASS_SYNC_ACCOUNT.clone()),
+                ("uuid", Value::Uuid(sync_uuid)),
+                ("sync_credential_portal", Value::Url(portal_url.clone()))
+            )
+            .into_sealed_committed()
+        };
+
+        let ev2 = unsafe {
+            entry_init!(
+                ("class", CLASS_OBJECT.clone()),
+                ("class", CLASS_SYNC_ACCOUNT.clone()),
+                ("uuid", Value::Uuid(Uuid::new_v4())),
+                ("name", Value::new_iname("test_sync_account")),
+                ("sync_credential_portal", Value::Url(portal_url.clone()))
+            )
+            .into_sealed_committed()
+        };
+
+        let sync_test_account: Arc<EntrySealedCommitted> = Arc::new(unsafe {
+            entry_init!(
+                ("class", CLASS_OBJECT.clone()),
+                ("class", CLASS_ACCOUNT.clone()),
+                ("class", CLASS_SYNC_OBJECT.clone()),
+                ("name", Value::new_iname("test_account_1")),
+                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1)),
+                ("memberof", Value::Refer(UUID_TEST_GROUP_1)),
+                ("sync_parent_uuid", Value::Refer(sync_uuid))
+            )
+            .into_sealed_committed()
+        });
+
+        // Check the authorised search event, and that it reduces correctly.
+        let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2)];
+
+        let se_a = unsafe {
+            SearchEvent::new_impersonate_entry(
+                sync_test_account,
+                filter_all!(f_pres("sync_credential_portal")),
+            )
+        };
+        let ex_a = vec![Arc::new(ev1)];
+        let ex_a_reduced = vec![ev1_reduced];
+
+        test_acp_search!(&se_a, vec![], r_set.clone(), ex_a);
+        test_acp_search_reduce!(&se_a, vec![], r_set.clone(), ex_a_reduced);
+
+        // Test a non-synced account aka the deny case
+        let se_b = unsafe {
+            SearchEvent::new_impersonate_entry(
+                E_TEST_ACCOUNT_2.clone(),
+                filter_all!(f_pres("sync_credential_portal")),
+            )
+        };
+        let ex_b = vec![];
+
         test_acp_search!(&se_b, vec![], r_set, ex_b);
     }
 }

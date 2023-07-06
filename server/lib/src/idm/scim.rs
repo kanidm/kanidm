@@ -3,9 +3,9 @@ use std::time::Duration;
 use base64urlsafedata::Base64UrlSafeData;
 
 use compact_jwt::{Jws, JwsSigner};
+use kanidm_proto::internal::ScimSyncToken;
 use kanidm_proto::scim_v1::*;
 use kanidm_proto::v1::ApiTokenPurpose;
-use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::credential::totp::{Totp, TotpAlgo, TotpDigits};
@@ -116,17 +116,6 @@ impl GenerateScimSyncTokenEvent {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "lowercase")]
-pub(crate) struct ScimSyncToken {
-    // uuid of the token?
-    pub token_id: Uuid,
-    #[serde(with = "time::serde::timestamp")]
-    pub issued_at: time::OffsetDateTime,
-    #[serde(default)]
-    pub purpose: ApiTokenPurpose,
-}
-
 impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn scim_sync_generate_token(
         &mut self,
@@ -144,7 +133,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })?;
 
         let session_id = Uuid::new_v4();
-        let issued_at = time::OffsetDateTime::unix_epoch() + ct;
+        let issued_at = time::OffsetDateTime::UNIX_EPOCH + ct;
 
         let scope = ApiTokenScope::Synchronise;
         let purpose = scope.try_into()?;
@@ -189,7 +178,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .and_then(|_| {
                 // The modify succeeded and was allowed, now sign the token for return.
                 token
-                    .sign(&sync_account.jws_key)
+                    .sign_embed_public_jwk(&sync_account.jws_key)
                     .map(|jws_signed| jws_signed.to_string())
                     .map_err(|e| {
                         admin_error!(err = ?e, "Unable to sign sync token");
@@ -278,7 +267,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         if !eperm.delete {
             security_info!(
-                "Requestor {} does not have permission to delete sync account {}",
+                "Requester {} does not have permission to delete sync account {}",
                 sfe.ident,
                 sync_account.name
             );
@@ -403,7 +392,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         if !eperm.delete {
             security_info!(
-                "Requestor {} does not have permission to delete sync account {}",
+                "Requester {} does not have permission to delete sync account {}",
                 ste.ident,
                 sync_account.name
             );
@@ -518,7 +507,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Remove entries that now need deletion, We do this post assert in case an
         // entry was mistakenly ALSO in the assert set.
-        self.scim_sync_apply_phase_4(&changes.delete_uuids, sync_uuid)?;
+        self.scim_sync_apply_phase_4(&changes.retain, sync_uuid)?;
 
         // Final house keeping. Commit the new sync state.
         self.scim_sync_apply_phase_5(sync_uuid, &changes.to_state)
@@ -646,7 +635,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let mut fail = false;
         existing_entries.iter().for_each(|e| {
             if e.mask_recycled_ts().is_none() {
-                error!("Unable to proceed: entry uuid {} is masked. You must re-map this entries uuid in the sync connector to proceed.", e.get_uuid());
+                error!("Unable to proceed: entry uuid {} ({}) is masked. You must re-map this entries uuid in the sync connector to proceed.", e.get_uuid(), e.get_display_id());
                 fail = true;
             }
         });
@@ -870,7 +859,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     if let Some(uuid) = maybe_uuid {
                         vs.push(Value::Refer(uuid))
                     } else {
-                        warn!("Could not convert external_id to reference - {}", value);
+                        debug!("Could not convert external_id to reference - {}", value);
                     }
                 }
                 Ok(vs)
@@ -1011,6 +1000,46 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                     let totp = Totp::new(secret, step, algo, digits);
                     vs.push(Value::TotpSecret(external_id, totp))
+                }
+                Ok(vs)
+            }
+            (SyntaxType::EmailAddress, true, ScimAttr::MultiComplex(values)) => {
+                let mut vs = Vec::with_capacity(values.len());
+                for complex in values.iter() {
+                    let mail_addr = complex
+                        .attrs
+                        .get("value")
+                        .ok_or_else(|| {
+                            error!("Invalid scim complex attr - missing required key value");
+                            OperationError::InvalidAttribute(format!(
+                                "missing required key value - {scim_attr_name}"
+                            ))
+                        })
+                        .and_then(|external_id| match external_id {
+                            ScimSimpleAttr::String(value) => Ok(value.clone()),
+                            _ => {
+                                error!("Invalid value attribute - must be scim simple string");
+                                Err(OperationError::InvalidAttribute(format!(
+                                    "value must be scim simple string - {scim_attr_name}"
+                                )))
+                            }
+                        })?;
+
+                    let primary = if let Some(primary) = complex.attrs.get("primary") {
+                        match primary {
+                            ScimSimpleAttr::Bool(value) => Ok(*value),
+                            _ => {
+                                error!("Invalid primary attribute - must be scim simple bool");
+                                Err(OperationError::InvalidAttribute(format!(
+                                    "primary must be scim simple bool - {scim_attr_name}"
+                                )))
+                            }
+                        }?
+                    } else {
+                        false
+                    };
+
+                    vs.push(Value::EmailAddress(mail_addr, primary))
                 }
                 Ok(vs)
             }
@@ -1238,66 +1267,102 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn scim_sync_apply_phase_4(
         &mut self,
-        delete_uuids: &[Uuid],
+        retain: &ScimSyncRetentionMode,
         sync_uuid: Uuid,
     ) -> Result<(), OperationError> {
-        if delete_uuids.is_empty() {
-            info!("No delete_uuids requested");
-            return Ok(());
-        }
+        let delete_filter = match retain {
+            ScimSyncRetentionMode::Ignore => {
+                info!("No retention mode requested");
+                return Ok(());
+            }
+            ScimSyncRetentionMode::Retain(present_uuids) => {
+                let filter_or = present_uuids
+                    .iter()
+                    .copied()
+                    .map(|u| f_eq("uuid", PartialValue::Uuid(u)))
+                    .collect::<Vec<_>>();
 
-        // Search the set of delete_uuids that were requested.
-        let filter_or = delete_uuids
-            .iter()
-            .copied()
-            .map(|u| f_eq("uuid", PartialValue::Uuid(u)))
-            .collect();
-
-        // NOTE: We bypass recycled/ts here because we WANT to know if we are in that
-        // state so we can AVOID updates to these entries!
-        let delete_cands = self
-            .qs_write
-            .internal_search(filter_all!(f_or(filter_or)))
-            .map_err(|e| {
-                error!("Failed to determine existing entries set");
-                e
-            })?;
-
-        let delete_filter = delete_cands
-            .into_iter()
-            .filter_map(|ent| {
-                if ent.mask_recycled_ts().is_none() {
-                    debug!("Skipping already deleted entry {}", ent.get_uuid());
-                    None
-                } else if ent.get_ava_single_refer("sync_parent_uuid") != Some(sync_uuid) {
-                    warn!(
-                        "Skipping entry that is not within sync control {}",
-                        ent.get_uuid()
-                    );
-                    Some(Err(OperationError::AccessDenied))
+                if filter_or.is_empty() {
+                    filter!(f_and!([
+                        // F in chat for all these entries.
+                        f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid))
+                    ]))
                 } else {
-                    Some(Ok(f_eq("uuid", PartialValue::Uuid(ent.get_uuid()))))
+                    filter!(f_and!([
+                        // Must be part of this sync agreement.
+                        f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid)),
+                        // Must not be an entry in the change set.
+                        f_andnot(f_or(filter_or))
+                    ]))
                 }
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+            }
+            ScimSyncRetentionMode::Delete(delete_uuids) => {
+                if delete_uuids.is_empty() {
+                    info!("No delete_uuids requested");
+                    return Ok(());
+                }
 
-        if delete_filter.is_empty() {
-            info!("No valid deletes requested");
-            return Ok(());
-        }
+                // Search the set of delete_uuids that were requested.
+                let filter_or = delete_uuids
+                    .iter()
+                    .copied()
+                    .map(|u| f_eq("uuid", PartialValue::Uuid(u)))
+                    .collect();
+
+                // NOTE: We bypass recycled/ts here because we WANT to know if we are in that
+                // state so we can AVOID updates to these entries!
+                let delete_cands = self
+                    .qs_write
+                    .internal_search(filter_all!(f_or(filter_or)))
+                    .map_err(|e| {
+                        error!("Failed to determine existing entries set");
+                        e
+                    })?;
+
+                let delete_filter = delete_cands
+                    .into_iter()
+                    .filter_map(|ent| {
+                        if ent.mask_recycled_ts().is_none() {
+                            debug!("Skipping already deleted entry {}", ent.get_uuid());
+                            None
+                        } else if ent.get_ava_single_refer("sync_parent_uuid") != Some(sync_uuid) {
+                            warn!(
+                                "Skipping entry that is not within sync control {}",
+                                ent.get_uuid()
+                            );
+                            Some(Err(OperationError::AccessDenied))
+                        } else {
+                            Some(Ok(f_eq("uuid", PartialValue::Uuid(ent.get_uuid()))))
+                        }
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                if delete_filter.is_empty() {
+                    info!("No valid deletes requested");
+                    return Ok(());
+                }
+
+                filter!(f_and(vec![
+                    // Technically not needed, but it's better to add more safeties and this
+                    // costs nothing to add.
+                    f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid)),
+                    f_or(delete_filter)
+                ]))
+            }
+        };
 
         // Do the delete
-        self.qs_write
-            .internal_delete(&filter!(f_and(vec![
-                // Technically not needed, but it's better to add more safeties and this
-                // costs nothing to add.
-                f_eq("sync_parent_uuid", PartialValue::Refer(sync_uuid)),
-                f_or(delete_filter)
-            ])))
-            .map_err(|e| {
-                error!(?e, "Failed to delete uuids");
-                e
-            })
+        match self.qs_write.internal_delete(&delete_filter).map_err(|e| {
+            error!(?e, "Failed to delete uuids");
+            e
+        }) {
+            Ok(()) => Ok(()),
+            Err(OperationError::NoMatchingEntries) => {
+                debug!("No deletes required");
+                Ok(())
+            }
+            Err(e) => Err(e),
+        }
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -1620,7 +1685,7 @@ mod tests {
             },
             to_state: ScimSyncState::Refresh,
             entries: Vec::default(),
-            delete_uuids: Vec::default(),
+            retain: ScimSyncRetentionMode::Ignore,
         };
 
         let res = idms_prox_write.scim_sync_apply_phase_1(&sse, &changes);
@@ -1657,7 +1722,7 @@ mod tests {
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("william".to_string()))
                 ),),
             }],
-            delete_uuids: Vec::default(),
+            retain: ScimSyncRetentionMode::Ignore,
         };
 
         let (sync_uuid, _sync_authority_set, change_entries, _sync_refresh) = idms_prox_write
@@ -1725,7 +1790,7 @@ mod tests {
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("william".to_string()))
                 ),),
             }],
-            delete_uuids: Vec::default(),
+            retain: ScimSyncRetentionMode::Ignore,
         };
 
         let (sync_uuid, _sync_authority_set, change_entries, _sync_refresh) = idms_prox_write
@@ -1756,7 +1821,7 @@ mod tests {
                 cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
             },
             entries,
-            delete_uuids: Vec::default(),
+            retain: ScimSyncRetentionMode::Ignore,
         };
 
         let (sync_uuid, sync_authority_set, change_entries, _sync_refresh) = idms_prox_write
@@ -1967,7 +2032,7 @@ mod tests {
                     ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
                 ),),
             }],
-            delete_uuids: Vec::default(),
+            retain: ScimSyncRetentionMode::Ignore,
         };
 
         assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
@@ -1985,7 +2050,7 @@ mod tests {
                 cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
             },
             entries: vec![],
-            delete_uuids: vec![user_sync_uuid],
+            retain: ScimSyncRetentionMode::Delete(vec![user_sync_uuid]),
         };
 
         assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
@@ -2026,7 +2091,7 @@ mod tests {
             },
             // Doesn't exist. If it does, then bless rng.
             entries: Vec::default(),
-            delete_uuids: vec![Uuid::new_v4()],
+            retain: ScimSyncRetentionMode::Delete(vec![Uuid::new_v4()]),
         };
 
         // Hard to know what was right here. IMO because it doesn't exist at all, we just ignore it
@@ -2065,7 +2130,7 @@ mod tests {
             },
             // Doesn't exist. If it does, then bless rng.
             entries: Vec::default(),
-            delete_uuids: vec![user_sync_uuid],
+            retain: ScimSyncRetentionMode::Delete(vec![user_sync_uuid]),
         };
 
         // Again, not sure what to do here. I think because this is clearly an overstep of the
@@ -2107,7 +2172,7 @@ mod tests {
             },
             // Doesn't exist. If it does, then bless rng.
             entries: Vec::default(),
-            delete_uuids: vec![user_sync_uuid],
+            retain: ScimSyncRetentionMode::Delete(vec![user_sync_uuid]),
         };
 
         // More subtely. There is clearly a theme here. In this case while the sync request
@@ -2115,6 +2180,245 @@ mod tests {
         // is in a recycled state it doesn't matter, it's a no-op. We only care about when
         // the delete req applies to a live entry.
         assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
+    }
+
+    #[idm_test]
+    async fn test_idm_scim_sync_phase_4_correct_retain(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        // Setup two entries.
+        let sync_uuid_a = Uuid::new_v4();
+        let sync_uuid_b = Uuid::new_v4();
+        // Create an entry via sync
+
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent {
+            ident: ident.clone(),
+        };
+
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            entries: vec![
+                ScimEntry {
+                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                    id: sync_uuid_a,
+                    external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
+                    meta: None,
+                    attrs: btreemap!((
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                    ),),
+                },
+                ScimEntry {
+                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                    id: sync_uuid_b,
+                    external_id: Some("cn=anothergroup,ou=people,dc=test".to_string()),
+                    meta: None,
+                    attrs: btreemap!((
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("anothergroup".to_string()))
+                    ),),
+                },
+            ],
+            retain: ScimSyncRetentionMode::Ignore,
+        };
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Now retain only a single entry
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let sse = ScimSyncUpdateEvent { ident };
+
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
+            },
+            entries: vec![],
+            retain: ScimSyncRetentionMode::Retain(vec![sync_uuid_a]),
+        };
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+        // Can't use internal_search_uuid since that applies a mask.
+        assert!(idms_prox_write
+            .qs_write
+            .internal_search(filter_all!(f_eq("uuid", PartialValue::Uuid(sync_uuid_b))))
+            // Should be none as the entry was masked by being recycled.
+            .map(|entries| {
+                assert!(entries.len() == 1);
+                let ent = entries.get(0).unwrap();
+                ent.mask_recycled_ts().is_none()
+            })
+            .unwrap_or(false));
+
+        assert!(idms_prox_write.commit().is_ok());
+    }
+
+    #[idm_test]
+    async fn test_idm_scim_sync_phase_4_retain_none(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        // Setup two entries.
+        let sync_uuid_a = Uuid::new_v4();
+        let sync_uuid_b = Uuid::new_v4();
+
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent {
+            ident: ident.clone(),
+        };
+
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            entries: vec![
+                ScimEntry {
+                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                    id: sync_uuid_a,
+                    external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
+                    meta: None,
+                    attrs: btreemap!((
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                    ),),
+                },
+                ScimEntry {
+                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                    id: sync_uuid_b,
+                    external_id: Some("cn=anothergroup,ou=people,dc=test".to_string()),
+                    meta: None,
+                    attrs: btreemap!((
+                        "name".to_string(),
+                        ScimAttr::SingleSimple(ScimSimpleAttr::String("anothergroup".to_string()))
+                    ),),
+                },
+            ],
+            retain: ScimSyncRetentionMode::Ignore,
+        };
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Now retain no entries at all
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let sse = ScimSyncUpdateEvent { ident };
+
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
+            },
+            entries: vec![],
+            retain: ScimSyncRetentionMode::Retain(vec![]),
+        };
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+        // Can't use internal_search_uuid since that applies a mask.
+        assert!(idms_prox_write
+            .qs_write
+            .internal_search(filter_all!(f_eq("uuid", PartialValue::Uuid(sync_uuid_a))))
+            // Should be none as the entry was masked by being recycled.
+            .map(|entries| {
+                assert!(entries.len() == 1);
+                let ent = entries.get(0).unwrap();
+                ent.mask_recycled_ts().is_none()
+            })
+            .unwrap_or(false));
+
+        // Can't use internal_search_uuid since that applies a mask.
+        assert!(idms_prox_write
+            .qs_write
+            .internal_search(filter_all!(f_eq("uuid", PartialValue::Uuid(sync_uuid_b))))
+            // Should be none as the entry was masked by being recycled.
+            .map(|entries| {
+                assert!(entries.len() == 1);
+                let ent = entries.get(0).unwrap();
+                ent.mask_recycled_ts().is_none()
+            })
+            .unwrap_or(false));
+
+        assert!(idms_prox_write.commit().is_ok());
+    }
+
+    #[idm_test]
+    async fn test_idm_scim_sync_phase_4_retain_no_deletes(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        // Setup two entries.
+        let sync_uuid_a = Uuid::new_v4();
+
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent {
+            ident: ident.clone(),
+        };
+
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Refresh,
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            entries: vec![ScimEntry {
+                schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                id: sync_uuid_a,
+                external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
+                meta: None,
+                attrs: btreemap!((
+                    "name".to_string(),
+                    ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                ),),
+            }],
+            retain: ScimSyncRetentionMode::Ignore,
+        };
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Now retain no entries at all
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let sse = ScimSyncUpdateEvent { ident };
+
+        let changes = ScimSyncRequest {
+            from_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+            },
+            to_state: ScimSyncState::Active {
+                cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
+            },
+            entries: vec![],
+            retain: ScimSyncRetentionMode::Retain(vec![sync_uuid_a]),
+        };
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+        // Entry still exists
+        let ent = idms_prox_write
+            .qs_write
+            .internal_search_uuid(sync_uuid_a)
+            .expect("Unable to access entry");
+
+        assert!(ent.get_ava_single_iname("name") == Some("testgroup"));
+
         assert!(idms_prox_write.commit().is_ok());
     }
 
@@ -2137,7 +2441,7 @@ mod tests {
                 cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
             },
             entries: Vec::default(),
-            delete_uuids: Vec::default(),
+            retain: ScimSyncRetentionMode::Ignore,
         };
 
         assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
@@ -2155,7 +2459,7 @@ mod tests {
                 cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
             },
             entries: vec![],
-            delete_uuids: vec![],
+            retain: ScimSyncRetentionMode::Ignore,
         };
 
         assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
@@ -2639,6 +2943,11 @@ mod tests {
       "gidnumber": 12345,
       "loginshell": "/bin/sh",
       "name": "testuser",
+      "mail": [
+        {
+          "value": "testuser@dev.blackhats.net.au"
+        }
+      ],
       "password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA"
     },
     {
@@ -2679,7 +2988,7 @@ mod tests {
       "name": "testposix"
     }
   ],
-  "delete_uuids": []
+  "retain": "Ignore"
 }
     "#;
 
@@ -2720,9 +3029,11 @@ mod tests {
       "name": "testposix"
     }
   ],
-  "delete_uuids": [
-    "d547c581-5f26-11ed-a50d-919b4b1a5ec0"
-  ]
+  "retain": {
+    "Delete": [
+      "d547c581-5f26-11ed-a50d-919b4b1a5ec0"
+    ]
+  }
 }
     "#;
 
@@ -2764,7 +3075,7 @@ mod tests {
       "name": "testgroup"
     }
   ],
-  "delete_uuids": []
+  "retain": "Ignore"
 }
     "#;
 }

@@ -2,61 +2,62 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::time::Duration;
 
+use crate::unix_config::TpmPolicy;
 use kanidm_lib_crypto::CryptoPolicy;
 use kanidm_lib_crypto::DbPasswordV1;
 use kanidm_lib_crypto::Password;
 use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 use libc::umask;
-use r2d2::Pool;
-use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::Connection;
 use tokio::sync::{Mutex, MutexGuard};
 
 use crate::cache::Id;
 
 pub struct Db {
-    pool: Pool<SqliteConnectionManager>,
-    lock: Mutex<()>,
+    conn: Mutex<Connection>,
     crypto_policy: CryptoPolicy,
+    require_tpm: Option<tpm::TpmConfig>,
 }
 
 pub struct DbTxn<'a> {
-    _guard: MutexGuard<'a, ()>,
+    conn: MutexGuard<'a, Connection>,
     committed: bool,
-    conn: r2d2::PooledConnection<SqliteConnectionManager>,
     crypto_policy: &'a CryptoPolicy,
+    require_tpm: Option<&'a tpm::TpmConfig>,
 }
 
 impl Db {
-    pub fn new(path: &str) -> Result<Self, ()> {
+    pub fn new(path: &str, tpm_policy: &TpmPolicy) -> Result<Self, ()> {
         let before = unsafe { umask(0o0027) };
-        let manager = SqliteConnectionManager::file(path);
+        let conn = Connection::open(path).map_err(|e| {
+            error!(err = ?e, "rusqulite error");
+        })?;
         let _ = unsafe { umask(before) };
         // We only build a single thread. If we need more than one, we'll
         // need to re-do this to account for path = "" for debug.
-        let builder1 = Pool::builder().max_size(1);
-        let pool = builder1.build(manager).map_err(|e| {
-            error!("r2d2 error {:?}", e);
-        })?;
-
         let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(250));
 
         debug!("Configured {:?}", crypto_policy);
 
+        // Test if we have a tpm context.
+
+        let require_tpm = match tpm_policy {
+            TpmPolicy::Ignore => None,
+            TpmPolicy::IfPossible(tcti_str) => Db::tpm_setup_context(tcti_str, &conn).ok(),
+            TpmPolicy::Required(tcti_str) => Some(Db::tpm_setup_context(tcti_str, &conn)?),
+        };
+
         Ok(Db {
-            pool,
-            lock: Mutex::new(()),
+            conn: Mutex::new(conn),
             crypto_policy,
+            require_tpm,
         })
     }
 
     #[allow(clippy::expect_used)]
     pub async fn write(&self) -> DbTxn<'_> {
-        let guard = self.lock.lock().await;
-        let conn = self
-            .pool
-            .get()
-            .expect("Unable to get connection from pool!!!");
-        DbTxn::new(conn, guard, &self.crypto_policy)
+        let conn = self.conn.lock().await;
+        DbTxn::new(conn, &self.crypto_policy, self.require_tpm.as_ref())
     }
 }
 
@@ -68,9 +69,9 @@ impl fmt::Debug for Db {
 
 impl<'a> DbTxn<'a> {
     pub fn new(
-        conn: r2d2::PooledConnection<SqliteConnectionManager>,
-        guard: MutexGuard<'a, ()>,
+        conn: MutexGuard<'a, Connection>,
         crypto_policy: &'a CryptoPolicy,
+        require_tpm: Option<&'a tpm::TpmConfig>,
     ) -> Self {
         // Start the transaction
         // debug!("Starting db WR txn ...");
@@ -80,8 +81,8 @@ impl<'a> DbTxn<'a> {
         DbTxn {
             committed: false,
             conn,
-            _guard: guard,
             crypto_policy,
+            require_tpm,
         }
     }
 
@@ -448,9 +449,22 @@ impl<'a> DbTxn<'a> {
     }
 
     pub fn update_account_password(&self, a_uuid: &str, cred: &str) -> Result<(), ()> {
-        let pw = Password::new(self.crypto_policy, cred).map_err(|e| {
-            error!("password error -> {:?}", e);
-        })?;
+        #[allow(unused_variables)]
+        let pw = if let Some(tcti_str) = self.require_tpm {
+            // Do nothing.
+            #[cfg(not(feature = "tpm"))]
+            return Ok(());
+
+            #[cfg(feature = "tpm")]
+            let pw = Db::tpm_new(self.crypto_policy, cred, tcti_str)?;
+            #[cfg(feature = "tpm")]
+            pw
+        } else {
+            Password::new(self.crypto_policy, cred).map_err(|e| {
+                error!("password error -> {:?}", e);
+            })?
+        };
+
         let dbpw = pw.to_dbpasswordv1();
         let data = serde_json::to_vec(&dbpw).map_err(|e| {
             error!("json error -> {:?}", e);
@@ -471,6 +485,11 @@ impl<'a> DbTxn<'a> {
     }
 
     pub fn check_account_password(&self, a_uuid: &str, cred: &str) -> Result<bool, ()> {
+        #[cfg(not(feature = "tpm"))]
+        if self.require_tpm.is_some() {
+            return Ok(false);
+        }
+
         let mut stmt = self
             .conn
             .prepare("SELECT password FROM account_t WHERE uuid = :a_uuid AND password IS NOT NULL")
@@ -502,20 +521,34 @@ impl<'a> DbTxn<'a> {
             return Err(());
         }
 
-        let r: Result<bool, ()> = data
-            .first()
-            .map(|raw| {
-                // Map the option from data.first.
-                let dbpw: DbPasswordV1 = serde_json::from_slice(raw.as_slice()).map_err(|e| {
-                    error!("json error -> {:?}", e);
-                })?;
-                let pw = Password::try_from(dbpw)?;
-                pw.verify(cred).map_err(|e| {
-                    error!("password error -> {:?}", e);
-                })
+        let pw = data.first().map(|raw| {
+            // Map the option from data.first.
+            let dbpw: DbPasswordV1 = serde_json::from_slice(raw.as_slice()).map_err(|e| {
+                error!("json error -> {:?}", e);
+            })?;
+            Password::try_from(dbpw)
+        });
+
+        let pw = match pw {
+            Some(Ok(p)) => p,
+            _ => return Ok(false),
+        };
+
+        #[allow(unused_variables)]
+        if let Some(tcti_str) = self.require_tpm {
+            #[cfg(feature = "tpm")]
+            let r = Db::tpm_verify(pw, cred, tcti_str);
+
+            // Do nothing.
+            #[cfg(not(feature = "tpm"))]
+            let r = Ok(false);
+
+            r
+        } else {
+            pw.verify(cred).map_err(|e| {
+                error!("password error -> {:?}", e);
             })
-            .unwrap_or(Ok(false));
-        r
+        }
     }
 
     fn get_group_data_name(&self, grp_id: &str) -> Result<Vec<(Vec<u8>, i64)>, ()> {
@@ -726,12 +759,365 @@ impl<'a> Drop for DbTxn<'a> {
     }
 }
 
+#[cfg(not(feature = "tpm"))]
+pub(crate) mod tpm {
+    use super::Db;
+
+    use rusqlite::Connection;
+
+    pub struct TpmConfig {}
+
+    impl Db {
+        pub fn tpm_setup_context(_tcti_str: &str, _conn: &Connection) -> Result<TpmConfig, ()> {
+            warn!("tpm feature is not available in this build");
+            Err(())
+        }
+    }
+}
+
+#[cfg(feature = "tpm")]
+pub(crate) mod tpm {
+    use super::Db;
+
+    use rusqlite::{Connection, OptionalExtension};
+
+    use kanidm_lib_crypto::{CryptoError, CryptoPolicy, Password, TpmError};
+    use tss_esapi::{Context, TctiNameConf};
+
+    use tss_esapi::{
+        attributes::ObjectAttributesBuilder,
+        handles::KeyHandle,
+        interface_types::{
+            algorithm::{HashingAlgorithm, PublicAlgorithm},
+            resource_handles::Hierarchy,
+        },
+        structures::{
+            Digest, KeyedHashScheme, Private, Public, PublicBuilder, PublicKeyedHashParameters,
+            SymmetricCipherParameters, SymmetricDefinitionObject,
+        },
+        traits::{Marshall, UnMarshall},
+    };
+
+    use std::str::FromStr;
+
+    use base64urlsafedata::Base64UrlSafeData;
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Serialize, Deserialize, Debug)]
+    struct BinaryLoadableKey {
+        private: Base64UrlSafeData,
+        public: Base64UrlSafeData,
+    }
+
+    impl Into<BinaryLoadableKey> for LoadableKey {
+        fn into(self) -> BinaryLoadableKey {
+            BinaryLoadableKey {
+                private: self.private.as_slice().to_owned().into(),
+                public: self.public.marshall().unwrap().into(),
+            }
+        }
+    }
+
+    impl TryFrom<BinaryLoadableKey> for LoadableKey {
+        type Error = &'static str;
+
+        fn try_from(value: BinaryLoadableKey) -> Result<Self, Self::Error> {
+            let private = Private::try_from(value.private.0).map_err(|e| {
+                error!(tpm_err = ?e, "Failed to restore tpm hmac key");
+                "private try from"
+            })?;
+
+            let public = Public::unmarshall(value.public.0.as_slice()).map_err(|e| {
+                error!(tpm_err = ?e, "Failed to restore tpm hmac key");
+                "public unmarshall"
+            })?;
+
+            Ok(LoadableKey { public, private })
+        }
+    }
+
+    #[derive(Serialize, Deserialize, Debug, Clone)]
+    #[serde(try_from = "BinaryLoadableKey", into = "BinaryLoadableKey")]
+    struct LoadableKey {
+        private: Private,
+        public: Public,
+    }
+
+    pub struct TpmConfig {
+        tcti: TctiNameConf,
+        private: Private,
+        public: Public,
+    }
+
+    // First, setup the primary key we will be using. Remember tpm Primary keys
+    // are the same provided the *same* public parameters are used and the tpm
+    // seed hasn't been reset.
+    fn get_primary_key_public() -> Result<Public, ()> {
+        let object_attributes = ObjectAttributesBuilder::new()
+            .with_fixed_tpm(true)
+            .with_fixed_parent(true)
+            .with_st_clear(false)
+            .with_sensitive_data_origin(true)
+            .with_user_with_auth(true)
+            .with_decrypt(true)
+            // .with_sign_encrypt(true)
+            .with_restricted(true)
+            .build()
+            .map_err(|e| {
+                error!(tpm_err = ?e, "Failed to create tpm primary key attributes");
+            })?;
+
+        PublicBuilder::new()
+            .with_public_algorithm(PublicAlgorithm::SymCipher)
+            .with_name_hashing_algorithm(HashingAlgorithm::Sha256)
+            .with_object_attributes(object_attributes)
+            .with_symmetric_cipher_parameters(SymmetricCipherParameters::new(
+                SymmetricDefinitionObject::AES_128_CFB,
+            ))
+            .with_symmetric_cipher_unique_identifier(Digest::default())
+            .build()
+            .map_err(|e| {
+                error!(tpm_err = ?e, "Failed to create tpm primary key public");
+            })
+    }
+
+    fn new_hmac_public() -> Result<Public, ()> {
+        let object_attributes = ObjectAttributesBuilder::new()
+            .with_fixed_tpm(true)
+            .with_fixed_parent(true)
+            .with_st_clear(false)
+            .with_sensitive_data_origin(true)
+            .with_user_with_auth(true)
+            .with_sign_encrypt(true)
+            .build()
+            .map_err(|e| {
+                error!(tpm_err = ?e, "Failed to create tpm hmac key attributes");
+            })?;
+
+        PublicBuilder::new()
+            .with_public_algorithm(PublicAlgorithm::KeyedHash)
+            .with_name_hashing_algorithm(HashingAlgorithm::Sha256)
+            .with_object_attributes(object_attributes)
+            .with_keyed_hash_parameters(PublicKeyedHashParameters::new(
+                KeyedHashScheme::HMAC_SHA_256,
+            ))
+            .with_keyed_hash_unique_identifier(Digest::default())
+            .build()
+            .map_err(|e| {
+                error!(tpm_err = ?e, "Failed to create tpm hmac key public");
+            })
+    }
+
+    fn setup_keys(ctx: &mut Context, tpm_conf: &TpmConfig) -> Result<KeyHandle, CryptoError> {
+        // Given our public and private parts, setup our keys for usage.
+        let primary_pub = get_primary_key_public().map_err(|_| CryptoError::Tpm2PublicBuilder)?;
+        trace!(?primary_pub);
+        let primary_key = ctx
+            .create_primary(Hierarchy::Owner, primary_pub, None, None, None, None)
+            .map_err(|e| {
+                error!(tpm_err = ?e, "Failed to load tpm context");
+                <TpmError as Into<CryptoError>>::into(e)
+            })?;
+
+        /*
+        let hmac_pub = new_hmac_public()
+            .map_err(|_| CryptoError::Tpm2PublicBuilder )
+        ?;
+        trace!(?hmac_pub);
+        */
+
+        ctx.load(
+            primary_key.key_handle.clone(),
+            tpm_conf.private.clone(),
+            tpm_conf.public.clone(),
+        )
+        .map_err(|e| {
+            error!(tpm_err = ?e, "Failed to load tpm context");
+            <TpmError as Into<CryptoError>>::into(e)
+        })
+    }
+
+    impl Db {
+        pub fn tpm_setup_context(tcti_str: &str, conn: &Connection) -> Result<TpmConfig, ()> {
+            let tcti = TctiNameConf::from_str(tcti_str).map_err(|e| {
+                error!(tpm_err = ?e, "Failed to parse tcti name");
+            })?;
+
+            let mut context = Context::new(tcti.clone()).map_err(|e| {
+                error!(tpm_err = ?e, "Failed to create tpm context");
+            })?;
+
+            // Create the primary object that will contain our key.
+            let primary_pub = get_primary_key_public()?;
+            let primary_key = context
+                .execute_with_nullauth_session(|ctx| {
+                    ctx.create_primary(Hierarchy::Owner, primary_pub, None, None, None, None)
+                })
+                .map_err(|e| {
+                    error!(tpm_err = ?e, "Failed to create tpm primary key");
+                })?;
+
+            // Now we know we can establish a correct primary key, lets get any previously saved
+            // hmac keys.
+
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS config_t (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                )
+                ",
+                [],
+            )
+            .map_err(|e| {
+                error!(sqlite_err = ?e, "update config_t tpm_ctx");
+            })?;
+
+            // Try and get the db context.
+            let ctx_data: Option<Vec<u8>> = conn
+                .query_row(
+                    "SELECT value FROM config_t WHERE key='tpm2_ctx'",
+                    [],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(|e| {
+                    error!(sqlite_err = ?e, "Failed to load tpm2_ctx");
+                })
+                .unwrap_or(None);
+
+            trace!(ctx_data_present = %ctx_data.is_some());
+
+            let ex_private = if let Some(ctx_data) = ctx_data {
+                // Test loading, blank it out if it fails.
+                serde_json::from_slice(ctx_data.as_slice())
+                    .map_err(|e| {
+                        warn!("json error -> {:?}", e);
+                    })
+                    // On error, becomes none and we do nothing else.
+                    .ok()
+                    .and_then(|loadable: LoadableKey| {
+                        // test if it can load?
+                        context
+                            .execute_with_nullauth_session(|ctx| {
+                                ctx.load(
+                                    primary_key.key_handle.clone(),
+                                    loadable.private.clone(),
+                                    loadable.public.clone(),
+                                )
+                                // We have to flush the handle here to not overfill tpm context memory.
+                                // We'll be reloading the key later anyway.
+                                .and_then(|kh| ctx.flush_context(kh.into()))
+                            })
+                            .map_err(|e| {
+                                error!(tpm_err = ?e, "Failed to load tpm hmac key");
+                            })
+                            .ok()
+                            // It loaded, so sub in our Private data.
+                            .map(|_hmac_handle| loadable)
+                    })
+            } else {
+                None
+            };
+
+            let loadable = if let Some(existing) = ex_private {
+                existing
+            } else {
+                // Need to regenerate the private key for some reason
+                info!("Creating new hmac key");
+                let hmac_pub = new_hmac_public()?;
+                context
+                    .execute_with_nullauth_session(|ctx| {
+                        ctx.create(
+                            primary_key.key_handle.clone(),
+                            hmac_pub,
+                            None,
+                            None,
+                            None,
+                            None,
+                        )
+                        .map(|key| LoadableKey {
+                            public: key.out_public,
+                            private: key.out_private,
+                        })
+                    })
+                    .map_err(|e| {
+                        error!(tpm_err = ?e, "Failed to create tpm hmac key");
+                    })?
+            };
+
+            // Serialise it out.
+            let data = serde_json::to_vec(&loadable).map_err(|e| {
+                error!("json error -> {:?}", e);
+            })?;
+
+            // Update the tpm ctx str
+            conn.execute(
+                "INSERT OR REPLACE INTO config_t (key, value) VALUES ('tpm2_ctx', :data)",
+                named_params! {
+                    ":data": &data,
+                },
+            )
+            .map_err(|e| {
+                error!(sqlite_err = ?e, "update config_t tpm_ctx");
+            })
+            .map(|_| ())?;
+
+            //
+
+            info!("tpm binding configured");
+
+            let LoadableKey { private, public } = loadable;
+
+            Ok(TpmConfig {
+                tcti,
+                private,
+                public,
+            })
+        }
+
+        pub fn tpm_new(
+            policy: &CryptoPolicy,
+            cred: &str,
+            tpm_conf: &TpmConfig,
+        ) -> Result<Password, ()> {
+            let mut context = Context::new(tpm_conf.tcti.clone()).map_err(|e| {
+                error!(tpm_err = ?e, "Failed to create tpm context");
+            })?;
+
+            context
+                .execute_with_nullauth_session(|ctx| {
+                    let key = setup_keys(ctx, tpm_conf)?;
+                    Password::new_argon2id_tpm(policy, cred, ctx, key.into())
+                })
+                .map_err(|e: CryptoError| {
+                    error!(tpm_err = ?e, "Failed to create tpm bound password");
+                })
+        }
+
+        pub fn tpm_verify(pw: Password, cred: &str, tpm_conf: &TpmConfig) -> Result<bool, ()> {
+            let mut context = Context::new(tpm_conf.tcti.clone()).map_err(|e| {
+                error!(tpm_err = ?e, "Failed to create tpm context");
+            })?;
+
+            context
+                .execute_with_nullauth_session(|ctx| {
+                    let key = setup_keys(ctx, tpm_conf)?;
+                    pw.verify_ctx(cred, Some((ctx, key.into())))
+                })
+                .map_err(|e: CryptoError| {
+                    error!(tpm_err = ?e, "Failed to create tpm bound password");
+                })
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 
     use super::Db;
     use crate::cache::Id;
+    use crate::unix_config::TpmPolicy;
 
     const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
     const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
@@ -739,7 +1125,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_account_basic() {
         sketching::test_init();
-        let db = Db::new("").expect("failed to create.");
+        let db = Db::new("", &TpmPolicy::default()).expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -823,7 +1209,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_group_basic() {
         sketching::test_init();
-        let db = Db::new("").expect("failed to create.");
+        let db = Db::new("", &TpmPolicy::default()).expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -898,7 +1284,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_account_group_update() {
         sketching::test_init();
-        let db = Db::new("").expect("failed to create.");
+        let db = Db::new("", &TpmPolicy::default()).expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -966,7 +1352,15 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_account_password() {
         sketching::test_init();
-        let db = Db::new("").expect("failed to create.");
+
+        #[cfg(feature = "tpm")]
+        let tpm_policy = TpmPolicy::Required("device:/dev/tpmrm0".to_string());
+
+        #[cfg(not(feature = "tpm"))]
+        let tpm_policy = TpmPolicy::default();
+
+        let db = Db::new("", &tpm_policy).expect("failed to create.");
+
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -1015,7 +1409,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_group_rename_duplicate() {
         sketching::test_init();
-        let db = Db::new("").expect("failed to create.");
+        let db = Db::new("", &TpmPolicy::default()).expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
@@ -1070,7 +1464,7 @@ mod tests {
     #[tokio::test]
     async fn test_cache_db_account_rename_duplicate() {
         sketching::test_init();
-        let db = Db::new("").expect("failed to create.");
+        let db = Db::new("", &TpmPolicy::default()).expect("failed to create.");
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 

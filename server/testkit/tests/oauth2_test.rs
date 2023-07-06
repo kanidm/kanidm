@@ -6,9 +6,10 @@ use std::str::FromStr;
 use compact_jwt::{JwkKeySet, JwsValidator, OidcToken, OidcUnverified};
 use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-    AccessTokenResponse, AuthorisationResponse, OidcDiscoveryResponse,
+    AccessTokenResponse, AuthorisationResponse, GrantTypeReq, OidcDiscoveryResponse,
 };
 use oauth2_ext::PkceCodeChallenge;
+use reqwest::StatusCode;
 use url::Url;
 
 use kanidm_client::KanidmClient;
@@ -38,6 +39,11 @@ macro_rules! assert_no_cache {
     }};
 }
 
+const TEST_INTEGRATION_RS_ID: &str = "test_integration";
+const TEST_INTEGRATION_RS_GROUP_ALL: &str = "idm_all_accounts";
+const TEST_INTEGRATION_RS_DISPLAY: &str = "Test Integration";
+const TEST_INTEGRATION_RS_URL: &str = "https://demo.example.com";
+
 #[kanidmd_testkit::test]
 async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     let res = rsclient
@@ -48,9 +54,9 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     // Create an oauth2 application integration.
     rsclient
         .idm_oauth2_rs_basic_create(
-            "test_integration",
-            "Test Integration",
-            "https://demo.example.com",
+            TEST_INTEGRATION_RS_ID,
+            TEST_INTEGRATION_RS_DISPLAY,
+            TEST_INTEGRATION_RS_URL,
         )
         .await
         .expect("Failed to create oauth2 config");
@@ -275,14 +281,12 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     // Step 3 - the "resource server" then uses this state and code to directly contact
     // the authorisation server to request a token.
 
-    let form_req = AccessTokenRequest {
-        grant_type: "authorization_code".to_string(),
+    let form_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
         code: code.to_string(),
         redirect_uri: Url::parse("https://demo.example.com/oauth2/flow").expect("Invalid URL"),
-        client_id: None,
-        client_secret: None,
         code_verifier: Some(pkce_code_verifier.secret().clone()),
-    };
+    }
+    .into();
 
     let response = client
         .post(format!("{}/oauth2/token", url))
@@ -368,4 +372,110 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     eprintln!("oidc {oidc:?}");
 
     assert!(userinfo == oidc);
+
+    // auth back with admin so we can test deleting things
+    let res = rsclient
+        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+    rsclient
+        .idm_oauth2_rs_delete_sup_scope_map("test_integration", TEST_INTEGRATION_RS_GROUP_ALL)
+        .await
+        .expect("Failed to update oauth2 scopes");
+}
+
+#[kanidmd_testkit::test]
+async fn test_oauth2_token_post_bad_bodies(rsclient: KanidmClient) {
+    let res = rsclient
+        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+
+    let url = rsclient.get_url().to_string();
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .no_proxy()
+        .build()
+        .expect("Failed to create client.");
+
+    // test for a bad-body request on token
+    let response = client
+        .post(format!("{}/oauth2/token", url))
+        .form(&serde_json::json!({}))
+        // .bearer_auth(atr.access_token.clone())
+        .send()
+        .await
+        .expect("Failed to send token request.");
+    println!("{:?}", response);
+    assert!(response.status() == StatusCode::UNPROCESSABLE_ENTITY);
+
+    // test for a bad-auth request
+    let response = client
+        .post(format!("{}/oauth2/token/introspect", url))
+        .form(&serde_json::json!({ "token": "lol" }))
+        .send()
+        .await
+        .expect("Failed to send token introspection request.");
+    println!("{:?}", response);
+    assert!(response.status() == StatusCode::UNAUTHORIZED);
+}
+
+#[kanidmd_testkit::test]
+async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
+    let res = rsclient
+        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+
+    let url = rsclient.get_url().to_string();
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .no_proxy()
+        .build()
+        .expect("Failed to create client.");
+
+    // test for a bad-body request on token
+    let response = client
+        .post(format!("{}/oauth2/token/revoke", url))
+        .form(&serde_json::json!({}))
+        .bearer_auth("lolol")
+        .send()
+        .await
+        .expect("Failed to send token request.");
+    println!("{:?}", response);
+    assert!(response.status() == StatusCode::UNPROCESSABLE_ENTITY);
+
+    // test for a invalid format request on token
+    let response = client
+        .post(format!("{}/oauth2/token/revoke", url))
+        .json("")
+        .bearer_auth("lolol")
+        .send()
+        .await
+        .expect("Failed to send token request.");
+    println!("{:?}", response);
+
+    assert!(response.status() == StatusCode::UNSUPPORTED_MEDIA_TYPE);
+
+    // test for a bad-body request on token
+    let response = client
+        .post(format!("{}/oauth2/token/revoke", url))
+        .form(&serde_json::json!({}))
+        .bearer_auth("Basic lolol")
+        .send()
+        .await
+        .expect("Failed to send token request.");
+    println!("{:?}", response);
+    assert!(response.status() == StatusCode::UNPROCESSABLE_ENTITY);
+
+    // test for a bad-body request on token
+    let response = client
+        .post(format!("{}/oauth2/token/revoke", url))
+        .body(serde_json::json!({}).to_string())
+        .bearer_auth("Basic lolol")
+        .send()
+        .await
+        .expect("Failed to send token request.");
+    println!("{:?}", response);
+    assert!(response.status() == StatusCode::UNSUPPORTED_MEDIA_TYPE);
 }

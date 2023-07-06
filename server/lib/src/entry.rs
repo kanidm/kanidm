@@ -51,10 +51,8 @@ use crate::idm::ldap::ldap_vattr_map;
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
-use crate::repl::proto::ReplEntryV1;
-
-// use crate::repl::entry::EntryChangelog;
 use crate::repl::entry::EntryChangeState;
+use crate::repl::proto::{ReplEntryV1, ReplIncrementalEntryV1};
 
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::value::{
@@ -66,10 +64,14 @@ pub type EntryInitNew = Entry<EntryInit, EntryNew>;
 pub type EntryInvalidNew = Entry<EntryInvalid, EntryNew>;
 pub type EntryRefreshNew = Entry<EntryRefresh, EntryNew>;
 pub type EntrySealedNew = Entry<EntrySealed, EntryNew>;
+pub type EntryValidCommitted = Entry<EntryValid, EntryCommitted>;
 pub type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
 pub type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
 pub type EntryReducedCommitted = Entry<EntryReduced, EntryCommitted>;
 pub type EntryTuple = (Arc<EntrySealedCommitted>, EntryInvalidCommitted);
+
+pub type EntryIncrementalNew = Entry<EntryIncremental, EntryNew>;
+pub type EntryIncrementalCommitted = Entry<EntryIncremental, EntryCommitted>;
 
 // Entry should have a lifecycle of types. This is Raw (modifiable) and Entry (verified).
 // This way, we can move between them, but only certain actions are possible on either
@@ -82,15 +84,15 @@ pub type EntryTuple = (Arc<EntrySealedCommitted>, EntryInvalidCommitted);
 // This is specifically important for the commit to the backend, as we only want to
 // commit validated types.
 
+// Has never been in the DB, so doesn't have an ID.
 #[derive(Clone, Debug)]
 pub struct EntryNew; // new
+
+// It's been in the DB, so it has an id
 #[derive(Clone, Debug)]
 pub struct EntryCommitted {
     id: u64,
 }
-
-// It's been in the DB, so it has an id
-// pub struct EntryPurged;
 
 #[derive(Clone, Debug)]
 pub struct EntryInit;
@@ -111,6 +113,14 @@ pub struct EntryInvalid {
 // Alternate path - this entry came from a full refresh, and already has an entry change state.
 #[derive(Clone, Debug)]
 pub struct EntryRefresh {
+    ecstate: EntryChangeState,
+}
+
+// Alternate path - this entry came from an incremental replication.
+#[derive(Clone, Debug)]
+pub struct EntryIncremental {
+    // Must have a uuid, else we can't proceed at all.
+    uuid: Uuid,
     ecstate: EntryChangeState,
 }
 
@@ -576,7 +586,7 @@ impl Entry<EntryInit, EntryNew> {
     // event for the attribute.
     /// Add an attribute-value-assertion to this Entry.
     pub fn add_ava(&mut self, attr: &str, value: Value) {
-        self.add_ava_int(attr, value)
+        self.add_ava_int(attr, value);
     }
 
     /// Replace the existing content of an attribute set of this Entry, with a new set of Values.
@@ -629,7 +639,283 @@ impl<STATE> Entry<EntryRefresh, STATE> {
             attrs: self.attrs,
         };
 
-        ne.validate(schema)
+        ne.validate(schema).map(|()| ne)
+    }
+}
+
+impl<STATE> Entry<EntryIncremental, STATE> {
+    pub fn get_uuid(&self) -> Uuid {
+        self.valid.uuid
+    }
+}
+
+impl Entry<EntryIncremental, EntryNew> {
+    fn stub_ecstate(&self) -> EntryChangeState {
+        self.valid.ecstate.stub()
+    }
+
+    pub fn rehydrate(repl_inc_entry: &ReplIncrementalEntryV1) -> Result<Self, OperationError> {
+        let (uuid, ecstate, attrs) = repl_inc_entry.rehydrate()?;
+
+        Ok(Entry {
+            valid: EntryIncremental { uuid, ecstate },
+            state: EntryNew,
+            attrs,
+        })
+    }
+
+    pub(crate) fn is_add_conflict(&self, db_entry: &EntrySealedCommitted) -> bool {
+        use crate::repl::entry::State;
+        debug_assert!(self.valid.uuid == db_entry.valid.uuid);
+        // This is a conflict if the state 'at' is not identical
+        let self_cs = &self.valid.ecstate;
+        let db_cs = db_entry.get_changestate();
+
+        // Can only add conflict on live entries.
+        match (self_cs.current(), db_cs.current()) {
+            (State::Live { at: at_left, .. }, State::Live { at: at_right, .. }) => {
+                at_left != at_right
+            }
+            // Tombstone will always overwrite.
+            _ => false,
+        }
+    }
+
+    pub(crate) fn merge_state(
+        &self,
+        db_ent: &EntrySealedCommitted,
+        _schema: &dyn SchemaTransaction,
+    ) -> EntryIncrementalCommitted {
+        use crate::repl::entry::State;
+
+        // Paranoid check.
+        debug_assert!(self.valid.uuid == db_ent.valid.uuid);
+
+        // First, determine if either side is a tombstone. This is needed so that only
+        // when both sides are live
+        let self_cs = &self.valid.ecstate;
+        let db_cs = db_ent.get_changestate();
+
+        match (self_cs.current(), db_cs.current()) {
+            (
+                State::Live {
+                    at: at_left,
+                    changes: changes_left,
+                },
+                State::Live {
+                    at: at_right,
+                    changes: changes_right,
+                },
+            ) => {
+                debug_assert!(at_left == at_right);
+                // Given the current db entry, compare and merge our attributes to
+                // form a resultant entry attr and ecstate
+                //
+                // To shortcut this we dedup the attr set and then iterate.
+                let mut attr_set: Vec<_> =
+                    changes_left.keys().chain(changes_right.keys()).collect();
+                attr_set.sort_unstable();
+                attr_set.dedup();
+
+                // Make a new ecstate and attrs set.
+                let mut changes = BTreeMap::default();
+                let mut eattrs = Eattrs::default();
+
+                // Now we have the set of attrs from both sides. Lets see what state they are in!
+                for attr_name in attr_set.into_iter() {
+                    match (changes_left.get(attr_name), changes_right.get(attr_name)) {
+                        (Some(cid_left), Some(cid_right)) => {
+                            // This is the normal / usual and most "fun" case. Here we need to determine
+                            // which side is latest and then do a valueset merge. This is also
+                            // needing schema awareness depending on the attribute!
+                            //
+                            // The behaviour is very dependent on the state of the attributes and
+                            // if they exist.
+                            let take_left = cid_left > cid_right;
+
+                            match (self.attrs.get(attr_name), db_ent.attrs.get(attr_name)) {
+                                (Some(vs_left), Some(vs_right)) if take_left => {
+                                    #[allow(clippy::todo)]
+                                    if let Some(_attr_state) = vs_left.repl_merge_valueset(vs_right)
+                                    {
+                                        todo!();
+                                    } else {
+                                        changes.insert(attr_name.clone(), cid_left.clone());
+                                        eattrs.insert(attr_name.clone(), vs_left.clone());
+                                    }
+                                }
+                                (Some(vs_left), Some(vs_right)) => {
+                                    #[allow(clippy::todo)]
+                                    if let Some(_attr_state) = vs_right.repl_merge_valueset(vs_left)
+                                    {
+                                        todo!();
+                                    } else {
+                                        changes.insert(attr_name.clone(), cid_right.clone());
+                                        eattrs.insert(attr_name.clone(), vs_right.clone());
+                                    }
+                                }
+                                (Some(vs_left), None) if take_left => {
+                                    changes.insert(attr_name.clone(), cid_left.clone());
+                                    eattrs.insert(attr_name.clone(), vs_left.clone());
+                                }
+                                (Some(_vs_left), None) => {
+                                    changes.insert(attr_name.clone(), cid_right.clone());
+                                    // Taking right, nothing to do due to no attr.
+                                }
+                                (None, Some(_vs_right)) if take_left => {
+                                    changes.insert(attr_name.clone(), cid_left.clone());
+                                    // Taking left, nothing to do due to no attr.
+                                }
+                                (None, Some(vs_right)) => {
+                                    changes.insert(attr_name.clone(), cid_right.clone());
+                                    eattrs.insert(attr_name.clone(), vs_right.clone());
+                                }
+                                (None, None) if take_left => {
+                                    changes.insert(attr_name.clone(), cid_left.clone());
+                                    // Taking left, nothing to do due to no attr.
+                                }
+                                (None, None) => {
+                                    changes.insert(attr_name.clone(), cid_right.clone());
+                                    // Taking right, nothing to do due to no attr.
+                                }
+                            }
+                            // End attr merging
+                        }
+                        (Some(cid_left), None) => {
+                            // Keep the value on the left.
+                            changes.insert(attr_name.clone(), cid_left.clone());
+                            if let Some(valueset) = self.attrs.get(attr_name) {
+                                eattrs.insert(attr_name.clone(), valueset.clone());
+                            }
+                        }
+                        (None, Some(cid_right)) => {
+                            // Keep the value on the right.
+                            changes.insert(attr_name.clone(), cid_right.clone());
+                            if let Some(valueset) = db_ent.attrs.get(attr_name) {
+                                eattrs.insert(attr_name.clone(), valueset.clone());
+                            }
+                        }
+                        (None, None) => {
+                            // Should be impossible! At least one side or the other must have a change.
+                            debug_assert!(false);
+                        }
+                    }
+                }
+
+                let ecstate = EntryChangeState::build(State::Live {
+                    at: at_left.clone(),
+                    changes,
+                });
+
+                Entry {
+                    valid: EntryIncremental {
+                        uuid: self.valid.uuid,
+                        ecstate,
+                    },
+                    state: EntryCommitted {
+                        id: db_ent.state.id,
+                    },
+                    attrs: eattrs,
+                }
+            }
+            (State::Tombstone { at: left_at }, State::Live { .. }) => {
+                // We have to generate the attrs here, since on replication
+                // we just send the tombstone ecstate rather than attrs. Our
+                // db stub also lacks these attributes too.
+                let mut attrs_new: Eattrs = Map::new();
+                let class_ava = vs_iutf8!["object", "tombstone"];
+                let last_mod_ava = vs_cid![left_at.clone()];
+
+                attrs_new.insert(AttrString::from("uuid"), vs_uuid![self.valid.uuid]);
+                attrs_new.insert(AttrString::from("class"), class_ava);
+                attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);
+
+                Entry {
+                    valid: EntryIncremental {
+                        uuid: self.valid.uuid,
+                        ecstate: self.valid.ecstate.clone(),
+                    },
+                    state: EntryCommitted {
+                        id: db_ent.state.id,
+                    },
+                    attrs: attrs_new,
+                }
+            }
+            (State::Live { .. }, State::Tombstone { .. }) => {
+                // Our current DB entry is a tombstone - ignore the incoming live
+                // entry and just retain our DB tombstone.
+                //
+                // Note we don't need to gen the attrs here since if a stub was made then
+                // we'd be live:live. To be in live:ts, then our db entry MUST exist and
+                // must be a ts.
+
+                Entry {
+                    valid: EntryIncremental {
+                        uuid: db_ent.valid.uuid,
+                        ecstate: db_ent.valid.ecstate.clone(),
+                    },
+                    state: EntryCommitted {
+                        id: db_ent.state.id,
+                    },
+                    attrs: db_ent.attrs.clone(),
+                }
+            }
+            (State::Tombstone { at: left_at }, State::Tombstone { at: right_at }) => {
+                // WARNING - this differs from the other tombstone check cases
+                // lower of the two AT values. This way replicas always have the
+                // earliest TS value. It's a rare case but needs handling.
+
+                let (at, ecstate) = if left_at < right_at {
+                    (left_at, self.valid.ecstate.clone())
+                } else {
+                    (right_at, db_ent.valid.ecstate.clone())
+                };
+
+                let mut attrs_new: Eattrs = Map::new();
+                let class_ava = vs_iutf8!["object", "tombstone"];
+                let last_mod_ava = vs_cid![at.clone()];
+
+                attrs_new.insert(AttrString::from("uuid"), vs_uuid![db_ent.valid.uuid]);
+                attrs_new.insert(AttrString::from("class"), class_ava);
+                attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);
+
+                Entry {
+                    valid: EntryIncremental {
+                        uuid: db_ent.valid.uuid,
+                        ecstate,
+                    },
+                    state: EntryCommitted {
+                        id: db_ent.state.id,
+                    },
+                    attrs: attrs_new,
+                }
+            }
+        }
+    }
+}
+
+impl Entry<EntryIncremental, EntryCommitted> {
+    pub(crate) fn validate_repl(self, schema: &dyn SchemaTransaction) -> EntryValidCommitted {
+        // Unlike the other method of schema validation, we can't return an error
+        // here when schema fails - we need to in-place move the entry to a
+        // conflict state so that the replication can proceed.
+
+        let mut ne = Entry {
+            valid: EntryValid {
+                uuid: self.valid.uuid,
+                ecstate: self.valid.ecstate,
+            },
+            state: self.state,
+            attrs: self.attrs,
+        };
+
+        #[allow(clippy::todo)]
+        if let Err(e) = ne.validate(schema) {
+            warn!(uuid = ?self.valid.uuid, err = ?e, "Entry failed schema check, moving to a conflict state");
+            ne.add_ava_int("class", Value::new_class("conflict"));
+            todo!();
+        }
+        ne
     }
 }
 
@@ -664,7 +950,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             attrs: self.attrs,
         };
 
-        ne.validate(schema)
+        ne.validate(schema).map(|()| ne)
     }
 }
 
@@ -859,11 +1145,19 @@ impl Entry<EntrySealed, EntryCommitted> {
         self
     }
 
-    /*
-    pub fn get_changelog_mut(&mut self) -> &mut EntryChangelog {
-        &mut self.valid.eclog
+    pub(crate) fn stub_sealed_committed_id(
+        id: u64,
+        ctx_ent: &EntryIncrementalNew,
+    ) -> EntrySealedCommitted {
+        let uuid = ctx_ent.get_uuid();
+        let ecstate = ctx_ent.stub_ecstate();
+
+        Entry {
+            valid: EntrySealed { uuid, ecstate },
+            state: EntryCommitted { id },
+            attrs: Default::default(),
+        }
     }
-    */
 
     /// Insert a claim to this entry. This claim can NOT be persisted to disk, this is only
     /// used during a single Event session.
@@ -1441,10 +1735,7 @@ impl Entry<EntrySealed, EntryCommitted> {
 }
 
 impl<STATE> Entry<EntryValid, STATE> {
-    fn validate(
-        self,
-        schema: &dyn SchemaTransaction,
-    ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
+    fn validate(&self, schema: &dyn SchemaTransaction) -> Result<(), SchemaError> {
         let schema_classes = schema.get_classes();
         let schema_attributes = schema.get_attributes();
 
@@ -1666,7 +1957,7 @@ impl<STATE> Entry<EntryValid, STATE> {
         }
 
         // Well, we got here, so okay!
-        Ok(self)
+        Ok(())
     }
 
     pub fn invalidate(self, cid: Cid, ecstate: EntryChangeState) -> Entry<EntryInvalid, STATE> {
@@ -1850,18 +2141,23 @@ impl Entry<EntryReduced, EntryCommitted> {
 
 // impl<STATE> Entry<EntryValid, STATE> {
 impl<VALID, STATE> Entry<VALID, STATE> {
-    /// This internally adds an AVA to the entry.
-    fn add_ava_int(&mut self, attr: &str, value: Value) {
-        // How do we make this turn into an ok / err?
-
+    /// This internally adds an AVA to the entry. If the entry was newly added, then true is returned.
+    /// If the value already existed, or was unable to be added, false is returned. Alternately,
+    /// you can think of this boolean as "if a write occurred to the structure", true indicating that
+    /// a change occurred.
+    fn add_ava_int(&mut self, attr: &str, value: Value) -> bool {
         if let Some(vs) = self.attrs.get_mut(attr) {
             let r = vs.insert_checked(value);
             debug_assert!(r.is_ok());
+            // Default to the value not being present if wrong typed.
+            r.unwrap_or(false)
         } else {
             #[allow(clippy::expect_used)]
             let vs = valueset::from_value_iter(std::iter::once(value))
                 .expect("Unable to fail - non-zero iter, and single value type!");
             self.attrs.insert(AttrString::from(attr), vs);
+            // The attribute did not exist before.
+            true
         }
         // Doesn't matter if it already exists, equality will replace.
     }
@@ -1892,6 +2188,24 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     fn set_last_changed(&mut self, cid: Cid) {
         let cv = vs_cid![cid];
         let _ = self.attrs.insert(AttrString::from("last_modified_cid"), cv);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn get_last_changed(&self) -> Cid {
+        self.attrs
+            .get("last_modified_cid")
+            .and_then(|vs| vs.to_cid_single())
+            .unwrap()
+    }
+
+    pub(crate) fn get_display_id(&self) -> String {
+        self.attrs
+            .get("spn")
+            .and_then(|vs| vs.to_value_single())
+            .or_else(|| self.attrs.get("name").and_then(|vs| vs.to_value_single()))
+            .or_else(|| self.attrs.get("uuid").and_then(|vs| vs.to_value_single()))
+            .map(|value| value.to_proto_string_clone())
+            .unwrap_or_else(|| "no entry id available".to_string())
     }
 
     #[inline(always)]
@@ -2401,7 +2715,15 @@ where
             .eclog
             .add_ava_iter(&self.valid.cid, attr, std::iter::once(value.clone()));
         */
-        self.add_ava_int(attr, value)
+        self.add_ava_int(attr, value);
+    }
+
+    pub fn add_ava_if_not_exist(&mut self, attr: &str, value: Value) {
+        // This returns true if the value WAS changed! See add_ava_int.
+        if self.add_ava_int(attr, value) {
+            // In this case, we ONLY update the changestate if the value was already present!
+            self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        }
     }
 
     fn assert_ava(&mut self, attr: &str, value: &PartialValue) -> Result<(), OperationError> {

@@ -14,6 +14,7 @@ use std::ffi::CString;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::symlink;
 use std::path::Path;
+use std::process::ExitCode;
 use std::time::Duration;
 use std::{fs, io};
 
@@ -27,10 +28,20 @@ use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
 use sketching::tracing_forest::{self};
 use tokio::net::UnixStream;
+use tokio::sync::broadcast;
 use tokio::time;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 use users::{get_effective_gid, get_effective_uid};
 use walkdir::WalkDir;
+
+#[cfg(all(target_family = "unix", feature = "selinux"))]
+use kanidm_unix_common::selinux_util;
+#[cfg(all(target_family = "unix", feature = "selinux"))]
+use selinux::SecurityContext;
+#[cfg(all(target_family = "unix", feature = "selinux"))]
+use std::process::Command;
+#[cfg(all(target_family = "unix", feature = "selinux"))]
+use users::get_user_by_uid;
 
 struct TaskCodec;
 
@@ -109,10 +120,35 @@ fn create_home_directory(
         return Err("Invalid/Corrupt home directory path - no prefix found".to_string());
     }
 
+    // Get a handle to the SELinux labeling interface
+    #[cfg(all(target_family = "unix", feature = "selinux"))]
+    let labeler = selinux_util::get_labeler()?;
+
+    // Construct a path for SELinux context lookups.
+    // We do this because the policy only associates a home directory to its owning
+    // user by the name of the directory. Since the real user's home directory is (by
+    // default) their uuid or spn, its context will always be the policy default
+    // (usually user_u or unconfined_u). This lookup path is used to ask the policy
+    // what the context SHOULD be, and we will create policy equivalence rules below
+    // so that relabels in the future do not break it.
+    #[cfg(all(target_family = "unix", feature = "selinux"))]
+    // Yes, gid, because we use the GID number for both the user's UID and primary GID
+    let sel_lookup_path_raw = match get_user_by_uid(info.gid) {
+        Some(v) => format!("{}{}", home_prefix, v.name().to_str().unwrap()),
+        None => {
+            return Err("Failed looking up username by uid for SELinux relabeling".to_string());
+        }
+    };
+
     // Does the home directory exist?
     if !hd_path.exists() {
         // Set a umask
         let before = unsafe { umask(0o0027) };
+
+        // Set the SELinux security context for file creation
+        #[cfg(all(target_family = "unix", feature = "selinux"))]
+        selinux_util::do_setfscreatecon_for_path(&sel_lookup_path_raw, &labeler)?;
+
         // Create the dir
         if let Err(e) = fs::create_dir_all(hd_path) {
             let _ = unsafe { umask(before) };
@@ -133,14 +169,46 @@ fn create_home_directory(
                         .strip_prefix(skel_dir)
                         .map_err(|e| e.to_string())?,
                 );
+
+                #[cfg(all(target_family = "unix", feature = "selinux"))]
+                {
+                    // Look up the correct SELinux context of this object
+                    let sel_lookup_path = Path::new(&sel_lookup_path_raw).join(
+                        entry
+                            .path()
+                            .strip_prefix(skel_dir)
+                            .map_err(|e| e.to_string())?,
+                    );
+                    selinux_util::do_setfscreatecon_for_path(
+                        &sel_lookup_path.to_str().unwrap().to_string(),
+                        &labeler,
+                    )?;
+                }
+
                 if entry.path().is_dir() {
                     fs::create_dir_all(dest).map_err(|e| e.to_string())?;
                 } else {
                     fs::copy(entry.path(), dest).map_err(|e| e.to_string())?;
                 }
                 chown(dest, info.gid)?;
+
+                // Create equivalence rule in the SELinux policy
+                #[cfg(all(target_family = "unix", feature = "selinux"))]
+                if Command::new("semanage")
+                    .args(["fcontext", "-ae", &sel_lookup_path_raw, &hd_path_raw])
+                    .spawn()
+                    .is_err()
+                {
+                    return Err("Failed creating SELinux policy equivalence rule".to_string());
+                }
             }
         }
+    }
+
+    // Reset object creation SELinux context to default
+    #[cfg(all(target_family = "unix", feature = "selinux"))]
+    if SecurityContext::set_default_context_for_new_file_system_objects().is_err() {
+        return Err("Failed resetting SELinux file creation contexts".to_string());
     }
 
     let name_rel_path = Path::new(&name);
@@ -216,19 +284,15 @@ async fn handle_tasks(stream: UnixStream, cfg: &KanidmUnixdConfig) {
     }
 }
 
-#[tokio::main]
-async fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> ExitCode {
     // let cuid = get_current_uid();
     // let cgid = get_current_gid();
     // We only need to check effective id
     let ceuid = get_effective_uid();
     let cegid = get_effective_gid();
 
-    if ceuid != 0 || cegid != 0 {
-        eprintln!("Refusing to run - this process *MUST* operate as root.");
-        std::process::exit(1);
-    }
-
+    #[allow(clippy::expect_used)]
     tracing_forest::worker_task()
         .set_global(true)
         // Fall back to stderr
@@ -241,12 +305,17 @@ async fn main() {
             )
         })
         .on(async {
+            if ceuid != 0 || cegid != 0 {
+                error!("Refusing to run - this process *MUST* operate as root.");
+                return ExitCode::FAILURE;
+            }
+
             let unixd_path = Path::new(DEFAULT_CONFIG_PATH);
             let unixd_path_str = match unixd_path.to_str() {
                 Some(cps) => cps,
                 None => {
                     error!("Unable to turn unixd_path to str");
-                    std::process::exit(1);
+                    return ExitCode::FAILURE;
                 }
             };
 
@@ -254,36 +323,104 @@ async fn main() {
                 Ok(v) => v,
                 Err(_) => {
                     error!("Failed to parse {}", unixd_path_str);
-                    std::process::exit(1);
+                    return ExitCode::FAILURE;
                 }
             };
 
             let task_sock_path = cfg.task_sock_path.clone();
             debug!("Attempting to use {} ...", task_sock_path);
 
-            let server = async move {
+            let (broadcast_tx, mut broadcast_rx) = broadcast::channel(4);
+            let mut d_broadcast_rx = broadcast_tx.subscribe();
+
+            let server = tokio::spawn(async move {
                 loop {
                     info!("Attempting to connect to kanidm_unixd ...");
-                    // Try to connect to the daemon.
-                    match UnixStream::connect(&task_sock_path).await {
-                        // Did we connect?
-                        Ok(stream) => {
-                            info!("Found kanidm_unixd, waiting for tasks ...");
-                            // Yep! Now let the main handler do it's job.
-                            // If it returns (dc, etc, then we loop and try again).
-                            handle_tasks(stream, &cfg).await;
+
+                    tokio::select! {
+                        _ = broadcast_rx.recv() => {
+                            break;
                         }
-                        Err(e) => {
-                            error!("Unable to find kanidm_unixd, sleeping ...");
-                            debug!("\\---> {:?}", e);
-                            // Back off.
-                            time::sleep(Duration::from_millis(5000)).await;
+                        connect_res = UnixStream::connect(&task_sock_path) => {
+                            match connect_res {
+                                Ok(stream) => {
+                                    info!("Found kanidm_unixd, waiting for tasks ...");
+                                    // Yep! Now let the main handler do it's job.
+                                    // If it returns (dc, etc, then we loop and try again).
+                                    tokio::select! {
+                                        _ = d_broadcast_rx.recv() => {
+                                            break;
+                                        }
+                                        _ = handle_tasks(stream, &cfg) => {
+                                            continue;
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    debug!("\\---> {:?}", e);
+                                    error!("Unable to find kanidm_unixd, sleeping ...");
+                                    // Back off.
+                                    time::sleep(Duration::from_millis(5000)).await;
+                                }
+                            }
                         }
                     }
                 }
-            };
+            });
 
-            server.await;
+            info!("Server started ...");
+
+            loop {
+                tokio::select! {
+                    Ok(()) = tokio::signal::ctrl_c() => {
+                        break
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::terminate();
+                        #[allow(clippy::unwrap_used)]
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        break
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::alarm();
+                        #[allow(clippy::unwrap_used)]
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::hangup();
+                        #[allow(clippy::unwrap_used)]
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                        #[allow(clippy::unwrap_used)]
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                        #[allow(clippy::unwrap_used)]
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+                }
+            }
+            info!("Signal received, shutting down");
+            // Send a broadcast that we are done.
+            if let Err(e) = broadcast_tx.send(true) {
+                error!("Unable to shutdown workers {:?}", e);
+            }
+
+            let _ = server.await;
+            ExitCode::SUCCESS
         })
-        .await;
+        .await
 }

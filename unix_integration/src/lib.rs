@@ -27,7 +27,11 @@ pub mod client_sync;
 pub mod constants;
 #[cfg(target_family = "unix")]
 pub(crate) mod db;
+#[cfg(all(target_family = "unix", feature = "selinux"))]
+pub mod selinux_util;
 #[cfg(target_family = "unix")]
 pub mod unix_config;
+#[cfg(target_family = "unix")]
+pub mod unix_passwd;
 #[cfg(target_family = "unix")]
 pub mod unix_proto;

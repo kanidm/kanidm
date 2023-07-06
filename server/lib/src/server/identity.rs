@@ -6,6 +6,7 @@
 use crate::be::Limits;
 use std::collections::BTreeSet;
 use std::hash::Hash;
+use std::net::IpAddr;
 use std::sync::Arc;
 use uuid::uuid;
 
@@ -14,6 +15,14 @@ use kanidm_proto::v1::{ApiTokenPurpose, UatPurpose};
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
+use crate::value::Session;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Source {
+    Internal,
+    Https(IpAddr),
+    // Ldaps,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AccessScope {
@@ -54,7 +63,7 @@ impl From<&UatPurpose> for AccessScope {
 #[derive(Debug, Clone)]
 /// Metadata and the entry of the current Identity which is an external account/user.
 pub struct IdentUser {
-    pub entry: Arc<Entry<EntrySealed, EntryCommitted>>,
+    pub entry: Arc<EntrySealedCommitted>,
     // IpAddr?
     // Other metadata?
 }
@@ -157,8 +166,31 @@ impl Identity {
         self.scope
     }
 
+    pub fn project_with_scope(&self, scope: AccessScope) -> Self {
+        let mut new = self.clone();
+        new.scope = scope;
+        new
+    }
+
     pub fn get_session_id(&self) -> Uuid {
         self.session_id
+    }
+
+    pub fn get_session(&self) -> Option<&Session> {
+        match &self.origin {
+            IdentType::Internal | IdentType::Synch(_) => None,
+            IdentType::User(u) => u
+                .entry
+                .get_ava_as_session_map("user_auth_token_session")
+                .and_then(|sessions| sessions.get(&self.session_id)),
+        }
+    }
+
+    pub fn get_user_entry(&self) -> Option<Arc<EntrySealedCommitted>> {
+        match &self.origin {
+            IdentType::Internal | IdentType::Synch(_) => None,
+            IdentType::User(u) => Some(u.entry.clone()),
+        }
     }
 
     pub fn from_impersonate(ident: &Self) -> Self {

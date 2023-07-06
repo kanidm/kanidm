@@ -42,7 +42,7 @@ systemctl status kanidm-unixd-tasks
 > provides supporting Kanidm's capabilities.
 
 Both unixd daemons use the connection configuration from /etc/kanidm/config. This is the covered in
-[client_tools](./client_tools.md#kanidm-configuration).
+[client_tools](../client_tools.md#kanidm-configuration).
 
 You can also configure some unixd-specific options with the file /etc/kanidm/unixd:
 
@@ -55,6 +55,8 @@ home_alias = "spn"
 use_etc_skel = false
 uid_attr_map = "spn"
 gid_attr_map = "spn"
+selinux = true
+allow_local_account_override = ["account_name"]
 ```
 
 `pam_allowed_login_groups` defines a set of POSIX groups where membership of any of these groups
@@ -89,22 +91,34 @@ when first created. Defaults to false.
 `gid_attr_map` chooses which attribute is used for domain local groups in presentation. Defaults to
 `spn`. Groups from a trust will always use spn.
 
+`selinux` controls whether the `kanidm_unixd_tasks` daemon should detect and enable SELinux runtime
+compatibility features to ensure that newly created home directories are labeled correctly. This
+setting as no bearing on systems without SELinux, as these features will automatically be disabled
+if SELinux is not detected when the daemon starts. Note that `kanidm_unixd_tasks` must also be built
+with the SELinux feature flag for this functionality. Defaults to true.
+
+`allow_local_account_override` allows kanidm to "override" the content of a user or group that is
+defined locally. By default kanidm will detect when a user/group conflict with their entries from
+`/etc/passwd` or `/etc/group` and will ignore the kanidm entry. However if you want kanidm to
+override users or groups from the local system, you must list them in this field. Note that this can
+have many unexpected consequences, so it is not recommended to enable this.
+
 You can then check the communication status of the daemon:
 
 ```bash
-kanidm_unixd_status
+kanidm-unix status
 ```
 
 If the daemon is working, you should see:
 
 ```
-[2020-02-14T05:58:37Z INFO  kanidm_unixd_status] working!
+working!
 ```
 
 If it is not working, you will see an error message:
 
 ```
-[2020-02-14T05:58:10Z ERROR kanidm_unixd_status] Error -> 
+[2020-02-14T05:58:10Z ERROR kanidm-unix] Error ->
    Os { code: 111, kind: ConnectionRefused, message: "Connection refused" }
 ```
 
@@ -119,8 +133,8 @@ passwd: compat kanidm
 group: compat kanidm
 ```
 
-You can [create a user](./accounts_and_groups.md#creating-accounts) then
-[enable POSIX feature on the user](./posix_accounts.md#enabling-posix-attributes-on-accounts).
+You can [create a user](../accounts_and_groups.md#creating-accounts) then
+[enable POSIX feature on the user](../posix_accounts.md#enabling-posix-attributes-on-accounts).
 
 You can then test that the POSIX extended user is able to be resolved with:
 
@@ -372,7 +386,7 @@ similar to the following example:
 ```bash
 > kanidm group posix show example_group
 Using cached token for name idm_admin
-Error -> Http(500, Some(InvalidAccountState("Missing class: account && posixaccount OR group && posixgroup")), 
+Error -> Http(500, Some(InvalidAccountState("Missing class: account && posixaccount OR group && posixgroup")),
     "b71f137e-39f3-4368-9e58-21d26671ae24")
 ```
 
@@ -473,13 +487,13 @@ cache_timeout = 60
 You can invalidate the kanidm_unixd cache with:
 
 ```bash
-kanidm_cache_invalidate
+kanidm-unix cache-invalidate
 ```
 
 You can clear (wipe) the cache with:
 
 ```bash
-kanidm_cache_clear
+kanidm-unix cache-clear
 ```
 
 There is an important distinction between these two - invalidated cache items may still be yielded
@@ -489,3 +503,8 @@ may have your laptop in a park without wifi.
 Clearing the cache, however, completely wipes all local data about all accounts and groups. If you
 are relying on this cached (but invalid) data, you may lose access to your accounts until other
 communication issues have been resolved.
+
+### Home directories are not created via SSH
+
+Ensure that `UsePAM yes` is set in `sshd_config`. Without this the pam session module won't be
+triggered which prevents the background task being completed.

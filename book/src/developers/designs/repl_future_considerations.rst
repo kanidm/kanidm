@@ -303,7 +303,7 @@ to prevent this situation such as:
 In this case, one can imagine B would then supply data, and when A Received B's changes, it would again
 supply to R. However, this can be easily avoided by adhering to the following:
 
-* A server can only supply to a read-only if all of the suppling server's RUV CSN MAX are contained
+* A server can only supply to a read-only if all of the source server's RUV CSN MAX are contained
   within the destination RUV CSN MAX.
 
 By following this, B would determine that as it does *not* have (3, A) (which is greater than the local
@@ -380,7 +380,7 @@ R:
 
 As R is a read-only it has no concept of the changelog, so it sets MIN to MAX.
 
-Now, we then poll the RUV again. Protocol wise RUV polling should be separate to suppling of data!
+Now, we then poll the RUV again. Protocol wise RUV polling should be separate to transfer of data!
 
 ::
 

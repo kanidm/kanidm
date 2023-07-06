@@ -157,15 +157,13 @@ impl ValueSetT for ValueSetCid {
         }
     }
 
-    /*
     fn to_cid_single(&self) -> Option<Cid> {
         if self.set.len() == 1 {
-            self.set.iter().cloned().take(1).next()
+            self.set.iter().take(1).next().cloned()
         } else {
             None
         }
     }
-    */
 
     fn as_cid_set(&self) -> Option<&SmolSet<[Cid; 1]>> {
         Some(&self.set)

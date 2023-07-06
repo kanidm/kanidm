@@ -2,6 +2,7 @@
 // may only have certain modifications performed.
 
 use hashbrown::HashSet;
+use std::sync::Arc;
 
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::Modify;
@@ -16,7 +17,7 @@ pub struct Protected {}
 
 lazy_static! {
     static ref ALLOWED_ATTRS: HashSet<&'static str> = {
-        let mut m = HashSet::with_capacity(8);
+        let mut m = HashSet::with_capacity(16);
         // Allow modification of some schema class types to allow local extension
         // of schema types.
         //
@@ -24,6 +25,7 @@ lazy_static! {
         m.insert("may");
         // Allow modification of some domain info types for local configuration.
         m.insert("domain_ssid");
+        m.insert("domain_ldap_basedn");
         m.insert("fernet_private_key_str");
         m.insert("es256_private_key_der");
         m.insert("badlist_password");
@@ -68,6 +70,7 @@ impl Plugin for Protected {
     #[instrument(level = "debug", name = "protected_pre_modify", skip(_qs, cand, me))]
     fn pre_modify(
         _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<EntryInvalidCommitted>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -143,6 +146,7 @@ impl Plugin for Protected {
 
     fn pre_batch_modify(
         _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<EntryInvalidCommitted>,
         me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {

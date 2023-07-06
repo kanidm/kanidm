@@ -61,6 +61,13 @@ pub fn push_login_hint(r: String) {
     TemporaryStorage::set("login_hint", r).expect_throw("failed to set login hint");
 }
 
+pub fn get_login_hint() -> Option<String> {
+    let l: Result<String, _> = TemporaryStorage::get("login_hint");
+    #[cfg(debug_assertions)]
+    console::debug!(format!("login_hint::get_login_hint -> {:?}", l).as_str());
+    l.ok()
+}
+
 pub fn pop_login_hint() -> Option<String> {
     let l: Result<String, _> = TemporaryStorage::get("login_hint");
     #[cfg(debug_assertions)]
@@ -76,7 +83,7 @@ pub fn push_login_remember_me(r: String) {
 pub fn get_login_remember_me() -> Option<String> {
     let l: Result<String, _> = PersistentStorage::get("login_remember_me");
     #[cfg(debug_assertions)]
-    console::debug!(format!("login_hint::pop_login_remember_me -> {:?}", l).as_str());
+    console::debug!(format!("login_hint::get_login_remember_me -> {:?}", l).as_str());
     l.ok()
 }
 

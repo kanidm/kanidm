@@ -3,18 +3,17 @@ name = "sketching"
 # We do not have tests in this pkg
 autotests = false
 
-version.workspace = true
-authors.workspace = true
-rust-version.workspace = true
-edition.workspace = true
-license.workspace = true
-homepage.workspace = true
-repository.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+rust-version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
 
 [dependencies]
-async-trait.workspace = true
-num_enum.workspace = true
-tide.workspace = true
+async-trait = { workspace = true }
+num_enum = { workspace = true }
 tracing = { workspace = true, features = ["attributes"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tracing-forest = { workspace = true, features = ["uuid", "smallvec", "tokio", "env-filter"] }

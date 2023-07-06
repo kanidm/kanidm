@@ -1,6 +1,7 @@
 # Kanidm
 
 - [Introduction to Kanidm](intro.md)
+- [Evaluation Quickstart](quickstart.md)
 - [Installing the Server](installing_the_server.md)
   - [Choosing a Domain Name](choosing_a_domain_name.md)
   - [Preparing for your Deployment](prepare_the_server.md)
@@ -14,6 +15,7 @@
 
 - [Administration](administrivia.md)
   - [Accounts and Groups](accounts_and_groups.md)
+  - [Authentication and Credentials](authentication.md)
   - [POSIX Accounts and Groups](posix_accounts.md)
   - [Backup and Restore](backup_restore.md)
   - [Database Maintenance](database_maint.md)
@@ -34,6 +36,7 @@
 
 - [Concepts](sync/concepts.md)
 - [FreeIPA](sync/freeipa.md)
+- [LDAP](sync/ldap.md)
 
 # Integration Examples
 
@@ -55,6 +58,7 @@
   - [Access Profiles Original](developers/designs/access_profiles_and_security.md)
   - [REST Interface](developers/designs/rest_interface.md)
   - [Elevated Priv Mode](developers/designs/elevated_priv_mode.md)
+  - [Oauth2 Refresh Tokens](developers/designs/oauth2_refresh_tokens.md)
 - [Python Module](developers/python.md)
 - [RADIUS Integration](developers/radius.md)
 

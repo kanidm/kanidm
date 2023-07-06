@@ -22,13 +22,13 @@ def test_auth_init_response() -> None:
 def test_radiusgroup_vlan_negative() -> None:
     """tests RadiusGroup's vlan validator"""
     with pytest.raises(pydantic.error_wrappers.ValidationError):
-        RadiusGroup(vlan=-1)
+        RadiusGroup(vlan=-1, spn="crabzrool@foo")
 
 
 def test_radiusgroup_vlan_zero() -> None:
     """tests RadiusGroup's vlan validator"""
     with pytest.raises(pydantic.error_wrappers.ValidationError):
-        RadiusGroup(vlan=0)
+        RadiusGroup(vlan=0, spn="crabzrool@foo")
 
 
 def test_radiusgroup_vlan_4096() -> None:
@@ -41,10 +41,7 @@ def test_radiusgroup_vlan_no_name() -> None:
     with pytest.raises(
         pydantic.error_wrappers.ValidationError, match="spn\n.*field required"
     ):
-        RadiusGroup(
-            vlan=4096,
-        )
-
+        RadiusGroup(vlan=4096) # type: ignore[call-arg]
 
 def test_kanidmconfig_parse_toml() -> None:
     """tests KanidmClientConfig.parse_toml()"""

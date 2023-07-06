@@ -11,6 +11,7 @@ use webauthn_rs::prelude::{
 use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
 
 // Re-export this as though it was here.
+use crate::repl::cid::Cid;
 pub use kanidm_lib_crypto::DbPasswordV1;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -24,12 +25,26 @@ pub struct DbCidV1 {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueIntentTokenStateV1 {
     #[serde(rename = "v")]
-    Valid { max_ttl: Duration },
+    Valid {
+        max_ttl: Duration,
+        #[serde(default)]
+        ext_cred_portal_can_view: bool,
+        #[serde(default)]
+        primary_can_edit: bool,
+        #[serde(default)]
+        passkeys_can_edit: bool,
+    },
     #[serde(rename = "p")]
     InProgress {
         max_ttl: Duration,
         session_id: Uuid,
         session_ttl: Duration,
+        #[serde(default)]
+        ext_cred_portal_can_view: bool,
+        #[serde(default)]
+        primary_can_edit: bool,
+        #[serde(default)]
+        passkeys_can_edit: bool,
     },
     #[serde(rename = "c")]
     Consumed { max_ttl: Duration },
@@ -608,6 +623,8 @@ pub enum DbValueSetV2 {
     TotpSecret(Vec<(String, DbTotpV1)>),
     #[serde(rename = "AT")]
     ApiToken(Vec<DbValueApiToken>),
+    #[serde(rename = "SA")]
+    AuditLogString(Vec<(Cid, String)>),
 }
 
 impl DbValueSetV2 {
@@ -650,6 +667,7 @@ impl DbValueSetV2 {
             DbValueSetV2::JwsKeyRs256(set) => set.len(),
             DbValueSetV2::UiHint(set) => set.len(),
             DbValueSetV2::TotpSecret(set) => set.len(),
+            DbValueSetV2::AuditLogString(set) => set.len(),
         }
     }
 

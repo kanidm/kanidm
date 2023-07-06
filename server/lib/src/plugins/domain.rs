@@ -5,15 +5,25 @@
 // which is importart for management of the replication topo and trust
 // relationships.
 use std::iter::once;
+use std::sync::Arc;
 
 use compact_jwt::JwsSigner;
 use kanidm_proto::v1::OperationError;
 use rand::prelude::*;
+use regex::Regex;
 use tracing::trace;
 
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
+
+lazy_static! {
+    pub static ref DOMAIN_LDAP_BASEDN_RE: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new(r"^(dc|o|ou)=[a-z][a-z0-9]*(,(dc|o|ou)=[a-z][a-z0-9]*)*$")
+            .expect("Invalid domain ldap basedn regex")
+    };
+}
 
 pub struct Domain {}
 
@@ -34,6 +44,7 @@ impl Plugin for Domain {
     #[instrument(level = "debug", name = "domain_pre_modify", skip_all)]
     fn pre_modify(
         qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -43,6 +54,7 @@ impl Plugin for Domain {
     #[instrument(level = "debug", name = "domain_pre_batch_modify", skip_all)]
     fn pre_batch_modify(
         qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
@@ -59,6 +71,16 @@ impl Domain {
             if e.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
                 && e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)
             {
+                // Validate the domain ldap basedn syntax.
+                if let Some(basedn) = e
+                    .get_ava_single_iutf8("domain_ldap_basedn") {
+
+                    if !DOMAIN_LDAP_BASEDN_RE.is_match(basedn) {
+                        error!("Invalid domain_ldap_basedn. Must pass regex \"{}\"", *DOMAIN_LDAP_BASEDN_RE);
+                        return Err(OperationError::InvalidState);
+                    }
+                }
+
                 // We always set this, because the DB uuid is authoritative.
                 let u = Value::Uuid(qs.get_domain_uuid());
                 e.set_ava("domain_uuid", once(u));

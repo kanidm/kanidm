@@ -28,10 +28,11 @@ extern crate kanidmd_lib;
 pub mod actors;
 pub mod config;
 mod crypto;
-pub mod https;
+mod https;
 mod interval;
 mod ldaps;
 
+use std::path::Path;
 use std::sync::Arc;
 
 use compact_jwt::JwsSigner;
@@ -39,7 +40,6 @@ use kanidm_proto::messages::{AccountChangeMessage, MessageStatus};
 use kanidm_proto::v1::OperationError;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction, FsType};
 use kanidmd_lib::idm::ldap::LdapServer;
-use kanidmd_lib::idm::server::{IdmServer, IdmServerDelayed};
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::schema::Schema;
 use kanidmd_lib::status::StatusActor;
@@ -51,8 +51,7 @@ use tokio::sync::broadcast;
 
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
-use crate::config::Configuration;
-use crate::crypto::setup_tls;
+use crate::config::{Configuration, ServerRole};
 use crate::interval::IntervalActor;
 
 // === internal setup helpers
@@ -101,7 +100,7 @@ async fn setup_qs_idms(
     be: Backend,
     schema: Schema,
     config: &Configuration,
-) -> Result<(QueryServer, IdmServer, IdmServerDelayed), OperationError> {
+) -> Result<(QueryServer, IdmServer, IdmServerDelayed, IdmServerAudit), OperationError> {
     // Create a query_server implementation
     let query_server = QueryServer::new(be, schema, config.domain.clone());
 
@@ -119,9 +118,10 @@ async fn setup_qs_idms(
 
     // We generate a SINGLE idms only!
 
-    let (idms, idms_delayed) = IdmServer::new(query_server.clone(), &config.origin).await?;
+    let (idms, idms_delayed, idms_audit) =
+        IdmServer::new(query_server.clone(), &config.origin).await?;
 
-    Ok((query_server, idms, idms_delayed))
+    Ok((query_server, idms, idms_delayed, idms_audit))
 }
 
 async fn setup_qs(
@@ -297,7 +297,7 @@ pub async fn restore_server_core(config: &Configuration, dst_path: &str) {
 
     info!("Attempting to init query server ...");
 
-    let (qs, _idms, _idms_delayed) = match setup_qs_idms(be, schema, config).await {
+    let (qs, _idms, _idms_delayed, _idms_audit) = match setup_qs_idms(be, schema, config).await {
         Ok(t) => t,
         Err(e) => {
             error!("Unable to setup query server or idm server -> {:?}", e);
@@ -354,7 +354,7 @@ pub async fn reindex_server_core(config: &Configuration) {
 
     eprintln!("Attempting to init query server ...");
 
-    let (qs, _idms, _idms_delayed) = match setup_qs_idms(be, schema, config).await {
+    let (qs, _idms, _idms_delayed, _idms_audit) = match setup_qs_idms(be, schema, config).await {
         Ok(t) => t,
         Err(e) => {
             error!("Unable to setup query server or idm server -> {:?}", e);
@@ -515,7 +515,7 @@ pub async fn recover_account_core(config: &Configuration, name: &str) {
         }
     };
     // setup the qs - *with* init of the migrations and schema.
-    let (_qs, idms, _idms_delayed) = match setup_qs_idms(be, schema, config).await {
+    let (_qs, idms, _idms_delayed, _idms_audit) = match setup_qs_idms(be, schema, config).await {
         Ok(t) => t,
         Err(e) => {
             error!("Unable to setup query server or idm server -> {:?}", e);
@@ -551,6 +551,98 @@ pub async fn recover_account_core(config: &Configuration, name: &str) {
             action: String::from("recovery of account password"),
         }
     );
+}
+
+pub fn cert_generate_core(config: &Configuration) {
+    // Get the cert root
+
+    let (tls_key_path, tls_chain_path) = match &config.tls_config {
+        Some(tls_config) => (
+            Path::new(tls_config.key.as_str()),
+            Path::new(tls_config.chain.as_str()),
+        ),
+        None => {
+            error!("Unable to find tls configuration");
+            std::process::exit(1);
+        }
+    };
+
+    if tls_key_path.exists() && tls_chain_path.exists() {
+        info!(
+            "tls key and chain already exist - remove them first if you intend to regenerate these"
+        );
+        return;
+    }
+
+    let origin = match Url::parse(&config.origin) {
+        Ok(url) => url,
+        Err(e) => {
+            error!(err = ?e, "Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", config.origin);
+            std::process::exit(1);
+        }
+    };
+
+    let origin_domain = if let Some(d) = origin.domain() {
+        d
+    } else {
+        error!("origin does not contain a valid domain");
+        std::process::exit(1);
+    };
+
+    let cert_root = match tls_key_path.parent() {
+        Some(parent) => parent,
+        None => {
+            error!("Unable to find parent directory of {:?}", tls_key_path);
+            std::process::exit(1);
+        }
+    };
+
+    let ca_cert = cert_root.join("ca.pem");
+    let ca_key = cert_root.join("cakey.pem");
+    let tls_cert_path = cert_root.join("cert.pem");
+
+    let ca_handle = if !ca_cert.exists() || !ca_key.exists() {
+        // Generate the CA again.
+        let ca_handle = match crypto::build_ca() {
+            Ok(ca_handle) => ca_handle,
+            Err(e) => {
+                error!(err = ?e, "Failed to build CA");
+                std::process::exit(1);
+            }
+        };
+
+        if crypto::write_ca(ca_key, ca_cert, &ca_handle).is_err() {
+            error!("Failed to write CA");
+            std::process::exit(1);
+        }
+
+        ca_handle
+    } else {
+        match crypto::load_ca(ca_key, ca_cert) {
+            Ok(ca_handle) => ca_handle,
+            Err(_) => {
+                error!("Failed to load CA");
+                std::process::exit(1);
+            }
+        }
+    };
+
+    if !tls_key_path.exists() || !tls_chain_path.exists() || !tls_cert_path.exists() {
+        // Generate the cert from the ca.
+        let cert_handle = match crypto::build_cert(origin_domain, &ca_handle) {
+            Ok(cert_handle) => cert_handle,
+            Err(e) => {
+                error!(err = ?e, "Failed to build certificate");
+                std::process::exit(1);
+            }
+        };
+
+        if crypto::write_cert(tls_key_path, tls_chain_path, tls_cert_path, &cert_handle).is_err() {
+            error!("Failed to write certificates");
+            std::process::exit(1);
+        }
+    }
+    info!("certificate generation complete");
 }
 
 #[derive(Clone, Debug)]
@@ -626,7 +718,7 @@ pub async fn create_server_core(
     let status_ref = StatusActor::start();
 
     // Setup TLS (if any)
-    let _opt_tls_params = match setup_tls(&config) {
+    let _opt_tls_params = match crypto::setup_tls(&config) {
         Ok(opt_tls_params) => opt_tls_params,
         Err(e) => {
             error!("Failed to configure TLS parameters -> {:?}", e);
@@ -651,13 +743,14 @@ pub async fn create_server_core(
         }
     };
     // Start the IDM server.
-    let (_qs, idms, mut idms_delayed) = match setup_qs_idms(be, schema, &config).await {
-        Ok(t) => t,
-        Err(e) => {
-            error!("Unable to setup query server or idm server -> {:?}", e);
-            return Err(());
-        }
-    };
+    let (_qs, idms, mut idms_delayed, mut idms_audit) =
+        match setup_qs_idms(be, schema, &config).await {
+            Ok(t) => t,
+            Err(e) => {
+                error!("Unable to setup query server or idm server -> {:?}", e);
+                return Err(());
+            }
+        };
 
     // Extract any configuration from the IDMS that we may need.
     // For now we just do this per run, but we need to extract this from the db later.
@@ -735,13 +828,43 @@ pub async fn create_server_core(
         info!("Stopped DelayedActionActor");
     });
 
+    let mut broadcast_rx = broadcast_tx.subscribe();
+
+    let auditd_handle = tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                Ok(action) = broadcast_rx.recv() => {
+                    match action {
+                        CoreAction::Shutdown => break,
+                    }
+                }
+                audit_event = idms_audit.audit_rx().recv() => {
+                    match serde_json::to_string(&audit_event) {
+                        Ok(audit_event) => {
+                            warn!(%audit_event);
+                        }
+                        Err(e) => {
+                            error!(err=?e, "Unable to process audit event to json.");
+                            warn!(?audit_event, json=false);
+                        }
+                    }
+
+                }
+            }
+        }
+        info!("Stopped AuditdActor");
+    });
+
     // Setup timed events associated to the write thread
     let interval_handle = IntervalActor::start(server_write_ref, broadcast_tx.subscribe());
     // Setup timed events associated to the read thread
     let maybe_backup_handle = match &config.online_backup {
-        Some(cfg) => {
-            let handle =
-                IntervalActor::start_online_backup(server_read_ref, cfg, broadcast_tx.subscribe())?;
+        Some(online_backup_config) => {
+            let handle = IntervalActor::start_online_backup(
+                server_read_ref,
+                online_backup_config,
+                broadcast_tx.subscribe(),
+            )?;
             Some(handle)
         }
         None => {
@@ -753,7 +876,7 @@ pub async fn create_server_core(
     // If we have been requested to init LDAP, configure it now.
     let maybe_ldap_acceptor_handle = match &config.ldapaddress {
         Some(la) => {
-            let opt_ldap_tls_params = match setup_tls(&config) {
+            let opt_ldap_tls_params = match crypto::setup_tls(&config) {
                 Ok(t) => t,
                 Err(e) => {
                     error!("Failed to configure LDAP TLS parameters -> {:?}", e);
@@ -788,26 +911,32 @@ pub async fn create_server_core(
         admin_info!("this config rocks! 🪨 ");
         None
     } else {
-        // ⚠️  only start the sockets and listeners in non-config-test modes.
-        let h = self::https::create_https_server(
-            config.address,
-            config.domain,
-            config.tls_config.as_ref(),
-            config.role,
-            config.trust_x_forward_for,
-            &cookie_key,
+        let h: tokio::task::JoinHandle<()> = match https::create_https_server(
+            config.clone(),
+            cookie_key,
             jws_signer,
             status_ref,
             server_write_ref,
             server_read_ref,
             broadcast_tx.subscribe(),
-        )?;
-
-        admin_info!("ready to rock! 🪨 ");
+        )
+        .await
+        {
+            Ok(h) => h,
+            Err(e) => {
+                error!("Failed to start HTTPS server -> {:?}", e);
+                return Err(());
+            }
+        };
+        if config.role != ServerRole::WriteReplicaNoUI {
+            admin_info!("ready to rock! 🪨  UI available at: {}", config.origin);
+        } else {
+            admin_info!("ready to rock! 🪨 ");
+        }
         Some(h)
     };
 
-    let mut handles = vec![interval_handle, delayed_handle];
+    let mut handles = vec![interval_handle, delayed_handle, auditd_handle];
 
     if let Some(backup_handle) = maybe_backup_handle {
         handles.push(backup_handle)

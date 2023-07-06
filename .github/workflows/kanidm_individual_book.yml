@@ -1,0 +1,83 @@
+---
+name: "Github Pages - Branch"
+"on":
+  workflow_call:
+    inputs:
+      # the target tag for generating things
+      tag:
+        required: true
+        type: string
+      # the parent workflow for caching
+      parent_id:
+        required: true
+        type: string
+env:
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+  ACTIONS_RUNNER_DEBUG: true
+jobs:
+  generate_mdbook:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.tag }}
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+        with:
+          version: "v0.4.2"
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang build-essential \
+            librust-openssl-dev libssl-dev \
+            libsqlite3-dev libudev-dev \
+            libpam0g-dev
+      - name: Setup mdBook
+        uses: peaceiris/actions-mdbook@v1
+        with:
+          mdbook-version: "latest"
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Build the docs
+        run: |
+          cargo install mdbook-template
+          cargo doc --no-deps
+          mdbook build *book
+          rm -rf ./docs/
+          mkdir -p ./docs/
+          mv ./*book/book ./docs/${{ inputs.tag }}
+          mkdir -p ./docs/${{ inputs.tag }}/rustdoc/
+          find ./target/doc/ -name .lock -exec rm "{}" \;
+          mv ./target/doc/* ./docs/${{ inputs.tag }}/rustdoc/
+      - name: pykanidm docs
+        run: |
+          python -m pip install poetry
+          cd pykanidm
+          poetry install
+          poetry run mkdocs build
+          cd ..
+          mv pykanidm/site ./docs/${{ inputs.tag }}/pykanidm
+        continue-on-error: true
+      - name: archive things
+        run: |
+          tar czvf ${{ inputs.tag }}.tar.gz ./docs/
+
+        env:
+          ACTIONS_RUNNER_DEBUG: true
+      - name: Upload artifact
+        # https://github.com/actions/upload-artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: individual
+          path: ${{inputs.tag }}.tar.gz
+        env:
+          ACTIONS_RUNNER_DEBUG: true

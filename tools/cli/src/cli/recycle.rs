@@ -1,3 +1,4 @@
+use crate::common::OpType;
 use crate::RecycleOpt;
 
 impl RecycleOpt {
@@ -12,7 +13,7 @@ impl RecycleOpt {
     pub async fn exec(&self) {
         match self {
             RecycleOpt::List(copt) => {
-                let client = copt.to_client().await;
+                let client = copt.to_client(OpType::Read).await;
                 match client.recycle_bin_list().await {
                     Ok(r) => r.iter().for_each(|e| println!("{}", e)),
                     Err(e) => {
@@ -21,7 +22,7 @@ impl RecycleOpt {
                 }
             }
             RecycleOpt::Get(nopt) => {
-                let client = nopt.copt.to_client().await;
+                let client = nopt.copt.to_client(OpType::Write).await;
                 match client.recycle_bin_get(nopt.name.as_str()).await {
                     Ok(Some(e)) => println!("{}", e),
                     Ok(None) => println!("No matching entries"),
@@ -31,7 +32,7 @@ impl RecycleOpt {
                 }
             }
             RecycleOpt::Revive(nopt) => {
-                let client = nopt.copt.to_client().await;
+                let client = nopt.copt.to_client(OpType::Write).await;
                 if let Err(e) = client.recycle_bin_revive(nopt.name.as_str()).await {
                     error!("Error -> {:?}", e);
                 }

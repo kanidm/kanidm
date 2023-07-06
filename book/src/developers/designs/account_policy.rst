@@ -20,7 +20,7 @@ As the majority of the attacks listed can be prevented with TOTP, and all effect
 Webauthn, it's essential that policies can exist that allow an administrator to set requirements
 on accounts to what level of authentication they require to protect resources.
 
-Credential Polcies are inherited from groups, as groups grant rights and claims to other resources.
+Credential Policies are inherited from groups, as groups grant rights and claims to other resources.
 Since it is these resources and privileges we wish to protect, logically the credential policy becomes
 part of the group that should be protected.
 

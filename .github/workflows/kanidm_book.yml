@@ -3,69 +3,125 @@ name: GitHub Pages
 
 "on":
   push:
+    branches:
+      - "master"
+  pull_request:
+
+# permissions list: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
+permissions:
+  id-token: write
+  actions: read
+  checks: read
+  contents: write
+  deployments: write
+  issues: read
+  pull-requests: read
+  statuses: read
+  pages: write
+
+env:
+  ACTIONS_RUNNER_DEBUG: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  deploy_book:
+  pre_deploy:
     runs-on: ubuntu-latest
+    outputs:
+      latest: ${{ steps.branchname.outputs.latest }}
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          clean: false
-
-      - name: Install deps
+      - name: Latest branch
         run: |
-          sudo apt-get update
-          sudo apt-get install -y clang build-essential \
-            librust-openssl-dev libssl-dev \
-            libsqlite3-dev libudev-dev \
-            libpam0g-dev
-
-      - name: Setup deno
-        # Documentation: https://github.com/denoland/setup-deno
-        uses: denoland/setup-deno@v1
-        with:
-          deno-version: v1.x
-
-      - name: Test document formatting
+          echo "latest=$(git branch -a  | awk '{print $1}' | sort -t. -k3n,3 -k4n,4 | awk -F'/' '{print $NF}' | tail -n1)" >> $GITHUB_OUTPUT
+        id: branchname
+      - name: Move redirector page
         run: |
-          make doc/format
-
-      - name: Setup mdBook
-        uses: peaceiris/actions-mdbook@v1
+          mkdir docs
+          cp book/index_redirect.html ./docs/index.html
+          find ./docs > docs/manifest.txt
+      - name: Upload redirector artifact
+        # https://github.com/actions/upload-artifact
+        uses: actions/upload-artifact@v3
         with:
-          mdbook-version: "latest"
+          name: base
+          path: docs/index.html
 
-      - uses: actions-rs/toolchain@v1
+  fanout:
+    uses: './.github/workflows/kanidm_individual_book.yml'
+    needs: pre_deploy
+    if: ${{ github.action_ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' && github.event == 'merge' }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        tag:
+          - ${{ needs.pre_deploy.outputs.latest}}
+    with:
+      tag: ${{ matrix.tag }}
+      parent_id: ${{ github.ref }}
+  docs_master:
+    uses: './.github/workflows/kanidm_individual_book.yml'
+    with:
+      tag: "master"
+      parent_id: ${{ github.ref }}
+
+  deploy:
+    environment:
+      name: "github-pages"
+      url: ${{ steps.deployment.outputs.page_url }}
+    needs:
+      - pre_deploy
+      - fanout
+      - docs_master
+    runs-on: ubuntu-latest
+    if: ${{ github.action_ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' && github.event == 'merge' }}
+    steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+      - uses: actions/checkout@v3
         with:
-          toolchain: stable
-
-      - uses: actions-rs/cargo@v1
+          fetch-depth: 0
+      - name: Download base artifact
+        uses: actions/download-artifact@v3
         with:
-          command: install
-          args: mdbook-template
-
-      - name: Make all the books
-        run: ./scripts/build_all_the_docs.sh
-
-      - name: Install python 3.10
-        uses: actions/setup-python@v4
+          name: base
+          path: ./docs/
+        env:
+          ACTIONS_RUNNER_DEBUG: true
+      - name: Download individual artifact
+        uses: actions/download-artifact@v3
         with:
-          python-version: "3.10"
-
-      - name: pykanidm docs
+          name: individual
+          path: ./docs/
+        env:
+          ACTIONS_RUNNER_DEBUG: true
+      - name: Extract the files
         run: |
-          python -m pip install poetry
-          make docs/pykanidm/build
-          mv pykanidm/site ./docs/pykanidm
-
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        if: ${{ github.ref == 'refs/heads/master' }}
+          pwd
+          echo "doing find $(pwd) -ls maxdepth 2"
+          find $(pwd) -ls -maxdepth 2
+          echo "doing find tar.gz ls"
+          find $(pwd) -name '*.tar.gz' -ls
+          echo "extracting"
+          find $(pwd) -name '*.tar.gz' -ls -exec tar zxvf "{}" \;
+          echo "Carrying on..."
+          mkdir -p docs
+          cd docs && cp -R "$(git branch -a  | awk '{print $1}' | sort -t. -k3n,3 -k4n,4 | awk -F'/' '{print $NF}' | tail -n1)/" stable && cd ..
+          ls -la docs/
+          echo "Cleaning up docs archives"
+          rm docs/*.tar.gz
+        env:
+          ACTIONS_RUNNER_DEBUG: true
+      - name: Upload pages artifacts
+        uses: actions/upload-pages-artifact@v1
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
-          destination_dir: ./docs
+          # Upload entire repository
+          path: 'docs/'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
+        if: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
