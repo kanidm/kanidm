@@ -46,12 +46,11 @@ impl Plugin for JwsKeygen {
 impl JwsKeygen {
     fn modify_inner<T: Clone>(cand: &mut [Entry<EntryInvalid, T>]) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
-        if e.attribute_equality("class", &PVCLASS_OAUTH2_BASIC) {
-            if !e.attribute_pres("oauth2_rs_basic_secret") {
+        if e.attribute_equality("class", &PVCLASS_OAUTH2_BASIC) &&
+            !e.attribute_pres("oauth2_rs_basic_secret") {
                 security_info!("regenerating oauth2 basic secret");
                 let v = Value::SecretValue(password_from_random());
                 e.add_ava("oauth2_rs_basic_secret", v);
-            }
         }
 
         if e.attribute_equality("class", &PVCLASS_OAUTH2_RS) {

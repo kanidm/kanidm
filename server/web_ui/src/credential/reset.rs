@@ -573,7 +573,7 @@ impl CredentialResetApp {
             { pw_warn }
             { pw_html_inner }
 
-            <PwModalApp token={ token.clone() } cb={ cb.clone() } />
+            <PwModalApp token={ token.clone() } cb={ cb } />
            </>
         }
     }
@@ -593,7 +593,7 @@ impl CredentialResetApp {
               <>
                 <p>{ "Strong cryptographic authenticators with self contained multi-factor authentication." }</p>
                 <p>{ "No Passkeys Registered" }</p>
-                <PasskeyModalApp token={ token.clone() } cb={ cb.clone() } />
+                <PasskeyModalApp token={ token.clone() } cb={ cb } />
               </>
             }
         } else {
