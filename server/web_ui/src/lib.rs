@@ -84,6 +84,13 @@ pub async fn do_request(
         .set("content-type", "application/json")
         .expect_throw("failed to set content-type header");
 
+    if let Some(sessionid) = models::pop_auth_session_id() {
+        request
+            .headers()
+            .set("x-kanidm-auth-session-id", &sessionid)
+            .expect_throw("failed to set auth session id header");
+    }
+
     if let Some(bearer_token) = models::get_bearer_token() {
         request
             .headers()
@@ -96,6 +103,10 @@ pub async fn do_request(
     let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
     let status = resp.status();
     let headers: Headers = resp.headers();
+
+    if let Some(sessionid) = headers.get("x-kanidm-auth-session-id").ok().flatten() {
+        models::push_auth_session_id(sessionid);
+    }
 
     let kopid = headers.get("x-kanidm-opid").ok().flatten();
 
