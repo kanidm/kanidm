@@ -231,11 +231,11 @@ kanidm system oauth2 warning-enable-legacy-crypto <resource server name>
 ## Public Client Configuration
 
 Some applications are unable to provide client authentication. A common example is single page web
-applications that act as the oauth2 client and it's corresponding webserver that is the resource
+applications that act as the OAuth2 client and its corresponding webserver that is the resource
 server. In this case the SPA is unable to act as a confidential client since the basic secret would
 need to be embedded in every client.
 
-Public clients for this reason require PKCE to bind a specific browser session to it's oauth2
+Public clients for this reason require PKCE to bind a specific browser session to its OAuth2
 exchange. PKCE can not be disabled for public clients for this reason.
 
 <!-- deno-fmt-ignore-start -->
@@ -247,7 +247,7 @@ title=WARNING text=Public clients have many limitations compared to confidential
 
 <!-- deno-fmt-ignore-end -->
 
-To create an oauth2 public resource server:
+To create an OAuth2 public resource server:
 
 ```bash
 kanidm system oauth2 create-public <name> <displayname> <origin>

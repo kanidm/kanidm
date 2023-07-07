@@ -664,10 +664,10 @@ pub enum Oauth2Opt {
         copt: CommonOpt,
     },
     #[clap(name = "create-public")]
-    /// Create a new oauth2 public resource server that requires pkce. You should prefer
+    /// Create a new OAuth2 public resource server that requires PKCE. You should prefer
     /// using confidential resource server types if possible over public ones.
     ///
-    /// Public clients have many limitations and can not access all API's of oauth2. For
+    /// Public clients have many limitations and can not access all API's of OAuth2. For
     /// example rfc7662 token introspection requires client authentication.
     CreatePublic {
         #[clap(name = "name")]
