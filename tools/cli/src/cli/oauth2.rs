@@ -6,7 +6,6 @@ impl Oauth2Opt {
         match self {
             Oauth2Opt::List(copt) => copt.debug,
             Oauth2Opt::Get(nopt) => nopt.copt.debug,
-            Oauth2Opt::CreateBasic(cbopt) => cbopt.nopt.copt.debug,
             Oauth2Opt::UpdateScopeMap(cbopt) => cbopt.nopt.copt.debug,
             Oauth2Opt::DeleteScopeMap(cbopt) => cbopt.nopt.copt.debug,
             Oauth2Opt::UpdateSupScopeMap(cbopt) => cbopt.nopt.copt.debug,
@@ -24,6 +23,9 @@ impl Oauth2Opt {
             Oauth2Opt::DisableLegacyCrypto(nopt) => nopt.copt.debug,
             Oauth2Opt::PreferShortUsername(nopt) => nopt.copt.debug,
             Oauth2Opt::PreferSPNUsername(nopt) => nopt.copt.debug,
+            Oauth2Opt::CreateBasic { copt, .. } | Oauth2Opt::CreatePublic { copt, .. } => {
+                copt.debug
+            }
         }
     }
 
@@ -44,13 +46,37 @@ impl Oauth2Opt {
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
-            Oauth2Opt::CreateBasic(cbopt) => {
-                let client = cbopt.nopt.copt.to_client(OpType::Read).await;
+            Oauth2Opt::CreateBasic {
+                name,
+                displayname,
+                origin,
+                copt,
+            } => {
+                let client = copt.to_client(OpType::Write).await;
                 match client
                     .idm_oauth2_rs_basic_create(
-                        cbopt.nopt.name.as_str(),
-                        cbopt.displayname.as_str(),
-                        cbopt.origin.as_str(),
+                        name.as_str(),
+                        displayname.as_str(),
+                        origin.as_str(),
+                    )
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
+            Oauth2Opt::CreatePublic {
+                name,
+                displayname,
+                origin,
+                copt,
+            } => {
+                let client = copt.to_client(OpType::Write).await;
+                match client
+                    .idm_oauth2_rs_public_create(
+                        name.as_str(),
+                        displayname.as_str(),
+                        origin.as_str(),
                     )
                     .await
                 {

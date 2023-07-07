@@ -125,6 +125,7 @@ codespell:
 	-L 'crate,unexpect,Pres,pres,ACI,aci,te,ue,unx,aNULL' \
 	--skip='./target,./pykanidm/.venv,./pykanidm/.mypy_cache,./.mypy_cache,./pykanidm/poetry.lock' \
 	--skip='./book/book/*' \
+	--skip='./book/src/images/*' \
 	--skip='./docs/*,./.git' \
 	--skip='./rlm_python/mods-available/eap' \
 	--skip='./server/web_ui/static/external,./server/web_ui/pkg/external' \

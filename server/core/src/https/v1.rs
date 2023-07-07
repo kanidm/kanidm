@@ -1404,6 +1404,11 @@ pub async fn auth_valid(
 pub fn router(state: ServerState) -> Router<ServerState> {
     Router::new()
         .route("/v1/oauth2", get(super::oauth2::oauth2_get))
+        .route("/v1/oauth2/_basic", post(super::oauth2::oauth2_basic_post))
+        .route(
+            "/v1/oauth2/_public",
+            post(super::oauth2::oauth2_public_post),
+        )
         .route(
             "/v1/oauth2/:rs_name",
             get(super::oauth2::oauth2_id_get)
@@ -1414,7 +1419,6 @@ pub fn router(state: ServerState) -> Router<ServerState> {
             "/v1/oauth2/:rs_name/_basic_secret",
             get(super::oauth2::oauth2_id_get_basic_secret),
         )
-        .route("/v1/oauth2/_basic", post(super::oauth2::oauth2_basic_post))
         .route(
             "/v1/oauth2/:rs_name/_scopemap/:group",
             post(super::oauth2::oauth2_id_scopemap_post)
