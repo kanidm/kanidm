@@ -99,7 +99,7 @@ impl LoginApp {
         let authreq = AuthRequest {
             step: AuthStep::Init2 {
                 username,
-                issue: AuthIssueSession::Cookie,
+                issue: AuthIssueSession::Token,
             },
         };
         let req_jsvalue = serde_json::to_string(&authreq)
@@ -127,7 +127,7 @@ impl LoginApp {
     }
 
     async fn reauth_init() -> Result<LoginAppMsg, FetchError> {
-        let issue = AuthIssueSession::Cookie;
+        let issue = AuthIssueSession::Token;
         let authreq_jsvalue = serde_json::to_string(&issue)
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise authreq");
@@ -958,20 +958,11 @@ impl Component for LoginApp {
                         self.state = LoginState::Denied(reason);
                         true
                     }
-                    AuthState::Success(_bearer_token) => {
+                    AuthState::Success(bearer_token) => {
                         // Store the bearer here!
-                        /*
+                        // We need to format the bearer onto it.
+                        let bearer_token = format!("bearer {}", bearer_token);
                         models::set_bearer_token(bearer_token);
-                        self.state = LoginState::Authenticated;
-                        true
-                        */
-                        self.state = LoginState::Error {
-                            emsg: "Invalid Issued Session Type, expected cookie".to_string(),
-                            kopid: None,
-                        };
-                        true
-                    }
-                    AuthState::SuccessCookie => {
                         self.state = LoginState::Authenticated;
                         true
                     }

@@ -5,7 +5,6 @@ use axum::{
     response::Response,
     TypedHeader,
 };
-use axum_sessions::SessionHandle;
 use http::HeaderValue;
 use uuid::Uuid;
 
@@ -41,20 +40,8 @@ pub async fn kopid_middleware<B>(
     // generate the event ID
     let eventid = sketching::tracing_forest::id();
 
-    // get the bearer token from the headers or the session
-    let uat = match auth {
-        Some(bearer) => Some(bearer.token().to_string()),
-        None => {
-            // no headers, let's try the cookies
-            match request.extensions().get::<SessionHandle>() {
-                Some(sess) => {
-                    // we have a session!
-                    sess.read().await.get::<String>("bearer")
-                }
-                None => None,
-            }
-        }
-    };
+    // get the bearer token from the headers if present.
+    let uat = auth.map(|bearer| bearer.token().to_string());
 
     // insert the extension so we can pull it out later
     request.extensions_mut().insert(KOpId { eventid, uat });

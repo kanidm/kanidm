@@ -52,6 +52,9 @@ impl JwsKeygen {
                 let v = Value::SecretValue(password_from_random());
                 e.add_ava("oauth2_rs_basic_secret", v);
             }
+        }
+
+        if e.attribute_equality("class", &PVCLASS_OAUTH2_RS) {
             if !e.attribute_pres("oauth2_rs_token_key") {
                 security_info!("regenerating oauth2 token key");
                 let k = fernet::Fernet::generate_key();

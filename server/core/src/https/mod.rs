@@ -191,7 +191,7 @@ pub async fn create_https_server(
         .with_cookie_name("kanidm-session")
         .with_session_ttl(None)
         .with_cookie_domain(config.domain)
-        .with_same_site_policy(SameSite::Strict)
+        .with_same_site_policy(SameSite::Lax)
         .with_secure(true);
 
     let trust_x_forward_for = config.trust_x_forward_for;

@@ -1300,9 +1300,9 @@ fn auth_session_state_management(
             match auth_state {
                 AuthState::Choose(allowed) => {
                     debug!("🧩 -> AuthState::Choose"); // TODO: this should be ... less work
-
-                    // Ensure the auth-session-id is set
+                                                       // Ensure the auth-session-id is set
                     msession.remove("auth-session-id");
+                    msession.remove("bearer");
                     msession
                         .insert("auth-session-id", sessionid)
                         .map_err(|e| {
@@ -1326,10 +1326,9 @@ fn auth_session_state_management(
                 }
                 AuthState::Continue(allowed) => {
                     debug!("🧩 -> AuthState::Continue");
-
                     // Ensure the auth-session-id is set
                     msession.remove("auth-session-id");
-                    trace!(?sessionid, "🔥  🔥 ");
+                    msession.remove("bearer");
                     msession
                         .insert("auth-session-id", sessionid)
                         .map_err(|e| {
@@ -1353,24 +1352,17 @@ fn auth_session_state_management(
                 }
                 AuthState::Success(token, issue) => {
                     debug!("🧩 -> AuthState::Success");
-                    // Remove the auth-session-id
-
                     msession.remove("auth-session-id");
-                    // Create a session cookie?
                     msession.remove("bearer");
 
                     match issue {
-                        AuthIssueSession::Cookie => msession
-                            .insert("bearer", token)
-                            .map_err(|_| OperationError::InvalidSessionState)
-                            .map(|_| ProtoAuthState::SuccessCookie),
                         AuthIssueSession::Token => Ok(ProtoAuthState::Success(token)),
                     }
                 }
                 AuthState::Denied(reason) => {
                     debug!("🧩 -> AuthState::Denied");
-                    // Remove the auth-session-id
                     msession.remove("auth-session-id");
+                    msession.remove("bearer");
                     Ok(ProtoAuthState::Denied(reason))
                 }
             }

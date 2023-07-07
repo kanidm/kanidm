@@ -906,7 +906,6 @@ impl fmt::Display for AuthMech {
 #[serde(rename_all = "lowercase")]
 pub enum AuthIssueSession {
     Token,
-    Cookie,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -1011,7 +1010,9 @@ pub enum AuthState {
     // the result.
     Success(String),
     // Everything is good, your cookie has been issued.
-    SuccessCookie,
+    // Cookies no longer supported. Left as a comment as an example of alternate
+    // issue types.
+    // SuccessCookie,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -1954,7 +1954,7 @@ mod tests {
     }
 
     // setup an oauth2 instance.
-    async fn setup_oauth2_resource_server(
+    async fn setup_oauth2_resource_server_basic(
         idms: &IdmServer,
         ct: Duration,
         enable_pkce: bool,
@@ -2077,6 +2077,107 @@ mod tests {
         (secret, uat, ident, uuid)
     }
 
+    /*
+    async fn setup_oauth2_resource_server_public(
+        idms: &IdmServer,
+        ct: Duration,
+    ) -> (UserAuthToken, Identity, Uuid) {
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let uuid = Uuid::new_v4();
+
+        let e: Entry<EntryInit, EntryNew> = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("oauth2_resource_server")),
+            ("class", Value::new_class("oauth2_resource_server_public")),
+            ("uuid", Value::Uuid(uuid)),
+            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
+            ("displayname", Value::new_utf8s("test_resource_server")),
+            (
+                "oauth2_rs_origin",
+                Value::new_url_s("https://demo.example.com").unwrap()
+            ),
+            // System admins
+            (
+                "oauth2_rs_scope_map",
+                Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["groups".to_string()])
+                    .expect("invalid oauthscope")
+            ),
+            (
+                "oauth2_rs_scope_map",
+                Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["openid".to_string()])
+                    .expect("invalid oauthscope")
+            ),
+            (
+                "oauth2_rs_sup_scope_map",
+                Value::new_oauthscopemap(
+                    UUID_IDM_ALL_ACCOUNTS,
+                    btreeset!["supplement".to_string()]
+                )
+                .expect("invalid oauthscope")
+            )
+        );
+        let ce = CreateEvent::new_internal(vec![e]);
+        assert!(idms_prox_write.qs_write.create(&ce).is_ok());
+
+        // Setup the uat we'll be using - note for these tests they *require*
+        // the parent session to be valid and present!
+
+        let session_id = uuid::Uuid::new_v4();
+
+        let account = idms_prox_write
+            .target_to_account(UUID_ADMIN)
+            .expect("account must exist");
+        let uat = account
+            .to_userauthtoken(session_id, SessionScope::ReadWrite, ct)
+            .expect("Unable to create uat");
+
+        // Need the uat first for expiry.
+        let expiry = uat.expiry;
+
+        let p = CryptoPolicy::minimum();
+        let cred = Credential::new_password_only(&p, "test_password").unwrap();
+        let cred_id = cred.uuid;
+
+        let session = Value::Session(
+            session_id,
+            crate::value::Session {
+                label: "label".to_string(),
+                expiry,
+                issued_at: time::OffsetDateTime::UNIX_EPOCH + ct,
+                issued_by: IdentityId::Internal,
+                cred_id,
+                scope: SessionScope::ReadWrite,
+            },
+        );
+
+        // Mod the user
+        let modlist = ModifyList::new_list(vec![
+            Modify::Present("user_auth_token_session".into(), session),
+            Modify::Present(
+                "primary_credential".into(),
+                Value::Cred("primary".to_string(), cred),
+            ),
+        ]);
+
+        idms_prox_write
+            .qs_write
+            .internal_modify(
+                &filter!(f_eq("uuid", PartialValue::Uuid(UUID_ADMIN))),
+                &modlist,
+            )
+            .expect("Failed to modify user");
+
+        let ident = idms_prox_write
+            .process_uat_to_identity(&uat, ct)
+            .expect("Unable to process uat");
+
+        idms_prox_write.commit().expect("failed to commit");
+
+        (uat, ident, uuid)
+    }
+    */
+
     async fn setup_idm_admin(idms: &IdmServer, ct: Duration) -> (UserAuthToken, Identity) {
         let mut idms_prox_write = idms.proxy_write(ct).await;
         let account = idms_prox_write
@@ -2102,7 +2203,7 @@ mod tests {
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, uat, ident, _) =
-            setup_oauth2_resource_server(idms, ct, true, false, false).await;
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
         let idms_prox_read = idms.proxy_read().await;
 
@@ -2162,6 +2263,74 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
     }
 
+    /*
+    #[idm_test]
+    async fn test_idm_oauth2_public_function(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (uat, ident, _) = setup_oauth2_resource_server_public(idms, ct).await;
+
+        let idms_prox_read = idms.proxy_read().await;
+
+        // Get an ident/uat for now.
+
+        // == Setup the authorisation request
+        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+        let consent_request = good_authorisation_request!(
+            idms_prox_read,
+            &ident,
+            &uat,
+            ct,
+            code_challenge,
+            "openid".to_string()
+        );
+
+        // Should be in the consent phase;
+        let consent_token =
+            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
+                consent_token
+            } else {
+                unreachable!();
+            };
+
+        // == Manually submit the consent token to the permit for the permit_success
+        drop(idms_prox_read);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let permit_success = idms_prox_write
+            .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
+            .expect("Failed to perform oauth2 permit");
+
+        // Check we are reflecting the CSRF properly.
+        assert!(permit_success.state == "123");
+
+        // == Submit the token exchange code.
+
+        let token_req = AccessTokenRequest {
+            grant_type: GrantTypeReq::AuthorizationCode {
+                code: permit_success.code,
+                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                // From the first step.
+                code_verifier,
+            },
+            client_id: Some("test_resource_server".to_string()),
+            client_secret: None,
+        };
+
+        let token_response = idms_prox_write
+            .check_oauth2_token_exchange(None, &token_req, ct)
+            .expect("Failed to perform oauth2 token exchange");
+
+        // 🎉 We got a token! In the future we can then check introspection from this point.
+        assert!(token_response.token_type == "bearer");
+
+        assert!(idms_prox_write.commit().is_ok());
+    }
+    */
+
     #[idm_test]
     async fn test_idm_oauth2_invalid_authorisation_requests(
         idms: &IdmServer,
@@ -2170,7 +2339,7 @@ mod tests {
         // Test invalid oauth2 authorisation states/requests.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (_secret, uat, ident, _) =
-            setup_oauth2_resource_server(idms, ct, true, false, false).await;
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
         let (anon_uat, anon_ident) = setup_idm_admin(idms, ct).await;
         let (idm_admin_uat, idm_admin_ident) = setup_idm_admin(idms, ct).await;
@@ -2334,7 +2503,7 @@ mod tests {
         // Test invalid oauth2 authorisation states/requests.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (_secret, uat, ident, _) =
-            setup_oauth2_resource_server(idms, ct, true, false, false).await;
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
         let (uat2, ident2) = {
             let mut idms_prox_write = idms.proxy_write(ct).await;
@@ -2417,7 +2586,7 @@ mod tests {
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, mut uat, ident, _) =
-            setup_oauth2_resource_server(idms, ct, true, false, false).await;
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
         // ⚠️  We set the uat expiry time to 5 seconds from TEST_CURRENT_TIME. This
         // allows all our other tests to pass, but it means when we specifically put the
@@ -2593,7 +2762,7 @@ mod tests {
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, uat, ident, _) =
-            setup_oauth2_resource_server(idms, ct, true, false, false).await;
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
         let client_authz =
             Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
 
@@ -2691,7 +2860,7 @@ mod tests {
         // First, setup to get a token.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, uat, ident, _) =
-            setup_oauth2_resource_server(idms, ct, true, false, false).await;
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
         let client_authz =
             Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
 
@@ -2837,7 +3006,7 @@ mod tests {
         // First, setup to get a token.
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, uat, ident, _) =
-            setup_oauth2_resource_server(idms, ct, true, false, false).await;
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
         let client_authz =
             Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
 
@@ -2938,7 +3107,7 @@ mod tests {
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (_secret, uat, ident, _) =
-            setup_oauth2_resource_server(idms, ct, true, false, false).await;
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
         let (uat2, ident2) = {
             let mut idms_prox_write = idms.proxy_write(ct).await;
@@ -3022,7 +3191,7 @@ mod tests {
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (_secret, _uat, _ident, _) =
-            setup_oauth2_resource_server(idms, ct, true, false, false).await;
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
         let idms_prox_read = idms.proxy_read().await;
 
@@ -3162,7 +3331,7 @@ mod tests {
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, uat, ident, _) =
-            setup_oauth2_resource_server(idms, ct, true, false, false).await;
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
         let client_authz =
             Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
 
@@ -3289,7 +3458,7 @@ mod tests {
         // but change the preferred_username setting on the RS
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, uat, ident, _) =
-            setup_oauth2_resource_server(idms, ct, true, false, true).await;
+            setup_oauth2_resource_server_basic(idms, ct, true, false, true).await;
         let client_authz =
             Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
 
@@ -3375,7 +3544,7 @@ mod tests {
         // but change the preferred_username setting on the RS
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, uat, ident, _) =
-            setup_oauth2_resource_server(idms, ct, true, false, true).await;
+            setup_oauth2_resource_server_basic(idms, ct, true, false, true).await;
         let client_authz =
             Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
 
@@ -3469,7 +3638,7 @@ mod tests {
     async fn test_idm_oauth2_insecure_pkce(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (_secret, uat, ident, _) =
-            setup_oauth2_resource_server(idms, ct, false, false, false).await;
+            setup_oauth2_resource_server_basic(idms, ct, false, false, false).await;
 
         let idms_prox_read = idms.proxy_read().await;
 
@@ -3511,7 +3680,7 @@ mod tests {
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, uat, ident, _) =
-            setup_oauth2_resource_server(idms, ct, false, true, false).await;
+            setup_oauth2_resource_server_basic(idms, ct, false, true, false).await;
         let idms_prox_read = idms.proxy_read().await;
         // The public key url should offer an rs key
         // discovery should offer RS256
@@ -3611,7 +3780,7 @@ mod tests {
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (_secret, uat, ident, _) =
-            setup_oauth2_resource_server(idms, ct, true, false, false).await;
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
         let idms_prox_read = idms.proxy_read().await;
 
@@ -3811,7 +3980,7 @@ mod tests {
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (_secret, uat, ident, o2rs_uuid) =
-            setup_oauth2_resource_server(idms, ct, true, false, false).await;
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
         // Assert there are no consent maps yet.
         assert!(ident.get_oauth2_consent_scopes(o2rs_uuid).is_none());
@@ -3899,7 +4068,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         // Enable pkce is set to FALSE
         let (secret, uat, ident, _) =
-            setup_oauth2_resource_server(idms, ct, false, false, false).await;
+            setup_oauth2_resource_server_basic(idms, ct, false, false, false).await;
 
         let idms_prox_read = idms.proxy_read().await;
 
@@ -3976,7 +4145,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         // Enable pkce is set to FALSE
         let (secret, uat, ident, _) =
-            setup_oauth2_resource_server(idms, ct, false, false, false).await;
+            setup_oauth2_resource_server_basic(idms, ct, false, false, false).await;
 
         let idms_prox_read = idms.proxy_read().await;
 
@@ -4064,7 +4233,7 @@ mod tests {
     ) -> (AccessTokenResponse, Option<String>) {
         // First, setup to get a token.
         let (secret, uat, ident, _) =
-            setup_oauth2_resource_server(idms, ct, true, false, false).await;
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
         let client_authz =
             Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
 

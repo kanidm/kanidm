@@ -12,8 +12,23 @@ use yew_router::navigator::Navigator;
 use crate::manager::Route;
 use crate::views::ViewRoute;
 
+pub fn set_bearer_token(r: String) {
+    PersistentStorage::set("bearer_token", r).expect_throw("failed to set bearer_token");
+}
+
+pub fn get_bearer_token() -> Option<String> {
+    let l: Result<String, _> = PersistentStorage::get("bearer_token");
+    #[cfg(debug_assertions)]
+    console::debug!(format!(
+        "login_hint::get_login_remember_me -> present={:?}",
+        l.is_ok()
+    )
+    .as_str());
+    l.ok()
+}
+
 pub fn clear_bearer_token() {
-    PersistentStorage::delete("kanidm_bearer_token");
+    PersistentStorage::delete("bearer_token");
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
