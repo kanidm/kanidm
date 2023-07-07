@@ -1536,7 +1536,8 @@ lazy_static! {
 
         ("acp_create_class", Value::new_iutf8("object")),
         ("acp_create_class", Value::new_iutf8("oauth2_resource_server")),
-        ("acp_create_class", Value::new_iutf8("oauth2_resource_server_basic"))
+        ("acp_create_class", Value::new_iutf8("oauth2_resource_server_basic")),
+        ("acp_create_class", Value::new_iutf8("oauth2_resource_server_public"))
     );
 }
 

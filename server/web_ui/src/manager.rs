@@ -19,7 +19,7 @@ use crate::views::{ViewRoute, ViewsApp};
 // router to decide on state.
 #[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub enum Route {
-    #[at("/")]
+    #[at("/ui")]
     Landing,
 
     #[at("/ui/login")]
@@ -44,6 +44,8 @@ pub enum Route {
 
 #[function_component(Landing)]
 fn landing() -> Html {
+    #[cfg(debug_assertions)]
+    console::debug!("manager::landing");
     // Do this to allow use_navigator to work because lol.
     yew_router::hooks::use_navigator()
         .expect_throw("Unable to access history")
@@ -55,7 +57,7 @@ fn landing() -> Html {
 #[allow(clippy::needless_pass_by_value)]
 fn switch(route: Route) -> Html {
     #[cfg(debug_assertions)]
-    console::debug!("manager::switch");
+    console::debug!(format!("manager::switch -> {:?}", route).as_str());
     match route {
         #[allow(clippy::let_unit_value)]
         Route::Landing => html! { <Landing /> },

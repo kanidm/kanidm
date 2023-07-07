@@ -731,7 +731,7 @@ mod tests {
         let ea: Entry<EntryInit, EntryNew> = entry_init!(
             ("class", Value::new_class("object")),
             ("class", Value::new_class("oauth2_resource_server")),
-            ("class", Value::new_class("oauth2_resource_server_basic")),
+            // ("class", Value::new_class("oauth2_resource_server_basic")),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),
             (
@@ -812,7 +812,7 @@ mod tests {
         let e2 = entry_init!(
             ("class", Value::new_class("object")),
             ("class", Value::new_class("oauth2_resource_server")),
-            ("class", Value::new_class("oauth2_resource_server_basic")),
+            // ("class", Value::new_class("oauth2_resource_server_basic")),
             ("uuid", Value::Uuid(rs_uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             ("displayname", Value::new_utf8s("test_resource_server")),

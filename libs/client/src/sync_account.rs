@@ -39,7 +39,7 @@ impl KanidmClient {
             format!("/v1/sync_account/{}/_attr/sync_credential_portal", id).as_str(),
         )
         .await
-        .map(|values: Vec<Url>| values.get(0).map(|u| u.clone()))
+        .map(|values: Vec<Url>| values.get(0).cloned())
     }
 
     pub async fn idm_sync_account_create(

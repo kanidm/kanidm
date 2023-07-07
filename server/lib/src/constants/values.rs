@@ -24,6 +24,8 @@ lazy_static! {
         PartialValue::new_class("oauth2_resource_server");
     pub static ref PVCLASS_OAUTH2_BASIC: PartialValue =
         PartialValue::new_class("oauth2_resource_server_basic");
+    pub static ref PVCLASS_OAUTH2_PUBLIC: PartialValue =
+        PartialValue::new_class("oauth2_resource_server_public");
     pub static ref PVCLASS_PERSON: PartialValue = PartialValue::new_class("person");
     pub static ref PVCLASS_POSIXACCOUNT: PartialValue = PartialValue::new_class("posixaccount");
     pub static ref PVCLASS_POSIXGROUP: PartialValue = PartialValue::new_class("posixgroup");
@@ -47,6 +49,7 @@ lazy_static! {
     pub static ref CLASS_ACCOUNT: Value = Value::new_class("account");
     pub static ref CLASS_ATTRIBUTETYPE: Value = Value::new_class("attributetype");
     pub static ref CLASS_CLASS: Value = Value::new_class("class");
+    pub static ref CLASS_CLASSTYPE: Value = Value::new_class("classtype");
     pub static ref CLASS_DOMAIN_INFO: Value = Value::new_class("domain_info");
     pub static ref CLASS_DYNGROUP: Value = Value::new_class("dyngroup");
     pub static ref CLASS_GROUP: Value = Value::new_class("group");

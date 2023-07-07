@@ -47,6 +47,19 @@ pub async fn oauth2_basic_post(
     json_rest_event_post(state, classes, obj, kopid).await
 }
 
+pub async fn oauth2_public_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Json(obj): Json<ProtoEntry>,
+) -> impl IntoResponse {
+    let classes = vec![
+        "oauth2_resource_server".to_string(),
+        "oauth2_resource_server_public".to_string(),
+        "object".to_string(),
+    ];
+    json_rest_event_post(state, classes, obj, kopid).await
+}
+
 fn oauth2_id(rs_name: &str) -> Filter<FilterInvalid> {
     filter_all!(f_and!([
         f_eq("class", PartialValue::new_class("oauth2_resource_server")),
@@ -517,25 +530,12 @@ pub async fn oauth2_token_post(
     // This is called directly by the resource server, where we then issue
     // the token to the caller.
 
-    // Get the authz header (if present). In the future depending on the
-    // type of exchanges we support, this could become an Option type.
-    let client_authz = match headers
+    // Get the authz header (if present). Not all exchange types require this.
+    let client_authz = headers
         .get("authorization")
         .and_then(|hv| hv.to_str().ok())
         .and_then(|h| h.split(' ').last())
-        .map(str::to_string)
-    {
-        Some(val) => val,
-        None => {
-            error!("Basic Authentication Not Provided");
-            #[allow(clippy::unwrap_used)]
-            return Response::builder()
-                .status(StatusCode::UNAUTHORIZED)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::from("Invalid Basic Authorisation"))
-                .unwrap();
-        }
-    };
+        .map(str::to_string);
 
     // Do we change the method/path we take here based on the type of requested
     // grant? Should we cease the delayed/async session update here and just opt
@@ -543,7 +543,7 @@ pub async fn oauth2_token_post(
 
     let res = state
         .qe_w_ref
-        .handle_oauth2_token_exchange(Some(client_authz), tok_req, kopid.eventid)
+        .handle_oauth2_token_exchange(client_authz, tok_req, kopid.eventid)
         .await;
 
     match res {
@@ -612,8 +612,7 @@ pub async fn oauth2_openid_userinfo_get(
     Extension(kopid): Extension<KOpId>,
 ) -> Response<Body> {
     // The token we want to inspect is in the authorisation header.
-
-    let client_authz = match kopid.uat {
+    let client_token = match kopid.uat {
         Some(val) => val,
         None => {
             error!("Bearer Authentication Not Provided");
@@ -628,7 +627,7 @@ pub async fn oauth2_openid_userinfo_get(
 
     let res = state
         .qe_r_ref
-        .handle_oauth2_openid_userinfo(client_id, client_authz, kopid.eventid)
+        .handle_oauth2_openid_userinfo(client_id, client_token, kopid.eventid)
         .await;
 
     match res {

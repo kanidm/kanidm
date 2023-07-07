@@ -762,8 +762,6 @@ pub async fn create_server_core(
         }
     };
 
-    let cookie_key: [u8; 64] = idms.get_cookie_key();
-
     // Any pre-start tasks here.
     match &config.integration_test_config {
         Some(itc) => {
@@ -913,7 +911,6 @@ pub async fn create_server_core(
     } else {
         let h: tokio::task::JoinHandle<()> = match https::create_https_server(
             config.clone(),
-            cookie_key,
             jws_signer,
             status_ref,
             server_write_ref,

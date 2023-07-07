@@ -216,7 +216,7 @@ title=WARNING text=Changing these settings MAY have serious consequences on the 
 
 <!-- deno-fmt-ignore-end -->
 
-To disable PKCE for a resource server:
+To disable PKCE for a confidential resource server:
 
 ```bash
 kanidm system oauth2 warning-insecure-client-disable-pkce <resource server name>
@@ -226,6 +226,32 @@ To enable legacy cryptograhy (RSA PKCS1-5 SHA256):
 
 ```bash
 kanidm system oauth2 warning-enable-legacy-crypto <resource server name>
+```
+
+## Public Client Configuration
+
+Some applications are unable to provide client authentication. A common example is single page web
+applications that act as the OAuth2 client and its corresponding webserver that is the resource
+server. In this case the SPA is unable to act as a confidential client since the basic secret would
+need to be embedded in every client.
+
+Public clients for this reason require PKCE to bind a specific browser session to its OAuth2
+exchange. PKCE can not be disabled for public clients for this reason.
+
+<!-- deno-fmt-ignore-start -->
+
+{{#template ../templates/kani-warning.md
+imagepath=../images
+title=WARNING text=Public clients have many limitations compared to confidential clients. You should avoid them if possible.
+}}
+
+<!-- deno-fmt-ignore-end -->
+
+To create an OAuth2 public resource server:
+
+```bash
+kanidm system oauth2 create-public <name> <displayname> <origin>
+kanidm system oauth2 create mywebapp "My Web App" https://webapp.example.com
 ```
 
 ## Example Integrations
@@ -239,7 +265,7 @@ with an appropriate include.
 OIDCRedirectURI /protected/redirect_uri
 OIDCCryptoPassphrase <random password here>
 OIDCProviderMetadataURL https://kanidm.example.com/oauth2/openid/<resource server name>/.well-known/openid-configuration
-OIDCScope "openid" 
+OIDCScope "openid"
 OIDCUserInfoTokenMethod authz_header
 OIDCClientID <resource server name>
 OIDCClientSecret <resource server password>

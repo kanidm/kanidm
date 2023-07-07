@@ -69,6 +69,7 @@ pub async fn do_request(
     opts.method(&method.to_string());
     opts.mode(RequestMode::SameOrigin);
     opts.credentials(web_sys::RequestCredentials::SameOrigin);
+
     if let Some(body) = body {
         #[cfg(debug_assertions)]
         if method == RequestMethod::GET {
@@ -81,13 +82,31 @@ pub async fn do_request(
     request
         .headers()
         .set("content-type", "application/json")
-        .expect_throw("failed to set header");
+        .expect_throw("failed to set content-type header");
+
+    if let Some(sessionid) = models::pop_auth_session_id() {
+        request
+            .headers()
+            .set("x-kanidm-auth-session-id", &sessionid)
+            .expect_throw("failed to set auth session id header");
+    }
+
+    if let Some(bearer_token) = models::get_bearer_token() {
+        request
+            .headers()
+            .set("authorization", &bearer_token)
+            .expect_throw("failed to set authorisation header");
+    }
 
     let window = utils::window();
     let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
     let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
     let status = resp.status();
     let headers: Headers = resp.headers();
+
+    if let Some(sessionid) = headers.get("x-kanidm-auth-session-id").ok().flatten() {
+        models::push_auth_session_id(sessionid);
+    }
 
     let kopid = headers.get("x-kanidm-opid").ok().flatten();
 
