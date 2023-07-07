@@ -209,13 +209,18 @@ pub async fn create_https_server(
 
     let static_routes = match config.role {
         ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
+            // Create a spa router that captures everything at ui without key extraction.
+            let spa_router = Router::new()
+                .route("/", get(crate::https::ui::ui_handler))
+                .fallback(crate::https::ui::ui_handler);
+
             Router::new()
-                // direct users to the login page
-                .route("/", get(|| async { Redirect::temporary("/ui/login") }))
-                .route("/ui/", get(crate::https::ui::ui_handler))
-                // matches /ui/* but adds a path var `key` if you really wanted to capture it later.
-                .route("/ui/*key", get(crate::https::ui::ui_handler))
+                // direct users to the base app page. If a login is required,
+                // then views will take care of redirection. We shouldn't redir
+                // to login because that force clears previous sessions!
+                .route("/", get(|| async { Redirect::temporary("/ui") }))
                 .route("/manifest.webmanifest", get(manifest::manifest))
+                .nest("/ui", spa_router)
                 .layer(middleware::compression::new()) // TODO: this needs to be configured properly
         }
         ServerRole::WriteReplicaNoUI => Router::new(),

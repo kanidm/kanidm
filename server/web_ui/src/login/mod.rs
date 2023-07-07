@@ -588,7 +588,7 @@ impl Component for LoginApp {
 
     fn create(ctx: &Context<Self>) -> Self {
         #[cfg(debug_assertions)]
-        console::debug!("create".to_string());
+        console::debug!("login::create".to_string());
 
         let workflow = &ctx.props().workflow;
         let state = match workflow {
@@ -601,21 +601,6 @@ impl Component for LoginApp {
                     .map(|user| (user, false))
                     .or_else(|| models::get_login_remember_me().map(|user| (user, true)))
                     .unwrap_or_default();
-
-                #[cfg(debug_assertions)]
-                {
-                    let document = utils::document();
-                    let html_document = document
-                        .dyn_into::<web_sys::HtmlDocument>()
-                        .expect_throw("failed to dyn cast to htmldocument");
-                    let cookie = html_document
-                        .cookie()
-                        .expect_throw("failed to access page cookies");
-                    console::debug!("cookies".to_string());
-                    console::debug!(cookie);
-                }
-                // Clean any cookies.
-                // TODO: actually check that it's cleaning the cookies.
 
                 LoginState::InitLogin {
                     enable: true,
@@ -961,7 +946,7 @@ impl Component for LoginApp {
                     AuthState::Success(bearer_token) => {
                         // Store the bearer here!
                         // We need to format the bearer onto it.
-                        let bearer_token = format!("bearer {}", bearer_token);
+                        let bearer_token = format!("Bearer {}", bearer_token);
                         models::set_bearer_token(bearer_token);
                         self.state = LoginState::Authenticated;
                         true

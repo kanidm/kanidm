@@ -17,11 +17,11 @@ async fn test_routes(rsclient: KanidmClient) {
         "method": "GET"
       },
       {
-        "path": "/ui/",
+        "path": "/ui",
         "method": "GET"
       },
       {
-        "path": "/ui/*",
+        "path": "/ui/login",
         "method": "GET"
       },
       {

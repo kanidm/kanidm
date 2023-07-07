@@ -12,6 +12,7 @@ impl Oauth2Opt {
             Oauth2Opt::UpdateSupScopeMap(cbopt) => cbopt.nopt.copt.debug,
             Oauth2Opt::DeleteSupScopeMap(cbopt) => cbopt.nopt.copt.debug,
             Oauth2Opt::ResetSecrets(cbopt) => cbopt.copt.debug,
+            // Should this be renamed to show client id? client secrets?
             Oauth2Opt::ShowBasicSecret(nopt) => nopt.copt.debug,
             Oauth2Opt::Delete(nopt) => nopt.copt.debug,
             Oauth2Opt::SetDisplayname(cbopt) => cbopt.nopt.copt.debug,

@@ -24,6 +24,8 @@ lazy_static! {
         PartialValue::new_class("oauth2_resource_server");
     pub static ref PVCLASS_OAUTH2_BASIC: PartialValue =
         PartialValue::new_class("oauth2_resource_server_basic");
+    pub static ref PVCLASS_OAUTH2_PUBLIC: PartialValue =
+        PartialValue::new_class("oauth2_resource_server_public");
     pub static ref PVCLASS_PERSON: PartialValue = PartialValue::new_class("person");
     pub static ref PVCLASS_POSIXACCOUNT: PartialValue = PartialValue::new_class("posixaccount");
     pub static ref PVCLASS_POSIXGROUP: PartialValue = PartialValue::new_class("posixgroup");

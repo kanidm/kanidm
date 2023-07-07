@@ -1899,6 +1899,7 @@ lazy_static! {
         ("classname", Value::new_iutf8("oauth2_resource_server_basic")),
         ("systemmay", Value::new_iutf8("oauth2_allow_insecure_client_disable_pkce")),
         ("systemmust", Value::new_iutf8("oauth2_rs_basic_secret")),
+        ("systemexcludes", Value::new_iutf8("oauth2_resource_server_public")),
         ("uuid", Value::Uuid(UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC))
     );
 
@@ -1912,6 +1913,7 @@ lazy_static! {
         "The class representing a configured Oauth2 Resource Server with public clients and pkce verification"),
         ),
         ("classname", Value::new_iutf8("oauth2_resource_server_public")),
+        ("systemexcludes", Value::new_iutf8("oauth2_resource_server_basic")),
         ("uuid", Value::Uuid(UUID_SCHEMA_CLASS_OAUTH2_RS_PUBLIC))
     );
 }

@@ -6,7 +6,7 @@ async fn test_https_middleware_headers(rsclient: KanidmClient) {
     let addr = rsclient.get_url();
 
     // here we test the /ui/ endpoint which should have the headers
-    let response = match reqwest::get(format!("{}/ui/", &addr)).await {
+    let response = match reqwest::get(format!("{}/ui", &addr)).await {
         Ok(value) => value,
         Err(error) => {
             panic!("Failed to query {:?} : {:#?}", addr, error);
