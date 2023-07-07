@@ -19,8 +19,6 @@ use axum::routing::*;
 use axum::Router;
 use axum_csp::{CspDirectiveType, CspValue};
 use axum_macros::FromRef;
-use axum_sessions::extractors::WritableSession;
-use axum_sessions::{async_session, SameSite, SessionLayer};
 use compact_jwt::{Jws, JwsSigner, JwsUnverified};
 use generic::*;
 use http::{HeaderMap, HeaderValue};
@@ -76,11 +74,7 @@ impl ServerState {
         }
     }
 
-    fn get_current_auth_session_id(
-        &self,
-        headers: &HeaderMap,
-        session: &WritableSession,
-    ) -> Option<Uuid> {
+    fn get_current_auth_session_id(&self, headers: &HeaderMap) -> Option<Uuid> {
         // We see if there is a signed header copy first.
         headers
             .get("X-KANIDM-AUTH-SESSION-ID")
@@ -89,8 +83,6 @@ impl ServerState {
                 hv.to_str().ok()
             })
             .and_then(|s| Some(self.reinflate_uuid_from_bytes(s)).unwrap_or(None))
-            // If not there, get from the cookie instead.
-            .or_else(|| session.get::<Uuid>("auth-session-id"))
     }
 }
 
@@ -134,7 +126,6 @@ pub fn get_js_files(role: ServerRole) -> Vec<JavaScriptFile> {
 
 pub async fn create_https_server(
     config: Configuration,
-    cookie_key: [u8; 64],
     jws_signer: JwsSigner,
     status_ref: &'static StatusActor,
     qe_w_ref: &'static QueryServerWriteV1,
@@ -184,15 +175,6 @@ pub async fn create_https_server(
             CspDirectiveType::ImgSrc,
             vec![CspValue::SelfSite, CspValue::SchemeData],
         );
-
-    let store = async_session::CookieStore::new();
-
-    let session_layer = SessionLayer::new(store, &cookie_key)
-        .with_cookie_name("kanidm-session")
-        .with_session_ttl(None)
-        .with_cookie_domain(config.domain)
-        .with_same_site_policy(SameSite::Lax)
-        .with_secure(true);
 
     let trust_x_forward_for = config.trust_x_forward_for;
 
@@ -255,7 +237,6 @@ pub async fn create_https_server(
             middleware::csp_headers::cspheaders_layer,
         ))
         .layer(from_fn(middleware::version_middleware))
-        .layer(session_layer)
         .layer(TraceLayer::new_for_http())
         // This must be the LAST middleware.
         // This is because the last middleware here is the first to be entered and the last

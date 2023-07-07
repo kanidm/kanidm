@@ -8,7 +8,6 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post, put};
 use axum::{Extension, Json, Router};
 use axum_macros::debug_handler;
-use axum_sessions::extractors::{ReadableSession, WritableSession};
 use compact_jwt::Jws;
 use http::{HeaderMap, HeaderValue, StatusCode};
 use hyper::Body;
@@ -104,26 +103,18 @@ pub async fn whoami(
 pub async fn whoami_uat(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    session: ReadableSession,
 ) -> impl IntoResponse {
-    let uat = match kopid.uat {
-        Some(val) => Some(val),
-        None => session.get("bearer"),
-    };
-    let res = state.qe_r_ref.handle_whoami_uat(uat, kopid.eventid).await;
+    let res = state
+        .qe_r_ref
+        .handle_whoami_uat(kopid.uat, kopid.eventid)
+        .await;
     to_axum_response(res)
 }
 
 pub async fn logout(
     State(state): State<ServerState>,
-    mut msession: WritableSession,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    // Now lets nuke any cookies for the session. We do this before the handle_logout
-    // so that if any errors occur, the cookies are still removed.
-    msession.remove("auth-session-id");
-    msession.remove("bearer");
-
     let res = state.qe_w_ref.handle_logout(kopid.uat, kopid.eventid).await;
 
     to_axum_response(res)
@@ -1222,15 +1213,10 @@ pub async fn recycle_bin_revive_id_post(
 pub async fn applinks_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    session: ReadableSession,
 ) -> impl IntoResponse {
-    let uat = match kopid.uat {
-        Some(val) => Some(val),
-        None => session.get("bearer"),
-    };
     let res = state
         .qe_r_ref
-        .handle_list_applinks(uat, kopid.eventid)
+        .handle_list_applinks(kopid.uat, kopid.eventid)
         .await;
     to_axum_response(res)
 }
@@ -1244,7 +1230,6 @@ pub async fn reauth(
     State(state): State<ServerState>,
     TrustedClientIp(ip_addr): TrustedClientIp,
     Extension(kopid): Extension<KOpId>,
-    session: WritableSession,
     Json(obj): Json<AuthIssueSession>,
 ) -> impl IntoResponse {
     // This may change in the future ...
@@ -1253,13 +1238,12 @@ pub async fn reauth(
         .handle_reauth(kopid.uat, obj, kopid.eventid, ip_addr)
         .await;
     debug!("REAuth result: {:?}", inter);
-    auth_session_state_management(state, inter, session)
+    auth_session_state_management(state, inter)
 }
 
 pub async fn auth(
     State(state): State<ServerState>,
     TrustedClientIp(ip_addr): TrustedClientIp,
-    session: WritableSession,
     headers: HeaderMap,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<AuthRequest>,
@@ -1268,7 +1252,7 @@ pub async fn auth(
     // Do anything here first that's needed like getting the session details
     // out of the req cookie.
 
-    let maybe_sessionid = state.get_current_auth_session_id(&headers, &session);
+    let maybe_sessionid = state.get_current_auth_session_id(&headers);
     debug!("Session ID: {:?}", maybe_sessionid);
     // We probably need to know if we allocate the cookie, that this is a
     // new session, and in that case, anything *except* authrequest init is
@@ -1280,14 +1264,13 @@ pub async fn auth(
 
     debug!("Auth result: {:?}", inter);
 
-    auth_session_state_management(state, inter, session)
+    auth_session_state_management(state, inter)
 }
 
 #[instrument(skip(state))]
 fn auth_session_state_management(
     state: ServerState,
     inter: Result<AuthResult, OperationError>,
-    mut msession: WritableSession,
 ) -> impl IntoResponse {
     let mut auth_session_id_tok = None;
 
@@ -1301,59 +1284,36 @@ fn auth_session_state_management(
                 AuthState::Choose(allowed) => {
                     debug!("🧩 -> AuthState::Choose"); // TODO: this should be ... less work
                                                        // Ensure the auth-session-id is set
-                    msession.remove("auth-session-id");
-                    msession.remove("bearer");
-                    msession
-                        .insert("auth-session-id", sessionid)
+                    let kref = &state.jws_signer;
+                    let jws = Jws::new(SessionId { sessionid });
+                    // Get the header token ready.
+                    jws.sign(kref)
+                        .map(|jwss| {
+                            auth_session_id_tok = Some(jwss.to_string());
+                        })
                         .map_err(|e| {
                             error!(?e);
                             OperationError::InvalidSessionState
-                        })
-                        .and_then(|_| {
-                            let kref = &state.jws_signer;
-                            let jws = Jws::new(SessionId { sessionid });
-                            // Get the header token ready.
-                            jws.sign(kref)
-                                .map(|jwss| {
-                                    auth_session_id_tok = Some(jwss.to_string());
-                                })
-                                .map_err(|e| {
-                                    error!(?e);
-                                    OperationError::InvalidSessionState
-                                })
                         })
                         .map(|_| ProtoAuthState::Choose(allowed))
                 }
                 AuthState::Continue(allowed) => {
                     debug!("🧩 -> AuthState::Continue");
-                    // Ensure the auth-session-id is set
-                    msession.remove("auth-session-id");
-                    msession.remove("bearer");
-                    msession
-                        .insert("auth-session-id", sessionid)
+                    let kref = &state.jws_signer;
+                    // Get the header token ready.
+                    let jws = Jws::new(SessionId { sessionid });
+                    jws.sign(kref)
+                        .map(|jwss| {
+                            auth_session_id_tok = Some(jwss.to_string());
+                        })
                         .map_err(|e| {
                             error!(?e);
                             OperationError::InvalidSessionState
-                        })
-                        .and_then(|_| {
-                            let kref = &state.jws_signer;
-                            // Get the header token ready.
-                            let jws = Jws::new(SessionId { sessionid });
-                            jws.sign(kref)
-                                .map(|jwss| {
-                                    auth_session_id_tok = Some(jwss.to_string());
-                                })
-                                .map_err(|e| {
-                                    error!(?e);
-                                    OperationError::InvalidSessionState
-                                })
                         })
                         .map(|_| ProtoAuthState::Continue(allowed))
                 }
                 AuthState::Success(token, issue) => {
                     debug!("🧩 -> AuthState::Success");
-                    msession.remove("auth-session-id");
-                    msession.remove("bearer");
 
                     match issue {
                         AuthIssueSession::Token => Ok(ProtoAuthState::Success(token)),
@@ -1361,8 +1321,6 @@ fn auth_session_state_management(
                 }
                 AuthState::Denied(reason) => {
                     debug!("🧩 -> AuthState::Denied");
-                    msession.remove("auth-session-id");
-                    msession.remove("bearer");
                     Ok(ProtoAuthState::Denied(reason))
                 }
             }
@@ -1390,13 +1348,11 @@ fn auth_session_state_management(
 pub async fn auth_valid(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    session: ReadableSession,
 ) -> impl IntoResponse {
-    let uat = match kopid.uat {
-        Some(val) => Some(val),
-        None => session.get("bearer"),
-    };
-    let res = state.qe_r_ref.handle_auth_valid(uat, kopid.eventid).await;
+    let res = state
+        .qe_r_ref
+        .handle_auth_valid(kopid.uat, kopid.eventid)
+        .await;
     to_axum_response(res)
 }
 
