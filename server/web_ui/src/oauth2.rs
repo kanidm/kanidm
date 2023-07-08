@@ -151,6 +151,13 @@ impl Oauth2App {
             .set("content-type", "application/json")
             .expect_throw("failed to set header");
 
+        if let Some(bearer_token) = models::get_bearer_token() {
+            request
+                .headers()
+                .set("authorization", &bearer_token)
+                .expect_throw("failed to set authorisation header");
+        }
+
         let window = utils::window();
         let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
         let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");

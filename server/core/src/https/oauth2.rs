@@ -603,7 +603,35 @@ pub async fn oauth2_openid_discovery_get(
         .qe_r_ref
         .handle_oauth2_openid_discovery(client_id, kopid.eventid)
         .await;
-    to_axum_response(res)
+
+    match res {
+        Ok(dsc) => {
+            // Humans may look at this so we pretty it.
+            #[allow(clippy::unwrap_used)]
+            let body = serde_json::to_string_pretty(&dsc).unwrap();
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::from(body))
+                .unwrap()
+        }
+        Err(e) => {
+            error!(err = ?e, "Unable to access discovery info");
+            let body = match serde_json::to_string(&e) {
+                Ok(val) => val,
+                Err(e) => {
+                    format!("{:?}", e)
+                }
+            };
+            #[allow(clippy::unwrap_used)]
+            Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::from(body))
+                .unwrap()
+        }
+    }
 }
 
 pub async fn oauth2_openid_userinfo_get(
