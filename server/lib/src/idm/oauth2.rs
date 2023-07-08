@@ -133,6 +133,8 @@ pub(crate) enum Oauth2TokenType {
         iat: i64,
         nbf: i64,
         auth_time: Option<i64>,
+        // We stash some details here for oidc.
+        nonce: Option<String>,
     },
     Refresh {
         scopes: BTreeSet<String>,
@@ -144,6 +146,8 @@ pub(crate) enum Oauth2TokenType {
         //
         iat: i64,
         nbf: i64,
+        // We stash some details here for oidc.
+        nonce: Option<String>,
     },
 }
 
@@ -876,6 +880,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 uuid,
                 iat,
                 nbf: _,
+                nonce,
             } => {
                 // Get the current time in odt
                 let odt_ct = OffsetDateTime::UNIX_EPOCH + ct;
@@ -955,10 +960,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // good to go
 
                 let account_uuid = uuid;
-                // Not present now. We could preserve it in the refresh token but
-                // I don't think it is worth much since the nonce exists to protect
-                // the initial auth-code exchange, not a refresh token exchange.
-                let nonce = None;
 
                 self.generate_access_token_response(
                     o2rs,
@@ -1052,7 +1053,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 nbf: Some(iat),
                 exp,
                 auth_time: None,
-                nonce,
+                nonce: nonce.clone(),
                 at_hash: None,
                 acr: None,
                 amr,
@@ -1088,6 +1089,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             iat,
             nbf: iat,
             auth_time: None,
+            nonce: nonce.clone(),
         };
 
         let access_token_data = serde_json::to_vec(&access_token_raw).map_err(|e| {
@@ -1107,6 +1109,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             uuid: account_uuid,
             iat,
             nbf: iat,
+            nonce,
         };
 
         let refresh_token_data = serde_json::to_vec(&refresh_token_raw).map_err(|e| {
@@ -1594,6 +1597,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 iat,
                 nbf,
                 auth_time: _,
+                nonce: _,
             } => {
                 // Has this token expired?
                 let odt_ct = OffsetDateTime::UNIX_EPOCH + ct;
@@ -1699,6 +1703,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 iat,
                 nbf,
                 auth_time: _,
+                nonce,
             } => {
                 // Has this token expired?
                 let odt_ct = OffsetDateTime::UNIX_EPOCH + ct;
@@ -1746,7 +1751,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     nbf: Some(nbf),
                     exp,
                     auth_time: None,
-                    nonce: None,
+                    nonce,
                     at_hash: None,
                     acr: None,
                     amr,
@@ -3443,14 +3448,21 @@ mod tests {
 
         let id_token = token_response.id_token.expect("No id_token in response!");
         let access_token = token_response.access_token;
+        let refresh_token = token_response
+            .refresh_token
+            .as_ref()
+            .expect("no refresh token was issued")
+            .clone();
 
         // Get the read txn for inspecting the tokens
         assert!(idms_prox_write.commit().is_ok());
+
         let mut idms_prox_read = idms.proxy_read().await;
 
         let mut jwkset = idms_prox_read
             .oauth2_openid_publickey("test_resource_server")
             .expect("Failed to get public key");
+
         let public_jwk = jwkset.keys.pop().expect("no such jwk");
 
         let jws_validator = JwsValidator::try_from(&public_jwk).expect("failed to build validator");
@@ -3501,7 +3513,51 @@ mod tests {
         assert!(oidc.nbf == userinfo.nbf);
         assert!(oidc.exp == userinfo.exp);
         assert!(userinfo.auth_time.is_none());
-        assert!(userinfo.nonce.is_none());
+        assert!(userinfo.nonce == Some("abcdef".to_string()));
+        assert!(userinfo.at_hash.is_none());
+        assert!(userinfo.acr.is_none());
+        assert!(oidc.amr == userinfo.amr);
+        assert!(oidc.azp == userinfo.azp);
+        assert!(userinfo.jti.is_none());
+        assert!(oidc.s_claims == userinfo.s_claims);
+        assert!(userinfo.claims.is_empty());
+
+        drop(idms_prox_read);
+
+        // Importantly, we need to persist the nonce through access/refresh token operations
+        // because some clients like the rust openidconnect library require it always for claim
+        // verification.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let token_req: AccessTokenRequest = GrantTypeReq::RefreshToken {
+            refresh_token,
+            scope: None,
+        }
+        .into();
+
+        let token_response = idms_prox_write
+            .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+            .expect("Unable to exchange for oauth2 token");
+
+        let access_token = token_response.access_token;
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Okay, refresh done, lets check it.
+        let mut idms_prox_read = idms.proxy_read().await;
+
+        let userinfo = idms_prox_read
+            .oauth2_openid_userinfo("test_resource_server", &access_token, ct)
+            .expect("failed to get userinfo");
+
+        assert!(oidc.iss == userinfo.iss);
+        assert!(oidc.sub == userinfo.sub);
+        assert!(oidc.aud == userinfo.aud);
+        assert!(oidc.iat == userinfo.iat);
+        assert!(oidc.nbf == userinfo.nbf);
+        assert!(oidc.exp == userinfo.exp);
+        assert!(userinfo.auth_time.is_none());
+        assert!(userinfo.nonce == Some("abcdef".to_string()));
         assert!(userinfo.at_hash.is_none());
         assert!(userinfo.acr.is_none());
         assert!(oidc.amr == userinfo.amr);
@@ -4372,6 +4428,7 @@ mod tests {
             scope: None,
         }
         .into();
+
         let access_token_response_2 = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
             .expect("Unable to exchange for oauth2 token");
@@ -4412,6 +4469,7 @@ mod tests {
             scope: None,
         }
         .into();
+
         let access_token_response_3 = idms_prox_write
             .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
             .expect("Unable to exchange for oauth2 token");
