@@ -50,8 +50,8 @@ impl JavaScriptFile {
             _ => String::from(""),
         };
         format!(
-            r#"<script src="/pkg/{}" integrity="sha384-{}"{}></script>"#,
-            self.filepath, &self.hash, &typeattr,
+            r#"<script src="/pkg/{}" crossorigin="anonymous" referrerpolicy="origin"{}></script>"#,
+            self.filepath, &typeattr,
         )
     }
 }

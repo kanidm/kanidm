@@ -1408,9 +1408,10 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             };
 
         if consent_previously_granted {
+            let pretty_scopes: Vec<String> = granted_scopes.iter().map(|s| format!("'{}'", s)).collect();
             admin_info!(
-                "User has previously consented, permitting. {:?}",
-                granted_scopes
+                "User has previously consented, permitting. {}",
+                pretty_scopes.join(", ")
             );
 
             // Setup for the permit success
