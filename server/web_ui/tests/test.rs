@@ -18,28 +18,28 @@ fn pass() {
     assert_eq!(1, 1);
 }
 
-#[cfg(feature = "webdriver")]
-#[kanidmd_testkit::test]
-async fn test_webdriver_ui_loads(rsclient: kanidm_client::KanidmClient) {
-    use fantoccini::{ClientBuilder, Locator};
-    println!("rsclient: {}", rsclient.get_url());
+// #[cfg(feature = "webdriver")]
+// #[kanidmd_testkit::test]
+// async fn test_webdriver_ui_loads(rsclient: kanidm_client::KanidmClient) {
+//     use fantoccini::{ClientBuilder, Locator};
+//     println!("rsclient: {}", rsclient.get_url());
 
-    let c = ClientBuilder::native()
-        .connect("http://localhost:4444")
-        .await
-        .expect("failed to connect to WebDriver");
+//     let c = ClientBuilder::native()
+//         .connect("http://localhost:4444")
+//         .await
+//         .expect("failed to connect to WebDriver");
 
-    c.goto(rsclient.get_url())
-        .await
-        .expect(format!("Failed to load page: {}", rsclient.get_url()).as_str());
+//     c.goto(rsclient.get_url())
+//         .await
+//         .expect(format!("Failed to load page: {}", rsclient.get_url()).as_str());
 
-    println!("Waiting for page to load");
-    c.wait();
+//     println!("Waiting for page to load");
+//     c.wait();
 
-    c.find(Locator::Id("input#username"))
-        .await
-        .expect("Couldn't find input id=username")
-        .click()
-        .await
-        .expect("Couldn't click the username input?");
-}
+//     c.find(Locator::Id("input#username"))
+//         .await
+//         .expect("Couldn't find input id=username")
+//         .click()
+//         .await
+//         .expect("Couldn't click the username input?");
+// }

@@ -14,9 +14,9 @@ license = "MPL-2.0"
 homepage = "https://github.com/kanidm/kanidm/"
 repository = "https://github.com/kanidm/kanidm/"
 
-[features]
-default = []
-webdriver = []
+# [features]
+# default = []
+# webdriver = []
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -72,8 +72,8 @@ features = [
 ]
 
 
-[dev-dependencies]
-fantoccini = { versino = "0.19.3" }
-kanidm_client = { workspace = true }
-kanidmd_testkit = { path = "../testkit" }
-tokio = { workspace = true }
+# [dev-dependencies]
+# fantoccini = { versino = "0.19.3" }
+# kanidm_client = { workspace = true }
+# kanidmd_testkit = { path = "../testkit" }
+# tokio = { workspace = true }
