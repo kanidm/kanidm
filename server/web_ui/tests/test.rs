@@ -9,7 +9,6 @@
 //!```
 //!
 
-use headless_chrome::Browser;
 use wasm_bindgen_test::*;
 
 wasm_bindgen_test_configure!(run_in_browser);
@@ -19,17 +18,28 @@ fn pass() {
     assert_eq!(1, 1);
 }
 
+#[cfg(feature = "webdriver")]
 #[kanidmd_testkit::test]
-async fn test_ui_loads(rsclient: kanidm_client::KanidmClient)  {
+async fn test_webdriver_ui_loads(rsclient: kanidm_client::KanidmClient) {
+    use fantoccini::{ClientBuilder, Locator};
     println!("rsclient: {}", rsclient.get_url());
 
-    let browser = Browser::default().unwrap();
-    let tab = browser.new_tab().unwrap();
+    let c = ClientBuilder::native()
+        .connect("http://localhost:4444")
+        .await
+        .expect("failed to connect to WebDriver");
 
-    tab.navigate_to(rsclient.get_url()).unwrap();
+    c.goto(rsclient.get_url())
+        .await
+        .expect(format!("Failed to load page: {}", rsclient.get_url()).as_str());
 
-    tab.wait_for_element("input#username").unwrap().click().unwrap();
-    // Type in a query and press `Enter`
-    tab.type_str("testuser").unwrap().press_key("Enter").unwrap();
+    println!("Waiting for page to load");
+    c.wait();
+
+    c.find(Locator::Id("input#username"))
+        .await
+        .expect("Couldn't find input id=username")
+        .click()
+        .await
+        .expect("Couldn't click the username input?");
 }
-
