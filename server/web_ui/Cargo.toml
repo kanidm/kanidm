@@ -77,3 +77,9 @@ features = [
     "Window",
 ]
 
+
+[dev-dependencies]
+headless_chrome = "1.0.5"
+kanidm_client = { workspace = true }
+kanidmd_testkit = { path = "../testkit" }
+tokio = { workspace = true }
