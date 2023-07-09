@@ -856,6 +856,16 @@ pub async fn oauth2_token_revoke_post(
     }
 }
 
+// Some requests from browsers require preflight so that CORS works.
+pub async fn oauth2_preflight_options() -> impl IntoResponse {
+    #[allow(clippy::unwrap_used)]
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .body(Body::empty())
+        .unwrap()
+}
+
 pub fn oauth2_route_setup(state: ServerState) -> Router<ServerState> {
     // this has all the openid-related routes
     let openid_router = Router::new()
@@ -863,13 +873,13 @@ pub fn oauth2_route_setup(state: ServerState) -> Router<ServerState> {
         // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
             "/oauth2/openid/:client_id/.well-known/openid-configuration",
-            get(oauth2_openid_discovery_get),
+            get(oauth2_openid_discovery_get).options(oauth2_preflight_options),
         )
         // // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
             "/oauth2/openid/:client_id/userinfo",
-            get(oauth2_openid_userinfo_get),
+            get(oauth2_openid_userinfo_get).options(oauth2_preflight_options),
         )
         // // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
