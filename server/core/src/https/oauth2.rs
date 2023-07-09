@@ -241,6 +241,7 @@ pub async fn oauth2_id_delete(
 //  valid Kanidm instance in the topology can handle these request.
 //
 
+#[instrument(level = "debug", skip(state, kopid))]
 pub async fn oauth2_authorise_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -256,6 +257,7 @@ pub async fn oauth2_authorise_post(
     res
 }
 
+#[instrument(level = "debug", skip(state, kopid))]
 pub async fn oauth2_authorise_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,

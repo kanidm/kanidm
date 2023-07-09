@@ -15,11 +15,19 @@ repository = { workspace = true }
 name = "kanidmd_testkit"
 path = "src/lib.rs"
 
+[features]
+default = []
+# Enables webdriver tests, you need to be running a webdriver server
+webdriver = ["fantoccini"]
+
 [dependencies]
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidmd_core = { workspace = true }
 kanidmd_lib = { workspace = true }
+# used for webdriver testing
+fantoccini = { version="0.19.3", optional=true}
+
 
 
 url = { workspace = true, features = ["serde"] }

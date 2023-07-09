@@ -7,6 +7,7 @@ name: GitHub Pages
       - "master"
   pull_request:
 
+# yamllint disable-line rule:line-length
 # permissions list: https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token
 permissions:
   id-token: write
@@ -36,7 +37,11 @@ jobs:
           fetch-depth: 0
       - name: Latest branch
         run: |
-          echo "latest=$(git branch -a  | awk '{print $1}' | sort -t. -k3n,3 -k4n,4 | awk -F'/' '{print $NF}' | tail -n1)" >> $GITHUB_OUTPUT
+          echo "latest=$(git branch -a  \
+            | awk '{print $1}' \
+            | sort -t. -k3n,3 -k4n,4 \
+            | awk -F'/' '{print $NF}' \
+            | tail -n1)" >> $GITHUB_OUTPUT
         id: branchname
       - name: Move redirector page
         run: |
@@ -53,6 +58,7 @@ jobs:
   fanout:
     uses: './.github/workflows/kanidm_individual_book.yml'
     needs: pre_deploy
+    # yamllint disable-line rule:line-length
     if: ${{ github.action_ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' && github.event == 'merge' }}
 
     strategy:
@@ -78,6 +84,7 @@ jobs:
       - fanout
       - docs_master
     runs-on: ubuntu-latest
+    # yamllint disable-line rule:line-length
     if: ${{ github.action_ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' && github.event == 'merge' }}
     steps:
       - name: Setup Pages
@@ -110,7 +117,10 @@ jobs:
           find $(pwd) -name '*.tar.gz' -ls -exec tar zxvf "{}" \;
           echo "Carrying on..."
           mkdir -p docs
-          cd docs && cp -R "$(git branch -a  | awk '{print $1}' | sort -t. -k3n,3 -k4n,4 | awk -F'/' '{print $NF}' | tail -n1)/" stable && cd ..
+          cd docs && cp -R "$(git branch -a  \
+            | awk '{print $1}' \
+            | sort -t. -k3n,3 -k4n,4 \
+            | awk -F'/' '{print $NF}' | tail -n1)/" stable && cd ..
           ls -la docs/
           echo "Cleaning up docs archives"
           rm docs/*.tar.gz
