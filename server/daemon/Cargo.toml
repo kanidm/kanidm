@@ -29,7 +29,7 @@ reqwest = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
 toml = { workspace = true }
-is-terminal = "0.4.7"
+is-terminal = "0.4.9"
 
 [target.'cfg(target_family = "windows")'.dependencies]
 whoami = { workspace = true }
