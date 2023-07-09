@@ -6,7 +6,9 @@ use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Form, Json, Router};
-use http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, AUTHORIZATION, LOCATION};
+use http::header::{
+    ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_ORIGIN, AUTHORIZATION, LOCATION,
+};
 use http::{HeaderMap, HeaderValue, StatusCode};
 use hyper::Body;
 use kanidm_proto::oauth2::AuthorisationResponse;
@@ -862,6 +864,7 @@ pub async fn oauth2_preflight_options() -> impl IntoResponse {
     Response::builder()
         .status(StatusCode::OK)
         .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(ACCESS_CONTROL_ALLOW_HEADERS, "Authorization")
         .body(Body::empty())
         .unwrap()
 }
