@@ -133,6 +133,27 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     // Step 0 - get the openid discovery details and the public key.
     let response = client
+        .request(
+            reqwest::Method::OPTIONS,
+            format!(
+                "{}/oauth2/openid/test_integration/.well-known/openid-configuration",
+                url
+            ),
+        )
+        .send()
+        .await
+        .expect("Failed to send discovery preflight request.");
+
+    assert!(response.status() == reqwest::StatusCode::OK);
+    let cors_header: &str = response
+        .headers()
+        .get("access-control-allow-origin")
+        .expect("missing access-control-allow-origin header")
+        .to_str()
+        .expect("invalid access-control-allow-origin header");
+    assert!(cors_header.eq("*"));
+
+    let response = client
         .get(format!(
             "{}/oauth2/openid/test_integration/.well-known/openid-configuration",
             url
@@ -606,6 +627,25 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     eprintln!("{:?}", oidc.s_claims.email);
     assert!(oidc.s_claims.email.as_deref() == Some("oauth_test@localhost"));
     assert!(oidc.s_claims.email_verified == Some(true));
+
+    // Check the preflight works.
+    let response = client
+        .request(
+            reqwest::Method::OPTIONS,
+            format!("{}/oauth2/openid/test_integration/userinfo", url),
+        )
+        .send()
+        .await
+        .expect("Failed to send userinfo preflight request.");
+
+    assert!(response.status() == reqwest::StatusCode::OK);
+    let cors_header: &str = response
+        .headers()
+        .get("access-control-allow-origin")
+        .expect("missing access-control-allow-origin header")
+        .to_str()
+        .expect("invalid access-control-allow-origin header");
+    assert!(cors_header.eq("*"));
 
     let response = client
         .get(format!("{}/oauth2/openid/test_integration/userinfo", url))
