@@ -51,3 +51,5 @@ jobs:
         run: |
           chromedriver &
           cargo test -p kanidmd_testkit --features webdriver
+        env:
+          DISPLAY: ":99"
