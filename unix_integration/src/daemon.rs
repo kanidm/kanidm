@@ -692,7 +692,7 @@ async fn main() -> ExitCode {
             let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
                 Ok(l) => l,
                 Err(_e) => {
-                    error!("Failed to bind UNIX socket {}", cfg.sock_path.as_str());
+                    error!("Failed to bind UNIX socket {}", cfg.task_sock_path.as_str());
                     return ExitCode::FAILURE
                 }
             };
