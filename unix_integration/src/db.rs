@@ -153,12 +153,18 @@ impl<'a> DbTxn<'a> {
                 self.sqlite_error("group_t create", &e);
             })?;
 
+        // We defer group foreign keys here because we now manually cascade delete these when
+        // required. This is because insert or replace into will always delete then add
+        // which triggers this. So instead we defer and manually cascade.
+        //
+        // However, on accounts, we CAN delete cascade because accounts will always redefine
+        // their memberships on updates so this is safe to cascade on this direction.
         self.conn
             .execute(
                 "CREATE TABLE IF NOT EXISTS memberof_t (
                 g_uuid TEXT,
                 a_uuid TEXT,
-                FOREIGN KEY(g_uuid) REFERENCES group_t(uuid) ON DELETE CASCADE,
+                FOREIGN KEY(g_uuid) REFERENCES group_t(uuid) DEFERRABLE INITIALLY DEFERRED,
                 FOREIGN KEY(a_uuid) REFERENCES account_t(uuid) ON DELETE CASCADE
             )
             ",
@@ -204,6 +210,12 @@ impl<'a> DbTxn<'a> {
     }
 
     pub fn clear_cache(&self) -> Result<(), ()> {
+        self.conn
+            .execute("DELETE FROM memberof_t", [])
+            .map_err(|e| {
+                self.sqlite_error("delete memberof_t", &e);
+            })?;
+
         self.conn.execute("DELETE FROM group_t", []).map_err(|e| {
             self.sqlite_error("delete group_t", &e);
         })?;
@@ -407,6 +419,7 @@ impl<'a> DbTxn<'a> {
             .map_err(|e| {
                 self.sqlite_error("prepare", &e);
             })?;
+
         stmt.execute([&account.uuid])
             .map(|r| {
                 debug!("delete memberships -> {:?}", r);
@@ -439,12 +452,22 @@ impl<'a> DbTxn<'a> {
     pub fn delete_account(&self, a_uuid: &str) -> Result<(), ()> {
         self.conn
             .execute(
+                "DELETE FROM memberof_t WHERE a_uuid = :a_uuid",
+                params![a_uuid],
+            )
+            .map(|_| ())
+            .map_err(|e| {
+                self.sqlite_error("account_t memberof_t cascade delete", &e);
+            })?;
+
+        self.conn
+            .execute(
                 "DELETE FROM account_t WHERE uuid = :a_uuid",
                 params![a_uuid],
             )
             .map(|_| ())
             .map_err(|e| {
-                self.sqlite_error("memberof_t create", &e);
+                self.sqlite_error("account_t delete", &e);
             })
     }
 
@@ -732,10 +755,16 @@ impl<'a> DbTxn<'a> {
 
     pub fn delete_group(&self, g_uuid: &str) -> Result<(), ()> {
         self.conn
+            .execute("DELETE FROM memberof_t WHERE g_uuid = :g_uuid", [g_uuid])
+            .map(|_| ())
+            .map_err(|e| {
+                self.sqlite_error("group_t memberof_t cascade delete", &e);
+            })?;
+        self.conn
             .execute("DELETE FROM group_t WHERE uuid = :g_uuid", [g_uuid])
             .map(|_| ())
             .map_err(|e| {
-                self.sqlite_error("memberof_t create", &e);
+                self.sqlite_error("group_t delete", &e);
             })
     }
 }
