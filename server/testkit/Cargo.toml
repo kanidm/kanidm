@@ -16,7 +16,7 @@ name = "kanidmd_testkit"
 path = "src/lib.rs"
 
 [features]
-default = ["webdriver"]
+default = []
 # Enables webdriver tests, you need to be running a webdriver server
 webdriver = ["fantoccini"]
 
