@@ -18,21 +18,39 @@ macro_rules! handle_error {
 #[allow(dead_code)]
 #[cfg(feature = "webdriver")]
 async fn get_webdriver_client() -> fantoccini::Client {
-    let c = match fantoccini::ClientBuilder::native()
+    use fantoccini::wd::Capabilities;
+    use serde_json::json;
+
+    // check if the env var "CI" is set
+    let in_ci = match std::env::var("CI") {
+        Ok(_) => true,
+        Err(_) => false,
+    };
+    if !in_ci {
+        match fantoccini::ClientBuilder::native()
         .connect("http://localhost:4444")
         .await
-    {
-        Ok(val) => val,
-        Err(_) => {
-            // trying the default chromedriver port
-            eprintln!("Couldn't connect on 4444, trying 9515");
-            fantoccini::ClientBuilder::native()
-                .connect("http://localhost:9515")
-                .await
-                .unwrap()
-        }
-    };
-    c
+                {
+                    Ok(val) => val,
+                    Err(_) => {
+                        // trying the default chromedriver port
+                        eprintln!("Couldn't connect on 4444, trying 9515");
+                        fantoccini::ClientBuilder::new(hyper_tls::HttpsConnector::new()).connect("http://localhost:9515")
+                            .await
+                            .unwrap()
+                    }
+                }
+    } else {
+        println!("In CI setting headless and assuming Chrome");
+        let cap = json!({
+            "goog:chromeOptions" : {
+                "args" : ["--headless", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--window-size=1280,1024"]
+            }
+        });
+        let cap: Capabilities = serde_json::from_value(cap).unwrap();
+        fantoccini::ClientBuilder::new(hyper_tls::HttpsConnector::new()).capabilities(cap).connect("http://localhost:9515").await.unwrap()
+
+    }
 }
 
 #[kanidmd_testkit::test]

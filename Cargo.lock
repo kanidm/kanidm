@@ -2728,6 +2728,7 @@ dependencies = [
  "compact_jwt",
  "fantoccini",
  "futures",
+ "hyper-tls",
  "kanidm_client",
  "kanidm_proto",
  "kanidmd_core",
