@@ -1511,6 +1511,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "fantoccini"
+version = "0.19.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65f0fbe245d714b596ba5802b46f937f5ce68dcae0f32f9a70b5c3b04d3c6f64"
+dependencies = [
+ "base64 0.13.1",
+ "cookie 0.16.2",
+ "futures-core",
+ "futures-util",
+ "http",
+ "hyper",
+ "hyper-tls",
+ "mime",
+ "serde",
+ "serde_json",
+ "time 0.3.22",
+ "tokio",
+ "url",
+ "webdriver",
+]
+
+[[package]]
 name = "fastrand"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2704,7 +2726,9 @@ name = "kanidmd_testkit"
 version = "1.1.0-beta.13-dev"
 dependencies = [
  "compact_jwt",
+ "fantoccini",
  "futures",
+ "hyper-tls",
  "kanidm_client",
  "kanidm_proto",
  "kanidmd_core",
@@ -5274,6 +5298,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "unicode-segmentation"
+version = "1.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1dd624098567895118886609431a7c3b8f516e41d30e0643f03d94592a147e36"
+
+[[package]]
 name = "unicode-width"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5575,6 +5605,25 @@ dependencies = [
  "url",
  "wasm-bindgen",
  "web-sys",
+]
+
+[[package]]
+name = "webdriver"
+version = "0.46.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9973cb72c8587d5ad5efdb91e663d36177dc37725e6c90ca86c626b0cc45c93f"
+dependencies = [
+ "base64 0.13.1",
+ "bytes",
+ "cookie 0.16.2",
+ "http",
+ "log",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "time 0.3.22",
+ "unicode-segmentation",
+ "url",
 ]
 
 [[package]]

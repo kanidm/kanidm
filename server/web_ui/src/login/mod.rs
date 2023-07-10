@@ -244,7 +244,7 @@ impl LoginApp {
                     <>
                     <div class="container">
                         <label for="username" class="form-label">{ "Username" }</label>
-                        <form
+                        <form id="login"
                         onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                             #[cfg(debug_assertions)]
                             console::debug!("login::view_state -> Init - prevent_default()".to_string());
@@ -295,7 +295,7 @@ impl LoginApp {
                     <>
                     <div class="container">
                         <p>{ msg }</p>
-                        <form
+                        <form id="login"
                         onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                             #[cfg(debug_assertions)]
                             console::debug!("login::view_state -> Init - prevent_default()".to_string());
@@ -359,7 +359,7 @@ impl LoginApp {
                     <>
                     <div class="container">
                         <label for="password" class="form-label">{ "Password" }</label>
-                        <form
+                        <form id="login"
                             onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                                 console::debug!("login::view_state -> Password - prevent_default()".to_string());
                                 e.prevent_default();
@@ -397,7 +397,7 @@ impl LoginApp {
                         <label for="backup_code" class="form-label">
                         {"Backup Code"}
                         </label>
-                        <form
+                        <form id="login"
                             onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                                 console::debug!("login::view_state -> BackupCode - prevent_default()".to_string());
                                 e.prevent_default();
@@ -429,7 +429,7 @@ impl LoginApp {
                     <>
                     <div class="container">
                         <label for="totp" class="form-label">{"TOTP"}</label>
-                        <form
+                        <form id="login"
                             onsubmit={ ctx.link().callback(|e: SubmitEvent| {
                                 console::debug!("login::view_state -> Totp - prevent_default()".to_string());
                                 e.prevent_default();

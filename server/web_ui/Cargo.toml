@@ -14,21 +14,11 @@ license = "MPL-2.0"
 homepage = "https://github.com/kanidm/kanidm/"
 repository = "https://github.com/kanidm/kanidm/"
 
-# version = { workspace = true }
-# authors = { workspace = true }
-# rust-version = { workspace = true }
-# edition = { workspace = true }
-# license = { workspace = true }
-# homepage = { workspace = true }
-# repository = { workspace = true }
-
-
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 compact_jwt = { workspace = true }
-# gloo = "^0.8.0"
 gloo = { workspace = true }
 js-sys = { workspace = true }
 kanidm_proto = { workspace = true, features = ["wasm"] }
@@ -44,7 +34,6 @@ uuid = { workspace = true }
 yew = { workspace = true, features = ["csr"] }
 yew-router = { workspace = true }
 time = { workspace = true }
-
 
 [dependencies.web-sys]
 workspace = true
@@ -76,4 +65,3 @@ features = [
     "Response",
     "Window",
 ]
-
