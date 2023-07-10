@@ -1,5 +1,6 @@
 #!/bin/sh
 
+set -e
 # This builds the assets for the Web UI, defaulting to a release build.
 
 if [ ! -f build_wasm.sh ]; then
@@ -22,7 +23,7 @@ if [ -z "$(which wasm-pack)" ]; then
 fi
 
 if [ "$(find ./pkg/ -name 'kanidmd*' | wc -l)" -gt 0 ]; then
-    echo "Cleaning up"
+    echo "Cleaning up WASM files before build..."
     rm pkg/kanidmd*
 fi
 
@@ -35,3 +36,7 @@ touch ./pkg/ANYTHING_HERE_WILL_BE_DELETED_ADD_TO_SRC && \
     cp ../../README.md ./pkg/
     cp ../../LICENSE.md ./pkg/
     rm ./pkg/.gitignore
+
+# updates the brotli-compressed files
+echo "brotli-compressing the WASM file..."
+find ./pkg -name '*.wasm' -exec ./find_best_brotli.sh "{}" \; || exit 1
