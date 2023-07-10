@@ -846,3 +846,47 @@ async fn test_cache_nxset_allow_overrides() {
         .expect("Failed to get from cache");
     assert!(gt.is_some());
 }
+
+/// Issue 1830. If cache items expire where we have an account and a group, and we
+/// refresh the group *first*, the group appears to drop it's members. This is because
+/// sqlite "INSERT OR REPLACE INTO" triggers a delete cascade of the foreign key elements
+/// which then makes the group appear empty.
+///
+/// We can reproduce this by retrieving an account + group, wait for expiry, then retrieve
+/// only the group.
+#[tokio::test]
+async fn test_cache_group_fk_deferred() {
+    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+
+    cachelayer.attempt_online().await;
+    assert!(cachelayer.test_connection().await);
+
+    // Get the account then the group.
+    let ut = cachelayer
+        .get_nssaccount_name("testaccount1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(ut.is_some());
+
+    let gt = cachelayer
+        .get_nssgroup_name("testgroup1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_some());
+    assert!(gt.unwrap().members.len() == 1);
+
+    // Invalidate all items.
+    cachelayer.mark_offline().await;
+    assert!(cachelayer.invalidate().await.is_ok());
+    cachelayer.attempt_online().await;
+    assert!(cachelayer.test_connection().await);
+
+    // Get the *group*. It *should* still have it's members.
+    let gt = cachelayer
+        .get_nssgroup_name("testgroup1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_some());
+    // And check we have members in the group, since we came from a userlook up
+    assert!(gt.unwrap().members.len() == 1);
+}
