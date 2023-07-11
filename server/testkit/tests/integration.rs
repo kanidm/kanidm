@@ -28,18 +28,19 @@ async fn get_webdriver_client() -> fantoccini::Client {
     };
     if !in_ci {
         match fantoccini::ClientBuilder::native()
-        .connect("http://localhost:4444")
-        .await
-                {
-                    Ok(val) => val,
-                    Err(_) => {
-                        // trying the default chromedriver port
-                        eprintln!("Couldn't connect on 4444, trying 9515");
-                        fantoccini::ClientBuilder::new(hyper_tls::HttpsConnector::new()).connect("http://localhost:9515")
-                            .await
-                            .unwrap()
-                    }
-                }
+            .connect("http://localhost:4444")
+            .await
+        {
+            Ok(val) => val,
+            Err(_) => {
+                // trying the default chromedriver port
+                eprintln!("Couldn't connect on 4444, trying 9515");
+                fantoccini::ClientBuilder::new(hyper_tls::HttpsConnector::new())
+                    .connect("http://localhost:9515")
+                    .await
+                    .unwrap()
+            }
+        }
     } else {
         println!("In CI setting headless and assuming Chrome");
         let cap = json!({
@@ -48,8 +49,11 @@ async fn get_webdriver_client() -> fantoccini::Client {
             }
         });
         let cap: Capabilities = serde_json::from_value(cap).unwrap();
-        fantoccini::ClientBuilder::new(hyper_tls::HttpsConnector::new()).capabilities(cap).connect("http://localhost:9515").await.unwrap()
-
+        fantoccini::ClientBuilder::new(hyper_tls::HttpsConnector::new())
+            .capabilities(cap)
+            .connect("http://localhost:9515")
+            .await
+            .unwrap()
     }
 }
 

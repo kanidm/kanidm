@@ -36,12 +36,6 @@ use walkdir::WalkDir;
 
 #[cfg(all(target_family = "unix", feature = "selinux"))]
 use kanidm_unix_common::selinux_util;
-#[cfg(all(target_family = "unix", feature = "selinux"))]
-use selinux::SecurityContext;
-#[cfg(all(target_family = "unix", feature = "selinux"))]
-use std::process::Command;
-#[cfg(all(target_family = "unix", feature = "selinux"))]
-use users::get_user_by_uid;
 
 struct TaskCodec;
 
@@ -96,6 +90,7 @@ fn create_home_directory(
     info: &HomeDirectoryInfo,
     home_prefix: &str,
     use_etc_skel: bool,
+    use_selinux: bool,
 ) -> Result<(), String> {
     // Final sanity check to prevent certain classes of attacks.
     let name = info.name.trim_start_matches('.').replace(['/', '\\'], "");
@@ -121,33 +116,22 @@ fn create_home_directory(
     }
 
     // Get a handle to the SELinux labeling interface
+    debug!(?use_selinux, "selinux for home dir labeling");
     #[cfg(all(target_family = "unix", feature = "selinux"))]
-    let labeler = selinux_util::get_labeler()?;
-
-    // Construct a path for SELinux context lookups.
-    // We do this because the policy only associates a home directory to its owning
-    // user by the name of the directory. Since the real user's home directory is (by
-    // default) their uuid or spn, its context will always be the policy default
-    // (usually user_u or unconfined_u). This lookup path is used to ask the policy
-    // what the context SHOULD be, and we will create policy equivalence rules below
-    // so that relabels in the future do not break it.
-    #[cfg(all(target_family = "unix", feature = "selinux"))]
-    // Yes, gid, because we use the GID number for both the user's UID and primary GID
-    let sel_lookup_path_raw = match get_user_by_uid(info.gid) {
-        Some(v) => format!("{}{}", home_prefix, v.name().to_str().unwrap()),
-        None => {
-            return Err("Failed looking up username by uid for SELinux relabeling".to_string());
-        }
+    let labeler = if use_selinux {
+        selinux_util::SelinuxLabeler::new(info.gid, home_prefix)?
+    } else {
+        selinux_util::SelinuxLabeler::new_noop()
     };
 
     // Does the home directory exist?
     if !hd_path.exists() {
-        // Set a umask
-        let before = unsafe { umask(0o0027) };
-
         // Set the SELinux security context for file creation
         #[cfg(all(target_family = "unix", feature = "selinux"))]
-        selinux_util::do_setfscreatecon_for_path(&sel_lookup_path_raw, &labeler)?;
+        labeler.do_setfscreatecon_for_path()?;
+
+        // Set a umask
+        let before = unsafe { umask(0o0027) };
 
         // Create the dir
         if let Err(e) = fs::create_dir_all(hd_path) {
@@ -172,17 +156,11 @@ fn create_home_directory(
 
                 #[cfg(all(target_family = "unix", feature = "selinux"))]
                 {
-                    // Look up the correct SELinux context of this object
-                    let sel_lookup_path = Path::new(&sel_lookup_path_raw).join(
-                        entry
-                            .path()
-                            .strip_prefix(skel_dir)
-                            .map_err(|e| e.to_string())?,
-                    );
-                    selinux_util::do_setfscreatecon_for_path(
-                        &sel_lookup_path.to_str().unwrap().to_string(),
-                        &labeler,
-                    )?;
+                    let p = entry
+                        .path()
+                        .strip_prefix(skel_dir)
+                        .map_err(|e| e.to_string())?;
+                    labeler.label_path(p)?;
                 }
 
                 if entry.path().is_dir() {
@@ -194,22 +172,14 @@ fn create_home_directory(
 
                 // Create equivalence rule in the SELinux policy
                 #[cfg(all(target_family = "unix", feature = "selinux"))]
-                if Command::new("semanage")
-                    .args(["fcontext", "-ae", &sel_lookup_path_raw, &hd_path_raw])
-                    .spawn()
-                    .is_err()
-                {
-                    return Err("Failed creating SELinux policy equivalence rule".to_string());
-                }
+                labeler.setup_equivalence_rule(&hd_path_raw)?;
             }
         }
     }
 
     // Reset object creation SELinux context to default
     #[cfg(all(target_family = "unix", feature = "selinux"))]
-    if SecurityContext::set_default_context_for_new_file_system_objects().is_err() {
-        return Err("Failed resetting SELinux file creation contexts".to_string());
-    }
+    labeler.set_default_context_for_fs_objects()?;
 
     let name_rel_path = Path::new(&name);
     // Does the aliases exist
@@ -264,7 +234,12 @@ async fn handle_tasks(stream: UnixStream, cfg: &KanidmUnixdConfig) {
             Some(Ok(TaskRequest::HomeDirectory(info))) => {
                 debug!("Received task -> HomeDirectory({:?})", info);
 
-                let resp = match create_home_directory(&info, &cfg.home_prefix, cfg.use_etc_skel) {
+                let resp = match create_home_directory(
+                    &info,
+                    &cfg.home_prefix,
+                    cfg.use_etc_skel,
+                    cfg.selinux,
+                ) {
                     Ok(()) => TaskResponse::Success,
                     Err(msg) => TaskResponse::Error(msg),
                 };

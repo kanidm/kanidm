@@ -27,10 +27,34 @@ To build the Web UI you'll need [wasm-pack](https://rustwasm.github.io/wasm-pack
 You will need to install rustup and our build dependencies with:
 
 ```bash
-zypper in rustup git libudev-devel sqlite3-devel libopenssl-3-devel
+zypper in rustup git libudev-devel sqlite3-devel libopenssl-3-devel libselinux-devel pam-devel tpm2-0-tss-devel
 ```
 
 You can then use rustup to complete the setup of the toolchain.
+
+In some cases you may need to build other vendored components, or use an alternate linker. In these
+cases we advise you to also install.
+
+```bash
+zypper in clang lld make sccache
+```
+
+You should also adjust your environment with:
+```bash
+export RUSTC_WRAPPER=sccache
+export CC="sccache /usr/bin/clang"
+export CXX="sccache /usr/bin/clang++"
+```
+
+And add the following to a cargo config of your choice (such as ~/.cargo/config), adjusting for cpu arch
+
+```toml
+[target.aarch64-unknown-linux-gnu]
+linker = "clang"
+rustflags = [
+    "-C", "link-arg=-fuse-ld=lld",
+]
+```
 
 ### Fedora
 
