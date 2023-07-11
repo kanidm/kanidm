@@ -1,17 +1,7 @@
-#[cfg(not(any(target_os = "windows", feature = "webauthn-transport")))]
-mod mozilla;
-#[cfg(not(any(target_os = "windows", feature = "webauthn-transport")))]
-use mozilla::get_authenticator_backend;
-
-#[cfg(feature = "webauthn-transport")]
-mod transport;
-#[cfg(feature = "webauthn-transport")]
-use transport::get_authenticator_backend;
-
-#[cfg(all(not(feature = "webauthn-transport"), target_os = "windows"))]
-mod win10;
-#[cfg(all(not(feature = "webauthn-transport"), target_os = "windows"))]
-use win10::get_authenticator_backend;
+#[cfg_attr(target_os = "windows", path = "win10.rs")]
+#[cfg_attr(not(target_os = "windows"), path = "transport.rs")]
+mod backend;
+use backend::get_authenticator_backend;
 
 use webauthn_authenticator_rs::{AuthenticatorBackend, WebauthnAuthenticator};
 
@@ -22,10 +12,11 @@ use webauthn_authenticator_rs::{AuthenticatorBackend, WebauthnAuthenticator};
 ///
 ///   This supports BLE, NFC and USB tokens.
 ///
-/// * On other platforms, this uses Mozilla's `authenticator-rs`.
+/// * On other platforms, this uses `webauthn-authenticator-rs`' `AnyTransport`.
 ///
-///   This only supports USB tokens, and doesn't work on Windows systems which
-///   have the platform WebAuthn API available.
-pub(crate) fn get_authenticator() -> WebauthnAuthenticator<impl AuthenticatorBackend> {
-    WebauthnAuthenticator::new(get_authenticator_backend())
+///   In the default configuration, this supports NFC and USB tokens, but
+///   doesn't work on Windows systems which have the platform WebAuthn API
+///   available.
+pub(crate) async fn get_authenticator() -> WebauthnAuthenticator<impl AuthenticatorBackend> {
+    WebauthnAuthenticator::new(get_authenticator_backend().await)
 }

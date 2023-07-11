@@ -29,9 +29,6 @@ doc = false
 name = "kanidm_ssh_authorizedkeys_direct"
 path = "src/ssh_authorizedkeys.rs"
 
-[features]
-webauthn-transport = ["webauthn-authenticator-rs/usb", "webauthn-authenticator-rs/nfc"]
-
 [dependencies]
 async-recursion = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
@@ -60,10 +57,9 @@ clap_complete = { workspace=true }
 uuid = { workspace=true }
 url = { workspace = true }
 
-[target."cfg(target_os = \"windows\")".dependencies.webauthn-authenticator-rs]
-workspace = true
-features = ["win10"]
+[target."cfg(target_os = \"windows\")".dependencies]
+webauthn-authenticator-rs = { workspace = true, features = ["win10"] }
 
-[target."cfg(not(any(target_os = \"windows\")))".dependencies.webauthn-authenticator-rs]
-workspace = true
-features = ["u2fhid"]
+[target."cfg(not(target_os = \"windows\"))".dependencies]
+futures.workspace = true
+webauthn-authenticator-rs = { workspace = true, features = ["nfc", "usb", "ui-cli"] }

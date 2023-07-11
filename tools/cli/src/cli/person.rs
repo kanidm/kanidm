@@ -902,7 +902,7 @@ async fn passkey_enroll_prompt(session_token: &CUSessionToken, client: &KanidmCl
     };
 
     // Setup and connect to the webauthn handler ...
-    let mut wa = get_authenticator();
+    let mut wa = get_authenticator().await;
 
     eprintln!("Your authenticator will now flash for you to interact with.");
     eprintln!("You may be asked to enter the PIN for your device.");
