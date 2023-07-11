@@ -6,7 +6,7 @@ use hashbrown::HashSet;
 use smolset::SmolSet;
 use time::OffsetDateTime;
 // use std::fmt::Debug;
-use webauthn_rs::prelude::DeviceKey as DeviceKeyV4;
+use webauthn_rs::prelude::AttestedResidentKey as DeviceKeyV4;
 use webauthn_rs::prelude::Passkey as PasskeyV4;
 
 use kanidm_proto::v1::Filter as ProtoFilter;

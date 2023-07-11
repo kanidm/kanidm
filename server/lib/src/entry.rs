@@ -40,7 +40,7 @@ use smartstring::alias::String as AttrString;
 use time::OffsetDateTime;
 use tracing::trace;
 use uuid::Uuid;
-use webauthn_rs::prelude::{DeviceKey as DeviceKeyV4, Passkey as PasskeyV4};
+use webauthn_rs::prelude::{AttestedResidentKey as DeviceKeyV4, Passkey as PasskeyV4};
 
 use crate::be::dbentry::{DbEntry, DbEntryV2, DbEntryVers};
 use crate::be::dbvalue::DbValueSetV2;

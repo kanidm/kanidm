@@ -81,7 +81,7 @@ users = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true, features = ["html_reports"] }
-webauthn-authenticator-rs = { workspace = true }
+webauthn-authenticator-rs = { workspace = true, features = ["softpasskey"] }
 
 futures = { workspace = true }
 kanidmd_lib_macros = { workspace = true }

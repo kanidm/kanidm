@@ -162,14 +162,14 @@ wasm-bindgen = "^0.2.86"
 wasm-bindgen-futures = "^0.4.30"
 wasm-bindgen-test = "0.3.35"
 
-webauthn-authenticator-rs = "0.4.8"
-webauthn-rs = "0.4.8"
-webauthn-rs-core = "0.4.8"
-webauthn-rs-proto = "0.4.8"
-# webauthn-authenticator-rs = { path = "../webauthn-rs/webauthn-authenticator-rs" }
-# webauthn-rs = { path = "../webauthn-rs/webauthn-rs" }
-# webauthn-rs-core = { path = "../webauthn-rs/webauthn-rs-core" }
-# webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
+# webauthn-authenticator-rs = "0.5.0"
+# webauthn-rs = "0.5.0"
+# webauthn-rs-core = "0.5.0"
+# webauthn-rs-proto = "0.5.0"
+webauthn-authenticator-rs = { path = "../webauthn-rs/webauthn-authenticator-rs" }
+webauthn-rs = { path = "../webauthn-rs/webauthn-rs" }
+webauthn-rs-core = { path = "../webauthn-rs/webauthn-rs-core" }
+webauthn-rs-proto = { path = "../webauthn-rs/webauthn-rs-proto" }
 web-sys = "^0.3.62"
 whoami = "^1.4.1"
 walkdir = "2"

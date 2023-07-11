@@ -12,7 +12,7 @@ use kanidm_proto::v1::{
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use webauthn_rs::prelude::{
-    CreationChallengeResponse, DeviceKey as DeviceKeyV4, Passkey as PasskeyV4, PasskeyRegistration,
+    CreationChallengeResponse, AttestedResidentKey as DeviceKeyV4, Passkey as PasskeyV4, PasskeyRegistration,
     RegisterPublicKeyCredential,
 };
 
