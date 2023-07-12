@@ -11,3 +11,5 @@ too-many-arguments-threshold = 8
 
 # default's 250
 type-complexity-threshold = 300
+
+disallowed-types = ["std::collections::HashMap", "std::collections::HashSet"]
