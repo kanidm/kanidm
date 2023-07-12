@@ -1,7 +1,7 @@
 #[derive(Debug, Args)]
 struct CommonOpt {
-    #[clap(parse(from_os_str), default_value = "", short, long = "config", env = "KANIDM_CONFIG")]
     /// Path to the server's configuration file. If it does not exist, it will be created.
+    #[clap(short, long = "config", env = "KANIDM_CONFIG")]
     config_path: PathBuf,
     /// Log format (still in very early development)
     #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value="text")]
@@ -10,7 +10,7 @@ struct CommonOpt {
 
 #[derive(Debug, Args)]
 struct BackupOpt {
-    #[clap(parse(from_os_str))]
+    #[clap(value_parser)]
     /// Output path for the backup content.
     path: PathBuf,
     #[clap(flatten)]
@@ -19,7 +19,7 @@ struct BackupOpt {
 
 #[derive(Debug, Args)]
 struct RestoreOpt {
-    #[clap(parse(from_os_str))]
+    #[clap(value_parser)]
     /// Restore from this path. Should be created with "backup".
     path: PathBuf,
     #[clap(flatten)]
@@ -126,8 +126,9 @@ enum DbScanOpt {
 }
 
 #[derive(Debug, Parser)]
+#[command(name="kanidmd")]
 struct KanidmdParser {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     commands: KanidmdOpt,
 }
 

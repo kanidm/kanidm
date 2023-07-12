@@ -2,7 +2,7 @@
 use std::env;
 use std::path::PathBuf;
 
-use clap::{IntoApp, Parser};
+use clap::{CommandFactory, Parser};
 use clap_complete::{generate_to, Shell};
 
 include!("src/opt/ssh_authorizedkeys.rs");

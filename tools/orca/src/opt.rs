@@ -11,10 +11,10 @@ struct CommonOpt {
 struct PreProcOpt {
     #[clap(flatten)]
     pub copt: CommonOpt,
-    #[clap(parse(from_os_str), short, long = "input")]
+    #[clap(value_parser, short, long = "input")]
     /// Path to unprocessed data in json format.
     pub input_path: PathBuf,
-    #[clap(parse(from_os_str), short, long = "output")]
+    #[clap(value_parser, short, long = "output")]
     /// Path to write the processed output.
     pub output_path: PathBuf,
 }
@@ -23,7 +23,7 @@ struct PreProcOpt {
 struct GenerateOpt {
     #[clap(flatten)]
     pub copt: CommonOpt,
-    #[clap(parse(from_os_str), short, long = "output")]
+    #[clap(value_parser, short, long = "output")]
     /// Path to write the generated output.
     pub output_path: PathBuf,
 }
@@ -34,7 +34,7 @@ struct SetupOpt {
     pub copt: CommonOpt,
     #[clap(name = "target")]
     pub target: TargetOpt,
-    #[clap(parse(from_os_str), short, long = "profile")]
+    #[clap(value_parser, short, long = "profile")]
     /// Path to the test profile.
     pub profile_path: PathBuf,
 }
@@ -48,12 +48,12 @@ struct RunOpt {
     #[clap(name = "test-type")]
     /// Which type of test to run against this system
     pub test_type: TestTypeOpt,
-    #[clap(parse(from_os_str), short, long = "profile")]
+    #[clap(value_parser, short, long = "profile")]
     /// Path to the test profile.
     pub profile_path: PathBuf,
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Subcommand, Clone)]
 /// The target to run against
 pub(crate) enum TargetOpt {
     #[clap(name = "ds")]
@@ -84,7 +84,7 @@ impl FromStr for TargetOpt {
     }
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Subcommand, Clone)]
 pub(crate) enum TestTypeOpt {
     #[clap(name = "search-basic")]
     /// Perform a basic search-only test

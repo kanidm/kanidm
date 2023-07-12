@@ -1,4 +1,5 @@
 #[derive(Debug, Parser)]
+#[command(name="kanidm_ssh_authorizedkeys")]
 struct SshAuthorizedOpt {
     #[clap(short, long)]
     debug: bool,

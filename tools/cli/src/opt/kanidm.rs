@@ -44,7 +44,7 @@ pub struct CommonOpt {
     #[clap(short = 'D', long = "name", env = "KANIDM_NAME")]
     pub username: Option<String>,
     /// Path to a CA certificate file
-    #[clap(parse(from_os_str), short = 'C', long = "ca", env = "KANIDM_CA_PATH")]
+    #[clap(value_parser, short = 'C', long = "ca", env = "KANIDM_CA_PATH")]
     pub ca_path: Option<PathBuf>,
     /// Log format (still in very early development)
     #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value = "text")]
@@ -54,7 +54,7 @@ pub struct CommonOpt {
 #[derive(Debug, Args)]
 pub struct GroupNamedMembers {
     name: String,
-    #[clap(required = true, min_values = 1)]
+    #[clap(required = true, num_args(1..))]
     members: Vec<String>,
     #[clap(flatten)]
     copt: CommonOpt,
@@ -572,7 +572,7 @@ pub struct FilterOpt {
 
 #[derive(Debug, Args)]
 pub struct CreateOpt {
-    #[clap(parse(from_os_str))]
+    #[clap(value_parser)]
     file: PathBuf,
     #[clap(flatten)]
     commonopts: CommonOpt,
@@ -584,7 +584,7 @@ pub struct ModifyOpt {
     commonopts: CommonOpt,
     #[clap()]
     filter: String,
-    #[clap(parse(from_os_str))]
+    #[clap(value_parser)]
     file: PathBuf,
 }
 
@@ -767,7 +767,7 @@ pub enum PwBadlistOpt {
     Upload {
         #[clap(flatten)]
         copt: CommonOpt,
-        #[clap(parse(from_os_str), required = true, min_values = 1)]
+        #[clap(value_parser, required = true, num_args(1..))]
         paths: Vec<PathBuf>,
         /// Perform a dry run and display the list that would have been uploaded instead.
         #[clap(short = 'n', long)]
@@ -779,7 +779,7 @@ pub enum PwBadlistOpt {
     Remove {
         #[clap(flatten)]
         copt: CommonOpt,
-        #[clap(parse(from_os_str), required = true, min_values = 1)]
+        #[clap(value_parser, required = true, num_args(1..))]
         paths: Vec<PathBuf>,
     },
 }
