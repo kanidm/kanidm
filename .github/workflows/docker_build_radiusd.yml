@@ -11,6 +11,10 @@ name: Container - Radiusd
     branches:
       - master
 
+permissions:
+  packages: write
+  contents: read
+  id-token: write
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
