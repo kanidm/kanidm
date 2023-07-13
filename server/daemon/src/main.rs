@@ -102,29 +102,27 @@ async fn main() -> ExitCode {
     // Read CLI args, determine what the user has asked us to do.
     let opt = KanidmdParser::parse();
 
+    //we set up a list of these so we can set the log config THEN log out the errors.
     let mut config_error: Vec<String> = Vec::new();
     let mut config = Configuration::new();
-    // Check the permissions are OK.
-    let cfg_path = &opt.commands.commonopt().config_path; // TODO: this needs to be pulling from the default or something?
-    if cfg_path.display().to_string().is_empty() {
-        config_error.push("Refusing to run - config file path is empty".to_string());
-    }
-    if !cfg_path.exists() {
-        config_error.push(format!(
-            "Refusing to run - config file {} does not exist",
-            cfg_path.to_str().unwrap_or("invalid file path")
-        ));
-    }
+    let cfg_path = opt.commands.commonopt().config_path.clone();
 
-    // Read our config
-    let sconfig: Option<ServerConfig> =
-        match ServerConfig::new(&(opt.commands.commonopt().config_path)) {
+    let sconfig = match cfg_path.exists() {
+        false => {
+            config_error.push(format!(
+                "Refusing to run - config file {} does not exist",
+                cfg_path.to_str().unwrap_or("<invalid filename>")
+            ));
+            None
+        }
+        true => match ServerConfig::new(&cfg_path) {
             Ok(c) => Some(c),
             Err(e) => {
-                format!("Config Parse failure {:?}", e);
-                None
+                config_error.push(format!("Config Parse failure {:?}", e));
+                return ExitCode::FAILURE;
             }
-        };
+        },
+    };
 
     // We only allow config file for log level now.
     let log_filter: EnvFilter = match sconfig.as_ref() {
@@ -144,14 +142,7 @@ async fn main() -> ExitCode {
         .map_sender(|sender| sender.or_stderr())
         .build_on(|subscriber|{
             subscriber.with(log_filter)
-            // this does NOT work, it just adds a layer.
-            // if std::io::stdout().is_terminal() {
-            //     println!("Stdout is a terminal");
-            //     sub.with(sketching::tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
-            // } else {
-            //     println!("Stdout is not a terminal");
-            //     sub.with(sketching::tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
-            // }
+
         })
         .on(async {
             // Get information on the windows username
@@ -204,12 +195,12 @@ async fn main() -> ExitCode {
 
             #[cfg(target_family = "unix")]
             {
-                let cfg_meta = match metadata(cfg_path) {
+                let cfg_meta = match metadata(&cfg_path) {
                     Ok(m) => m,
                     Err(e) => {
                         error!(
                             "Unable to read metadata for '{}' - {:?}",
-                            cfg_path.to_str().unwrap_or("invalid file path"),
+                            cfg_path.display(),
                             e
                         );
                         return ExitCode::FAILURE
@@ -218,18 +209,18 @@ async fn main() -> ExitCode {
 
                 if !kanidm_lib_file_permissions::readonly(&cfg_meta) {
                     warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
-                    opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path"));
+                    cfg_path.to_str().unwrap_or("invalid file path"));
                 }
 
                 if cfg_meta.mode() & 0o007 != 0 {
                     warn!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...",
-                    opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
+                    cfg_path.to_str().unwrap_or("invalid file path")
                     );
                 }
 
                 if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
                     warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
-                    opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
+                    cfg_path.to_str().unwrap_or("invalid file path")
                     );
                 }
             }

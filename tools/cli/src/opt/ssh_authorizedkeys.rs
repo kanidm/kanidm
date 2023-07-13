@@ -6,7 +6,7 @@ struct SshAuthorizedOpt {
     addr: Option<String>,
     #[clap(short = 'D', long = "name")]
     username: String,
-    #[clap(parse(from_os_str), short = 'C', long = "ca")]
+    #[clap(value_parser, short = 'C', long = "ca")]
     ca_path: Option<PathBuf>,
     account_id: String,
 }

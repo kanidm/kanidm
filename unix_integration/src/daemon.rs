@@ -427,23 +427,21 @@ async fn main() -> ExitCode {
         )
         .arg(
             Arg::new("unixd-config")
-                .takes_value(true)
                 .help("Set the unixd config file path")
                 .short('u')
                 .long("unixd-config")
                 .default_value(DEFAULT_CONFIG_PATH)
                 .env("KANIDM_UNIX_CONFIG")
-                .action(ArgAction::StoreValue),
+                .action(ArgAction::Set),
         )
         .arg(
             Arg::new("client-config")
-                .takes_value(true)
                 .help("Set the client config file path")
                 .short('c')
                 .long("client-config")
                 .default_value(DEFAULT_CLIENT_CONFIG_PATH)
                 .env("KANIDM_CLIENT_CONFIG")
-                .action(ArgAction::StoreValue),
+                .action(ArgAction::Set),
         )
         .get_matches();
 
