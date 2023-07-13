@@ -10,10 +10,6 @@ name: Container - Kanidm
   push:
     branches:
       - master
-permissions:
-  packages: write
-  contents: read
-  id-token: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
