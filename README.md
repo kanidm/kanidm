@@ -128,7 +128,7 @@ start with in many cases.
 Kanidm does NOT require Keycloak to provide services such as Oauth2 and integrates many of the
 elements in a simpler and correct way out of the box in comparison.
 
-<details>
+</details>
 
 ## Developer Getting Started
 
