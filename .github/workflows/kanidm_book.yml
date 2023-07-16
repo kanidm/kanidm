@@ -127,7 +127,7 @@ jobs:
         env:
           ACTIONS_RUNNER_DEBUG: true
       - name: Upload pages artifacts
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v2
         with:
           # Upload entire repository
           path: 'docs/'
