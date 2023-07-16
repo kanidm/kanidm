@@ -888,9 +888,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.3.11"
+version = "4.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1640e5cc7fb47dbb8338fd471b105e7ed6c3cb2aeb00c2e067127ffd3764a05d"
+checksum = "3eab9e8ceb9afdade1ab3f0fd8dbce5b1b2f468ad653baf10e771781b2b67b73"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -899,9 +899,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.3.11"
+version = "4.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98c59138d527eeaf9b53f35a77fcc1fad9d883116070c63d5de1c7dc7b00c72b"
+checksum = "9f2763db829349bf00cfc06251268865ed4363b93a943174f638daf3ecdba2cd"
 dependencies = [
  "anstream",
  "anstyle",
@@ -915,14 +915,14 @@ version = "4.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fc443334c81a804575546c5a8a79b4913b50e28d69232903604cada1de817ce"
 dependencies = [
- "clap 4.3.11",
+ "clap 4.3.12",
 ]
 
 [[package]]
 name = "clap_derive"
-version = "4.3.2"
+version = "4.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8cd2b2a819ad6eec39e8f1d6b53001af1e5469f8c177579cdaeb313115b825f"
+checksum = "54a9bb5758fc5dfe728d1019941681eccaf0cf8a4189b692a0ee2f2ecf90a050"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -1282,7 +1282,7 @@ dependencies = [
 name = "daemon"
 version = "1.1.0-beta.13-dev"
 dependencies = [
- "clap 4.3.11",
+ "clap 4.3.12",
  "clap_complete",
  "fs2",
  "is-terminal",
@@ -2523,7 +2523,7 @@ version = "1.1.0-beta.13-dev"
 dependencies = [
  "base64urlsafedata",
  "chrono",
- "clap 4.3.11",
+ "clap 4.3.12",
  "clap_complete",
  "cron",
  "kanidm_client",
@@ -2547,7 +2547,7 @@ version = "1.1.0-beta.13-dev"
 dependencies = [
  "base64urlsafedata",
  "chrono",
- "clap 4.3.11",
+ "clap 4.3.12",
  "clap_complete",
  "cron",
  "kanidm_client",
@@ -2632,7 +2632,7 @@ name = "kanidm_tools"
 version = "1.1.0-beta.13-dev"
 dependencies = [
  "async-recursion",
- "clap 4.3.11",
+ "clap 4.3.12",
  "clap_complete",
  "compact_jwt",
  "dialoguer",
@@ -2661,7 +2661,7 @@ version = "1.1.0-beta.13-dev"
 dependencies = [
  "base64urlsafedata",
  "bytes",
- "clap 4.3.11",
+ "clap 4.3.12",
  "clap_complete",
  "csv",
  "futures",
@@ -3508,7 +3508,7 @@ dependencies = [
 name = "orca"
 version = "1.1.0-beta.13-dev"
 dependencies = [
- "clap 4.3.11",
+ "clap 4.3.12",
  "crossbeam",
  "csv",
  "dialoguer",
