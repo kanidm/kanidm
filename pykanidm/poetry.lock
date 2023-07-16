@@ -617,20 +617,17 @@ dev = ["flake8", "markdown", "twine", "wheel"]
 
 [[package]]
 name = "griffe"
-version = "0.25.4"
+version = "0.32.1"
 description = "Signatures for entire Python programs. Extract the structure, the frame, the skeleton of your project, to generate API documentation or find breaking changes in your API."
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "griffe-0.25.4-py3-none-any.whl", hash = "sha256:919f935a358b31074d16e324e26b041883c60a8cf10504655e394afc3a7caad8"},
-    {file = "griffe-0.25.4.tar.gz", hash = "sha256:f190edf8ef58d43c856d2d6761ec324a043ff60deb8c14359263571e8b91fe68"},
+    {file = "griffe-0.32.1-py3-none-any.whl", hash = "sha256:0e3bfc7e06f0d003059f6d0dfce14876b52ed96ef8f6974c72f5218682669a24"},
+    {file = "griffe-0.32.1.tar.gz", hash = "sha256:a9b4fe7551c670c64c480e5102d8f220d21109b02b25809e972d57f2264dad0d"},
 ]
 
 [package.dependencies]
 colorama = ">=0.4"
-
-[package.extras]
-async = ["aiofiles (>=0.7,<1.0)"]
 
 [[package]]
 name = "idna"
@@ -973,17 +970,17 @@ python-legacy = ["mkdocstrings-python-legacy (>=0.2.1)"]
 
 [[package]]
 name = "mkdocstrings-python"
-version = "1.1.2"
+version = "1.2.0"
 description = "A Python handler for mkdocstrings."
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "mkdocstrings_python-1.1.2-py3-none-any.whl", hash = "sha256:c2b652a850fec8e85034a9cdb3b45f8ad1a558686edc20ed1f40b4e17e62070f"},
-    {file = "mkdocstrings_python-1.1.2.tar.gz", hash = "sha256:f28bdcacb9bcdb44b6942a5642c1ea8b36870614d33e29e3c923e204a8d8ed61"},
+    {file = "mkdocstrings_python-1.2.0-py3-none-any.whl", hash = "sha256:2924c9c4286fd236bdae64402b5cc5010dee13779b3edf1a65d97bc02303657b"},
+    {file = "mkdocstrings_python-1.2.0.tar.gz", hash = "sha256:e16bedc236a3a6aa04c916ae6b9d37d2299c80c6e7169fc481a30ed9f8f362a4"},
 ]
 
 [package.dependencies]
-griffe = ">=0.24"
+griffe = ">=0.30"
 mkdocstrings = ">=0.20"
 
 [[package]]
@@ -2016,4 +2013,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "951f7b7a6730577b300e3d0941cfe46a04ec3f1bfb20ebcfd78355581d69df63"
+content-hash = "e2c9521cc7710a481865a78666718b3928bd4f493201113268911f5e95eede37"
