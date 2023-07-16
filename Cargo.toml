@@ -132,7 +132,7 @@ sketching = { path = "./libs/sketching" }
 smartstring = "^1.0.1"
 smolset = "^1.3.1"
 sshkeys = "^0.3.1"
-syn = { version = "2.0.25", features = ["full"] }
+syn = { version = "2.0.26", features = ["full"] }
 testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.21", features = ["formatting", "local-offset"] }
 
