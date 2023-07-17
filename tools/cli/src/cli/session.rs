@@ -18,16 +18,22 @@ use crate::common::prompt_for_username_get_username;
 use crate::webauthn::get_authenticator;
 use crate::{LoginOpt, LogoutOpt, ReauthOpt, SessionOpt};
 
-static TOKEN_DIR: &str = "~/.cache";
 static TOKEN_PATH: &str = "~/.cache/kanidm_tokens";
+
+fn get_env_aware_token_path() -> PathBuf {
+    let env_aware_token_path =
+        std::env::var("KANIDM_TOKEN_PATH").unwrap_or_else(|_| TOKEN_PATH.to_owned());
+
+    return PathBuf::from(shellexpand::tilde(&env_aware_token_path).into_owned());
+}
 
 #[allow(clippy::result_unit_err)]
 pub fn read_tokens() -> Result<BTreeMap<String, String>, ()> {
-    let token_path = PathBuf::from(shellexpand::tilde(TOKEN_PATH).into_owned());
+    let token_path = get_env_aware_token_path();
     if !token_path.exists() {
         debug!(
             "Token cache file path {:?} does not exist, returning an empty token store.",
-            TOKEN_PATH
+            token_path
         );
         return Ok(BTreeMap::new());
     }
@@ -49,8 +55,8 @@ pub fn read_tokens() -> Result<BTreeMap<String, String>, ()> {
                 // other errors are OK to continue past
                 _ => {
                     warn!(
-                        "Cannot read tokens from {} due to error: {:?} ... continuing.",
-                        TOKEN_PATH, e
+                        "Cannot read tokens from {:?} due to error: {:?} ... continuing.",
+                        &token_path, e
                     );
                     return Ok(BTreeMap::new());
                 }
@@ -70,29 +76,34 @@ pub fn read_tokens() -> Result<BTreeMap<String, String>, ()> {
 
 #[allow(clippy::result_unit_err)]
 pub fn write_tokens(tokens: &BTreeMap<String, String>) -> Result<(), ()> {
-    let token_dir = PathBuf::from(shellexpand::tilde(TOKEN_DIR).into_owned());
-    let token_path = PathBuf::from(shellexpand::tilde(TOKEN_PATH).into_owned());
+    let token_path = get_env_aware_token_path();
+    let token_dir = token_path.parent().ok_or_else(|| {
+        error!(
+            "unable to determine token directory from path {:?}",
+            token_path
+        )
+    })?;
 
     token_dir
         .parent()
         .ok_or_else(|| {
             error!(
-                "Parent directory to {} is invalid (root directory?).",
-                TOKEN_DIR
+                "Parent directory to {:?} is invalid (root directory?).",
+                &token_dir
             );
         })
         .and_then(|parent_dir| {
             if parent_dir.exists() {
                 Ok(())
             } else {
-                error!("Parent directory to {} does not exist.", TOKEN_DIR);
+                error!("Parent directory to {:?} does not exist.", &token_dir);
                 Err(())
             }
         })?;
 
     if !token_dir.exists() {
         create_dir(token_dir).map_err(|e| {
-            error!("Unable to create directory - {} {:?}", TOKEN_DIR, e);
+            error!("Unable to create directory - {:?} {:?}", token_dir, e);
         })?;
     }
 
@@ -103,7 +114,7 @@ pub fn write_tokens(tokens: &BTreeMap<String, String>) -> Result<(), ()> {
     let file = File::create(&token_path).map_err(|e| {
         #[cfg(target_family = "unix")]
         let _ = unsafe { umask(before) };
-        error!("Can not write to {} -> {:?}", TOKEN_PATH, e);
+        error!("Can not write to {:?} -> {:?}", &token_path, e);
     })?;
 
     #[cfg(target_family = "unix")]
