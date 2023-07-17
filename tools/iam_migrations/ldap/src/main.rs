@@ -43,8 +43,8 @@ use tracing_subscriber::{fmt, EnvFilter};
 
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::scim_v1::{
-    MultiValueAttr, ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
-    ScimSyncRetentionMode, ScimSyncState,
+    MultiValueAttr, ScimEntry, ScimExternalMember, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson,
+    ScimSyncRequest, ScimSyncRetentionMode, ScimSyncState,
 };
 use kanidmd_lib::utils::file_permissions_readonly;
 
@@ -552,6 +552,19 @@ fn ldap_to_scim_entry(
 
         let totp_import = Vec::default();
 
+        let ssh_publickey = entry
+            .remove_ava(&sync_config.person_attr_ssh_public_key)
+            .map(|set| {
+                set.into_iter()
+                    .enumerate()
+                    .map(|(i, value)| ScimSshPubKey {
+                        label: format!("sshpublickey-{}", i),
+                        value,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
         let login_shell = entry.remove_ava_single(&sync_config.person_attr_login_shell);
         let external_id = Some(entry.dn);
 
@@ -566,6 +579,7 @@ fn ldap_to_scim_entry(
                 totp_import,
                 login_shell,
                 mail,
+                ssh_publickey,
             }
             .into(),
         ))

@@ -358,6 +358,11 @@ impl ViewsApp {
     async fn fetch_logout() -> Result<ViewsMsg, FetchError> {
         let (kopid, status, value, _) = do_request("/v1/logout", RequestMethod::GET, None).await?;
 
+        // In both cases - clear the local token to prevent our client
+        // thinking we have auth.
+
+        models::clear_bearer_token();
+
         if status == 200 {
             Ok(ViewsMsg::LogoutComplete)
         } else {

@@ -96,6 +96,26 @@ impl Into<ScimComplexAttr> for ScimTotp {
 }
 
 #[derive(Serialize, Debug, Clone)]
+pub struct ScimSshPubKey {
+    pub label: String,
+    pub value: String,
+}
+
+#[allow(clippy::from_over_into)]
+impl Into<ScimComplexAttr> for ScimSshPubKey {
+    fn into(self) -> ScimComplexAttr {
+        let ScimSshPubKey { label, value } = self;
+
+        let mut attrs = BTreeMap::default();
+
+        attrs.insert("label".to_string(), ScimSimpleAttr::String(label));
+
+        attrs.insert("value".to_string(), ScimSimpleAttr::String(value));
+        ScimComplexAttr { attrs }
+    }
+}
+
+#[derive(Serialize, Debug, Clone)]
 #[serde(into = "ScimEntry")]
 pub struct ScimSyncPerson {
     pub id: Uuid,
@@ -107,6 +127,7 @@ pub struct ScimSyncPerson {
     pub totp_import: Vec<ScimTotp>,
     pub login_shell: Option<String>,
     pub mail: Vec<MultiValueAttr>,
+    pub ssh_publickey: Vec<ScimSshPubKey>,
 }
 
 // Need to allow this because clippy is broken and doesn't realise scimentry is out of crate
@@ -124,6 +145,7 @@ impl Into<ScimEntry> for ScimSyncPerson {
             totp_import,
             login_shell,
             mail,
+            ssh_publickey,
         } = self;
 
         let schemas = if gidnumber.is_some() {
@@ -148,6 +170,7 @@ impl Into<ScimEntry> for ScimSyncPerson {
         set_multi_complex!(attrs, "totp_import", totp_import);
         set_option_string!(attrs, "loginshell", login_shell);
         set_multi_complex!(attrs, "mail", mail);
+        set_multi_complex!(attrs, "ssh_publickey", ssh_publickey);
 
         ScimEntry {
             schemas,

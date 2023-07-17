@@ -1043,6 +1043,51 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }
                 Ok(vs)
             }
+            (SyntaxType::SshKey, true, ScimAttr::MultiComplex(values)) => {
+                let mut vs = Vec::with_capacity(values.len());
+                for complex in values.iter() {
+                    let label = complex
+                        .attrs
+                        .get("label")
+                        .ok_or_else(|| {
+                            error!("Invalid scim complex attr - missing required key label");
+                            OperationError::InvalidAttribute(format!(
+                                "missing required key label - {scim_attr_name}"
+                            ))
+                        })
+                        .and_then(|external_id| match external_id {
+                            ScimSimpleAttr::String(value) => Ok(value.clone()),
+                            _ => {
+                                error!("Invalid value attribute - must be scim simple string");
+                                Err(OperationError::InvalidAttribute(format!(
+                                    "value must be scim simple string - {scim_attr_name}"
+                                )))
+                            }
+                        })?;
+
+                    let value = complex
+                        .attrs
+                        .get("value")
+                        .ok_or_else(|| {
+                            error!("Invalid scim complex attr - missing required key value");
+                            OperationError::InvalidAttribute(format!(
+                                "missing required key value - {scim_attr_name}"
+                            ))
+                        })
+                        .and_then(|external_id| match external_id {
+                            ScimSimpleAttr::String(value) => Ok(value.clone()),
+                            _ => {
+                                error!("Invalid value attribute - must be scim simple string");
+                                Err(OperationError::InvalidAttribute(format!(
+                                    "value must be scim simple string - {scim_attr_name}"
+                                )))
+                            }
+                        })?;
+
+                    vs.push(Value::SshKey(label, value))
+                }
+                Ok(vs)
+            }
             (syn, mv, sa) => {
                 error!(?syn, ?mv, ?sa, "Unsupported scim attribute conversion. This may be a syntax error in your import, or a missing feature in Kanidm.");
                 Err(OperationError::InvalidAttribute(format!(
@@ -2539,6 +2584,12 @@ mod tests {
         assert!(testuser.get_ava_single_utf8("displayname") == Some("Test User"));
         assert!(testuser.get_ava_single_iutf8("loginshell") == Some("/bin/sh"));
 
+        let mut ssh_keyiter = testuser
+            .get_ava_iter_sshpubkeys("ssh_publickey")
+            .expect("Failed to access ssh pubkeys");
+        assert_eq!(ssh_keyiter.next(), Some("sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBENubZikrb8hu+HeVRdZ0pp/VAk2qv4JDbuJhvD0yNdWDL2e3cBbERiDeNPkWx58Q4rVnxkbV1fa8E2waRtT91wAAAAEc3NoOg== testuser@fidokey"));
+        assert_eq!(ssh_keyiter.next(), None);
+
         // Check memberof works.
         let testgroup_mb = testgroup.get_ava_refer("member").expect("No members!");
         assert!(testgroup_mb.contains(&testuser.get_uuid()));
@@ -2946,6 +2997,12 @@ mod tests {
       "mail": [
         {
           "value": "testuser@dev.blackhats.net.au"
+        }
+      ],
+      "ssh_publickey": [
+        {
+          "label": "ssh-key",
+          "value": "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBENubZikrb8hu+HeVRdZ0pp/VAk2qv4JDbuJhvD0yNdWDL2e3cBbERiDeNPkWx58Q4rVnxkbV1fa8E2waRtT91wAAAAEc3NoOg== testuser@fidokey"
         }
       ],
       "password_import": "ipaNTHash: iEb36u6PsRetBr3YMLdYbA"

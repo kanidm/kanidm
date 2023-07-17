@@ -178,6 +178,27 @@ impl UnixUserAccount {
         Ok(ModifyList::new_purge_and_set("unix_password", vcred))
     }
 
+    pub(crate) fn gen_password_upgrade_mod(
+        &self,
+        cleartext: &str,
+        crypto_policy: &CryptoPolicy,
+    ) -> Result<Option<ModifyList<ModifyInvalid>>, OperationError> {
+        match &self.cred {
+            // Change the cred
+            Some(ucred) => {
+                if let Some(ncred) = ucred.upgrade_password(crypto_policy, cleartext)? {
+                    let vcred = Value::new_credential("primary", ncred);
+                    Ok(Some(ModifyList::new_purge_and_set("unix_password", vcred)))
+                } else {
+                    // No action, not the same pw
+                    Ok(None)
+                }
+            }
+            // Nothing to do.
+            None => Ok(None),
+        }
+    }
+
     pub fn is_within_valid_time(&self, ct: Duration) -> bool {
         let cot = OffsetDateTime::UNIX_EPOCH + ct;
 
@@ -269,18 +290,6 @@ impl UnixUserAccount {
                 security_info!("Failed unix cred handling (no cred present)");
                 Ok(None)
             }
-        }
-    }
-
-    pub(crate) fn check_existing_pw(&self, cleartext: &str) -> Result<bool, OperationError> {
-        match &self.cred {
-            Some(cred) => cred.password_ref().and_then(|pw| {
-                pw.verify(cleartext).map_err(|e| {
-                    error!(crypto_err = ?e);
-                    e.into()
-                })
-            }),
-            None => Err(OperationError::InvalidState),
         }
     }
 }
