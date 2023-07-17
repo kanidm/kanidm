@@ -49,8 +49,8 @@ use uuid::Uuid;
 
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::scim_v1::{
-    MultiValueAttr, ScimEntry, ScimExternalMember, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
-    ScimSyncRetentionMode, ScimSyncState, ScimTotp,
+    MultiValueAttr, ScimEntry, ScimExternalMember, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson,
+    ScimSyncRequest, ScimSyncRetentionMode, ScimSyncState, ScimTotp,
 };
 use kanidmd_lib::utils::file_permissions_readonly;
 
@@ -436,7 +436,8 @@ async fn run_sync(
 
             // process the entries to scim.
             let entries = match process_ipa_sync_result(
-                ipa_client,
+                &mut ipa_client,
+                sync_config.ipa_sync_base_dn.clone(),
                 entries,
                 &sync_config.entry_map,
                 is_initialise,
@@ -500,7 +501,8 @@ async fn run_sync(
 }
 
 async fn process_ipa_sync_result(
-    _ipa_client: LdapClient,
+    ipa_client: &mut LdapClient,
+    basedn: String,
     ldap_entries: Vec<LdapSyncReplEntry>,
     entry_config_map: &HashMap<Uuid, EntryConfig>,
     is_initialise: bool,
@@ -644,9 +646,65 @@ async fn process_ipa_sync_result(
 
         debug!(?filter);
 
-        // Search
-        // Inject all new entries to our maps. At this point we discard the original content
-        // of the totp entries since we just fetched them all again anyway.
+        // Search - we use syncrepl here and discard the cookie because we need the
+        // entry uuid to be given from the nsuniqueid else we have issues.
+        let mode = proto::SyncRequestMode::RefreshOnly;
+        match ipa_client.syncrepl(basedn, filter, None, mode).await {
+            Ok(LdapSyncRepl::Success {
+                cookie: _,
+                refresh_deletes: _,
+                entries: sync_entries,
+                delete_uuids: _,
+                present_uuids: _,
+            }) => {
+                // Inject all new entries to our maps. At this point we discard the original content
+                // of the totp entries since we just fetched them all again anyway.
+
+                totp_entries.clear();
+
+                for lentry in sync_entries.into_iter() {
+                    if lentry
+                        .entry
+                        .attrs
+                        .get("objectclass")
+                        .map(|oc| oc.contains("ipatokentotp"))
+                        .unwrap_or_default()
+                    {
+                        let token_owner_dn = if let Some(todn) = lentry
+                            .entry
+                            .attrs
+                            .get("ipatokenowner")
+                            .and_then(|attr| if attr.len() != 1 { None } else { attr.first() })
+                        {
+                            debug!("totp with owner {}", todn);
+                            todn.clone()
+                        } else {
+                            warn!("totp with invalid ownership will be ignored");
+                            continue;
+                        };
+
+                        if !totp_entries.contains_key(&token_owner_dn) {
+                            totp_entries.insert(token_owner_dn.clone(), Vec::default());
+                        }
+
+                        if let Some(v) = totp_entries.get_mut(&token_owner_dn) {
+                            v.push(lentry)
+                        }
+                    } else {
+                        let dn = lentry.entry.dn.clone();
+                        entries.insert(dn, lentry);
+                    }
+                }
+            }
+            Ok(LdapSyncRepl::RefreshRequired) => {
+                error!("Failed due to invalid search state from ipa");
+                return Err(());
+            }
+            Err(e) => {
+                error!(?e, "Failed to perform search from ipa");
+                return Err(());
+            }
+        }
     }
 
     // For each updated TOTP -> If it's related DN is not in Hash -> remove from map
@@ -789,6 +847,19 @@ fn ipa_to_scim_entry(
             Vec::default()
         };
 
+        let ssh_publickey = entry
+            .remove_ava("ipasshpubkey")
+            .map(|set| {
+                set.into_iter()
+                    .enumerate()
+                    .map(|(i, value)| ScimSshPubKey {
+                        label: format!("ipasshpubkey-{}", i),
+                        value,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
         let login_shell = entry.remove_ava_single("loginshell");
         let external_id = Some(entry.dn);
 
@@ -803,6 +874,7 @@ fn ipa_to_scim_entry(
                 totp_import,
                 login_shell,
                 mail,
+                ssh_publickey,
             }
             .into(),
         ))

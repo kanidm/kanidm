@@ -33,6 +33,10 @@ fn person_attr_mail() -> String {
     "mail".to_string()
 }
 
+fn person_attr_ssh_public_key() -> String {
+    "sshpublickey".to_string()
+}
+
 fn group_objectclass() -> String {
     "groupofnames".to_string()
 }
@@ -81,6 +85,8 @@ pub struct Config {
     pub person_attr_login_shell: String,
     #[serde(default = "person_attr_mail")]
     pub person_attr_mail: String,
+    #[serde(default = "person_attr_ssh_public_key")]
+    pub person_attr_ssh_public_key: String,
 
     #[serde(default = "group_objectclass")]
     pub group_objectclass: String,

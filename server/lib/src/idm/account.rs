@@ -380,6 +380,7 @@ impl Account {
         self.uuid == UUID_ANONYMOUS
     }
 
+    #[cfg(test)]
     pub(crate) fn gen_password_mod(
         &self,
         cleartext: &str,
@@ -398,6 +399,30 @@ impl Account {
                 let vcred = Value::new_credential("primary", ncred);
                 Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
             }
+        }
+    }
+
+    pub(crate) fn gen_password_upgrade_mod(
+        &self,
+        cleartext: &str,
+        crypto_policy: &CryptoPolicy,
+    ) -> Result<Option<ModifyList<ModifyInvalid>>, OperationError> {
+        match &self.primary {
+            // Change the cred
+            Some(primary) => {
+                if let Some(ncred) = primary.upgrade_password(crypto_policy, cleartext)? {
+                    let vcred = Value::new_credential("primary", ncred);
+                    Ok(Some(ModifyList::new_purge_and_set(
+                        "primary_credential",
+                        vcred,
+                    )))
+                } else {
+                    // No action, not the same pw
+                    Ok(None)
+                }
+            }
+            // Nothing to do.
+            None => Ok(None),
         }
     }
 
@@ -461,20 +486,6 @@ impl Account {
                 Err(OperationError::InvalidState)
             }
         }
-    }
-
-    pub(crate) fn check_credential_pw(&self, cleartext: &str) -> Result<bool, OperationError> {
-        self.primary
-            .as_ref()
-            .ok_or(OperationError::InvalidState)
-            .and_then(|cred| {
-                cred.password_ref().and_then(|pw| {
-                    pw.verify(cleartext).map_err(|e| {
-                        error!(crypto_err = ?e);
-                        e.into()
-                    })
-                })
-            })
     }
 
     pub(crate) fn regenerate_radius_secret_mod(

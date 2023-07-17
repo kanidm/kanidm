@@ -1824,18 +1824,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         info!(session_id = %pwu.target_uuid, "Processing password hash upgrade");
 
-        // check, does the pw still match?
-        let same = account.check_credential_pw(pwu.existing_password.as_str())?;
+        let maybe_modlist = account
+            .gen_password_upgrade_mod(pwu.existing_password.as_str(), self.crypto_policy)
+            .map_err(|e| {
+                admin_error!("Unable to generate password mod {:?}", e);
+                e
+            })?;
 
-        // if yes, gen the pw mod and apply.
-        if same {
-            let modlist = account
-                .gen_password_mod(pwu.existing_password.as_str(), self.crypto_policy)
-                .map_err(|e| {
-                    admin_error!("Unable to generate password mod {:?}", e);
-                    e
-                })?;
-
+        if let Some(modlist) = maybe_modlist {
             self.qs_write.internal_modify(
                 &filter_all!(f_eq("uuid", PartialValue::Uuid(pwu.target_uuid))),
                 &modlist,
@@ -1860,21 +1856,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
 
-        let same = account.check_existing_pw(pwu.existing_password.as_str())?;
+        let maybe_modlist =
+            account.gen_password_upgrade_mod(pwu.existing_password.as_str(), self.crypto_policy)?;
 
-        if same {
-            let modlist = account
-                .gen_password_mod(pwu.existing_password.as_str(), self.crypto_policy)
-                .map_err(|e| {
-                    admin_error!("Unable to generate password mod {:?}", e);
-                    e
-                })?;
-
+        if let Some(modlist) = maybe_modlist {
             self.qs_write.internal_modify(
                 &filter_all!(f_eq("uuid", PartialValue::Uuid(pwu.target_uuid))),
                 &modlist,
             )
         } else {
+            // No action needed, it's probably been changed/updated already.
             Ok(())
         }
     }
@@ -2772,8 +2763,27 @@ mod tests {
         }
         // Still empty
         idms_delayed.check_is_empty_or_panic();
+
+        let mut idms_prox_read = idms.proxy_read().await;
+        let admin_entry = idms_prox_read
+            .qs_read
+            .internal_search_uuid(UUID_ADMIN)
+            .expect("Can't access admin entry.");
+        let cred_before = admin_entry
+            .get_ava_single_credential("primary_credential")
+            .expect("No credential present")
+            .clone();
+        drop(idms_prox_read);
+
         // Do an auth, this will trigger the action to send.
         check_admin_password(idms, "password").await;
+
+        // ⚠️  We have to be careful here. Between these two actions, it's possible
+        // that on the pw upgrade that the credential uuid changes. This immediately
+        // causes the session to be invalidated.
+
+        // We need to check the credential id does not change between these steps to
+        // prevent this!
 
         // process it.
         let da = idms_delayed.try_recv().expect("invalid");
@@ -2784,6 +2794,19 @@ mod tests {
         let da = idms_delayed.try_recv().expect("invalid");
         assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
         assert!(Ok(true) == r);
+
+        let mut idms_prox_read = idms.proxy_read().await;
+        let admin_entry = idms_prox_read
+            .qs_read
+            .internal_search_uuid(UUID_ADMIN)
+            .expect("Can't access admin entry.");
+        let cred_after = admin_entry
+            .get_ava_single_credential("primary_credential")
+            .expect("No credential present")
+            .clone();
+        drop(idms_prox_read);
+
+        assert_eq!(cred_before.uuid, cred_after.uuid);
 
         // Check the admin pw still matches
         check_admin_password(idms, "password").await;
