@@ -1,45 +1,58 @@
 ---
 name: Container - Kanidmd
 
-# this will build regardless,
-# but only push to the container registry
-# when you're committing on the master branch.
-
-"on":
+# This is always built and uploads an OCI image as a build artifact, but only
+# pushes to "ghcr.io/kanidm/kanidmd:devel" when on "kanidm/kanidm@master". 
+on:
   pull_request:
   push:
-    branches:
-      - master
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   kanidmd_build:
+    name: Build kanidmd Docker image
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      # don't need qemu/buildx if we're not building ARM
-      # - name: Set up QEMU
-      #   uses: docker/setup-qemu-action@v2
-      # - name: Set up Docker Buildx
-      #   uses: docker/setup-buildx-action@v2
-      -  # https://github.com/docker/login-action/#github-container-registry
-        name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-        # don't log in if we're not going to push!
-        if: ${{ github.ref == 'refs/heads/master' }} && ${{ github.repository == 'kanidm/kanidm' }}
-      - name: Build and push kanidmd
-        id: docker_build_kanidmd
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Build kanidmd
         uses: docker/build-push-action@v4
         with:
-          push: ${{ github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm' }}
-          platforms: linux/amd64
-          tags: ghcr.io/kanidm/kanidmd:devel
+          platforms: "linux/amd64"
+          tags: ghcr.io/${{ github.repository_owner }}/kanidmd:devel
           # build-args: |
-          #   "KANIDM_BUILD_OPTIONS=-j1"
+          #  "KANIDM_BUILD_OPTIONS=-j1"
           file: server/Dockerfile
+          # Must use OCI exporter for multi-arch: https://github.com/docker/buildx/pull/1813
+          outputs: type=oci,dest=/tmp/kanidmd-docker.tar
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: kanidmd-docker
+          path: /tmp/kanidmd-docker.tar
+
+  kanidmd_push:
+    name: Push kanidmd Docker image
+    # This step is split so that we don't apply "packages: write" permission
+    # except when uploading the final Docker image to GHCR.
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm'
+    needs: kanidmd_build
+    permissions:
+      packages: write
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: kanidmd-docker
+          path: /tmp
+
+      - name: Push image to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | oras login -u "${{ github.actor }}" --password-stdin ghcr.io
+          oras copy --from-oci-layout "/tmp/kanidmd-docker.tar:devel" "ghcr.io/${{ github.repository_owner }}/kanidmd:devel"
