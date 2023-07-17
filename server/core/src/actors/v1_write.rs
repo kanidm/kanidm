@@ -1108,6 +1108,7 @@ impl QueryServerWriteV1 {
             "class".into(),
             Value::new_class("posixgroup"),
         )))
+        .chain(iter::once(Some(Modify::Purged("gidnumber".into()))))
         .chain(iter::once(gx.gidnumber.map(|n| {
             Modify::Present("gidnumber".into(), Value::new_uint32(n))
         })))
