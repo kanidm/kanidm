@@ -73,6 +73,7 @@ Kanidm is pronounced as "kar - nee - dee - em".
 ## Comparison with other services
 
 <details><summary>LLDAP</summary>
+
 [LLDAP](https://github.com/nitnelave/lldap) is a similar project aiming for a small and easy to
 administer LDAP server with a web administration portal. Both projects use the
 [Kanidm LDAP bindings](https://github.com/kanidm/ldap3), and have many similar ideas.
