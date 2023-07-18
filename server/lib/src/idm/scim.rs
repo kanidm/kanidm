@@ -580,7 +580,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let sync_refresh = matches!(&changes.from_state, ScimSyncState::Refresh);
 
         // Get the sync authority set from the entry.
-        let sync_authority_set = BTreeSet::default();
+        let sync_authority_set = sync_entry
+            .get_ava_as_iutf8("sync_yield_authority")
+            .cloned()
+            .unwrap_or_default();
 
         // Transform the changes into something that supports lookups.
         let change_entries: BTreeMap<Uuid, &ScimEntry> = changes
@@ -2760,6 +2763,64 @@ mod tests {
 
         let testuser_mo = testuser.get_ava_refer("memberof").expect("No memberof!");
         assert!(testuser_mo.contains(&testgroup.get_uuid()));
+
+        assert!(idms_prox_write.commit().is_ok());
+    }
+
+    #[idm_test]
+    async fn test_idm_scim_sync_yield_authority(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
+        let sse = ScimSyncUpdateEvent { ident };
+
+        let changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_1).expect("failed to parse scim sync");
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+        // Now we set the sync agreement to have description yielded.
+        assert!(idms_prox_write
+            .qs_write
+            .internal_modify_uuid(
+                sync_uuid,
+                &ModifyList::new_purge_and_set(
+                    "sync_yield_authority",
+                    Value::new_iutf8("legalname")
+                )
+            )
+            .is_ok());
+
+        let testuser_filter = filter!(f_eq("name", PartialValue::new_iname("testuser")));
+
+        // We then can change our user.
+        assert!(idms_prox_write
+            .qs_write
+            .internal_modify(
+                &testuser_filter,
+                &ModifyList::new_purge_and_set(
+                    "legalname",
+                    Value::Utf8("Test Userington the First".to_string())
+                )
+            )
+            .is_ok());
+
+        let changes =
+            serde_json::from_str(TEST_SYNC_SCIM_IPA_REFRESH_1).expect("failed to parse scim sync");
+
+        assert!(idms_prox_write.scim_sync_apply(&sse, &changes, ct).is_ok());
+
+        // Finally, now the gidnumber should not have changed.
+        let testuser = idms_prox_write
+            .qs_write
+            .internal_search(testuser_filter)
+            .map(|mut results| results.pop().expect("Empty result set"))
+            .expect("Failed to access testuser");
+
+        assert!(testuser.get_ava_single_utf8("legalname") == Some("Test Userington the First"));
 
         assert!(idms_prox_write.commit().is_ok());
     }

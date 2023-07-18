@@ -1477,6 +1477,21 @@ lazy_static! {
         ("syntax", Value::Syntax(SyntaxType::Url)),
         ("uuid", Value::Uuid(UUID_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL))
     );
+
+    pub static ref E_SCHEMA_ATTR_SYNC_YIELD_AUTHORITY: EntryInitNew = entry_init!(
+        ("class", CLASS_OBJECT.clone()),
+        ("class", CLASS_SYSTEM.clone()),
+        ("class", CLASS_ATTRIBUTETYPE.clone()),
+        (
+            "description",
+            Value::new_utf8s("A set of attributes that have their authority yielded to Kanidm in a sync agreement.")
+        ),
+        ("unique", Value::Bool(false)),
+        ("multivalue", Value::Bool(true)),
+        ("attributename", Value::new_iutf8("sync_yield_authority")),
+        ("syntax", Value::Syntax(SyntaxType::Utf8StringInsensitive)),
+        ("uuid", Value::Uuid(UUID_SCHEMA_ATTR_SYNC_YIELD_AUTHORITY))
+    );
 }
 
 // === classes ===
@@ -1708,7 +1723,8 @@ pub const JSON_SCHEMA_CLASS_SYNC_ACCOUNT: &str = r#"
       "systemmay": [
         "sync_token_session",
         "sync_cookie",
-        "sync_credential_portal"
+        "sync_credential_portal",
+        "sync_yield_authority"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000114"
