@@ -6,7 +6,8 @@ RUN \
     zypper mr -k repo-oss; \
     zypper mr -k repo-non-oss; \
     zypper mr -k repo-update; \
-    zypper dup -y
+    zypper ref --force; \
+    zypper -v dup -y
 
 FROM repos AS builder
 ARG KANIDM_FEATURES
