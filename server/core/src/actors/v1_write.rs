@@ -1,6 +1,5 @@
-use std::iter;
-use std::sync::Arc;
 use std::time::Duration;
+use std::{iter, sync::Arc};
 
 use kanidm_proto::v1::{
     AccountUnixExtend, CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest,
@@ -1102,15 +1101,22 @@ impl QueryServerWriteV1 {
         gx: GroupUnixExtend,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        // The filter_map here means we only create the mods if the gidnumber or shell are set
+        // The if let Some here means we only create the mods if the gidnumber is set
         // in the actual request.
+
+        let gidnumber_mods = if let Some(gid) = gx.gidnumber {
+            [
+                Some(Modify::Purged("gidnumber".into())),
+                Some(Modify::Present("gidnumber".into(), Value::new_uint32(gid))),
+            ]
+        } else {
+            [None, None]
+        };
         let mods: Vec<_> = iter::once(Some(Modify::Present(
             "class".into(),
             Value::new_class("posixgroup"),
         )))
-        .chain(iter::once(gx.gidnumber.map(|n| {
-            Modify::Present("gidnumber".into(), Value::new_uint32(n))
-        })))
+        .chain(gidnumber_mods)
         .flatten()
         .collect();
 

@@ -532,6 +532,15 @@ async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
         .idm_group_unix_extend("posix_group", None)
         .await
         .unwrap();
+    // here we check that we can successfully change the gid without breaking anything
+
+    let res = rsclient
+        .idm_group_unix_extend("posix_group", Some(123123))
+        .await;
+    assert!(res.is_ok());
+
+    let res = rsclient.idm_group_unix_extend("posix_group", None).await;
+    assert!(res.is_ok());
 
     // Open a new connection as anonymous
     let res = rsclient.auth_anonymous().await;
