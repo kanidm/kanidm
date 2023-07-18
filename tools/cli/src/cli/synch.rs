@@ -13,6 +13,7 @@ impl SynchOpt {
             | SynchOpt::ForceRefresh { copt, .. }
             | SynchOpt::Finalise { copt, .. }
             | SynchOpt::Terminate { copt, .. }
+            | SynchOpt::SetYieldAttributes { copt, .. }
             | SynchOpt::SetCredentialPortal { copt, .. } => copt.debug,
         }
     }
@@ -79,6 +80,20 @@ impl SynchOpt {
             SynchOpt::DestroyToken { account_id, copt } => {
                 let client = copt.to_client(OpType::Write).await;
                 match client.idm_sync_account_destroy_token(account_id).await {
+                    Ok(()) => println!("Success"),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
+            SynchOpt::SetYieldAttributes {
+                account_id,
+                copt,
+                attrs,
+            } => {
+                let client = copt.to_client(OpType::Write).await;
+                match client
+                    .idm_sync_account_set_yield_attributes(account_id, attrs)
+                    .await
+                {
                     Ok(()) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }

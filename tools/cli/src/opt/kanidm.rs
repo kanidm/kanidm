@@ -856,6 +856,18 @@ pub enum SynchOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
+    /// Set the list of attributes that have their authority yielded from the sync account
+    /// and are allowed to be modified by kanidm and users. Any attributes not listed in
+    /// in this command will have their authority returned to the sync account.
+    #[clap(name = "set-yield-attributes")]
+    SetYieldAttributes {
+        #[clap()]
+        account_id: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(name = "attributes")]
+        attrs: Vec<String>,
+    },
     /// Reset the sync cookie of this connector, so that on the next operation of the sync tool
     /// a full refresh of the provider is requested. Kanidm attributes that have been granted
     /// authority will *not* be lost or deleted.

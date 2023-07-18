@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use hashbrown::HashMap;
 use std::collections::BTreeSet;
 
 use super::profiles::AccessControlModify;
@@ -19,7 +20,7 @@ pub(super) enum ModifyResult<'a> {
 pub(super) fn apply_modify_access<'a>(
     ident: &Identity,
     related_acp: &'a [(&AccessControlModify, Filter<FilterValidResolved>)],
-    // may need sync agreements later.
+    sync_agreements: &'a HashMap<Uuid, BTreeSet<String>>,
     entry: &'a Arc<EntrySealedCommitted>,
 ) -> ModifyResult<'a> {
     let mut denied = false;
@@ -46,7 +47,7 @@ pub(super) fn apply_modify_access<'a>(
         // Check with protected if we should proceed.
 
         // If it's a sync entry, constrain it.
-        match modify_sync_constrain(ident, entry) {
+        match modify_sync_constrain(ident, entry, sync_agreements) {
             AccessResult::Denied => denied = true,
             AccessResult::Constrain(mut set) => {
                 constrain_rem.extend(set.iter().copied());
@@ -188,6 +189,7 @@ fn modify_cls_test<'a>(scoped_acp: &[&'a AccessControlModify]) -> AccessResult<'
 fn modify_sync_constrain<'a>(
     ident: &Identity,
     entry: &'a Arc<EntrySealedCommitted>,
+    sync_agreements: &'a HashMap<Uuid, BTreeSet<String>>,
 ) -> AccessResult<'a> {
     match &ident.origin {
         IdentType::Internal => AccessResult::Ignore,
@@ -197,22 +199,34 @@ fn modify_sync_constrain<'a>(
             AccessResult::Ignore
         }
         IdentType::User(_) => {
-            if let Some(classes) = entry.get_ava_set("class") {
-                // If the entry is sync object.
-                if classes.contains(&PVCLASS_SYNC_OBJECT) {
-                    // Constrain to a limited set of attributes.
-                    AccessResult::Constrain(btreeset![
-                        "user_auth_token_session",
-                        "oauth2_session",
-                        "oauth2_consent_scope_map",
-                        "credential_update_intent_token"
-                    ])
-                } else {
-                    AccessResult::Ignore
+            // We need to meet these conditions.
+            // * We are a sync object
+            // * We have a sync_parent_uuid
+            let is_sync = entry
+                .get_ava_set("class")
+                .map(|classes| classes.contains(&PVCLASS_SYNC_OBJECT))
+                .unwrap_or(false);
+
+            if !is_sync {
+                return AccessResult::Ignore;
+            }
+
+            if let Some(sync_uuid) = entry.get_ava_single_refer("sync_parent_uuid") {
+                let mut set = btreeset![
+                    "user_auth_token_session",
+                    "oauth2_session",
+                    "oauth2_consent_scope_map",
+                    "credential_update_intent_token"
+                ];
+
+                if let Some(sync_yield_authority) = sync_agreements.get(&sync_uuid) {
+                    set.extend(sync_yield_authority.iter().map(|s| s.as_str()))
                 }
+
+                AccessResult::Constrain(set)
             } else {
-                // Nothing to check.
-                AccessResult::Ignore
+                warn!(entry = ?entry.get_uuid(), "sync_parent_uuid not found on sync object, preventing all access");
+                AccessResult::Denied
             }
         }
     }

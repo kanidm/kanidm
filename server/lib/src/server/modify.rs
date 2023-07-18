@@ -211,6 +211,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO));
         }
+        if !self.changed_sync_agreement {
+            self.changed_sync_agreement = norm_cand
+                .iter()
+                .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality("class", &PVCLASS_SYNC_ACCOUNT));
+        }
 
         self.changed_uuid.extend(
             norm_cand
@@ -224,6 +230,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             acp_reload = ?self.changed_acp,
             oauth2_reload = ?self.changed_oauth2,
             domain_reload = ?self.changed_domain,
+            changed_sync_agreement = ?self.changed_sync_agreement
         );
 
         // return
