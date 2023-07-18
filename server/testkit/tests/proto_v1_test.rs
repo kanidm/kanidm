@@ -539,6 +539,9 @@ async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
         .await;
     assert!(res.is_ok());
 
+    let res = rsclient.idm_group_unix_extend("posix_group", None).await;
+    assert!(res.is_ok());
+
     // Open a new connection as anonymous
     let res = rsclient.auth_anonymous().await;
     assert!(res.is_ok());
