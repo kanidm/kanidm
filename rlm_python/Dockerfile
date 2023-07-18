@@ -5,7 +5,7 @@ RUN \
     zypper mr -k repo-oss; \
     zypper mr -k repo-non-oss; \
     zypper mr -k repo-update; \
-    zypper dup -y
+    zypper dup -y -v
 
 # ======================
 FROM repos
