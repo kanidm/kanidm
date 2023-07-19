@@ -1,5 +1,5 @@
+use hashbrown::{HashMap, HashSet};
 use ldap3_proto::proto::*;
-use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 

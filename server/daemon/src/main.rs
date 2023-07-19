@@ -66,7 +66,7 @@ impl KanidmdOpt {
             KanidmdOpt::Database {
                 commands: DbCommands::Restore(ropt),
             } => &ropt.commonopts,
-            KanidmdOpt::RecoverAccount { commonopts, .. } => &commonopts,
+            KanidmdOpt::RecoverAccount { commonopts, .. } => commonopts,
             KanidmdOpt::DbScan {
                 commands: DbScanOpt::ListIndex(dopt),
             } => &dopt.commonopts,
@@ -111,7 +111,7 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
         }
     };
 
-    let mut reqs = Framed::new(stream, ClientCodec::default());
+    let mut reqs = Framed::new(stream, ClientCodec);
 
     if let Err(e) = reqs.send(req).await {
         error!(err = ?e, "Unable to send request");
@@ -136,7 +136,6 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
         },
         _ => {
             error!("Error making request to admin socket");
-            return;
         }
     }
 }

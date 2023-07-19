@@ -139,7 +139,7 @@ async fn handle_task_client(
     task_channel_rx: &mut Receiver<AsyncTaskRequest>,
 ) -> Result<(), Box<dyn Error>> {
     // setup the codec
-    let mut reqs = Framed::new(stream, TaskCodec::default());
+    let mut reqs = Framed::new(stream, TaskCodec);
 
     loop {
         // TODO wait on the channel OR the task handler, so we know
@@ -190,7 +190,7 @@ async fn handle_client(
         return Err(Box::new(IoError::new(ErrorKind::Other, "Unable to verify peer credentials.")));
     };
 
-    let mut reqs = Framed::new(sock, ClientCodec::default());
+    let mut reqs = Framed::new(sock, ClientCodec);
 
     trace!("Waiting for requests ...");
     while let Some(Ok(req)) = reqs.next().await {

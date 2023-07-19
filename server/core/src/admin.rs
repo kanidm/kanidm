@@ -144,7 +144,7 @@ impl AdminActor {
                                 };
 
                                 // spawn the worker.
-                                let _ = tokio::spawn(async move {
+                                tokio::spawn(async move {
                                     if let Err(e) = handle_client(socket, server).await {
                                         error!(err = ?e, "admin client error");
                                     }
@@ -183,7 +183,7 @@ async fn handle_client(
 ) -> Result<(), Box<dyn Error>> {
     debug!("Accepted admin socket connection");
 
-    let mut reqs = Framed::new(sock, ServerCodec::default());
+    let mut reqs = Framed::new(sock, ServerCodec);
 
     trace!("Waiting for requests ...");
     while let Some(Ok(req)) = reqs.next().await {

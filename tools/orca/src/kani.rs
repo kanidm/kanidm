@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use hashbrown::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
 use kanidm_client::{ClientError, KanidmClient, KanidmClientBuilder, StatusCode};

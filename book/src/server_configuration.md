@@ -31,29 +31,6 @@ docker run --rm -i -t -v kanidmd:/data \
     kanidm/server:latest /sbin/kanidmd configtest -c /data/server.toml
 ```
 
-## Default Admin Account
-
-Then you can setup the initial admin account and initialise the database into your volume. This
-command will generate a new random password for the admin account.
-
-<!-- deno-fmt-ignore-start -->
-
-{{#template templates/kani-warning.md
-imagepath=images
-title=Warning!
-text=The server must not be running at this point, as it requires exclusive access to the database.
-}}
-
-<!-- deno-fmt-ignore-end -->
-
-```bash
-docker run --rm -i -t -v kanidmd:/data \
-    kanidm/server:latest /sbin/kanidmd recover-account -c /data/server.toml admin
-# success - recovery of account password for admin: vv...
-```
-
-After the recovery is complete the server can be started again.
-
 ## Run the Server
 
 Now we can run the server so that it can accept connections. This defaults to using
@@ -83,3 +60,15 @@ text=However you choose to run your server, you should document and keep note of
 }}
 
 <!-- deno-fmt-ignore-end -->
+
+## Default Admin Account
+
+Now that the server is running, you can initialise the default admin account. This command will
+generate a new random password for the admin account. You must run this command as the same user as
+the kanidmd process or as root.
+
+```bash
+docker exec -i -t <container name> \
+  /sbin/kanidmd recover-account -c /data/server.toml admin
+#  new_password: "xjgG4..."
+```
