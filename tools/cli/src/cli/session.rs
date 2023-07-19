@@ -199,7 +199,7 @@ async fn do_passkey(
     client: &mut KanidmClient,
     pkr: RequestChallengeResponse,
 ) -> Result<AuthResponse, ClientError> {
-    let mut wa = get_authenticator();
+    let mut wa = get_authenticator().await;
     println!("Your authenticator will now flash for you to interact with it.");
     let auth = wa
         .do_authentication(client.get_origin().clone(), pkr)
@@ -216,7 +216,7 @@ async fn do_securitykey(
     client: &mut KanidmClient,
     pkr: RequestChallengeResponse,
 ) -> Result<AuthResponse, ClientError> {
-    let mut wa = get_authenticator();
+    let mut wa = get_authenticator().await;
     println!("Your authenticator will now flash for you to interact with it.");
     let auth = wa
         .do_authentication(client.get_origin().clone(), pkr)

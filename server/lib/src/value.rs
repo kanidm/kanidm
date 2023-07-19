@@ -21,7 +21,7 @@ use sshkeys::PublicKey as SshPublicKey;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
-use webauthn_rs::prelude::{DeviceKey as DeviceKeyV4, Passkey as PasskeyV4};
+use webauthn_rs::prelude::{AttestedResidentKey as DeviceKeyV4, Passkey as PasskeyV4};
 
 use kanidm_proto::v1::ApiTokenPurpose;
 use kanidm_proto::v1::Filter as ProtoFilter;
