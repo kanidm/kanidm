@@ -597,7 +597,7 @@ async fn process_ipa_sync_result(
 
     // On a refresh, we need to search and fix up to make sure TOTP/USER sets are
     // consistent.
-    if !is_initialise {
+    let search_filter = if !is_initialise {
         // If the totp's related user is NOT in our sync repl, we need to fetch them.
         let fetch_user: Vec<&str> = totp_entries
             .keys()
@@ -614,13 +614,22 @@ async fn process_ipa_sync_result(
             .collect();
 
         // Create filter (could hit a limit, may need to split this search).
-
         let totp_conditions: Vec<_> = fetch_totps_for
             .iter()
             .map(|dn| LdapFilter::Equality("ipatokenowner".to_string(), dn.to_string()))
             .collect();
 
-        let user_conditions = fetch_user
+        let mut or_filter = Vec::with_capacity(2);
+
+        if !totp_conditions.is_empty() {
+            or_filter.push(LdapFilter::And(vec![
+                LdapFilter::Equality("objectclass".to_string(), "ipatoken".to_string()),
+                LdapFilter::Equality("objectclass".to_string(), "ipatokentotp".to_string()),
+                LdapFilter::Or(totp_conditions),
+            ]));
+        }
+
+        let user_conditions: Vec<_> = fetch_user
             .iter()
             .filter_map(|dn| {
                 // We have to split the DN to it's RDN because lol.
@@ -630,22 +639,27 @@ async fn process_ipa_sync_result(
             })
             .collect();
 
-        let filter = LdapFilter::Or(vec![
-            LdapFilter::And(vec![
-                LdapFilter::Equality("objectclass".to_string(), "ipatoken".to_string()),
-                LdapFilter::Equality("objectclass".to_string(), "ipatokentotp".to_string()),
-                LdapFilter::Or(totp_conditions),
-            ]),
-            LdapFilter::And(vec![
+        if !user_conditions.is_empty() {
+            or_filter.push(LdapFilter::And(vec![
                 LdapFilter::Equality("objectclass".to_string(), "person".to_string()),
                 LdapFilter::Equality("objectclass".to_string(), "ipantuserattrs".to_string()),
                 LdapFilter::Equality("objectclass".to_string(), "posixaccount".to_string()),
                 LdapFilter::Or(user_conditions),
-            ]),
-        ]);
+            ]));
+        }
 
+        if or_filter.is_empty() {
+            None
+        } else {
+            Some(LdapFilter::Or(or_filter))
+        }
+    } else {
+        None
+    };
+
+    // If we have something that needs lookup, apply now.
+    if let Some(filter) = search_filter {
         debug!(?filter);
-
         // Search - we use syncrepl here and discard the cookie because we need the
         // entry uuid to be given from the nsuniqueid else we have issues.
         let mode = proto::SyncRequestMode::RefreshOnly;
