@@ -26,16 +26,6 @@ struct RestoreOpt {
     commonopts: CommonOpt,
 }
 
-#[derive(Debug, Args)]
-struct RecoverAccountOpt {
-    #[clap(value_parser)]
-    /// The account name to recover credentials for.
-    name: String,
-    #[clap(flatten)]
-    commonopts: CommonOpt,
-}
-
-
 #[derive(Debug, Subcommand)]
 enum DomainSettingsCmds {
     #[clap(name = "rename")]
@@ -82,18 +72,6 @@ struct HealthCheckArgs {
     #[clap(flatten)]
     commonopts: CommonOpt,
 }
-
-/*
-#[derive(Debug, Args)]
-struct DbScanGetIndex {
-    /// The name of the index to list
-    index_name: String,
-    /// The name of the index key to retrieve
-    key: String,
-    #[clap(flatten)]
-    commonopts: CommonOpt,
-}
-*/
 
 #[derive(Debug, Args)]
 struct DbScanGetId2Entry {
@@ -147,7 +125,13 @@ enum KanidmdOpt {
     CertGenerate(CommonOpt),
     #[clap(name = "recover-account")]
     /// Recover an account's password
-    RecoverAccount(RecoverAccountOpt),
+    RecoverAccount {
+        #[clap(value_parser)]
+        /// The account name to recover credentials for.
+        name: String,
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
     // #[clap(name = "reset_server_id")]
     // ResetServerId(CommonOpt),
     #[clap(name = "db-scan")]
@@ -168,6 +152,7 @@ enum KanidmdOpt {
         #[clap(subcommand)]
         commands: DomainSettingsCmds,
     },
+
     /// Load the server config and check services are listening
     #[clap(name = "healthcheck")]
     HealthCheck(HealthCheckArgs),

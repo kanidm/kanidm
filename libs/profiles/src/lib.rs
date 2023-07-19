@@ -52,6 +52,7 @@ struct ProfileConfig {
     web_ui_pkg_path: String,
     #[serde(default)]
     cpu_flags: CpuOptLevel,
+    admin_bind_path: String,
 }
 
 pub fn apply_profile() {
@@ -86,5 +87,9 @@ pub fn apply_profile() {
     println!(
         "cargo:rustc-env=KANIDM_WEB_UI_PKG_PATH={}",
         profile_cfg.web_ui_pkg_path
+    );
+    println!(
+        "cargo:rustc-env=KANIDM_ADMIN_BIND_PATH={}",
+        profile_cfg.admin_bind_path
     );
 }

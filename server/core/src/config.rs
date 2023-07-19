@@ -48,6 +48,7 @@ pub struct TlsConfiguration {
 pub struct ServerConfig {
     pub bindaddress: Option<String>,
     pub ldapbindaddress: Option<String>,
+    pub adminbindpath: Option<String>,
     pub trust_x_forward_for: Option<bool>,
     // pub threads: Option<usize>,
     pub db_path: String,
@@ -162,13 +163,13 @@ impl From<LogLevel> for EnvFilter {
 pub struct Configuration {
     pub address: String,
     pub ldapaddress: Option<String>,
+    pub adminbindpath: String,
     pub threads: usize,
     // db type later
     pub db_path: String,
     pub db_fs_type: Option<String>,
     pub db_arc_size: Option<usize>,
     pub maximum_request: usize,
-    pub secure_cookies: bool,
     pub trust_x_forward_for: bool,
     pub tls_config: Option<TlsConfiguration>,
     pub integration_test_config: Option<Box<IntegrationTestConfig>>,
@@ -182,12 +183,13 @@ pub struct Configuration {
 
 impl fmt::Display for Configuration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "address: {}, ", self.address)
-            .and_then(|_| write!(f, "domain: {}, ", self.domain))
+        write!(f, "address: {}, ", self.address)?;
+        write!(f, "domain: {}, ", self.domain)
             .and_then(|_| match &self.ldapaddress {
                 Some(la) => write!(f, "ldap address: {}, ", la),
                 None => write!(f, "ldap address: disabled, "),
             })
+            .and_then(|_| write!(f, "admin bind path: {}, ", self.adminbindpath))
             .and_then(|_| write!(f, "thread count: {}, ", self.threads))
             .and_then(|_| write!(f, "dbpath: {}, ", self.db_path))
             .and_then(|_| match self.db_arc_size {
@@ -195,7 +197,6 @@ impl fmt::Display for Configuration {
                 None => write!(f, "arcsize: AUTO, "),
             })
             .and_then(|_| write!(f, "max request size: {}b, ", self.maximum_request))
-            .and_then(|_| write!(f, "secure cookies: {}, ", self.secure_cookies))
             .and_then(|_| write!(f, "trust X-Forwarded-For: {}, ", self.trust_x_forward_for))
             .and_then(|_| write!(f, "with TLS: {}, ", self.tls_config.is_some()))
             // TODO: include the backup timings
@@ -221,19 +222,17 @@ impl Configuration {
         Configuration {
             address: String::from("127.0.0.1:8080"),
             ldapaddress: None,
+            adminbindpath: env!("KANIDM_ADMIN_BIND_PATH").to_string(),
             threads: std::thread::available_parallelism()
                 .map(|t| t.get())
                 .unwrap_or_else(|_e| {
-                    eprintln!("WARNING: Unable to read number of available CPUs, defaulting to 1");
-                    1
+                    eprintln!("WARNING: Unable to read number of available CPUs, defaulting to 4");
+                    4
                 }),
             db_path: String::from(""),
             db_fs_type: None,
             db_arc_size: None,
             maximum_request: 256 * 1024, // 256k
-            // log path?
-            // default true in prd
-            secure_cookies: !cfg!(test),
             trust_x_forward_for: false,
             tls_config: None,
             integration_test_config: None,
@@ -303,6 +302,12 @@ impl Configuration {
 
     pub fn update_ldapbind(&mut self, l: &Option<String>) {
         self.ldapaddress = l.clone();
+    }
+
+    pub fn update_admin_bind_path(&mut self, p: &Option<String>) {
+        if let Some(p) = p {
+            self.adminbindpath = p.clone();
+        }
     }
 
     pub fn update_origin(&mut self, o: &str) {

@@ -64,7 +64,6 @@ pub async fn setup_async_test() -> (KanidmClient, CoreHandle) {
     // Setup the config ...
     let mut config = Configuration::new();
     config.address = format!("127.0.0.1:{}", port);
-    config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
     config.role = ServerRole::WriteReplica;
     config.domain = "localhost".to_string();

@@ -23,11 +23,13 @@ kanidmd_core = { workspace = true }
 kanidm_lib_file_permissions = { workspace = true }
 sketching = { workspace = true }
 fs2 = { workspace = true }
+futures = { workspace = true }
 
 clap = { workspace = true, features = ["env"] }
 reqwest = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
+tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
 is-terminal = "0.4.9"
 

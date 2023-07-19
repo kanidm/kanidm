@@ -26,6 +26,7 @@ extern crate tracing;
 extern crate kanidmd_lib;
 
 pub mod actors;
+pub mod admin;
 pub mod config;
 mod crypto;
 mod https;
@@ -36,7 +37,6 @@ use std::path::Path;
 use std::sync::Arc;
 
 use compact_jwt::JwsSigner;
-use kanidm_proto::messages::{AccountChangeMessage, MessageStatus};
 use kanidm_proto::v1::OperationError;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction, FsType};
 use kanidmd_lib::idm::ldap::LdapServer;
@@ -51,6 +51,7 @@ use tokio::sync::broadcast;
 
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
+use crate::admin::AdminActor;
 use crate::config::{Configuration, ServerRole};
 use crate::interval::IntervalActor;
 
@@ -497,62 +498,6 @@ pub async fn verify_server_core(config: &Configuration) {
     // Now add IDM server verifications?
 }
 
-pub async fn recover_account_core(config: &Configuration, name: &str) {
-    let schema = match Schema::new() {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("Failed to setup in memory schema: {:?}", e);
-            std::process::exit(1);
-        }
-    };
-
-    // Start the backend.
-    let be = match setup_backend(config, &schema) {
-        Ok(be) => be,
-        Err(e) => {
-            error!("Failed to setup BE: {:?}", e);
-            return;
-        }
-    };
-    // setup the qs - *with* init of the migrations and schema.
-    let (_qs, idms, _idms_delayed, _idms_audit) = match setup_qs_idms(be, schema, config).await {
-        Ok(t) => t,
-        Err(e) => {
-            error!("Unable to setup query server or idm server -> {:?}", e);
-            return;
-        }
-    };
-
-    // Run the password change.
-    let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-    let new_pw = match idms_prox_write.recover_account(name, None) {
-        Ok(new_pw) => match idms_prox_write.commit() {
-            Ok(_) => new_pw,
-            Err(e) => {
-                error!("A critical error during commit occurred {:?}", e);
-                std::process::exit(1);
-            }
-        },
-        Err(e) => {
-            error!("Error during password reset -> {:?}", e);
-            // abort the txn
-            std::mem::drop(idms_prox_write);
-            std::process::exit(1);
-        }
-    };
-    println!(
-        "{}",
-        AccountChangeMessage {
-            output_mode: config.output_mode,
-            status: MessageStatus::Success,
-            src_user: String::from("command-line invocation"),
-            dest_user: name.to_string(),
-            result: new_pw,
-            action: String::from("recovery of account password"),
-        }
-    );
-}
-
 pub fn cert_generate_core(config: &Configuration) {
     // Get the cert root
 
@@ -871,6 +816,22 @@ pub async fn create_server_core(
         }
     };
 
+    // If we are NOT in integration test mode, start the admin socket now
+    let maybe_admin_sock_handle = if config.integration_test_config.is_none() {
+        let broadcast_rx = broadcast_tx.subscribe();
+
+        let admin_handle = AdminActor::create_admin_sock(
+            config.adminbindpath.as_str(),
+            server_write_ref,
+            broadcast_rx,
+        )
+        .await?;
+
+        Some(admin_handle)
+    } else {
+        None
+    };
+
     // If we have been requested to init LDAP, configure it now.
     let maybe_ldap_acceptor_handle = match &config.ldapaddress {
         Some(la) => {
@@ -900,10 +861,6 @@ pub async fn create_server_core(
             None
         }
     };
-
-    // TODO: Remove these when we go to auth bearer!
-    // Copy the max size
-    let _secure_cookies = config.secure_cookies;
 
     let maybe_http_acceptor_handle = if config_test {
         admin_info!("this config rocks! 🪨 ");
@@ -937,6 +894,10 @@ pub async fn create_server_core(
 
     if let Some(backup_handle) = maybe_backup_handle {
         handles.push(backup_handle)
+    }
+
+    if let Some(admin_sock_handle) = maybe_admin_sock_handle {
+        handles.push(admin_sock_handle)
     }
 
     if let Some(ldap_handle) = maybe_ldap_acceptor_handle {
