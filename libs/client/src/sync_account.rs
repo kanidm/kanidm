@@ -42,6 +42,19 @@ impl KanidmClient {
         .map(|values: Vec<Url>| values.get(0).cloned())
     }
 
+    pub async fn idm_sync_account_set_yield_attributes(
+        &self,
+        id: &str,
+        attrs: &Vec<String>,
+    ) -> Result<(), ClientError> {
+        // let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
+        self.perform_put_request(
+            format!("/v1/sync_account/{}/_attr/sync_yield_authority", id).as_str(),
+            &attrs,
+        )
+        .await
+    }
+
     pub async fn idm_sync_account_create(
         &self,
         name: &str,

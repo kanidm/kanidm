@@ -6,7 +6,8 @@ use std::sync::Arc;
 
 use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
 use concread::cowcell::*;
-use hashbrown::HashSet;
+use hashbrown::{HashMap, HashSet};
+use std::collections::BTreeSet;
 use tokio::sync::{Semaphore, SemaphorePermit};
 use tracing::trace;
 
@@ -113,6 +114,7 @@ pub struct QueryServerWriteTransaction<'a> {
     pub(crate) changed_acp: bool,
     pub(crate) changed_oauth2: bool,
     pub(crate) changed_domain: bool,
+    changed_sync_agreement: bool,
     // Store the list of changed uuids for other invalidation needs?
     pub(crate) changed_uuid: HashSet<Uuid>,
     _db_ticket: SemaphorePermit<'a>,
@@ -1149,6 +1151,7 @@ impl QueryServer {
             changed_acp: false,
             changed_oauth2: false,
             changed_domain: false,
+            changed_sync_agreement: false,
             changed_uuid: HashSet::new(),
             _db_ticket: db_ticket,
             _write_ticket: write_ticket,
@@ -1172,7 +1175,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &mut self.dyngroup_cache
     }
 
-    #[instrument(level = "debug", name = "reload_schema", skip(self))]
+    #[instrument(level = "debug", skip_all)]
     pub(crate) fn reload_schema(&mut self) -> Result<(), OperationError> {
         // supply entries to the writable schema to reload from.
         // find all attributes.
@@ -1245,6 +1248,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         Ok(())
     }
 
+    #[instrument(level = "debug", skip_all)]
     fn reload_accesscontrols(&mut self) -> Result<(), OperationError> {
         // supply entries to the writable access controls to reload from.
         // This has to be done in FOUR passes - one for each type!
@@ -1254,6 +1258,30 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // would cause a rust double-borrow if we had AccessControls to try to handle
         // the entry lists themself.
         trace!("ACP reload started ...");
+
+        // Update the set of sync agreements
+
+        let filt = filter!(f_eq("class", PVCLASS_SYNC_ACCOUNT.clone()));
+
+        let res = self.internal_search(filt).map_err(|e| {
+            admin_error!(
+                err = ?e,
+                "reload accesscontrols internal search failed",
+            );
+            e
+        })?;
+
+        let sync_agreement_map: HashMap<Uuid, BTreeSet<String>> = res
+            .iter()
+            .filter_map(|e| {
+                e.get_ava_as_iutf8("sync_yield_authority")
+                    .cloned()
+                    .map(|set| (e.get_uuid(), set))
+            })
+            .collect();
+
+        self.accesscontrols
+            .update_sync_agreements(sync_agreement_map);
 
         // Update search
         let filt = filter!(f_and!([
@@ -1498,7 +1526,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // based on any modifications that have occurred.
         // IF SCHEMA CHANGED WE MUST ALSO RELOAD!!! IE if schema had an attr removed
         // that we rely on we MUST fail this here!!
-        if self.changed_schema || self.changed_acp {
+        //
+        // Also note that changing sync agreements triggers an acp reload since
+        // access controls need to be aware of these agreements.
+        if self.changed_schema || self.changed_acp || self.changed_sync_agreement {
             self.reload_accesscontrols()?;
         } else {
             // On a reload the cache is dropped, otherwise we tell accesscontrols

@@ -13,6 +13,7 @@
 //! - the ability to turn an entry into a partial-entry for results send
 //!   requirements (also search).
 
+use hashbrown::HashMap;
 use std::cell::Cell;
 use std::collections::BTreeSet;
 use std::ops::DerefMut;
@@ -90,6 +91,7 @@ struct AccessControlsInner {
     acps_create: Vec<AccessControlCreate>,
     acps_modify: Vec<AccessControlModify>,
     acps_delete: Vec<AccessControlDelete>,
+    sync_agreements: HashMap<Uuid, BTreeSet<String>>,
     // Oauth2
     // Sync prov
 }
@@ -106,6 +108,7 @@ pub trait AccessControlsTransaction<'a> {
     fn get_create(&self) -> &Vec<AccessControlCreate>;
     fn get_modify(&self) -> &Vec<AccessControlModify>;
     fn get_delete(&self) -> &Vec<AccessControlDelete>;
+    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<String>>;
 
     #[allow(clippy::mut_from_ref)]
     fn get_acp_resolve_filter_cache(
@@ -447,8 +450,10 @@ pub trait AccessControlsTransaction<'a> {
         debug!(?requested_rem, "Requested remove set");
         debug!(?requested_classes, "Requested class set");
 
+        let sync_agmts = self.get_sync_agreements();
+
         let r = entries.iter().all(|e| {
-            match apply_modify_access(&me.ident, related_acp.as_slice(), e) {
+            match apply_modify_access(&me.ident, related_acp.as_slice(), sync_agmts, e) {
                 ModifyResult::Denied => false,
                 ModifyResult::Grant => true,
                 ModifyResult::Allow { pres, rem, cls } => {
@@ -581,7 +586,9 @@ pub trait AccessControlsTransaction<'a> {
             debug!(?requested_rem, "Requested remove set");
             debug!(?requested_classes, "Requested class set");
 
-            match apply_modify_access(&me.ident, related_acp.as_slice(), e) {
+            let sync_agmts = self.get_sync_agreements();
+
+            match apply_modify_access(&me.ident, related_acp.as_slice(), sync_agmts, e) {
                 ModifyResult::Denied => false,
                 ModifyResult::Grant => true,
                 ModifyResult::Allow { pres, rem, cls } => {
@@ -792,6 +799,8 @@ pub trait AccessControlsTransaction<'a> {
         let modify_related_acp = self.modify_related_acp(ident);
         let delete_related_acp = self.delete_related_acp(ident);
 
+        let sync_agmts = self.get_sync_agreements();
+
         let effective_permissions: Vec<_> = entries
             .iter()
             .map(|e| {
@@ -807,17 +816,20 @@ pub trait AccessControlsTransaction<'a> {
                     };
 
                 // == modify ==
-
-                let (modify_pres, modify_rem, modify_class) =
-                    match apply_modify_access(ident, modify_related_acp.as_slice(), e) {
-                        ModifyResult::Denied => (Access::Denied, Access::Denied, Access::Denied),
-                        ModifyResult::Grant => (Access::Grant, Access::Grant, Access::Grant),
-                        ModifyResult::Allow { pres, rem, cls } => (
-                            Access::Allow(pres.into_iter().map(|s| s.into()).collect()),
-                            Access::Allow(rem.into_iter().map(|s| s.into()).collect()),
-                            Access::Allow(cls.into_iter().map(|s| s.into()).collect()),
-                        ),
-                    };
+                let (modify_pres, modify_rem, modify_class) = match apply_modify_access(
+                    ident,
+                    modify_related_acp.as_slice(),
+                    sync_agmts,
+                    e,
+                ) {
+                    ModifyResult::Denied => (Access::Denied, Access::Denied, Access::Denied),
+                    ModifyResult::Grant => (Access::Grant, Access::Grant, Access::Grant),
+                    ModifyResult::Allow { pres, rem, cls } => (
+                        Access::Allow(pres.into_iter().map(|s| s.into()).collect()),
+                        Access::Allow(rem.into_iter().map(|s| s.into()).collect()),
+                        Access::Allow(cls.into_iter().map(|s| s.into()).collect()),
+                    ),
+                };
 
                 // == delete ==
                 let delete = delete_related_acp.iter().any(|(acd, f_res)| {
@@ -895,6 +907,13 @@ impl<'a> AccessControlsWriteTransaction<'a> {
         Ok(())
     }
 
+    pub fn update_sync_agreements(&mut self, mut sync_agreements: HashMap<Uuid, BTreeSet<String>>) {
+        std::mem::swap(
+            &mut sync_agreements,
+            &mut self.inner.deref_mut().sync_agreements,
+        );
+    }
+
     pub fn commit(self) -> Result<(), OperationError> {
         self.inner.commit();
 
@@ -917,6 +936,10 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsWriteTransaction<'a> {
 
     fn get_delete(&self) -> &Vec<AccessControlDelete> {
         &self.inner.acps_delete
+    }
+
+    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<String>> {
+        &self.inner.sync_agreements
     }
 
     fn get_acp_resolve_filter_cache(
@@ -969,6 +992,10 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
         &self.inner.acps_delete
     }
 
+    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<String>> {
+        &self.inner.sync_agreements
+    }
+
     fn get_acp_resolve_filter_cache(
         &self,
     ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>
@@ -999,6 +1026,7 @@ impl Default for AccessControls {
                 acps_create: Vec::new(),
                 acps_modify: Vec::new(),
                 acps_delete: Vec::new(),
+                sync_agreements: HashMap::default(),
             }),
             // Allow the expect, if this fails it represents a programming/development
             // failure.
@@ -1036,6 +1064,7 @@ impl AccessControls {
 
 #[cfg(test)]
 mod tests {
+    use hashbrown::HashMap;
     use std::collections::BTreeSet;
     use std::sync::Arc;
 
@@ -1803,6 +1832,33 @@ mod tests {
             // should be ok, and same as expect.
             assert!(res == $expect);
         }};
+        (
+            $me:expr,
+            $controls:expr,
+            $sync_uuid:expr,
+            $sync_yield_attr:expr,
+            $entries:expr,
+            $expect:expr
+        ) => {{
+            let ac = AccessControls::default();
+            let mut acw = ac.write();
+            acw.update_modify($controls).expect("Failed to update");
+            let mut sync_agmt = HashMap::new();
+            let mut set = BTreeSet::new();
+            set.insert($sync_yield_attr.to_string());
+            sync_agmt.insert($sync_uuid, set);
+            acw.update_sync_agreements(sync_agmt);
+            let acw = acw;
+
+            let res = acw
+                .modify_allow_operation(&mut $me, $entries)
+                .expect("op failed");
+
+            debug!("result --> {:?}", res);
+            debug!("expect --> {:?}", $expect);
+            // should be ok, and same as expect.
+            assert!(res == $expect);
+        }};
     }
 
     #[test]
@@ -2449,10 +2505,12 @@ mod tests {
         };
         let r1_set = vec![Arc::new(ev1)];
 
+        let sync_uuid = Uuid::new_v4();
         let ev2 = unsafe {
             entry_init!(
                 ("class", CLASS_ACCOUNT.clone()),
                 ("class", CLASS_SYNC_OBJECT.clone()),
+                ("sync_parent_uuid", Value::Refer(sync_uuid)),
                 ("name", Value::new_iname("testperson1")),
                 ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
             )
@@ -2555,7 +2613,31 @@ mod tests {
         // Test reject rem
         test_acp_modify!(&me_rem, vec![acp_allow.clone()], &r2_set, false);
         // Test reject purge
-        test_acp_modify!(&me_purge, vec![acp_allow], &r2_set, false);
+        test_acp_modify!(&me_purge, vec![acp_allow.clone()], &r2_set, false);
+
+        // Test that when an attribute is in the sync_yield state that it can be
+        // modified by a user.
+
+        // Test allow pres
+        test_acp_modify!(
+            &me_pres,
+            vec![acp_allow.clone()],
+            sync_uuid,
+            "name",
+            &r2_set,
+            true
+        );
+        // Test allow rem
+        test_acp_modify!(
+            &me_rem,
+            vec![acp_allow.clone()],
+            sync_uuid,
+            "name",
+            &r2_set,
+            true
+        );
+        // Test allow purge
+        test_acp_modify!(&me_purge, vec![acp_allow], sync_uuid, "name", &r2_set, true);
     }
 
     #[test]
