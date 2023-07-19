@@ -40,13 +40,15 @@ zypper in clang lld make sccache
 ```
 
 You should also adjust your environment with:
+
 ```bash
 export RUSTC_WRAPPER=sccache
 export CC="sccache /usr/bin/clang"
 export CXX="sccache /usr/bin/clang++"
 ```
 
-And add the following to a cargo config of your choice (such as ~/.cargo/config), adjusting for cpu arch
+And add the following to a cargo config of your choice (such as ~/.cargo/config), adjusting for cpu
+arch
 
 ```toml
 [target.aarch64-unknown-linux-gnu]

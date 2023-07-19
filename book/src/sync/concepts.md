@@ -88,6 +88,35 @@ If the sync tool fails, you can investigate details in the Kanidmd server output
 The sync tool can run "indefinitely" if you wish for Kanidm to always import data from the external
 source.
 
+## Yielding Authority of Attributes to Kanidm
+
+By default Kanidm assumes that authority over synchronised entries is retained by the sync tool.
+This means that synchronised entries can not be written to in any capacity outside of a small number
+of internal Kanidm internal attributes.
+
+An adminisrator may wish to allow synchronised entries to have some attributes written by the
+instance locally. An example is allowing passkeys to be created on Kanidm when the external
+synchronisation provider does not supply them.
+
+In this case the synchronisation agreement can be configured to yield it's authority over these
+attributes to Kanidm.
+
+To configure the attributes that Kanidm can control:
+
+```bash
+kanidm system sync set-yield-attributes <sync account name> [attr, ...]
+kanidm system sync set-yield-attributes ipasync passkeys
+```
+
+This commands takes the set of attributes that should be yielded. To remove an attribute you declare
+the yield set with that attribute missing.
+
+```bash
+kanidm system sync set-yield-attributes ipasync passkeys
+# To remove passkeys from being Kanidm controlled.
+kanidm system sync set-yield-attributes ipasync
+```
+
 ## Finalising the Sync Account
 
 If you are performing a migration from an external IDM to Kanidm, when that migration is completed
