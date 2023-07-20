@@ -6,11 +6,12 @@ use std::sync::atomic::{AtomicU16, Ordering};
 use std::time::Duration;
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
-use kanidm_unix_common::resolver::{Resolver, Id};
 use kanidm_unix_common::constants::{
     DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
     DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
 };
+use kanidm_unix_common::db::Db;
+use kanidm_unix_common::resolver::{Id, Resolver};
 use kanidm_unix_common::unix_config::TpmPolicy;
 use kanidmd_core::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidmd_core::create_server_core;
@@ -99,8 +100,14 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
         .build()
         .expect("Failed to build client");
 
-    let cachelayer = Resolver::new(
+    let db = Db::new(
         "", // The sqlite db path, this is in memory.
+        &TpmPolicy::default(),
+    )
+    .expect("Failed to setup DB");
+
+    let cachelayer = Resolver::new(
+        db,
         300,
         rsclient,
         vec!["allowed_group".to_string()],
@@ -111,7 +118,6 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
         DEFAULT_UID_ATTR_MAP,
         DEFAULT_GID_ATTR_MAP,
         vec!["masked_group".to_string()],
-        &TpmPolicy::default(),
     )
     .await
     .expect("Failed to build cache layer.");

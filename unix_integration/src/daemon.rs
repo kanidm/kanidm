@@ -25,8 +25,9 @@ use clap::{Arg, ArgAction, Command};
 use futures::{SinkExt, StreamExt};
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
-use kanidm_unix_common::resolver::Resolver;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
+use kanidm_unix_common::db::Db;
+use kanidm_unix_common::resolver::Resolver;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd};
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
@@ -660,8 +661,16 @@ async fn main() -> ExitCode {
                 }
             };
 
+            let db = match Db::new(cfg.db_path.as_str(), &cfg.tpm_policy) {
+                Ok(db) => db,
+                Err(_e) => {
+                    error!("Failed to create database");
+                    return ExitCode::FAILURE
+                }
+            };
+
             let cl_inner = match Resolver::new(
-                cfg.db_path.as_str(), // The sqlite db path
+                db,
                 cfg.cache_timeout,
                 rsclient,
                 cfg.pam_allowed_login_groups.clone(),
@@ -672,7 +681,6 @@ async fn main() -> ExitCode {
                 cfg.uid_attr_map,
                 cfg.gid_attr_map,
                 cfg.allow_local_account_override.clone(),
-                &cfg.tpm_policy,
             )
             .await
             {

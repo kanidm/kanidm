@@ -18,15 +18,15 @@ extern crate tracing;
 extern crate rusqlite;
 
 #[cfg(target_family = "unix")]
-pub mod resolver;
-#[cfg(target_family = "unix")]
 pub mod client;
 #[cfg(target_family = "unix")]
 pub mod client_sync;
 #[cfg(target_family = "unix")]
 pub mod constants;
 #[cfg(target_family = "unix")]
-pub(crate) mod db;
+pub mod db;
+#[cfg(target_family = "unix")]
+pub mod resolver;
 #[cfg(all(target_family = "unix", feature = "selinux"))]
 pub mod selinux_util;
 #[cfg(target_family = "unix")]
