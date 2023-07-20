@@ -12,7 +12,8 @@ use lru::LruCache;
 use reqwest::StatusCode;
 use tokio::sync::{Mutex, RwLock};
 
-use crate::db::Db;
+use crate::db::{Db, Cache, CacheTxn, CacheError};
+
 use crate::unix_config::{HomeAttr, TpmPolicy, UidAttr};
 use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser};
 
@@ -34,7 +35,7 @@ enum CacheState {
 }
 
 #[derive(Debug)]
-pub struct CacheLayer {
+pub struct Resolver {
     db: Db,
     client: RwLock<KanidmClient>,
     state: Mutex<CacheState>,
@@ -60,7 +61,7 @@ impl ToString for Id {
     }
 }
 
-impl CacheLayer {
+impl Resolver {
     // TODO: Could consider refactoring this to be better ...
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
@@ -95,7 +96,7 @@ impl CacheLayer {
 
         // We assume we are offline at start up, and we mark the next "online check" as
         // being valid from "now".
-        Ok(CacheLayer {
+        Ok(Resolver {
             db,
             client: RwLock::new(client),
             state: Mutex::new(CacheState::OfflineNextCheck(SystemTime::now())),

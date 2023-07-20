@@ -18,7 +18,7 @@ extern crate tracing;
 extern crate rusqlite;
 
 #[cfg(target_family = "unix")]
-pub mod cache;
+pub mod resolver;
 #[cfg(target_family = "unix")]
 pub mod client;
 #[cfg(target_family = "unix")]

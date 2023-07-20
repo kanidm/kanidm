@@ -25,7 +25,7 @@ use clap::{Arg, ArgAction, Command};
 use futures::{SinkExt, StreamExt};
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
-use kanidm_unix_common::cache::CacheLayer;
+use kanidm_unix_common::resolver::Resolver;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd};
@@ -181,7 +181,7 @@ async fn handle_task_client(
 
 async fn handle_client(
     sock: UnixStream,
-    cachelayer: Arc<CacheLayer>,
+    cachelayer: Arc<Resolver>,
     task_channel_tx: &Sender<AsyncTaskRequest>,
 ) -> Result<(), Box<dyn Error>> {
     debug!("Accepted connection");
@@ -371,7 +371,7 @@ async fn handle_client(
     Ok(())
 }
 
-async fn process_etc_passwd_group(cachelayer: &CacheLayer) -> Result<(), Box<dyn Error>> {
+async fn process_etc_passwd_group(cachelayer: &Resolver) -> Result<(), Box<dyn Error>> {
     let mut file = File::open("/etc/passwd").await?;
     let mut contents = vec![];
     file.read_to_end(&mut contents).await?;
@@ -660,7 +660,7 @@ async fn main() -> ExitCode {
                 }
             };
 
-            let cl_inner = match CacheLayer::new(
+            let cl_inner = match Resolver::new(
                 cfg.db_path.as_str(), // The sqlite db path
                 cfg.cache_timeout,
                 rsclient,

@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicU16, Ordering};
 use std::time::Duration;
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
-use kanidm_unix_common::cache::{CacheLayer, Id};
+use kanidm_unix_common::resolver::{Resolver, Id};
 use kanidm_unix_common::constants::{
     DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
     DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
@@ -41,7 +41,7 @@ where
     Box::new(move |n| Box::pin(f(n)))
 }
 
-async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
+async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
     sketching::test_init();
 
     let mut counter = 0;
@@ -99,7 +99,7 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
         .build()
         .expect("Failed to build client");
 
-    let cachelayer = CacheLayer::new(
+    let cachelayer = Resolver::new(
         "", // The sqlite db path, this is in memory.
         300,
         rsclient,

@@ -2,6 +2,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::time::Duration;
 
+use async_trait::async_trait;
 use crate::unix_config::TpmPolicy;
 use kanidm_lib_crypto::CryptoPolicy;
 use kanidm_lib_crypto::DbPasswordV1;
@@ -11,7 +12,48 @@ use libc::umask;
 use rusqlite::Connection;
 use tokio::sync::{Mutex, MutexGuard};
 
-use crate::cache::Id;
+use crate::resolver::Id;
+
+#[async_trait]
+pub trait Cache {
+    type Txn<'db> where Self: 'db;
+
+    async fn write<'db>(&'db self) -> Self::Txn<'db>;
+}
+
+pub enum CacheError {
+    
+}
+
+pub trait CacheTxn {
+    fn migrate(&mut self) -> Result<(), CacheError>;
+
+    fn commit(self) -> Result<(), CacheError>;
+
+    fn invalidate(&mut self) -> Result<(), CacheError>;
+
+    fn clear(&mut self) -> Result<(), CacheError>;
+
+    fn get_account(&self, account_id: &Id) -> Result<Option<(UnixUserToken, u64)>, CacheError>;
+
+    fn get_accounts(&self) -> Result<Vec<UnixUserToken>, CacheError>;
+
+    fn update_account(&self, account: &UnixUserToken, expire: u64) -> Result<(), CacheError>;
+
+    fn update_account_password(&self, a_uuid: &str, cred: &str) -> Result<(), CacheError>;
+
+    fn check_account_password(&self, a_uuid: &str, cred: &str) -> Result<bool, CacheError>;
+
+    fn get_group(&self, grp_id: &Id) -> Result<Option<(UnixGroupToken, u64)>, CacheError>;
+
+    fn get_group_members(&self, g_uuid: &str) -> Result<Vec<UnixUserToken>, CacheError>;
+
+    fn get_groups(&self) -> Result<Vec<UnixGroupToken>, CacheError>;
+
+    fn update_group(&self, grp: &UnixGroupToken, expire: u64) -> Result<(), CacheError>;
+
+    fn delete_group(&self, g_uuid: &str) -> Result<(), CacheError>;
+}
 
 pub struct Db {
     conn: Mutex<Connection>,
@@ -53,9 +95,14 @@ impl Db {
             require_tpm,
         })
     }
+}
+
+#[async_trait]
+impl Cache for Db {
+    type Txn<'db> = DbTxn<'db>;
 
     #[allow(clippy::expect_used)]
-    pub async fn write(&self) -> DbTxn<'_> {
+    async fn write<'db>(&'db self) -> Self::Txn<'db> {
         let conn = self.conn.lock().await;
         DbTxn::new(conn, &self.crypto_policy, self.require_tpm.as_ref())
     }
@@ -68,7 +115,7 @@ impl fmt::Debug for Db {
 }
 
 impl<'a> DbTxn<'a> {
-    pub fn new(
+    fn new(
         conn: MutexGuard<'a, Connection>,
         crypto_policy: &'a CryptoPolicy,
         require_tpm: Option<&'a tpm::TpmConfig>,
@@ -106,7 +153,107 @@ impl<'a> DbTxn<'a> {
         // TODO: one day figure out if there's an easy way to dump the transaction without the token...
     }
 
-    pub fn migrate(&self) -> Result<(), ()> {
+    fn get_account_data_name(&self, account_id: &str) -> Result<Vec<(Vec<u8>, i64)>, ()> {
+        let mut stmt = self.conn
+            .prepare(
+        "SELECT token, expiry FROM account_t WHERE uuid = :account_id OR name = :account_id OR spn = :account_id"
+            )
+            .map_err(|e| {
+                self.sqlite_error("select prepare", &e);
+            })?;
+
+        // Makes tuple (token, expiry)
+        let data_iter = stmt
+            .query_map([account_id], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(|e| {
+                self.sqlite_error("query_map failure", &e);
+            })?;
+        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
+            .map(|v| {
+                v.map_err(|e| {
+                    self.sqlite_error("map failure", &e);
+                })
+            })
+            .collect();
+        data
+    }
+
+    fn get_account_data_gid(&self, gid: u32) -> Result<Vec<(Vec<u8>, i64)>, ()> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT token, expiry FROM account_t WHERE gidnumber = :gid")
+            .map_err(|e| {
+                self.sqlite_error("select prepare", &e);
+            })?;
+
+        // Makes tuple (token, expiry)
+        let data_iter = stmt
+            .query_map(params![gid], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(|e| {
+                self.sqlite_error("query_map", &e);
+            })?;
+        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
+            .map(|v| {
+                v.map_err(|e| {
+                    self.sqlite_error("map", &e);
+                })
+            })
+            .collect();
+        data
+    }
+
+    fn get_group_data_name(&self, grp_id: &str) -> Result<Vec<(Vec<u8>, i64)>, ()> {
+        let mut stmt = self.conn
+            .prepare(
+        "SELECT token, expiry FROM group_t WHERE uuid = :grp_id OR name = :grp_id OR spn = :grp_id"
+            )
+            .map_err(|e| {
+                self.sqlite_error("select prepare", &e);
+            })?;
+
+        // Makes tuple (token, expiry)
+        let data_iter = stmt
+            .query_map([grp_id], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(|e| {
+                self.sqlite_error("query_map", &e);
+            })?;
+        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
+            .map(|v| {
+                v.map_err(|e| {
+                    self.sqlite_error("map", &e);
+                })
+            })
+            .collect();
+        data
+    }
+
+    fn get_group_data_gid(&self, gid: u32) -> Result<Vec<(Vec<u8>, i64)>, ()> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT token, expiry FROM group_t WHERE gidnumber = :gid")
+            .map_err(|e| {
+                self.sqlite_error("select prepare", &e);
+            })?;
+
+        // Makes tuple (token, expiry)
+        let data_iter = stmt
+            .query_map(params![gid], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(|e| {
+                self.sqlite_error("query_map", &e);
+            })?;
+        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
+            .map(|v| {
+                v.map_err(|e| {
+                    self.sqlite_error("map", &e);
+                })
+            })
+            .collect();
+        data
+    }
+}
+
+impl<'a> CacheTxn for DbTxn<'a> {
+    pub fn migrate(&self) -> Result<(), CacheError> {
         self.conn.set_prepared_statement_cache_capacity(16);
         self.conn
             .prepare("PRAGMA journal_mode=WAL;")
@@ -227,55 +374,6 @@ impl<'a> DbTxn<'a> {
             })?;
 
         Ok(())
-    }
-
-    fn get_account_data_name(&self, account_id: &str) -> Result<Vec<(Vec<u8>, i64)>, ()> {
-        let mut stmt = self.conn
-            .prepare(
-        "SELECT token, expiry FROM account_t WHERE uuid = :account_id OR name = :account_id OR spn = :account_id"
-            )
-            .map_err(|e| {
-                self.sqlite_error("select prepare", &e);
-            })?;
-
-        // Makes tuple (token, expiry)
-        let data_iter = stmt
-            .query_map([account_id], |row| Ok((row.get(0)?, row.get(1)?)))
-            .map_err(|e| {
-                self.sqlite_error("query_map failure", &e);
-            })?;
-        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
-            .map(|v| {
-                v.map_err(|e| {
-                    self.sqlite_error("map failure", &e);
-                })
-            })
-            .collect();
-        data
-    }
-
-    fn get_account_data_gid(&self, gid: u32) -> Result<Vec<(Vec<u8>, i64)>, ()> {
-        let mut stmt = self
-            .conn
-            .prepare("SELECT token, expiry FROM account_t WHERE gidnumber = :gid")
-            .map_err(|e| {
-                self.sqlite_error("select prepare", &e);
-            })?;
-
-        // Makes tuple (token, expiry)
-        let data_iter = stmt
-            .query_map(params![gid], |row| Ok((row.get(0)?, row.get(1)?)))
-            .map_err(|e| {
-                self.sqlite_error("query_map", &e);
-            })?;
-        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
-            .map(|v| {
-                v.map_err(|e| {
-                    self.sqlite_error("map", &e);
-                })
-            })
-            .collect();
-        data
     }
 
     pub fn get_account(&self, account_id: &Id) -> Result<Option<(UnixUserToken, u64)>, ()> {
@@ -572,55 +670,6 @@ impl<'a> DbTxn<'a> {
                 error!("password error -> {:?}", e);
             })
         }
-    }
-
-    fn get_group_data_name(&self, grp_id: &str) -> Result<Vec<(Vec<u8>, i64)>, ()> {
-        let mut stmt = self.conn
-            .prepare(
-        "SELECT token, expiry FROM group_t WHERE uuid = :grp_id OR name = :grp_id OR spn = :grp_id"
-            )
-            .map_err(|e| {
-                self.sqlite_error("select prepare", &e);
-            })?;
-
-        // Makes tuple (token, expiry)
-        let data_iter = stmt
-            .query_map([grp_id], |row| Ok((row.get(0)?, row.get(1)?)))
-            .map_err(|e| {
-                self.sqlite_error("query_map", &e);
-            })?;
-        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
-            .map(|v| {
-                v.map_err(|e| {
-                    self.sqlite_error("map", &e);
-                })
-            })
-            .collect();
-        data
-    }
-
-    fn get_group_data_gid(&self, gid: u32) -> Result<Vec<(Vec<u8>, i64)>, ()> {
-        let mut stmt = self
-            .conn
-            .prepare("SELECT token, expiry FROM group_t WHERE gidnumber = :gid")
-            .map_err(|e| {
-                self.sqlite_error("select prepare", &e);
-            })?;
-
-        // Makes tuple (token, expiry)
-        let data_iter = stmt
-            .query_map(params![gid], |row| Ok((row.get(0)?, row.get(1)?)))
-            .map_err(|e| {
-                self.sqlite_error("query_map", &e);
-            })?;
-        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
-            .map(|v| {
-                v.map_err(|e| {
-                    self.sqlite_error("map", &e);
-                })
-            })
-            .collect();
-        data
     }
 
     pub fn get_group(&self, grp_id: &Id) -> Result<Option<(UnixGroupToken, u64)>, ()> {
@@ -1144,8 +1193,8 @@ pub(crate) mod tpm {
 mod tests {
     use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 
-    use super::Db;
-    use crate::cache::Id;
+    use super::{Db, Cache, CacheTxn, CacheError};
+    use crate::resolver::Id;
     use crate::unix_config::TpmPolicy;
 
     const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
