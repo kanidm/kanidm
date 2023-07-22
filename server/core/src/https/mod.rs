@@ -237,6 +237,9 @@ pub async fn create_https_server(
             middleware::csp_headers::cspheaders_layer,
         ))
         .layer(from_fn(middleware::version_middleware))
+        .layer(from_fn(
+            middleware::hsts_header::strict_transport_security_layer,
+        ))
         .layer(TraceLayer::new_for_http())
         // This must be the LAST middleware.
         // This is because the last middleware here is the first to be entered and the last
