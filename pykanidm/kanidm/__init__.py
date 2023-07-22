@@ -77,7 +77,7 @@ class KanidmClient:
                 if not isinstance(config_file, Path):
                     config_file = Path(config_file)
                 config_data = load_config(config_file.expanduser().resolve())
-                self.config = self.config.parse_obj(config_data)
+                self.config = self.config.model_validate(config_data)
 
         if self.config.uri is None:
             raise ValueError("Please initialize this with a server URI")
@@ -108,7 +108,7 @@ class KanidmClient:
     ) -> None:
         """hand it a config dict and it'll configure the client"""
         try:
-            self.config.parse_obj(config_data)
+            self.config.model_validate(config_data)
         except ValidationError as validation_error:
             # pylint: disable=raise-missing-from
             raise ValueError(f"Failed to validate configuration: {validation_error}")
@@ -191,7 +191,7 @@ class KanidmClient:
                     "status_code": request.status,
                 }
                 logging.debug(json_lib.dumps(response_input, default=str, indent=4))
-                response = ClientResponse.parse_obj(response_input)
+                response = ClientResponse.model_validate(response_input)
             return response
 
     async def call_get(
@@ -239,7 +239,7 @@ class KanidmClient:
             raise ValueError(
                 f"Missing x-kanidm-auth-session-id header in init auth response: {response.headers}"
             )
-        retval = AuthInitResponse.parse_obj(response.data)
+        retval = AuthInitResponse.model_validate(response.data)
         retval.response = response
         return retval
 
@@ -262,7 +262,7 @@ class KanidmClient:
             # TODO: mock test for auth_begin raises AuthBeginFailed
             raise AuthBeginFailed(response.content)
 
-        retobject = AuthBeginResponse.parse_obj(response.data)
+        retobject = AuthBeginResponse.model_validate(response.data)
         retobject.response = response
         return response
 
@@ -296,7 +296,7 @@ class KanidmClient:
             raise AuthMechUnknown(f"No auth mechanisms for {username}")
         auth_begin = await self.auth_begin(method="password", sessionid=sessionid)
         # does a little bit of validation
-        auth_begin_object = AuthBeginResponse.parse_obj(auth_begin.data)
+        auth_begin_object = AuthBeginResponse.model_validate(auth_begin.data)
         auth_begin_object.response = auth_begin
         return await self.auth_step_password(password=password, sessionid=sessionid)
 
@@ -324,7 +324,7 @@ class KanidmClient:
             logging.debug("Failed to authenticate, response: %s", response.content)
             raise AuthCredFailed("Failed password authentication!")
 
-        result = AuthStepPasswordResponse.parse_obj(response.data)
+        result = AuthStepPasswordResponse.model_validate(response.data)
         result.response = response
 
         # pull the token out and set it

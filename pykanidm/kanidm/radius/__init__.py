@@ -107,7 +107,7 @@ def authorize(
     tok = None
     try:
         loop = asyncio.get_event_loop()
-        tok = RadiusTokenResponse.parse_obj(
+        tok = RadiusTokenResponse.model_validate(
             loop.run_until_complete(_get_radius_token(username=user_id))
         )
         logging.debug("radius information token: %s", tok)

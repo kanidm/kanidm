@@ -80,7 +80,7 @@ def test_config_invalid_uri() -> None:
         "uri": "asdfsadfasd",
     }
     with pytest.raises(pydantic.ValidationError):
-        KanidmClientConfig.parse_obj(test_input)
+        KanidmClientConfig.model_validate(test_input)
 
 
 def test_config_none_uri() -> None:

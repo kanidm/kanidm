@@ -19,7 +19,7 @@ def test_load_config_file() -> None:
         print("Can't find client config file", file=sys.stderr)
         pytest.skip()
     config = load_config(EXAMPLE_CONFIG_FILE)
-    kanidm_config = KanidmClientConfig.parse_obj(config)
+    kanidm_config = KanidmClientConfig.model_validate(config)
     assert kanidm_config.uri == "https://idm.example.com/"
     print(f"{kanidm_config.uri=}")
     print(kanidm_config)
@@ -36,7 +36,7 @@ radius_groups = [
 """
     config_parsed = toml.loads(config_toml)
     print(config_parsed)
-    kanidm_config = KanidmClientConfig.parse_obj(config_parsed)
+    kanidm_config = KanidmClientConfig.model_validate(config_parsed)
     for group in kanidm_config.radius_groups:
         print(group.spn)
         assert group.spn == "hello world"
@@ -52,7 +52,7 @@ radius_clients = [ { name = "hello world", ipaddr = "10.0.0.5", secret = "cr4bj0
 """
     config_parsed = toml.loads(config_toml)
     print(config_parsed)
-    kanidm_config = KanidmClientConfig.parse_obj(config_parsed)
+    kanidm_config = KanidmClientConfig.model_validate(config_parsed)
     client = kanidm_config.radius_clients[0]
     print(client.name)
     assert client.name == "hello world"

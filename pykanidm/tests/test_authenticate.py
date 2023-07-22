@@ -64,7 +64,7 @@ async def test_auth_begin(client_configfile: KanidmClient) -> None:
 
     retval["response"] = begin_result
 
-    assert AuthBeginResponse.parse_obj(retval)
+    assert AuthBeginResponse.model_validate(retval)
 
 
 @pytest.mark.network
@@ -170,7 +170,7 @@ async def test_authenticate_with_token(client_configfile: KanidmClient) -> None:
             f"Using username {test_username} by default - set KANIDM_TEST_USERNAME env var if you want to change this."
         )
 
-    tokens = TokenStore()
+    tokens = TokenStore.model_validate({})
     tokens.load()
 
     if test_username not in tokens:
