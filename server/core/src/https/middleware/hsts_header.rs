@@ -13,7 +13,7 @@ pub async fn strict_transport_security_layer<B>(request: Request<B>, next: Next<
     let headers = response.headers_mut();
     let hsts_header = HeaderValue::from_static(HSTS_HEADER);
 
-    headers.insert("Strict-Transport-Security", hsts_header);
+    headers.insert(http::header::STRICT_TRANSPORT_SECURITY, hsts_header);
 
     response
 }
