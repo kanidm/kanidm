@@ -123,7 +123,7 @@ scim_proto = "^0.2.1"
 # scim_proto = { git = "https://github.com/kanidm/scim.git", version = "0.1.1" }
 
 selinux = "^0.4.1"
-serde = "^1.0.170"
+serde = "^1.0.174"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
 serde_json = "^1.0.103"
 serde-wasm-bindgen = "0.5"
