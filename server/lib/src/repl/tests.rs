@@ -1122,6 +1122,85 @@ async fn test_repl_increment_basic_bidirectional_tombstone(
 // conflict cases.
 
 // both add entry with same uuid - only one can win!
+#[qs_pair_test]
+async fn test_repl_increment_creation_uuid_conflict(
+    server_a: &QueryServer,
+    server_b: &QueryServer,
+) {
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn).is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Now create the same entry on both servers.
+    let t_uuid = Uuid::new_v4();
+    let e_init = entry_init!(
+        ("class", Value::new_class("object")),
+        ("class", Value::new_class("person")),
+        ("name", Value::new_iname("testperson1")),
+        ("uuid", Value::Uuid(t_uuid)),
+        ("description", Value::new_utf8s("testperson1")),
+        ("displayname", Value::new_utf8s("testperson1"))
+    );
+
+    let mut server_b_txn = server_b.write(ct).await;
+    assert!(server_b_txn
+        .internal_create(vec![e_init.clone(),])
+        .is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Get a new time.
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn
+        .internal_create(vec![e_init.clone(),])
+        .is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    // Replicate A to B. B should ignore.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    trace!("{:?}", e1.get_last_changed());
+    trace!("{:?}", e2.get_last_changed());
+    // e2 from b will be smaller as it's the older entry.
+    assert!(e1.get_last_changed() > e2.get_last_changed());
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    // Replicate B to A. A should replace with B.
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1.get_last_changed() == e2.get_last_changed());
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+}
+
 
 // both add entry with same uuid, but one becomes ts - ts always wins.
 
