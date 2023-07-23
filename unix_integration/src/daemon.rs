@@ -725,16 +725,14 @@ async fn main() -> ExitCode {
                                 Ok((socket, _addr)) => {
                                     // Did it come from root?
                                     if let Ok(ucred) = socket.peer_cred() {
-                                        if ucred.uid() == 0 {
-                                            // all good!
-                                        } else {
+                                        if ucred.uid() != 0 {
                                             // move along.
                                             warn!("Task handler not running as root, ignoring ...");
                                             continue;
                                         }
                                     } else {
                                         // move along.
-                                        warn!("Task handler not running as root, ignoring ...");
+                                        warn!("Unable to determine socked peer cred, ignoring ...");
                                         continue;
                                     };
                                     debug!("A task handler has connected.");
