@@ -17,7 +17,7 @@ async-trait = { workspace = true }
 axum = { workspace=true }
 axum-auth = "0.4.0"
 axum-csp = { workspace = true }
-axum-macros = "0.3.7"
+axum-macros = "0.3.8"
 axum-server = { version = "0.5.1", features = ["tls-openssl"] }
 chrono = { workspace = true }
 compact_jwt = { workspace = true }
