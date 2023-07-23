@@ -2,7 +2,7 @@
 struct CommonOpt {
     /// Path to the server's configuration file. If it does not exist, it will be created.
     #[clap(short, long = "config", env = "KANIDM_CONFIG")]
-    config_path: PathBuf,
+    config_path: Option<PathBuf>,
     /// Log format (still in very early development)
     #[clap(short, long = "output", env = "KANIDM_OUTPUT", default_value="text")]
     output_mode: String,

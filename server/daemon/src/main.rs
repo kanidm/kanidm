@@ -15,6 +15,7 @@
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 use std::fs::{metadata, File};
+use std::str::FromStr;
 // This works on both unix and windows.
 use fs2::FileExt;
 use kanidm_proto::messages::ConsoleOutputMode;
@@ -148,7 +149,17 @@ async fn main() -> ExitCode {
     //we set up a list of these so we can set the log config THEN log out the errors.
     let mut config_error: Vec<String> = Vec::new();
     let mut config = Configuration::new();
-    let cfg_path = opt.commands.commonopt().config_path.clone();
+    let cfg_path = opt
+        .commands
+        .commonopt()
+        .config_path
+        .clone()
+        .or_else(|| PathBuf::from_str(env!("KANIDM_DEFAULT_CONFIG_PATH")).ok());
+
+    let Some(cfg_path) = cfg_path else {
+        eprintln!("Unable to start - can not locate any configuration file");
+        return ExitCode::FAILURE;
+    };
 
     let sconfig = match cfg_path.exists() {
         false => {

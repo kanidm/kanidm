@@ -53,6 +53,7 @@ struct ProfileConfig {
     #[serde(default)]
     cpu_flags: CpuOptLevel,
     admin_bind_path: String,
+    default_config_path: String,
 }
 
 pub fn apply_profile() {
@@ -91,5 +92,9 @@ pub fn apply_profile() {
     println!(
         "cargo:rustc-env=KANIDM_ADMIN_BIND_PATH={}",
         profile_cfg.admin_bind_path
+    );
+    println!(
+        "cargo:rustc-env=KANIDM_DEFAULT_CONFIG_PATH={}",
+        profile_cfg.default_config_path
     );
 }

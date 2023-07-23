@@ -2,3 +2,4 @@ web_ui_pkg_path = "/usr/share/kanidm/ui/pkg"
 # Don't set the value for autodetect
 # cpu_flags = "none"
 admin_bind_path = "/var/run/kanidmd/sock"
+default_config_path = "/etc/kanidm/server.toml"
