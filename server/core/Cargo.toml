@@ -44,7 +44,7 @@ tokio-openssl = { workspace = true }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = {workspace = true}
 tower = { version = "0.4.13", features = ["tokio-stream", "tracing"] }
-tower-http = { version = "0.4.1", features = ["tokio", "tracing", "uuid", "compression-gzip", "compression-zstd", "trace", "fs"] }
+tower-http = { version = "0.4.3", features = ["tokio", "tracing", "uuid", "compression-gzip", "compression-zstd", "trace", "fs"] }
 tracing = { workspace = true, features = ["attributes"] }
 tracing-subscriber = { workspace = true, features = ["time", "json"] }
 urlencoding = { workspace = true }
