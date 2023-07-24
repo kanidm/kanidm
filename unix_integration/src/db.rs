@@ -3,6 +3,7 @@ use std::fmt;
 use std::time::Duration;
 
 use crate::unix_config::TpmPolicy;
+use async_trait::async_trait;
 use kanidm_lib_crypto::CryptoPolicy;
 use kanidm_lib_crypto::DbPasswordV1;
 use kanidm_lib_crypto::Password;
@@ -11,7 +12,58 @@ use libc::umask;
 use rusqlite::Connection;
 use tokio::sync::{Mutex, MutexGuard};
 
-use crate::cache::Id;
+use crate::resolver::Id;
+
+#[async_trait]
+pub trait Cache {
+    type Txn<'db>
+    where
+        Self: 'db;
+
+    async fn write<'db>(&'db self) -> Self::Txn<'db>;
+}
+
+#[derive(Debug)]
+pub enum CacheError {
+    Cryptography,
+    SerdeJson,
+    Parse,
+    Sqlite,
+    TooManyResults,
+    TransactionInvalidState,
+}
+
+pub trait CacheTxn {
+    fn migrate(&self) -> Result<(), CacheError>;
+
+    fn commit(self) -> Result<(), CacheError>;
+
+    fn invalidate(&self) -> Result<(), CacheError>;
+
+    fn clear(&self) -> Result<(), CacheError>;
+
+    fn get_account(&self, account_id: &Id) -> Result<Option<(UnixUserToken, u64)>, CacheError>;
+
+    fn get_accounts(&self) -> Result<Vec<UnixUserToken>, CacheError>;
+
+    fn update_account(&self, account: &UnixUserToken, expire: u64) -> Result<(), CacheError>;
+
+    fn delete_account(&self, a_uuid: &str) -> Result<(), CacheError>;
+
+    fn update_account_password(&self, a_uuid: &str, cred: &str) -> Result<(), CacheError>;
+
+    fn check_account_password(&self, a_uuid: &str, cred: &str) -> Result<bool, CacheError>;
+
+    fn get_group(&self, grp_id: &Id) -> Result<Option<(UnixGroupToken, u64)>, CacheError>;
+
+    fn get_group_members(&self, g_uuid: &str) -> Result<Vec<UnixUserToken>, CacheError>;
+
+    fn get_groups(&self) -> Result<Vec<UnixGroupToken>, CacheError>;
+
+    fn update_group(&self, grp: &UnixGroupToken, expire: u64) -> Result<(), CacheError>;
+
+    fn delete_group(&self, g_uuid: &str) -> Result<(), CacheError>;
+}
 
 pub struct Db {
     conn: Mutex<Connection>,
@@ -53,9 +105,14 @@ impl Db {
             require_tpm,
         })
     }
+}
+
+#[async_trait]
+impl Cache for Db {
+    type Txn<'db> = DbTxn<'db>;
 
     #[allow(clippy::expect_used)]
-    pub async fn write(&self) -> DbTxn<'_> {
+    async fn write<'db>(&'db self) -> Self::Txn<'db> {
         let conn = self.conn.lock().await;
         DbTxn::new(conn, &self.crypto_policy, self.require_tpm.as_ref())
     }
@@ -68,7 +125,7 @@ impl fmt::Debug for Db {
 }
 
 impl<'a> DbTxn<'a> {
-    pub fn new(
+    fn new(
         conn: MutexGuard<'a, Connection>,
         crypto_policy: &'a CryptoPolicy,
         require_tpm: Option<&'a tpm::TpmConfig>,
@@ -87,33 +144,109 @@ impl<'a> DbTxn<'a> {
     }
 
     /// This handles an error coming back from an sqlite event and dumps more information from it
-    fn sqlite_error(&self, msg: &str, error: &rusqlite::Error) {
+    fn sqlite_error(&self, msg: &str, error: &rusqlite::Error) -> CacheError {
         error!(
             "sqlite {} error: {:?} db_path={:?}",
             msg,
             error,
             &self.conn.path()
         );
+        CacheError::Sqlite
     }
 
     /// This handles an error coming back from an sqlite transaction and dumps a load of information from it
-    fn sqlite_transaction_error(&self, error: &rusqlite::Error, _stmt: &rusqlite::Statement) {
+    fn sqlite_transaction_error(
+        &self,
+        error: &rusqlite::Error,
+        _stmt: &rusqlite::Statement,
+    ) -> CacheError {
         error!(
             "sqlite transaction error={:?} db_path={:?}",
             error,
             &self.conn.path(),
         );
         // TODO: one day figure out if there's an easy way to dump the transaction without the token...
+        CacheError::Sqlite
     }
 
-    pub fn migrate(&self) -> Result<(), ()> {
+    fn get_account_data_name(&self, account_id: &str) -> Result<Vec<(Vec<u8>, i64)>, CacheError> {
+        let mut stmt = self.conn
+            .prepare(
+        "SELECT token, expiry FROM account_t WHERE uuid = :account_id OR name = :account_id OR spn = :account_id"
+            )
+            .map_err(|e| {
+                self.sqlite_error("select prepare", &e)
+            })?;
+
+        // Makes tuple (token, expiry)
+        let data_iter = stmt
+            .query_map([account_id], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(|e| self.sqlite_error("query_map failure", &e))?;
+        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
+            .map(|v| v.map_err(|e| self.sqlite_error("map failure", &e)))
+            .collect();
+        data
+    }
+
+    fn get_account_data_gid(&self, gid: u32) -> Result<Vec<(Vec<u8>, i64)>, CacheError> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT token, expiry FROM account_t WHERE gidnumber = :gid")
+            .map_err(|e| self.sqlite_error("select prepare", &e))?;
+
+        // Makes tuple (token, expiry)
+        let data_iter = stmt
+            .query_map(params![gid], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(|e| self.sqlite_error("query_map", &e))?;
+        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
+            .map(|v| v.map_err(|e| self.sqlite_error("map", &e)))
+            .collect();
+        data
+    }
+
+    fn get_group_data_name(&self, grp_id: &str) -> Result<Vec<(Vec<u8>, i64)>, CacheError> {
+        let mut stmt = self.conn
+            .prepare(
+        "SELECT token, expiry FROM group_t WHERE uuid = :grp_id OR name = :grp_id OR spn = :grp_id"
+            )
+            .map_err(|e| {
+                self.sqlite_error("select prepare", &e)
+            })?;
+
+        // Makes tuple (token, expiry)
+        let data_iter = stmt
+            .query_map([grp_id], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(|e| self.sqlite_error("query_map", &e))?;
+        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
+            .map(|v| v.map_err(|e| self.sqlite_error("map", &e)))
+            .collect();
+        data
+    }
+
+    fn get_group_data_gid(&self, gid: u32) -> Result<Vec<(Vec<u8>, i64)>, CacheError> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT token, expiry FROM group_t WHERE gidnumber = :gid")
+            .map_err(|e| self.sqlite_error("select prepare", &e))?;
+
+        // Makes tuple (token, expiry)
+        let data_iter = stmt
+            .query_map(params![gid], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(|e| self.sqlite_error("query_map", &e))?;
+        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
+            .map(|v| v.map_err(|e| self.sqlite_error("map", &e)))
+            .collect();
+        data
+    }
+}
+
+impl<'a> CacheTxn for DbTxn<'a> {
+    fn migrate(&self) -> Result<(), CacheError> {
         self.conn.set_prepared_statement_cache_capacity(16);
         self.conn
             .prepare("PRAGMA journal_mode=WAL;")
             .and_then(|mut wal_stmt| wal_stmt.query([]).map(|_| ()))
-            .map_err(|e| {
-                self.sqlite_error("account_t create", &e);
-            })?;
+            .map_err(|e| self.sqlite_error("account_t create", &e))?;
 
         // Setup two tables - one for accounts, one for groups.
         // correctly index the columns.
@@ -132,9 +265,7 @@ impl<'a> DbTxn<'a> {
             ",
                 [],
             )
-            .map_err(|e| {
-                self.sqlite_error("account_t create", &e);
-            })?;
+            .map_err(|e| self.sqlite_error("account_t create", &e))?;
 
         self.conn
             .execute(
@@ -149,9 +280,7 @@ impl<'a> DbTxn<'a> {
             ",
                 [],
             )
-            .map_err(|e| {
-                self.sqlite_error("group_t create", &e);
-            })?;
+            .map_err(|e| self.sqlite_error("group_t create", &e))?;
 
         // We defer group foreign keys here because we now manually cascade delete these when
         // required. This is because insert or replace into will always delete then add
@@ -170,115 +299,54 @@ impl<'a> DbTxn<'a> {
             ",
                 [],
             )
-            .map_err(|e| {
-                self.sqlite_error("memberof_t create error", &e);
-            })?;
+            .map_err(|e| self.sqlite_error("memberof_t create error", &e))?;
 
         Ok(())
     }
 
-    pub fn commit(mut self) -> Result<(), ()> {
+    fn commit(mut self) -> Result<(), CacheError> {
         // debug!("Committing BE txn");
         if self.committed {
             error!("Invalid state, SQL transaction was already committed!");
-            return Err(());
+            return Err(CacheError::TransactionInvalidState);
         }
         self.committed = true;
 
         self.conn
             .execute("COMMIT TRANSACTION", [])
             .map(|_| ())
-            .map_err(|e| {
-                self.sqlite_error("commit", &e);
-            })
+            .map_err(|e| self.sqlite_error("commit", &e))
     }
 
-    pub fn invalidate(&self) -> Result<(), ()> {
+    fn invalidate(&self) -> Result<(), CacheError> {
         self.conn
             .execute("UPDATE group_t SET expiry = 0", [])
-            .map_err(|e| {
-                self.sqlite_error("update group_t", &e);
-            })?;
+            .map_err(|e| self.sqlite_error("update group_t", &e))?;
 
         self.conn
             .execute("UPDATE account_t SET expiry = 0", [])
-            .map_err(|e| {
-                self.sqlite_error("update account_t", &e);
-            })?;
+            .map_err(|e| self.sqlite_error("update account_t", &e))?;
 
         Ok(())
     }
 
-    pub fn clear_cache(&self) -> Result<(), ()> {
+    fn clear(&self) -> Result<(), CacheError> {
         self.conn
             .execute("DELETE FROM memberof_t", [])
-            .map_err(|e| {
-                self.sqlite_error("delete memberof_t", &e);
-            })?;
+            .map_err(|e| self.sqlite_error("delete memberof_t", &e))?;
 
-        self.conn.execute("DELETE FROM group_t", []).map_err(|e| {
-            self.sqlite_error("delete group_t", &e);
-        })?;
+        self.conn
+            .execute("DELETE FROM group_t", [])
+            .map_err(|e| self.sqlite_error("delete group_t", &e))?;
 
         self.conn
             .execute("DELETE FROM account_t", [])
-            .map_err(|e| {
-                self.sqlite_error("delete group_t", &e);
-            })?;
+            .map_err(|e| self.sqlite_error("delete group_t", &e))?;
 
         Ok(())
     }
 
-    fn get_account_data_name(&self, account_id: &str) -> Result<Vec<(Vec<u8>, i64)>, ()> {
-        let mut stmt = self.conn
-            .prepare(
-        "SELECT token, expiry FROM account_t WHERE uuid = :account_id OR name = :account_id OR spn = :account_id"
-            )
-            .map_err(|e| {
-                self.sqlite_error("select prepare", &e);
-            })?;
-
-        // Makes tuple (token, expiry)
-        let data_iter = stmt
-            .query_map([account_id], |row| Ok((row.get(0)?, row.get(1)?)))
-            .map_err(|e| {
-                self.sqlite_error("query_map failure", &e);
-            })?;
-        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
-            .map(|v| {
-                v.map_err(|e| {
-                    self.sqlite_error("map failure", &e);
-                })
-            })
-            .collect();
-        data
-    }
-
-    fn get_account_data_gid(&self, gid: u32) -> Result<Vec<(Vec<u8>, i64)>, ()> {
-        let mut stmt = self
-            .conn
-            .prepare("SELECT token, expiry FROM account_t WHERE gidnumber = :gid")
-            .map_err(|e| {
-                self.sqlite_error("select prepare", &e);
-            })?;
-
-        // Makes tuple (token, expiry)
-        let data_iter = stmt
-            .query_map(params![gid], |row| Ok((row.get(0)?, row.get(1)?)))
-            .map_err(|e| {
-                self.sqlite_error("query_map", &e);
-            })?;
-        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
-            .map(|v| {
-                v.map_err(|e| {
-                    self.sqlite_error("map", &e);
-                })
-            })
-            .collect();
-        data
-    }
-
-    pub fn get_account(&self, account_id: &Id) -> Result<Option<(UnixUserToken, u64)>, ()> {
+    fn get_account(&self, account_id: &Id) -> Result<Option<(UnixUserToken, u64)>, CacheError> {
         let data = match account_id {
             Id::Name(n) => self.get_account_data_name(n.as_str()),
             Id::Gid(g) => self.get_account_data_gid(*g),
@@ -287,7 +355,7 @@ impl<'a> DbTxn<'a> {
         // Assert only one result?
         if data.len() >= 2 {
             error!("invalid db state, multiple entries matched query?");
-            return Err(());
+            return Err(CacheError::TooManyResults);
         }
 
         if let Some((token, expiry)) = data.first() {
@@ -298,6 +366,7 @@ impl<'a> DbTxn<'a> {
                 Ok(t) => {
                     let e = u64::try_from(*expiry).map_err(|e| {
                         error!("u64 convert error -> {:?}", e);
+                        CacheError::Parse
                     })?;
                     Ok(Some((t, e)))
                 }
@@ -311,23 +380,17 @@ impl<'a> DbTxn<'a> {
         }
     }
 
-    pub fn get_accounts(&self) -> Result<Vec<UnixUserToken>, ()> {
+    fn get_accounts(&self) -> Result<Vec<UnixUserToken>, CacheError> {
         let mut stmt = self
             .conn
             .prepare("SELECT token FROM account_t")
-            .map_err(|e| {
-                self.sqlite_error("select prepare", &e);
-            })?;
+            .map_err(|e| self.sqlite_error("select prepare", &e))?;
 
-        let data_iter = stmt.query_map([], |row| row.get(0)).map_err(|e| {
-            self.sqlite_error("query_map", &e);
-        })?;
+        let data_iter = stmt
+            .query_map([], |row| row.get(0))
+            .map_err(|e| self.sqlite_error("query_map", &e))?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
-            .map(|v| {
-                v.map_err(|e| {
-                    self.sqlite_error("map", &e);
-                })
-            })
+            .map(|v| v.map_err(|e| self.sqlite_error("map", &e)))
             .collect();
 
         let data = data?;
@@ -346,12 +409,14 @@ impl<'a> DbTxn<'a> {
             .collect())
     }
 
-    pub fn update_account(&self, account: &UnixUserToken, expire: u64) -> Result<(), ()> {
+    fn update_account(&self, account: &UnixUserToken, expire: u64) -> Result<(), CacheError> {
         let data = serde_json::to_vec(account).map_err(|e| {
             error!("update_account json error -> {:?}", e);
+            CacheError::SerdeJson
         })?;
         let expire = i64::try_from(expire).map_err(|e| {
             error!("update_account i64 conversion error -> {:?}", e);
+            CacheError::Parse
         })?;
 
         // This is needed because sqlites 'insert or replace into', will null the password field
@@ -368,7 +433,7 @@ impl<'a> DbTxn<'a> {
             }
             )
             .map_err(|e| {
-                self.sqlite_error("delete account_t duplicate", &e);
+                self.sqlite_error("delete account_t duplicate", &e)
             })
             .map(|_| ())?;
 
@@ -384,14 +449,14 @@ impl<'a> DbTxn<'a> {
             }
             )
             .map_err(|e| {
-                self.sqlite_error("delete account_t duplicate", &e);
+                self.sqlite_error("delete account_t duplicate", &e)
             })?;
 
         if updated == 0 {
             let mut stmt = self.conn
                 .prepare("INSERT INTO account_t (uuid, name, spn, gidnumber, token, expiry) VALUES (:uuid, :name, :spn, :gidnumber, :token, :expiry) ON CONFLICT(uuid) DO UPDATE SET name=excluded.name, spn=excluded.name, gidnumber=excluded.gidnumber, token=excluded.token, expiry=excluded.expiry")
                 .map_err(|e| {
-                    self.sqlite_error("prepare", &e);
+                    self.sqlite_error("prepare", &e)
                 })?;
 
             stmt.execute(named_params! {
@@ -405,9 +470,7 @@ impl<'a> DbTxn<'a> {
             .map(|r| {
                 debug!("insert -> {:?}", r);
             })
-            .map_err(|error| {
-                self.sqlite_transaction_error(&error, &stmt);
-            })?;
+            .map_err(|error| self.sqlite_transaction_error(&error, &stmt))?;
         }
 
         // Now, we have to update the group memberships.
@@ -416,24 +479,18 @@ impl<'a> DbTxn<'a> {
         let mut stmt = self
             .conn
             .prepare("DELETE FROM memberof_t WHERE a_uuid = :a_uuid")
-            .map_err(|e| {
-                self.sqlite_error("prepare", &e);
-            })?;
+            .map_err(|e| self.sqlite_error("prepare", &e))?;
 
         stmt.execute([&account.uuid])
             .map(|r| {
                 debug!("delete memberships -> {:?}", r);
             })
-            .map_err(|error| {
-                self.sqlite_transaction_error(&error, &stmt);
-            })?;
+            .map_err(|error| self.sqlite_transaction_error(&error, &stmt))?;
 
         let mut stmt = self
             .conn
             .prepare("INSERT INTO memberof_t (a_uuid, g_uuid) VALUES (:a_uuid, :g_uuid)")
-            .map_err(|e| {
-                self.sqlite_error("prepare", &e);
-            })?;
+            .map_err(|e| self.sqlite_error("prepare", &e))?;
         // Now for each group, add the relation.
         account.groups.iter().try_for_each(|g| {
             stmt.execute(named_params! {
@@ -443,22 +500,18 @@ impl<'a> DbTxn<'a> {
             .map(|r| {
                 debug!("insert membership -> {:?}", r);
             })
-            .map_err(|error| {
-                self.sqlite_transaction_error(&error, &stmt);
-            })
+            .map_err(|error| self.sqlite_transaction_error(&error, &stmt))
         })
     }
 
-    pub fn delete_account(&self, a_uuid: &str) -> Result<(), ()> {
+    fn delete_account(&self, a_uuid: &str) -> Result<(), CacheError> {
         self.conn
             .execute(
                 "DELETE FROM memberof_t WHERE a_uuid = :a_uuid",
                 params![a_uuid],
             )
             .map(|_| ())
-            .map_err(|e| {
-                self.sqlite_error("account_t memberof_t cascade delete", &e);
-            })?;
+            .map_err(|e| self.sqlite_error("account_t memberof_t cascade delete", &e))?;
 
         self.conn
             .execute(
@@ -466,12 +519,10 @@ impl<'a> DbTxn<'a> {
                 params![a_uuid],
             )
             .map(|_| ())
-            .map_err(|e| {
-                self.sqlite_error("account_t delete", &e);
-            })
+            .map_err(|e| self.sqlite_error("account_t delete", &e))
     }
 
-    pub fn update_account_password(&self, a_uuid: &str, cred: &str) -> Result<(), ()> {
+    fn update_account_password(&self, a_uuid: &str, cred: &str) -> Result<(), CacheError> {
         #[allow(unused_variables)]
         let pw = if let Some(tcti_str) = self.require_tpm {
             // Do nothing.
@@ -485,12 +536,14 @@ impl<'a> DbTxn<'a> {
         } else {
             Password::new(self.crypto_policy, cred).map_err(|e| {
                 error!("password error -> {:?}", e);
+                CacheError::Cryptography
             })?
         };
 
         let dbpw = pw.to_dbpasswordv1();
         let data = serde_json::to_vec(&dbpw).map_err(|e| {
             error!("json error -> {:?}", e);
+            CacheError::SerdeJson
         })?;
 
         self.conn
@@ -501,13 +554,11 @@ impl<'a> DbTxn<'a> {
                     ":data": &data,
                 },
             )
-            .map_err(|e| {
-                self.sqlite_error("update account_t password", &e);
-            })
+            .map_err(|e| self.sqlite_error("update account_t password", &e))
             .map(|_| ())
     }
 
-    pub fn check_account_password(&self, a_uuid: &str, cred: &str) -> Result<bool, ()> {
+    fn check_account_password(&self, a_uuid: &str, cred: &str) -> Result<bool, CacheError> {
         #[cfg(not(feature = "tpm"))]
         if self.require_tpm.is_some() {
             return Ok(false);
@@ -516,20 +567,14 @@ impl<'a> DbTxn<'a> {
         let mut stmt = self
             .conn
             .prepare("SELECT password FROM account_t WHERE uuid = :a_uuid AND password IS NOT NULL")
-            .map_err(|e| {
-                self.sqlite_error("select prepare", &e);
-            })?;
+            .map_err(|e| self.sqlite_error("select prepare", &e))?;
 
         // Makes tuple (token, expiry)
-        let data_iter = stmt.query_map([a_uuid], |row| row.get(0)).map_err(|e| {
-            self.sqlite_error("query_map", &e);
-        })?;
+        let data_iter = stmt
+            .query_map([a_uuid], |row| row.get(0))
+            .map_err(|e| self.sqlite_error("query_map", &e))?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
-            .map(|v| {
-                v.map_err(|e| {
-                    self.sqlite_error("map", &e);
-                })
-            })
+            .map(|v| v.map_err(|e| self.sqlite_error("map", &e)))
             .collect();
 
         let data = data?;
@@ -541,7 +586,7 @@ impl<'a> DbTxn<'a> {
 
         if data.len() >= 2 {
             error!("invalid db state, multiple entries matched query?");
-            return Err(());
+            return Err(CacheError::TooManyResults);
         }
 
         let pw = data.first().map(|raw| {
@@ -570,60 +615,12 @@ impl<'a> DbTxn<'a> {
         } else {
             pw.verify(cred).map_err(|e| {
                 error!("password error -> {:?}", e);
+                CacheError::Cryptography
             })
         }
     }
 
-    fn get_group_data_name(&self, grp_id: &str) -> Result<Vec<(Vec<u8>, i64)>, ()> {
-        let mut stmt = self.conn
-            .prepare(
-        "SELECT token, expiry FROM group_t WHERE uuid = :grp_id OR name = :grp_id OR spn = :grp_id"
-            )
-            .map_err(|e| {
-                self.sqlite_error("select prepare", &e);
-            })?;
-
-        // Makes tuple (token, expiry)
-        let data_iter = stmt
-            .query_map([grp_id], |row| Ok((row.get(0)?, row.get(1)?)))
-            .map_err(|e| {
-                self.sqlite_error("query_map", &e);
-            })?;
-        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
-            .map(|v| {
-                v.map_err(|e| {
-                    self.sqlite_error("map", &e);
-                })
-            })
-            .collect();
-        data
-    }
-
-    fn get_group_data_gid(&self, gid: u32) -> Result<Vec<(Vec<u8>, i64)>, ()> {
-        let mut stmt = self
-            .conn
-            .prepare("SELECT token, expiry FROM group_t WHERE gidnumber = :gid")
-            .map_err(|e| {
-                self.sqlite_error("select prepare", &e);
-            })?;
-
-        // Makes tuple (token, expiry)
-        let data_iter = stmt
-            .query_map(params![gid], |row| Ok((row.get(0)?, row.get(1)?)))
-            .map_err(|e| {
-                self.sqlite_error("query_map", &e);
-            })?;
-        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
-            .map(|v| {
-                v.map_err(|e| {
-                    self.sqlite_error("map", &e);
-                })
-            })
-            .collect();
-        data
-    }
-
-    pub fn get_group(&self, grp_id: &Id) -> Result<Option<(UnixGroupToken, u64)>, ()> {
+    fn get_group(&self, grp_id: &Id) -> Result<Option<(UnixGroupToken, u64)>, CacheError> {
         let data = match grp_id {
             Id::Name(n) => self.get_group_data_name(n.as_str()),
             Id::Gid(g) => self.get_group_data_gid(*g),
@@ -632,7 +629,7 @@ impl<'a> DbTxn<'a> {
         // Assert only one result?
         if data.len() >= 2 {
             error!("invalid db state, multiple entries matched query?");
-            return Err(());
+            return Err(CacheError::TooManyResults);
         }
 
         if let Some((token, expiry)) = data.first() {
@@ -643,6 +640,7 @@ impl<'a> DbTxn<'a> {
                 Ok(t) => {
                     let e = u64::try_from(*expiry).map_err(|e| {
                         error!("u64 convert error -> {:?}", e);
+                        CacheError::Parse
                     })?;
                     Ok(Some((t, e)))
                 }
@@ -656,23 +654,19 @@ impl<'a> DbTxn<'a> {
         }
     }
 
-    pub fn get_group_members(&self, g_uuid: &str) -> Result<Vec<UnixUserToken>, ()> {
+    fn get_group_members(&self, g_uuid: &str) -> Result<Vec<UnixUserToken>, CacheError> {
         let mut stmt = self
             .conn
             .prepare("SELECT account_t.token FROM (account_t, memberof_t) WHERE account_t.uuid = memberof_t.a_uuid AND memberof_t.g_uuid = :g_uuid")
             .map_err(|e| {
-                self.sqlite_error("select prepare", &e);
+                self.sqlite_error("select prepare", &e)
             })?;
 
-        let data_iter = stmt.query_map([g_uuid], |row| row.get(0)).map_err(|e| {
-            self.sqlite_error("query_map", &e);
-        })?;
+        let data_iter = stmt
+            .query_map([g_uuid], |row| row.get(0))
+            .map_err(|e| self.sqlite_error("query_map", &e))?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
-            .map(|v| {
-                v.map_err(|e| {
-                    self.sqlite_error("map", &e);
-                })
-            })
+            .map(|v| v.map_err(|e| self.sqlite_error("map", &e)))
             .collect();
 
         let data = data?;
@@ -683,28 +677,23 @@ impl<'a> DbTxn<'a> {
                 // debug!("{:?}", token);
                 serde_json::from_slice(token.as_slice()).map_err(|e| {
                     error!("json error -> {:?}", e);
+                    CacheError::SerdeJson
                 })
             })
             .collect()
     }
 
-    pub fn get_groups(&self) -> Result<Vec<UnixGroupToken>, ()> {
+    fn get_groups(&self) -> Result<Vec<UnixGroupToken>, CacheError> {
         let mut stmt = self
             .conn
             .prepare("SELECT token FROM group_t")
-            .map_err(|e| {
-                self.sqlite_error("select prepare", &e);
-            })?;
+            .map_err(|e| self.sqlite_error("select prepare", &e))?;
 
-        let data_iter = stmt.query_map([], |row| row.get(0)).map_err(|e| {
-            self.sqlite_error("query_map", &e);
-        })?;
+        let data_iter = stmt
+            .query_map([], |row| row.get(0))
+            .map_err(|e| self.sqlite_error("query_map", &e))?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
-            .map(|v| {
-                v.map_err(|e| {
-                    self.sqlite_error("map", &e);
-                })
-            })
+            .map(|v| v.map_err(|e| self.sqlite_error("map", &e)))
             .collect();
 
         let data = data?;
@@ -723,18 +712,20 @@ impl<'a> DbTxn<'a> {
             .collect())
     }
 
-    pub fn update_group(&self, grp: &UnixGroupToken, expire: u64) -> Result<(), ()> {
+    fn update_group(&self, grp: &UnixGroupToken, expire: u64) -> Result<(), CacheError> {
         let data = serde_json::to_vec(grp).map_err(|e| {
             error!("json error -> {:?}", e);
+            CacheError::SerdeJson
         })?;
         let expire = i64::try_from(expire).map_err(|e| {
             error!("i64 convert error -> {:?}", e);
+            CacheError::Parse
         })?;
 
         let mut stmt = self.conn
             .prepare("INSERT OR REPLACE INTO group_t (uuid, name, spn, gidnumber, token, expiry) VALUES (:uuid, :name, :spn, :gidnumber, :token, :expiry)")
             .map_err(|e| {
-                self.sqlite_error("prepare", &e);
+                self.sqlite_error("prepare", &e)
             })?;
 
         stmt.execute(named_params! {
@@ -748,24 +739,18 @@ impl<'a> DbTxn<'a> {
         .map(|r| {
             debug!("insert -> {:?}", r);
         })
-        .map_err(|e| {
-            self.sqlite_error("execute", &e);
-        })
+        .map_err(|e| self.sqlite_error("execute", &e))
     }
 
-    pub fn delete_group(&self, g_uuid: &str) -> Result<(), ()> {
+    fn delete_group(&self, g_uuid: &str) -> Result<(), CacheError> {
         self.conn
             .execute("DELETE FROM memberof_t WHERE g_uuid = :g_uuid", [g_uuid])
             .map(|_| ())
-            .map_err(|e| {
-                self.sqlite_error("group_t memberof_t cascade delete", &e);
-            })?;
+            .map_err(|e| self.sqlite_error("group_t memberof_t cascade delete", &e))?;
         self.conn
             .execute("DELETE FROM group_t WHERE uuid = :g_uuid", [g_uuid])
             .map(|_| ())
-            .map_err(|e| {
-                self.sqlite_error("group_t delete", &e);
-            })
+            .map_err(|e| self.sqlite_error("group_t delete", &e))
     }
 }
 
@@ -1143,9 +1128,10 @@ pub(crate) mod tpm {
 #[cfg(test)]
 mod tests {
     use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
+    // use std::assert_matches::assert_matches;
 
-    use super::Db;
-    use crate::cache::Id;
+    use super::{Cache, CacheTxn, Db};
+    use crate::resolver::Id;
     use crate::unix_config::TpmPolicy;
 
     const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
@@ -1220,7 +1206,7 @@ mod tests {
         assert!(r4.is_some());
 
         // Clear cache
-        assert!(dbtxn.clear_cache().is_ok());
+        assert!(dbtxn.clear().is_ok());
 
         // should be nothing
         let r1 = dbtxn.get_account(&id_name2).unwrap();
@@ -1295,7 +1281,7 @@ mod tests {
         assert!(r4.is_some());
 
         // clear cache
-        assert!(dbtxn.clear_cache().is_ok());
+        assert!(dbtxn.clear().is_ok());
 
         // should be nothing.
         let r1 = dbtxn.get_group(&id_name2).unwrap();
@@ -1407,30 +1393,51 @@ mod tests {
         };
 
         // Test that with no account, is false
-        assert!(dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A) == Ok(false));
+        assert!(matches!(
+            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A),
+            Ok(false)
+        ));
         // test adding an account
         dbtxn.update_account(&ut1, 0).unwrap();
         // check with no password is false.
-        assert!(dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A) == Ok(false));
+        assert!(matches!(
+            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A),
+            Ok(false)
+        ));
         // update the pw
         assert!(dbtxn
             .update_account_password(uuid1, TESTACCOUNT1_PASSWORD_A)
             .is_ok());
         // Check it now works.
-        assert!(dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A) == Ok(true));
-        assert!(dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_B) == Ok(false));
+        assert!(matches!(
+            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A),
+            Ok(true)
+        ));
+        assert!(matches!(
+            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_B),
+            Ok(false)
+        ));
         // Update the pw
         assert!(dbtxn
             .update_account_password(uuid1, TESTACCOUNT1_PASSWORD_B)
             .is_ok());
         // Check it matches.
-        assert!(dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A) == Ok(false));
-        assert!(dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_B) == Ok(true));
+        assert!(matches!(
+            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A),
+            Ok(false)
+        ));
+        assert!(matches!(
+            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_B),
+            Ok(true)
+        ));
 
         // Check that updating the account does not break the password.
         ut1.displayname = "Test User Update".to_string();
         dbtxn.update_account(&ut1, 0).unwrap();
-        assert!(dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_B) == Ok(true));
+        assert!(matches!(
+            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_B),
+            Ok(true)
+        ));
 
         assert!(dbtxn.commit().is_ok());
     }

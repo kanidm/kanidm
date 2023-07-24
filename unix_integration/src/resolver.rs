@@ -12,8 +12,9 @@ use lru::LruCache;
 use reqwest::StatusCode;
 use tokio::sync::{Mutex, RwLock};
 
-use crate::db::Db;
-use crate::unix_config::{HomeAttr, TpmPolicy, UidAttr};
+use crate::db::{Cache, CacheTxn, Db};
+
+use crate::unix_config::{HomeAttr, UidAttr};
 use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser};
 
 // use crate::unix_passwd::{EtcUser, EtcGroup};
@@ -34,7 +35,7 @@ enum CacheState {
 }
 
 #[derive(Debug)]
-pub struct CacheLayer {
+pub struct Resolver {
     db: Db,
     client: RwLock<KanidmClient>,
     state: Mutex<CacheState>,
@@ -60,12 +61,14 @@ impl ToString for Id {
     }
 }
 
-impl CacheLayer {
-    // TODO: Could consider refactoring this to be better ...
+impl Resolver {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
+        db: Db,
         // need db path
-        path: &str,
+        // path: &str,
+        // tpm_policy: &TpmPolicy,
+
         // cache timeout
         timeout_seconds: u64,
         //
@@ -78,15 +81,12 @@ impl CacheLayer {
         uid_attr_map: UidAttr,
         gid_attr_map: UidAttr,
         allow_id_overrides: Vec<String>,
-        tpm_policy: &TpmPolicy,
     ) -> Result<Self, ()> {
-        let db = Db::new(path, tpm_policy)?;
-
         // setup and do a migrate.
         {
             let dbtxn = db.write().await;
-            dbtxn.migrate()?;
-            dbtxn.commit()?;
+            dbtxn.migrate().map_err(|_| ())?;
+            dbtxn.commit().map_err(|_| ())?;
         }
 
         if pam_allow_groups.is_empty() {
@@ -95,7 +95,7 @@ impl CacheLayer {
 
         // We assume we are offline at start up, and we mark the next "online check" as
         // being valid from "now".
-        Ok(CacheLayer {
+        Ok(Resolver {
             db,
             client: RwLock::new(client),
             state: Mutex::new(CacheState::OfflineNextCheck(SystemTime::now())),
@@ -137,24 +137,27 @@ impl CacheLayer {
         let mut nxcache_txn = self.nxcache.lock().await;
         nxcache_txn.clear();
         let dbtxn = self.db.write().await;
-        dbtxn.clear_cache().and_then(|_| dbtxn.commit())
+        dbtxn.clear().and_then(|_| dbtxn.commit()).map_err(|_| ())
     }
 
     pub async fn invalidate(&self) -> Result<(), ()> {
         let mut nxcache_txn = self.nxcache.lock().await;
         nxcache_txn.clear();
         let dbtxn = self.db.write().await;
-        dbtxn.invalidate().and_then(|_| dbtxn.commit())
+        dbtxn
+            .invalidate()
+            .and_then(|_| dbtxn.commit())
+            .map_err(|_| ())
     }
 
     async fn get_cached_usertokens(&self) -> Result<Vec<UnixUserToken>, ()> {
         let dbtxn = self.db.write().await;
-        dbtxn.get_accounts()
+        dbtxn.get_accounts().map_err(|_| ())
     }
 
     async fn get_cached_grouptokens(&self) -> Result<Vec<UnixGroupToken>, ()> {
         let dbtxn = self.db.write().await;
-        dbtxn.get_groups()
+        dbtxn.get_groups().map_err(|_| ())
     }
 
     async fn set_nxcache(&self, id: &Id) {
@@ -201,7 +204,7 @@ impl CacheLayer {
         //  * uuid
         //  Attempt to search these in the db.
         let dbtxn = self.db.write().await;
-        let r = dbtxn.get_account(account_id)?;
+        let r = dbtxn.get_account(account_id).map_err(|_| ())?;
 
         match r {
             Some((ut, ex)) => {
@@ -252,7 +255,7 @@ impl CacheLayer {
         //  * uuid
         //  Attempt to search these in the db.
         let dbtxn = self.db.write().await;
-        let r = dbtxn.get_group(grp_id)?;
+        let r = dbtxn.get_group(grp_id).map_err(|_| ())?;
 
         match r {
             Some((ut, ex)) => {
@@ -344,6 +347,7 @@ impl CacheLayer {
                 dbtxn
                     .update_account(token, offset.as_secs()))
             .and_then(|_| dbtxn.commit())
+            .map_err(|_| ())
     }
 
     async fn set_cache_grouptoken(&self, token: &UnixGroupToken) -> Result<(), ()> {
@@ -359,16 +363,23 @@ impl CacheLayer {
         dbtxn
             .update_group(token, offset.as_secs())
             .and_then(|_| dbtxn.commit())
+            .map_err(|_| ())
     }
 
     async fn delete_cache_usertoken(&self, a_uuid: &str) -> Result<(), ()> {
         let dbtxn = self.db.write().await;
-        dbtxn.delete_account(a_uuid).and_then(|_| dbtxn.commit())
+        dbtxn
+            .delete_account(a_uuid)
+            .and_then(|_| dbtxn.commit())
+            .map_err(|_| ())
     }
 
     async fn delete_cache_grouptoken(&self, g_uuid: &str) -> Result<(), ()> {
         let dbtxn = self.db.write().await;
-        dbtxn.delete_group(g_uuid).and_then(|_| dbtxn.commit())
+        dbtxn
+            .delete_group(g_uuid)
+            .and_then(|_| dbtxn.commit())
+            .map_err(|_| ())
     }
 
     async fn set_cache_userpassword(&self, a_uuid: &str, cred: &str) -> Result<(), ()> {
@@ -376,6 +387,7 @@ impl CacheLayer {
         dbtxn
             .update_account_password(a_uuid, cred)
             .and_then(|x| dbtxn.commit().map(|_| x))
+            .map_err(|_| ())
     }
 
     async fn check_cache_userpassword(&self, a_uuid: &str, cred: &str) -> Result<bool, ()> {
@@ -383,6 +395,7 @@ impl CacheLayer {
         dbtxn
             .check_account_password(a_uuid, cred)
             .and_then(|x| dbtxn.commit().map(|_| x))
+            .map_err(|_| ())
     }
 
     async fn refresh_usertoken(
