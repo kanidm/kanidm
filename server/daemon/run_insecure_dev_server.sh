@@ -26,13 +26,14 @@ if [ ! -f "${CONFIG_FILE}" ]; then
     exit 1
 fi
 
-#shellcheck disable=SC2086
-cargo run ${KANI_CARGO_OPTS} --bin kanidmd -- cert-generate -c "${CONFIG_FILE}"
-
-COMMAND="server"
 if [ -n "${1}" ]; then
     COMMAND=$*
+    #shellcheck disable=SC2086
+    cargo run ${KANI_CARGO_OPTS} --bin kanidmd -- ${COMMAND} -c "${CONFIG_FILE}"
+else
+    #shellcheck disable=SC2086
+    cargo run ${KANI_CARGO_OPTS} --bin kanidmd -- cert-generate -c "${CONFIG_FILE}"
+    #shellcheck disable=SC2086
+    cargo run ${KANI_CARGO_OPTS} --bin kanidmd -- server -c "${CONFIG_FILE}"
 fi
 
-#shellcheck disable=SC2086
-cargo run ${KANI_CARGO_OPTS} --bin kanidmd -- ${COMMAND} -c "${CONFIG_FILE}"

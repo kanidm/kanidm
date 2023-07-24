@@ -19,9 +19,11 @@ axum-auth = "0.4.0"
 axum-csp = { workspace = true }
 axum-macros = "0.3.8"
 axum-server = { version = "0.5.1", features = ["tls-openssl"] }
+bytes = { workspace = true }
 chrono = { workspace = true }
 compact_jwt = { workspace = true }
 cron = { workspace = true }
+futures = { workspace = true }
 futures-util = { workspace = true }
 http = "0.2.9"
 http-types = { workspace = true }
@@ -48,6 +50,7 @@ tower-http = { version = "0.4.3", features = ["tokio", "tracing", "uuid", "compr
 tracing = { workspace = true, features = ["attributes"] }
 tracing-subscriber = { workspace = true, features = ["time", "json"] }
 urlencoding = { workspace = true }
+users = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4" ] }
 
 [build-dependencies]

@@ -19,7 +19,7 @@ use crate::actors::v1_write::QueryServerWriteV1;
 use kanidmd_lib::constants::PURGE_FREQUENCY;
 use kanidmd_lib::event::{OnlineBackupEvent, PurgeRecycledEvent, PurgeTombstoneEvent};
 
-pub struct IntervalActor;
+pub(crate) struct IntervalActor;
 
 impl IntervalActor {
     pub fn start(

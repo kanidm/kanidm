@@ -10,6 +10,8 @@
 #![deny(clippy::await_holding_lock)]
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
+// Needed as yew-router::Routable uses std::collection::HashMap
+#![allow(clippy::disallowed_types)]
 
 use error::FetchError;
 use serde::{Deserialize, Serialize};

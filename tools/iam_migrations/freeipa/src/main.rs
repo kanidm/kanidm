@@ -23,7 +23,7 @@ use base64urlsafedata::Base64UrlSafeData;
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::fs::metadata;
 use std::fs::File;
 use std::io::Read;
@@ -504,7 +504,7 @@ async fn process_ipa_sync_result(
     ipa_client: &mut LdapClient,
     basedn: String,
     ldap_entries: Vec<LdapSyncReplEntry>,
-    entry_config_map: &HashMap<Uuid, EntryConfig>,
+    entry_config_map: &BTreeMap<Uuid, EntryConfig>,
     is_initialise: bool,
 ) -> Result<Vec<ScimEntry>, ()> {
     // Because of how TOTP works with freeipa it's a soft referral from

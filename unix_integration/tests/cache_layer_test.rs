@@ -65,7 +65,6 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
     // Setup the config ...
     let mut config = Configuration::new();
     config.address = format!("127.0.0.1:{}", port);
-    config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
     config.role = ServerRole::WriteReplicaNoUI;
     config.threads = 1;

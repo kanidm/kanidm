@@ -1,3 +1,5 @@
 web_ui_pkg_path = "../web_ui/pkg"
 # Set to native for developer machines.
 cpu_flags = "native"
+admin_bind_path = "/tmp/kanidmd.sock"
+default_config_path = "../../examples/insecure_server.toml"

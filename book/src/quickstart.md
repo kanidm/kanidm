@@ -46,21 +46,20 @@ docker cp server.toml kanidmd:/data/server.toml
 ```bash
 docker run --rm -i -t -v kanidmd:/data \
   kanidm/server:latest \
-  kanidmd cert-generate -c /data/server.toml
+  kanidmd cert-generate
+```
+
+### Start Kanidmd Container
+
+```bash
+docker start kanidmd
 ```
 
 ### Recover the admin password
 
 ```bash
-docker run --rm -i -t -v kanidmd:/data \
-  kanidm/server:latest \
-  kanidmd recover-account admin -c /data/server.toml
-```
-
-### Start Kanidmd
-
-```bash
-docker start kanidmd
+docker exec -i -t kanidmd \
+  kanidmd recover-account admin
 ```
 
 ### Setup the client configuration

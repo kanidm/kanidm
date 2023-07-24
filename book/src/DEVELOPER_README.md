@@ -294,18 +294,20 @@ will create self-signed certificates in `/tmp/kanidm`.
 You can now build and run the server with the commands below. It will use a database in
 `/tmp/kanidm/kanidm.db`.
 
-Create the initial database and generate an `admin` password:
+Start the server
 
 ```bash
 cd server/daemon
+./run_insecure_dev_server.sh
+```
+
+While the server is running, you can use the admin socket to generate an `admin` password:
+
+```bash
 ./run_insecure_dev_server.sh recover-account admin
 ```
 
-Record the password above, then run the server start command:
-
-```bash
-./run_insecure_dev_server.sh
-```
+Record the password above.
 
 In a new terminal, you can now build and run the client tools with:
 

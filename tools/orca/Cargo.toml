@@ -21,6 +21,7 @@ crossbeam = { workspace = true }
 csv = { workspace = true }
 dialoguer = { workspace = true }
 futures-util = { workspace = true, features = ["sink"] }
+hashbrown = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
 ldap3_proto = { workspace = true }

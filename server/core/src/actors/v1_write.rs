@@ -1529,4 +1529,21 @@ impl QueryServerWriteV1 {
             admin_info!(?res, "delayed action error");
         }
     }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub(crate) async fn handle_admin_recover_account(
+        &self,
+        name: String,
+        eventid: Uuid,
+    ) -> Result<String, OperationError> {
+        trace!(%name, "Begin admin recover account event");
+        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
+        let pw = idms_prox_write.recover_account(name.as_str(), None)?;
+
+        idms_prox_write.commit().map(|()| pw)
+    }
 }

@@ -15,6 +15,7 @@
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 use std::fs::{metadata, File};
+use std::str::FromStr;
 // This works on both unix and windows.
 use fs2::FileExt;
 use kanidm_proto::messages::ConsoleOutputMode;
@@ -24,16 +25,20 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{Args, Parser, Subcommand};
+use futures::{SinkExt, StreamExt};
+use kanidmd_core::admin::{AdminTaskRequest, AdminTaskResponse, ClientCodec};
 use kanidmd_core::config::{Configuration, LogLevel, ServerConfig};
 use kanidmd_core::{
     backup_server_core, cert_generate_core, create_server_core, dbscan_get_id2entry_core,
     dbscan_list_id2entry_core, dbscan_list_index_analysis_core, dbscan_list_index_core,
-    dbscan_list_indexes_core, domain_rename_core, recover_account_core, reindex_server_core,
-    restore_server_core, vacuum_server_core, verify_server_core,
+    dbscan_list_indexes_core, domain_rename_core, reindex_server_core, restore_server_core,
+    vacuum_server_core, verify_server_core,
 };
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
 use sketching::tracing_forest::{self};
+use tokio::net::UnixStream;
+use tokio_util::codec::Framed;
 #[cfg(not(target_family = "windows"))] // not needed for windows builds
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 #[cfg(target_family = "windows")] // for windows builds
@@ -62,7 +67,7 @@ impl KanidmdOpt {
             KanidmdOpt::Database {
                 commands: DbCommands::Restore(ropt),
             } => &ropt.commonopts,
-            KanidmdOpt::RecoverAccount(ropt) => &ropt.commonopts,
+            KanidmdOpt::RecoverAccount { commonopts, .. } => commonopts,
             KanidmdOpt::DbScan {
                 commands: DbScanOpt::ListIndex(dopt),
             } => &dopt.commonopts,
@@ -97,6 +102,45 @@ fn get_user_details_windows() {
     );
 }
 
+async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: ConsoleOutputMode) {
+    // Connect to the socket.
+    let stream = match UnixStream::connect(path).await {
+        Ok(s) => s,
+        Err(e) => {
+            error!(err = ?e, %path, "Unable to connect to socket path");
+            return;
+        }
+    };
+
+    let mut reqs = Framed::new(stream, ClientCodec);
+
+    if let Err(e) = reqs.send(req).await {
+        error!(err = ?e, "Unable to send request");
+        return;
+    };
+
+    if let Err(e) = reqs.flush().await {
+        error!(err = ?e, "Unable to flush request");
+        return;
+    }
+
+    trace!("flushed, waiting ...");
+
+    match reqs.next().await {
+        Some(Ok(AdminTaskResponse::RecoverAccount { password })) => match output_mode {
+            ConsoleOutputMode::JSON => {
+                eprintln!("{{\"password\":\"{}\"}}", password)
+            }
+            ConsoleOutputMode::Text => {
+                info!(new_password = ?password)
+            }
+        },
+        _ => {
+            error!("Error making request to admin socket");
+        }
+    }
+}
+
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> ExitCode {
     // Read CLI args, determine what the user has asked us to do.
@@ -105,7 +149,17 @@ async fn main() -> ExitCode {
     //we set up a list of these so we can set the log config THEN log out the errors.
     let mut config_error: Vec<String> = Vec::new();
     let mut config = Configuration::new();
-    let cfg_path = opt.commands.commonopt().config_path.clone();
+    let cfg_path = opt
+        .commands
+        .commonopt()
+        .config_path
+        .clone()
+        .or_else(|| PathBuf::from_str(env!("KANIDM_DEFAULT_CONFIG_PATH")).ok());
+
+    let Some(cfg_path) = cfg_path else {
+        eprintln!("Unable to start - can not locate any configuration file");
+        return ExitCode::FAILURE;
+    };
 
     let sconfig = match cfg_path.exists() {
         false => {
@@ -139,10 +193,12 @@ async fn main() -> ExitCode {
         .set_global(true)
         .set_tag(sketching::event_tagger)
         // Fall back to stderr
-        .map_sender(|sender| sender.or_stderr())
+        .map_sender(|sender| {
+            sender.or_stderr()
+
+        })
         .build_on(|subscriber|{
             subscriber.with(log_filter)
-
         })
         .on(async {
             // Get information on the windows username
@@ -274,6 +330,7 @@ async fn main() -> ExitCode {
             config.update_role(sconfig.role);
             config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());
             config.update_trust_x_forward_for(sconfig.trust_x_forward_for);
+            config.update_admin_bind_path(&sconfig.adminbindpath);
 
             match &opt.commands  {
                 // we aren't going to touch the DB so we can carry on
@@ -299,13 +356,6 @@ async fn main() -> ExitCode {
                     };
                 }
             }
-
-            /*
-            // Apply any cli overrides, normally debug level.
-            if opt.commands.commonopt().debug.as_ref() {
-                // ::std::env::set_var("RUST_LOG", ",kanidm=info,webauthn=debug");
-            }
-            */
 
             match &opt.commands {
                 KanidmdOpt::Server(_sopt) | KanidmdOpt::ConfigTest(_sopt) => {
@@ -468,9 +518,15 @@ async fn main() -> ExitCode {
                     info!("Running in db verification mode ...");
                     verify_server_core(&config).await;
                 }
-                KanidmdOpt::RecoverAccount(raopt) => {
+                KanidmdOpt::RecoverAccount {
+                    name, commonopts
+                } => {
                     info!("Running account recovery ...");
-                    recover_account_core(&config, &raopt.name).await;
+                    let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+                    submit_admin_req(config.adminbindpath.as_str(),
+                        AdminTaskRequest::RecoverAccount { name: name.to_owned() },
+                        output_mode,
+                    ).await;
                 }
                 KanidmdOpt::Database {
                     commands: DbCommands::Reindex(_copt),
@@ -525,15 +581,12 @@ async fn main() -> ExitCode {
 
                     debug!("{sopt:?}");
 
-
                     let healthcheck_url = match &sopt.check_origin {
                         true => format!("{}/status", config.origin),
                         false => format!("https://{}/status", config.address),
                     };
 
                     debug!("Checking {healthcheck_url}");
-
-
 
                     let mut client = reqwest::ClientBuilder::new()
                         .danger_accept_invalid_certs(!sopt.verify_tls)
@@ -589,7 +642,6 @@ async fn main() -> ExitCode {
                     let client = client
                         .build()
                         .unwrap();
-
 
                         let req = match client.get(&healthcheck_url).send().await {
                         Ok(val) => val,

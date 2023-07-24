@@ -51,6 +51,7 @@ use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, notify::Watche
 
 type AsyncTaskRequest = (TaskRequest, oneshot::Sender<()>);
 
+#[derive(Default)]
 struct ClientCodec;
 
 impl Decoder for ClientCodec {
@@ -84,12 +85,7 @@ impl Encoder<ClientResponse> for ClientCodec {
     }
 }
 
-impl ClientCodec {
-    fn new() -> Self {
-        ClientCodec
-    }
-}
-
+#[derive(Default)]
 struct TaskCodec;
 
 impl Decoder for TaskCodec {
@@ -122,12 +118,6 @@ impl Encoder<TaskRequest> for TaskCodec {
     }
 }
 
-impl TaskCodec {
-    fn new() -> Self {
-        TaskCodec
-    }
-}
-
 /// Pass this a file path and it'll look for the file and remove it if it's there.
 fn rm_if_exist(p: &str) {
     if Path::new(p).exists() {
@@ -149,7 +139,7 @@ async fn handle_task_client(
     task_channel_rx: &mut Receiver<AsyncTaskRequest>,
 ) -> Result<(), Box<dyn Error>> {
     // setup the codec
-    let mut reqs = Framed::new(stream, TaskCodec::new());
+    let mut reqs = Framed::new(stream, TaskCodec);
 
     loop {
         // TODO wait on the channel OR the task handler, so we know
@@ -195,7 +185,12 @@ async fn handle_client(
     task_channel_tx: &Sender<AsyncTaskRequest>,
 ) -> Result<(), Box<dyn Error>> {
     debug!("Accepted connection");
-    let mut reqs = Framed::new(sock, ClientCodec::new());
+
+    let Ok(ucred) = sock.peer_cred() else {
+        return Err(Box::new(IoError::new(ErrorKind::Other, "Unable to verify peer credentials.")));
+    };
+
+    let mut reqs = Framed::new(sock, ClientCodec);
 
     trace!("Waiting for requests ...");
     while let Some(Ok(req)) = reqs.next().await {
@@ -346,11 +341,16 @@ async fn handle_client(
             }
             ClientRequest::ClearCache => {
                 debug!("clear cache");
-                cachelayer
-                    .clear_cache()
-                    .await
-                    .map(|_| ClientResponse::Ok)
-                    .unwrap_or(ClientResponse::Error)
+                if ucred.uid() == 0 {
+                    cachelayer
+                        .clear_cache()
+                        .await
+                        .map(|_| ClientResponse::Ok)
+                        .unwrap_or(ClientResponse::Error)
+                } else {
+                    error!("Only root may clear the cache");
+                    ClientResponse::Error
+                }
             }
             ClientRequest::Status => {
                 debug!("status check");
@@ -725,16 +725,14 @@ async fn main() -> ExitCode {
                                 Ok((socket, _addr)) => {
                                     // Did it come from root?
                                     if let Ok(ucred) = socket.peer_cred() {
-                                        if ucred.uid() == 0 {
-                                            // all good!
-                                        } else {
+                                        if ucred.uid() != 0 {
                                             // move along.
-                                            debug!("Task handler not running as root, ignoring ...");
+                                            warn!("Task handler not running as root, ignoring ...");
                                             continue;
                                         }
                                     } else {
                                         // move along.
-                                        debug!("Task handler not running as root, ignoring ...");
+                                        warn!("Unable to determine socked peer cred, ignoring ...");
                                         continue;
                                     };
                                     debug!("A task handler has connected.");

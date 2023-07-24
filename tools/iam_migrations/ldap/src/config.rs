@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use url::Url;
 use uuid::Uuid;
 
@@ -100,7 +100,7 @@ pub struct Config {
     pub group_attr_member: String,
 
     #[serde(flatten)]
-    pub entry_map: HashMap<Uuid, EntryConfig>,
+    pub entry_map: BTreeMap<Uuid, EntryConfig>,
 }
 
 #[derive(Debug, Deserialize, Default, Clone)]

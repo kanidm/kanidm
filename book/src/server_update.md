@@ -61,7 +61,7 @@ You can test that your configuration is correct, and the server should correctly
 
 ```bash
 docker run --rm -i -t -v kanidmd:/data \
-    kanidm/server:latest /sbin/kanidmd configtest -c /data/server.toml
+    kanidm/server:latest /sbin/kanidmd configtest
 ```
 
 You can then follow through with the upgrade by running the create / run command with your existing

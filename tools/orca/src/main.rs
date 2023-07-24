@@ -15,7 +15,7 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 #[macro_use]
 extern crate tracing;
 
-use std::collections::{HashMap, HashSet};
+use hashbrown::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 

@@ -1,5 +1,6 @@
+use hashbrown::{HashMap, HashSet};
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::BufReader;
@@ -330,7 +331,7 @@ pub fn doit(input: &Path, output: &Path) {
                             .map(|uuid| all_entities.get(uuid).unwrap().get_entity_type())
                             .collect();
 
-                        if let Some(ac) = access.get_mut(id) {
+                        if let Some(ac) = access.get_mut(*id) {
                             ac.append(&mut nlist);
                         } else {
                             access.insert(**id, nlist);
@@ -347,7 +348,7 @@ pub fn doit(input: &Path, output: &Path) {
                             .map(|v| all_entities.get(&v.0).unwrap().get_entity_type())
                             .collect();
 
-                        if let Some(ac) = access.get_mut(id) {
+                        if let Some(ac) = access.get_mut(*id) {
                             ac.append(&mut nlist);
                         } else {
                             access.insert(**id, nlist);

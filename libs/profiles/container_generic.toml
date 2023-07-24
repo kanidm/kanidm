@@ -1,3 +1,5 @@
 web_ui_pkg_path = "/pkg"
 # Don't set the cpu_flags to autodetect for this platform
 # cpu_flags = "none"
+admin_bind_path = "/data/kanidmd.sock"
+default_config_path = "/data/server.toml"
