@@ -7,7 +7,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-Type=simple
+Type=notify
 
 ExecStart=/usr/sbin/kanidmd server --config=/etc/kanidm/server.toml
 Restart=on-failure
@@ -15,6 +15,19 @@ RestartSec=15s
 WorkingDirectory=/var/lib/kanidm
 DynamicUser=yes
 StateDirectory=kanidm
+CacheDirectory=kanidmd
+RuntimeDirectory=kanidmd
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHostname=true
+ProtectClock=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+MemoryDenyWriteExecute=true
 
 [Install]
 WantedBy=multi-user.target
