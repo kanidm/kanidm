@@ -7,7 +7,7 @@ import socket
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, validator
+from pydantic import field_validator, ConfigDict, BaseModel, Field
 import toml
 
 
@@ -19,15 +19,11 @@ class ClientResponse(BaseModel):
     status_code: int
     """
 
-    content: Optional[str]
-    data: Optional[Dict[str, Any]]
+    content: Optional[str] = None
+    data: Optional[Dict[str, Any]] = None
     headers: Dict[str, Any]
     status_code: int
-
-    class Config:
-        """Configuration"""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class AuthInitResponse(BaseModel):
@@ -35,18 +31,13 @@ class AuthInitResponse(BaseModel):
 
     class _AuthInitState(BaseModel):
         """sub-class for the AuthInitResponse model"""
-
         # TODO: can we add validation for AuthInitResponse.state.choose?
         choose: List[str]
 
     sessionid: str
     state: _AuthInitState
-    response: Optional[ClientResponse]
-
-    class Config:
-        """config class"""
-
-        arbitrary_types_allowed = True
+    response: Optional[ClientResponse] = None
+    # model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class AuthBeginResponse(BaseModel):
@@ -65,11 +56,7 @@ class AuthBeginResponse(BaseModel):
     sessionid: str
     state: _AuthBeginState
     response: Optional[ClientResponse]
-
-    class Config:
-        """config class"""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class AuthStepPasswordResponse(BaseModel):
@@ -78,16 +65,12 @@ class AuthStepPasswordResponse(BaseModel):
     class _AuthStepPasswordState(BaseModel):
         """subclass to help parse the response from the auth 'step password' stage"""
 
-        success: Optional[str]
+        success: Optional[str] = None
 
     sessionid: str
     state: _AuthStepPasswordState
     response: Optional[ClientResponse]
-
-    class Config:
-        """config class"""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class RadiusGroup(BaseModel):
@@ -96,7 +79,8 @@ class RadiusGroup(BaseModel):
     spn: str
     vlan: int
 
-    @validator("vlan")
+    @field_validator("vlan")
+    @classmethod
     def validate_vlan(cls, value: int) -> int:
         """validate the vlan option is above 0"""
         if not value > 0:
@@ -120,11 +104,7 @@ class RadiusTokenResponse(BaseModel):
     uuid: str
 
     groups: List[RadiusTokenGroup]
-
-    class Config:
-        """config for RadiusTokenGroupList"""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class RadiusClient(BaseModel):
@@ -146,7 +126,8 @@ class RadiusClient(BaseModel):
     ipaddr: str
     secret: str  # TODO: this should probably be renamed to token
 
-    @validator("ipaddr")
+    @field_validator("ipaddr")
+    @classmethod
     def validate_ipaddr(cls, value: str) -> str:
         """validates the ipaddr field is an IP address, CIDR or valid hostname"""
         for typedef in (IPv6Network, IPv6Address, IPv4Address, IPv4Network):
@@ -198,9 +179,10 @@ class KanidmClientConfig(BaseModel):
     @classmethod
     def parse_toml(cls, input_string: str) -> Any:
         """loads from a string"""
-        return super().parse_obj(toml.loads(input_string))
+        return super().model_validate(toml.loads(input_string))
 
-    @validator("uri")
+    @field_validator("uri")
+    @classmethod
     def validate_uri(cls, value: Optional[str]) -> Optional[str]:
         """validator for the uri field"""
         if value is not None:
