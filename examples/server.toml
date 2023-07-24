@@ -108,4 +108,4 @@ schedule = "00 22 * * *"
 #   (it's very similar to the standard cron syntax, it just allows to specify the seconds
 #   at the beginning and the year at the end)
 #   Number of backups to keep (default 7)
-versions = 7
+# versions = 7
