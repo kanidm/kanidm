@@ -122,6 +122,7 @@ scim_proto = "^0.2.1"
 # scim_proto = { path = "../scim/proto", version = "^0.2.1" }
 # scim_proto = { git = "https://github.com/kanidm/scim.git", version = "0.1.1" }
 
+sd-notify = "^0.4.1"
 selinux = "^0.4.1"
 serde = "^1.0.174"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }

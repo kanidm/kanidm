@@ -33,6 +33,9 @@ tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
 is-terminal = "0.4.9"
 
+[target.'cfg(target_os = "linux")'.dependencies]
+sd-notify.workspace = true
+
 [target.'cfg(target_family = "windows")'.dependencies]
 whoami = { workspace = true }
 
