@@ -21,7 +21,7 @@ bindaddress = "[::]:443"
 # trust_x_forward_for = false
 #
 #   The path to the kanidm database.
-db_path = "/var/lib/kanidmd/kanidm.db"
+db_path = "/var/lib/private/kanidm/kanidm.db"
 #
 #   If you have a known filesystem, kanidm can tune database
 #   to match. Valid choices are:
@@ -43,8 +43,8 @@ db_path = "/var/lib/kanidmd/kanidm.db"
 # db_arc_size = 2048
 #
 #   TLS chain and key in pem format. Both must be present
-tls_chain = "/var/lib/kanidmd/chain.pem"
-tls_key = "/var/lib/kanidmd/key.pem"
+tls_chain = "/var/lib/private/kanidm/chain.pem"
+tls_key = "/var/lib/private/kanidm/key.pem"
 #
 #   The log level of the server. May be one of info, debug, trace
 #
@@ -97,7 +97,7 @@ origin = "https://idm.example.com:8443"
 #
 [online_backup]
 #   The path to the output folder for online backups
-path = "/data/kanidm/backups/"
+path = "/var/lib/private/kanidm/backups/"
 #   The schedule to run online backups (see https://crontab.guru/)
 #   every day at 22:00 UTC (default)
 schedule = "00 22 * * *"

@@ -1,19 +1,21 @@
-# Source: https://build.opensuse.org/package/view_file/home:firstyear:kanidm/kanidm/kanidmd.service
 # You should not need to edit this file. Instead, use a drop-in file as described in:
 #   /usr/lib/systemd/system/kanidmd.service.d/custom.conf
 
 [Unit]
 Description=Kanidm Identity Server
-After=chronyd.service ntpd.service network-online.target
+After=time-sync.target network-online.target
+Wants=time-sync.target network-online.target
 Before=radiusd.service
 
 [Service]
 Type=notify
 DynamicUser=yes
-UMask=0027
 StateDirectory=kanidm
+StateDirectoryMode=0750
 CacheDirectory=kanidmd
+CacheDirectoryMode=0750
 RuntimeDirectory=kanidmd
+RuntimeDirectoryMode=0755
 ExecStart=/usr/sbin/kanidmd server -c /etc/kanidm/server.toml
 
 AmbientCapabilities=CAP_NET_BIND_SERVICE
