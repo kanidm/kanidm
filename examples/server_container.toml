@@ -1,12 +1,12 @@
-#   The webserver bind address. Will use HTTPS if tls_*
-#   is provided. If set to 443 you may require the
+#   The webserver bind address. Requires TLS certificates.
+#   If the port is set to 443 you may require the
 #   NET_BIND_SERVICE capability.
 #   Defaults to "127.0.0.1:8443"
 bindaddress = "[::]:8443"
 #
-#   The read-only ldap server bind address. The server
-#   will use LDAPS if tls_* is provided. If set to 636
-#   you may require the NET_BIND_SERVICE capability.
+#   The read-only ldap server bind address. Requires
+#   TLS certificates. If set to 636 you may require
+#   the NET_BIND_SERVICE capability.
 #   Defaults to "" (disabled)
 # ldapbindaddress = "[::]:3636"
 #
@@ -58,7 +58,7 @@ tls_key = "/data/key.pem"
 #   hostname. It is used to create
 #   security principal names such as `william@idm.example.com`
 #   so that in a (future)
-#   trust configuration it is possible to have unique Service
+#   trust configuration it is possible to have unique Security
 #   Principal Names (spns) throughout the topology.
 #   ⚠️  WARNING ⚠️
 #   Changing this value WILL break many types of registered
@@ -95,12 +95,12 @@ origin = "https://idm.example.com:8443"
 #   Defaults to "WriteReplica".
 # role = "WriteReplica"
 #
-# [online_backup]
+[online_backup]
 #   The path to the output folder for online backups
-# path = "/var/lib/kanidm/backups/"
+path = "/data/kanidm/backups/"
 #   The schedule to run online backups (see https://crontab.guru/)
 #   every day at 22:00 UTC (default)
-# schedule = "00 22 * * *"
+schedule = "00 22 * * *"
 #    four times a day at 3 minutes past the hour, every 6th hours
 # schedule = "03 */6 * * *"
 #   We also support non standard cron syntax, with the following format:
@@ -109,4 +109,3 @@ origin = "https://idm.example.com:8443"
 #   at the beginning and the year at the end)
 #   Number of backups to keep (default 7)
 # versions = 7
-#

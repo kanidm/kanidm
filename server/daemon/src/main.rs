@@ -412,6 +412,10 @@ async fn main() -> ExitCode {
 
                     let sctx = create_server_core(config, config_test).await;
                     if !config_test {
+                        // On linux, notify systemd.
+                        #[cfg(target_os = "linux")]
+                        let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
+
                         match sctx {
                             Ok(mut sctx) => {
                                 loop {
