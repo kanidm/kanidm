@@ -31,6 +31,7 @@ pub enum CacheError {
     Sqlite,
     TooManyResults,
     TransactionInvalidState,
+    Tpm,
 }
 
 pub trait CacheTxn {
@@ -530,7 +531,8 @@ impl<'a> CacheTxn for DbTxn<'a> {
             return Ok(());
 
             #[cfg(feature = "tpm")]
-            let pw = Db::tpm_new(self.crypto_policy, cred, tcti_str)?;
+            let pw =
+                Db::tpm_new(self.crypto_policy, cred, tcti_str).map_err(|()| CacheError::Tpm)?;
             #[cfg(feature = "tpm")]
             pw
         } else {
@@ -605,7 +607,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         #[allow(unused_variables)]
         if let Some(tcti_str) = self.require_tpm {
             #[cfg(feature = "tpm")]
-            let r = Db::tpm_verify(pw, cred, tcti_str);
+            let r = Db::tpm_verify(pw, cred, tcti_str).map_err(|()| CacheError::Tpm);
 
             // Do nothing.
             #[cfg(not(feature = "tpm"))]
