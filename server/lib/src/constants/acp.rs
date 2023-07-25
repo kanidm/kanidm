@@ -644,6 +644,7 @@ lazy_static! {
         ("acp_modify_removedattr", Value::new_iutf8("devicekeys")),
         ("acp_modify_removedattr", Value::new_iutf8("api_token_session")),
         ("acp_modify_removedattr", Value::new_iutf8("user_auth_token_session")),
+        ("acp_modify_removedattr", Value::new_iutf8("id_verification_eckey")),
 
         ("acp_modify_presentattr", Value::new_iutf8("name")),
         ("acp_modify_presentattr", Value::new_iutf8("displayname")),
@@ -857,6 +858,7 @@ lazy_static! {
         ("acp_modify_removedattr", Value::new_iutf8("devicekeys")),
         ("acp_modify_removedattr", Value::new_iutf8("api_token_session")),
         ("acp_modify_removedattr", Value::new_iutf8("user_auth_token_session")),
+        ("acp_modify_removedattr", Value::new_iutf8("id_verification_eckey")),
 
         ("acp_modify_presentattr", Value::new_iutf8("name")),
         ("acp_modify_presentattr", Value::new_iutf8("displayname")),

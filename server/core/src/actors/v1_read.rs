@@ -4,11 +4,14 @@ use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use kanidm_proto::internal::AppLink;
+use kanidm_proto::internal::{AppLink, IdentifyUserRequest, IdentifyUserResponse};
 use kanidm_proto::v1::{
     ApiToken, AuthIssueSession, AuthRequest, BackupCodesView, CURequest, CUSessionToken, CUStatus,
     CredentialStatus, Entry as ProtoEntry, OperationError, RadiusAuthToken, SearchRequest,
     SearchResponse, UatStatus, UnixGroupToken, UnixUserToken, UserAuthToken, WhoamiResponse,
+};
+use kanidmd_lib::idm::identityverification::{
+    IdentifyUserDisplayCodeEvent, IdentifyUserStartEvent, IdentifyUserSubmitCodeEvent,
 };
 use ldap3_proto::simple::*;
 use regex::Regex;
@@ -881,6 +884,47 @@ impl QueryServerReadV1 {
         let lte = ListUserAuthTokenEvent { ident, target };
 
         idms_prox_read.account_list_user_auth_tokens(&lte)
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_user_identity_verification(
+        &self,
+        uat: Option<String>,
+        eventid: Uuid,
+        user_request: IdentifyUserRequest,
+        other_id: String,
+    ) -> Result<IdentifyUserResponse, OperationError> {
+        trace!("{:?}", &user_request);
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_read = self.idms.proxy_read().await;
+        let ident = idms_prox_read
+            .validate_and_parse_token_to_ident(uat.as_deref(), ct)
+            .map_err(|e| {
+                admin_error!("Invalid identity: {:?}", e);
+                e
+            })?;
+        let target = idms_prox_read
+            .qs_read
+            .name_to_uuid(&other_id)
+            .map_err(|e| {
+                admin_error!("No user found with the provided ID: {:?}", e);
+                e
+            })?;
+        match user_request {
+            IdentifyUserRequest::Start => idms_prox_read
+                .handle_identify_user_start(&IdentifyUserStartEvent::new(target, ident)),
+            IdentifyUserRequest::DisplayCode => idms_prox_read.handle_identify_user_display_code(
+                &IdentifyUserDisplayCodeEvent::new(target, ident),
+            ),
+            IdentifyUserRequest::SubmitCode { other_totp } => idms_prox_read
+                .handle_identify_user_submit_code(&IdentifyUserSubmitCodeEvent::new(
+                    target, ident, other_totp,
+                )),
+        }
     }
 
     #[instrument(

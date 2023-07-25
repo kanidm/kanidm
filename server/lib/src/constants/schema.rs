@@ -44,6 +44,19 @@ pub static ref SCHEMA_ATTR_MAIL: SchemaAttribute = SchemaAttribute {
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_EC_KEY_PRIVATE: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_EC_KEY_PRIVATE,
+    name: "id_verification_eckey".into(),
+    description: "Account verification private key.".to_string(),
+
+    multivalue: false,
+    index: vec![IndexType::Presence],
+    unique: false,
+    sync_allowed: false,
+    syntax: SyntaxType::EcKeyPrivate,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_SSH_PUBLICKEY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_SSH_PUBLICKEY,
     name: "ssh_publickey".into(),
@@ -537,7 +550,7 @@ pub static ref SCHEMA_CLASS_PERSON: SchemaClass = SchemaClass {
     description: "Object representation of a person".to_string(),
 
     sync_allowed: true,
-    systemmay: attrstring_vec!(["mail", "legalname"]),
+    systemmay: attrstring_vec!(["mail", "legalname", "id_verification_eckey"]),
     systemmust: attrstring_vec!(["displayname", "name"]),
     ..Default::default()
 };

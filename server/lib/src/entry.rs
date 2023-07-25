@@ -36,6 +36,8 @@ use kanidm_proto::v1::{
     UiHint,
 };
 use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
+use openssl::ec::EcKey;
+use openssl::pkey::{Private, Public};
 use smartstring::alias::String as AttrString;
 use time::OffsetDateTime;
 use tracing::trace;
@@ -2635,6 +2637,17 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .and_then(|vs| vs.to_jws_key_es256_single())
     }
 
+    pub fn get_ava_single_eckey_private(&self, attr: &str) -> Option<&EcKey<Private>> {
+        self.attrs
+            .get(attr)
+            .and_then(|vs| vs.to_eckey_private_single())
+    }
+
+    pub fn get_ava_single_eckey_public(&self, attr: &str) -> Option<&EcKey<Public>> {
+        self.attrs
+            .get(attr)
+            .and_then(|vs| vs.to_eckey_public_single())
+    }
     #[inline(always)]
     /// Return a single security principle name, if valid to transform this value.
     pub(crate) fn generate_spn(&self, domain_name: &str) -> Option<Value> {

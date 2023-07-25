@@ -611,6 +611,8 @@ pub enum DbValueSetV2 {
     ApiToken(Vec<DbValueApiToken>),
     #[serde(rename = "SA")]
     AuditLogString(Vec<(Cid, String)>),
+    #[serde(rename = "EK")]
+    EcKeyPrivate(Vec<u8>),
 }
 
 impl DbValueSetV2 {
@@ -654,6 +656,8 @@ impl DbValueSetV2 {
             DbValueSetV2::UiHint(set) => set.len(),
             DbValueSetV2::TotpSecret(set) => set.len(),
             DbValueSetV2::AuditLogString(set) => set.len(),
+            DbValueSetV2::EcKeyPrivate(_key) => 1, // here we have to hard code it because the Vec<u8>
+                                                   // represents the bytes of  SINGLE(!) key
         }
     }
 

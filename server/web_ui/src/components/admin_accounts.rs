@@ -156,6 +156,32 @@ impl Component for AdminListAccounts {
         }
     }
 
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+        match msg {
+            AdminListAccountsMsg::Responded { response } => {
+                // TODO: do we paginate here?
+                /*
+                // Seems broken
+                #[cfg(debug_assertions)]
+                for key in response.keys() {
+                    #[allow(clippy::unwrap_used)]
+                    console::log!(
+                        "response: {:?}",
+                        serde_json::to_string(response.get(key).unwrap()).unwrap()
+                    );
+                }
+                */
+                self.state = ViewState::Responded { response };
+                return true;
+            }
+            AdminListAccountsMsg::Failed { emsg, kopid } => {
+                console::log!("emsg: {:?}", emsg);
+                console::log!("kopid: {:?}", kopid);
+            }
+        }
+        false
+    }
+
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
             <>
@@ -254,32 +280,6 @@ impl Component for AdminListAccounts {
         </div>
         </>
         }
-    }
-
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        match msg {
-            AdminListAccountsMsg::Responded { response } => {
-                // TODO: do we paginate here?
-                /*
-                // Seems broken
-                #[cfg(debug_assertions)]
-                for key in response.keys() {
-                    #[allow(clippy::unwrap_used)]
-                    console::log!(
-                        "response: {:?}",
-                        serde_json::to_string(response.get(key).unwrap()).unwrap()
-                    );
-                }
-                */
-                self.state = ViewState::Responded { response };
-                return true;
-            }
-            AdminListAccountsMsg::Failed { emsg, kopid } => {
-                console::log!("emsg: {:?}", emsg);
-                console::log!("kopid: {:?}", kopid);
-            }
-        }
-        false
     }
 }
 

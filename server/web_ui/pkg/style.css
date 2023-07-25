@@ -46,7 +46,7 @@ body {
 /* DASHBOARD */
 
 .dash-body {
-  font-size: .875rem;
+  font-size: 0.875rem;
 }
 
 .feather {
@@ -63,14 +63,14 @@ body {
   position: fixed;
   top: 0;
   /* rtl:raw:
-  right: 0;
-  */
+    right: 0;
+    */
   bottom: 0;
   /* rtl:remove */
   left: 0;
   z-index: 100; /* Behind the navbar */
   padding: 48px 0 0; /* Height of navbar */
-  box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.1);
 }
 
 @media (max-width: 767.98px) {
@@ -83,7 +83,7 @@ body {
   position: relative;
   top: 0;
   height: calc(100vh - 48px);
-  padding-top: .5rem;
+  padding-top: 0.5rem;
   overflow-x: hidden;
   overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
 }
@@ -108,7 +108,7 @@ body {
 }
 
 .sidebar-heading {
-  font-size: .75rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
 }
 
@@ -117,33 +117,33 @@ body {
  */
 
 .navbar-brand {
-  padding-top: .75rem;
-  padding-bottom: .75rem;
-  padding-left: 1.0rem;
-  padding-right: 2.0rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  padding-left: 1rem;
+  padding-right: 2rem;
   font-size: 1.25rem;
 }
 
 .navbar .navbar-toggler {
-  top: .25rem;
+  top: 0.25rem;
   right: 1rem;
 }
 
 .navbar .form-control {
-  padding: .75rem 1rem;
+  padding: 0.75rem 1rem;
   border-width: 0;
   border-radius: 0;
 }
 
 .form-control-dark {
   color: #fff;
-  background-color: rgba(255, 255, 255, .1);
-  border-color: rgba(255, 255, 255, .1);
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .form-control-dark:focus {
   border-color: transparent;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
 }
 
 .vert-center {
@@ -153,7 +153,86 @@ body {
 }
 
 .kanidm_logo {
+  width: 12em;
+  height: 12em;
+}
 
-  width: 12.0em;
-  height: 12.0em;
+.identity-verification-container {
+  display: flex;
+  flex-direction: column;
+  max-width: fit-content;
+  align-items: center;
+  margin: auto;
+}
+
+:root {
+  --totp-width-and-height: 30px;
+  --totp-stroke-width: 60px;
+}
+
+.totp-display-container {
+  padding: 5px 10px;
+  display: flex;
+  flex-direction: row;
+  max-width: fit-content;
+  align-items: center;
+  margin: auto;
+  border-radius: 15px;
+  background: #21252915;
+  box-shadow: -5px -5px 11px #ededed, 5px 5px 11px #ffffff;
+  margin: 15px;
+}
+
+.totp-display {
+  font-size: 35px;
+  margin: 10px;
+}
+
+.totp-timer {
+  margin: 10px;
+  position: relative;
+  height: var(--totp-width-and-height);
+  width: var(--totp-width-and-height);
+}
+
+/* Removes SVG styling that would hide the time label */
+.totp-timer__circle {
+  fill: none;
+  stroke: none;
+}
+
+.totp-timer__path-remaining {
+  stroke-width: var(--totp-stroke-width);
+
+  /* Makes sure the animation starts at the top of the circle */
+  transform: rotate(90deg);
+  transform-origin: center;
+
+  /* One second aligns with the speed of the countdown timer */
+  transition: 1s linear all;
+
+  stroke: currentColor;
+}
+
+.totp-timer__svg {
+  transform: scaleX(-1);
+}
+
+.totp-timer__path-remaining.green {
+  color: rgb(65, 184, 131);
+}
+
+.totp-timer__path-remaining.orange {
+  color: orange;
+}
+
+.totp-timer__path-remaining.red {
+  color: red;
+}
+
+.totp-timer__path-remaining.no-transition {
+  -webkit-transition: none !important;
+  -moz-transition: none !important;
+  -o-transition: none !important;
+  transition: none !important;
 }

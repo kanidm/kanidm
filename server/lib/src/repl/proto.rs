@@ -390,6 +390,9 @@ pub enum ReplAttrV1 {
     AuditLogString {
         set: Vec<(Cid, String)>,
     },
+    EcKeyPrivate {
+        key: Vec<u8>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]

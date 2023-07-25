@@ -4,26 +4,26 @@ use axum::extract::{Path, Query, State};
 use axum::headers::{CacheControl, HeaderMapExt};
 use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
-
 use axum::routing::{delete, get, post, put};
 use axum::{Extension, Json, Router};
 use axum_macros::debug_handler;
 use compact_jwt::Jws;
 use http::{HeaderMap, HeaderValue, StatusCode};
 use hyper::Body;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+use kanidm_proto::internal::IdentifyUserRequest;
 use kanidm_proto::v1::{
     AccountUnixExtend, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
     AuthState as ProtoAuthState, CUIntentToken, CURequest, CUSessionToken, CreateRequest,
     DeleteRequest, Entry as ProtoEntry, GroupUnixExtend, ModifyRequest, SearchRequest,
     SingleStringRequest,
 };
-
 use kanidmd_lib::idm::event::AuthResult;
 use kanidmd_lib::idm::AuthState;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 use crate::https::extractors::TrustedClientIp;
 use crate::https::to_axum_response;
@@ -995,6 +995,19 @@ pub async fn account_delete_id_unix_credential(
     to_axum_response(res)
 }
 
+pub async fn person_post_identify_user(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    Path(id): Path<String>,
+    Json(user_request): Json<IdentifyUserRequest>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_r_ref
+        .handle_user_identity_verification(kopid.uat, kopid.eventid, user_request, id)
+        .await;
+    to_axum_response(res)
+}
+
 pub async fn group_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1518,6 +1531,10 @@ pub fn router(state: ServerState) -> Router<ServerState> {
         .route(
             "/v1/person/:id/_unix/_credential",
             put(account_put_id_unix_credential).delete(account_delete_id_unix_credential),
+        )
+        .route(
+            "/v1/person/:id/_identify_user",
+            post(person_post_identify_user),
         )
         // Service accounts
         .route(

@@ -211,6 +211,14 @@ mod tests {
             "name_history",
             Value::AuditLogString(server_txn.get_txn_cid().clone(), "testperson".to_string()),
         );
+        // this is kinda ugly but since ecdh keys are generated we don't have any other way
+        let key = r2
+            .first()
+            .unwrap()
+            .get_ava_single_eckey_private("id_verification_eckey")
+            .unwrap();
+
+        e.add_ava("id_verification_eckey", Value::EcKeyPrivate(key.clone()));
 
         let expected = vec![Arc::new(e.into_sealed_committed())];
 

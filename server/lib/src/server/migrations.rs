@@ -458,6 +458,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN.clone().into(),
             SCHEMA_ATTR_DEVICEKEYS.clone().into(),
             SCHEMA_ATTR_DISPLAYNAME.clone().into(),
+            SCHEMA_ATTR_EC_KEY_PRIVATE.clone().into(),
             SCHEMA_ATTR_DOMAIN_DISPLAY_NAME.clone().into(),
             SCHEMA_ATTR_DOMAIN_LDAP_BASEDN.clone().into(),
             SCHEMA_ATTR_DOMAIN_NAME.clone().into(),

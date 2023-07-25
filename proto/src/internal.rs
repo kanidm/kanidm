@@ -26,3 +26,22 @@ pub struct ScimSyncToken {
     #[serde(default)]
     pub purpose: ApiTokenPurpose,
 }
+
+// State machine states and transitions for the identity verification system feature!
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum IdentifyUserRequest {
+    Start,
+    SubmitCode { other_totp: u32 },
+    DisplayCode,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum IdentifyUserResponse {
+    IdentityVerificationUnavailable,
+    IdentityVerificationAvailable,
+    ProvideCode { step: u32, totp: u32 },
+    WaitForCode,
+    Success,
+    CodeFailure,
+    InvalidUserId,
+}

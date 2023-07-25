@@ -565,6 +565,7 @@ pub trait QueryServerTransaction<'a> {
                         .map_err(|()| OperationError::InvalidAttribute("Invalid uihint syntax".to_string())),
                     SyntaxType::TotpSecret => Err(OperationError::InvalidAttribute("TotpSecret Values can not be supplied through modification".to_string())),
                     SyntaxType::AuditLogString => Err(OperationError::InvalidAttribute("Audit logs are generated and not able to be set.".to_string())),
+                    SyntaxType::EcKeyPrivate => Err(OperationError::InvalidAttribute("Ec keys are generated and not able to be set.".to_string())),
                 }
             }
             None => {
@@ -672,6 +673,7 @@ pub trait QueryServerTransaction<'a> {
                             OperationError::InvalidAttribute("Invalid uihint syntax".to_string())
                         }),
                     SyntaxType::AuditLogString => Ok(PartialValue::new_utf8s(value)),
+                    SyntaxType::EcKeyPrivate => Ok(PartialValue::SecretValue),
                 }
             }
             None => {

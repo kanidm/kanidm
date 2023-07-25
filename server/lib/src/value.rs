@@ -15,6 +15,8 @@ use base64::{engine::general_purpose, Engine as _};
 use compact_jwt::JwsSigner;
 use hashbrown::HashSet;
 use num_enum::TryFromPrimitive;
+use openssl::ec::EcKey;
+use openssl::pkey::Private;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sshkeys::PublicKey as SshPublicKey;
@@ -23,17 +25,17 @@ use url::Url;
 use uuid::Uuid;
 use webauthn_rs::prelude::{DeviceKey as DeviceKeyV4, Passkey as PasskeyV4};
 
-use kanidm_proto::v1::ApiTokenPurpose;
-use kanidm_proto::v1::Filter as ProtoFilter;
-use kanidm_proto::v1::UatPurposeStatus;
-use kanidm_proto::v1::UiHint;
-
 use crate::be::dbentry::DbIdentSpn;
 use crate::credential::{totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::server::identity::IdentityId;
 use crate::valueset::uuid_to_proto_string;
+use kanidm_proto::v1::ApiTokenPurpose;
+use kanidm_proto::v1::Filter as ProtoFilter;
+use kanidm_proto::v1::UatPurposeStatus;
+use kanidm_proto::v1::UiHint;
+use std::hash::Hash;
 
 lazy_static! {
     pub static ref SPN_RE: Regex = {
@@ -112,7 +114,6 @@ pub struct Address {
     // Must be validated.
     pub country: String,
 }
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct CredUpdateSessionPerms {
     pub ext_cred_portal_can_view: bool,
@@ -249,6 +250,7 @@ pub enum SyntaxType {
     TotpSecret = 30,
     ApiToken = 31,
     AuditLogString = 32,
+    EcKeyPrivate = 33,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -291,6 +293,7 @@ impl TryFrom<&str> for SyntaxType {
             "TOTPSECRET" => Ok(SyntaxType::TotpSecret),
             "APITOKEN" => Ok(SyntaxType::ApiToken),
             "AUDIT_LOG_STRING" => Ok(SyntaxType::AuditLogString),
+            "EC_KEY_PRIVATE" => Ok(SyntaxType::EcKeyPrivate),
             _ => Err(()),
         }
     }
@@ -332,6 +335,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::TotpSecret => "TOTPSECRET",
             SyntaxType::ApiToken => "APITOKEN",
             SyntaxType::AuditLogString => "AUDIT_LOG_STRING",
+            SyntaxType::EcKeyPrivate => "EC_KEY_PRIVATE",
         })
     }
 }
@@ -380,7 +384,6 @@ pub enum PartialValue {
     UiHint(UiHint),
     Passkey(Uuid),
     DeviceKey(Uuid),
-    // The label, if any.
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -900,6 +903,7 @@ pub enum Value {
 
     TotpSecret(String, Totp),
     AuditLogString(Cid, String),
+    EcKeyPrivate(EcKey<Private>),
 }
 
 impl PartialEq for Value {
@@ -1699,6 +1703,7 @@ impl Value {
             | Value::Session(_, _)
             | Value::Oauth2Session(_, _)
             | Value::JwsKeyRs256(_)
+            | Value::EcKeyPrivate(_)
             | Value::UiHint(_) => true,
         }
     }

@@ -106,11 +106,6 @@ impl Component for PasskeyModalApp {
         }
     }
 
-    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
-        console::debug!("passkey modal::change");
-        false
-    }
-
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         console::debug!("passkey modal::update");
         let cb = ctx.props().cb.clone();
@@ -230,12 +225,9 @@ impl Component for PasskeyModalApp {
         true
     }
 
-    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        console::debug!("passkey modal::rendered");
-    }
-
-    fn destroy(&mut self, _ctx: &Context<Self>) {
-        console::debug!("passkey modal::destroy");
+    fn changed(&mut self, _ctx: &Context<Self>, _props: &Self::Properties) -> bool {
+        console::debug!("passkey modal::change");
+        false
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -377,5 +369,13 @@ impl Component for PasskeyModalApp {
             </div>
           </>
         }
+    }
+
+    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+        console::debug!("passkey modal::rendered");
+    }
+
+    fn destroy(&mut self, _ctx: &Context<Self>) {
+        console::debug!("passkey modal::destroy");
     }
 }

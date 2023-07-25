@@ -11,6 +11,7 @@ pub mod credupdatesession;
 pub mod delayed;
 pub mod event;
 pub mod group;
+pub mod identityverification;
 pub mod ldap;
 pub mod oauth2;
 pub mod radius;
