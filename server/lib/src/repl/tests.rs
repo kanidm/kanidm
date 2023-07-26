@@ -1255,11 +1255,201 @@ async fn test_repl_increment_creation_uuid_conflict(
 }
 
 // both add entry with same uuid, but one becomes ts - ts always wins.
+#[qs_pair_test]
+async fn test_repl_increment_create_tombstone_uuid_conflict(
+    server_a: &QueryServer,
+    server_b: &QueryServer,
+) {
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn).is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Now create the same entry on both servers.
+    let t_uuid = Uuid::new_v4();
+    let e_init = entry_init!(
+        ("class", Value::new_class("object")),
+        ("class", Value::new_class("person")),
+        ("name", Value::new_iname("testperson1")),
+        ("uuid", Value::Uuid(t_uuid)),
+        ("description", Value::new_utf8s("testperson1")),
+        ("displayname", Value::new_utf8s("testperson1"))
+    );
+
+    let mut server_b_txn = server_b.write(ct).await;
+    assert!(server_b_txn.internal_create(vec![e_init.clone(),]).is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Since A was added second, this should normal be the entry that loses in the
+    // conflict resolve case, but here because it's tombstoned, we actually see it
+    // persist
+
+    // Get a new time.
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn.internal_create(vec![e_init.clone(),]).is_ok());
+    // Immediately send it to the shadow realm
+    assert!(server_a_txn.internal_delete_uuid(t_uuid).is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    // Tombstone the entry.
+    let ct = ct + Duration::from_secs(RECYCLEBIN_MAX_AGE + 1);
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn.purge_recycled().is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    // Do B -> A - no change on A. Normally this would create the conflict
+    // on A since it's the origin, but here since it's a TS it now takes
+    // precedence.
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+    assert!(e1 != e2);
+    // E1 from A is a ts
+    assert!(e1.attribute_equality("class", &PVCLASS_TOMBSTONE));
+    // E2 from B is not a TS
+    assert!(!e2.attribute_equality("class", &PVCLASS_TOMBSTONE));
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Now A -> B - this should cause B to become a TS even though it's AT is
+    // earlier.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+    assert!(e1 == e2);
+    assert!(e1.attribute_equality("class", &PVCLASS_TOMBSTONE));
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+}
 
 // both add entry with same uuid, both become ts - merge, take lowest AT.
+#[qs_pair_test]
+async fn test_repl_increment_create_tombstone_conflict(
+    server_a: &QueryServer,
+    server_b: &QueryServer,
+) {
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn).is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Now create the same entry on both servers.
+    let t_uuid = Uuid::new_v4();
+    let e_init = entry_init!(
+        ("class", Value::new_class("object")),
+        ("class", Value::new_class("person")),
+        ("name", Value::new_iname("testperson1")),
+        ("uuid", Value::Uuid(t_uuid)),
+        ("description", Value::new_utf8s("testperson1")),
+        ("displayname", Value::new_utf8s("testperson1"))
+    );
+
+    let mut server_b_txn = server_b.write(ct).await;
+    assert!(server_b_txn.internal_create(vec![e_init.clone(),]).is_ok());
+    // Immediately send it to the shadow realm
+    assert!(server_b_txn.internal_delete_uuid(t_uuid).is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Get a new time.
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn.internal_create(vec![e_init.clone(),]).is_ok());
+    // Immediately send it to the shadow realm
+    assert!(server_a_txn.internal_delete_uuid(t_uuid).is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    // Tombstone on both sides.
+    let ct = ct + Duration::from_secs(RECYCLEBIN_MAX_AGE + 1);
+    let mut server_b_txn = server_b.write(ct).await;
+    assert!(server_b_txn.purge_recycled().is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    let ct = ct + Duration::from_secs(RECYCLEBIN_MAX_AGE + 2);
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn.purge_recycled().is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    // Since B was tombstoned first, it is the tombstone that should persist.
+
+    // This means A -> B - no change on B, it's the persisting tombstone.
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1.get_last_changed() > e2.get_last_changed());
+    // Yet, they are both TS. Curious.
+    assert!(e1.attribute_equality("class", &PVCLASS_TOMBSTONE));
+    assert!(e2.attribute_equality("class", &PVCLASS_TOMBSTONE));
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    // B -> A - A should now have the lower AT reflected.
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+    assert!(e1.attribute_equality("class", &PVCLASS_TOMBSTONE));
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+}
+
+// Test schema conflict state - add attr A on one side, and then remove the supporting
+// class on the other. On repl both sides move to conflict.
 
 // Test RUV content when a server's changes have been trimmed out and are not present
 // in a refresh. This is not about tombstones, this is about attribute state.
+//
+//  -- Is this even possible now?
 
 // Test change of a domain name over incremental.
 
