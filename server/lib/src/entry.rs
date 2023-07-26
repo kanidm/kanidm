@@ -714,7 +714,6 @@ impl Entry<EntryIncremental, EntryNew> {
                 // 1. The incoming ReplIncremental is after DBentry. This means RI is the
                 //    conflicting node. We take no action and just return the db_ent
                 //    as the valid state.
-                #[allow(clippy::todo)]
                 if at_left > at_right {
                     trace!("RI > DE, return DE");
                     (
@@ -869,6 +868,8 @@ impl Entry<EntryIncremental, EntryNew> {
                                     #[allow(clippy::todo)]
                                     if let Some(_attr_state) = vs_left.repl_merge_valueset(vs_right)
                                     {
+                                        // TODO note: This is for special attr types that need to merge
+                                        // rather than choose content.
                                         todo!();
                                     } else {
                                         changes.insert(attr_name.clone(), cid_left.clone());
@@ -879,6 +880,8 @@ impl Entry<EntryIncremental, EntryNew> {
                                     #[allow(clippy::todo)]
                                     if let Some(_attr_state) = vs_right.repl_merge_valueset(vs_left)
                                     {
+                                        // TODO note: This is for special attr types that need to merge
+                                        // rather than choose content.
                                         todo!();
                                     } else {
                                         changes.insert(attr_name.clone(), cid_right.clone());
@@ -1040,13 +1043,11 @@ impl Entry<EntryIncremental, EntryCommitted> {
             attrs: self.attrs,
         };
 
-        #[allow(clippy::todo)]
         if let Err(e) = ne.validate(schema) {
             warn!(uuid = ?self.valid.uuid, err = ?e, "Entry failed schema check, moving to a conflict state");
             ne.add_ava_int("class", Value::new_class("recycled"));
             ne.add_ava_int("class", Value::new_class("conflict"));
-
-            todo!();
+            ne.add_ava_int("source_uuid", Value::Uuid(self.valid.uuid));
         }
         ne
     }
@@ -1139,6 +1140,8 @@ impl Entry<EntryInvalid, EntryCommitted> {
     pub fn to_revived(mut self) -> Self {
         // This will put the modify ahead of the revive transition.
         self.remove_ava("class", &PVCLASS_RECYCLED);
+        self.remove_ava("class", &PVCLASS_CONFLICT);
+        self.purge_ava("source_uuid");
 
         // Change state repl doesn't need this flag
         // self.valid.ecstate.revive(&self.valid.cid);

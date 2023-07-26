@@ -1445,11 +1445,239 @@ async fn test_repl_increment_create_tombstone_conflict(
 
 // Test schema conflict state - add attr A on one side, and then remove the supporting
 // class on the other. On repl both sides move to conflict.
+#[qs_pair_test]
+async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &QueryServer) {
+    let ct = duration_from_epoch_now();
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn).is_ok());
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Setup the entry we plan to break.
+    let mut server_b_txn = server_b.write(ct).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_b_txn
+        .internal_create(vec![entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::Uuid(t_uuid)),
+            ("description", Value::new_utf8s("testperson1")),
+            ("displayname", Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Now at this point we need to write to both sides. The order *does* matter
+    // here because we need the displayname write to happen *after* the purge
+    // on the B node.
+
+    // This is a really rare/wild change to swap an object out to a group but it
+    // works well for our test here.
+    let ct = ct + Duration::from_secs(1);
+    let mut server_b_txn = server_b.write(ct).await;
+    let modlist = ModifyList::new_list(vec![
+        Modify::Removed("class".into(), PVCLASS_PERSON.clone()),
+        Modify::Present("class".into(), CLASS_GROUP.clone()),
+        Modify::Purged("displayname".into()),
+    ]);
+    assert!(server_b_txn.internal_modify_uuid(t_uuid, &modlist).is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // On A we'll change the displayname which is predicated on being a person still
+    let ct = ct + Duration::from_secs(1);
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn
+        .internal_modify_uuid(
+            t_uuid,
+            &ModifyList::new_purge_and_set(
+                "displayname",
+                Value::Utf8("Updated displayname".to_string())
+            )
+        )
+        .is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    // Now we have to replicate again. It shouldn't matter *which* direction we go first
+    // because *both* should end in the conflict state.
+    //
+    // B -> A
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+
+    assert!(e1.attribute_equality("class", &PVCLASS_CONFLICT));
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // A -> B
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e2.attribute_equality("class", &PVCLASS_CONFLICT));
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+}
 
 // Test RUV content when a server's changes have been trimmed out and are not present
 // in a refresh. This is not about tombstones, this is about attribute state.
-//
-//  -- Is this even possible now?
+#[qs_pair_test]
+async fn test_repl_increment_consumer_lagging_attributes(
+    server_a: &QueryServer,
+    server_b: &QueryServer,
+) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // Add an entry.
+    let mut server_b_txn = server_b.write(ct).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_b_txn
+        .internal_create(vec![entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::Uuid(t_uuid)),
+            ("description", Value::new_utf8s("testperson1")),
+            ("displayname", Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Now setup bidirectional replication. We only need to trigger B -> A
+    // here because that's all that has changes.
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1 == e2);
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    // Okay, now we do a change on B and then we'll push time ahead of changelog
+    // ruv trim. This should mean that the indexes to find those changes are lost.
+    let ct = ct + Duration::from_secs(1);
+    let mut server_b_txn = server_b.write(ct).await;
+    assert!(server_b_txn
+        .internal_modify_uuid(
+            t_uuid,
+            &ModifyList::new_purge_and_set(
+                "displayname",
+                Value::Utf8("Updated displayname".to_string())
+            )
+        )
+        .is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Now we advance the time.
+    let ct = ct + Duration::from_secs(CHANGELOG_MAX_AGE + 1);
+
+    // And setup the ruv trim. This is triggered by purge/reap tombstones.
+    let mut server_b_txn = server_b.write(ct).await;
+    assert!(server_b_txn.purge_tombstones().is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // Okay, ready to go. When we do A -> B or B -> A we should get appropriate
+    // errors regarding the delay state.
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    let a_ruv_range = server_a_txn
+        .consumer_get_state()
+        .expect("Unable to access RUV range");
+
+    let changes = server_b_txn
+        .supplier_provide_changes(a_ruv_range)
+        .expect("Unable to generate supplier changes");
+
+    assert!(matches!(changes, ReplIncrementalContext::RefreshRequired));
+
+    let result = server_a_txn
+        .consumer_apply_changes(&changes)
+        .expect("Unable to apply changes to consumer.");
+
+    assert!(matches!(result, ConsumerState::RefreshRequired));
+
+    drop(server_a_txn);
+    drop(server_b_txn);
+
+    // Reverse it!
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    let b_ruv_range = server_b_txn
+        .consumer_get_state()
+        .expect("Unable to access RUV range");
+
+    let changes = server_a_txn
+        .supplier_provide_changes(b_ruv_range)
+        .expect("Unable to generate supplier changes");
+
+    assert!(matches!(changes, ReplIncrementalContext::UnwillingToSupply));
+
+    let result = server_b_txn
+        .consumer_apply_changes(&changes)
+        .expect("Unable to apply changes to consumer.");
+
+    assert!(matches!(result, ConsumerState::Ok));
+
+    drop(server_a_txn);
+    drop(server_b_txn);
+}
 
 // Test change of a domain name over incremental.
 

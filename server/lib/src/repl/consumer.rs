@@ -213,9 +213,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 error!("This server's content must be refreshed to proceed. If you have configured automatic refresh, this will occur shortly.");
                 Ok(ConsumerState::RefreshRequired)
             }
-            #[allow(clippy::todo)]
             ReplIncrementalContext::UnwillingToSupply => {
-                todo!();
+                warn!("Unable to proceed with consumer incremental - the supplier has indicated that our RUV is ahead, and replication would introduce data corruption.");
+                error!("This supplier's content must be refreshed to proceed. If you have configured automatic refresh, this will occur shortly.");
+                Ok(ConsumerState::Ok)
             }
             ReplIncrementalContext::V1 {
                 domain_version,
