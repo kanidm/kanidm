@@ -83,8 +83,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .unzip();
 
         // Filter out None from conflict_create
-        let conflict_create: Vec<EntrySealedNew> =
-            conflict_create.into_iter().flatten().collect();
+        let conflict_create: Vec<EntrySealedNew> = conflict_create.into_iter().flatten().collect();
 
         let proceed_update: Vec<(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)> = proceed
             .into_iter()
