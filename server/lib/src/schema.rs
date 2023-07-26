@@ -1755,7 +1755,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 name: AttrString::from("conflict"),
                 uuid: UUID_SCHEMA_CLASS_CONFLICT,
                 description: String::from(
-                    "An entry representing conflicts that occured during replication",
+                    "An entry representing conflicts that occurred during replication",
                 ),
                 systemmust: vec![AttrString::from("source_uuid")],
                 systemsupplements: vec![AttrString::from("recycled")],
