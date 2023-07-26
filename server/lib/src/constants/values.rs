@@ -16,6 +16,7 @@ lazy_static! {
     pub static ref PVCLASS_ACP: PartialValue = PartialValue::new_class("access_control_profile");
     pub static ref PVCLASS_ATTRIBUTETYPE: PartialValue = PartialValue::new_class("attributetype");
     pub static ref PVCLASS_CLASSTYPE: PartialValue = PartialValue::new_class("classtype");
+    pub static ref PVCLASS_CONFLICT: PartialValue = PartialValue::new_class("conflict");
     pub static ref PVCLASS_DOMAIN_INFO: PartialValue = PartialValue::new_class("domain_info");
     pub static ref PVCLASS_DYNGROUP: PartialValue = PartialValue::new_class("dyngroup");
     pub static ref PVCLASS_EXTENSIBLE: PartialValue = PartialValue::new_class("extensibleobject");

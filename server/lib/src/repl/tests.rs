@@ -72,6 +72,8 @@ fn repl_incremental(
         .supplier_provide_changes(a_ruv_range)
         .expect("Unable to generate supplier changes");
 
+    trace!(?changes, "supplying changes");
+
     // Check the changes = should be empty.
     to.consumer_apply_changes(&changes)
         .expect("Unable to apply changes to consumer.");
@@ -1148,23 +1150,20 @@ async fn test_repl_increment_creation_uuid_conflict(
     );
 
     let mut server_b_txn = server_b.write(ct).await;
-    assert!(server_b_txn
-        .internal_create(vec![e_init.clone(),])
-        .is_ok());
+    assert!(server_b_txn.internal_create(vec![e_init.clone(),]).is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
     // Get a new time.
     let ct = duration_from_epoch_now();
     let mut server_a_txn = server_a.write(ct).await;
-    assert!(server_a_txn
-        .internal_create(vec![e_init.clone(),])
-        .is_ok());
+    assert!(server_a_txn.internal_create(vec![e_init.clone(),]).is_ok());
     server_a_txn.commit().expect("Failed to commit");
 
     // Replicate A to B. B should ignore.
     let mut server_a_txn = server_a.read().await;
     let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
 
+    trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
 
     let e1 = server_a_txn
@@ -1179,13 +1178,25 @@ async fn test_repl_increment_creation_uuid_conflict(
     // e2 from b will be smaller as it's the older entry.
     assert!(e1.get_last_changed() > e2.get_last_changed());
 
+    // Check that no conflict entries exist yet.
+    let cnf_a = server_a_txn
+        .internal_search_conflict_uuid(t_uuid)
+        .expect("Unable to conflict entries.");
+    assert!(cnf_a.is_empty());
+    let cnf_b = server_b_txn
+        .internal_search_conflict_uuid(t_uuid)
+        .expect("Unable to conflict entries.");
+    assert!(cnf_b.is_empty());
+
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
 
-    // Replicate B to A. A should replace with B.
+    // Replicate B to A. A should replace with B, and create the
+    // conflict entry as it's the origin of the conflict.
     let mut server_a_txn = server_a.write(ct).await;
     let mut server_b_txn = server_b.read().await;
 
+    trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
 
     let e1 = server_a_txn
@@ -1197,10 +1208,51 @@ async fn test_repl_increment_creation_uuid_conflict(
 
     assert!(e1.get_last_changed() == e2.get_last_changed());
 
+    let cnf_a = server_a_txn
+        .internal_search_conflict_uuid(t_uuid)
+        .expect("Unable to conflict entries.")
+        // Should be a vec.
+        .pop()
+        .expect("No conflict entries present");
+    assert!(cnf_a.get_ava_single_iname("name") == Some("testperson1"));
+
+    let cnf_b = server_b_txn
+        .internal_search_conflict_uuid(t_uuid)
+        .expect("Unable to conflict entries.");
+    assert!(cnf_b.is_empty());
+
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
-}
 
+    // At this point server a now has the conflict entry, and we have to confirm
+    // it can be sent to b.
+
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    trace!("========================================");
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    // Now the repl should have caused the conflict to be on both sides.
+    let cnf_a = server_a_txn
+        .internal_search_conflict_uuid(t_uuid)
+        .expect("Unable to conflict entries.")
+        // Should be a vec.
+        .pop()
+        .expect("No conflict entries present");
+
+    let cnf_b = server_b_txn
+        .internal_search_conflict_uuid(t_uuid)
+        .expect("Unable to conflict entries.")
+        // Should be a vec.
+        .pop()
+        .expect("No conflict entries present");
+
+    assert!(cnf_a.get_last_changed() == cnf_b.get_last_changed());
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+}
 
 // both add entry with same uuid, but one becomes ts - ts always wins.
 

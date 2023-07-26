@@ -137,6 +137,11 @@ impl EntryChangeState {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn get_tail_cid(&self) -> Cid {
+        self.cid_iter().pop().cloned().unwrap()
+    }
+
     pub fn cid_iter(&self) -> Vec<&Cid> {
         match &self.st {
             State::Live { at: _, changes } => {

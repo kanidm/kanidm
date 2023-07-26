@@ -106,7 +106,6 @@ pub struct EntryInit;
 #[derive(Clone, Debug)]
 pub struct EntryInvalid {
     cid: Cid,
-    // eclog: EntryChangelog,
     ecstate: EntryChangeState,
 }
 
@@ -133,7 +132,6 @@ pub struct EntryIncremental {
 pub struct EntryValid {
     // Asserted with schema, so we know it has a UUID now ...
     uuid: Uuid,
-    // eclog: EntryChangelog,
     ecstate: EntryChangeState,
 }
 
@@ -146,7 +144,6 @@ pub struct EntryValid {
 #[derive(Clone, Debug)]
 pub struct EntrySealed {
     uuid: Uuid,
-    // eclog: EntryChangelog,
     ecstate: EntryChangeState,
 }
 
@@ -232,19 +229,28 @@ where
     }
 }
 
-impl<STATE> std::fmt::Display for Entry<EntrySealed, STATE> {
+impl<STATE> std::fmt::Display for Entry<EntrySealed, STATE>
+where
+    STATE: Clone,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.get_uuid())
     }
 }
 
-impl<STATE> std::fmt::Display for Entry<EntryInit, STATE> {
+impl<STATE> std::fmt::Display for Entry<EntryInit, STATE>
+where
+    STATE: Clone,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Entry in initial state")
     }
 }
 
-impl<STATE> Entry<EntryInit, STATE> {
+impl<STATE> Entry<EntryInit, STATE>
+where
+    STATE: Clone,
+{
     /// Get the uuid of this entry.
     pub(crate) fn get_uuid(&self) -> Option<Uuid> {
         self.attrs.get("uuid").and_then(|vs| vs.to_uuid_single())
@@ -490,26 +496,25 @@ impl Entry<EntryInit, EntryNew> {
     /// Assign the Change Identifier to this Entry, allowing it to be modified and then
     /// written to the `Backend`
     pub fn assign_cid(
-        mut self,
+        self,
         cid: Cid,
         schema: &dyn SchemaTransaction,
     ) -> Entry<EntryInvalid, EntryNew> {
-        /* setup our last changed time */
-        self.set_last_changed(cid.clone());
-
         /*
          * Create the change log. This must be the last thing BEFORE we return!
          * This is because we need to capture the set_last_changed attribute in
          * the create transition.
          */
-        // let eclog = EntryChangelog::new(cid.clone(), self.attrs.clone(), schema);
         let ecstate = EntryChangeState::new(&cid, &self.attrs, schema);
 
-        Entry {
+        let mut ent = Entry {
             valid: EntryInvalid { cid, ecstate },
             state: EntryNew,
             attrs: self.attrs,
-        }
+        };
+        // trace!("trigger_last_changed - assign_cid");
+        ent.trigger_last_changed();
+        ent
     }
 
     /// Compare this entry to another.
@@ -678,6 +683,132 @@ impl Entry<EntryIncremental, EntryNew> {
             }
             // Tombstone will always overwrite.
             _ => false,
+        }
+    }
+
+    pub(crate) fn resolve_add_conflict(
+        &self,
+        cid: &Cid,
+        db_ent: &EntrySealedCommitted,
+    ) -> (Option<EntrySealedNew>, EntryIncrementalCommitted) {
+        use crate::repl::entry::State;
+        debug_assert!(self.valid.uuid == db_ent.valid.uuid);
+        let self_cs = &self.valid.ecstate;
+        let db_cs = db_ent.get_changestate();
+
+        match (self_cs.current(), db_cs.current()) {
+            (
+                State::Live {
+                    at: at_left,
+                    changes: _changes_left,
+                },
+                State::Live {
+                    at: at_right,
+                    changes: _changes_right,
+                },
+            ) => {
+                debug_assert!(at_left != at_right);
+                // Determine which of the entries must become the conflict
+                // and which will now persist. There are three possible cases.
+                //
+                // 1. The incoming ReplIncremental is after DBentry. This means RI is the
+                //    conflicting node. We take no action and just return the db_ent
+                //    as the valid state.
+                #[allow(clippy::todo)]
+                if at_left > at_right {
+                    trace!("RI > DE, return DE");
+                    (
+                        None,
+                        Entry {
+                            valid: EntryIncremental {
+                                uuid: db_ent.valid.uuid,
+                                ecstate: db_cs.clone(),
+                            },
+                            state: EntryCommitted {
+                                id: db_ent.state.id,
+                            },
+                            attrs: db_ent.attrs.clone(),
+                        },
+                    )
+                }
+                //
+                // 2. The incoming ReplIncremental is before DBentry. This means our
+                //    DE is the conflicting note. There are now two choices:
+                //    a.  We are the origin of the DE, and thus must create the conflict
+                //        entry for replication (to guarantee single create)
+                //    b.  We are not the origin of the DE and so do not create a conflict
+                //        entry.
+                //    In both cases we update the DE with the state of RI after we have
+                //    followed the above logic.
+                else {
+                    trace!("RI < DE, return RI");
+                    // Are we the origin?
+                    let conflict = if at_right.s_uuid == cid.s_uuid {
+                        trace!("Origin process conflict entry");
+                        // We are making a new entry!
+
+                        let mut cnf_ent = Entry {
+                            valid: EntryInvalid {
+                                cid: cid.clone(),
+                                ecstate: db_cs.clone(),
+                            },
+                            state: EntryNew,
+                            attrs: db_ent.attrs.clone(),
+                        };
+
+                        // Setup the last changed to now.
+                        cnf_ent.trigger_last_changed();
+
+                        // Move the current uuid to source_uuid
+                        cnf_ent.add_ava("source_uuid", Value::Uuid(db_ent.valid.uuid));
+
+                        // We need to make a random uuid in the conflict gen process.
+                        let new_uuid = Uuid::new_v4();
+                        cnf_ent.purge_ava("uuid");
+                        cnf_ent.add_ava("uuid", Value::Uuid(new_uuid));
+                        cnf_ent.add_ava("class", Value::new_class("recycled"));
+                        cnf_ent.add_ava("class", Value::new_class("conflict"));
+
+                        // Now we have to internally bypass some states.
+                        // This is okay because conflict entries aren't subject
+                        // to schema anyway.
+                        let Entry {
+                            valid: EntryInvalid { cid: _, ecstate },
+                            state,
+                            attrs,
+                        } = cnf_ent;
+
+                        let cnf_ent = Entry {
+                            valid: EntrySealed {
+                                uuid: new_uuid,
+                                ecstate,
+                            },
+                            state,
+                            attrs,
+                        };
+
+                        Some(cnf_ent)
+                    } else {
+                        None
+                    };
+
+                    (
+                        conflict,
+                        Entry {
+                            valid: EntryIncremental {
+                                uuid: self.valid.uuid,
+                                ecstate: self_cs.clone(),
+                            },
+                            state: EntryCommitted {
+                                id: db_ent.state.id,
+                            },
+                            attrs: self.attrs.clone(),
+                        },
+                    )
+                }
+            }
+            // Can never get here due to is_add_conflict above.
+            _ => unreachable!(),
         }
     }
 
@@ -912,7 +1043,9 @@ impl Entry<EntryIncremental, EntryCommitted> {
         #[allow(clippy::todo)]
         if let Err(e) = ne.validate(schema) {
             warn!(uuid = ?self.valid.uuid, err = ?e, "Entry failed schema check, moving to a conflict state");
+            ne.add_ava_int("class", Value::new_class("recycled"));
             ne.add_ava_int("class", Value::new_class("conflict"));
+
             todo!();
         }
         ne
@@ -1139,6 +1272,11 @@ impl<STATE> Entry<EntrySealed, STATE> {
 }
 
 impl Entry<EntrySealed, EntryCommitted> {
+    #[cfg(test)]
+    pub(crate) fn get_last_changed(&self) -> Cid {
+        self.valid.ecstate.get_tail_cid()
+    }
+
     #[cfg(test)]
     pub unsafe fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
         // NO-OP to satisfy macros.
@@ -1748,7 +1886,14 @@ impl<STATE> Entry<EntryValid, STATE> {
             return Err(SchemaError::NoClassFound);
         }
 
-        // Do we have extensible?
+        if self.attribute_equality("class", &PVCLASS_CONFLICT) {
+            // Conflict entries are exempt from schema enforcement. Return true.
+            trace!("Skipping schema validation on conflict entry");
+            return Ok(());
+        };
+
+        // Do we have extensible? We still validate syntax of attrs but don't
+        // check for valid object structures.
         let extensible = self.attribute_equality("class", &PVCLASS_EXTENSIBLE);
 
         let entry_classes = self.get_ava_set("class").ok_or_else(|| {
@@ -1988,11 +2133,11 @@ impl<STATE> Entry<EntryValid, STATE> {
     }
 }
 
-impl<STATE> Entry<EntrySealed, STATE> {
-    pub fn invalidate(mut self, cid: Cid) -> Entry<EntryInvalid, STATE> {
-        /* Setup our last changed time. */
-        self.set_last_changed(cid.clone());
-
+impl<STATE> Entry<EntrySealed, STATE>
+where
+    STATE: Clone,
+{
+    pub fn invalidate(self, cid: Cid) -> Entry<EntryInvalid, STATE> {
         Entry {
             valid: EntryInvalid {
                 cid,
@@ -2001,17 +2146,21 @@ impl<STATE> Entry<EntrySealed, STATE> {
             state: self.state,
             attrs: self.attrs,
         }
+        /* Setup our last changed time. */
+        // We can't actually trigger last changed here. This creates a replication loop
+        // inside of memberof plugin which invalidates. For now we treat last_changed
+        // more as "create" so we only trigger it via assign_cid in the create path
+        // and in conflict entry creation.
+        /*
+        trace!("trigger_last_changed - invalidate");
+        ent.trigger_last_changed();
+        ent
+        */
     }
 
     pub fn get_uuid(&self) -> Uuid {
         self.valid.uuid
     }
-
-    /*
-    pub fn get_changelog(&self) -> &EntryChangelog {
-        &self.valid.eclog
-    }
-    */
 
     pub fn get_changestate(&self) -> &EntryChangeState {
         &self.valid.ecstate
@@ -2185,17 +2334,10 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     /// Update the last_changed flag of this entry to the given change identifier.
+    #[cfg(test)]
     fn set_last_changed(&mut self, cid: Cid) {
         let cv = vs_cid![cid];
         let _ = self.attrs.insert(AttrString::from("last_modified_cid"), cv);
-    }
-
-    #[cfg(test)]
-    pub(crate) fn get_last_changed(&self) -> Cid {
-        self.attrs
-            .get("last_modified_cid")
-            .and_then(|vs| vs.to_cid_single())
-            .unwrap()
     }
 
     pub(crate) fn get_display_id(&self) -> String {
@@ -2704,17 +2846,20 @@ impl<STATE> Entry<EntryInvalid, STATE>
 where
     STATE: Clone,
 {
+    fn trigger_last_changed(&mut self) {
+        self.valid
+            .ecstate
+            .change_ava(&self.valid.cid, "last_modified_cid");
+        let cv = vs_cid![self.valid.cid.clone()];
+        let _ = self.attrs.insert(AttrString::from("last_modified_cid"), cv);
+    }
+
     // This should always work? It's only on validate that we'll build
     // a list of syntax violations ...
     // If this already exists, we silently drop the event. This is because
     // we need this to be *state* based where we assert presence.
     pub fn add_ava(&mut self, attr: &str, value: Value) {
         self.valid.ecstate.change_ava(&self.valid.cid, attr);
-        /*
-        self.valid
-            .eclog
-            .add_ava_iter(&self.valid.cid, attr, std::iter::once(value.clone()));
-        */
         self.add_ava_int(attr, value);
     }
 

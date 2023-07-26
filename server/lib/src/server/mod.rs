@@ -445,6 +445,25 @@ pub trait QueryServerTransaction<'a> {
         }
     }
 
+    /// Get all conflict entries that originated from a source uuid.
+    #[instrument(level = "debug", skip_all)]
+    fn internal_search_conflict_uuid(
+        &mut self,
+        uuid: Uuid,
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+        let filter = filter_all!(f_and(vec![
+            f_eq("source_uuid", PartialValue::Uuid(uuid)),
+            f_eq("class", PVCLASS_CONFLICT.clone())
+        ]));
+        let f_valid = filter.validate(self.get_schema()).map_err(|e| {
+            error!(?e, "Filter Validate - SchemaViolation");
+            OperationError::SchemaViolation(e)
+        })?;
+        let se = SearchEvent::new_internal(f_valid);
+
+        self.search(&se)
+    }
+
     #[instrument(level = "debug", skip_all)]
     fn impersonate_search_ext_uuid(
         &mut self,
@@ -1169,6 +1188,10 @@ impl QueryServer {
 impl<'a> QueryServerWriteTransaction<'a> {
     pub(crate) fn get_curtime(&self) -> Duration {
         self.curtime
+    }
+
+    pub(crate) fn get_cid(&self) -> &Cid {
+        &self.cid
     }
 
     pub(crate) fn get_dyngroup_cache(&mut self) -> &mut DynGroupCache {

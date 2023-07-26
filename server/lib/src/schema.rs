@@ -98,7 +98,6 @@ pub struct SchemaAttribute {
 impl SchemaAttribute {
     pub fn try_from(value: &Entry<EntrySealed, EntryCommitted>) -> Result<Self, OperationError> {
         // Convert entry to a schema attribute.
-        trace!("Converting -> {}", value);
 
         // uuid
         let uuid = value.get_uuid();
@@ -711,6 +710,25 @@ impl<'a> SchemaWriteTransaction<'a> {
                 name: AttrString::from("uuid"),
                 uuid: UUID_SCHEMA_ATTR_UUID,
                 description: String::from("The universal unique id of the object"),
+                multivalue: false,
+                // Uniqueness is handled by base.rs, not attrunique here due to
+                // needing to check recycled objects too.
+                unique: false,
+                phantom: false,
+                sync_allowed: false,
+                replicated: true,
+                index: vec![IndexType::Equality, IndexType::Presence],
+                syntax: SyntaxType::Uuid,
+            },
+        );
+        self.attributes.insert(
+            AttrString::from("source_uuid"),
+            SchemaAttribute {
+                name: AttrString::from("source_uuid"),
+                uuid: UUID_SCHEMA_ATTR_SOURCE_UUID,
+                description: String::from(
+                    "The universal unique id of the source object where this conflict came from",
+                ),
                 multivalue: false,
                 // Uniqueness is handled by base.rs, not attrunique here due to
                 // needing to check recycled objects too.
@@ -1731,6 +1749,19 @@ impl<'a> SchemaWriteTransaction<'a> {
                     .. Default::default()
                 },
             );
+        self.classes.insert(
+            AttrString::from("conflict"),
+            SchemaClass {
+                name: AttrString::from("conflict"),
+                uuid: UUID_SCHEMA_CLASS_CONFLICT,
+                description: String::from(
+                    "An entry representing conflicts that occured during replication",
+                ),
+                systemmust: vec![AttrString::from("source_uuid")],
+                systemsupplements: vec![AttrString::from("recycled")],
+                ..Default::default()
+            },
+        );
         // sysinfo
         self.classes.insert(
             AttrString::from("system_info"),
