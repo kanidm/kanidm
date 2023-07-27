@@ -556,7 +556,7 @@ impl fmt::Display for RadiusAuthToken {
 pub struct UnixGroupToken {
     pub name: String,
     pub spn: String,
-    pub uuid: String,
+    pub uuid: Uuid,
     pub gidnumber: u32,
 }
 
@@ -580,7 +580,7 @@ pub struct UnixUserToken {
     pub spn: String,
     pub displayname: String,
     pub gidnumber: u32,
-    pub uuid: String,
+    pub uuid: Uuid,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shell: Option<String>,
     pub groups: Vec<UnixGroupToken>,

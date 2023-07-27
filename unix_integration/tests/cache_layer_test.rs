@@ -108,8 +108,8 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
 
     let cachelayer = Resolver::new(
         db,
-        300,
         rsclient,
+        300,
         vec!["allowed_group".to_string()],
         DEFAULT_SHELL.to_string(),
         DEFAULT_HOME_PREFIX.to_string(),

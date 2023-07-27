@@ -5,6 +5,7 @@ use bytes::{BufMut, BytesMut};
 use futures::{SinkExt, StreamExt};
 use tokio::net::UnixStream;
 // use tokio::runtime::Builder;
+use tokio::time::{self, Duration};
 use tokio_util::codec::Framed;
 use tokio_util::codec::{Decoder, Encoder};
 
@@ -48,8 +49,10 @@ impl ClientCodec {
     }
 }
 
-/// Makes a call to kanidm_unixd via a unix socket at `path`
-pub async fn call_daemon(path: &str, req: ClientRequest) -> Result<ClientResponse, Box<dyn Error>> {
+async fn call_daemon_inner(
+    path: &str,
+    req: ClientRequest,
+) -> Result<ClientResponse, Box<dyn Error>> {
     trace!(?path, ?req);
     let stream = UnixStream::connect(path).await?;
     trace!("connected");
@@ -68,6 +71,26 @@ pub async fn call_daemon(path: &str, req: ClientRequest) -> Result<ClientRespons
         _ => {
             error!("Error making request to kanidm_unixd");
             Err(Box::new(IoError::new(ErrorKind::Other, "oh no!")))
+        }
+    }
+}
+
+/// Makes a call to kanidm_unixd via a unix socket at `path`
+pub async fn call_daemon(
+    path: &str,
+    req: ClientRequest,
+    timeout: u64,
+) -> Result<ClientResponse, Box<dyn Error>> {
+    let sleep = time::sleep(Duration::from_millis(timeout));
+    tokio::pin!(sleep);
+
+    tokio::select! {
+        _ = &mut sleep => {
+            error!("Timed out making request to kanidm_unixd");
+            Err(Box::new(IoError::new(ErrorKind::Other, "timeout")))
+        }
+        res = call_daemon_inner(path, req) => {
+            res
         }
     }
 }

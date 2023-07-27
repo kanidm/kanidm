@@ -65,7 +65,7 @@ async fn main() -> ExitCode {
     }
     let req = ClientRequest::SshKey(opt.account_id);
 
-    match call_daemon(cfg.sock_path.as_str(), req).await {
+    match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
         Ok(r) => match r {
             ClientResponse::SshKeys(sk) => sk.iter().for_each(|k| {
                 println!("{}", k);

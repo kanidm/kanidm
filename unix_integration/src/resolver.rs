@@ -1,3 +1,4 @@
+// use async_trait::async_trait;
 use hashbrown::HashSet;
 use std::collections::BTreeSet;
 use std::num::NonZeroUsize;
@@ -6,26 +7,18 @@ use std::path::Path;
 use std::string::ToString;
 use std::time::{Duration, SystemTime};
 
-use kanidm_client::{ClientError, KanidmClient};
-use kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
 use lru::LruCache;
-use reqwest::StatusCode;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::Mutex;
+use uuid::Uuid;
 
 use crate::db::{Cache, CacheTxn, Db};
-
+use crate::idprovider::interface::{GroupToken, Id, IdProvider, IdpError, UserToken};
 use crate::unix_config::{HomeAttr, UidAttr};
 use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser};
 
 // use crate::unix_passwd::{EtcUser, EtcGroup};
 
-const NXCACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(2048) };
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Id {
-    Name(String),
-    Gid(u32),
-}
+const NXCACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(128) };
 
 #[derive(Debug, Clone)]
 enum CacheState {
@@ -35,9 +28,14 @@ enum CacheState {
 }
 
 #[derive(Debug)]
-pub struct Resolver {
+pub struct Resolver<I>
+where
+    I: IdProvider,
+{
+    // Generic / modular types.
     db: Db,
-    client: RwLock<KanidmClient>,
+    client: I,
+    // Types to update still.
     state: Mutex<CacheState>,
     pam_allow_groups: BTreeSet<String>,
     timeout_seconds: u64,
@@ -61,18 +59,16 @@ impl ToString for Id {
     }
 }
 
-impl Resolver {
+impl<I> Resolver<I>
+where
+    I: IdProvider,
+{
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
         db: Db,
-        // need db path
-        // path: &str,
-        // tpm_policy: &TpmPolicy,
-
+        client: I,
         // cache timeout
         timeout_seconds: u64,
-        //
-        client: KanidmClient,
         pam_allow_groups: Vec<String>,
         default_shell: String,
         home_prefix: String,
@@ -97,7 +93,7 @@ impl Resolver {
         // being valid from "now".
         Ok(Resolver {
             db,
-            client: RwLock::new(client),
+            client,
             state: Mutex::new(CacheState::OfflineNextCheck(SystemTime::now())),
             timeout_seconds,
             pam_allow_groups: pam_allow_groups.into_iter().collect(),
@@ -150,12 +146,12 @@ impl Resolver {
             .map_err(|_| ())
     }
 
-    async fn get_cached_usertokens(&self) -> Result<Vec<UnixUserToken>, ()> {
+    async fn get_cached_usertokens(&self) -> Result<Vec<UserToken>, ()> {
         let dbtxn = self.db.write().await;
         dbtxn.get_accounts().map_err(|_| ())
     }
 
-    async fn get_cached_grouptokens(&self) -> Result<Vec<UnixGroupToken>, ()> {
+    async fn get_cached_grouptokens(&self) -> Result<Vec<GroupToken>, ()> {
         let dbtxn = self.db.write().await;
         dbtxn.get_groups().map_err(|_| ())
     }
@@ -193,10 +189,7 @@ impl Resolver {
         nxset_txn.contains(&Id::Gid(idnumber)) || nxset_txn.contains(&Id::Name(name.to_string()))
     }
 
-    async fn get_cached_usertoken(
-        &self,
-        account_id: &Id,
-    ) -> Result<(bool, Option<UnixUserToken>), ()> {
+    async fn get_cached_usertoken(&self, account_id: &Id) -> Result<(bool, Option<UserToken>), ()> {
         // Account_id could be:
         //  * gidnumber
         //  * name
@@ -244,10 +237,7 @@ impl Resolver {
         } // end match r
     }
 
-    async fn get_cached_grouptoken(
-        &self,
-        grp_id: &Id,
-    ) -> Result<(bool, Option<UnixGroupToken>), ()> {
+    async fn get_cached_grouptoken(&self, grp_id: &Id) -> Result<(bool, Option<GroupToken>), ()> {
         // grp_id could be:
         //  * gidnumber
         //  * name
@@ -295,7 +285,7 @@ impl Resolver {
         }
     }
 
-    async fn set_cache_usertoken(&self, token: &mut UnixUserToken) -> Result<(), ()> {
+    async fn set_cache_usertoken(&self, token: &mut UserToken) -> Result<(), ()> {
         // Set an expiry
         let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds);
         let offset = ex_time
@@ -350,7 +340,7 @@ impl Resolver {
             .map_err(|_| ())
     }
 
-    async fn set_cache_grouptoken(&self, token: &UnixGroupToken) -> Result<(), ()> {
+    async fn set_cache_grouptoken(&self, token: &GroupToken) -> Result<(), ()> {
         // Set an expiry
         let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds);
         let offset = ex_time
@@ -366,7 +356,7 @@ impl Resolver {
             .map_err(|_| ())
     }
 
-    async fn delete_cache_usertoken(&self, a_uuid: &str) -> Result<(), ()> {
+    async fn delete_cache_usertoken(&self, a_uuid: Uuid) -> Result<(), ()> {
         let dbtxn = self.db.write().await;
         dbtxn
             .delete_account(a_uuid)
@@ -374,7 +364,7 @@ impl Resolver {
             .map_err(|_| ())
     }
 
-    async fn delete_cache_grouptoken(&self, g_uuid: &str) -> Result<(), ()> {
+    async fn delete_cache_grouptoken(&self, g_uuid: Uuid) -> Result<(), ()> {
         let dbtxn = self.db.write().await;
         dbtxn
             .delete_group(g_uuid)
@@ -382,7 +372,7 @@ impl Resolver {
             .map_err(|_| ())
     }
 
-    async fn set_cache_userpassword(&self, a_uuid: &str, cred: &str) -> Result<(), ()> {
+    async fn set_cache_userpassword(&self, a_uuid: Uuid, cred: &str) -> Result<(), ()> {
         let dbtxn = self.db.write().await;
         dbtxn
             .update_account_password(a_uuid, cred)
@@ -390,7 +380,7 @@ impl Resolver {
             .map_err(|_| ())
     }
 
-    async fn check_cache_userpassword(&self, a_uuid: &str, cred: &str) -> Result<bool, ()> {
+    async fn check_cache_userpassword(&self, a_uuid: Uuid, cred: &str) -> Result<bool, ()> {
         let dbtxn = self.db.write().await;
         dbtxn
             .check_account_password(a_uuid, cred)
@@ -401,19 +391,13 @@ impl Resolver {
     async fn refresh_usertoken(
         &self,
         account_id: &Id,
-        token: Option<UnixUserToken>,
-    ) -> Result<Option<UnixUserToken>, ()> {
-        match self
-            .client
-            .read()
-            .await
-            .idm_account_unix_token_get(account_id.to_string().as_str())
-            .await
-        {
+        token: Option<UserToken>,
+    ) -> Result<Option<UserToken>, ()> {
+        match self.client.unix_user_get(account_id).await {
             Ok(mut n_tok) => {
                 if self.check_nxset(&n_tok.name, n_tok.gidnumber).await {
                     // Refuse to release the token, it's in the denied set.
-                    self.delete_cache_usertoken(&n_tok.uuid).await?;
+                    self.delete_cache_usertoken(n_tok.uuid).await?;
                     Ok(None)
                 } else {
                     // We have the token!
@@ -421,65 +405,35 @@ impl Resolver {
                     Ok(Some(n_tok))
                 }
             }
-            Err(e) => {
-                match e {
-                    ClientError::Transport(er) => {
-                        error!("transport error, moving to offline -> {:?}", er);
-                        // Something went wrong, mark offline.
-                        let time = SystemTime::now().add(Duration::from_secs(15));
-                        self.set_cachestate(CacheState::OfflineNextCheck(time))
-                            .await;
-                        Ok(token)
-                    }
-                    ClientError::Http(StatusCode::UNAUTHORIZED, reason, opid) => {
-                        match reason {
-                        Some(OperationError::NotAuthenticated) =>
-                            warn!("session not authenticated - attempting reauthentication - eventid {}", opid),
-                        Some(OperationError::SessionExpired) =>
-                            warn!("session expired - attempting reauthentication - eventid {}", opid),
-                        e =>
-                        error!(
-                            "authentication error {:?}, moving to offline - eventid {}", e, opid
-                        ),
-                    };
-                        // Something went wrong, mark offline to force a re-auth ASAP.
-                        let time = SystemTime::now().sub(Duration::from_secs(1));
-                        self.set_cachestate(CacheState::OfflineNextCheck(time))
-                            .await;
-                        Ok(token)
-                    }
-                    ClientError::Http(
-                        StatusCode::BAD_REQUEST,
-                        Some(OperationError::NoMatchingEntries),
-                        opid,
-                    )
-                    | ClientError::Http(
-                        StatusCode::NOT_FOUND,
-                        Some(OperationError::NoMatchingEntries),
-                        opid,
-                    )
-                    | ClientError::Http(
-                        StatusCode::BAD_REQUEST,
-                        Some(OperationError::InvalidAccountState(_)),
-                        opid,
-                    ) => {
-                        // We wele able to contact the server but the entry has been removed, or
-                        // is not longer a valid posix account.
-                        debug!("entry has been removed or is no longer a valid posix account, clearing from cache ... - eventid {}", opid);
-                        if let Some(tok) = token {
-                            self.delete_cache_usertoken(&tok.uuid).await?;
-                        };
-                        // Cache the NX here.
-                        self.set_nxcache(account_id).await;
+            Err(IdpError::Transport) => {
+                error!("transport error, moving to offline");
+                // Something went wrong, mark offline.
+                let time = SystemTime::now().add(Duration::from_secs(15));
+                self.set_cachestate(CacheState::OfflineNextCheck(time))
+                    .await;
+                Ok(token)
+            }
+            Err(IdpError::ProviderUnauthorised) => {
+                // Something went wrong, mark offline to force a re-auth ASAP.
+                let time = SystemTime::now().sub(Duration::from_secs(1));
+                self.set_cachestate(CacheState::OfflineNextCheck(time))
+                    .await;
+                Ok(token)
+            }
+            Err(IdpError::NotFound) => {
+                // We were able to contact the server but the entry has been removed, or
+                // is not longer a valid posix account.
+                if let Some(tok) = token {
+                    self.delete_cache_usertoken(tok.uuid).await?;
+                };
+                // Cache the NX here.
+                self.set_nxcache(account_id).await;
 
-                        Ok(None)
-                    }
-                    er => {
-                        error!("client error -> {:?}", er);
-                        // Some other transient error, continue with the token.
-                        Ok(token)
-                    }
-                }
+                Ok(None)
+            }
+            Err(IdpError::BadRequest) => {
+                // Some other transient error, continue with the token.
+                Ok(token)
             }
         }
     }
@@ -487,19 +441,13 @@ impl Resolver {
     async fn refresh_grouptoken(
         &self,
         grp_id: &Id,
-        token: Option<UnixGroupToken>,
-    ) -> Result<Option<UnixGroupToken>, ()> {
-        match self
-            .client
-            .read()
-            .await
-            .idm_group_unix_token_get(grp_id.to_string().as_str())
-            .await
-        {
+        token: Option<GroupToken>,
+    ) -> Result<Option<GroupToken>, ()> {
+        match self.client.unix_group_get(grp_id).await {
             Ok(n_tok) => {
                 if self.check_nxset(&n_tok.name, n_tok.gidnumber).await {
                     // Refuse to release the token, it's in the denied set.
-                    self.delete_cache_grouptoken(&n_tok.uuid).await?;
+                    self.delete_cache_grouptoken(n_tok.uuid).await?;
                     Ok(None)
                 } else {
                     // We have the token!
@@ -507,66 +455,37 @@ impl Resolver {
                     Ok(Some(n_tok))
                 }
             }
-            Err(e) => {
-                match e {
-                    ClientError::Transport(er) => {
-                        error!("transport error, moving to offline -> {:?}", er);
-                        // Something went wrong, mark offline.
-                        let time = SystemTime::now().add(Duration::from_secs(15));
-                        self.set_cachestate(CacheState::OfflineNextCheck(time))
-                            .await;
-                        Ok(token)
-                    }
-                    ClientError::Http(
-                        StatusCode::UNAUTHORIZED,
-                        Some(OperationError::NotAuthenticated),
-                        opid,
-                    ) => {
-                        error!(
-                            "transport unauthenticated, moving to offline - eventid {}",
-                            opid
-                        );
-                        // Something went wrong, mark offline.
-                        let time = SystemTime::now().add(Duration::from_secs(15));
-                        self.set_cachestate(CacheState::OfflineNextCheck(time))
-                            .await;
-                        Ok(token)
-                    }
-                    ClientError::Http(
-                        StatusCode::BAD_REQUEST,
-                        Some(OperationError::NoMatchingEntries),
-                        opid,
-                    )
-                    | ClientError::Http(
-                        StatusCode::NOT_FOUND,
-                        Some(OperationError::NoMatchingEntries),
-                        opid,
-                    )
-                    | ClientError::Http(
-                        StatusCode::BAD_REQUEST,
-                        Some(OperationError::InvalidAccountState(_)),
-                        opid,
-                    ) => {
-                        debug!("entry has been removed or is no longer a valid posix group, clearing from cache ... - eventid {}", opid);
-                        if let Some(tok) = token {
-                            self.delete_cache_grouptoken(&tok.uuid).await?;
-                        };
-                        // Cache the NX here.
-                        self.set_nxcache(grp_id).await;
-
-                        Ok(None)
-                    }
-                    er => {
-                        error!("client error -> {:?}", er);
-                        // Some other transient error, continue with the token.
-                        Ok(token)
-                    }
-                }
+            Err(IdpError::Transport) => {
+                error!("transport error, moving to offline");
+                // Something went wrong, mark offline.
+                let time = SystemTime::now().add(Duration::from_secs(15));
+                self.set_cachestate(CacheState::OfflineNextCheck(time))
+                    .await;
+                Ok(token)
+            }
+            Err(IdpError::ProviderUnauthorised) => {
+                // Something went wrong, mark offline.
+                let time = SystemTime::now().add(Duration::from_secs(15));
+                self.set_cachestate(CacheState::OfflineNextCheck(time))
+                    .await;
+                Ok(token)
+            }
+            Err(IdpError::NotFound) => {
+                if let Some(tok) = token {
+                    self.delete_cache_grouptoken(tok.uuid).await?;
+                };
+                // Cache the NX here.
+                self.set_nxcache(grp_id).await;
+                Ok(None)
+            }
+            Err(IdpError::BadRequest) => {
+                // Some other transient error, continue with the token.
+                Ok(token)
             }
         }
     }
 
-    async fn get_usertoken(&self, account_id: Id) -> Result<Option<UnixUserToken>, ()> {
+    async fn get_usertoken(&self, account_id: Id) -> Result<Option<UserToken>, ()> {
         debug!("get_usertoken");
         // get the item from the cache
         let (expired, item) = self.get_cached_usertoken(&account_id).await.map_err(|e| {
@@ -618,7 +537,7 @@ impl Resolver {
         })
     }
 
-    async fn get_grouptoken(&self, grp_id: Id) -> Result<Option<UnixGroupToken>, ()> {
+    async fn get_grouptoken(&self, grp_id: Id) -> Result<Option<GroupToken>, ()> {
         debug!("get_grouptoken");
         let (expired, item) = self.get_cached_grouptoken(&grp_id).await.map_err(|e| {
             debug!("get_grouptoken error -> {:?}", e);
@@ -665,11 +584,11 @@ impl Resolver {
         }
     }
 
-    async fn get_groupmembers(&self, uuid: &str) -> Vec<String> {
+    async fn get_groupmembers(&self, g_uuid: Uuid) -> Vec<String> {
         let dbtxn = self.db.write().await;
 
         dbtxn
-            .get_group_members(uuid)
+            .get_group_members(g_uuid)
             .unwrap_or_else(|_| Vec::new())
             .into_iter()
             .map(|ut| self.token_uidattr(&ut))
@@ -692,37 +611,37 @@ impl Resolver {
     }
 
     #[inline(always)]
-    fn token_homedirectory_alias(&self, token: &UnixUserToken) -> Option<String> {
+    fn token_homedirectory_alias(&self, token: &UserToken) -> Option<String> {
         self.home_alias.map(|t| match t {
             // If we have an alias. use it.
-            HomeAttr::Uuid => token.uuid.as_str().to_string(),
+            HomeAttr::Uuid => token.uuid.hyphenated().to_string(),
             HomeAttr::Spn => token.spn.as_str().to_string(),
             HomeAttr::Name => token.name.as_str().to_string(),
         })
     }
 
     #[inline(always)]
-    fn token_homedirectory_attr(&self, token: &UnixUserToken) -> String {
+    fn token_homedirectory_attr(&self, token: &UserToken) -> String {
         match self.home_attr {
-            HomeAttr::Uuid => token.uuid.as_str().to_string(),
+            HomeAttr::Uuid => token.uuid.hyphenated().to_string(),
             HomeAttr::Spn => token.spn.as_str().to_string(),
             HomeAttr::Name => token.name.as_str().to_string(),
         }
     }
 
     #[inline(always)]
-    fn token_homedirectory(&self, token: &UnixUserToken) -> String {
+    fn token_homedirectory(&self, token: &UserToken) -> String {
         self.token_homedirectory_alias(token)
             .unwrap_or_else(|| self.token_homedirectory_attr(token))
     }
 
     #[inline(always)]
-    fn token_abs_homedirectory(&self, token: &UnixUserToken) -> String {
+    fn token_abs_homedirectory(&self, token: &UserToken) -> String {
         format!("{}{}", self.home_prefix, self.token_homedirectory(token))
     }
 
     #[inline(always)]
-    fn token_uidattr(&self, token: &UnixUserToken) -> String {
+    fn token_uidattr(&self, token: &UserToken) -> String {
         match self.uid_attr_map {
             UidAttr::Spn => token.spn.as_str(),
             UidAttr::Name => token.name.as_str(),
@@ -764,7 +683,7 @@ impl Resolver {
     }
 
     #[inline(always)]
-    fn token_gidattr(&self, token: &UnixGroupToken) -> String {
+    fn token_gidattr(&self, token: &GroupToken) -> String {
         match self.gid_attr_map {
             UidAttr::Spn => token.spn.as_str(),
             UidAttr::Name => token.name.as_str(),
@@ -776,7 +695,7 @@ impl Resolver {
         let l = self.get_cached_grouptokens().await?;
         let mut r: Vec<_> = Vec::with_capacity(l.len());
         for tok in l.into_iter() {
-            let members = self.get_groupmembers(&tok.uuid).await;
+            let members = self.get_groupmembers(tok.uuid).await;
             r.push(NssGroup {
                 name: self.token_gidattr(&tok),
                 gid: tok.gidnumber,
@@ -791,7 +710,7 @@ impl Resolver {
         // Get members set.
         match token {
             Some(tok) => {
-                let members = self.get_groupmembers(&tok.uuid).await;
+                let members = self.get_groupmembers(tok.uuid).await;
                 Ok(Some(NssGroup {
                     name: self.token_gidattr(&tok),
                     gid: tok.gidnumber,
@@ -812,28 +731,22 @@ impl Resolver {
 
     async fn online_account_authenticate(
         &self,
-        token: &Option<UnixUserToken>,
-        account_id: &str,
+        token: &Option<UserToken>,
+        account_id: &Id,
         cred: &str,
     ) -> Result<Option<bool>, ()> {
         debug!("Attempt online password check");
         // We are online, attempt the pw to the server.
-        match self
-            .client
-            .read()
-            .await
-            .idm_account_unix_cred_verify(account_id, cred)
-            .await
-        {
+        match self.client.unix_user_authenticate(account_id, cred).await {
             Ok(Some(mut n_tok)) => {
                 if self.check_nxset(&n_tok.name, n_tok.gidnumber).await {
                     // Refuse to release the token, it's in the denied set.
-                    self.delete_cache_usertoken(&n_tok.uuid).await?;
+                    self.delete_cache_usertoken(n_tok.uuid).await?;
                     Ok(None)
                 } else {
                     debug!("online password check success.");
                     self.set_cache_usertoken(&mut n_tok).await?;
-                    self.set_cache_userpassword(&n_tok.uuid, cred).await?;
+                    self.set_cache_userpassword(n_tok.uuid, cred).await?;
                     Ok(Some(true))
                 }
             }
@@ -842,80 +755,46 @@ impl Resolver {
                 // PW failed the check.
                 Ok(Some(false))
             }
-            Err(e) => {
-                match e {
-                    ClientError::Transport(er) => {
-                        error!("transport error, moving to offline -> {:?}", er);
-                        // Something went wrong, mark offline.
-                        let time = SystemTime::now().add(Duration::from_secs(15));
-                        self.set_cachestate(CacheState::OfflineNextCheck(time))
-                            .await;
-                        match token.as_ref() {
-                            Some(t) => self.check_cache_userpassword(&t.uuid, cred).await.map(Some),
-                            None => Ok(None),
-                        }
-                    }
-                    ClientError::Http(StatusCode::UNAUTHORIZED, reason, opid) => {
-                        match reason {
-                        Some(OperationError::NotAuthenticated) =>
-                            warn!("session not authenticated - attempting reauthentication - eventid {}", opid),
-                        Some(OperationError::SessionExpired) =>
-                            warn!("session expired - attempting reauthentication - eventid {}", opid),
-                        e =>
-                        error!(
-                            "authentication error {:?}, moving to offline - eventid {}", e, opid
-                        ),
-                    };
-                        // Something went wrong, mark offline to force a re-auth ASAP.
-                        let time = SystemTime::now().sub(Duration::from_secs(1));
-                        self.set_cachestate(CacheState::OfflineNextCheck(time))
-                            .await;
-                        match token.as_ref() {
-                            Some(t) => self.check_cache_userpassword(&t.uuid, cred).await.map(Some),
-                            None => Ok(None),
-                        }
-                    }
-                    ClientError::Http(
-                        StatusCode::BAD_REQUEST,
-                        Some(OperationError::NoMatchingEntries),
-                        opid,
-                    )
-                    | ClientError::Http(
-                        StatusCode::NOT_FOUND,
-                        Some(OperationError::NoMatchingEntries),
-                        opid,
-                    )
-                    | ClientError::Http(
-                        StatusCode::BAD_REQUEST,
-                        Some(OperationError::InvalidAccountState(_)),
-                        opid,
-                    ) => {
-                        error!(
-                            "unknown account or is not a valid posix account - eventid {}",
-                            opid
-                        );
-                        Ok(None)
-                    }
-                    er => {
-                        error!("client error -> {:?}", er);
-                        // Some other unknown processing error?
-                        Err(())
-                    }
+            Err(IdpError::Transport) => {
+                error!("transport error, moving to offline");
+                // Something went wrong, mark offline.
+                let time = SystemTime::now().add(Duration::from_secs(15));
+                self.set_cachestate(CacheState::OfflineNextCheck(time))
+                    .await;
+                match token.as_ref() {
+                    Some(t) => self.check_cache_userpassword(t.uuid, cred).await.map(Some),
+                    None => Ok(None),
                 }
+            }
+
+            Err(IdpError::ProviderUnauthorised) => {
+                // Something went wrong, mark offline to force a re-auth ASAP.
+                let time = SystemTime::now().sub(Duration::from_secs(1));
+                self.set_cachestate(CacheState::OfflineNextCheck(time))
+                    .await;
+                match token.as_ref() {
+                    Some(t) => self.check_cache_userpassword(t.uuid, cred).await.map(Some),
+                    None => Ok(None),
+                }
+            }
+            Err(IdpError::NotFound) => Ok(None),
+            Err(IdpError::BadRequest) => {
+                // Some other unknown processing error?
+                Err(())
             }
         }
     }
 
     async fn offline_account_authenticate(
         &self,
-        token: &Option<UnixUserToken>,
+        token: &Option<UserToken>,
         cred: &str,
     ) -> Result<Option<bool>, ()> {
         debug!("Attempt offline password check");
         match token.as_ref() {
             Some(t) => {
                 if t.valid {
-                    self.check_cache_userpassword(&t.uuid, cred).await.map(Some)
+                    self.check_cache_userpassword(t.uuid, cred).await.map(Some)
                 } else {
                     Ok(Some(false))
                 }
@@ -942,7 +821,7 @@ impl Resolver {
                 let user_set: BTreeSet<_> = tok
                     .groups
                     .iter()
-                    .flat_map(|g| [g.name.clone(), g.spn.clone(), g.uuid.clone()])
+                    .flat_map(|g| [g.name.clone(), g.uuid.hyphenated().to_string()])
                     .collect();
 
                 debug!(
@@ -963,22 +842,18 @@ impl Resolver {
         account_id: &str,
         cred: &str,
     ) -> Result<Option<bool>, ()> {
+        let id = Id::Name(account_id.to_string());
+
         let state = self.get_cachestate().await;
-        let (_expired, token) = self
-            .get_cached_usertoken(&Id::Name(account_id.to_string()))
-            .await?;
+        let (_expired, token) = self.get_cached_usertoken(&id).await?;
 
         match state {
-            CacheState::Online => {
-                self.online_account_authenticate(&token, account_id, cred)
-                    .await
-            }
+            CacheState::Online => self.online_account_authenticate(&token, &id, cred).await,
             CacheState::OfflineNextCheck(_time) => {
                 // Always attempt to go online to attempt the authentication.
                 if self.test_connection().await {
                     // Brought ourselves online, lets check.
-                    self.online_account_authenticate(&token, account_id, cred)
-                        .await
+                    self.online_account_authenticate(&token, &id, cred).await
                 } else {
                     // We are offline, check from the cache if possible.
                     self.offline_account_authenticate(&token, cred).await
@@ -1014,8 +889,8 @@ impl Resolver {
                 false
             }
             CacheState::OfflineNextCheck(_time) => {
-                match self.client.write().await.auth_anonymous().await {
-                    Ok(_uat) => {
+                match self.client.provider_authenticate().await {
+                    Ok(()) => {
                         debug!("OfflineNextCheck -> authenticated");
                         self.set_cachestate(CacheState::Online).await;
                         true

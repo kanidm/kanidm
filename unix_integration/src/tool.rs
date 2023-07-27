@@ -17,7 +17,6 @@ use std::process::ExitCode;
 
 use clap::Parser;
 use kanidm_unix_common::client::call_daemon;
-use kanidm_unix_common::client_sync::call_daemon_blocking;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
@@ -70,7 +69,7 @@ async fn main() -> ExitCode {
             let req = ClientRequest::PamAuthenticate(account_id.clone(), password);
             let sereq = ClientRequest::PamAccountAllowed(account_id);
 
-            match call_daemon(cfg.sock_path.as_str(), req).await {
+            match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
                 Ok(r) => match r {
                     ClientResponse::PamStatus(Some(true)) => {
                         println!("auth success!");
@@ -91,7 +90,7 @@ async fn main() -> ExitCode {
                 }
             };
 
-            match call_daemon(cfg.sock_path.as_str(), sereq).await {
+            match call_daemon(cfg.sock_path.as_str(), sereq, cfg.unix_sock_timeout).await {
                 Ok(r) => match r {
                     ClientResponse::PamStatus(Some(true)) => {
                         println!("account success!");
@@ -133,7 +132,7 @@ async fn main() -> ExitCode {
 
             let req = ClientRequest::ClearCache;
 
-            match call_daemon(cfg.sock_path.as_str(), req).await {
+            match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
                 Ok(r) => match r {
                     ClientResponse::Ok => info!("success"),
                     _ => {
@@ -162,7 +161,7 @@ async fn main() -> ExitCode {
 
             let req = ClientRequest::InvalidateCache;
 
-            match call_daemon(cfg.sock_path.as_str(), req).await {
+            match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
                 Ok(r) => match r {
                     ClientResponse::Ok => info!("success"),
                     _ => {
@@ -198,7 +197,7 @@ async fn main() -> ExitCode {
                     cfg.sock_path
                 )
             } else {
-                match call_daemon_blocking(cfg.sock_path.as_str(), &req, cfg.unix_sock_timeout) {
+                match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
                     Ok(r) => match r {
                         ClientResponse::Ok => println!("working!"),
                         _ => {

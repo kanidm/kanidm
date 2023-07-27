@@ -26,6 +26,8 @@ pub mod constants;
 #[cfg(target_family = "unix")]
 pub mod db;
 #[cfg(target_family = "unix")]
+pub mod idprovider;
+#[cfg(target_family = "unix")]
 pub mod resolver;
 #[cfg(all(target_family = "unix", feature = "selinux"))]
 pub mod selinux_util;

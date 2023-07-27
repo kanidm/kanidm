@@ -2,17 +2,16 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::time::Duration;
 
+use crate::idprovider::interface::{GroupToken, Id, UserToken};
 use crate::unix_config::TpmPolicy;
 use async_trait::async_trait;
 use kanidm_lib_crypto::CryptoPolicy;
 use kanidm_lib_crypto::DbPasswordV1;
 use kanidm_lib_crypto::Password;
-use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 use libc::umask;
 use rusqlite::Connection;
 use tokio::sync::{Mutex, MutexGuard};
-
-use crate::resolver::Id;
+use uuid::Uuid;
 
 #[async_trait]
 pub trait Cache {
@@ -43,27 +42,27 @@ pub trait CacheTxn {
 
     fn clear(&self) -> Result<(), CacheError>;
 
-    fn get_account(&self, account_id: &Id) -> Result<Option<(UnixUserToken, u64)>, CacheError>;
+    fn get_account(&self, account_id: &Id) -> Result<Option<(UserToken, u64)>, CacheError>;
 
-    fn get_accounts(&self) -> Result<Vec<UnixUserToken>, CacheError>;
+    fn get_accounts(&self) -> Result<Vec<UserToken>, CacheError>;
 
-    fn update_account(&self, account: &UnixUserToken, expire: u64) -> Result<(), CacheError>;
+    fn update_account(&self, account: &UserToken, expire: u64) -> Result<(), CacheError>;
 
-    fn delete_account(&self, a_uuid: &str) -> Result<(), CacheError>;
+    fn delete_account(&self, a_uuid: Uuid) -> Result<(), CacheError>;
 
-    fn update_account_password(&self, a_uuid: &str, cred: &str) -> Result<(), CacheError>;
+    fn update_account_password(&self, a_uuid: Uuid, cred: &str) -> Result<(), CacheError>;
 
-    fn check_account_password(&self, a_uuid: &str, cred: &str) -> Result<bool, CacheError>;
+    fn check_account_password(&self, a_uuid: Uuid, cred: &str) -> Result<bool, CacheError>;
 
-    fn get_group(&self, grp_id: &Id) -> Result<Option<(UnixGroupToken, u64)>, CacheError>;
+    fn get_group(&self, grp_id: &Id) -> Result<Option<(GroupToken, u64)>, CacheError>;
 
-    fn get_group_members(&self, g_uuid: &str) -> Result<Vec<UnixUserToken>, CacheError>;
+    fn get_group_members(&self, g_uuid: Uuid) -> Result<Vec<UserToken>, CacheError>;
 
-    fn get_groups(&self) -> Result<Vec<UnixGroupToken>, CacheError>;
+    fn get_groups(&self) -> Result<Vec<GroupToken>, CacheError>;
 
-    fn update_group(&self, grp: &UnixGroupToken, expire: u64) -> Result<(), CacheError>;
+    fn update_group(&self, grp: &GroupToken, expire: u64) -> Result<(), CacheError>;
 
-    fn delete_group(&self, g_uuid: &str) -> Result<(), CacheError>;
+    fn delete_group(&self, g_uuid: Uuid) -> Result<(), CacheError>;
 }
 
 pub struct Db {
@@ -347,7 +346,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         Ok(())
     }
 
-    fn get_account(&self, account_id: &Id) -> Result<Option<(UnixUserToken, u64)>, CacheError> {
+    fn get_account(&self, account_id: &Id) -> Result<Option<(UserToken, u64)>, CacheError> {
         let data = match account_id {
             Id::Name(n) => self.get_account_data_name(n.as_str()),
             Id::Gid(g) => self.get_account_data_gid(*g),
@@ -381,7 +380,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         }
     }
 
-    fn get_accounts(&self) -> Result<Vec<UnixUserToken>, CacheError> {
+    fn get_accounts(&self) -> Result<Vec<UserToken>, CacheError> {
         let mut stmt = self
             .conn
             .prepare("SELECT token FROM account_t")
@@ -410,7 +409,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
             .collect())
     }
 
-    fn update_account(&self, account: &UnixUserToken, expire: u64) -> Result<(), CacheError> {
+    fn update_account(&self, account: &UserToken, expire: u64) -> Result<(), CacheError> {
         let data = serde_json::to_vec(account).map_err(|e| {
             error!("update_account json error -> {:?}", e);
             CacheError::SerdeJson
@@ -505,7 +504,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         })
     }
 
-    fn delete_account(&self, a_uuid: &str) -> Result<(), CacheError> {
+    fn delete_account(&self, a_uuid: Uuid) -> Result<(), CacheError> {
         self.conn
             .execute(
                 "DELETE FROM memberof_t WHERE a_uuid = :a_uuid",
@@ -523,7 +522,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
             .map_err(|e| self.sqlite_error("account_t delete", &e))
     }
 
-    fn update_account_password(&self, a_uuid: &str, cred: &str) -> Result<(), CacheError> {
+    fn update_account_password(&self, a_uuid: Uuid, cred: &str) -> Result<(), CacheError> {
         #[allow(unused_variables)]
         let pw = if let Some(tcti_str) = self.require_tpm {
             // Do nothing.
@@ -560,7 +559,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
             .map(|_| ())
     }
 
-    fn check_account_password(&self, a_uuid: &str, cred: &str) -> Result<bool, CacheError> {
+    fn check_account_password(&self, a_uuid: Uuid, cred: &str) -> Result<bool, CacheError> {
         #[cfg(not(feature = "tpm"))]
         if self.require_tpm.is_some() {
             return Ok(false);
@@ -622,7 +621,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         }
     }
 
-    fn get_group(&self, grp_id: &Id) -> Result<Option<(UnixGroupToken, u64)>, CacheError> {
+    fn get_group(&self, grp_id: &Id) -> Result<Option<(GroupToken, u64)>, CacheError> {
         let data = match grp_id {
             Id::Name(n) => self.get_group_data_name(n.as_str()),
             Id::Gid(g) => self.get_group_data_gid(*g),
@@ -656,7 +655,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         }
     }
 
-    fn get_group_members(&self, g_uuid: &str) -> Result<Vec<UnixUserToken>, CacheError> {
+    fn get_group_members(&self, g_uuid: Uuid) -> Result<Vec<UserToken>, CacheError> {
         let mut stmt = self
             .conn
             .prepare("SELECT account_t.token FROM (account_t, memberof_t) WHERE account_t.uuid = memberof_t.a_uuid AND memberof_t.g_uuid = :g_uuid")
@@ -685,7 +684,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
             .collect()
     }
 
-    fn get_groups(&self) -> Result<Vec<UnixGroupToken>, CacheError> {
+    fn get_groups(&self) -> Result<Vec<GroupToken>, CacheError> {
         let mut stmt = self
             .conn
             .prepare("SELECT token FROM group_t")
@@ -714,7 +713,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
             .collect())
     }
 
-    fn update_group(&self, grp: &UnixGroupToken, expire: u64) -> Result<(), CacheError> {
+    fn update_group(&self, grp: &GroupToken, expire: u64) -> Result<(), CacheError> {
         let data = serde_json::to_vec(grp).map_err(|e| {
             error!("json error -> {:?}", e);
             CacheError::SerdeJson
@@ -744,7 +743,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         .map_err(|e| self.sqlite_error("execute", &e))
     }
 
-    fn delete_group(&self, g_uuid: &str) -> Result<(), CacheError> {
+    fn delete_group(&self, g_uuid: Uuid) -> Result<(), CacheError> {
         self.conn
             .execute("DELETE FROM memberof_t WHERE g_uuid = :g_uuid", [g_uuid])
             .map(|_| ())
@@ -1129,11 +1128,9 @@ pub(crate) mod tpm {
 
 #[cfg(test)]
 mod tests {
-    use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
     // use std::assert_matches::assert_matches;
-
     use super::{Cache, CacheTxn, Db};
-    use crate::resolver::Id;
+    use crate::idprovider::interface::{GroupToken, Id, UserToken};
     use crate::unix_config::TpmPolicy;
 
     const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
@@ -1146,12 +1143,12 @@ mod tests {
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
-        let mut ut1 = UnixUserToken {
+        let mut ut1 = UserToken {
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             displayname: "Test User".to_string(),
             gidnumber: 2000,
-            uuid: "0302b99c-f0f6-41ab-9492-852692b0fd16".to_string(),
+            uuid: uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"),
             shell: None,
             groups: Vec::new(),
             sshkeys: vec!["key-a".to_string()],
@@ -1230,11 +1227,11 @@ mod tests {
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
-        let mut gt1 = UnixGroupToken {
+        let mut gt1 = GroupToken {
             name: "testgroup".to_string(),
             spn: "testgroup@example.com".to_string(),
             gidnumber: 2000,
-            uuid: "0302b99c-f0f6-41ab-9492-852692b0fd16".to_string(),
+            uuid: uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"),
         };
 
         let id_name = Id::Name("testgroup".to_string());
@@ -1305,26 +1302,26 @@ mod tests {
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
-        let gt1 = UnixGroupToken {
+        let gt1 = GroupToken {
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             gidnumber: 2000,
-            uuid: "0302b99c-f0f6-41ab-9492-852692b0fd16".to_string(),
+            uuid: uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"),
         };
 
-        let gt2 = UnixGroupToken {
+        let gt2 = GroupToken {
             name: "testgroup".to_string(),
             spn: "testgroup@example.com".to_string(),
             gidnumber: 2001,
-            uuid: "b500be97-8552-42a5-aca0-668bc5625705".to_string(),
+            uuid: uuid::uuid!("b500be97-8552-42a5-aca0-668bc5625705"),
         };
 
-        let mut ut1 = UnixUserToken {
+        let mut ut1 = UserToken {
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             displayname: "Test User".to_string(),
             gidnumber: 2000,
-            uuid: "0302b99c-f0f6-41ab-9492-852692b0fd16".to_string(),
+            uuid: uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"),
             shell: None,
             groups: vec![gt1.clone(), gt2],
             sshkeys: vec!["key-a".to_string()],
@@ -1341,10 +1338,10 @@ mod tests {
 
         // Now, get the memberships of the two groups.
         let m1 = dbtxn
-            .get_group_members("0302b99c-f0f6-41ab-9492-852692b0fd16")
+            .get_group_members(uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"))
             .unwrap();
         let m2 = dbtxn
-            .get_group_members("b500be97-8552-42a5-aca0-668bc5625705")
+            .get_group_members(uuid::uuid!("b500be97-8552-42a5-aca0-668bc5625705"))
             .unwrap();
         assert!(m1[0].name == "testuser");
         assert!(m2[0].name == "testuser");
@@ -1355,10 +1352,10 @@ mod tests {
 
         // Check that the memberships have updated correctly.
         let m1 = dbtxn
-            .get_group_members("0302b99c-f0f6-41ab-9492-852692b0fd16")
+            .get_group_members(uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"))
             .unwrap();
         let m2 = dbtxn
-            .get_group_members("b500be97-8552-42a5-aca0-668bc5625705")
+            .get_group_members(uuid::uuid!("b500be97-8552-42a5-aca0-668bc5625705"))
             .unwrap();
         assert!(m1[0].name == "testuser");
         assert!(m2.is_empty());
@@ -1381,13 +1378,13 @@ mod tests {
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
-        let uuid1 = "0302b99c-f0f6-41ab-9492-852692b0fd16";
-        let mut ut1 = UnixUserToken {
+        let uuid1 = uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16");
+        let mut ut1 = UserToken {
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             displayname: "Test User".to_string(),
             gidnumber: 2000,
-            uuid: "0302b99c-f0f6-41ab-9492-852692b0fd16".to_string(),
+            uuid: uuid1,
             shell: None,
             groups: Vec::new(),
             sshkeys: vec!["key-a".to_string()],
@@ -1451,18 +1448,18 @@ mod tests {
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
-        let mut gt1 = UnixGroupToken {
+        let mut gt1 = GroupToken {
             name: "testgroup".to_string(),
             spn: "testgroup@example.com".to_string(),
             gidnumber: 2000,
-            uuid: "0302b99c-f0f6-41ab-9492-852692b0fd16".to_string(),
+            uuid: uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"),
         };
 
-        let gt2 = UnixGroupToken {
+        let gt2 = GroupToken {
             name: "testgroup".to_string(),
             spn: "testgroup@example.com".to_string(),
             gidnumber: 2001,
-            uuid: "799123b2-3802-4b19-b0b8-1ffae2aa9a4b".to_string(),
+            uuid: uuid::uuid!("799123b2-3802-4b19-b0b8-1ffae2aa9a4b"),
         };
 
         let id_name = Id::Name("testgroup".to_string());
@@ -1475,7 +1472,7 @@ mod tests {
         // test adding a group
         dbtxn.update_group(&gt1, 0).unwrap();
         let r0 = dbtxn.get_group(&id_name).unwrap();
-        assert!(r0.unwrap().0.uuid == "0302b99c-f0f6-41ab-9492-852692b0fd16");
+        assert!(r0.unwrap().0.uuid == uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"));
 
         // Do the "rename" of gt1 which is what would allow gt2 to be valid.
         gt1.name = "testgroup2".to_string();
@@ -1483,7 +1480,7 @@ mod tests {
         // Now, add gt2 which dups on gt1 name/spn.
         dbtxn.update_group(&gt2, 0).unwrap();
         let r2 = dbtxn.get_group(&id_name).unwrap();
-        assert!(r2.unwrap().0.uuid == "799123b2-3802-4b19-b0b8-1ffae2aa9a4b");
+        assert!(r2.unwrap().0.uuid == uuid::uuid!("799123b2-3802-4b19-b0b8-1ffae2aa9a4b"));
         let r3 = dbtxn.get_group(&id_name2).unwrap();
         assert!(r3.is_none());
 
@@ -1492,9 +1489,9 @@ mod tests {
 
         // Both now coexist
         let r4 = dbtxn.get_group(&id_name).unwrap();
-        assert!(r4.unwrap().0.uuid == "799123b2-3802-4b19-b0b8-1ffae2aa9a4b");
+        assert!(r4.unwrap().0.uuid == uuid::uuid!("799123b2-3802-4b19-b0b8-1ffae2aa9a4b"));
         let r5 = dbtxn.get_group(&id_name2).unwrap();
-        assert!(r5.unwrap().0.uuid == "0302b99c-f0f6-41ab-9492-852692b0fd16");
+        assert!(r5.unwrap().0.uuid == uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"));
 
         assert!(dbtxn.commit().is_ok());
     }
@@ -1506,24 +1503,24 @@ mod tests {
         let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
-        let mut ut1 = UnixUserToken {
+        let mut ut1 = UserToken {
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             displayname: "Test User".to_string(),
             gidnumber: 2000,
-            uuid: "0302b99c-f0f6-41ab-9492-852692b0fd16".to_string(),
+            uuid: uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"),
             shell: None,
             groups: Vec::new(),
             sshkeys: vec!["key-a".to_string()],
             valid: true,
         };
 
-        let ut2 = UnixUserToken {
+        let ut2 = UserToken {
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             displayname: "Test User".to_string(),
             gidnumber: 2001,
-            uuid: "799123b2-3802-4b19-b0b8-1ffae2aa9a4b".to_string(),
+            uuid: uuid::uuid!("799123b2-3802-4b19-b0b8-1ffae2aa9a4b"),
             shell: None,
             groups: Vec::new(),
             sshkeys: vec!["key-a".to_string()],
@@ -1540,7 +1537,7 @@ mod tests {
         // test adding an account
         dbtxn.update_account(&ut1, 0).unwrap();
         let r0 = dbtxn.get_account(&id_name).unwrap();
-        assert!(r0.unwrap().0.uuid == "0302b99c-f0f6-41ab-9492-852692b0fd16");
+        assert!(r0.unwrap().0.uuid == uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"));
 
         // Do the "rename" of gt1 which is what would allow gt2 to be valid.
         ut1.name = "testuser2".to_string();
@@ -1548,7 +1545,7 @@ mod tests {
         // Now, add gt2 which dups on gt1 name/spn.
         dbtxn.update_account(&ut2, 0).unwrap();
         let r2 = dbtxn.get_account(&id_name).unwrap();
-        assert!(r2.unwrap().0.uuid == "799123b2-3802-4b19-b0b8-1ffae2aa9a4b");
+        assert!(r2.unwrap().0.uuid == uuid::uuid!("799123b2-3802-4b19-b0b8-1ffae2aa9a4b"));
         let r3 = dbtxn.get_account(&id_name2).unwrap();
         assert!(r3.is_none());
 
@@ -1557,9 +1554,9 @@ mod tests {
 
         // Both now coexist
         let r4 = dbtxn.get_account(&id_name).unwrap();
-        assert!(r4.unwrap().0.uuid == "799123b2-3802-4b19-b0b8-1ffae2aa9a4b");
+        assert!(r4.unwrap().0.uuid == uuid::uuid!("799123b2-3802-4b19-b0b8-1ffae2aa9a4b"));
         let r5 = dbtxn.get_account(&id_name2).unwrap();
-        assert!(r5.unwrap().0.uuid == "0302b99c-f0f6-41ab-9492-852692b0fd16");
+        assert!(r5.unwrap().0.uuid == uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"));
 
         assert!(dbtxn.commit().is_ok());
     }
