@@ -33,7 +33,7 @@ impl From<UnixUserToken> for UserToken {
 
         let groups = groups
             .into_iter()
-            .map(|ugt| GroupToken::from(ugt))
+            .map(GroupToken::from)
             .collect();
 
         UserToken {
