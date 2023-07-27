@@ -150,7 +150,7 @@ impl UnixUserAccount {
             spn: self.spn.clone(),
             displayname: self.displayname.clone(),
             gidnumber: self.gidnumber,
-            uuid: self.uuid.as_hyphenated().to_string(),
+            uuid: self.uuid,
             shell: self.shell.clone(),
             groups,
             sshkeys: self.sshkeys.clone(),
@@ -449,7 +449,7 @@ impl UnixGroup {
         Ok(UnixGroupToken {
             name: self.name.clone(),
             spn: self.spn.clone(),
-            uuid: self.uuid.as_hyphenated().to_string(),
+            uuid: self.uuid,
             gidnumber: self.gidnumber,
         })
     }
