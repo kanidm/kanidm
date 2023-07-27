@@ -27,8 +27,8 @@ use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::db::Db;
-use kanidm_unix_common::resolver::Resolver;
 use kanidm_unix_common::idprovider::kanidm::KanidmProvider;
+use kanidm_unix_common::resolver::Resolver;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd};
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
@@ -373,7 +373,9 @@ async fn handle_client(
     Ok(())
 }
 
-async fn process_etc_passwd_group(cachelayer: &Resolver<KanidmProvider>) -> Result<(), Box<dyn Error>> {
+async fn process_etc_passwd_group(
+    cachelayer: &Resolver<KanidmProvider>,
+) -> Result<(), Box<dyn Error>> {
     let mut file = File::open("/etc/passwd").await?;
     let mut contents = vec![];
     file.read_to_end(&mut contents).await?;
@@ -662,6 +664,8 @@ async fn main() -> ExitCode {
                 }
             };
 
+            let idprovider = KanidmProvider::new(rsclient);
+
             let db = match Db::new(cfg.db_path.as_str(), &cfg.tpm_policy) {
                 Ok(db) => db,
                 Err(_e) => {
@@ -672,8 +676,8 @@ async fn main() -> ExitCode {
 
             let cl_inner = match Resolver::new(
                 db,
+                idprovider,
                 cfg.cache_timeout,
-                rsclient,
                 cfg.pam_allowed_login_groups.clone(),
                 cfg.default_shell.clone(),
                 cfg.home_prefix.clone(),

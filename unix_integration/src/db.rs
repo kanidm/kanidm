@@ -207,7 +207,7 @@ impl<'a> DbTxn<'a> {
     fn get_group_data_name(&self, grp_id: &str) -> Result<Vec<(Vec<u8>, i64)>, CacheError> {
         let mut stmt = self.conn
             .prepare(
-        "SELECT token, expiry FROM group_t WHERE uuid = :grp_id OR name = :grp_id OR spn = :grp_id"
+                "SELECT token, expiry FROM group_t WHERE uuid = :grp_id OR name = :grp_id OR spn = :grp_id"
             )
             .map_err(|e| {
                 self.sqlite_error("select prepare", &e)
@@ -422,11 +422,12 @@ impl<'a> CacheTxn for DbTxn<'a> {
         // This is needed because sqlites 'insert or replace into', will null the password field
         // if present, and upsert MUST match the exact conflicting column, so that means we have
         // to manually manage the update or insert :( :(
+        let account_uuid = account.uuid.as_hyphenated().to_string();
 
         // Find anything conflicting and purge it.
         self.conn.execute("DELETE FROM account_t WHERE NOT uuid = :uuid AND (name = :name OR spn = :spn OR gidnumber = :gidnumber)",
             named_params!{
-                ":uuid": &account.uuid,
+                ":uuid": &account_uuid,
                 ":name": &account.name,
                 ":spn": &account.spn,
                 ":gidnumber": &account.gidnumber,
@@ -440,7 +441,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         let updated = self.conn.execute(
                 "UPDATE account_t SET name=:name, spn=:spn, gidnumber=:gidnumber, token=:token, expiry=:expiry WHERE uuid = :uuid",
             named_params!{
-                ":uuid": &account.uuid,
+                ":uuid": &account_uuid,
                 ":name": &account.name,
                 ":spn": &account.spn,
                 ":gidnumber": &account.gidnumber,
@@ -460,7 +461,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
                 })?;
 
             stmt.execute(named_params! {
-                ":uuid": &account.uuid,
+                ":uuid": &account_uuid,
                 ":name": &account.name,
                 ":spn": &account.spn,
                 ":gidnumber": &account.gidnumber,
@@ -481,7 +482,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
             .prepare("DELETE FROM memberof_t WHERE a_uuid = :a_uuid")
             .map_err(|e| self.sqlite_error("prepare", &e))?;
 
-        stmt.execute([&account.uuid])
+        stmt.execute([&account_uuid])
             .map(|r| {
                 debug!("delete memberships -> {:?}", r);
             })
@@ -494,8 +495,8 @@ impl<'a> CacheTxn for DbTxn<'a> {
         // Now for each group, add the relation.
         account.groups.iter().try_for_each(|g| {
             stmt.execute(named_params! {
-                ":a_uuid": &account.uuid,
-                ":g_uuid": &g.uuid,
+                ":a_uuid": &account_uuid,
+                ":g_uuid": &g.uuid.as_hyphenated().to_string(),
             })
             .map(|r| {
                 debug!("insert membership -> {:?}", r);
@@ -505,10 +506,12 @@ impl<'a> CacheTxn for DbTxn<'a> {
     }
 
     fn delete_account(&self, a_uuid: Uuid) -> Result<(), CacheError> {
+        let account_uuid = a_uuid.as_hyphenated().to_string();
+
         self.conn
             .execute(
                 "DELETE FROM memberof_t WHERE a_uuid = :a_uuid",
-                params![a_uuid],
+                params![&account_uuid],
             )
             .map(|_| ())
             .map_err(|e| self.sqlite_error("account_t memberof_t cascade delete", &e))?;
@@ -516,7 +519,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         self.conn
             .execute(
                 "DELETE FROM account_t WHERE uuid = :a_uuid",
-                params![a_uuid],
+                params![&account_uuid],
             )
             .map(|_| ())
             .map_err(|e| self.sqlite_error("account_t delete", &e))
@@ -551,7 +554,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
             .execute(
                 "UPDATE account_t SET password = :data WHERE uuid = :a_uuid",
                 named_params! {
-                    ":a_uuid": &a_uuid,
+                    ":a_uuid": &a_uuid.as_hyphenated().to_string(),
                     ":data": &data,
                 },
             )
@@ -572,7 +575,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
 
         // Makes tuple (token, expiry)
         let data_iter = stmt
-            .query_map([a_uuid], |row| row.get(0))
+            .query_map([a_uuid.as_hyphenated().to_string()], |row| row.get(0))
             .map_err(|e| self.sqlite_error("query_map", &e))?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
             .map(|v| v.map_err(|e| self.sqlite_error("map", &e)))
@@ -664,7 +667,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
             })?;
 
         let data_iter = stmt
-            .query_map([g_uuid], |row| row.get(0))
+            .query_map([g_uuid.as_hyphenated().to_string()], |row| row.get(0))
             .map_err(|e| self.sqlite_error("query_map", &e))?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
             .map(|v| v.map_err(|e| self.sqlite_error("map", &e)))
@@ -729,8 +732,9 @@ impl<'a> CacheTxn for DbTxn<'a> {
                 self.sqlite_error("prepare", &e)
             })?;
 
+        // We have to to-str uuid as the sqlite impl makes it a blob which breaks our selects in get.
         stmt.execute(named_params! {
-            ":uuid": &grp.uuid,
+            ":uuid": &grp.uuid.as_hyphenated().to_string(),
             ":name": &grp.name,
             ":spn": &grp.spn,
             ":gidnumber": &grp.gidnumber,
@@ -744,12 +748,16 @@ impl<'a> CacheTxn for DbTxn<'a> {
     }
 
     fn delete_group(&self, g_uuid: Uuid) -> Result<(), CacheError> {
+        let group_uuid = g_uuid.as_hyphenated().to_string();
         self.conn
-            .execute("DELETE FROM memberof_t WHERE g_uuid = :g_uuid", [g_uuid])
+            .execute(
+                "DELETE FROM memberof_t WHERE g_uuid = :g_uuid",
+                [&group_uuid],
+            )
             .map(|_| ())
             .map_err(|e| self.sqlite_error("group_t memberof_t cascade delete", &e))?;
         self.conn
-            .execute("DELETE FROM group_t WHERE uuid = :g_uuid", [g_uuid])
+            .execute("DELETE FROM group_t WHERE uuid = :g_uuid", [&group_uuid])
             .map(|_| ())
             .map_err(|e| self.sqlite_error("group_t delete", &e))
     }

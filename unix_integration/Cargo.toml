@@ -58,7 +58,7 @@ kanidm_lib_crypto = { workspace = true }
 kanidm_lib_file_permissions = { workspace = true }
 notify-debouncer-full = { workspace = true }
 rpassword = { workspace = true }
-rusqlite = { workspace = true, features = ["uuid"] }
+rusqlite = { workspace = true }
 selinux = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

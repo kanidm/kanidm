@@ -11,7 +11,9 @@ use kanidm_unix_common::constants::{
     DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
 };
 use kanidm_unix_common::db::Db;
-use kanidm_unix_common::resolver::{Id, Resolver};
+use kanidm_unix_common::idprovider::interface::Id;
+use kanidm_unix_common::idprovider::kanidm::KanidmProvider;
+use kanidm_unix_common::resolver::Resolver;
 use kanidm_unix_common::unix_config::TpmPolicy;
 use kanidmd_core::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidmd_core::create_server_core;
@@ -42,7 +44,7 @@ where
     Box::new(move |n| Box::pin(f(n)))
 }
 
-async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
+async fn setup_test(fix_fn: Fixture) -> (Resolver<KanidmProvider>, KanidmClient) {
     sketching::test_init();
 
     let mut counter = 0;
@@ -100,6 +102,8 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
         .build()
         .expect("Failed to build client");
 
+    let idprovider = KanidmProvider::new(rsclient);
+
     let db = Db::new(
         "", // The sqlite db path, this is in memory.
         &TpmPolicy::default(),
@@ -108,7 +112,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
 
     let cachelayer = Resolver::new(
         db,
-        rsclient,
+        idprovider,
         300,
         vec!["allowed_group".to_string()],
         DEFAULT_SHELL.to_string(),
