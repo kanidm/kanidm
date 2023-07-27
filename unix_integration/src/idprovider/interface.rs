@@ -6,7 +6,7 @@ use uuid::Uuid;
 /// and should be carefully selected to match your expected errors.
 #[derive(Debug)]
 pub enum IdpError {
-    /// An error occured in the underlying communication to the Idp. A timeout or
+    /// An error occurred in the underlying communication to the Idp. A timeout or
     /// or other communication issue exists. The resolver will take this provider
     /// offline.
     Transport,
