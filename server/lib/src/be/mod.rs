@@ -1379,7 +1379,6 @@ impl<'a> BackendWriteTransaction<'a> {
         // Update the names/uuid maps. These have to mask out entries
         // that are recycled or tombstones, so these pretend as "deleted"
         // and can trigger correct actions.
-        //
 
         let mask_pre = pre.and_then(|e| e.mask_recycled_ts());
         let mask_pre = if !uuid_same {

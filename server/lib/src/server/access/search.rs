@@ -77,12 +77,12 @@ fn search_filter_entry<'a>(
     // If this is an internal search, return our working set.
     match &ident.origin {
         IdentType::Internal => {
-            trace!("Internal operation, bypassing access check");
+            trace!(uuid = ?entry.get_display_id(), "Internal operation, bypassing access check");
             // No need to check ACS
             return AccessResult::Grant;
         }
         IdentType::Synch(_) => {
-            security_critical!("Blocking sync check");
+            security_critical!(uuid = ?entry.get_display_id(), "Blocking sync check");
             return AccessResult::Denied;
         }
         IdentType::User(_) => {}
@@ -109,7 +109,7 @@ fn search_filter_entry<'a>(
                 Some(acs.attrs.iter().map(|s| s.as_str()))
             } else {
                 // should this be `security_access`?
-                security_debug!(entry = ?entry.get_uuid(), acs = %acs.acp.name, "entry DOES NOT match acs");
+                security_debug!(entry = ?entry.get_display_id(), acs = %acs.acp.name, "entry DOES NOT match acs");
                 None
             }
         })

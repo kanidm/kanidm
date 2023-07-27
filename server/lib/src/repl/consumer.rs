@@ -16,7 +16,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &mut self,
         ctx_entries: &[ReplIncrementalEntryV1],
     ) -> Result<(), OperationError> {
-        trace!(?ctx_entries);
+        // trace!(?ctx_entries);
 
         // No action needed for this if the entries are empty.
         if ctx_entries.is_empty() {
@@ -43,7 +43,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e
         })?;
 
-        trace!("===========================================");
         trace!(?ctx_entries);
 
         let db_entries = self.be_txn.incremental_prepare(&ctx_entries).map_err(|e| {
@@ -69,27 +68,22 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //    /- entries that need to be created as conflicts.
         //    |                /- entries that survive and need update to the db in place.
         //    v                v
-
-        #[allow(clippy::todo)]
         let (conflict_create, conflict_update): (
-            Vec<EntrySealedNew>,
+            Vec<Option<EntrySealedNew>>,
             Vec<(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)>,
         ) = conflicts
             .into_iter()
-            .map(|(_ctx_ent, _db_ent)| {
-                // Determine which of the entries must become the conflict
-                // and which will now persist. There are two possible cases.
-                //
-                // 1. The ReplIncremental is after the DBEntry, and becomes the conflict.
-                //    This means we just update the db entry with itself.
-                //
-                // 2. The ReplIncremental is before the DBEntry, and becomes live.
-                //    This means we have to take the DBEntry as it exists, convert
-                //    it to a new entry. Then we have to take the repl incremental
-                //    entry and place it into the update queue.
-                todo!();
-            })
+            .map(
+                |(ctx_ent, db_ent): (&EntryIncrementalNew, Arc<EntrySealedCommitted>)| {
+                    let (opt_create, ent) =
+                        ctx_ent.resolve_add_conflict(self.get_cid(), db_ent.as_ref());
+                    (opt_create, (ent, db_ent))
+                },
+            )
             .unzip();
+
+        // Filter out None from conflict_create
+        let conflict_create: Vec<EntrySealedNew> = conflict_create.into_iter().flatten().collect();
 
         let proceed_update: Vec<(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)> = proceed
             .into_iter()
@@ -219,9 +213,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 error!("This server's content must be refreshed to proceed. If you have configured automatic refresh, this will occur shortly.");
                 Ok(ConsumerState::RefreshRequired)
             }
-            #[allow(clippy::todo)]
             ReplIncrementalContext::UnwillingToSupply => {
-                todo!();
+                warn!("Unable to proceed with consumer incremental - the supplier has indicated that our RUV is ahead, and replication would introduce data corruption.");
+                error!("This supplier's content must be refreshed to proceed. If you have configured automatic refresh, this will occur shortly.");
+                Ok(ConsumerState::Ok)
             }
             ReplIncrementalContext::V1 {
                 domain_version,
@@ -273,6 +268,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // == ⚠️  Below this point we begin to make changes! ==
 
+        debug!("Applying schema entries");
         // Apply the schema entries first.
         self.consumer_incremental_apply_entries(ctx_schema_entries)
             .map_err(|e| {
@@ -286,6 +282,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e
         })?;
 
+        debug!("Applying meta entries");
         // Apply meta entries now.
         self.consumer_incremental_apply_entries(ctx_meta_entries)
             .map_err(|e| {
@@ -305,6 +302,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.changed_schema = true;
         self.changed_domain = true;
 
+        debug!("Applying all context entries");
         // Update all other entries now.
         self.consumer_incremental_apply_entries(ctx_entries)
             .map_err(|e| {

@@ -234,6 +234,8 @@ pub const UUID_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL: Uuid =
 pub const UUID_SCHEMA_CLASS_OAUTH2_RS_PUBLIC: Uuid = uuid!("00000000-0000-0000-0000-ffff00000137");
 pub const UUID_SCHEMA_ATTR_SYNC_YIELD_AUTHORITY: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000138");
+pub const UUID_SCHEMA_CLASS_CONFLICT: Uuid = uuid!("00000000-0000-0000-0000-ffff00000139");
+pub const UUID_SCHEMA_ATTR_SOURCE_UUID: Uuid = uuid!("00000000-0000-0000-0000-ffff00000140");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
