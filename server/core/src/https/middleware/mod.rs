@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 pub(crate) mod caching;
 pub(crate) mod compression;
-pub(crate) mod csp_headers;
+pub(crate) mod security_headers;
 pub(crate) mod hsts_header;
 
 // the version middleware injects

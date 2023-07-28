@@ -1261,9 +1261,7 @@ pub async fn auth(
         .qe_r_ref
         .handle_auth(maybe_sessionid, obj, kopid.eventid, ip_addr)
         .await;
-
     debug!("Auth result: {:?}", inter);
-
     auth_session_state_management(state, inter)
 }
 
