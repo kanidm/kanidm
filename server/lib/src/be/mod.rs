@@ -2170,8 +2170,8 @@ mod tests {
             let r1 = results.remove(0);
             let r2 = results.remove(0);
 
-            let mut r1 = unsafe { r1.as_ref().clone().into_invalid() };
-            let mut r2 = unsafe { r2.as_ref().clone().into_invalid() };
+            let mut r1 = r1.as_ref().clone().into_invalid();
+            let mut r2 = r2.as_ref().clone().into_invalid();
 
             // Modify no id (err)
             // This is now impossible due to the state machine design.
@@ -2702,7 +2702,7 @@ mod tests {
             let rset = be.create(&CID_ZERO, vec![e1]).unwrap();
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
-            let mut ce1 = unsafe { rset[0].as_ref().clone().into_invalid() };
+            let mut ce1 = rset[0].as_ref().clone().into_invalid();
             // add something.
             ce1.add_ava("tb", Value::from("test"));
             // remove something.
@@ -2747,7 +2747,7 @@ mod tests {
             let rset = be.create(&CID_ZERO, vec![e1]).unwrap();
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
-            let mut ce1 = unsafe { rset[0].as_ref().clone().into_invalid() };
+            let mut ce1 = rset[0].as_ref().clone().into_invalid();
             ce1.purge_ava("name");
             ce1.purge_ava("uuid");
             ce1.add_ava("name", Value::new_iname("claire"));

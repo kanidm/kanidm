@@ -2169,12 +2169,14 @@ where
         &self.valid.ecstate
     }
 
+    /// ⚠️  - Invalidate an entry by resetting it's change state to time-zero. This entry
+    /// can never be replicated after this.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn into_invalid(mut self) -> Entry<EntryInvalid, STATE> {
+    pub(crate) fn into_invalid(mut self) -> Entry<EntryInvalid, STATE> {
         let cid = Cid::new_zero();
         self.set_last_changed(cid.clone());
 
-        // let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
         let ecstate = EntryChangeState::new_without_schema(&cid, &self.attrs);
 
         Entry {
