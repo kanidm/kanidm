@@ -1629,15 +1629,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
 
-        let mp = unsafe {
-            self.qs_write
-                .modify_pre_apply(&me)
-                .and_then(|opt_mp| opt_mp.ok_or(OperationError::NoMatchingEntries))
-                .map_err(|e| {
-                    request_error!(error = ?e);
-                    e
-                })?
-        };
+        let mp = self
+            .qs_write
+            .modify_pre_apply(&me)
+            .and_then(|opt_mp| opt_mp.ok_or(OperationError::NoMatchingEntries))
+            .map_err(|e| {
+                request_error!(error = ?e);
+                e
+            })?;
 
         // If we got here, then pre-apply succeeded, and that means access control
         // passed. Now we can do the extra checks.
@@ -1708,15 +1707,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
 
-        let mp = unsafe {
-            self.qs_write
-                .modify_pre_apply(&me)
-                .and_then(|opt_mp| opt_mp.ok_or(OperationError::NoMatchingEntries))
-                .map_err(|e| {
-                    request_error!(error = ?e);
-                    e
-                })?
-        };
+        let mp = self
+            .qs_write
+            .modify_pre_apply(&me)
+            .and_then(|opt_mp| opt_mp.ok_or(OperationError::NoMatchingEntries))
+            .map_err(|e| {
+                request_error!(error = ?e);
+                e
+            })?;
 
         // If we got here, then pre-apply succeeded, and that means access control
         // passed. Now we can do the extra checks.

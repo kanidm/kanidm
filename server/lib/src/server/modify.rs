@@ -12,7 +12,7 @@ pub(crate) struct ModifyPartial<'a> {
 impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn modify(&mut self, me: &ModifyEvent) -> Result<(), OperationError> {
-        let mp = unsafe { self.modify_pre_apply(me)? };
+        let mp = self.modify_pre_apply(me)?;
         if let Some(mp) = mp {
             self.modify_apply(mp)
         } else {
@@ -25,7 +25,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// the Ok(None) case which occurs during internal operations, and that you DO NOT re-order
     /// and call multiple pre-applies at the same time, else you can cause DB corruption.
     #[instrument(level = "debug", skip_all)]
-    pub(crate) unsafe fn modify_pre_apply<'x>(
+    pub(crate) fn modify_pre_apply<'x>(
         &mut self,
         me: &'x ModifyEvent,
     ) -> Result<Option<ModifyPartial<'x>>, OperationError> {
