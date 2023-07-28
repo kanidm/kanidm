@@ -1810,12 +1810,10 @@ mod tests {
         let cr = server_txn.create(&ce);
         assert!(cr.is_ok());
 
-        let de_sin = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
-                "name",
-                PartialValue::new_iname("testperson3")
-            )])))
-        };
+        let de_sin = DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
+            "name",
+            PartialValue::new_iname("testperson3")
+        )])));
         assert!(server_txn.delete(&de_sin).is_ok());
 
         // Commit

@@ -2247,15 +2247,13 @@ mod tests {
         let mut idms_write = idms.proxy_write(duration_from_epoch_now()).await;
 
         // now modify and provide a primary credential.
-        let me_inv_m = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("primary_credential"),
-                    v_cred,
-                )]),
-            )
-        };
+        let me_inv_m = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![Modify::Present(
+                AttrString::from("primary_credential"),
+                v_cred,
+            )]),
+        );
         // go!
         assert!(idms_write.qs_write.modify(&me_inv_m).is_ok());
 
@@ -2606,15 +2604,13 @@ mod tests {
     async fn test_idm_unixusertoken(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         // Modify admin to have posixaccount
-        let me_posix = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
-                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                ]),
-            )
-        };
+        let me_posix = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![
+                Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+            ]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
         // Add a posix group that has the admin as a member.
         let e: Entry<EntryInit, EntryNew> = entry_init!(
@@ -2690,15 +2686,13 @@ mod tests {
     ) {
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         // make the admin a valid posix account
-        let me_posix = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
-                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                ]),
-            )
-        };
+        let me_posix = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![
+                Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+            ]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
         let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
@@ -2730,12 +2724,10 @@ mod tests {
 
         // Check deleting the password
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-        let me_purge_up = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![Modify::Purged(AttrString::from("unix_password"))]),
-            )
-        };
+        let me_purge_up = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![Modify::Purged(AttrString::from("unix_password"))]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_purge_up).is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
@@ -2763,15 +2755,14 @@ mod tests {
         {
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
             // now modify and provide a primary credential.
-            let me_inv_m = unsafe {
+            let me_inv_m =
                 ModifyEvent::new_internal_invalid(
                         filter!(f_eq("name", PartialValue::new_iname("admin"))),
                         ModifyList::new_list(vec![Modify::Present(
                             AttrString::from("password_import"),
                             Value::from("{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM")
                         )]),
-                    )
-            };
+                    );
             // go!
             assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
             assert!(idms_prox_write.commit().is_ok());
@@ -2845,16 +2836,14 @@ mod tests {
         let cred = Credential::new_from_password(pw);
         let v_cred = Value::new_credential("unix", cred);
 
-        let me_posix = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
-                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                    Modify::Present(AttrString::from("unix_password"), v_cred),
-                ]),
-            )
-        };
+        let me_posix = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![
+                Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+                Modify::Present(AttrString::from("unix_password"), v_cred),
+            ]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
         assert!(idms_prox_write.commit().is_ok());
         idms_delayed.check_is_empty_or_panic();
@@ -2902,15 +2891,13 @@ mod tests {
         let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_EXPIRE_TIME));
 
         // now modify and provide a primary credential.
-        let me_inv_m = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("account_expire"), v_expire),
-                    Modify::Present(AttrString::from("account_valid_from"), v_valid_from),
-                ]),
-            )
-        };
+        let me_inv_m = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![
+                Modify::Present(AttrString::from("account_expire"), v_expire),
+                Modify::Present(AttrString::from("account_valid_from"), v_valid_from),
+            ]),
+        );
         // go!
         assert!(idms_write.qs_write.modify(&me_inv_m).is_ok());
 
@@ -2994,15 +2981,13 @@ mod tests {
 
         // make the admin a valid posix account
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-        let me_posix = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
-                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                ]),
-            )
-        };
+        let me_posix = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![
+                Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+            ]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
         let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
@@ -3359,15 +3344,13 @@ mod tests {
             .expect("Failed to setup admin account");
         // make the admin a valid posix account
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-        let me_posix = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
-                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                ]),
-            )
-        };
+        let me_posix = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("admin"))),
+            ModifyList::new_list(vec![
+                Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+            ]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
         let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
@@ -3738,16 +3721,14 @@ mod tests {
         // fernet_private_key_str
         // es256_private_key_der
         let mut idms_prox_write = idms.proxy_write(ct).await;
-        let me_reset_tokens = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO))),
-                ModifyList::new_list(vec![
-                    Modify::Purged(AttrString::from("fernet_private_key_str")),
-                    Modify::Purged(AttrString::from("es256_private_key_der")),
-                    Modify::Purged(AttrString::from("domain_token_key")),
-                ]),
-            )
-        };
+        let me_reset_tokens = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("uuid", PartialValue::Uuid(UUID_DOMAIN_INFO))),
+            ModifyList::new_list(vec![
+                Modify::Purged(AttrString::from("fernet_private_key_str")),
+                Modify::Purged(AttrString::from("es256_private_key_der")),
+                Modify::Purged(AttrString::from("domain_token_key")),
+            ]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_reset_tokens).is_ok());
         assert!(idms_prox_write.commit().is_ok());
         // Check the old token is invalid, due to reload.

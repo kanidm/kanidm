@@ -4,6 +4,10 @@
 #![deny(warnings)]
 #![recursion_limit = "512"]
 #![warn(unused_extern_crates)]
+// Enable some groups of clippy lints.
+#![deny(clippy::suspicious)]
+#![deny(clippy::perf)]
+// Specific lints to enforce.
 // TODO: can't use this until we have a better way to handle the 'todo' lint?
 // #![deny(clippy::todo)]
 #![warn(clippy::todo)]
@@ -15,6 +19,7 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 #![deny(clippy::disallowed_types)]
+#![deny(clippy::manual_let_else)]
 #![allow(clippy::unreachable)]
 
 #[cfg(all(jemallocator, test, not(target_family = "windows")))]

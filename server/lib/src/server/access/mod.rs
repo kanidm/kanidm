@@ -1575,7 +1575,7 @@ mod tests {
     #[test]
     fn test_access_internal_search() {
         // Test that an internal search bypasses ACS
-        let se = unsafe { SearchEvent::new_internal_invalid(filter!(f_pres("class"))) };
+        let se = SearchEvent::new_internal_invalid(filter!(f_pres("class")));
 
         let expect = vec![E_TEST_ACCOUNT_1.clone()];
         let entries = vec![E_TEST_ACCOUNT_1.clone()];
@@ -1603,20 +1603,16 @@ mod tests {
 
         let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2)];
 
-        let se_a = unsafe {
-            SearchEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_pres("name")),
-            )
-        };
+        let se_a = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_pres("name")),
+        );
         let ex_a = vec![Arc::new(ev1)];
 
-        let se_b = unsafe {
-            SearchEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_2.clone(),
-                filter_all!(f_pres("name")),
-            )
-        };
+        let se_b = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_2.clone(),
+            filter_all!(f_pres("name")),
+        );
         let ex_b = vec![];
 
         let acp = AccessControlSearch::from_raw(
@@ -1648,19 +1644,15 @@ mod tests {
 
         let r_set = vec![Arc::new(ev1)];
 
-        let se_ro = unsafe {
-            SearchEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
-                filter_all!(f_pres("name")),
-            )
-        };
+        let se_ro = SearchEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
+            filter_all!(f_pres("name")),
+        );
 
-        let se_rw = unsafe {
-            SearchEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
-                filter_all!(f_pres("name")),
-            )
-        };
+        let se_rw = SearchEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
+            filter_all!(f_pres("name")),
+        );
 
         let acp = AccessControlSearch::from_raw(
             "test_acp",
@@ -1692,12 +1684,10 @@ mod tests {
 
         let ex_anon_some = vec![exv1];
 
-        let se_anon_ro = unsafe {
-            SearchEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
-                filter_all!(f_pres("name")),
-            )
-        };
+        let se_anon_ro = SearchEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
+            filter_all!(f_pres("name")),
+        );
 
         let acp = AccessControlSearch::from_raw(
             "test_acp",
@@ -1731,12 +1721,10 @@ mod tests {
         let exv1 = E_TESTPERSON_1_REDUCED.clone().into_sealed_committed();
         let ex_anon = vec![exv1];
 
-        let se_anon = unsafe {
-            SearchEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let se_anon = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+        );
 
         let acp = AccessControlSearch::from_raw(
             "test_acp",
@@ -1766,12 +1754,10 @@ mod tests {
         let exv1 = E_TESTPERSON_1_REDUCED.clone().into_sealed_committed();
         let ex_anon = vec![exv1];
 
-        let mut se_anon = unsafe {
-            SearchEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let mut se_anon = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+        );
         // the requested attrs here.
         se_anon.attrs = Some(btreeset![AttrString::from("name")]);
 
@@ -1847,54 +1833,42 @@ mod tests {
         let r_set = vec![Arc::new(ev1)];
 
         // Name present
-        let me_pres = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_pres("name", &Value::new_iname("value"))]),
-            )
-        };
+        let me_pres = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            modlist!([m_pres("name", &Value::new_iname("value"))]),
+        );
         // Name rem
-        let me_rem = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_remove("name", &PartialValue::new_iname("value"))]),
-            )
-        };
+        let me_rem = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            modlist!([m_remove("name", &PartialValue::new_iname("value"))]),
+        );
         // Name purge
-        let me_purge = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_purge("name")]),
-            )
-        };
+        let me_purge = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            modlist!([m_purge("name")]),
+        );
 
         // Class account pres
-        let me_pres_class = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_pres("class", &Value::new_class("account"))]),
-            )
-        };
+        let me_pres_class = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            modlist!([m_pres("class", &Value::new_class("account"))]),
+        );
         // Class account rem
-        let me_rem_class = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_remove("class", &PartialValue::new_class("account"))]),
-            )
-        };
+        let me_rem_class = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            modlist!([m_remove("class", &PartialValue::new_class("account"))]),
+        );
         // Class purge
-        let me_purge_class = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_purge("class")]),
-            )
-        };
+        let me_purge_class = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            modlist!([m_purge("class")]),
+        );
 
         // Allow name and class, class is account
         let acp_allow = AccessControlModify::from_raw(
@@ -1979,22 +1953,18 @@ mod tests {
         let r_set = vec![Arc::new(ev1)];
 
         // Name present
-        let me_pres_ro = unsafe {
-            ModifyEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_pres("name", &Value::new_iname("value"))]),
-            )
-        };
+        let me_pres_ro = ModifyEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            modlist!([m_pres("name", &Value::new_iname("value"))]),
+        );
 
         // Name present
-        let me_pres_rw = unsafe {
-            ModifyEvent::new_impersonate_identity(
-                Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_pres("name", &Value::new_iname("value"))]),
-            )
-        };
+        let me_pres_rw = ModifyEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone()),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            modlist!([m_pres("name", &Value::new_iname("value"))]),
+        );
 
         let acp_allow = AccessControlModify::from_raw(
             "test_modify_allow",
@@ -2189,19 +2159,15 @@ mod tests {
         let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 
-        let de_admin = unsafe {
-            DeleteEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let de_admin = DeleteEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+        );
 
-        let de_anon = unsafe {
-            DeleteEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_2.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let de_anon = DeleteEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_2.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+        );
 
         let acp = AccessControlDelete::from_raw(
             "test_delete",
@@ -2419,12 +2385,10 @@ mod tests {
         .into_sealed_committed();
         let r2_set = vec![Arc::new(ev2)];
 
-        let de_admin = unsafe {
-            DeleteEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let de_admin = DeleteEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+        );
 
         let acp = AccessControlDelete::from_raw(
             "test_delete",
@@ -2483,35 +2447,29 @@ mod tests {
         // NOTE! Syntax doesn't matter here, we just need to assert if the attr exists
         // and is being modified.
         // Name present
-        let me_pres = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_pres(
-                    "user_auth_token_session",
-                    &Value::new_iname("value")
-                )]),
-            )
-        };
+        let me_pres = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            modlist!([m_pres(
+                "user_auth_token_session",
+                &Value::new_iname("value")
+            )]),
+        );
         // Name rem
-        let me_rem = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_remove(
-                    "user_auth_token_session",
-                    &PartialValue::new_iname("value")
-                )]),
-            )
-        };
+        let me_rem = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            modlist!([m_remove(
+                "user_auth_token_session",
+                &PartialValue::new_iname("value")
+            )]),
+        );
         // Name purge
-        let me_purge = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_purge("user_auth_token_session")]),
-            )
-        };
+        let me_purge = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            modlist!([m_purge("user_auth_token_session")]),
+        );
 
         // Test allowed pres
         test_acp_modify!(&me_pres, vec![acp_allow.clone()], &r1_set, true);
@@ -2528,29 +2486,23 @@ mod tests {
         test_acp_modify!(&me_purge, vec![acp_allow.clone()], &r2_set, true);
 
         // But other attrs are blocked.
-        let me_pres = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_pres("name", &Value::new_iname("value"))]),
-            )
-        };
+        let me_pres = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            modlist!([m_pres("name", &Value::new_iname("value"))]),
+        );
         // Name rem
-        let me_rem = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_remove("name", &PartialValue::new_iname("value"))]),
-            )
-        };
+        let me_rem = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            modlist!([m_remove("name", &PartialValue::new_iname("value"))]),
+        );
         // Name purge
-        let me_purge = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_purge("name")]),
-            )
-        };
+        let me_purge = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            modlist!([m_purge("name")]),
+        );
 
         // Test reject pres
         test_acp_modify!(&me_pres, vec![acp_allow.clone()], &r2_set, false);
@@ -2670,21 +2622,17 @@ mod tests {
 
         let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2)];
 
-        let se_a = unsafe {
-            SearchEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_1.clone(),
-                filter_all!(f_pres("oauth2_rs_name")),
-            )
-        };
+        let se_a = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_pres("oauth2_rs_name")),
+        );
         let ex_a = vec![Arc::new(ev1)];
         let ex_a_reduced = vec![ev1_reduced];
 
-        let se_b = unsafe {
-            SearchEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_2.clone(),
-                filter_all!(f_pres("oauth2_rs_name")),
-            )
-        };
+        let se_b = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_2.clone(),
+            filter_all!(f_pres("oauth2_rs_name")),
+        );
         let ex_b = vec![];
 
         // Check the authorisation search event, and that it reduces correctly.
@@ -2747,12 +2695,10 @@ mod tests {
         // Check the authorised search event, and that it reduces correctly.
         let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2)];
 
-        let se_a = unsafe {
-            SearchEvent::new_impersonate_entry(
-                sync_test_account,
-                filter_all!(f_pres("sync_credential_portal")),
-            )
-        };
+        let se_a = SearchEvent::new_impersonate_entry(
+            sync_test_account,
+            filter_all!(f_pres("sync_credential_portal")),
+        );
         let ex_a = vec![Arc::new(ev1)];
         let ex_a_reduced = vec![ev1_reduced];
 
@@ -2760,12 +2706,10 @@ mod tests {
         test_acp_search_reduce!(&se_a, vec![], r_set.clone(), ex_a_reduced);
 
         // Test a non-synced account aka the deny case
-        let se_b = unsafe {
-            SearchEvent::new_impersonate_entry(
-                E_TEST_ACCOUNT_2.clone(),
-                filter_all!(f_pres("sync_credential_portal")),
-            )
-        };
+        let se_b = SearchEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_2.clone(),
+            filter_all!(f_pres("sync_credential_portal")),
+        );
         let ex_b = vec![];
 
         test_acp_search!(&se_b, vec![], r_set, ex_b);

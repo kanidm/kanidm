@@ -821,15 +821,13 @@ mod tests {
         assert!(uat.ui_hints.contains(&UiHint::CredentialUpdate));
 
         // Modify the user to be a posix account, ensure they get the hint.
-        let me_posix = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iname("testaccount"))),
-                ModifyList::new_list(vec![
-                    Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
-                    Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
-                ]),
-            )
-        };
+        let me_posix = ModifyEvent::new_internal_invalid(
+            filter!(f_eq("name", PartialValue::new_iname("testaccount"))),
+            ModifyList::new_list(vec![
+                Modify::Present(AttrString::from("class"), Value::new_class("posixaccount")),
+                Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+            ]),
+        );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
         // Check the ui hints are as expected.

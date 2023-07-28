@@ -258,31 +258,25 @@ mod tests {
         let filt_i_per = filter_all!(f_eq("class", PartialValue::new_class("person")));
 
         // Create fake external requests. Probably from admin later
-        let me_rc = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                admin.clone(),
-                filt_i_rc.clone(),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("class"),
-                    Value::new_class("recycled"),
-                )]),
-            )
-        };
+        let me_rc = ModifyEvent::new_impersonate_entry(
+            admin.clone(),
+            filt_i_rc.clone(),
+            ModifyList::new_list(vec![Modify::Present(
+                AttrString::from("class"),
+                Value::new_class("recycled"),
+            )]),
+        );
 
-        let de_rc = unsafe { DeleteEvent::new_impersonate_entry(admin.clone(), filt_i_rc.clone()) };
+        let de_rc = DeleteEvent::new_impersonate_entry(admin.clone(), filt_i_rc.clone());
 
-        let se_rc =
-            unsafe { SearchEvent::new_ext_impersonate_entry(admin.clone(), filt_i_rc.clone()) };
+        let se_rc = SearchEvent::new_ext_impersonate_entry(admin.clone(), filt_i_rc.clone());
 
-        let sre_rc =
-            unsafe { SearchEvent::new_rec_impersonate_entry(admin.clone(), filt_i_rc.clone()) };
+        let sre_rc = SearchEvent::new_rec_impersonate_entry(admin.clone(), filt_i_rc.clone());
 
-        let rre_rc = unsafe {
-            ReviveRecycledEvent::new_impersonate_entry(
-                admin,
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let rre_rc = ReviveRecycledEvent::new_impersonate_entry(
+            admin,
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+        );
 
         // Create some recycled objects
         let e1 = entry_init!(
@@ -314,12 +308,10 @@ mod tests {
         assert!(cr.is_ok());
 
         // Now we immediately delete these to force them to the correct state.
-        let de_sin = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_or!([
-                f_eq("name", PartialValue::new_iname("testperson1")),
-                f_eq("name", PartialValue::new_iname("testperson2")),
-            ])))
-        };
+        let de_sin = DeleteEvent::new_internal_invalid(filter!(f_or!([
+            f_eq("name", PartialValue::new_iname("testperson1")),
+            f_eq("name", PartialValue::new_iname("testperson2")),
+        ])));
         assert!(server_txn.delete(&de_sin).is_ok());
 
         // Can it be seen (external search)
@@ -409,16 +401,14 @@ mod tests {
         let cr = server_txn.create(&ce);
         assert!(cr.is_ok());
         // Delete and ensure they became recycled.
-        let de_sin = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "name",
-                PartialValue::new_iname("testperson1")
-            )))
-        };
+        let de_sin = DeleteEvent::new_internal_invalid(filter!(f_eq(
+            "name",
+            PartialValue::new_iname("testperson1")
+        )));
         assert!(server_txn.delete(&de_sin).is_ok());
         // Can in be seen by special search? (external recycle search)
         let filt_rc = filter_all!(f_eq("class", PartialValue::new_class("recycled")));
-        let sre_rc = unsafe { SearchEvent::new_rec_impersonate_entry(admin, filt_rc) };
+        let sre_rc = SearchEvent::new_rec_impersonate_entry(admin, filt_rc);
         let r2 = server_txn.search(&sre_rc).expect("search failed");
         assert!(r2.len() == 1);
 
@@ -463,12 +453,10 @@ mod tests {
         assert!(server_txn.name_to_uuid("testperson1") == Ok(tuuid));
 
         // delete
-        let de_sin = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "name",
-                PartialValue::new_iname("testperson1")
-            )))
-        };
+        let de_sin = DeleteEvent::new_internal_invalid(filter!(f_eq(
+            "name",
+            PartialValue::new_iname("testperson1")
+        )));
         assert!(server_txn.delete(&de_sin).is_ok());
 
         // all should fail
@@ -483,12 +471,10 @@ mod tests {
 
         // revive
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
-        let rre_rc = unsafe {
-            ReviveRecycledEvent::new_impersonate_entry(
-                admin,
-                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let rre_rc = ReviveRecycledEvent::new_impersonate_entry(
+            admin,
+            filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+        );
         assert!(server_txn.revive_recycled(&rre_rc).is_ok());
 
         // all checks pass
@@ -518,19 +504,17 @@ mod tests {
 
         // Create fake external requests. Probably from admin later
         // Should we do this with impersonate instead of using the external
-        let me_ts = unsafe {
-            ModifyEvent::new_impersonate_entry(
-                admin.clone(),
-                filt_i_ts.clone(),
-                ModifyList::new_list(vec![Modify::Present(
-                    AttrString::from("class"),
-                    Value::new_class("tombstone"),
-                )]),
-            )
-        };
+        let me_ts = ModifyEvent::new_impersonate_entry(
+            admin.clone(),
+            filt_i_ts.clone(),
+            ModifyList::new_list(vec![Modify::Present(
+                AttrString::from("class"),
+                Value::new_class("tombstone"),
+            )]),
+        );
 
-        let de_ts = unsafe { DeleteEvent::new_impersonate_entry(admin.clone(), filt_i_ts.clone()) };
-        let se_ts = unsafe { SearchEvent::new_ext_impersonate_entry(admin, filt_i_ts.clone()) };
+        let de_ts = DeleteEvent::new_impersonate_entry(admin.clone(), filt_i_ts.clone());
+        let se_ts = SearchEvent::new_ext_impersonate_entry(admin, filt_i_ts.clone());
 
         // First, create an entry, then push it through the lifecycle.
         let e_ts = entry_init!(
@@ -549,12 +533,10 @@ mod tests {
         let cr = server_txn.create(&ce);
         assert!(cr.is_ok());
 
-        let de_sin = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
-                "name",
-                PartialValue::new_iname("testperson1")
-            )])))
-        };
+        let de_sin = DeleteEvent::new_internal_invalid(filter!(f_or!([f_eq(
+            "name",
+            PartialValue::new_iname("testperson1")
+        )])));
         assert!(server_txn.delete(&de_sin).is_ok());
 
         // Commit
@@ -696,25 +678,21 @@ mod tests {
         assert!(cr.is_ok());
 
         // Now recycle the needed entries.
-        let de = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_or(vec![
-                f_eq("name", PartialValue::new_iname("u1")),
-                f_eq("name", PartialValue::new_iname("u2")),
-                f_eq("name", PartialValue::new_iname("u3")),
-                f_eq("name", PartialValue::new_iname("g3")),
-                f_eq("name", PartialValue::new_iname("u4")),
-                f_eq("name", PartialValue::new_iname("g4"))
-            ])))
-        };
+        let de = DeleteEvent::new_internal_invalid(filter!(f_or(vec![
+            f_eq("name", PartialValue::new_iname("u1")),
+            f_eq("name", PartialValue::new_iname("u2")),
+            f_eq("name", PartialValue::new_iname("u3")),
+            f_eq("name", PartialValue::new_iname("g3")),
+            f_eq("name", PartialValue::new_iname("u4")),
+            f_eq("name", PartialValue::new_iname("g4"))
+        ])));
         assert!(server_txn.delete(&de).is_ok());
 
         // Now revive and check each one, one at a time.
-        let rev1 = unsafe {
-            ReviveRecycledEvent::new_impersonate_entry(
-                admin.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("u1"))),
-            )
-        };
+        let rev1 = ReviveRecycledEvent::new_impersonate_entry(
+            admin.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("u1"))),
+        );
         assert!(server_txn.revive_recycled(&rev1).is_ok());
         // check u1 contains MO ->
         assert!(check_entry_has_mo(
@@ -724,12 +702,10 @@ mod tests {
         ));
 
         // Revive u2 and check it has two mo.
-        let rev2 = unsafe {
-            ReviveRecycledEvent::new_impersonate_entry(
-                admin.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("u2"))),
-            )
-        };
+        let rev2 = ReviveRecycledEvent::new_impersonate_entry(
+            admin.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("u2"))),
+        );
         assert!(server_txn.revive_recycled(&rev2).is_ok());
         assert!(check_entry_has_mo(
             &mut server_txn,
@@ -743,15 +719,13 @@ mod tests {
         ));
 
         // Revive u3 and g3 at the same time.
-        let rev3 = unsafe {
-            ReviveRecycledEvent::new_impersonate_entry(
-                admin.clone(),
-                filter_all!(f_or(vec![
-                    f_eq("name", PartialValue::new_iname("u3")),
-                    f_eq("name", PartialValue::new_iname("g3"))
-                ])),
-            )
-        };
+        let rev3 = ReviveRecycledEvent::new_impersonate_entry(
+            admin.clone(),
+            filter_all!(f_or(vec![
+                f_eq("name", PartialValue::new_iname("u3")),
+                f_eq("name", PartialValue::new_iname("g3"))
+            ])),
+        );
         assert!(server_txn.revive_recycled(&rev3).is_ok());
         assert!(!check_entry_has_mo(
             &mut server_txn,
@@ -760,12 +734,10 @@ mod tests {
         ));
 
         // Revive u4, should NOT have the MO.
-        let rev4a = unsafe {
-            ReviveRecycledEvent::new_impersonate_entry(
-                admin.clone(),
-                filter_all!(f_eq("name", PartialValue::new_iname("u4"))),
-            )
-        };
+        let rev4a = ReviveRecycledEvent::new_impersonate_entry(
+            admin.clone(),
+            filter_all!(f_eq("name", PartialValue::new_iname("u4"))),
+        );
         assert!(server_txn.revive_recycled(&rev4a).is_ok());
         assert!(!check_entry_has_mo(
             &mut server_txn,
@@ -774,12 +746,10 @@ mod tests {
         ));
 
         // Now revive g4, should allow MO onto u4.
-        let rev4b = unsafe {
-            ReviveRecycledEvent::new_impersonate_entry(
-                admin,
-                filter_all!(f_eq("name", PartialValue::new_iname("g4"))),
-            )
-        };
+        let rev4b = ReviveRecycledEvent::new_impersonate_entry(
+            admin,
+            filter_all!(f_eq("name", PartialValue::new_iname("g4"))),
+        );
         assert!(server_txn.revive_recycled(&rev4b).is_ok());
         assert!(!check_entry_has_mo(
             &mut server_txn,

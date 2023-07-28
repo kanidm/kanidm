@@ -1821,12 +1821,10 @@ mod tests {
         // Start a new write
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         // delete the class
-        let de_class = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "classname",
-                PartialValue::new_class("testclass")
-            )))
-        };
+        let de_class = DeleteEvent::new_internal_invalid(filter!(f_eq(
+            "classname",
+            PartialValue::new_class("testclass")
+        )));
         assert!(server_txn.delete(&de_class).is_ok());
         // Commit
         server_txn.commit().expect("should not fail");
@@ -1899,12 +1897,10 @@ mod tests {
         // Start a new write
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         // delete the attr
-        let de_attr = unsafe {
-            DeleteEvent::new_internal_invalid(filter!(f_eq(
-                "attributename",
-                PartialValue::new_iutf8("testattr")
-            )))
-        };
+        let de_attr = DeleteEvent::new_internal_invalid(filter!(f_eq(
+            "attributename",
+            PartialValue::new_iutf8("testattr")
+        )));
         assert!(server_txn.delete(&de_attr).is_ok());
         // Commit
         server_txn.commit().expect("should not fail");
