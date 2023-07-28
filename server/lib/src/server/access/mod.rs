@@ -282,16 +282,10 @@ pub trait AccessControlsTransaction<'a> {
             .into_iter()
             .filter_map(|e| {
                 match apply_search_access(&se.ident, related_acp.as_slice(), &e) {
-                    SearchResult::Denied => None,
-                    SearchResult::Grant => {
-                        if cfg!(test) {
-                            // We only allow this during tests.
-                            // No properly written access module should allow
-                            // unbounded attribute read!
-                            Some(unsafe { e.as_ref().clone().into_reduced() })
-                        } else {
-                            None
-                        }
+                    SearchResult::Denied | SearchResult::Grant => {
+                        // No properly written access module should allow
+                        // unbounded attribute read!
+                        None
                     }
                     SearchResult::Allow(allowed_attrs) => {
                         // The allow set constrained.
@@ -1568,10 +1562,8 @@ mod tests {
                 .expect("operation failed");
 
             // Help the type checker for the expect set.
-            let expect_set: Vec<Entry<EntryReduced, EntryCommitted>> = $expect
-                .into_iter()
-                .map(|e| unsafe { e.into_reduced() })
-                .collect();
+            let expect_set: Vec<Entry<EntryReduced, EntryCommitted>> =
+                $expect.into_iter().map(|e| e.into_reduced()).collect();
 
             debug!("expect --> {:?}", expect_set);
             debug!("result --> {:?}", reduced);

@@ -4,6 +4,8 @@ use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthStep};
 
 #[cfg(test)]
+use std::sync::Arc;
+#[cfg(test)]
 use webauthn_rs::prelude::PublicKeyCredential;
 
 #[cfg(test)]
@@ -109,8 +111,8 @@ impl RadiusAuthTokenEvent {
     }
 
     #[cfg(test)]
-    pub fn new_internal(target: Uuid) -> Self {
-        let ident = Identity::from_internal();
+    pub fn new_impersonate(e: Arc<Entry<EntrySealed, EntryCommitted>>, target: Uuid) -> Self {
+        let ident = Identity::from_impersonate_entry_readonly(e);
 
         RadiusAuthTokenEvent { ident, target }
     }
@@ -155,8 +157,8 @@ impl UnixGroupTokenEvent {
     }
 
     #[cfg(test)]
-    pub fn new_internal(target: Uuid) -> Self {
-        let ident = Identity::from_internal();
+    pub fn new_impersonate(e: Arc<Entry<EntrySealed, EntryCommitted>>, target: Uuid) -> Self {
+        let ident = Identity::from_impersonate_entry_readonly(e);
 
         UnixGroupTokenEvent { ident, target }
     }

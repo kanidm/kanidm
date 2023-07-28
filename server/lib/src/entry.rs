@@ -1782,13 +1782,15 @@ impl Entry<EntrySealed, EntryCommitted> {
         })
     }
 
-    /// # Safety
-    /// This function bypasses the access control validation logic and should NOT
+    /// ⚠️  This function bypasses the access control validation logic and should NOT
     /// be used without special care and attention to ensure that no private data
     /// is leaked incorrectly to clients. Generally this is ONLY used inside of
     /// the access control processing functions which correctly applies the reduction
     /// steps.
-    pub unsafe fn into_reduced(self) -> Entry<EntryReduced, EntryCommitted> {
+    ///
+    /// This is a TEST ONLY method and will never be exposed in production.
+    #[cfg(test)]
+    pub(crate) fn into_reduced(self) -> Entry<EntryReduced, EntryCommitted> {
         Entry {
             valid: EntryReduced {
                 uuid: self.valid.uuid,

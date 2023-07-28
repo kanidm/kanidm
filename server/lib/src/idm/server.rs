@@ -2540,7 +2540,12 @@ mod tests {
         idms_prox_write.commit().expect("failed to commit");
 
         let mut idms_prox_read = idms.proxy_read().await;
-        let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN);
+        let admin_entry = idms_prox_read
+            .qs_read
+            .internal_search_uuid(UUID_ADMIN)
+            .expect("Can't access admin entry.");
+
+        let rate = RadiusAuthTokenEvent::new_impersonate(admin_entry, UUID_ADMIN);
         let tok_r = idms_prox_read
             .get_radiusauthtoken(&rate, duration_from_epoch_now())
             .expect("Failed to generate radius auth token");
@@ -2636,7 +2641,16 @@ mod tests {
 
         let mut idms_prox_read = idms.proxy_read().await;
 
-        let ugte = UnixGroupTokenEvent::new_internal(uuid!("01609135-a1c4-43d5-966b-a28227644445"));
+        // Get the account that will be doing the actual reads.
+        let admin_entry = idms_prox_read
+            .qs_read
+            .internal_search_uuid(UUID_ADMIN)
+            .expect("Can't access admin entry.");
+
+        let ugte = UnixGroupTokenEvent::new_impersonate(
+            admin_entry.clone(),
+            uuid!("01609135-a1c4-43d5-966b-a28227644445"),
+        );
         let tok_g = idms_prox_read
             .get_unixgrouptoken(&ugte)
             .expect("Failed to generate unix group token");
@@ -2657,7 +2671,10 @@ mod tests {
         assert!(tok_r.valid);
 
         // Show we can get the admin as a unix group token too
-        let ugte = UnixGroupTokenEvent::new_internal(uuid!("00000000-0000-0000-0000-000000000000"));
+        let ugte = UnixGroupTokenEvent::new_impersonate(
+            admin_entry,
+            uuid!("00000000-0000-0000-0000-000000000000"),
+        );
         let tok_g = idms_prox_read
             .get_unixgrouptoken(&ugte)
             .expect("Failed to generate unix group token");
@@ -3054,7 +3071,12 @@ mod tests {
         idms_prox_write.commit().expect("failed to commit");
 
         let mut idms_prox_read = idms.proxy_read().await;
-        let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN);
+        let admin_entry = idms_prox_read
+            .qs_read
+            .internal_search_uuid(UUID_ADMIN)
+            .expect("Can't access admin entry.");
+
+        let rate = RadiusAuthTokenEvent::new_impersonate(admin_entry, UUID_ADMIN);
         let tok_r = idms_prox_read.get_radiusauthtoken(&rate, time_low);
 
         if tok_r.is_err() {
