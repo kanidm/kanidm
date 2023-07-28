@@ -2363,94 +2363,84 @@ mod tests {
         let schema_outer = Schema::new().expect("failed to create schema");
         let schema = schema_outer.read();
 
-        let e_no_uuid = unsafe { entry_init!().into_invalid_new() };
+        let e_no_uuid = entry_init!().into_invalid_new();
 
         assert_eq!(
             e_no_uuid.validate(&schema),
             Err(SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
         );
 
-        let e_no_class = unsafe {
-            entry_init!((
-                "uuid",
-                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-            ))
-            .into_invalid_new()
-        };
+        let e_no_class = entry_init!((
+            "uuid",
+            Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+        ))
+        .into_invalid_new();
 
         assert_eq!(e_no_class.validate(&schema), Err(SchemaError::NoClassFound));
 
-        let e_bad_class = unsafe {
-            entry_init!(
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("class", Value::new_class("zzzzzz"))
-            )
-            .into_invalid_new()
-        };
+        let e_bad_class = entry_init!(
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            ("class", Value::new_class("zzzzzz"))
+        )
+        .into_invalid_new();
         assert_eq!(
             e_bad_class.validate(&schema),
             Err(SchemaError::InvalidClass(vec!["zzzzzz".to_string()]))
         );
 
-        let e_attr_invalid = unsafe {
-            entry_init!(
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("class", CLASS_OBJECT.clone()),
-                ("class", CLASS_ATTRIBUTETYPE.clone())
-            )
-            .into_invalid_new()
-        };
+        let e_attr_invalid = entry_init!(
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            ("class", CLASS_OBJECT.clone()),
+            ("class", CLASS_ATTRIBUTETYPE.clone())
+        )
+        .into_invalid_new();
         let res = e_attr_invalid.validate(&schema);
         assert!(match res {
             Err(SchemaError::MissingMustAttribute(_)) => true,
             _ => false,
         });
 
-        let e_attr_invalid_may = unsafe {
-            entry_init!(
-                ("class", CLASS_OBJECT.clone()),
-                ("class", CLASS_ATTRIBUTETYPE.clone()),
-                ("attributename", Value::new_iutf8("testattr")),
-                ("description", Value::Utf8("testattr".to_string())),
-                ("multivalue", Value::Bool(false)),
-                ("unique", Value::Bool(false)),
-                ("syntax", Value::Syntax(SyntaxType::Utf8String)),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("zzzzz", Value::Utf8("zzzz".to_string()))
-            )
-            .into_invalid_new()
-        };
+        let e_attr_invalid_may = entry_init!(
+            ("class", CLASS_OBJECT.clone()),
+            ("class", CLASS_ATTRIBUTETYPE.clone()),
+            ("attributename", Value::new_iutf8("testattr")),
+            ("description", Value::Utf8("testattr".to_string())),
+            ("multivalue", Value::Bool(false)),
+            ("unique", Value::Bool(false)),
+            ("syntax", Value::Syntax(SyntaxType::Utf8String)),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            ("zzzzz", Value::Utf8("zzzz".to_string()))
+        )
+        .into_invalid_new();
 
         assert_eq!(
             e_attr_invalid_may.validate(&schema),
             Err(SchemaError::AttributeNotValidForClass("zzzzz".to_string()))
         );
 
-        let e_attr_invalid_syn = unsafe {
-            entry_init!(
-                ("class", CLASS_OBJECT.clone()),
-                ("class", CLASS_ATTRIBUTETYPE.clone()),
-                ("attributename", Value::new_iutf8("testattr")),
-                ("description", Value::Utf8("testattr".to_string())),
-                ("multivalue", Value::Utf8("false".to_string())),
-                ("unique", Value::Bool(false)),
-                ("syntax", Value::Syntax(SyntaxType::Utf8String)),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                )
+        let e_attr_invalid_syn = entry_init!(
+            ("class", CLASS_OBJECT.clone()),
+            ("class", CLASS_ATTRIBUTETYPE.clone()),
+            ("attributename", Value::new_iutf8("testattr")),
+            ("description", Value::Utf8("testattr".to_string())),
+            ("multivalue", Value::Utf8("false".to_string())),
+            ("unique", Value::Bool(false)),
+            ("syntax", Value::Syntax(SyntaxType::Utf8String)),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             )
-            .into_invalid_new()
-        };
+        )
+        .into_invalid_new();
 
         assert_eq!(
             e_attr_invalid_syn.validate(&schema),
@@ -2460,41 +2450,37 @@ mod tests {
         );
 
         // You may not have the phantom.
-        let e_phantom = unsafe {
-            entry_init!(
-                ("class", CLASS_OBJECT.clone()),
-                ("class", CLASS_ATTRIBUTETYPE.clone()),
-                ("attributename", Value::new_iutf8("testattr")),
-                ("description", Value::Utf8("testattr".to_string())),
-                ("multivalue", Value::Bool(false)),
-                ("unique", Value::Bool(false)),
-                ("syntax", Value::Syntax(SyntaxType::Utf8String)),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("password_import", Value::Utf8("password".to_string()))
-            )
-            .into_invalid_new()
-        };
+        let e_phantom = entry_init!(
+            ("class", CLASS_OBJECT.clone()),
+            ("class", CLASS_ATTRIBUTETYPE.clone()),
+            ("attributename", Value::new_iutf8("testattr")),
+            ("description", Value::Utf8("testattr".to_string())),
+            ("multivalue", Value::Bool(false)),
+            ("unique", Value::Bool(false)),
+            ("syntax", Value::Syntax(SyntaxType::Utf8String)),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            ("password_import", Value::Utf8("password".to_string()))
+        )
+        .into_invalid_new();
         assert!(e_phantom.validate(&schema).is_err());
 
-        let e_ok = unsafe {
-            entry_init!(
-                ("class", CLASS_OBJECT.clone()),
-                ("class", CLASS_ATTRIBUTETYPE.clone()),
-                ("attributename", Value::new_iutf8("testattr")),
-                ("description", Value::Utf8("testattr".to_string())),
-                ("multivalue", Value::Bool(true)),
-                ("unique", Value::Bool(false)),
-                ("syntax", Value::Syntax(SyntaxType::Utf8String)),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                )
+        let e_ok = entry_init!(
+            ("class", CLASS_OBJECT.clone()),
+            ("class", CLASS_ATTRIBUTETYPE.clone()),
+            ("attributename", Value::new_iutf8("testattr")),
+            ("description", Value::Utf8("testattr".to_string())),
+            ("multivalue", Value::Bool(true)),
+            ("unique", Value::Bool(false)),
+            ("syntax", Value::Syntax(SyntaxType::Utf8String)),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
             )
-            .into_invalid_new()
-        };
+        )
+        .into_invalid_new();
         assert!(e_ok.validate(&schema).is_ok());
     }
 
@@ -2508,9 +2494,8 @@ mod tests {
         // check index to upper
         // insense to lower
         // attr name to lower
-        let e_test: Entry<EntryInvalid, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
+        let e_test: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            r#"{
             "attrs": {
                 "class": ["extensibleobject"],
                 "name": ["TestPerson"],
@@ -2519,13 +2504,11 @@ mod tests {
                 "InDeX": ["equality"]
             }
         }"#,
-            )
-            .into_invalid_new()
-        };
+        )
+        .into_invalid_new();
 
-        let e_expect: Entry<EntryValid, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
+        let e_expect: Entry<EntryValid, EntryNew> = Entry::unsafe_from_entry_str(
+            r#"{
                 "attrs": {
                     "class": ["extensibleobject"],
                     "name": ["testperson"],
@@ -2534,9 +2517,8 @@ mod tests {
                     "index": ["EQUALITY"]
                 }
             }"#,
-            )
-            .into_valid_new()
-        };
+        )
+        .into_valid_new();
 
         let e_valid = e_test.validate(&schema).expect("validation failure");
 
@@ -2549,18 +2531,16 @@ mod tests {
         let schema = schema_outer.read();
         // Just because you are extensible, doesn't mean you can be lazy
 
-        let e_extensible_bad: Entry<EntryInvalid, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
+        let e_extensible_bad: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            r#"{
             "attrs": {
                 "class": ["extensibleobject"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "multivalue": ["zzzz"]
             }
         }"#,
-            )
-            .into_invalid_new()
-        };
+        )
+        .into_invalid_new();
 
         assert_eq!(
             e_extensible_bad.validate(&schema),
@@ -2570,36 +2550,32 @@ mod tests {
         );
 
         // Extensible doesn't mean you can have the phantoms
-        let e_extensible_phantom: Entry<EntryInvalid, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
+        let e_extensible_phantom: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            r#"{
             "attrs": {
                 "class": ["extensibleobject"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "password_import": ["zzzz"]
             }
         }"#,
-            )
-            .into_invalid_new()
-        };
+        )
+        .into_invalid_new();
 
         assert_eq!(
             e_extensible_phantom.validate(&schema),
             Err(SchemaError::PhantomAttribute("password_import".to_string()))
         );
 
-        let e_extensible: Entry<EntryInvalid, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(
-                r#"{
+        let e_extensible: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            r#"{
             "attrs": {
                 "class": ["extensibleobject"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "multivalue": ["true"]
             }
         }"#,
-            )
-            .into_invalid_new()
-        };
+        )
+        .into_invalid_new();
 
         /* Is okay because extensible! */
         assert!(e_extensible.validate(&schema).is_ok());
@@ -2745,13 +2721,11 @@ mod tests {
             .is_ok());
 
         // Missing person or service account.
-        let e_account = unsafe {
-            entry_init!(
-                ("class", Value::new_class("account")),
-                ("uuid", Value::Uuid(Uuid::new_v4()))
-            )
-            .into_invalid_new()
-        };
+        let e_account = entry_init!(
+            ("class", Value::new_class("account")),
+            ("uuid", Value::Uuid(Uuid::new_v4()))
+        )
+        .into_invalid_new();
 
         assert_eq!(
             e_account.validate(&schema),
@@ -2775,15 +2749,13 @@ mod tests {
         */
 
         // Service can't have person
-        let e_service_person = unsafe {
-            entry_init!(
-                ("class", Value::new_class("service")),
-                ("class", Value::new_class("account")),
-                ("class", Value::new_class("person")),
-                ("uuid", Value::Uuid(Uuid::new_v4()))
-            )
-            .into_invalid_new()
-        };
+        let e_service_person = entry_init!(
+            ("class", Value::new_class("service")),
+            ("class", Value::new_class("account")),
+            ("class", Value::new_class("person")),
+            ("uuid", Value::Uuid(Uuid::new_v4()))
+        )
+        .into_invalid_new();
 
         assert_eq!(
             e_service_person.validate(&schema),
@@ -2793,35 +2765,29 @@ mod tests {
         );
 
         // These are valid configurations.
-        let e_service_valid = unsafe {
-            entry_init!(
-                ("class", Value::new_class("service")),
-                ("class", Value::new_class("account")),
-                ("uuid", Value::Uuid(Uuid::new_v4()))
-            )
-            .into_invalid_new()
-        };
+        let e_service_valid = entry_init!(
+            ("class", Value::new_class("service")),
+            ("class", Value::new_class("account")),
+            ("uuid", Value::Uuid(Uuid::new_v4()))
+        )
+        .into_invalid_new();
 
         assert!(e_service_valid.validate(&schema).is_ok());
 
-        let e_person_valid = unsafe {
-            entry_init!(
-                ("class", Value::new_class("person")),
-                ("class", Value::new_class("account")),
-                ("uuid", Value::Uuid(Uuid::new_v4()))
-            )
-            .into_invalid_new()
-        };
+        let e_person_valid = entry_init!(
+            ("class", Value::new_class("person")),
+            ("class", Value::new_class("account")),
+            ("uuid", Value::Uuid(Uuid::new_v4()))
+        )
+        .into_invalid_new();
 
         assert!(e_person_valid.validate(&schema).is_ok());
 
-        let e_person_valid = unsafe {
-            entry_init!(
-                ("class", Value::new_class("person")),
-                ("uuid", Value::Uuid(Uuid::new_v4()))
-            )
-            .into_invalid_new()
-        };
+        let e_person_valid = entry_init!(
+            ("class", Value::new_class("person")),
+            ("uuid", Value::Uuid(Uuid::new_v4()))
+        )
+        .into_invalid_new();
 
         assert!(e_person_valid.validate(&schema).is_ok());
     }

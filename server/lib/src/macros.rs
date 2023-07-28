@@ -69,7 +69,7 @@ macro_rules! entry_to_account {
         use crate::idm::account::Account;
         use crate::value::Value;
 
-        let mut e: Entry<EntryInvalid, EntryNew> = unsafe { $entry.clone().into_invalid_new() };
+        let mut e: Entry<EntryInvalid, EntryNew> = $entry.clone().into_invalid_new();
         // Add spn, because normally this is generated but in tests we can't.
         let spn = e
             .get_ava_single_iname("name")

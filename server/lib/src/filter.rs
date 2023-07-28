@@ -1568,17 +1568,15 @@ mod tests {
 
     #[test]
     fn test_lessthan_entry_filter() {
-        let e = unsafe {
-            entry_init!(
-                ("userid", Value::new_iutf8("william")),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e = entry_init!(
+            ("userid", Value::new_iutf8("william")),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            ("gidnumber", Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
         let f_t1a = filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(500)));
         assert!(!e.entry_match_no_index(&f_t1a));
@@ -1592,17 +1590,15 @@ mod tests {
 
     #[test]
     fn test_or_entry_filter() {
-        let e = unsafe {
-            entry_init!(
-                ("userid", Value::new_iutf8("william")),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e = entry_init!(
+            ("userid", Value::new_iutf8("william")),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            ("gidnumber", Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
         let f_t1a = filter_resolved!(f_or!([
             f_eq("userid", PartialValue::new_iutf8("william")),
@@ -1631,17 +1627,15 @@ mod tests {
 
     #[test]
     fn test_and_entry_filter() {
-        let e = unsafe {
-            entry_init!(
-                ("userid", Value::new_iutf8("william")),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e = entry_init!(
+            ("userid", Value::new_iutf8("william")),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            ("gidnumber", Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
         let f_t1a = filter_resolved!(f_and!([
             f_eq("userid", PartialValue::new_iutf8("william")),
@@ -1670,17 +1664,15 @@ mod tests {
 
     #[test]
     fn test_not_entry_filter() {
-        let e1 = unsafe {
-            entry_init!(
-                ("userid", Value::new_iutf8("william")),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e1 = entry_init!(
+            ("userid", Value::new_iutf8("william")),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            ("gidnumber", Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
         let f_t1a = filter_resolved!(f_andnot(f_eq("userid", PartialValue::new_iutf8("alice"))));
         assert!(e1.entry_match_no_index(&f_t1a));
@@ -1691,53 +1683,45 @@ mod tests {
 
     #[test]
     fn test_nested_entry_filter() {
-        let e1 = unsafe {
-            entry_init!(
-                ("class", CLASS_PERSON.clone()),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e1 = entry_init!(
+            ("class", CLASS_PERSON.clone()),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            ("gidnumber", Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
-        let e2 = unsafe {
-            entry_init!(
-                ("class", CLASS_PERSON.clone()),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("4b6228ab-1dbe-42a4-a9f5-f6368222438e"))
-                ),
-                ("gidnumber", Value::Uint32(1001))
-            )
-            .into_sealed_new()
-        };
+        let e2 = entry_init!(
+            ("class", CLASS_PERSON.clone()),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("4b6228ab-1dbe-42a4-a9f5-f6368222438e"))
+            ),
+            ("gidnumber", Value::Uint32(1001))
+        )
+        .into_sealed_new();
 
-        let e3 = unsafe {
-            entry_init!(
-                ("class", CLASS_PERSON.clone()),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("7b23c99d-c06b-4a9a-a958-3afa56383e1d"))
-                ),
-                ("gidnumber", Value::Uint32(1002))
-            )
-            .into_sealed_new()
-        };
+        let e3 = entry_init!(
+            ("class", CLASS_PERSON.clone()),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("7b23c99d-c06b-4a9a-a958-3afa56383e1d"))
+            ),
+            ("gidnumber", Value::Uint32(1002))
+        )
+        .into_sealed_new();
 
-        let e4 = unsafe {
-            entry_init!(
-                ("class", CLASS_GROUP.clone()),
-                (
-                    "uuid",
-                    Value::Uuid(uuid::uuid!("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"))
-                ),
-                ("gidnumber", Value::Uint32(1000))
-            )
-            .into_sealed_new()
-        };
+        let e4 = entry_init!(
+            ("class", CLASS_GROUP.clone()),
+            (
+                "uuid",
+                Value::Uuid(uuid::uuid!("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"))
+            ),
+            ("gidnumber", Value::Uint32(1000))
+        )
+        .into_sealed_new();
 
         let f_t1a = filter_resolved!(f_and!([
             f_eq("class", PVCLASS_PERSON.clone()),

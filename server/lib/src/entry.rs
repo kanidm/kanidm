@@ -522,12 +522,14 @@ impl Entry<EntryInit, EntryNew> {
         compare_attrs(&self.attrs, &rhs.attrs)
     }
 
+    /// ⚠️  This function bypasses the db commit and creates invalid replication metadata.
+    /// The entry it creates can never be replicated.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn into_invalid_new(mut self) -> Entry<EntryInvalid, EntryNew> {
+    pub fn into_invalid_new(mut self) -> Entry<EntryInvalid, EntryNew> {
         let cid = Cid::new_zero();
         self.set_last_changed(cid.clone());
 
-        // let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
         let ecstate = EntryChangeState::new_without_schema(&cid, &self.attrs);
 
         Entry {
@@ -537,11 +539,13 @@ impl Entry<EntryInit, EntryNew> {
         }
     }
 
+    /// ⚠️  This function bypasses the db commit and creates invalid replication metadata.
+    /// The entry it creates can never be replicated.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn into_valid_new(mut self) -> Entry<EntryValid, EntryNew> {
+    pub fn into_valid_new(mut self) -> Entry<EntryValid, EntryNew> {
         let cid = Cid::new_zero();
         self.set_last_changed(cid.clone());
-        // let eclog = EntryChangelog::new_without_schema(cid.clone(), self.attrs.clone());
         let ecstate = EntryChangeState::new_without_schema(&cid, &self.attrs);
 
         Entry {
@@ -561,7 +565,6 @@ impl Entry<EntryInit, EntryNew> {
     pub fn into_sealed_committed(mut self) -> Entry<EntrySealed, EntryCommitted> {
         let cid = Cid::new_zero();
         self.set_last_changed(cid.clone());
-        // let eclog = EntryChangelog::new_without_schema(cid, self.attrs.clone());
         let ecstate = EntryChangeState::new_without_schema(&cid, &self.attrs);
         let uuid = self.get_uuid().unwrap_or_else(Uuid::new_v4);
         Entry {
@@ -571,11 +574,13 @@ impl Entry<EntryInit, EntryNew> {
         }
     }
 
+    /// ⚠️  This function bypasses the db commit and creates invalid replication metadata.
+    /// The entry it creates can never be replicated.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn into_sealed_new(mut self) -> Entry<EntrySealed, EntryNew> {
+    pub fn into_sealed_new(mut self) -> Entry<EntrySealed, EntryNew> {
         let cid = Cid::new_zero();
         self.set_last_changed(cid.clone());
-        // let eclog = EntryChangelog::new_without_schema(cid, self.attrs.clone());
         let ecstate = EntryChangeState::new_without_schema(&cid, &self.attrs);
 
         Entry {
@@ -1106,13 +1111,12 @@ where
     }
 }
 
-/*
- * A series of unsafe transitions allowing entries to skip certain steps in
- * the process to facilitate eq/checks.
- */
 impl Entry<EntryInvalid, EntryCommitted> {
+    /// ⚠️  This function bypasses the schema validation and can panic if uuid is not found.
+    /// The entry it creates can never be committed safely or replicated.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn into_valid_new(self) -> Entry<EntryValid, EntryNew> {
+    pub fn into_valid_new(self) -> Entry<EntryValid, EntryNew> {
         let uuid = self.get_uuid().expect("Invalid uuid");
         Entry {
             valid: EntryValid {
@@ -1159,8 +1163,11 @@ impl Entry<EntryInvalid, EntryCommitted> {
 // Both invalid states can be reached from "entry -> invalidate"
 
 impl Entry<EntryInvalid, EntryNew> {
+    /// ⚠️  This function bypasses the schema validation and can panic if uuid is not found.
+    /// The entry it creates can never be committed safely or replicated.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn into_valid_new(self) -> Entry<EntryValid, EntryNew> {
+    pub fn into_valid_new(self) -> Entry<EntryValid, EntryNew> {
         let uuid = self.get_uuid().expect("Invalid uuid");
         Entry {
             valid: EntryValid {
@@ -1188,26 +1195,11 @@ impl Entry<EntryInvalid, EntryNew> {
         }
     }
 
-    /*
+    /// ⚠️  This function bypasses the schema validation and assigns a fake uuid.
+    /// The entry it creates can never be committed safely or replicated.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn into_valid_normal(self) -> Entry<EntryNormalised, EntryNew> {
-        Entry {
-            valid: EntryNormalised,
-            state: EntryNew,
-            attrs: self
-                .attrs
-                .into_iter()
-                .map(|(k, mut v)| {
-                    v.sort_unstable();
-                    (k, v)
-                })
-                .collect(),
-        }
-    }
-    */
-
-    #[cfg(test)]
-    pub unsafe fn into_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
+    pub fn into_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
         let uuid = self.get_uuid().unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntryValid {
@@ -3218,7 +3210,7 @@ mod tests {
     #[test]
     fn test_entry_apply_modlist() {
         // Test application of changes to an entry.
-        let mut e: Entry<EntryInvalid, EntryNew> = unsafe { Entry::new().into_invalid_new() };
+        let mut e: Entry<EntryInvalid, EntryNew> = Entry::new().into_invalid_new();
 
         e.add_ava("userid", Value::from("william"));
 
