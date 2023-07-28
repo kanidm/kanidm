@@ -2054,11 +2054,10 @@ mod tests {
     macro_rules! entry_exists {
         ($be:expr, $ent:expr) => {{
             let ei = unsafe { $ent.clone().into_sealed_committed() };
-            let filt = unsafe {
-                ei.filter_from_attrs(&vec![AttrString::from("uuid")])
-                    .expect("failed to generate filter")
-                    .into_valid_resolved()
-            };
+            let filt = ei
+                .filter_from_attrs(&vec![AttrString::from("uuid")])
+                .expect("failed to generate filter")
+                .into_valid_resolved();
             let lims = Limits::unlimited();
             let entries = $be.search(&lims, &filt).expect("failed to search");
             entries.first().is_some()
@@ -2068,11 +2067,10 @@ mod tests {
     macro_rules! entry_attr_pres {
         ($be:expr, $ent:expr, $attr:expr) => {{
             let ei = unsafe { $ent.clone().into_sealed_committed() };
-            let filt = unsafe {
-                ei.filter_from_attrs(&vec![AttrString::from("userid")])
-                    .expect("failed to generate filter")
-                    .into_valid_resolved()
-            };
+            let filt = ei
+                .filter_from_attrs(&vec![AttrString::from("userid")])
+                .expect("failed to generate filter")
+                .into_valid_resolved();
             let lims = Limits::unlimited();
             let entries = $be.search(&lims, &filt).expect("failed to search");
             match entries.first() {
@@ -2129,8 +2127,7 @@ mod tests {
             assert!(single_result.is_ok());
             // Test a simple EQ search
 
-            let filt =
-                unsafe { filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire"))) };
+            let filt = filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire")));
 
             let lims = Limits::unlimited();
 
@@ -2168,7 +2165,7 @@ mod tests {
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(&lims, unsafe { &filter_resolved!(f_pres("userid")) })
+                .search(&lims, &filter_resolved!(f_pres("userid")))
                 .expect("Failed to search");
 
             // Get these out to usable entries.
@@ -2249,7 +2246,7 @@ mod tests {
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(&lims, unsafe { &filter_resolved!(f_pres("userid")) })
+                .search(&lims, &filter_resolved!(f_pres("userid")))
                 .expect("Failed to search");
 
             // Get these out to usable entries.
@@ -2814,8 +2811,7 @@ mod tests {
 
             let _rset = be.create(&CID_ZERO, vec![e1, e2]).unwrap();
             // Test fully unindexed
-            let f_un =
-                unsafe { filter_resolved!(f_eq("no-index", PartialValue::new_utf8s("william"))) };
+            let f_un = filter_resolved!(f_eq("no-index", PartialValue::new_utf8s("william")));
 
             let (r, _plan) = be.filter2idl(f_un.to_inner(), 0).unwrap();
             match r {
@@ -2826,7 +2822,7 @@ mod tests {
             }
 
             // Test that a fully indexed search works
-            let feq = unsafe { filter_resolved!(f_eq("name", PartialValue::new_utf8s("william"))) };
+            let feq = filter_resolved!(f_eq("name", PartialValue::new_utf8s("william")));
 
             let (r, _plan) = be.filter2idl(feq.to_inner(), 0).unwrap();
             match r {
@@ -2840,15 +2836,13 @@ mod tests {
 
             // Test and/or
             //   full index and
-            let f_in_and = unsafe {
-                filter_resolved!(f_and!([
-                    f_eq("name", PartialValue::new_utf8s("william")),
-                    f_eq(
-                        "uuid",
-                        PartialValue::new_utf8s("db237e8a-0079-4b8c-8a56-593b22aa44d1")
-                    )
-                ]))
-            };
+            let f_in_and = filter_resolved!(f_and!([
+                f_eq("name", PartialValue::new_utf8s("william")),
+                f_eq(
+                    "uuid",
+                    PartialValue::new_utf8s("db237e8a-0079-4b8c-8a56-593b22aa44d1")
+                )
+            ]));
 
             let (r, _plan) = be.filter2idl(f_in_and.to_inner(), 0).unwrap();
             match r {
@@ -2861,19 +2855,15 @@ mod tests {
             }
 
             //   partial index and
-            let f_p1 = unsafe {
-                filter_resolved!(f_and!([
-                    f_eq("name", PartialValue::new_utf8s("william")),
-                    f_eq("no-index", PartialValue::new_utf8s("william"))
-                ]))
-            };
+            let f_p1 = filter_resolved!(f_and!([
+                f_eq("name", PartialValue::new_utf8s("william")),
+                f_eq("no-index", PartialValue::new_utf8s("william"))
+            ]));
 
-            let f_p2 = unsafe {
-                filter_resolved!(f_and!([
-                    f_eq("name", PartialValue::new_utf8s("william")),
-                    f_eq("no-index", PartialValue::new_utf8s("william"))
-                ]))
-            };
+            let f_p2 = filter_resolved!(f_and!([
+                f_eq("name", PartialValue::new_utf8s("william")),
+                f_eq("no-index", PartialValue::new_utf8s("william"))
+            ]));
 
             let (r, _plan) = be.filter2idl(f_p1.to_inner(), 0).unwrap();
             match r {
@@ -2896,12 +2886,10 @@ mod tests {
             }
 
             //   no index and
-            let f_no_and = unsafe {
-                filter_resolved!(f_and!([
-                    f_eq("no-index", PartialValue::new_utf8s("william")),
-                    f_eq("other-no-index", PartialValue::new_utf8s("william"))
-                ]))
-            };
+            let f_no_and = filter_resolved!(f_and!([
+                f_eq("no-index", PartialValue::new_utf8s("william")),
+                f_eq("other-no-index", PartialValue::new_utf8s("william"))
+            ]));
 
             let (r, _plan) = be.filter2idl(f_no_and.to_inner(), 0).unwrap();
             match r {
@@ -2912,9 +2900,8 @@ mod tests {
             }
 
             //   full index or
-            let f_in_or = unsafe {
-                filter_resolved!(f_or!([f_eq("name", PartialValue::new_utf8s("william"))]))
-            };
+            let f_in_or =
+                filter_resolved!(f_or!([f_eq("name", PartialValue::new_utf8s("william"))]));
 
             let (r, _plan) = be.filter2idl(f_in_or.to_inner(), 0).unwrap();
             match r {
@@ -2926,12 +2913,10 @@ mod tests {
                 }
             }
             //   partial (aka allids) or
-            let f_un_or = unsafe {
-                filter_resolved!(f_or!([f_eq(
-                    "no-index",
-                    PartialValue::new_utf8s("william")
-                )]))
-            };
+            let f_un_or = filter_resolved!(f_or!([f_eq(
+                "no-index",
+                PartialValue::new_utf8s("william")
+            )]));
 
             let (r, _plan) = be.filter2idl(f_un_or.to_inner(), 0).unwrap();
             match r {
@@ -2942,9 +2927,8 @@ mod tests {
             }
 
             // Test root andnot
-            let f_r_andnot = unsafe {
-                filter_resolved!(f_andnot(f_eq("name", PartialValue::new_utf8s("william"))))
-            };
+            let f_r_andnot =
+                filter_resolved!(f_andnot(f_eq("name", PartialValue::new_utf8s("william"))));
 
             let (r, _plan) = be.filter2idl(f_r_andnot.to_inner(), 0).unwrap();
             match r {
@@ -2957,12 +2941,10 @@ mod tests {
             }
 
             // test andnot as only in and
-            let f_and_andnot = unsafe {
-                filter_resolved!(f_and!([f_andnot(f_eq(
-                    "name",
-                    PartialValue::new_utf8s("william")
-                ))]))
-            };
+            let f_and_andnot = filter_resolved!(f_and!([f_andnot(f_eq(
+                "name",
+                PartialValue::new_utf8s("william")
+            ))]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
@@ -2974,12 +2956,10 @@ mod tests {
                 }
             }
             // test andnot as only in or
-            let f_or_andnot = unsafe {
-                filter_resolved!(f_or!([f_andnot(f_eq(
-                    "name",
-                    PartialValue::new_utf8s("william")
-                ))]))
-            };
+            let f_or_andnot = filter_resolved!(f_or!([f_andnot(f_eq(
+                "name",
+                PartialValue::new_utf8s("william")
+            ))]));
 
             let (r, _plan) = be.filter2idl(f_or_andnot.to_inner(), 0).unwrap();
             match r {
@@ -2992,12 +2972,10 @@ mod tests {
             }
 
             // test andnot in and (first) with name
-            let f_and_andnot = unsafe {
-                filter_resolved!(f_and!([
-                    f_andnot(f_eq("name", PartialValue::new_utf8s("claire"))),
-                    f_pres("name")
-                ]))
-            };
+            let f_and_andnot = filter_resolved!(f_and!([
+                f_andnot(f_eq("name", PartialValue::new_utf8s("claire"))),
+                f_pres("name")
+            ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
@@ -3010,12 +2988,10 @@ mod tests {
                 }
             }
             // test andnot in and (last) with name
-            let f_and_andnot = unsafe {
-                filter_resolved!(f_and!([
-                    f_pres("name"),
-                    f_andnot(f_eq("name", PartialValue::new_utf8s("claire")))
-                ]))
-            };
+            let f_and_andnot = filter_resolved!(f_and!([
+                f_pres("name"),
+                f_andnot(f_eq("name", PartialValue::new_utf8s("claire")))
+            ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
@@ -3027,12 +3003,10 @@ mod tests {
                 }
             }
             // test andnot in and (first) with no-index
-            let f_and_andnot = unsafe {
-                filter_resolved!(f_and!([
-                    f_andnot(f_eq("name", PartialValue::new_utf8s("claire"))),
-                    f_pres("no-index")
-                ]))
-            };
+            let f_and_andnot = filter_resolved!(f_and!([
+                f_andnot(f_eq("name", PartialValue::new_utf8s("claire"))),
+                f_pres("no-index")
+            ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
@@ -3042,12 +3016,10 @@ mod tests {
                 }
             }
             // test andnot in and (last) with no-index
-            let f_and_andnot = unsafe {
-                filter_resolved!(f_and!([
-                    f_pres("no-index"),
-                    f_andnot(f_eq("name", PartialValue::new_utf8s("claire")))
-                ]))
-            };
+            let f_and_andnot = filter_resolved!(f_and!([
+                f_pres("no-index"),
+                f_andnot(f_eq("name", PartialValue::new_utf8s("claire")))
+            ]));
 
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
@@ -3058,7 +3030,7 @@ mod tests {
             }
 
             //   empty or
-            let f_e_or = unsafe { filter_resolved!(f_or!([])) };
+            let f_e_or = filter_resolved!(f_or!([]));
 
             let (r, _plan) = be.filter2idl(f_e_or.to_inner(), 0).unwrap();
             match r {
@@ -3070,7 +3042,7 @@ mod tests {
                 }
             }
 
-            let f_e_and = unsafe { filter_resolved!(f_and!([])) };
+            let f_e_and = filter_resolved!(f_and!([]));
 
             let (r, _plan) = be.filter2idl(f_e_and.to_inner(), 0).unwrap();
             match r {
@@ -3091,8 +3063,7 @@ mod tests {
             // should fall back to an empty set because we can't satisfy the term
             be.purge_idxs().unwrap();
             debug!("{:?}", be.missing_idxs().unwrap());
-            let f_eq =
-                unsafe { filter_resolved!(f_eq("name", PartialValue::new_utf8s("william"))) };
+            let f_eq = filter_resolved!(f_eq("name", PartialValue::new_utf8s("william")));
 
             let (r, _plan) = be.filter2idl(f_eq.to_inner(), 0).unwrap();
             match r {
@@ -3216,11 +3187,10 @@ mod tests {
             let single_result = be.create(&CID_ZERO, vec![e.clone()]);
 
             assert!(single_result.is_ok());
-            let filt = unsafe {
-                e.filter_from_attrs(&[AttrString::from("nonexist")])
-                    .expect("failed to generate filter")
-                    .into_valid_resolved()
-            };
+            let filt = e
+                .filter_from_attrs(&[AttrString::from("nonexist")])
+                .expect("failed to generate filter")
+                .into_valid_resolved();
             // check allow on allids
             let res = be.search(&lim_allow_allids, &filt);
             assert!(res.is_ok());
@@ -3252,11 +3222,10 @@ mod tests {
             let single_result = be.create(&CID_ZERO, vec![e.clone()]);
             assert!(single_result.is_ok());
 
-            let filt = unsafe {
-                e.filter_from_attrs(&[AttrString::from("nonexist")])
-                    .expect("failed to generate filter")
-                    .into_valid_resolved()
-            };
+            let filt = e
+                .filter_from_attrs(&[AttrString::from("nonexist")])
+                .expect("failed to generate filter")
+                .into_valid_resolved();
 
             // --> This is the all ids path (unindexed)
             // check allow on entry max
@@ -3323,18 +3292,16 @@ mod tests {
             //
             // This creates a partial, and because it's the first iteration in the loop, this
             // doesn't encounter partial threshold testing.
-            let filt = unsafe {
-                filter_resolved!(f_and!([
-                    f_or!([
-                        f_eq("nonexist", PartialValue::new_utf8s("x")),
-                        f_eq("nonexist", PartialValue::new_utf8s("y"))
-                    ]),
-                    f_or!([
-                        f_eq("name", PartialValue::new_utf8s("claire")),
-                        f_eq("name", PartialValue::new_utf8s("william"))
-                    ]),
-                ]))
-            };
+            let filt = filter_resolved!(f_and!([
+                f_or!([
+                    f_eq("nonexist", PartialValue::new_utf8s("x")),
+                    f_eq("nonexist", PartialValue::new_utf8s("y"))
+                ]),
+                f_or!([
+                    f_eq("name", PartialValue::new_utf8s("claire")),
+                    f_eq("name", PartialValue::new_utf8s("william"))
+                ]),
+            ]));
 
             let res = be.search(&lim_allow, &filt);
             assert!(res.is_ok());
@@ -3382,7 +3349,7 @@ mod tests {
         assert!(single_result.is_ok());
 
         // Assert it's in A but not B.
-        let filt = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_utf8s("william"))) };
+        let filt = filter_resolved!(f_eq("userid", PartialValue::new_utf8s("william")));
 
         let lims = Limits::unlimited();
 
@@ -3403,7 +3370,7 @@ mod tests {
         assert!(single_result.is_ok());
 
         // Assert it's in B but not A
-        let filt = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire"))) };
+        let filt = filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire")));
 
         let lims = Limits::unlimited();
 

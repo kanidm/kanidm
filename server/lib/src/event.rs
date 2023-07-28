@@ -471,14 +471,14 @@ impl DeleteEvent {
         }
     }
 
+    /// ⚠️  - Bypass the schema state machine, allowing an invalid filter to be used in an impersonate request.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
     pub fn new_impersonate_identity(ident: Identity, filter: Filter<FilterInvalid>) -> Self {
-        unsafe {
-            DeleteEvent {
-                ident,
-                filter: filter.clone().into_valid(),
-                filter_orig: filter.into_valid(),
-            }
+        DeleteEvent {
+            ident,
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
         }
     }
 

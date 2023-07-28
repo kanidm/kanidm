@@ -2628,7 +2628,10 @@ mod tests {
         let f_insense = filter_all!(f_eq("class", PartialValue::new_class("AttributeType")));
         assert_eq!(
             f_insense.validate(&schema),
-            Ok(unsafe { filter_valid!(f_eq("class", PartialValue::new_class("attributetype"))) })
+            Ok(filter_valid!(f_eq(
+                "class",
+                PartialValue::new_class("attributetype")
+            )))
         );
         // Test the recursive structures validate
         let f_or_empty = filter_all!(f_or!([]));
@@ -2658,13 +2661,11 @@ mod tests {
         ])));
         assert_eq!(
             f_or_ok.validate(&schema),
-            Ok(unsafe {
-                filter_valid!(f_andnot(f_and!([
-                    f_eq("class", PartialValue::new_class("attributetype")),
-                    f_sub("class", PartialValue::new_class("classtype")),
-                    f_pres("class")
-                ])))
-            })
+            Ok(filter_valid!(f_andnot(f_and!([
+                f_eq("class", PartialValue::new_class("attributetype")),
+                f_sub("class", PartialValue::new_class("classtype")),
+                f_pres("class")
+            ]))))
         );
     }
 

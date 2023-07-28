@@ -3205,12 +3205,10 @@ mod tests {
 
         e.add_ava("userid", Value::from("william"));
 
-        let present_single_mods = unsafe {
-            ModifyList::new_valid_list(vec![Modify::Present(
-                AttrString::from("attr"),
-                Value::new_iutf8("value"),
-            )])
-        };
+        let present_single_mods = ModifyList::new_valid_list(vec![Modify::Present(
+            AttrString::from("attr"),
+            Value::new_iutf8("value"),
+        )]);
 
         assert!(e.apply_modlist(&present_single_mods).is_ok());
 
@@ -3219,12 +3217,10 @@ mod tests {
         assert!(e.attribute_equality("attr", &PartialValue::new_iutf8("value")));
 
         // Assert present for multivalue
-        let present_multivalue_mods = unsafe {
-            ModifyList::new_valid_list(vec![
-                Modify::Present(AttrString::from("class"), Value::new_iutf8("test")),
-                Modify::Present(AttrString::from("class"), Value::new_iutf8("multi_test")),
-            ])
-        };
+        let present_multivalue_mods = ModifyList::new_valid_list(vec![
+            Modify::Present(AttrString::from("class"), Value::new_iutf8("test")),
+            Modify::Present(AttrString::from("class"), Value::new_iutf8("multi_test")),
+        ]);
 
         assert!(e.apply_modlist(&present_multivalue_mods).is_ok());
 
@@ -3233,14 +3229,14 @@ mod tests {
 
         // Assert purge on single/multi/empty value
         let purge_single_mods =
-            unsafe { ModifyList::new_valid_list(vec![Modify::Purged(AttrString::from("attr"))]) };
+            ModifyList::new_valid_list(vec![Modify::Purged(AttrString::from("attr"))]);
 
         assert!(e.apply_modlist(&purge_single_mods).is_ok());
 
         assert!(!e.attribute_pres("attr"));
 
         let purge_multi_mods =
-            unsafe { ModifyList::new_valid_list(vec![Modify::Purged(AttrString::from("class"))]) };
+            ModifyList::new_valid_list(vec![Modify::Purged(AttrString::from("class"))]);
 
         assert!(e.apply_modlist(&purge_multi_mods).is_ok());
 
@@ -3251,12 +3247,10 @@ mod tests {
         assert!(e.apply_modlist(&purge_empty_mods).is_ok());
 
         // Assert removed on value that exists and doesn't exist
-        let remove_mods = unsafe {
-            ModifyList::new_valid_list(vec![Modify::Removed(
-                AttrString::from("attr"),
-                PartialValue::new_iutf8("value"),
-            )])
-        };
+        let remove_mods = ModifyList::new_valid_list(vec![Modify::Removed(
+            AttrString::from("attr"),
+            PartialValue::new_iutf8("value"),
+        )]);
 
         assert!(e.apply_modlist(&present_single_mods).is_ok());
         assert!(e.attribute_equality("attr", &PartialValue::new_iutf8("value")));
