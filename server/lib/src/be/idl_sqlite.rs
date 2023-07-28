@@ -541,14 +541,12 @@ pub trait IdlSqliteTransaction {
     // This allow is critical as it resolves a life time issue in stmt.
     #[allow(clippy::let_and_return)]
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
-        let conn = match self.get_conn() {
-            Ok(conn) => conn,
-            Err(_) => return vec![Err(ConsistencyError::SqliteIntegrityFailure)],
+        let Ok(conn) = self.get_conn() else {
+            return vec![Err(ConsistencyError::SqliteIntegrityFailure)]
         };
 
-        let mut stmt = match conn.prepare("PRAGMA integrity_check;") {
-            Ok(r) => r,
-            Err(_) => return vec![Err(ConsistencyError::SqliteIntegrityFailure)],
+        let Ok(mut stmt) = conn.prepare("PRAGMA integrity_check;") else {
+            return vec![Err(ConsistencyError::SqliteIntegrityFailure)]
         };
 
         // Allow this as it actually extends the life of stmt

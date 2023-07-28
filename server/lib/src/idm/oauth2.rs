@@ -895,15 +895,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|_| admin_error!("Account is not valid"));
 
-                let entry = match valid {
-                    Ok(Some(entry)) => entry,
-                    _ => {
-                        security_info!(
-                            ?uuid,
-                            "access token has no account not valid, returning inactive"
-                        );
-                        return Err(Oauth2Error::InvalidToken);
-                    }
+                let Ok(Some(entry)) = valid else {
+                    security_info!(
+                        ?uuid,
+                        "access token has no account not valid, returning inactive"
+                    );
+                    return Err(Oauth2Error::InvalidToken);
                 };
 
                 // Check the not issued before of the session relative to this refresh iat
@@ -1612,15 +1609,12 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|_| admin_error!("Account is not valid"));
 
-                let entry = match valid {
-                    Ok(Some(entry)) => entry,
-                    _ => {
-                        security_info!(
-                            ?uuid,
-                            "access token has no account not valid, returning inactive"
-                        );
-                        return Ok(AccessTokenIntrospectResponse::inactive());
-                    }
+                let Ok(Some(entry)) = valid else {
+                    security_info!(
+                        ?uuid,
+                        "access token has no account not valid, returning inactive"
+                    );
+                    return Ok(AccessTokenIntrospectResponse::inactive());
                 };
 
                 let account = match Account::try_from_entry_no_groups(&entry) {
@@ -1718,15 +1712,12 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
                     .map_err(|_| admin_error!("Account is not valid"));
 
-                let entry = match valid {
-                    Ok(Some(entry)) => entry,
-                    _ => {
-                        security_info!(
-                            ?uuid,
-                            "access token has account not valid, returning inactive"
-                        );
-                        return Err(Oauth2Error::InvalidToken);
-                    }
+                let Ok(Some(entry)) = valid else {
+                    security_info!(
+                        ?uuid,
+                        "access token has account not valid, returning inactive"
+                    );
+                    return Err(Oauth2Error::InvalidToken);
                 };
 
                 let account = match Account::try_from_entry_ro(&entry, &mut self.qs_read) {

@@ -431,14 +431,11 @@ pub trait BackendTransaction {
 
                 for f in f_andnot.iter() {
                     f_rem_count -= 1;
-                    let f_in = match f {
-                        FilterResolved::AndNot(f_in, _) => f_in,
-                        _ => {
-                            filter_error!(
-                                "Invalid server state, a cand filter leaked to andnot set!"
-                            );
-                            return Err(OperationError::InvalidState);
-                        }
+                    let FilterResolved::AndNot(f_in, _) = f else {
+                        filter_error!(
+                            "Invalid server state, a cand filter leaked to andnot set!"
+                        );
+                        return Err(OperationError::InvalidState);
                     };
                     let (inter, fp) = self.filter2idl(f_in, thres)?;
                     // It's an and not, so we need to wrap the plan accordingly.
@@ -754,12 +751,9 @@ pub trait BackendTransaction {
             // We only check these on live entries.
             let (n2u_add, n2u_rem) = Entry::idx_name2uuid_diff(None, Some(e));
 
-            let n2u_set = match (n2u_add, n2u_rem) {
-                (Some(set), None) => set,
-                (_, _) => {
-                    admin_error!("Invalid idx_name2uuid_diff state");
-                    return Err(ConsistencyError::BackendIndexSync);
-                }
+            let (Some(n2u_set), None) = (n2u_add, n2u_rem) else {
+                admin_error!("Invalid idx_name2uuid_diff state");
+                return Err(ConsistencyError::BackendIndexSync);
             };
 
             // If the set.len > 1, check each item.

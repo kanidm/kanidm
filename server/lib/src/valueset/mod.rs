@@ -569,9 +569,7 @@ pub fn uuid_to_proto_string(u: Uuid) -> String {
 pub fn from_result_value_iter(
     mut iter: impl Iterator<Item = Result<Value, OperationError>>,
 ) -> Result<ValueSet, OperationError> {
-    let init = if let Some(v) = iter.next() {
-        v
-    } else {
+    let Some(init) = iter.next() else {
         admin_error!("Empty value iterator");
         return Err(OperationError::InvalidValueState);
     };
@@ -630,9 +628,7 @@ pub fn from_result_value_iter(
 }
 
 pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet, OperationError> {
-    let init = if let Some(v) = iter.next() {
-        v
-    } else {
+    let Some(init) = iter.next() else {
         admin_error!("Empty value iterator");
         return Err(OperationError::InvalidValueState);
     };

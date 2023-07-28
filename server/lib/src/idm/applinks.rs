@@ -5,12 +5,9 @@ use kanidm_proto::internal::AppLink;
 impl<'a> IdmServerProxyReadTransaction<'a> {
     pub fn list_applinks(&mut self, ident: &Identity) -> Result<Vec<AppLink>, OperationError> {
         // From the member-of of the ident.
-        let ident_mo = match ident.get_memberof() {
-            Some(mo) => mo,
-            None => {
-                debug!("Ident has no memberof, no applinks are present");
-                return Ok(Vec::with_capacity(0));
-            }
+        let Some(ident_mo) = ident.get_memberof() else {
+            debug!("Ident has no memberof, no applinks are present");
+            return Ok(Vec::with_capacity(0));
         };
 
         // Formerly we did an internal search here, but we no longer need to since we have

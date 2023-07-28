@@ -509,9 +509,7 @@ pub trait AccessControlsTransaction<'a> {
             // Due to how batch mod works, we have to check the modlist *per entry* rather
             // than as a whole.
 
-            let modlist = if let Some(mlist) = me.modset.get(&e.get_uuid()) {
-                mlist
-            } else {
+            let Some(modlist) = me.modset.get(&e.get_uuid()) else {
                 security_access!(
                     "modlist not present for {}, failing operation.",
                     e.get_uuid()

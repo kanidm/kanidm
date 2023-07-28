@@ -234,16 +234,13 @@ pub trait ReplicationUpdateVectorTransaction {
             // For each server and range low to high, iterate over
             // the list of CID's in the main RUV.
 
-            let ruv_range = match range.get(s_uuid) {
-                Some(r) => r,
-                None => {
-                    // This is valid because if we clean up a server range on
-                    // this node, but the other server isn't aware yet, so we
-                    // just no-op this. The changes we have will still be
-                    // correctly found and sent.
-                    debug!(?s_uuid, "range not found in ruv.");
-                    continue;
-                }
+            let Some(ruv_range) = range.get(s_uuid) else {
+                // This is valid because if we clean up a server range on
+                // this node, but the other server isn't aware yet, so we
+                // just no-op this. The changes we have will still be
+                // correctly found and sent.
+                debug!(?s_uuid, "range not found in ruv.");
+                continue;
             };
 
             // Get from the min to the max. Unbounded and
