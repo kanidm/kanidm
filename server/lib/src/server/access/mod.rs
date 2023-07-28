@@ -1079,7 +1079,7 @@ mod tests {
     const UUID_TEST_GROUP_2: Uuid = uuid::uuid!("acae81d6-5ea7-4bd8-8f7f-fcec4c0dd647");
 
     lazy_static! {
-        pub static ref E_TEST_ACCOUNT_1: Arc<EntrySealedCommitted> = Arc::new(unsafe {
+        pub static ref E_TEST_ACCOUNT_1: Arc<EntrySealedCommitted> = Arc::new(
             entry_init!(
                 ("class", Value::new_class("object")),
                 ("name", Value::new_iname("test_account_1")),
@@ -1087,8 +1087,8 @@ mod tests {
                 ("memberof", Value::Refer(UUID_TEST_GROUP_1))
             )
             .into_sealed_committed()
-        });
-        pub static ref E_TEST_ACCOUNT_2: Arc<EntrySealedCommitted> = Arc::new(unsafe {
+        );
+        pub static ref E_TEST_ACCOUNT_2: Arc<EntrySealedCommitted> = Arc::new(
             entry_init!(
                 ("class", Value::new_class("object")),
                 ("name", Value::new_iname("test_account_1")),
@@ -1096,7 +1096,7 @@ mod tests {
                 ("memberof", Value::Refer(UUID_TEST_GROUP_2))
             )
             .into_sealed_committed()
-        });
+        );
     }
 
     macro_rules! acp_from_entry_err {
@@ -1106,7 +1106,7 @@ mod tests {
             $type:ty
         ) => {{
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
-            let ev1 = unsafe { e1.into_sealed_committed() };
+            let ev1 = e1.into_sealed_committed();
 
             let r1 = <$type>::try_from($qs, &ev1);
             assert!(r1.is_err());
@@ -1119,7 +1119,7 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            let ev1 = unsafe { $e.into_sealed_committed() };
+            let ev1 = $e.into_sealed_committed();
 
             let r1 = <$type>::try_from($qs, &ev1);
             assert!(r1.is_ok());
@@ -1598,8 +1598,8 @@ mod tests {
     #[test]
     fn test_access_enforce_search() {
         // Test that entries from a search are reduced by acps
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
-        let ev2 = unsafe { E_TESTPERSON_2.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
+        let ev2 = E_TESTPERSON_2.clone().into_sealed_committed();
 
         let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2)];
 
@@ -1642,7 +1642,7 @@ mod tests {
     fn test_access_enforce_scope_search() {
         sketching::test_init();
         // Test that identities are bound by their access scope.
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
 
         let ex_some = vec![Arc::new(ev1.clone())];
 
@@ -1685,10 +1685,10 @@ mod tests {
         // Test that in ident only mode that all attrs are always denied. The op should already have
         // "nothing to do" based on search_filter_entries, but we do the "right thing" anyway.
 
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 
-        let exv1 = unsafe { E_TESTPERSON_1_REDUCED.clone().into_sealed_committed() };
+        let exv1 = E_TESTPERSON_1_REDUCED.clone().into_sealed_committed();
 
         let ex_anon_some = vec![exv1];
 
@@ -1725,10 +1725,10 @@ mod tests {
         // Test that attributes are correctly limited.
         // In this case, we test that a user can only see "name" despite the
         // class and uuid being present.
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 
-        let exv1 = unsafe { E_TESTPERSON_1_REDUCED.clone().into_sealed_committed() };
+        let exv1 = E_TESTPERSON_1_REDUCED.clone().into_sealed_committed();
         let ex_anon = vec![exv1];
 
         let se_anon = unsafe {
@@ -1759,11 +1759,11 @@ mod tests {
         // Test that attributes are correctly limited by the request.
         // In this case, we test that a user can only see "name" despite the
         // class and uuid being present.
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
 
         let r_set = vec![Arc::new(ev1)];
 
-        let exv1 = unsafe { E_TESTPERSON_1_REDUCED.clone().into_sealed_committed() };
+        let exv1 = E_TESTPERSON_1_REDUCED.clone().into_sealed_committed();
         let ex_anon = vec![exv1];
 
         let mut se_anon = unsafe {
@@ -1843,7 +1843,7 @@ mod tests {
 
     #[test]
     fn test_access_enforce_modify() {
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 
         // Name present
@@ -1975,7 +1975,7 @@ mod tests {
 
     #[test]
     fn test_access_enforce_scope_modify() {
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 
         // Name present
@@ -2186,7 +2186,7 @@ mod tests {
 
     #[test]
     fn test_access_enforce_delete() {
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 
         let de_admin = unsafe {
@@ -2220,7 +2220,7 @@ mod tests {
 
     #[test]
     fn test_access_enforce_scope_delete() {
-        let ev1 = unsafe { E_TESTPERSON_1.clone().into_sealed_committed() };
+        let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 
         let admin = E_TEST_ACCOUNT_1.clone();
@@ -2284,7 +2284,7 @@ mod tests {
         let admin = Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone());
 
         let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.into_sealed_committed() };
+        let ev1 = e1.into_sealed_committed();
 
         let r_set = vec![Arc::new(ev1)];
 
@@ -2321,7 +2321,7 @@ mod tests {
         let admin = Identity::from_impersonate_entry_readwrite(E_TEST_ACCOUNT_1.clone());
 
         let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.into_sealed_committed() };
+        let ev1 = e1.into_sealed_committed();
 
         let r_set = vec![Arc::new(ev1)];
 
@@ -2402,25 +2402,21 @@ mod tests {
     fn test_access_sync_authority_delete() {
         sketching::test_init();
 
-        let ev1 = unsafe {
-            entry_init!(
-                ("class", CLASS_ACCOUNT.clone()),
-                ("name", Value::new_iname("testperson1")),
-                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
-            )
-            .into_sealed_committed()
-        };
+        let ev1 = entry_init!(
+            ("class", CLASS_ACCOUNT.clone()),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+        )
+        .into_sealed_committed();
         let r1_set = vec![Arc::new(ev1)];
 
-        let ev2 = unsafe {
-            entry_init!(
-                ("class", CLASS_ACCOUNT.clone()),
-                ("class", CLASS_SYNC_OBJECT.clone()),
-                ("name", Value::new_iname("testperson1")),
-                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
-            )
-            .into_sealed_committed()
-        };
+        let ev2 = entry_init!(
+            ("class", CLASS_ACCOUNT.clone()),
+            ("class", CLASS_SYNC_OBJECT.clone()),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+        )
+        .into_sealed_committed();
         let r2_set = vec![Arc::new(ev2)];
 
         let de_admin = unsafe {
@@ -2449,27 +2445,23 @@ mod tests {
     fn test_access_sync_authority_modify() {
         sketching::test_init();
 
-        let ev1 = unsafe {
-            entry_init!(
-                ("class", CLASS_ACCOUNT.clone()),
-                ("name", Value::new_iname("testperson1")),
-                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
-            )
-            .into_sealed_committed()
-        };
+        let ev1 = entry_init!(
+            ("class", CLASS_ACCOUNT.clone()),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+        )
+        .into_sealed_committed();
         let r1_set = vec![Arc::new(ev1)];
 
         let sync_uuid = Uuid::new_v4();
-        let ev2 = unsafe {
-            entry_init!(
-                ("class", CLASS_ACCOUNT.clone()),
-                ("class", CLASS_SYNC_OBJECT.clone()),
-                ("sync_parent_uuid", Value::Refer(sync_uuid)),
-                ("name", Value::new_iname("testperson1")),
-                ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
-            )
-            .into_sealed_committed()
-        };
+        let ev2 = entry_init!(
+            ("class", CLASS_ACCOUNT.clone()),
+            ("class", CLASS_SYNC_OBJECT.clone()),
+            ("sync_parent_uuid", Value::Refer(sync_uuid)),
+            ("name", Value::new_iname("testperson1")),
+            ("uuid", Value::Uuid(UUID_TEST_ACCOUNT_1))
+        )
+        .into_sealed_committed();
         let r2_set = vec![Arc::new(ev2)];
 
         // Allow name and class, class is account
@@ -2598,92 +2590,83 @@ mod tests {
         // Test that an account that is granted a scope to an oauth2 rs is granted
         // the ability to search that rs.
         let rs_uuid = Uuid::new_v4();
-        let ev1 = unsafe {
-            entry_init!(
-                ("class", CLASS_OBJECT.clone()),
-                ("class", Value::new_class("oauth2_resource_server")),
-                ("class", Value::new_class("oauth2_resource_server_basic")),
-                ("uuid", Value::Uuid(rs_uuid)),
-                ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-                ("displayname", Value::new_utf8s("test_resource_server")),
-                (
-                    "oauth2_rs_origin",
-                    Value::new_url_s("https://demo.example.com").unwrap()
-                ),
-                (
-                    "oauth2_rs_scope_map",
-                    Value::new_oauthscopemap(UUID_TEST_GROUP_1, btreeset!["groups".to_string()])
-                        .expect("invalid oauthscope")
-                ),
-                (
-                    "oauth2_rs_sup_scope_map",
-                    Value::new_oauthscopemap(
-                        UUID_TEST_GROUP_1,
-                        btreeset!["supplement".to_string()]
-                    )
+        let ev1 = entry_init!(
+            ("class", CLASS_OBJECT.clone()),
+            ("class", Value::new_class("oauth2_resource_server")),
+            ("class", Value::new_class("oauth2_resource_server_basic")),
+            ("uuid", Value::Uuid(rs_uuid)),
+            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
+            ("displayname", Value::new_utf8s("test_resource_server")),
+            (
+                "oauth2_rs_origin",
+                Value::new_url_s("https://demo.example.com").unwrap()
+            ),
+            (
+                "oauth2_rs_scope_map",
+                Value::new_oauthscopemap(UUID_TEST_GROUP_1, btreeset!["groups".to_string()])
                     .expect("invalid oauthscope")
-                ),
-                (
-                    "oauth2_allow_insecure_client_disable_pkce",
-                    Value::new_bool(true)
-                ),
-                ("oauth2_jwt_legacy_crypto_enable", Value::new_bool(false)),
-                ("oauth2_prefer_short_username", Value::new_bool(false))
-            )
-            .into_sealed_committed()
-        };
+            ),
+            (
+                "oauth2_rs_sup_scope_map",
+                Value::new_oauthscopemap(UUID_TEST_GROUP_1, btreeset!["supplement".to_string()])
+                    .expect("invalid oauthscope")
+            ),
+            (
+                "oauth2_allow_insecure_client_disable_pkce",
+                Value::new_bool(true)
+            ),
+            ("oauth2_jwt_legacy_crypto_enable", Value::new_bool(false)),
+            ("oauth2_prefer_short_username", Value::new_bool(false))
+        )
+        .into_sealed_committed();
 
-        let ev1_reduced = unsafe {
-            entry_init!(
-                ("class", CLASS_OBJECT.clone()),
-                ("class", Value::new_class("oauth2_resource_server")),
-                ("class", Value::new_class("oauth2_resource_server_basic")),
-                ("uuid", Value::Uuid(rs_uuid)),
-                ("oauth2_rs_name", Value::new_iname("test_resource_server")),
-                ("displayname", Value::new_utf8s("test_resource_server")),
-                (
-                    "oauth2_rs_origin",
-                    Value::new_url_s("https://demo.example.com").unwrap()
+        let ev1_reduced = entry_init!(
+            ("class", CLASS_OBJECT.clone()),
+            ("class", Value::new_class("oauth2_resource_server")),
+            ("class", Value::new_class("oauth2_resource_server_basic")),
+            ("uuid", Value::Uuid(rs_uuid)),
+            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
+            ("displayname", Value::new_utf8s("test_resource_server")),
+            (
+                "oauth2_rs_origin",
+                Value::new_url_s("https://demo.example.com").unwrap()
+            )
+        )
+        .into_sealed_committed();
+
+        let ev2 = entry_init!(
+            ("class", CLASS_OBJECT.clone()),
+            ("class", Value::new_class("oauth2_resource_server")),
+            ("class", Value::new_class("oauth2_resource_server_basic")),
+            ("uuid", Value::Uuid(Uuid::new_v4())),
+            ("oauth2_rs_name", Value::new_iname("second_resource_server")),
+            ("displayname", Value::new_utf8s("second_resource_server")),
+            (
+                "oauth2_rs_origin",
+                Value::new_url_s("https://noaccess.example.com").unwrap()
+            ),
+            (
+                "oauth2_rs_scope_map",
+                Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["groups".to_string()])
+                    .expect("invalid oauthscope")
+            ),
+            (
+                "oauth2_rs_sup_scope_map",
+                Value::new_oauthscopemap(
+                    // This is NOT the scope map that is access checked!
+                    UUID_TEST_GROUP_1,
+                    btreeset!["supplement".to_string()]
                 )
-            )
-            .into_sealed_committed()
-        };
-
-        let ev2 = unsafe {
-            entry_init!(
-                ("class", CLASS_OBJECT.clone()),
-                ("class", Value::new_class("oauth2_resource_server")),
-                ("class", Value::new_class("oauth2_resource_server_basic")),
-                ("uuid", Value::Uuid(Uuid::new_v4())),
-                ("oauth2_rs_name", Value::new_iname("second_resource_server")),
-                ("displayname", Value::new_utf8s("second_resource_server")),
-                (
-                    "oauth2_rs_origin",
-                    Value::new_url_s("https://noaccess.example.com").unwrap()
-                ),
-                (
-                    "oauth2_rs_scope_map",
-                    Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["groups".to_string()])
-                        .expect("invalid oauthscope")
-                ),
-                (
-                    "oauth2_rs_sup_scope_map",
-                    Value::new_oauthscopemap(
-                        // This is NOT the scope map that is access checked!
-                        UUID_TEST_GROUP_1,
-                        btreeset!["supplement".to_string()]
-                    )
-                    .expect("invalid oauthscope")
-                ),
-                (
-                    "oauth2_allow_insecure_client_disable_pkce",
-                    Value::new_bool(true)
-                ),
-                ("oauth2_jwt_legacy_crypto_enable", Value::new_bool(false)),
-                ("oauth2_prefer_short_username", Value::new_bool(false))
-            )
-            .into_sealed_committed()
-        };
+                .expect("invalid oauthscope")
+            ),
+            (
+                "oauth2_allow_insecure_client_disable_pkce",
+                Value::new_bool(true)
+            ),
+            ("oauth2_jwt_legacy_crypto_enable", Value::new_bool(false)),
+            ("oauth2_prefer_short_username", Value::new_bool(false))
+        )
+        .into_sealed_committed();
 
         let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2)];
 
@@ -2722,39 +2705,33 @@ mod tests {
         let sync_uuid = Uuid::new_v4();
         let portal_url = Url::parse("https://localhost/portal").unwrap();
 
-        let ev1 = unsafe {
-            entry_init!(
-                ("class", CLASS_OBJECT.clone()),
-                ("class", CLASS_SYNC_ACCOUNT.clone()),
-                ("uuid", Value::Uuid(sync_uuid)),
-                ("name", Value::new_iname("test_sync_account")),
-                ("sync_credential_portal", Value::Url(portal_url.clone()))
-            )
-            .into_sealed_committed()
-        };
+        let ev1 = entry_init!(
+            ("class", CLASS_OBJECT.clone()),
+            ("class", CLASS_SYNC_ACCOUNT.clone()),
+            ("uuid", Value::Uuid(sync_uuid)),
+            ("name", Value::new_iname("test_sync_account")),
+            ("sync_credential_portal", Value::Url(portal_url.clone()))
+        )
+        .into_sealed_committed();
 
-        let ev1_reduced = unsafe {
-            entry_init!(
-                ("class", CLASS_OBJECT.clone()),
-                ("class", CLASS_SYNC_ACCOUNT.clone()),
-                ("uuid", Value::Uuid(sync_uuid)),
-                ("sync_credential_portal", Value::Url(portal_url.clone()))
-            )
-            .into_sealed_committed()
-        };
+        let ev1_reduced = entry_init!(
+            ("class", CLASS_OBJECT.clone()),
+            ("class", CLASS_SYNC_ACCOUNT.clone()),
+            ("uuid", Value::Uuid(sync_uuid)),
+            ("sync_credential_portal", Value::Url(portal_url.clone()))
+        )
+        .into_sealed_committed();
 
-        let ev2 = unsafe {
-            entry_init!(
-                ("class", CLASS_OBJECT.clone()),
-                ("class", CLASS_SYNC_ACCOUNT.clone()),
-                ("uuid", Value::Uuid(Uuid::new_v4())),
-                ("name", Value::new_iname("test_sync_account")),
-                ("sync_credential_portal", Value::Url(portal_url.clone()))
-            )
-            .into_sealed_committed()
-        };
+        let ev2 = entry_init!(
+            ("class", CLASS_OBJECT.clone()),
+            ("class", CLASS_SYNC_ACCOUNT.clone()),
+            ("uuid", Value::Uuid(Uuid::new_v4())),
+            ("name", Value::new_iname("test_sync_account")),
+            ("sync_credential_portal", Value::Url(portal_url.clone()))
+        )
+        .into_sealed_committed();
 
-        let sync_test_account: Arc<EntrySealedCommitted> = Arc::new(unsafe {
+        let sync_test_account: Arc<EntrySealedCommitted> = Arc::new(
             entry_init!(
                 ("class", CLASS_OBJECT.clone()),
                 ("class", CLASS_ACCOUNT.clone()),
@@ -2764,8 +2741,8 @@ mod tests {
                 ("memberof", Value::Refer(UUID_TEST_GROUP_1)),
                 ("sync_parent_uuid", Value::Refer(sync_uuid))
             )
-            .into_sealed_committed()
-        });
+            .into_sealed_committed(),
+        );
 
         // Check the authorised search event, and that it reduces correctly.
         let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2)];

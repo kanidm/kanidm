@@ -77,7 +77,7 @@ macro_rules! entry_to_account {
             .expect("Failed to munge spn from name!");
         e.set_ava("spn", once(spn));
 
-        let e = unsafe { e.into_sealed_committed() };
+        let e = e.into_sealed_committed();
 
         Account::try_from_entry_no_groups(&e).expect("Account conversion failure")
     }};

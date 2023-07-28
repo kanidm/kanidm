@@ -2051,7 +2051,7 @@ mod tests {
 
     macro_rules! entry_exists {
         ($be:expr, $ent:expr) => {{
-            let ei = unsafe { $ent.clone().into_sealed_committed() };
+            let ei = $ent.clone().into_sealed_committed();
             let filt = ei
                 .filter_from_attrs(&vec![AttrString::from("uuid")])
                 .expect("failed to generate filter")
@@ -2064,7 +2064,7 @@ mod tests {
 
     macro_rules! entry_attr_pres {
         ($be:expr, $ent:expr, $attr:expr) => {{
-            let ei = unsafe { $ent.clone().into_sealed_committed() };
+            let ei = $ent.clone().into_sealed_committed();
             let filt = ei
                 .filter_from_attrs(&vec![AttrString::from("userid")])
                 .expect("failed to generate filter")
@@ -2176,7 +2176,7 @@ mod tests {
             // Modify no id (err)
             // This is now impossible due to the state machine design.
             // However, with some unsafe ....
-            let ue1 = unsafe { e1.clone().into_sealed_committed() };
+            let ue1 = e1.clone().into_sealed_committed();
             assert!(be
                 .modify(&CID_ZERO, &[Arc::new(ue1.clone())], &[ue1])
                 .is_err());
@@ -2184,15 +2184,15 @@ mod tests {
             assert!(be.modify(&CID_ZERO, &[], &[]).is_err());
 
             // Make some changes to r1, r2.
-            let pre1 = unsafe { Arc::new(r1.clone().into_sealed_committed()) };
-            let pre2 = unsafe { Arc::new(r2.clone().into_sealed_committed()) };
+            let pre1 = Arc::new(r1.clone().into_sealed_committed());
+            let pre2 = Arc::new(r2.clone().into_sealed_committed());
             r1.add_ava("desc", Value::from("modified"));
             r2.add_ava("desc", Value::from("modified"));
 
             // Now ... cheat.
 
-            let vr1 = unsafe { r1.into_sealed_committed() };
-            let vr2 = unsafe { r2.into_sealed_committed() };
+            let vr1 = r1.into_sealed_committed();
+            let vr2 = r2.into_sealed_committed();
 
             // Modify single
             assert!(be.modify(&CID_ZERO, &[pre1], &[vr1.clone()]).is_ok());
@@ -2257,12 +2257,12 @@ mod tests {
 
             // Put them into the tombstone state, and write that down.
             // This sets up the RUV with the changes.
-            let r1_ts = unsafe { r1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
+            let r1_ts = r1.to_tombstone(CID_ONE.clone()).into_sealed_committed();
 
             assert!(be.modify(&CID_ONE, &[r1], &[r1_ts.clone()]).is_ok());
 
-            let r2_ts = unsafe { r2.to_tombstone(CID_TWO.clone()).into_sealed_committed() };
-            let r3_ts = unsafe { r3.to_tombstone(CID_TWO.clone()).into_sealed_committed() };
+            let r2_ts = r2.to_tombstone(CID_TWO.clone()).into_sealed_committed();
+            let r3_ts = r3.to_tombstone(CID_TWO.clone()).into_sealed_committed();
 
             assert!(be
                 .modify(&CID_TWO, &[r2, r3], &[r2_ts.clone(), r3_ts.clone()])
@@ -2593,7 +2593,7 @@ mod tests {
             assert!(be.uuid2rdn(william_uuid) == Ok(Some("name=william".to_string())));
 
             // == Now we reap_tombstones, and assert we removed the items.
-            let e1_ts = unsafe { e1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
+            let e1_ts = e1.to_tombstone(CID_ONE.clone()).into_sealed_committed();
             assert!(be.modify(&CID_ONE, &[e1], &[e1_ts]).is_ok());
             be.reap_tombstones(&CID_TWO).unwrap();
 
@@ -2647,8 +2647,8 @@ mod tests {
             let e3 = rset.pop().unwrap();
 
             // Now remove e1, e3.
-            let e1_ts = unsafe { e1.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
-            let e3_ts = unsafe { e3.to_tombstone(CID_ONE.clone()).into_sealed_committed() };
+            let e1_ts = e1.to_tombstone(CID_ONE.clone()).into_sealed_committed();
+            let e3_ts = e3.to_tombstone(CID_ONE.clone()).into_sealed_committed();
             assert!(be.modify(&CID_ONE, &[e1, e3], &[e1_ts, e3_ts]).is_ok());
             be.reap_tombstones(&CID_TWO).unwrap();
 
@@ -2711,7 +2711,7 @@ mod tests {
             ce1.purge_ava("name");
             ce1.add_ava("name", Value::new_iname("claire"));
 
-            let ce1 = unsafe { ce1.into_sealed_committed() };
+            let ce1 = ce1.into_sealed_committed();
 
             be.modify(&CID_ZERO, &rset, &[ce1]).unwrap();
 
@@ -2752,7 +2752,7 @@ mod tests {
             ce1.purge_ava("uuid");
             ce1.add_ava("name", Value::new_iname("claire"));
             ce1.add_ava("uuid", Value::from("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8"));
-            let ce1 = unsafe { ce1.into_sealed_committed() };
+            let ce1 = ce1.into_sealed_committed();
 
             be.modify(&CID_ZERO, &rset, &[ce1]).unwrap();
 

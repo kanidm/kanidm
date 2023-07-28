@@ -212,7 +212,7 @@ mod tests {
             Value::AuditLogString(server_txn.get_txn_cid().clone(), "testperson".to_string()),
         );
 
-        let expected = unsafe { vec![Arc::new(e.into_sealed_committed())] };
+        let expected = vec![Arc::new(e.into_sealed_committed())];
 
         assert_eq!(r2, expected);
 

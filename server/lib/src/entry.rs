@@ -554,8 +554,11 @@ impl Entry<EntryInit, EntryNew> {
         }
     }
 
+    /// ⚠️  This function bypasses the db commit, assigns fake db ids, and invalid replication metadata.
+    /// The entry it creates can never be committed safely or replicated.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn into_sealed_committed(mut self) -> Entry<EntrySealed, EntryCommitted> {
+    pub fn into_sealed_committed(mut self) -> Entry<EntrySealed, EntryCommitted> {
         let cid = Cid::new_zero();
         self.set_last_changed(cid.clone());
         // let eclog = EntryChangelog::new_without_schema(cid, self.attrs.clone());
@@ -1169,8 +1172,11 @@ impl Entry<EntryInvalid, EntryNew> {
         }
     }
 
+    /// ⚠️  This function bypasses the db commit, assigns fake db ids, and assigns an invalid uuid.
+    /// The entry it creates can never be committed safely or replicated.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
+    pub fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
         let uuid = self.get_uuid().unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntrySealed {
@@ -1215,8 +1221,11 @@ impl Entry<EntryInvalid, EntryNew> {
 }
 
 impl Entry<EntryInvalid, EntryCommitted> {
+    /// ⚠️  This function bypasses the schema validation and assigns a fake uuid.
+    /// The entry it creates can never be committed safely or replicated.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
+    pub fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
         let uuid = self.get_uuid().unwrap_or_else(Uuid::new_v4);
         Entry {
             valid: EntrySealed {
@@ -1230,8 +1239,11 @@ impl Entry<EntryInvalid, EntryCommitted> {
 }
 
 impl Entry<EntrySealed, EntryNew> {
+    /// ⚠️  This function bypasses schema validation and assigns an invalid uuid.
+    /// The entry it creates can never be committed safely or replicated.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
+    pub fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
         Entry {
             valid: self.valid,
             state: EntryCommitted { id: 0 },
@@ -1280,8 +1292,9 @@ impl Entry<EntrySealed, EntryCommitted> {
         self.valid.ecstate.get_tail_cid()
     }
 
+    /// State transititon to allow self to self for certain test macros.
     #[cfg(test)]
-    pub unsafe fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
+    pub fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
         // NO-OP to satisfy macros.
         self
     }
@@ -3275,12 +3288,12 @@ mod tests {
         let mut e1_mod = e1.clone();
         e1_mod.add_ava("extra", Value::from("test"));
 
-        let e1 = unsafe { e1.into_sealed_committed() };
-        let e1_mod = unsafe { e1_mod.into_sealed_committed() };
+        let e1 = e1.into_sealed_committed();
+        let e1_mod = e1_mod.into_sealed_committed();
 
         let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
         e2.add_ava("userid", Value::from("claire"));
-        let e2 = unsafe { e2.into_sealed_committed() };
+        let e2 = e2.into_sealed_committed();
 
         let mut idxmeta = HashMap::with_capacity(8);
         idxmeta.insert(
@@ -3407,18 +3420,18 @@ mod tests {
     fn test_entry_mask_recycled_ts() {
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
         e1.add_ava("class", Value::new_class("person"));
-        let e1 = unsafe { e1.into_sealed_committed() };
+        let e1 = e1.into_sealed_committed();
         assert!(e1.mask_recycled_ts().is_some());
 
         let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
         e2.add_ava("class", Value::new_class("person"));
         e2.add_ava("class", Value::new_class("recycled"));
-        let e2 = unsafe { e2.into_sealed_committed() };
+        let e2 = e2.into_sealed_committed();
         assert!(e2.mask_recycled_ts().is_none());
 
         let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
         e3.add_ava("class", Value::new_class("tombstone"));
-        let e3 = unsafe { e3.into_sealed_committed() };
+        let e3 = e3.into_sealed_committed();
         assert!(e3.mask_recycled_ts().is_none());
     }
 
@@ -3432,7 +3445,7 @@ mod tests {
         {
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
             e.add_ava("class", Value::new_class("person"));
-            let e = unsafe { e.into_sealed_committed() };
+            let e = e.into_sealed_committed();
 
             assert!(Entry::idx_name2uuid_diff(None, Some(&e)) == (Some(Set::new()), None));
         }
@@ -3447,7 +3460,7 @@ mod tests {
                 "uuid",
                 Value::Uuid(uuid!("9fec0398-c46c-4df4-9df5-b0016f7d563f")),
             );
-            let e = unsafe { e.into_sealed_committed() };
+            let e = e.into_sealed_committed();
 
             // Note the uuid isn't present!
             assert!(
@@ -3487,13 +3500,13 @@ mod tests {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava("class", Value::new_class("person"));
             e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
-            let e1 = unsafe { e1.into_sealed_committed() };
+            let e1 = e1.into_sealed_committed();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
             e2.add_ava("class", Value::new_class("person"));
             e2.add_ava("name", Value::new_iname("testperson"));
             e2.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
-            let e2 = unsafe { e2.into_sealed_committed() };
+            let e2 = e2.into_sealed_committed();
 
             // One attr added
             assert!(
@@ -3513,12 +3526,12 @@ mod tests {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava("class", Value::new_class("person"));
             e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
-            let e1 = unsafe { e1.into_sealed_committed() };
+            let e1 = e1.into_sealed_committed();
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
             e2.add_ava("class", Value::new_class("person"));
             e2.add_ava("spn", Value::new_spn_str("renameperson", "example.com"));
-            let e2 = unsafe { e2.into_sealed_committed() };
+            let e2 = e2.into_sealed_committed();
 
             assert!(
                 Entry::idx_name2uuid_diff(Some(&e1), Some(&e2))
@@ -3536,11 +3549,11 @@ mod tests {
 
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
         e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
-        let e1 = unsafe { e1.into_sealed_committed() };
+        let e1 = e1.into_sealed_committed();
 
         let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
         e2.add_ava("spn", Value::new_spn_str("renameperson", "example.com"));
-        let e2 = unsafe { e2.into_sealed_committed() };
+        let e2 = e2.into_sealed_committed();
 
         assert!(
             Entry::idx_uuid2spn_diff(None, Some(&e1))
@@ -3560,11 +3573,11 @@ mod tests {
 
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
         e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
-        let e1 = unsafe { e1.into_sealed_committed() };
+        let e1 = e1.into_sealed_committed();
 
         let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
         e2.add_ava("spn", Value::new_spn_str("renameperson", "example.com"));
-        let e2 = unsafe { e2.into_sealed_committed() };
+        let e2 = e2.into_sealed_committed();
 
         assert!(
             Entry::idx_uuid2rdn_diff(None, Some(&e1))

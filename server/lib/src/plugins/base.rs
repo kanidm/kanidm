@@ -302,7 +302,7 @@ mod tests {
         pub static ref PRELOAD: Vec<EntryInitNew> =
             vec![TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()];
         pub static ref E_TEST_ACCOUNT: Arc<EntrySealedCommitted> =
-            Arc::new(unsafe { TEST_ACCOUNT.clone().into_sealed_committed() });
+            Arc::new(TEST_ACCOUNT.clone().into_sealed_committed());
     }
 
     // check create where no uuid

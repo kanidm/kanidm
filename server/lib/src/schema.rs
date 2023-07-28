@@ -2002,7 +2002,7 @@ mod tests {
             $type:ty
         ) => {{
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
-            let ev1 = unsafe { e1.into_sealed_committed() };
+            let ev1 = e1.into_sealed_committed();
 
             let r1 = <$type>::try_from(&ev1);
             assert!(r1.is_ok());
@@ -2015,7 +2015,7 @@ mod tests {
             $type:ty
         ) => {{
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
-            let ev1 = unsafe { e1.into_sealed_committed() };
+            let ev1 = e1.into_sealed_committed();
 
             let r1 = <$type>::try_from(&ev1);
             assert!(r1.is_err());
