@@ -1588,7 +1588,7 @@ impl<'a> BackendWriteTransaction<'a> {
 
     pub fn reindex(&mut self) -> Result<(), OperationError> {
         // Purge the idxs
-        unsafe { self.idlayer.purge_idxs()? };
+        self.idlayer.danger_purge_idxs()?;
 
         // Using the index metadata on the txn, create all our idx tables
         self.create_idxs()?;
@@ -1632,17 +1632,15 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(())
     }
 
-    fn purge_idxs(&mut self) -> Result<(), OperationError> {
-        unsafe { self.get_idlayer().purge_idxs() }
+    fn danger_purge_idxs(&mut self) -> Result<(), OperationError> {
+        self.get_idlayer().danger_purge_idxs()
     }
 
     pub(crate) fn danger_delete_all_db_content(&mut self) -> Result<(), OperationError> {
         self.get_ruv().clear();
-        unsafe {
-            self.get_idlayer()
-                .purge_id2entry()
-                .and_then(|_| self.purge_idxs())
-        }
+        self.get_idlayer()
+            .danger_purge_id2entry()
+            .and_then(|_| self.danger_purge_idxs())
     }
 
     #[cfg(test)]
@@ -1678,7 +1676,7 @@ impl<'a> BackendWriteTransaction<'a> {
             OperationError::FsError
         })?;
 
-        unsafe { idlayer.purge_id2entry() }.map_err(|e| {
+        idlayer.danger_purge_id2entry().map_err(|e| {
             admin_error!("purge_id2entry failed {:?}", e);
             e
         })?;
@@ -2482,7 +2480,7 @@ mod tests {
             be.create(&CID_ZERO, vec![e1, e2]).unwrap();
 
             // purge indexes
-            be.purge_idxs().unwrap();
+            be.danger_purge_idxs().unwrap();
             // Check they are gone
             let missing = be.missing_idxs().unwrap();
             assert!(missing.len() == 7);
@@ -3061,7 +3059,7 @@ mod tests {
         run_test!(|be: &mut BackendWriteTransaction| {
             // Test where the index is in schema but not created (purge idxs)
             // should fall back to an empty set because we can't satisfy the term
-            be.purge_idxs().unwrap();
+            be.danger_purge_idxs().unwrap();
             debug!("{:?}", be.missing_idxs().unwrap());
             let f_eq = filter_resolved!(f_eq("name", PartialValue::new_utf8s("william")));
 

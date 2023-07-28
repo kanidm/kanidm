@@ -1034,7 +1034,7 @@ impl IdlSqliteWriteTransaction {
             .map_err(sqlite_error)
     }
 
-    pub unsafe fn purge_idxs(&self) -> Result<(), OperationError> {
+    pub fn danger_purge_idxs(&self) -> Result<(), OperationError> {
         let idx_table_list = self.list_idxs()?;
 
         idx_table_list.iter().try_for_each(|idx_table| {
@@ -1124,7 +1124,7 @@ impl IdlSqliteWriteTransaction {
         Ok(slope)
     }
 
-    pub unsafe fn purge_id2entry(&self) -> Result<(), OperationError> {
+    pub fn danger_purge_id2entry(&self) -> Result<(), OperationError> {
         self.get_conn()?
             .execute(&format!("DELETE FROM {}.id2entry", self.get_db_name()), [])
             .map(|_| ())
