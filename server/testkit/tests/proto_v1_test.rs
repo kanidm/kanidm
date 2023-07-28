@@ -563,7 +563,7 @@ async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
         .unwrap();
     // get the account by uuid
     let r3 = rsclient
-        .idm_account_unix_token_get(r.uuid.as_str())
+        .idm_account_unix_token_get(&r.uuid.hyphenated().to_string())
         .await
         .unwrap();
 
@@ -590,7 +590,7 @@ async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
         .unwrap();
     // get the group by uuid
     let r3 = rsclient
-        .idm_group_unix_token_get(r.uuid.as_str())
+        .idm_group_unix_token_get(&r.uuid.hyphenated().to_string())
         .await
         .unwrap();
 

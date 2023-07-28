@@ -2674,7 +2674,6 @@ dependencies = [
  "lru 0.8.1",
  "notify-debouncer-full",
  "profiles",
- "reqwest",
  "rpassword 7.2.0",
  "rusqlite",
  "selinux",
@@ -2687,6 +2686,7 @@ dependencies = [
  "tracing",
  "tss-esapi",
  "users",
+ "uuid",
  "walkdir",
 ]
 
