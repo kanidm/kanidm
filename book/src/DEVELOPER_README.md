@@ -107,16 +107,16 @@ This is how it works in the automated build:
 
 1. Enable use of installed packages for the user system-wide:
 
-    ```bash
-    vcpkg integrate install
-    ```
+   ```bash
+   vcpkg integrate install
+   ```
 
 2. Install the openssl dependency, which compiles it from source. This downloads all sorts of
    dependencies, including perl for the build.
 
-    ```bash
-    vcpkg install openssl:x64-windows-static-md
-    ```
+   ```bash
+   vcpkg install openssl:x64-windows-static-md
+   ```
 
 There's a powershell script in the root directory of the repository which, in concert with `openssl`
 will generate a config file and certs for testing.
