@@ -33,24 +33,20 @@ impl Cid {
         Cid { ts, s_uuid }
     }
 
+    /// ⚠️  - Create a new cid at timestamp zero.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn new_zero() -> Self {
+    pub fn new_zero() -> Self {
         Self::new_count(0)
     }
 
+    /// ⚠️  - Create a new cid with a manually defined timestamp.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub unsafe fn new_count(c: u64) -> Self {
+    pub fn new_count(c: u64) -> Self {
         Cid {
             s_uuid: uuid!("00000000-0000-0000-0000-000000000000"),
             ts: Duration::new(c, 0),
-        }
-    }
-
-    #[cfg(test)]
-    pub fn new_random_s_d(ts: Duration) -> Self {
-        Cid {
-            s_uuid: Uuid::new_v4(),
-            ts,
         }
     }
 
@@ -113,7 +109,7 @@ mod tests {
         let ts10 = Duration::new(10, 0);
         let ts15 = Duration::new(15, 0);
 
-        let cid_z = unsafe { Cid::new_zero() };
+        let cid_z = Cid::new_zero();
 
         let cid_a = Cid::new_lamport(s_uuid, ts5, &ts5);
         assert!(cid_a.cmp(&cid_z) == Ordering::Greater);

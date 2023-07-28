@@ -1995,10 +1995,10 @@ mod tests {
     use crate::value::{IndexType, PartialValue, Value};
 
     lazy_static! {
-        static ref CID_ZERO: Cid = unsafe { Cid::new_zero() };
-        static ref CID_ONE: Cid = unsafe { Cid::new_count(1) };
-        static ref CID_TWO: Cid = unsafe { Cid::new_count(2) };
-        static ref CID_THREE: Cid = unsafe { Cid::new_count(3) };
+        static ref CID_ZERO: Cid = Cid::new_zero();
+        static ref CID_ONE: Cid = Cid::new_count(1);
+        static ref CID_TWO: Cid = Cid::new_count(2);
+        static ref CID_THREE: Cid = Cid::new_count(3);
     }
 
     macro_rules! run_test {
