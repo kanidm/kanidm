@@ -1591,15 +1591,13 @@ mod tests {
         // This acp basically is "allow access to stuff, but not this".
         test_acp_search!(
             &se,
-            vec![unsafe {
-                AccessControlSearch::from_raw(
-                    "test_acp",
-                    Uuid::new_v4(),
-                    UUID_TEST_GROUP_1,
-                    filter_valid!(f_pres("nomatchy")), // apply to none - ie no allowed results
-                    "name", // allow to this attr, but we don't eval this.
-                )
-            }],
+            vec![AccessControlSearch::from_raw(
+                "test_acp",
+                Uuid::new_v4(),
+                UUID_TEST_GROUP_1,
+                filter_valid!(f_pres("nomatchy")), // apply to none - ie no allowed results
+                "name",                            // allow to this attr, but we don't eval this.
+            )],
             entries,
             expect
         );
@@ -1629,19 +1627,17 @@ mod tests {
         };
         let ex_b = vec![];
 
-        let acp = unsafe {
-            AccessControlSearch::from_raw(
-                "test_acp",
-                Uuid::new_v4(),
-                // apply to admin only
-                UUID_TEST_GROUP_1,
-                // Allow admin to read only testperson1
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // In that read, admin may only view the "name" attribute, or query on
-                // the name attribute. Any other query (should be) rejected.
-                "name",
-            )
-        };
+        let acp = AccessControlSearch::from_raw(
+            "test_acp",
+            Uuid::new_v4(),
+            // apply to admin only
+            UUID_TEST_GROUP_1,
+            // Allow admin to read only testperson1
+            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            // In that read, admin may only view the "name" attribute, or query on
+            // the name attribute. Any other query (should be) rejected.
+            "name",
+        );
 
         // Check the admin search event
         test_acp_search!(&se_a, vec![acp.clone()], r_set.clone(), ex_a);
@@ -1674,19 +1670,17 @@ mod tests {
             )
         };
 
-        let acp = unsafe {
-            AccessControlSearch::from_raw(
-                "test_acp",
-                Uuid::new_v4(),
-                // apply to admin only
-                UUID_TEST_GROUP_1,
-                // Allow admin to read only testperson1
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // In that read, admin may only view the "name" attribute, or query on
-                // the name attribute. Any other query (should be) rejected.
-                "name",
-            )
-        };
+        let acp = AccessControlSearch::from_raw(
+            "test_acp",
+            Uuid::new_v4(),
+            // apply to admin only
+            UUID_TEST_GROUP_1,
+            // Allow admin to read only testperson1
+            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            // In that read, admin may only view the "name" attribute, or query on
+            // the name attribute. Any other query (should be) rejected.
+            "name",
+        );
 
         // Check the admin search event
         test_acp_search!(&se_ro, vec![acp.clone()], r_set.clone(), ex_some);
@@ -1713,19 +1707,17 @@ mod tests {
             )
         };
 
-        let acp = unsafe {
-            AccessControlSearch::from_raw(
-                "test_acp",
-                Uuid::new_v4(),
-                // apply to all accounts.
-                UUID_TEST_GROUP_1,
-                // Allow anonymous to read only testperson1
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // In that read, admin may only view the "name" attribute, or query on
-                // the name attribute. Any other query (should be) rejected.
-                "name",
-            )
-        };
+        let acp = AccessControlSearch::from_raw(
+            "test_acp",
+            Uuid::new_v4(),
+            // apply to all accounts.
+            UUID_TEST_GROUP_1,
+            // Allow anonymous to read only testperson1
+            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            // In that read, admin may only view the "name" attribute, or query on
+            // the name attribute. Any other query (should be) rejected.
+            "name",
+        );
 
         // Finally test it!
         test_acp_search_reduce!(&se_anon_ro, vec![acp], r_set, ex_anon_some);
@@ -1754,19 +1746,17 @@ mod tests {
             )
         };
 
-        let acp = unsafe {
-            AccessControlSearch::from_raw(
-                "test_acp",
-                Uuid::new_v4(),
-                // apply to anonymous only
-                UUID_TEST_GROUP_1,
-                // Allow anonymous to read only testperson1
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // In that read, admin may only view the "name" attribute, or query on
-                // the name attribute. Any other query (should be) rejected.
-                "name",
-            )
-        };
+        let acp = AccessControlSearch::from_raw(
+            "test_acp",
+            Uuid::new_v4(),
+            // apply to anonymous only
+            UUID_TEST_GROUP_1,
+            // Allow anonymous to read only testperson1
+            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            // In that read, admin may only view the "name" attribute, or query on
+            // the name attribute. Any other query (should be) rejected.
+            "name",
+        );
 
         // Finally test it!
         test_acp_search_reduce!(&se_anon, vec![acp], r_set, ex_anon);
@@ -1793,19 +1783,17 @@ mod tests {
         // the requested attrs here.
         se_anon.attrs = Some(btreeset![AttrString::from("name")]);
 
-        let acp = unsafe {
-            AccessControlSearch::from_raw(
-                "test_acp",
-                Uuid::new_v4(),
-                // apply to anonymous only
-                UUID_TEST_GROUP_1,
-                // Allow anonymous to read only testperson1
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // In that read, admin may only view the "name" attribute, or query on
-                // the name attribute. Any other query (should be) rejected.
-                "name uuid",
-            )
-        };
+        let acp = AccessControlSearch::from_raw(
+            "test_acp",
+            Uuid::new_v4(),
+            // apply to anonymous only
+            UUID_TEST_GROUP_1,
+            // Allow anonymous to read only testperson1
+            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            // In that read, admin may only view the "name" attribute, or query on
+            // the name attribute. Any other query (should be) rejected.
+            "name uuid",
+        );
 
         // Finally test it!
         test_acp_search_reduce!(&se_anon, vec![acp], r_set, ex_anon);
@@ -1917,56 +1905,50 @@ mod tests {
         };
 
         // Allow name and class, class is account
-        let acp_allow = unsafe {
-            AccessControlModify::from_raw(
-                "test_modify_allow",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To modify testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // Allow pres name and class
-                "name class",
-                // Allow rem name and class
-                "name class",
-                // And the class allowed is account
-                "account",
-            )
-        };
+        let acp_allow = AccessControlModify::from_raw(
+            "test_modify_allow",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To modify testperson
+            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            // Allow pres name and class
+            "name class",
+            // Allow rem name and class
+            "name class",
+            // And the class allowed is account
+            "account",
+        );
         // Allow member, class is group. IE not account
-        let acp_deny = unsafe {
-            AccessControlModify::from_raw(
-                "test_modify_deny",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To modify testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // Allow pres name and class
-                "member class",
-                // Allow rem name and class
-                "member class",
-                // And the class allowed is account
-                "group",
-            )
-        };
+        let acp_deny = AccessControlModify::from_raw(
+            "test_modify_deny",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To modify testperson
+            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            // Allow pres name and class
+            "member class",
+            // Allow rem name and class
+            "member class",
+            // And the class allowed is account
+            "group",
+        );
         // Does not have a pres or rem class in attrs
-        let acp_no_class = unsafe {
-            AccessControlModify::from_raw(
-                "test_modify_no_class",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To modify testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // Allow pres name and class
-                "name class",
-                // Allow rem name and class
-                "name class",
-                // And the class allowed is NOT an account ...
-                "group",
-            )
-        };
+        let acp_no_class = AccessControlModify::from_raw(
+            "test_modify_no_class",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To modify testperson
+            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            // Allow pres name and class
+            "name class",
+            // Allow rem name and class
+            "name class",
+            // And the class allowed is NOT an account ...
+            "group",
+        );
 
         // Test allowed pres
         test_acp_modify!(&me_pres, vec![acp_allow.clone()], &r_set, true);
@@ -2022,22 +2004,20 @@ mod tests {
             )
         };
 
-        let acp_allow = unsafe {
-            AccessControlModify::from_raw(
-                "test_modify_allow",
-                Uuid::new_v4(),
-                // apply to admin only
-                UUID_TEST_GROUP_1,
-                // To modify testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // Allow pres name and class
-                "name class",
-                // Allow rem name and class
-                "name class",
-                // And the class allowed is account
-                "account",
-            )
-        };
+        let acp_allow = AccessControlModify::from_raw(
+            "test_modify_allow",
+            Uuid::new_v4(),
+            // apply to admin only
+            UUID_TEST_GROUP_1,
+            // To modify testperson
+            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            // Allow pres name and class
+            "name class",
+            // Allow rem name and class
+            "name class",
+            // And the class allowed is account
+            "account",
+        );
 
         test_acp_modify!(&me_pres_ro, vec![acp_allow.clone()], &r_set, false);
 
@@ -2112,36 +2092,32 @@ mod tests {
             vec![],
         );
 
-        let acp = unsafe {
-            AccessControlCreate::from_raw(
-                "test_create",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To create matching filter testperson
-                // Can this be empty?
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // classes
-                "account",
-                // attrs
-                "class name uuid",
-            )
-        };
+        let acp = AccessControlCreate::from_raw(
+            "test_create",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To create matching filter testperson
+            // Can this be empty?
+            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            // classes
+            "account",
+            // attrs
+            "class name uuid",
+        );
 
-        let acp2 = unsafe {
-            AccessControlCreate::from_raw(
-                "test_create_2",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To create matching filter testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // classes
-                "group",
-                // attrs
-                "class name uuid",
-            )
-        };
+        let acp2 = AccessControlCreate::from_raw(
+            "test_create_2",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To create matching filter testperson
+            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            // classes
+            "group",
+            // attrs
+            "class name uuid",
+        );
 
         // Test allowed to create
         test_acp_create!(&ce_admin, vec![acp.clone()], &r1_set, true);
@@ -2174,21 +2150,19 @@ mod tests {
             vec![],
         );
 
-        let acp = unsafe {
-            AccessControlCreate::from_raw(
-                "test_create",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To create matching filter testperson
-                // Can this be empty?
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // classes
-                "account",
-                // attrs
-                "class name uuid",
-            )
-        };
+        let acp = AccessControlCreate::from_raw(
+            "test_create",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To create matching filter testperson
+            // Can this be empty?
+            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            // classes
+            "account",
+            // attrs
+            "class name uuid",
+        );
 
         test_acp_create!(&ce_admin_ro, vec![acp.clone()], &r1_set, false);
 
@@ -2237,16 +2211,14 @@ mod tests {
             )
         };
 
-        let acp = unsafe {
-            AccessControlDelete::from_raw(
-                "test_delete",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To delete testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let acp = AccessControlDelete::from_raw(
+            "test_delete",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To delete testperson
+            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+        );
 
         // Test allowed to delete
         test_acp_delete!(&de_admin, vec![acp.clone()], &r_set, true);
@@ -2271,16 +2243,14 @@ mod tests {
             filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
         );
 
-        let acp = unsafe {
-            AccessControlDelete::from_raw(
-                "test_delete",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To delete testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let acp = AccessControlDelete::from_raw(
+            "test_delete",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To delete testperson
+            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+        );
 
         test_acp_delete!(&de_admin_ro, vec![acp.clone()], &r_set, false);
 
@@ -2329,18 +2299,16 @@ mod tests {
         test_acp_effective_permissions!(
             &admin,
             None,
-            vec![unsafe {
-                AccessControlSearch::from_raw(
-                    "test_acp",
-                    Uuid::new_v4(),
-                    // apply to admin only
-                    UUID_TEST_GROUP_1,
-                    // Allow admin to read only testperson1
-                    filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                    // They can read "name".
-                    "name",
-                )
-            }],
+            vec![AccessControlSearch::from_raw(
+                "test_acp",
+                Uuid::new_v4(),
+                // apply to admin only
+                UUID_TEST_GROUP_1,
+                // Allow admin to read only testperson1
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                // They can read "name".
+                "name",
+            )],
             vec![],
             &r_set,
             vec![AccessEffectivePermission {
@@ -2369,20 +2337,18 @@ mod tests {
             &admin,
             None,
             vec![],
-            vec![unsafe {
-                AccessControlModify::from_raw(
-                    "test_acp",
-                    Uuid::new_v4(),
-                    // apply to admin only
-                    UUID_TEST_GROUP_1,
-                    // Allow admin to read only testperson1
-                    filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                    // They can read "name".
-                    "name",
-                    "name",
-                    "object",
-                )
-            }],
+            vec![AccessControlModify::from_raw(
+                "test_acp",
+                Uuid::new_v4(),
+                // apply to admin only
+                UUID_TEST_GROUP_1,
+                // Allow admin to read only testperson1
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                // They can read "name".
+                "name",
+                "name",
+                "object",
+            )],
             &r_set,
             vec![AccessEffectivePermission {
                 delete: false,
@@ -2420,21 +2386,19 @@ mod tests {
         );
         let r2_set = vec![ev2];
 
-        let acp = unsafe {
-            AccessControlCreate::from_raw(
-                "test_create",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To create matching filter testperson
-                // Can this be empty?
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // classes
-                "account sync_object",
-                // attrs
-                "class name uuid",
-            )
-        };
+        let acp = AccessControlCreate::from_raw(
+            "test_create",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To create matching filter testperson
+            // Can this be empty?
+            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            // classes
+            "account sync_object",
+            // attrs
+            "class name uuid",
+        );
 
         // Test allowed to create
         test_acp_create!(&ce_admin, vec![acp.clone()], &r1_set, true);
@@ -2474,16 +2438,14 @@ mod tests {
             )
         };
 
-        let acp = unsafe {
-            AccessControlDelete::from_raw(
-                "test_delete",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To delete testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-            )
-        };
+        let acp = AccessControlDelete::from_raw(
+            "test_delete",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To delete testperson
+            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+        );
 
         // Test allowed to delete
         test_acp_delete!(&de_admin, vec![acp.clone()], &r1_set, true);
@@ -2519,22 +2481,20 @@ mod tests {
         let r2_set = vec![Arc::new(ev2)];
 
         // Allow name and class, class is account
-        let acp_allow = unsafe {
-            AccessControlModify::from_raw(
-                "test_modify_allow",
-                Uuid::new_v4(),
-                // Apply to admin
-                UUID_TEST_GROUP_1,
-                // To modify testperson
-                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                // Allow pres user_auth_token_session
-                "user_auth_token_session name",
-                // Allow user_auth_token_session
-                "user_auth_token_session name",
-                // And the class allowed is account, we don't use it though.
-                "account",
-            )
-        };
+        let acp_allow = AccessControlModify::from_raw(
+            "test_modify_allow",
+            Uuid::new_v4(),
+            // Apply to admin
+            UUID_TEST_GROUP_1,
+            // To modify testperson
+            filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+            // Allow pres user_auth_token_session
+            "user_auth_token_session name",
+            // Allow user_auth_token_session
+            "user_auth_token_session name",
+            // And the class allowed is account, we don't use it though.
+            "account",
+        );
 
         // NOTE! Syntax doesn't matter here, we just need to assert if the attr exists
         // and is being modified.

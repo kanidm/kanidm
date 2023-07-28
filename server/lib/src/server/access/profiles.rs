@@ -41,8 +41,10 @@ impl AccessControlSearch {
         Ok(AccessControlSearch { acp, attrs })
     }
 
+    /// ⚠️  - Manually create a search access profile from values.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub(super) unsafe fn from_raw(
+    pub(super) fn from_raw(
         name: &str,
         uuid: Uuid,
         receiver: Uuid,
@@ -83,8 +85,10 @@ impl AccessControlDelete {
         })
     }
 
+    /// ⚠️  - Manually create a delete access profile from values.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub(super) unsafe fn from_raw(
+    pub(super) fn from_raw(
         name: &str,
         uuid: Uuid,
         receiver: Uuid,
@@ -137,8 +141,10 @@ impl AccessControlCreate {
         })
     }
 
+    /// ⚠️  - Manually create a create access profile from values.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub(super) unsafe fn from_raw(
+    pub(super) fn from_raw(
         name: &str,
         uuid: Uuid,
         receiver: Uuid,
@@ -202,8 +208,10 @@ impl AccessControlModify {
         })
     }
 
+    /// ⚠️  - Manually create a modify access profile from values.
+    /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub(super) unsafe fn from_raw(
+    pub(super) fn from_raw(
         name: &str,
         uuid: Uuid,
         receiver: Uuid,
