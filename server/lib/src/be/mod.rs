@@ -1626,10 +1626,18 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(())
     }
 
+    /// ⚠️  - This function will destroy all indexes in the database.
+    ///
+    /// It should only be called internally by the backend in limited and
+    /// specific situations.
     fn danger_purge_idxs(&mut self) -> Result<(), OperationError> {
         self.get_idlayer().danger_purge_idxs()
     }
 
+    /// ⚠️  - This function will destroy all entries and indexes in the database.
+    ///
+    /// It should only be called internally by the backend in limited and
+    /// specific situations.
     pub(crate) fn danger_delete_all_db_content(&mut self) -> Result<(), OperationError> {
         self.get_ruv().clear();
         self.get_idlayer()

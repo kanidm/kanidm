@@ -1032,6 +1032,10 @@ impl IdlSqliteWriteTransaction {
             .map_err(sqlite_error)
     }
 
+    /// ⚠️  - This function will destroy all indexes in the database.
+    ///
+    /// It should only be called internally by the backend in limited and
+    /// specific situations.
     pub fn danger_purge_idxs(&self) -> Result<(), OperationError> {
         let idx_table_list = self.list_idxs()?;
 
@@ -1122,6 +1126,10 @@ impl IdlSqliteWriteTransaction {
         Ok(slope)
     }
 
+    /// ⚠️  - This function will destroy all entries in the database.
+    ///
+    /// It should only be called internally by the backend in limited and
+    /// specific situations.
     pub fn danger_purge_id2entry(&self) -> Result<(), OperationError> {
         self.get_conn()?
             .execute(&format!("DELETE FROM {}.id2entry", self.get_db_name()), [])
