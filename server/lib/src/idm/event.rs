@@ -302,17 +302,27 @@ pub enum AuthEventStep {
 impl AuthEventStep {
     fn from_authstep(aus: AuthStep, sid: Option<Uuid>) -> Result<Self, OperationError> {
         match aus {
-            AuthStep::Init(username) => Ok(AuthEventStep::Init(AuthEventStepInit {
-                username,
-                issue: AuthIssueSession::Token,
-            })),
+            AuthStep::Init(username) => {
+                if username.trim().is_empty() {
+                    Err(OperationError::EmptyRequest)
+                } else {
+                    Ok(AuthEventStep::Init(AuthEventStepInit {
+                        username,
+                        issue: AuthIssueSession::Token,
+                    }))
+                }
+            }
             AuthStep::Init2 { username, issue } => {
-                Ok(AuthEventStep::Init(AuthEventStepInit { username, issue }))
+                if username.trim().is_empty() {
+                    Err(OperationError::EmptyRequest)
+                } else {
+                    Ok(AuthEventStep::Init(AuthEventStepInit { username, issue }))
+                }
             }
 
             AuthStep::Begin(mech) => match sid {
-                Some(ssid) => Ok(AuthEventStep::Begin(AuthEventStepMech {
-                    sessionid: ssid,
+                Some(sessionid) => Ok(AuthEventStep::Begin(AuthEventStepMech {
+                    sessionid,
                     mech,
                 })),
                 None => Err(OperationError::InvalidAuthState(
@@ -320,8 +330,8 @@ impl AuthEventStep {
                 )),
             },
             AuthStep::Cred(cred) => match sid {
-                Some(ssid) => Ok(AuthEventStep::Cred(AuthEventStepCred {
-                    sessionid: ssid,
+                Some(sessionid) => Ok(AuthEventStep::Cred(AuthEventStepCred {
+                    sessionid,
                     cred,
                 })),
                 None => Err(OperationError::InvalidAuthState(

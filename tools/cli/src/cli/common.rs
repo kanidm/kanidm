@@ -110,20 +110,43 @@ impl CommonOpt {
                         .get(filter_username)
                         .map(|t| (filter_username.clone(), t.clone()))
                 } else {
-                    let filter_username = format!("{}@", filter_username);
-                    // First, filter for tokens that match.
+                    // first we try to find user@hostname
+                    let filter_username_with_hostname = format!(
+                        "{}@{}",
+                        filter_username,
+                        client.get_origin().host_str().unwrap_or("localhost")
+                    );
+                    debug!(
+                        "Looking for tokens matching {}",
+                        filter_username_with_hostname
+                    );
+
                     let mut token_refs: Vec<_> = tokens
                         .iter()
-                        .filter(|(t, _)| t.starts_with(&filter_username))
+                        .filter(|(t, _)| *t == &filter_username_with_hostname)
                         .map(|(k, v)| (k.clone(), v.clone()))
                         .collect();
 
-                    match token_refs.len() {
-                        0 => None,
-                        1 => token_refs.pop(),
-                        _ => {
-                            error!("Multiple authentication tokens found for {}. Please specify the full spn to proceed", filter_username);
-                            return Err(ToClientError::Other);
+                    if token_refs.len() == 1 {
+                        // return the token
+                        token_refs.pop()
+                    } else {
+                        // otherwise let's try the fallback
+                        let filter_username = format!("{}@", filter_username);
+                        // Filter for tokens that match the pattern
+                        let mut token_refs: Vec<_> = tokens
+                            .into_iter()
+                            .filter(|(t, _)| t.starts_with(&filter_username))
+                            .map(|(k, v)| (k, v))
+                            .collect();
+
+                        match token_refs.len() {
+                            0 => None,
+                            1 => token_refs.pop(),
+                            _ => {
+                                error!("Multiple authentication tokens found for {}. Please specify the full spn to proceed", filter_username);
+                                return Err(ToClientError::Other);
+                            }
                         }
                     }
                 };

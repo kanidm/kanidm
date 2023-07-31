@@ -234,7 +234,7 @@ pub async fn create_https_server(
         .merge(static_routes)
         .layer(from_fn_with_state(
             state.clone(),
-            middleware::csp_headers::cspheaders_layer,
+            middleware::security_headers::security_headers_layer,
         ))
         .layer(from_fn(middleware::version_middleware))
         .layer(from_fn(
